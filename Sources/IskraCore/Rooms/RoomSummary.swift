@@ -51,9 +51,9 @@ public struct RoomSummary: Sendable, Identifiable, Equatable {
     public let isDirectMessage: Bool
     public let privacy: PrivacyStatus
     /// Unread messages. Drives the badge.
-    public let unreadCount: UInt
+    public let unreadCount: Int
     /// Unread messages that mention the user directly. Drives the badge's colour.
-    public let mentionCount: UInt
+    public let mentionCount: Int
     public let lastMessage: String?
     public let lastActivity: Date?
 
@@ -68,8 +68,8 @@ public struct RoomSummary: Sendable, Identifiable, Equatable {
         self.avatarURL = info.avatarUrl
         self.isDirectMessage = info.isDm
         self.privacy = PrivacyStatus(info.encryptionState)
-        self.unreadCount = info.notificationCount
-        self.mentionCount = info.highlightCount
+        self.unreadCount = Int(info.notificationCount)
+        self.mentionCount = Int(info.highlightCount)
         self.lastMessage = lastMessage
         self.lastActivity = lastActivity
     }

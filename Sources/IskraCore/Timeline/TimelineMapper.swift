@@ -111,9 +111,10 @@ enum TimelineMapper {
                                         duration: content.info?.duration,
                                         blurhash: nil)
             // `voice` is the marker other Matrix clients set on spoken messages.
-            if let voice = content.voice {
-                _ = voice
-                let waveform = content.audio?.waveform ?? []
+            if content.voice != nil {
+                // The wire format is 0...1024 per sample; the UI wants 0...1 so it can
+                // just multiply by a bar height.
+                let waveform = (content.audio?.waveform ?? []).map { Float($0) / 1024 }
                 return .voice(attachment, waveform: waveform)
             }
             return .audio(attachment)
