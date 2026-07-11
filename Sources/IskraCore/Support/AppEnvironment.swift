@@ -40,37 +40,51 @@ public struct AppEnvironment: Sendable {
         self.clientName = clientName
     }
 
-    /// The identifier used for both the App Group container and the Keychain access
-    /// group.
-    ///
-    /// One string does both jobs on purpose. An App Group ID is already globally
-    /// unique — that is what the mandatory `group.` prefix buys — so it can be used
-    /// as a Keychain access group directly, without the `$(AppIdentifierPrefix)`
-    /// team-ID dance that a bare access group would need.
-    ///
-    /// It must be registered under the team's App ID in the developer portal. Do that
-    /// and the same identifier is valid on iOS and on macOS; skip it and macOS will
-    /// demand a Team-ID-prefixed group instead, and the two platforms diverge.
+    /// The App Group container. Shared files — the encrypted store — live here.
     public static let appGroupIdentifier = "group.moscow.swag.iskra"
 
-    /// Shared with the notification and share extensions. Requires the entitlements
-    /// in `Apps/project.yml` and the App Group registered in the developer portal.
-    public static let shared = AppEnvironment(
-        storage: .shared(appGroupIdentifier: appGroupIdentifier,
-                         keychainAccessGroup: appGroupIdentifier)
-    )
+    /// The Keychain access group, which is *not* the App Group.
+    ///
+    /// It would be tidier if one identifier did both jobs, and on iOS an App Group can
+    /// indeed serve as a Keychain access group. It does not work here, and the
+    /// provisioning profile says exactly why: a Team Provisioning Profile allows
+    ///
+    ///     keychain-access-groups = ["936RH3UPR3.*", "com.apple.token"]
+    ///
+    /// and `group.moscow.swag.iskra` does not match `936RH3UPR3.*`. Xcode rejects the
+    /// build with "profile doesn't match the entitlements file's value for the
+    /// keychain-access-groups entitlement".
+    ///
+    /// So the Keychain group carries the team prefix, which the wildcard does cover.
+    /// The prefix is not hard-coded: Xcode expands `$(AppIdentifierPrefix)` into the
+    /// app's Info.plist, and we read it back, so this keeps working if the team ever
+    /// changes.
+    private static var keychainAccessGroup: String {
+        let prefix = Bundle.main.object(forInfoDictionaryKey: "AppIdentifierPrefix") as? String ?? ""
+        return prefix + "moscow.swag.iskra.shared"
+    }
+
+    /// Shared with the notification and share extensions. Requires the entitlements in
+    /// `Apps/project.yml`, the App Group registered *and enabled on the App ID*, and —
+    /// on macOS — this machine registered as a device.
+    ///
+    /// Computed rather than stored: the team prefix comes from `Bundle.main`, which is
+    /// the app's bundle, not this package's, and is not knowable at compile time.
+    public static var shared: AppEnvironment {
+        AppEnvironment(storage: .shared(appGroupIdentifier: appGroupIdentifier,
+                                        keychainAccessGroup: keychainAccessGroup))
+    }
 
     /// Everything inside the app. Needs no provisioning, and no extension can see it.
     public static let standalone = AppEnvironment(storage: .standalone)
 
     /// What the app uses.
     ///
-    /// `.shared` requires the entitlements in `Apps/project.yml` and the App Group
-    /// registered against the App ID; without both, the app crashes on launch by
-    /// design — see `containerURL`. `.standalone` is still here and still works, and
-    /// is what to fall back to if provisioning has to be taken out of the picture
-    /// while debugging something else.
-    public static let `default` = shared
+    /// `.shared` needs the entitlements and the App Group enabled on the App ID;
+    /// without them the app crashes on launch by design — see `containerURL`.
+    /// `.standalone` still works and is what to fall back to if provisioning has to be
+    /// taken out of the picture while debugging something else.
+    public static var `default`: AppEnvironment { shared }
 
     /// The Keychain access group, or nil to use the app's own keychain.
     public var keychainAccessGroup: String? {

@@ -50,22 +50,29 @@ targets:
     entitlements:
       path: iOS/Iskra.entitlements
       properties:
-        # Shared with the notification extension, which runs in its own process and
-        # must open the same encrypted store and read the same session to decrypt a
-        # push on device.
+        # Both shared with the notification extension, which runs in its own process
+        # and must open the same encrypted store and read the same session to decrypt
+        # a push on device.
         #
-        # The App Group ID doubles as the Keychain access group. An App Group ID is
-        # already globally unique — that is what the mandatory "group." prefix buys —
-        # so it needs none of the $(AppIdentifierPrefix) team-ID prefix a bare access
-        # group would.
+        # These are two different identifiers, and they have to be. A Team Provisioning
+        # Profile allows keychain-access-groups = ["936RH3UPR3.*"], and an App Group ID
+        # does not match that wildcard — Xcode fails the build with "profile doesn't
+        # match the entitlements file's value for the keychain-access-groups
+        # entitlement". So the Keychain group takes the team prefix, which Xcode
+        # expands here and AppEnvironment reads back out of the Info.plist.
+        #
+        # The App Group must also be enabled on the App ID, or the profile carries no
+        # application-groups and the container is refused on device. The Simulator
+        # ignores provisioning and will happily hide that from you.
         com.apple.security.application-groups: [group.moscow.swag.iskra]
-        keychain-access-groups: [group.moscow.swag.iskra]
+        keychain-access-groups: [$(AppIdentifierPrefix)moscow.swag.iskra.shared]
         aps-environment: development
 
     info:
       path: iOS/Info.plist
       properties:
         CFBundleDisplayName: Iskra
+        AppIdentifierPrefix: $(AppIdentifierPrefix)
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [en, ru]
         # Written in the first person, because that is who is being asked.
@@ -95,6 +102,7 @@ targets:
       path: macOS/Info.plist
       properties:
         CFBundleDisplayName: Iskra
+        AppIdentifierPrefix: $(AppIdentifierPrefix)
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [en, ru]
         LSMinimumSystemVersion: "26.0"
@@ -119,4 +127,4 @@ targets:
         # prefixed with the Team ID instead; registering it lets one identifier serve
         # both platforms.
         com.apple.security.application-groups: [group.moscow.swag.iskra]
-        keychain-access-groups: [group.moscow.swag.iskra]
+        keychain-access-groups: [$(AppIdentifierPrefix)moscow.swag.iskra.shared]

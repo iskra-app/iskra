@@ -24,17 +24,44 @@ Or let Xcode do it: open `Apps/Iskra.xcodeproj`, select a target, **Signing &
 Capabilities → + Capability → App Groups**, and tick the group. Xcode will register
 both under team `936RH3UPR3` for you.
 
-### Why one identifier and not two
+### Why there are two identifiers, not one
 
-`group.moscow.swag.iskra` is used as the App Group container **and** as the Keychain access
-group. An App Group ID is already globally unique — that is what the mandatory
-`group.` prefix buys — so it can serve as a Keychain access group directly, with no
-`$(AppIdentifierPrefix)` team-ID prefix to get wrong.
+It would be tidier if the App Group served as the Keychain access group too. It does
+not work, and the provisioning profile says why:
 
-It also papers over a real difference between the platforms: on iOS a group ID must
-start with `group.`, while on macOS an *unregistered* one must start with the Team ID.
-Registering it makes the same string legal on both, so the two platforms do not
-diverge.
+    keychain-access-groups = ["936RH3UPR3.*", "com.apple.token"]
+
+`group.moscow.swag.iskra` does not match `936RH3UPR3.*`, and Xcode fails the build
+with *"profile doesn't match the entitlements file's value for the
+keychain-access-groups entitlement"*. So:
+
+| | identifier |
+|---|---|
+| App Group container (files) | `group.moscow.swag.iskra` |
+| Keychain access group (secrets) | `$(AppIdentifierPrefix)moscow.swag.iskra.shared` |
+
+Xcode expands `$(AppIdentifierPrefix)` into the entitlements *and* into the app's
+Info.plist; `AppEnvironment` reads it back out at runtime, so the team ID is never
+hard-coded in Swift.
+
+### The App Group must be enabled on the App ID
+
+Registering the group is not enough — it has to be *assigned* to the App ID, or the
+issued profile carries no `application-groups` and a real iPhone refuses the install.
+
+This bites asymmetrically, which is what makes it easy to miss:
+
+- **macOS** does not consult the profile for App Groups at all; the sandbox honours
+  the entitlement directly. It works whether or not the App ID knows about the group.
+- **The iOS Simulator** ignores provisioning entirely, so it also works.
+- **A real iPhone** is the only place that checks — and the only place it fails.
+
+Check it: `security cms -D -i <profile> | plutil -p -` and look for
+`com.apple.security.application-groups`. If it is absent, open
+`Apps/Iskra.xcodeproj` → target **Iskra (iOS)** → **Signing & Capabilities** → tick
+`group.moscow.swag.iskra` under App Groups. `xcodebuild -allowProvisioningUpdates`
+does **not** enable this capability for you; it will happily re-issue the same profile
+without it.
 
 ## 2. Add the entitlements
 
@@ -89,12 +116,31 @@ is the honest trade rather than something to engineer around.
 
 ## Verifying it worked
 
-`swift test` will not tell you. The tests run unsigned, and an unsigned binary cannot
-open the data-protection Keychain at all — that is why secrets go through
-`SecretStoring` and the tests inject an in-memory store. **Run the app.**
+`swift test` cannot tell you. The tests run unsigned, and an unsigned binary is
+refused by the data-protection Keychain outright (`errSecMissingEntitlement`, -34018)
+regardless of what the entitlements say — that is why secrets go through
+`SecretStoring` and the tests inject an in-memory store.
 
-Signs it is right: the app reaches the sign-in screen, you sign in, and quitting and
-relaunching keeps you signed in.
+So ask the app instead:
+
+```sh
+# macOS
+.../Iskra.app/Contents/MacOS/Iskra --verify-storage
+
+# iOS
+xcrun simctl launch --console <sim> moscow.swag.iskra --verify-storage
+```
+
+It resolves the shared container and does a real Keychain round-trip in the shared
+access group — exactly what signing in does — and prints what it found. A green run
+looks like this:
+
+    ✅ app group container: ~/Library/Group Containers/group.moscow.swag.iskra/
+    ✅ keychain read/write in the shared access group
+
+Remember that a green run in the **Simulator** proves less than it looks: it ignores
+provisioning, so it cannot catch a missing App Groups capability on the App ID. Only a
+real device can.
 
 Signs it is wrong:
 

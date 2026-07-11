@@ -9,6 +9,15 @@ import IskraFeatures
 /// is the code all three platforms share.
 @main
 struct IskraApp: App {
+    init() {
+        // `Iskra --verify-storage` answers the one question the test suite cannot:
+        // whether this signed build actually has the App Group and the Keychain group
+        // it claims. See StorageCheck.
+        if StorageCheck.wasRequested {
+            StorageCheck.runAndExit()
+        }
+    }
+
     var body: some Scene {
         WindowGroup {
             IskraRootView()
