@@ -40,3 +40,4 @@ Apps/Iskra.xcodeproj/
 Apps/iOS/Info.plist
 Apps/macOS/Info.plist
 Apps/macOS/Iskra.entitlements
+Apps/iOS/Iskra.entitlements
