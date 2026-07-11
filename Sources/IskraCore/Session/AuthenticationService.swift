@@ -24,6 +24,12 @@ public struct SignInOptions: Sendable, Equatable {
 public enum AuthenticationError: Error {
     /// We could not find a Matrix server at that address.
     case homeserverNotFound
+    /// We could not open the encrypted store or reach the Keychain.
+    ///
+    /// Kept separate from `homeserverNotFound` on purpose. Folding the two together
+    /// would report a Keychain entitlement problem to the user as "check the address
+    /// you typed", which is untrue and impossible to act on.
+    case storageUnavailable(Error)
     /// The server does not offer any sign-in method we can drive.
     case noSupportedSignInMethod
     /// `startSignIn` was not called, or the flow was abandoned.
@@ -75,9 +81,20 @@ public actor AuthenticationService {
     public func startSignIn(homeserverAddress address: String) async throws -> SignInOptions {
         let sessionID = UUID().uuidString
 
+        // Two failures live here and they are not the same failure. Setting up the
+        // encrypted store can fail (no Keychain, no disk); finding the server can
+        // fail (typo, no network, not a homeserver). Only the second one is the
+        // user's to fix, so only the second one may be reported as such.
+        let builder: ClientBuilder
+        do {
+            builder = try makeClientBuilder(sessionID: sessionID)
+        } catch {
+            throw AuthenticationError.storageUnavailable(error)
+        }
+
         let client: Client
         do {
-            client = try await makeClientBuilder(sessionID: sessionID)
+            client = try await builder
                 .serverNameOrHomeserverUrl(serverNameOrUrl: address)
                 .build()
         } catch {

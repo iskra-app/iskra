@@ -46,6 +46,7 @@ let package = Package(
             name: "IskraFeatures",
             dependencies: ["IskraCore", "IskraDesign"]
         ),
-        .testTarget(name: "IskraCoreTests", dependencies: ["IskraCore"])
+        .testTarget(name: "IskraCoreTests", dependencies: ["IskraCore"]),
+        .testTarget(name: "IskraFeaturesTests", dependencies: ["IskraFeatures", "IskraCore"])
     ]
 )

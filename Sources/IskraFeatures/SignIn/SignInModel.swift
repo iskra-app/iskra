@@ -55,6 +55,10 @@ public final class SignInModel {
             problem = "We couldn't find an account service at that address. Check the spelling and try again."
         } catch AuthenticationError.noSupportedSignInMethod {
             problem = "That service uses a way of signing in that Iskra doesn't support yet."
+        } catch AuthenticationError.storageUnavailable {
+            // Nothing to do with what they typed, so do not send them back to the
+            // address field to hunt for a typo that isn't there.
+            problem = "Iskra couldn't set up secure storage on this device, so it can't sign you in safely."
         } catch {
             problem = "Something went wrong reaching that address. Check your connection and try again."
         }

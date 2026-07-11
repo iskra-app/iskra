@@ -1,0 +1,98 @@
+# Generated into Iskra.xcodeproj by XcodeGen: `cd Apps && xcodegen`.
+#
+# The .xcodeproj is not committed. It is a build artefact, and a famously
+# merge-hostile one; this file is the thing to edit and review.
+#
+# Both app targets are deliberately thin. They own the bundle, the entitlements and
+# (soon) the notification extension. All behaviour comes from the SwiftPM packages in
+# the parent directory, which is what lets one codebase serve three platforms.
+name: Iskra
+
+options:
+  bundleIdPrefix: app.iskra
+  createIntermediateGroups: true
+  deploymentTarget:
+    iOS: "26.0"
+    macOS: "26.0"
+
+packages:
+  Iskra:
+    path: ..
+
+settings:
+  base:
+    DEVELOPMENT_TEAM: 936RH3UPR3
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_STRICT_CONCURRENCY: complete
+    # The SDK is a large static library; without this, debug builds of the app can
+    # spend minutes in the linker.
+    DEAD_CODE_STRIPPING: YES
+
+targets:
+  Iskra (iOS):
+    type: application
+    platform: iOS
+    sources:
+      - path: Shared
+    dependencies:
+      - package: Iskra
+        product: IskraFeatures
+    settings:
+      base:
+        PRODUCT_NAME: Iskra
+        PRODUCT_BUNDLE_IDENTIFIER: app.iskra
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+        TARGETED_DEVICE_FAMILY: "1,2" # iPhone and iPad
+    info:
+      path: iOS/Info.plist
+      properties:
+        CFBundleDisplayName: Iskra
+        # Written in the first person, because that is who is being asked.
+        NSCameraUsageDescription: Iskra uses the camera so you can record video messages and take photos to send.
+        NSMicrophoneUsageDescription: Iskra uses the microphone so you can record voice messages.
+        NSPhotoLibraryUsageDescription: Iskra needs access to your photos so you can send them in a chat.
+        # ASWebAuthenticationSession intercepts the sign-in callback itself, but the
+        # scheme is registered so the OAuth provider can hand it back to us.
+        CFBundleURLTypes:
+          - CFBundleURLName: app.iskra.oauth
+            CFBundleURLSchemes: [iskra]
+        UIBackgroundModes: [remote-notification]
+
+  Iskra (macOS):
+    type: application
+    platform: macOS
+    sources:
+      - path: Shared
+    dependencies:
+      - package: Iskra
+        product: IskraFeatures
+    settings:
+      base:
+        PRODUCT_NAME: Iskra
+        PRODUCT_BUNDLE_IDENTIFIER: app.iskra
+    info:
+      path: macOS/Info.plist
+      properties:
+        CFBundleDisplayName: Iskra
+        LSMinimumSystemVersion: "26.0"
+        NSCameraUsageDescription: Iskra uses the camera so you can record video messages.
+        NSMicrophoneUsageDescription: Iskra uses the microphone so you can record voice messages.
+        CFBundleURLTypes:
+          - CFBundleURLName: app.iskra.oauth
+            CFBundleURLSchemes: [iskra]
+    entitlements:
+      path: macOS/Iskra.entitlements
+      properties:
+        # Sandboxed, as any Mac app that talks to the network should be. The sandbox
+        # also gives the app an implicit keychain access group, which is what lets the
+        # data-protection keychain work on macOS.
+        com.apple.security.app-sandbox: true
+        com.apple.security.network.client: true
+        com.apple.security.device.camera: true
+        com.apple.security.device.audio-input: true
+        # Read-only, and only when the user picks a file to send.
+        com.apple.security.files.user-selected.read-only: true

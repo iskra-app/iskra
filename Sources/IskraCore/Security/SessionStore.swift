@@ -52,10 +52,12 @@ public struct SessionStore: Sendable {
         static let searchIndexKey = "search-index-key"
     }
 
-    private let keychain: Keychain
+    private let keychain: any SecretStoring
 
-    public init(keychain: Keychain) {
-        self.keychain = keychain
+    /// Production always passes a `Keychain`. Tests pass an in-memory store, because
+    /// an unsigned test binary cannot open the data-protection keychain at all.
+    public init(secrets: any SecretStoring) {
+        self.keychain = secrets
     }
 
     public init(environment: AppEnvironment = .default) {

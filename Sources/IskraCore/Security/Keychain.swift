@@ -20,24 +20,29 @@ public enum KeychainError: Error, Equatable {
 ///    keychain semantics as iOS. Without it, access groups and accessibility
 ///    attributes quietly do nothing on the Mac.
 ///
-/// 3. `kSecAttrAccessGroup` — how the app and its extensions see the same items.
+/// 3. `kSecAttrAccessGroup` — how the app and its extensions see the same items. It
+///    is optional: with no access group the items live in the app's own keychain,
+///    which is all a standalone build needs and requires no provisioning.
 public struct Keychain: Sendable {
     private let service: String
-    private let accessGroup: String
+    private let accessGroup: String?
 
-    public init(service: String = "app.iskra.session", accessGroup: String) {
+    public init(service: String = "app.iskra.session", accessGroup: String? = nil) {
         self.service = service
         self.accessGroup = accessGroup
     }
 
     private func baseQuery(for key: String) -> [CFString: Any] {
-        [
+        var query: [CFString: Any] = [
             kSecClass: kSecClassGenericPassword,
             kSecAttrService: service,
             kSecAttrAccount: key,
-            kSecAttrAccessGroup: accessGroup,
             kSecUseDataProtectionKeychain: true
         ]
+        if let accessGroup {
+            query[kSecAttrAccessGroup] = accessGroup
+        }
+        return query
     }
 
     public func set(_ data: Data, for key: String) throws {
@@ -91,12 +96,14 @@ public struct Keychain: Sendable {
 
     /// Used when signing out. Everything we hold is per-session, so it all goes.
     public func removeAll() throws {
-        let query: [CFString: Any] = [
+        var query: [CFString: Any] = [
             kSecClass: kSecClassGenericPassword,
             kSecAttrService: service,
-            kSecAttrAccessGroup: accessGroup,
             kSecUseDataProtectionKeychain: true
         ]
+        if let accessGroup {
+            query[kSecAttrAccessGroup] = accessGroup
+        }
         let status = SecItemDelete(query as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw KeychainError.unexpectedStatus(status)
