@@ -64,17 +64,11 @@ struct MessageRow: View {
         case let .voice(attachment, waveform):
             bubble { VoiceMessageView(attachment: attachment, waveform: waveform, isOwn: message.isOwn) }
 
-        // A caption is the sender's own words, so it wins. Only the fallback is ours
-        // to translate.
         case let .image(attachment):
-            AttachmentPlaceholder(systemImage: "photo",
-                                  title: attachment.caption ?? String(localized: CoreStrings.Preview.photo))
-                .messageBubble(isOwn: message.isOwn)
+            PictureBubble(attachment: attachment, isOwn: message.isOwn, isPlayable: false)
 
         case let .video(attachment):
-            AttachmentPlaceholder(systemImage: "play.rectangle",
-                                  title: attachment.caption ?? String(localized: CoreStrings.Preview.video))
-                .messageBubble(isOwn: message.isOwn)
+            PictureBubble(attachment: attachment, isOwn: message.isOwn, isPlayable: true)
 
         case let .audio(attachment):
             AttachmentPlaceholder(systemImage: "waveform", title: attachment.filename)
@@ -175,13 +169,16 @@ private struct VideoNoteView: View {
     let attachment: Attachment
 
     var body: some View {
-        Circle()
-            .fill(.quaternary)
+        MediaThumbnail(attachment: attachment, size: 400)
             .frame(width: Theme.Size.videoNote, height: Theme.Size.videoNote)
+            // The circle is a mask, not a background: the video underneath really is
+            // square, so nothing is cropped away that the sender meant to show.
+            .clipShape(.circle)
             .overlay {
                 Image(systemName: "play.circle.fill")
                     .font(.system(size: 44))
                     .foregroundStyle(.white.opacity(0.9))
+                    .shadow(radius: 8)
             }
             .overlay(alignment: .bottom) {
                 if let duration = attachment.duration {
@@ -235,5 +232,51 @@ private struct AttachmentPlaceholder: View {
         Label(title, systemImage: systemImage)
             .font(.body)
             .lineLimit(1)
+    }
+}
+
+/// A photo or a video still, sized to the shape the sender recorded.
+///
+/// The aspect ratio comes from the event, not from the downloaded bytes, so the bubble
+/// is the right shape *before* the picture arrives and the timeline does not jump
+/// around as things load.
+private struct PictureBubble: View {
+    let attachment: Attachment
+    let isOwn: Bool
+    let isPlayable: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            MediaThumbnail(attachment: attachment)
+                .aspectRatio(attachment.aspectRatio ?? 4 / 3, contentMode: .fit)
+                .frame(maxWidth: 280)
+                .overlay {
+                    if isPlayable {
+                        Image(systemName: "play.circle.fill")
+                            .font(.system(size: 40))
+                            .foregroundStyle(.white.opacity(0.9))
+                            .shadow(radius: 8)
+                    }
+                }
+                .overlay(alignment: .bottomTrailing) {
+                    if isPlayable, let duration = attachment.duration {
+                        Text(Duration.seconds(duration), format: .time(pattern: .minuteSecond))
+                            .font(.caption2.monospacedDigit())
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, Theme.Spacing.close)
+                            .padding(.vertical, 2)
+                            .background(.black.opacity(0.45), in: Capsule())
+                            .padding(Theme.Spacing.close)
+                    }
+                }
+                .clipShape(BubbleShape(isOwn: isOwn))
+
+            if let caption = attachment.caption {
+                Text(caption)
+                    .font(.body)
+                    .padding(.top, Theme.Spacing.close)
+                    .padding(.horizontal, Theme.Spacing.tight)
+            }
+        }
     }
 }

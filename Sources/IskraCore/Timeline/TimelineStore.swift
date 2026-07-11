@@ -25,6 +25,10 @@ public final class TimelineStore {
 
     private let room: Room
     private var timeline: Timeline?
+
+    /// The SDK timeline, for the media-sending extension in `TimelineStore+Media`.
+    /// Nil until `start()` has run.
+    var liveTimeline: Timeline? { timeline }
     private var listenerHandle: TaskHandle?
     private var items: [TimelineItem] = []
 

@@ -121,3 +121,7 @@
 "signIn.whereIsAccount" = "Где ваш аккаунт?";
 
 "signIn.whereIsAccountHelp" = "Если вам дали адрес — введите его. Если нет, большинству подойдёт matrix.org.";
+
+"room.attachPhoto" = "Фото или видео";
+
+"room.attachFile" = "Файл";

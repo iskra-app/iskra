@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 import IskraCore
 import IskraDesign
 
@@ -6,6 +7,8 @@ import IskraDesign
 public struct RoomView: View {
     @State private var timeline: TimelineStore
     @State private var draft = ""
+    @State private var pickedItem: PhotosPickerItem?
+    @State private var isChoosingFile = false
     @FocusState private var composerFocused: Bool
 
     public init(timeline: TimelineStore) {
@@ -74,16 +77,7 @@ public struct RoomView: View {
     private var composer: some View {
         GlassEffectContainer(spacing: Theme.Spacing.close) {
             HStack(spacing: Theme.Spacing.close) {
-                Button {
-                    // Attachments land in the next pass.
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.body.weight(.medium))
-                        .frame(width: Theme.Size.minimumTapTarget,
-                               height: Theme.Size.minimumTapTarget)
-                }
-                .buttonStyle(.glass)
-                .accessibilityLabel(Text(Strings.Room.attach))
+                attachMenu
 
                 TextField(String(app: Strings.Room.composerPlaceholder), text: $draft, axis: .vertical)
                     .textFieldStyle(.plain)
@@ -111,6 +105,68 @@ public struct RoomView: View {
             .padding(.vertical, Theme.Spacing.close)
         }
         .animation(.smooth(duration: 0.2), value: draft.isEmpty)
+    }
+
+    /// Photos and videos come from the system picker; everything else from the file
+    /// importer. Both are the standard components, which is what gets us the system's
+    /// own permission prompts, iCloud Drive, and Files-app browsing for free.
+    private var attachMenu: some View {
+        Menu {
+            PhotosPicker(selection: $pickedItem, matching: .any(of: [.images, .videos])) {
+                Label(Strings.Room.attachPhoto, systemImage: "photo")
+            }
+
+            Button {
+                isChoosingFile = true
+            } label: {
+                Label(Strings.Room.attachFile, systemImage: "doc")
+            }
+        } label: {
+            Image(systemName: "plus")
+                .font(.body.weight(.medium))
+                .frame(width: Theme.Size.minimumTapTarget,
+                       height: Theme.Size.minimumTapTarget)
+        }
+        .buttonStyle(.glass)
+        .accessibilityLabel(Text(Strings.Room.attach))
+        .onChange(of: pickedItem) { _, item in
+            guard let item else { return }
+            Task { await sendPicked(item) }
+        }
+        .fileImporter(isPresented: $isChoosingFile, allowedContentTypes: [.item]) { result in
+            guard case let .success(url) = result else { return }
+            Task { await sendPickedFile(url) }
+        }
+    }
+
+    /// The picker hands back bytes, not a path, and the SDK wants a file. Writing to a
+    /// temporary file is the bridge — and it is deleted the moment the upload is done,
+    /// because in an encrypted room that file is plaintext sitting on disk.
+    private func sendPicked(_ item: PhotosPickerItem) async {
+        defer { pickedItem = nil }
+
+        guard let data = try? await item.loadTransferable(type: Data.self) else { return }
+
+        let isVideo = item.supportedContentTypes.contains { $0.conforms(to: .movie) }
+        let ext = item.supportedContentTypes.first?.preferredFilenameExtension ?? (isVideo ? "mp4" : "jpg")
+        let url = URL.temporaryDirectory.appending(component: "\(UUID().uuidString).\(ext)")
+
+        guard (try? data.write(to: url, options: .atomic)) != nil else { return }
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        if isVideo {
+            await timeline.send(video: url)
+        } else {
+            await timeline.send(photo: url)
+        }
+    }
+
+    private func sendPickedFile(_ url: URL) async {
+        // A file the user picked lives outside our sandbox until we say otherwise.
+        let needsScope = url.startAccessingSecurityScopedResource()
+        defer { if needsScope { url.stopAccessingSecurityScopedResource() } }
+
+        await timeline.send(file: url)
     }
 
     private func send() {

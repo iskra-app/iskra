@@ -36,6 +36,7 @@ public struct IskraRootView: View {
 
             case let .signedIn(session):
                 conversations(session)
+                    .environment(\.mediaLoader, session.media())
             }
         }
         .animation(.smooth, value: isSignedIn)

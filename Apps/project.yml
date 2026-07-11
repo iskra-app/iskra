@@ -44,7 +44,6 @@ targets:
       base:
         PRODUCT_NAME: Iskra
         PRODUCT_BUNDLE_IDENTIFIER: moscow.swag.iskra
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
         TARGETED_DEVICE_FAMILY: "1,2" # iPhone and iPad
     entitlements:
@@ -75,6 +74,15 @@ targets:
         AppIdentifierPrefix: $(AppIdentifierPrefix)
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [en, ru]
+        # An empty UILaunchScreen is what tells iOS the app is built for modern
+        # displays. Without it the app is letterboxed into a legacy-sized box with
+        # black bars, and the process shows up as "rb-legacy". Empty is correct here:
+        # it means "plain background", and the sign-in screen appears immediately.
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
         # Written in the first person, because that is who is being asked.
         NSCameraUsageDescription: Iskra uses the camera so you can record video messages and take photos to send.
         NSMicrophoneUsageDescription: Iskra uses the microphone so you can record voice messages.

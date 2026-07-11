@@ -121,3 +121,7 @@
 "signIn.whereIsAccount" = "Where’s your account?";
 
 "signIn.whereIsAccountHelp" = "If someone gave you an address to use, type it here. If not, matrix.org works for most people.";
+
+"room.attachPhoto" = "Photo or video";
+
+"room.attachFile" = "File";

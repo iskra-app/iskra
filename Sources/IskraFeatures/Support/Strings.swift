@@ -3,8 +3,9 @@ import Foundation
 /// Every piece of user-facing text in the app's screens.
 ///
 /// If you are looking for a word that appears on screen, it is here. If you are
-/// adding one, it goes here — not into a view. The translations live next door in
-/// `Localizable.xcstrings`, which is the file to edit; this one only names them.
+/// adding one, it goes here — not into a view. The translations live in
+/// `Resources/<lang>.lproj/Localizable.strings`, which is the file to edit; this one
+/// only names them.
 ///
 /// `bundle:` is load-bearing. Inside a Swift package, `Text` and
 /// `LocalizedStringResource` look in `Bundle.main` unless told otherwise, so without
@@ -68,6 +69,8 @@ public enum Strings {
         public static let composerPlaceholder = LocalizedStringResource("room.composerPlaceholder", bundle: bundle)
         public static let send = LocalizedStringResource("room.send", bundle: bundle)
         public static let attach = LocalizedStringResource("room.attach", bundle: bundle)
+        public static let attachPhoto = LocalizedStringResource("room.attachPhoto", bundle: bundle)
+        public static let attachFile = LocalizedStringResource("room.attachFile", bundle: bundle)
         public static let sendFailedTitle = LocalizedStringResource("room.sendFailedTitle", bundle: bundle)
         public static let ok = LocalizedStringResource("room.ok", bundle: bundle)
         public static let noRoomSelectedTitle = LocalizedStringResource("room.noRoomSelectedTitle", bundle: bundle)
