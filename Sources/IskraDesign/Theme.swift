@@ -38,6 +38,11 @@ public enum Theme {
         public static let videoNote: CGFloat = 200
         /// Nothing tappable is ever smaller than this. Apple's floor, and ours.
         public static let minimumTapTarget: CGFloat = 44
+
+        /// The height of the composer's text field, and therefore the diameter of the
+        /// round buttons on either side of it: the three read as one row only if they
+        /// are the same size, so this is one number rather than three.
+        public static let composerControl: CGFloat = 44
     }
 }
 

@@ -7,10 +7,7 @@ import IskraDesign
 public struct RoomView: View {
     @State private var timeline: TimelineStore
     @State private var draft = ""
-    @State private var pickedItem: PhotosPickerItem?
-    @State private var isChoosingFile = false
     @State private var isRecordingVideoNote = false
-    @FocusState private var composerFocused: Bool
 
     public init(timeline: TimelineStore) {
         _timeline = State(initialValue: timeline)
@@ -73,99 +70,24 @@ public struct RoomView: View {
         }
     }
 
-    /// The composer is a navigation-layer control floating over content, which is
-    /// exactly what Liquid Glass is for.
     private var composer: some View {
-        GlassEffectContainer(spacing: Theme.Spacing.close) {
-            HStack(spacing: Theme.Spacing.close) {
-                attachMenu
-
-                TextField(String(app: Strings.Room.composerPlaceholder), text: $draft, axis: .vertical)
-                    .textFieldStyle(.plain)
-                    .lineLimit(1...5)
-                    .focused($composerFocused)
-                    .padding(.horizontal, Theme.Spacing.roomy)
-                    .padding(.vertical, Theme.Spacing.normal)
-                    .frame(minHeight: Theme.Size.minimumTapTarget)
-                    .navigationGlass(in: .rect(cornerRadius: Theme.Radius.bubble, style: .continuous))
-                    .onSubmit(send)
-
-                // With nothing typed, the primary action is a video message — the same
-                // place, and the same thumb, as the send button it replaces.
-                if draft.trimmingCharacters(in: .whitespaces).isEmpty {
-                    Button {
-                        isRecordingVideoNote = true
-                    } label: {
-                        Image(systemName: "video.fill")
-                            .font(.body.weight(.medium))
-                            .frame(width: Theme.Size.minimumTapTarget,
-                                   height: Theme.Size.minimumTapTarget)
-                    }
-                    .buttonStyle(.glass)
-                    .accessibilityLabel(Text(Strings.VideoNote.record))
-                    .transition(.scale.combined(with: .opacity))
-                } else {
-                    Button(action: send) {
-                        Image(systemName: "arrow.up")
-                            .font(.body.weight(.semibold))
-                            .frame(width: Theme.Size.minimumTapTarget,
-                                   height: Theme.Size.minimumTapTarget)
-                    }
-                    .buttonStyle(.glassProminent)
-                    .accessibilityLabel(Text(Strings.Room.send))
-                    .transition(.scale.combined(with: .opacity))
+        MessageComposer(draft: $draft,
+                        onSend: send,
+                        onRecordVideoNote: { isRecordingVideoNote = true },
+                        onPickedMedia: { item in Task { await sendPicked(item) } },
+                        onPickedFile: { url in Task { await sendPickedFile(url) } })
+            .sheet(isPresented: $isRecordingVideoNote) {
+                VideoNoteComposer { url in
+                    await timeline.send(video: url)
                 }
+                .presentationDetents([.large])
             }
-            .padding(.horizontal, Theme.Spacing.normal)
-            .padding(.vertical, Theme.Spacing.close)
-        }
-        .animation(.smooth(duration: 0.2), value: draft.isEmpty)
-        .sheet(isPresented: $isRecordingVideoNote) {
-            VideoNoteComposer { url in
-                await timeline.send(video: url)
-            }
-            .presentationDetents([.large])
-        }
-    }
-
-    /// Photos and videos come from the system picker; everything else from the file
-    /// importer. Both are the standard components, which is what gets us the system's
-    /// own permission prompts, iCloud Drive, and Files-app browsing for free.
-    private var attachMenu: some View {
-        Menu {
-            PhotosPicker(selection: $pickedItem, matching: .any(of: [.images, .videos])) {
-                Label(Strings.Room.attachPhoto, systemImage: "photo")
-            }
-
-            Button {
-                isChoosingFile = true
-            } label: {
-                Label(Strings.Room.attachFile, systemImage: "doc")
-            }
-        } label: {
-            Image(systemName: "plus")
-                .font(.body.weight(.medium))
-                .frame(width: Theme.Size.minimumTapTarget,
-                       height: Theme.Size.minimumTapTarget)
-        }
-        .buttonStyle(.glass)
-        .accessibilityLabel(Text(Strings.Room.attach))
-        .onChange(of: pickedItem) { _, item in
-            guard let item else { return }
-            Task { await sendPicked(item) }
-        }
-        .fileImporter(isPresented: $isChoosingFile, allowedContentTypes: [.item]) { result in
-            guard case let .success(url) = result else { return }
-            Task { await sendPickedFile(url) }
-        }
     }
 
     /// The picker hands back bytes, not a path, and the SDK wants a file. Writing to a
     /// temporary file is the bridge — and it is deleted the moment the upload is done,
     /// because in an encrypted room that file is plaintext sitting on disk.
     private func sendPicked(_ item: PhotosPickerItem) async {
-        defer { pickedItem = nil }
-
         guard let data = try? await item.loadTransferable(type: Data.self) else { return }
 
         let isVideo = item.supportedContentTypes.contains { $0.conforms(to: .movie) }
