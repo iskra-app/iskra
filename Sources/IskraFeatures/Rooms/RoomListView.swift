@@ -23,8 +23,8 @@ public struct RoomListView: View {
             }
         }
         .listStyle(.plain)
-        .navigationTitle("Chats")
-        .searchable(text: $searchText, prompt: "Search messages")
+        .navigationTitle(Text(Strings.RoomList.title))
+        .searchable(text: $searchText, prompt: Text(Strings.RoomList.searchPrompt))
         .onChange(of: searchText) { _, query in
             session.search.search(query)
         }
@@ -70,11 +70,11 @@ public struct RoomListView: View {
             ContentUnavailableView.search(text: searchText)
         } else if !isSearching, session.roomList.rooms.isEmpty {
             if session.roomList.isLoadingInitialRooms {
-                ProgressView("Catching up on your messages…")
+                ProgressView { Text(Strings.RoomList.loading) }
             } else {
-                ContentUnavailableView("No chats yet",
+                ContentUnavailableView(String(app: Strings.RoomList.emptyTitle),
                                        systemImage: "bubble.left.and.bubble.right",
-                                       description: Text("When someone messages you, it'll show up here."))
+                                       description: Text(Strings.RoomList.emptyMessage))
             }
         }
     }
@@ -99,7 +99,7 @@ private struct RoomRow: View {
                         Image(systemName: "lock.fill")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
-                            .accessibilityLabel("Private chat")
+                            .accessibilityLabel(Text(Strings.RoomList.privateChat))
                     }
 
                     Spacer(minLength: 0)
@@ -120,7 +120,9 @@ private struct RoomRow: View {
                     Spacer(minLength: 0)
 
                     if room.hasUnread {
-                        Text("\(room.unreadCount)")
+                        // A count, not a sentence — but still formatted for the locale
+                        // rather than interpolated, so the digits are the right ones.
+                        Text(room.unreadCount, format: .number)
                             .font(.caption.weight(.semibold).monospacedDigit())
                             .foregroundStyle(.white)
                             .padding(.horizontal, 7)
@@ -140,12 +142,14 @@ private struct RoomRow: View {
     /// fragments.
     private var accessibilityLabel: String {
         var parts = [room.name]
-        if room.privacy == .protected { parts.append("private") }
+        if room.privacy == .protected {
+            parts.append(String(app: Strings.RoomList.privateChat))
+        }
         if let message = room.lastMessage { parts.append(message) }
         if room.isMentioned {
-            parts.append("\(room.mentionCount) mentioning you")
+            parts.append(String(app: Strings.RoomList.mentions(room.mentionCount)))
         } else if room.hasUnread {
-            parts.append("\(room.unreadCount) unread")
+            parts.append(String(app: Strings.RoomList.unread(room.unreadCount)))
         }
         return parts.joined(separator: ", ")
     }

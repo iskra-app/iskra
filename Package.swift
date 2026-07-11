@@ -13,6 +13,9 @@ import PackageDescription
 // what makes a native Mac build possible at all.
 let package = Package(
     name: "Iskra",
+    // Every user-facing string lives in a String Catalog, never in a view. English is
+    // the source language; Russian is a full translation, not a fallback.
+    defaultLocalization: "en",
     // OS 26 across the board. This buys Liquid Glass without a single availability
     // check, and it also matches reality: the Rust SDK's prebuilt macOS objects are
     // compiled against the 26.x SDK, so linking them into an older deployment target
@@ -37,14 +40,16 @@ let package = Package(
             name: "IskraCore",
             dependencies: [
                 .product(name: "MatrixRustSDK", package: "matrix-rust-components-swift")
-            ]
+            ],
+            resources: [.process("Resources")]
         ),
         // Colours, type, bubbles, glass. No Matrix here.
         .target(name: "IskraDesign"),
         // The screens, which are the only place the two meet.
         .target(
             name: "IskraFeatures",
-            dependencies: ["IskraCore", "IskraDesign"]
+            dependencies: ["IskraCore", "IskraDesign"],
+            resources: [.process("Resources")]
         ),
         .testTarget(name: "IskraCoreTests", dependencies: ["IskraCore"]),
         .testTarget(name: "IskraFeaturesTests", dependencies: ["IskraFeatures", "IskraCore"])

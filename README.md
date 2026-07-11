@@ -45,6 +45,33 @@ exactly square, at most 60 seconds. The cost is cosmetic and symmetric — our c
 appear as square videos in other clients, and a square clip from another client
 appears as a circle here. Nothing leaks. See `IskraCore/Media/VideoNote.swift`.
 
+## Text and translations
+
+No user-facing string appears in a view. Every one is named in a `Strings.swift`
+(`Sources/IskraFeatures/Support/Strings.swift` for the screens,
+`Sources/IskraCore/Support/Strings.swift` for what the model layer produces), and the
+words themselves live in `Resources/<lang>.lproj/Localizable.strings`. **Those `.strings`
+files are the ones to edit.** English and Russian are both complete; neither is a
+fallback for the other.
+
+Two things here are easy to get wrong and are worth stating:
+
+- **We use `.lproj/.strings`, not a `.xcstrings` String Catalog.** Catalogs are the
+  nicer format, but they are compiled by Xcode's `XCStringsTool` and SwiftPM's
+  command-line build does not run it — it copies the `.xcstrings` into the bundle
+  untouched, so every string resolves to its own key and `swift test` sees an
+  unlocalized app while Xcode sees a localized one. One consistent format beats a
+  prettier one that only works half the time.
+
+- **The app bundle must declare `CFBundleLocalizations`.** Without it the system
+  treats the app as English-only, `Locale.current` can never become Russian, and the
+  translations sitting in the package bundle are never reached — while every
+  localization unit test still passes, because tests set the locale by hand. The
+  declaration is in `Apps/project.yml`.
+
+Russian plurals (one/few/many) live in `Localizable.stringsdict`; `.strings` cannot
+express them.
+
 ## Security
 
 - Access token, refresh token, the SQLite store passphrase and the search-index key

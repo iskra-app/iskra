@@ -23,14 +23,11 @@ public enum PrivacyStatus: Sendable, Equatable {
     }
 
     /// Plain language, no jargon, safe to put straight on screen.
-    public var explanation: String {
+    public var explanation: LocalizedStringResource {
         switch self {
-        case .protected:
-            "Only people in this chat can read these messages. Not even we can."
-        case .notProtected:
-            "Messages here aren't private — the server can read them."
-        case .unknown:
-            "Still checking whether this chat is private."
+        case .protected: CoreStrings.Privacy.protected
+        case .notProtected: CoreStrings.Privacy.notProtected
+        case .unknown: CoreStrings.Privacy.unknown
         }
     }
 
@@ -64,7 +61,7 @@ public struct RoomSummary: Sendable, Identifiable, Equatable {
         self.id = info.id
         // A room with no name is normal in Matrix (most DMs have none); fall back to
         // whoever is in it rather than showing a raw room ID to a human.
-        self.name = info.displayName ?? info.heroes.first?.displayName ?? "Chat"
+        self.name = info.displayName ?? info.heroes.first?.displayName ?? String(core: CoreStrings.Room.untitled)
         self.avatarURL = info.avatarUrl
         self.isDirectMessage = info.isDm
         self.privacy = PrivacyStatus(info.encryptionState)

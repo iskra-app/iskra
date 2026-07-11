@@ -14,15 +14,15 @@ enum MessagePreview {
         case let .message(message):
             return describe(message)
         case .sticker:
-            return "Sticker"
+            return String(core: CoreStrings.Preview.sticker)
         case .poll:
-            return "Poll"
+            return String(core: CoreStrings.Preview.poll)
         case .redacted:
-            return "Message deleted"
+            return String(core: CoreStrings.Preview.deleted)
         case .unableToDecrypt:
             // Expected, not an error: this device joined after the message was sent
             // and was never given the key. Say so without alarming anyone.
-            return "Message you can't read yet"
+            return String(core: CoreStrings.Preview.unreadable)
         default:
             return nil
         }
@@ -30,6 +30,8 @@ enum MessagePreview {
 
     private static func describe(_ message: MessageContent) -> String? {
         switch message.msgType {
+        // The body of a text message is the user's own words, so it is not a string
+        // to translate — it is passed through untouched.
         case let .text(content):
             return content.body
         case let .notice(content):
@@ -37,18 +39,20 @@ enum MessagePreview {
         case let .emote(content):
             return content.body
         case .image:
-            return "Photo"
+            return String(core: CoreStrings.Preview.photo)
         case let .video(content):
-            return VideoNote.isVideoNote(content) ? "Video message" : "Video"
+            return String(core: VideoNote.isVideoNote(content) ? CoreStrings.Preview.videoNote
+                                                               : CoreStrings.Preview.video)
         case let .audio(content):
             // `voice` is the marker that distinguishes a spoken message from a music
             // file; it is what other Matrix clients set, so we read it rather than
             // guessing from the mime type.
-            return content.voice != nil ? "Voice message" : "Audio"
+            return String(core: content.voice != nil ? CoreStrings.Preview.voice
+                                                     : CoreStrings.Preview.audio)
         case .file:
-            return "File"
+            return String(core: CoreStrings.Preview.file)
         case .location:
-            return "Location"
+            return String(core: CoreStrings.Preview.location)
         default:
             return nil
         }

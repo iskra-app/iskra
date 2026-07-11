@@ -1,0 +1,123 @@
+/* Iskra — user-facing text.
+   Edit the values, never the keys. The keys are referenced from Strings.swift.
+   Language: ru */
+
+/* Accessibility label for the account menu in the toolbar. */
+"account.menu" = "Аккаунт";
+
+"account.signOut" = "Выйти";
+
+"message.deleted" = "Сообщение удалено";
+
+/* Accessibility label for a message that has not sent. The SDK retries, so this reassures. */
+"message.delivery.failed" = "Пока не отправлено — попробуем ещё раз";
+
+"message.delivery.read" = "Прочитано";
+
+"message.delivery.sending" = "Отправляется";
+
+"message.delivery.sent" = "Отправлено";
+
+/* VoiceOver: what someone did, read as part of a sentence. */
+"message.spoken.deletedMessage" = "удалил сообщение";
+
+"message.spoken.sentAudio" = "отправил аудиофайл";
+
+"message.spoken.sentFile" = "отправил файл";
+
+"message.spoken.sentPhoto" = "отправил фото";
+
+"message.spoken.sentUnreadable" = "отправил сообщение, которое не открыть";
+
+"message.spoken.sentUnsupported" = "отправил то, что Iskra пока не показывает";
+
+"message.spoken.sentVideo" = "отправил видео";
+
+"message.spoken.sentVideoNote" = "отправил видеосообщение";
+
+"message.spoken.sentVoice" = "отправил голосовое сообщение";
+
+/* VoiceOver: how the user's own messages are attributed. */
+"message.spoken.you" = "Вы";
+
+/* Shown in place of a message this device has no key for. Must not mention keys or decryption. */
+"message.unreadable" = "Это сообщение отправили до того, как вы присоединились, поэтому его не показать.";
+
+"message.unsupported" = "Iskra пока не умеет показывать такое сообщение.";
+
+/* Accessibility label for the attachment button in the composer. */
+"room.attach" = "Добавить фото или файл";
+
+"room.composerPlaceholder" = "Сообщение";
+
+"room.noRoomSelectedMessage" = "Выберите разговор, чтобы начать читать.";
+
+"room.noRoomSelectedTitle" = "Выберите чат";
+
+"room.ok" = "Понятно";
+
+/* Accessibility label for the send button. */
+"room.send" = "Отправить";
+
+"room.sendFailedTitle" = "Сообщение не отправлено";
+
+"roomList.emptyMessage" = "Когда вам напишут, разговор появится здесь.";
+
+"roomList.emptyTitle" = "Чатов пока нет";
+
+"roomList.loading" = "Загружаем ваши сообщения…";
+
+/* Accessibility label for the lock icon. The only place encryption is named, and it is named as privacy. */
+"roomList.privateChat" = "Защищённый чат";
+
+"roomList.searchPrompt" = "Поиск по сообщениям";
+
+"roomList.title" = "Чаты";
+
+/* Accessibility label for the address field. */
+"signIn.addressLabel" = "Адрес аккаунта";
+
+/* Placeholder in the address field. A real, working example, not a format string. */
+"signIn.addressPlaceholder" = "matrix.org";
+
+"signIn.continue" = "Продолжить";
+
+"signIn.differentAddress" = "Указать другой адрес";
+
+/* Separator between the single sign-on button and the password form. */
+"signIn.or" = "или";
+
+"signIn.password" = "Пароль";
+
+"signIn.problem.badCredentials" = "Имя пользователя или пароль не подошли. Попробуйте ещё раз.";
+
+/* The address is wrong. Must send the user back to the address field, and must not say 'homeserver'. */
+"signIn.problem.notFound" = "По этому адресу мы ничего не нашли. Проверьте написание и попробуйте снова.";
+
+"signIn.problem.ssoIncomplete" = "Вход не завершился. Попробуйте ещё раз.";
+
+/* Nothing to do with what the user typed, so it must not send them back to the address field. */
+"signIn.problem.storageUnavailable" = "Iskra не смогла подготовить защищённое хранилище на этом устройстве, поэтому безопасно войти не получится.";
+
+"signIn.problem.unreachable" = "Не удалось связаться с этим адресом. Проверьте соединение и попробуйте снова.";
+
+"signIn.problem.unsupportedMethod" = "Этот сервис использует способ входа, который Iskra пока не поддерживает.";
+
+"signIn.readyHelp" = "Мы откроем браузер, чтобы вы вошли привычным способом.";
+
+"signIn.readyTitle" = "Всё готово";
+
+"signIn.signIn" = "Войти";
+
+"signIn.signInWithPassword" = "Войти с паролем";
+
+"signIn.tagline" = "Личная переписка на ваших условиях.";
+
+"signIn.title" = "Добро пожаловать в Iskra";
+
+"signIn.username" = "Имя пользователя";
+
+/* The question that replaces asking for a 'homeserver URL'. */
+"signIn.whereIsAccount" = "Где ваш аккаунт?";
+
+"signIn.whereIsAccountHelp" = "Если вам дали адрес — введите его. Если нет, большинству подойдёт matrix.org.";

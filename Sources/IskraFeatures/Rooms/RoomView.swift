@@ -60,12 +60,12 @@ public struct RoomView: View {
             await timeline.markAsRead()
         }
         .onDisappear { timeline.stop() }
-        .alert("Message not sent",
+        .alert(Text(Strings.Room.sendFailedTitle),
                isPresented: .init(get: { timeline.sendFailure != nil },
                                   set: { if !$0 { timeline.sendFailure = nil } })) {
-            Button("OK", role: .cancel) { timeline.sendFailure = nil }
+            Button(String(app: Strings.Room.ok), role: .cancel) { timeline.sendFailure = nil }
         } message: {
-            Text(timeline.sendFailure ?? "")
+            if let failure = timeline.sendFailure { Text(failure) }
         }
     }
 
@@ -83,9 +83,9 @@ public struct RoomView: View {
                                height: Theme.Size.minimumTapTarget)
                 }
                 .buttonStyle(.glass)
-                .accessibilityLabel("Add a photo or file")
+                .accessibilityLabel(Text(Strings.Room.attach))
 
-                TextField("Message", text: $draft, axis: .vertical)
+                TextField(String(app: Strings.Room.composerPlaceholder), text: $draft, axis: .vertical)
                     .textFieldStyle(.plain)
                     .lineLimit(1...5)
                     .focused($composerFocused)
@@ -103,7 +103,7 @@ public struct RoomView: View {
                                    height: Theme.Size.minimumTapTarget)
                     }
                     .buttonStyle(.glassProminent)
-                    .accessibilityLabel("Send")
+                    .accessibilityLabel(Text(Strings.Room.send))
                     .transition(.scale.combined(with: .opacity))
                 }
             }
@@ -134,7 +134,7 @@ private struct PrivacyBadge: View {
                 .foregroundStyle(privacy == .protected ? Color.secondary : Color.orange)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(privacy.explanation)
+        .accessibilityLabel(Text(privacy.explanation))
         .popover(isPresented: $explaining) {
             Text(privacy.explanation)
                 .font(.callout)

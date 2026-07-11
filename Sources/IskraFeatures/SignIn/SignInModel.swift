@@ -23,7 +23,7 @@ public final class SignInModel {
     public private(set) var step: Step = .enteringAddress
     public private(set) var isBusy = false
     /// Always a sentence, always about what the user should do next.
-    public private(set) var problem: String?
+    public private(set) var problem: LocalizedStringResource?
 
     public var username: String = ""
     public var password: String = ""
@@ -52,15 +52,15 @@ public final class SignInModel {
             let options = try await authentication.startSignIn(homeserverAddress: address.trimmingCharacters(in: .whitespaces))
             step = .ready(options)
         } catch AuthenticationError.homeserverNotFound {
-            problem = "We couldn't find an account service at that address. Check the spelling and try again."
+            problem = Strings.SignIn.Problem.notFound
         } catch AuthenticationError.noSupportedSignInMethod {
-            problem = "That service uses a way of signing in that Iskra doesn't support yet."
+            problem = Strings.SignIn.Problem.unsupportedMethod
         } catch AuthenticationError.storageUnavailable {
             // Nothing to do with what they typed, so do not send them back to the
             // address field to hunt for a typo that isn't there.
-            problem = "Iskra couldn't set up secure storage on this device, so it can't sign you in safely."
+            problem = Strings.SignIn.Problem.storageUnavailable
         } catch {
-            problem = "Something went wrong reaching that address. Check your connection and try again."
+            problem = Strings.SignIn.Problem.unreachable
         }
     }
 
@@ -79,7 +79,7 @@ public final class SignInModel {
             isBusy = false
         } catch {
             isBusy = false
-            problem = "That sign-in didn't complete. Give it another go."
+            problem = Strings.SignIn.Problem.ssoIncomplete
         }
     }
 
@@ -95,7 +95,7 @@ public final class SignInModel {
         } catch {
             isBusy = false
             password = ""
-            problem = "That username or password didn't work. Try again."
+            problem = Strings.SignIn.Problem.badCredentials
         }
     }
 

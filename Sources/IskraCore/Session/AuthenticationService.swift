@@ -260,11 +260,11 @@ public actor AuthenticationService {
     /// rather than a model identifier.
     private static var deviceName: String {
         #if os(macOS)
-        "Iskra on Mac"
+        String(core: CoreStrings.Device.mac)
         #elseif os(iOS)
-        "Iskra on iPhone or iPad"
+        String(core: CoreStrings.Device.iOS)
         #else
-        "Iskra"
+        String(core: CoreStrings.Device.generic)
         #endif
     }
 }

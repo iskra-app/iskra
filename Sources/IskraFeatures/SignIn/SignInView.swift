@@ -31,7 +31,7 @@ public struct SignInView: View {
                 }
 
                 if let problem = model.problem {
-                    Label(problem, systemImage: "exclamationmark.circle")
+                    Label { Text(problem) } icon: { Image(systemName: "exclamationmark.circle") }
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.leading)
@@ -57,10 +57,10 @@ public struct SignInView: View {
                 .foregroundStyle(.tint)
                 .accessibilityHidden(true)
 
-            Text("Welcome to Iskra")
+            Text(Strings.SignIn.title)
                 .font(.largeTitle.bold())
 
-            Text("Private messages, on your terms.")
+            Text(Strings.SignIn.tagline)
                 .font(.body)
                 .foregroundStyle(.secondary)
         }
@@ -70,15 +70,15 @@ public struct SignInView: View {
 
     private var addressForm: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.normal) {
-            Text("Where's your account?")
+            Text(Strings.SignIn.whereIsAccount)
                 .font(.headline)
 
-            Text("If someone gave you an address to use, type it here. If not, matrix.org works for most people.")
+            Text(Strings.SignIn.whereIsAccountHelp)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            TextField("matrix.org", text: $model.address)
+            TextField(String(app: Strings.SignIn.addressPlaceholder), text: $model.address)
                 .textFieldStyle(.plain)
                 .textContentType(.URL)
                 #if !os(macOS)
@@ -91,12 +91,12 @@ public struct SignInView: View {
                 .frame(minHeight: Theme.Size.minimumTapTarget)
                 .background(.quaternary, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
                 .onSubmit { Task { await model.findServer() } }
-                .accessibilityLabel("Account address")
+                .accessibilityLabel(Text(Strings.SignIn.addressLabel))
 
             Button {
                 Task { await model.findServer() }
             } label: {
-                busyLabel("Continue")
+                busyLabel(Strings.SignIn.continue)
             }
             .buttonStyle(.glassProminent)
             .controlSize(.large)
@@ -111,9 +111,9 @@ public struct SignInView: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.roomy) {
             if options.canUseSingleSignOn {
                 VStack(alignment: .leading, spacing: Theme.Spacing.close) {
-                    Text("You're all set")
+                    Text(Strings.SignIn.readyTitle)
                         .font(.headline)
-                    Text("We'll open your browser so you can sign in the usual way.")
+                    Text(Strings.SignIn.readyHelp)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -121,7 +121,7 @@ public struct SignInView: View {
                 Button {
                     Task { await model.continueWithSingleSignOn() }
                 } label: {
-                    busyLabel("Sign in")
+                    busyLabel(Strings.SignIn.signIn)
                 }
                 .buttonStyle(.glassProminent)
                 .controlSize(.large)
@@ -130,7 +130,7 @@ public struct SignInView: View {
             }
 
             if options.canUseSingleSignOn && options.supportsPassword {
-                Text("or")
+                Text(Strings.SignIn.or)
                     .font(.footnote)
                     .foregroundStyle(.tertiary)
                     .frame(maxWidth: .infinity)
@@ -138,7 +138,7 @@ public struct SignInView: View {
 
             if options.supportsPassword {
                 VStack(alignment: .leading, spacing: Theme.Spacing.normal) {
-                    TextField("Username", text: $model.username)
+                    TextField(String(app: Strings.SignIn.username), text: $model.username)
                         .textContentType(.username)
                         #if !os(macOS)
                         .textInputAutocapitalization(.never)
@@ -146,7 +146,7 @@ public struct SignInView: View {
                         .autocorrectionDisabled()
                         .focused($focus, equals: .username)
 
-                    SecureField("Password", text: $model.password)
+                    SecureField(String(app: Strings.SignIn.password), text: $model.password)
                         .textContentType(.password)
                         .focused($focus, equals: .password)
                         .onSubmit { Task { await model.signInWithPassword() } }
@@ -161,7 +161,7 @@ public struct SignInView: View {
                 let passwordButton = Button {
                     Task { await model.signInWithPassword() }
                 } label: {
-                    busyLabel(options.canUseSingleSignOn ? "Sign in with a password" : "Sign in")
+                    busyLabel(options.canUseSingleSignOn ? Strings.SignIn.signInWithPassword : Strings.SignIn.signIn)
                 }
                 .controlSize(.large)
                 .frame(maxWidth: .infinity)
@@ -174,7 +174,7 @@ public struct SignInView: View {
                 }
             }
 
-            Button("Use a different address") {
+            Button(String(app: Strings.SignIn.differentAddress)) {
                 Task { await model.startOver() }
             }
             .font(.footnote)
@@ -185,7 +185,7 @@ public struct SignInView: View {
     }
 
     @ViewBuilder
-    private func busyLabel(_ title: String) -> some View {
+    private func busyLabel(_ title: LocalizedStringResource) -> some View {
         if model.isBusy {
             ProgressView()
                 .controlSize(.small)

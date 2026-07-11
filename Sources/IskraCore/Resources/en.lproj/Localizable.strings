@@ -1,0 +1,60 @@
+/* Iskra — user-facing text.
+   Edit the values, never the keys. The keys are referenced from Strings.swift.
+   Language: en */
+
+/* Device name shown in the user's list of signed-in devices. */
+"device.generic" = "Iskra";
+
+/* Device name shown in the user's list of signed-in devices. */
+"device.iOS" = "Iskra on iPhone or iPad";
+
+/* Device name shown in the user's list of signed-in devices. */
+"device.mac" = "Iskra on Mac";
+
+/* Summary line for an audio file in the chat list. */
+"preview.audio" = "Audio";
+
+/* Summary line for a message that was deleted. */
+"preview.deleted" = "Message deleted";
+
+/* Summary line for a file attachment in the chat list. */
+"preview.file" = "File";
+
+/* Summary line for a shared location. */
+"preview.location" = "Location";
+
+/* Summary line for a photo in the chat list. */
+"preview.photo" = "Photo";
+
+/* Summary line for a poll. */
+"preview.poll" = "Poll";
+
+/* Summary line for a sticker. */
+"preview.sticker" = "Sticker";
+
+/* Summary line for a message this device has no key for. Deliberately avoids the words 'decrypt' and 'key'. */
+"preview.unreadable" = "Message you can’t read yet";
+
+/* Summary line for a video in the chat list. */
+"preview.video" = "Video";
+
+/* Summary line for a round video message. */
+"preview.videoNote" = "Video message";
+
+/* Summary line for a voice message. */
+"preview.voice" = "Voice message";
+
+/* Explains an unencrypted room. No cryptography vocabulary allowed. */
+"privacy.notProtected" = "Messages here aren’t private — the server can read them.";
+
+/* Explains an encrypted room. No cryptography vocabulary allowed. */
+"privacy.protected" = "Only people in this chat can read these messages. Not even we can.";
+
+/* Shown before we have synced enough to know. Never claim protection we cannot see. */
+"privacy.unknown" = "Still checking whether this chat is private.";
+
+/* Fallback name for a conversation that has none. Most Matrix DMs have no name. */
+"room.untitled" = "Chat";
+
+/* Shown when a message could not be sent. The SDK retries, so this reassures rather than alarms. */
+"timeline.sendFailed" = "Your message didn’t go through. It’ll try again automatically.";

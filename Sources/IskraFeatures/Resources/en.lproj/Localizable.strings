@@ -1,0 +1,123 @@
+/* Iskra — user-facing text.
+   Edit the values, never the keys. The keys are referenced from Strings.swift.
+   Language: en */
+
+/* Accessibility label for the account menu in the toolbar. */
+"account.menu" = "Account";
+
+"account.signOut" = "Sign out";
+
+"message.deleted" = "Message deleted";
+
+/* Accessibility label for a message that has not sent. The SDK retries, so this reassures. */
+"message.delivery.failed" = "Not sent yet — it’ll try again";
+
+"message.delivery.read" = "Read";
+
+"message.delivery.sending" = "Sending";
+
+"message.delivery.sent" = "Sent";
+
+/* VoiceOver: what someone did, read as part of a sentence. */
+"message.spoken.deletedMessage" = "deleted a message";
+
+"message.spoken.sentAudio" = "sent an audio file";
+
+"message.spoken.sentFile" = "sent a file";
+
+"message.spoken.sentPhoto" = "sent a photo";
+
+"message.spoken.sentUnreadable" = "sent a message you can’t read";
+
+"message.spoken.sentUnsupported" = "sent something Iskra can’t show";
+
+"message.spoken.sentVideo" = "sent a video";
+
+"message.spoken.sentVideoNote" = "sent a video message";
+
+"message.spoken.sentVoice" = "sent a voice message";
+
+/* VoiceOver: how the user's own messages are attributed. */
+"message.spoken.you" = "You";
+
+/* Shown in place of a message this device has no key for. Must not mention keys or decryption. */
+"message.unreadable" = "This message was sent before you joined, so it can’t be shown.";
+
+"message.unsupported" = "Iskra can’t show this message yet.";
+
+/* Accessibility label for the attachment button in the composer. */
+"room.attach" = "Add a photo or file";
+
+"room.composerPlaceholder" = "Message";
+
+"room.noRoomSelectedMessage" = "Choose a conversation to start reading.";
+
+"room.noRoomSelectedTitle" = "Pick a chat";
+
+"room.ok" = "OK";
+
+/* Accessibility label for the send button. */
+"room.send" = "Send";
+
+"room.sendFailedTitle" = "Message not sent";
+
+"roomList.emptyMessage" = "When someone messages you, it’ll show up here.";
+
+"roomList.emptyTitle" = "No chats yet";
+
+"roomList.loading" = "Catching up on your messages…";
+
+/* Accessibility label for the lock icon. The only place encryption is named, and it is named as privacy. */
+"roomList.privateChat" = "Private chat";
+
+"roomList.searchPrompt" = "Search messages";
+
+"roomList.title" = "Chats";
+
+/* Accessibility label for the address field. */
+"signIn.addressLabel" = "Account address";
+
+/* Placeholder in the address field. A real, working example, not a format string. */
+"signIn.addressPlaceholder" = "matrix.org";
+
+"signIn.continue" = "Continue";
+
+"signIn.differentAddress" = "Use a different address";
+
+/* Separator between the single sign-on button and the password form. */
+"signIn.or" = "or";
+
+"signIn.password" = "Password";
+
+"signIn.problem.badCredentials" = "That username or password didn’t work. Try again.";
+
+/* The address is wrong. Must send the user back to the address field, and must not say 'homeserver'. */
+"signIn.problem.notFound" = "We couldn’t find an account service at that address. Check the spelling and try again.";
+
+"signIn.problem.ssoIncomplete" = "That sign-in didn’t complete. Give it another go.";
+
+/* Nothing to do with what the user typed, so it must not send them back to the address field. */
+"signIn.problem.storageUnavailable" = "Iskra couldn’t set up secure storage on this device, so it can’t sign you in safely.";
+
+"signIn.problem.unreachable" = "Something went wrong reaching that address. Check your connection and try again.";
+
+"signIn.problem.unsupportedMethod" = "That service uses a way of signing in that Iskra doesn’t support yet.";
+
+"signIn.readyHelp" = "We’ll open your browser so you can sign in the usual way.";
+
+"signIn.readyTitle" = "You’re all set";
+
+"signIn.signIn" = "Sign in";
+
+"signIn.signInWithPassword" = "Sign in with a password";
+
+"signIn.tagline" = "Private messages, on your terms.";
+
+"signIn.title" = "Welcome to Iskra";
+
+"signIn.username" = "Username";
+
+/* The question that replaces asking for a 'homeserver URL'. */
+"signIn.whereIsAccount" = "Where’s your account?";
+
+"signIn.whereIsAccountHelp" = "If someone gave you an address to use, type it here. If not, matrix.org works for most people.";

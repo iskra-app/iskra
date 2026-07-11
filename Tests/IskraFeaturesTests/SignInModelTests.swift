@@ -49,18 +49,20 @@ struct SignInModelTests {
     }
 
     @Test("a typo produces a sentence the user can act on")
-    func explainsBadAddress() async {
+    func explainsBadAddress() async throws {
         let model = model()
         model.address = "definitely-not-a-homeserver.invalid"
 
         await model.findServer()
 
         #expect(model.step == .enteringAddress)
+
+        let problem = try #require(model.problem.map { String(localized: $0) })
         // The message must be about the address, because that is what is wrong and
         // what the user can fix.
-        #expect(model.problem?.contains("address") == true)
+        #expect(problem.contains("address"))
         // And it must not leak protocol vocabulary onto the screen.
-        #expect(model.problem?.lowercased().contains("homeserver") == false)
+        #expect(!problem.lowercased().contains("homeserver"))
     }
 
     @Test("an empty address cannot be submitted")

@@ -17,7 +17,7 @@ public final class TimelineStore {
     public private(set) var canLoadMore = true
 
     /// Set when sending fails in a way the user should know about.
-    public var sendFailure: String?
+    public var sendFailure: LocalizedStringResource?
 
     public let roomID: String
     public private(set) var privacy: PrivacyStatus = .unknown
@@ -38,7 +38,7 @@ public final class TimelineStore {
 
         if let info = try? await room.roomInfo() {
             privacy = PrivacyStatus(info.encryptionState)
-            roomName = info.displayName ?? info.heroes.first?.displayName ?? "Chat"
+            roomName = info.displayName ?? info.heroes.first?.displayName ?? String(core: CoreStrings.Room.untitled)
         }
 
         let timeline = try await room.timeline()
@@ -71,7 +71,7 @@ public final class TimelineStore {
             // Not logged, not stored anywhere but the SDK's encrypted send queue.
             _ = try await timeline.send(msg: messageEventContentFromMarkdown(md: trimmed))
         } catch {
-            sendFailure = "Your message didn't go through. It'll try again automatically."
+            sendFailure = CoreStrings.Timeline.sendFailed
         }
     }
 

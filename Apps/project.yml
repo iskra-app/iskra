@@ -51,6 +51,8 @@ targets:
       path: iOS/Info.plist
       properties:
         CFBundleDisplayName: Iskra
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [en, ru]
         # Written in the first person, because that is who is being asked.
         NSCameraUsageDescription: Iskra uses the camera so you can record video messages and take photos to send.
         NSMicrophoneUsageDescription: Iskra uses the microphone so you can record voice messages.
@@ -78,6 +80,8 @@ targets:
       path: macOS/Info.plist
       properties:
         CFBundleDisplayName: Iskra
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [en, ru]
         LSMinimumSystemVersion: "26.0"
         NSCameraUsageDescription: Iskra uses the camera so you can record video messages.
         NSMicrophoneUsageDescription: Iskra uses the microphone so you can record voice messages.

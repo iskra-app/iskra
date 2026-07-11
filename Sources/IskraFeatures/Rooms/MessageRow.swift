@@ -64,12 +64,16 @@ struct MessageRow: View {
         case let .voice(attachment, waveform):
             bubble { VoiceMessageView(attachment: attachment, waveform: waveform, isOwn: message.isOwn) }
 
+        // A caption is the sender's own words, so it wins. Only the fallback is ours
+        // to translate.
         case let .image(attachment):
-            AttachmentPlaceholder(systemImage: "photo", title: attachment.caption ?? "Photo")
+            AttachmentPlaceholder(systemImage: "photo",
+                                  title: attachment.caption ?? String(localized: CoreStrings.Preview.photo))
                 .messageBubble(isOwn: message.isOwn)
 
         case let .video(attachment):
-            AttachmentPlaceholder(systemImage: "play.rectangle", title: attachment.caption ?? "Video")
+            AttachmentPlaceholder(systemImage: "play.rectangle",
+                                  title: attachment.caption ?? String(localized: CoreStrings.Preview.video))
                 .messageBubble(isOwn: message.isOwn)
 
         case let .audio(attachment):
@@ -84,21 +88,20 @@ struct MessageRow: View {
             // Not an error the user caused, and not one they can fix. Say what
             // happened without the word "decrypt".
             bubble {
-                Label("This message was sent before you joined, so it can't be shown.",
-                      systemImage: "lock.slash")
+                Label { Text(Strings.Message.unreadable) } icon: { Image(systemName: "lock.slash") }
                     .font(.footnote)
             }
 
         case .deleted:
             bubble {
-                Text("Message deleted")
+                Text(Strings.Message.deleted)
                     .font(.footnote.italic())
                     .foregroundStyle(.secondary)
             }
 
         case .unsupported:
             bubble {
-                Text("Iskra can't show this message yet.")
+                Text(Strings.Message.unsupported)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -112,20 +115,23 @@ struct MessageRow: View {
     }
 
     private var accessibilityLabel: String {
-        let who = message.isOwn ? "You" : message.senderName
+        let who = message.isOwn ? String(app: Strings.Message.Spoken.you) : message.senderName
+
+        // A message body is the sender's own words, so it is read back as written.
+        // Everything else is a description of what they did, and is translated.
         let what: String = switch message.kind {
         case let .text(body): body
         case let .notice(body): body
         case let .emote(body): body
-        case .image: "sent a photo"
-        case .video: "sent a video"
-        case .videoNote: "sent a video message"
-        case .voice: "sent a voice message"
-        case .audio: "sent an audio file"
-        case .file: "sent a file"
-        case .unreadable: "sent a message you can't read"
-        case .deleted: "deleted a message"
-        case .unsupported: "sent something Iskra can't show"
+        case .image: String(app: Strings.Message.Spoken.sentPhoto)
+        case .video: String(app: Strings.Message.Spoken.sentVideo)
+        case .videoNote: String(app: Strings.Message.Spoken.sentVideoNote)
+        case .voice: String(app: Strings.Message.Spoken.sentVoice)
+        case .audio: String(app: Strings.Message.Spoken.sentAudio)
+        case .file: String(app: Strings.Message.Spoken.sentFile)
+        case .unreadable: String(app: Strings.Message.Spoken.sentUnreadable)
+        case .deleted: String(app: Strings.Message.Spoken.deletedMessage)
+        case .unsupported: String(app: Strings.Message.Spoken.sentUnsupported)
         }
         return "\(who): \(what)"
     }
@@ -151,15 +157,15 @@ private struct DeliveryTick: View {
         .font(.caption2)
         .foregroundStyle(status == .failed ? Color.orange : Color.secondary)
         .padding(.trailing, Theme.Spacing.tight)
-        .accessibilityLabel(label)
+        .accessibilityLabel(Text(label))
     }
 
-    private var label: String {
+    private var label: LocalizedStringResource {
         switch status {
-        case .sending: "Sending"
-        case .sent: "Sent"
-        case .read: "Read"
-        case .failed: "Not sent yet — it'll try again"
+        case .sending: Strings.Message.Delivery.sending
+        case .sent: Strings.Message.Delivery.sent
+        case .read: Strings.Message.Delivery.read
+        case .failed: Strings.Message.Delivery.failed
         }
     }
 }

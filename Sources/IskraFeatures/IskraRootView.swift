@@ -52,7 +52,7 @@ public struct IskraRootView: View {
                 .toolbar {
                     ToolbarItem {
                         Menu {
-                            Button("Sign out", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) {
+                            Button(String(app: Strings.Account.signOut), systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) {
                                 Task {
                                     await session.signOut()
                                     selectedRoomID = nil
@@ -60,7 +60,7 @@ public struct IskraRootView: View {
                                 }
                             }
                         } label: {
-                            Label("Account", systemImage: "person.crop.circle")
+                            Label(String(app: Strings.Account.menu), systemImage: "person.crop.circle")
                         }
                     }
                 }
@@ -71,9 +71,9 @@ public struct IskraRootView: View {
                     // than reusing one room's state for another's messages.
                     .id(selectedRoomID)
             } else {
-                ContentUnavailableView("Pick a chat",
+                ContentUnavailableView(String(app: Strings.Room.noRoomSelectedTitle),
                                        systemImage: "bubble.left.and.bubble.right",
-                                       description: Text("Choose a conversation to start reading."))
+                                       description: Text(Strings.Room.noRoomSelectedMessage))
             }
         }
     }
