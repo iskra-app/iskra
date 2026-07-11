@@ -51,7 +51,7 @@ public struct AppEnvironment: Sendable {
     /// It must be registered under the team's App ID in the developer portal. Do that
     /// and the same identifier is valid on iOS and on macOS; skip it and macOS will
     /// demand a Team-ID-prefixed group instead, and the two platforms diverge.
-    public static let appGroupIdentifier = "group.app.iskra"
+    public static let appGroupIdentifier = "group.moscow.swag.iskra"
 
     /// Shared with the notification and share extensions. Requires the entitlements
     /// in `Apps/project.yml` and the App Group registered in the developer portal.
@@ -63,14 +63,14 @@ public struct AppEnvironment: Sendable {
     /// Everything inside the app. Needs no provisioning, and no extension can see it.
     public static let standalone = AppEnvironment(storage: .standalone)
 
-    /// What the app uses today.
+    /// What the app uses.
     ///
-    /// Flip this to `.shared` once the App Group is registered. Until then `.shared`
-    /// would crash on launch, by design — see `containerURL`. Note that the switch
-    /// moves both the store and the Keychain, so the signed-in user has to sign in
-    /// again; there is no migration, and for a messenger whose local state is a cache
-    /// of the server's, that is the honest trade rather than a bug.
-    public static let `default` = standalone
+    /// `.shared` requires the entitlements in `Apps/project.yml` and the App Group
+    /// registered against the App ID; without both, the app crashes on launch by
+    /// design — see `containerURL`. `.standalone` is still here and still works, and
+    /// is what to fall back to if provisioning has to be taken out of the picture
+    /// while debugging something else.
+    public static let `default` = shared
 
     /// The Keychain access group, or nil to use the app's own keychain.
     public var keychainAccessGroup: String? {

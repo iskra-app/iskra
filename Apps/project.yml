@@ -9,7 +9,7 @@
 name: Iskra
 
 options:
-  bundleIdPrefix: app.iskra
+  bundleIdPrefix: moscow.swag
   createIntermediateGroups: true
   deploymentTarget:
     iOS: "26.0"
@@ -43,10 +43,25 @@ targets:
     settings:
       base:
         PRODUCT_NAME: Iskra
-        PRODUCT_BUNDLE_IDENTIFIER: app.iskra
+        PRODUCT_BUNDLE_IDENTIFIER: moscow.swag.iskra
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
         TARGETED_DEVICE_FAMILY: "1,2" # iPhone and iPad
+    entitlements:
+      path: iOS/Iskra.entitlements
+      properties:
+        # Shared with the notification extension, which runs in its own process and
+        # must open the same encrypted store and read the same session to decrypt a
+        # push on device.
+        #
+        # The App Group ID doubles as the Keychain access group. An App Group ID is
+        # already globally unique — that is what the mandatory "group." prefix buys —
+        # so it needs none of the $(AppIdentifierPrefix) team-ID prefix a bare access
+        # group would.
+        com.apple.security.application-groups: [group.moscow.swag.iskra]
+        keychain-access-groups: [group.moscow.swag.iskra]
+        aps-environment: development
+
     info:
       path: iOS/Info.plist
       properties:
@@ -75,7 +90,7 @@ targets:
     settings:
       base:
         PRODUCT_NAME: Iskra
-        PRODUCT_BUNDLE_IDENTIFIER: app.iskra
+        PRODUCT_BUNDLE_IDENTIFIER: moscow.swag.iskra
     info:
       path: macOS/Info.plist
       properties:
@@ -100,3 +115,8 @@ targets:
         com.apple.security.device.audio-input: true
         # Read-only, and only when the user picks a file to send.
         com.apple.security.files.user-selected.read-only: true
+        # The same group as iOS. On macOS an *unregistered* group would have to be
+        # prefixed with the Team ID instead; registering it lets one identifier serve
+        # both platforms.
+        com.apple.security.application-groups: [group.moscow.swag.iskra]
+        keychain-access-groups: [group.moscow.swag.iskra]

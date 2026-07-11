@@ -16,8 +16,8 @@ This is the whole of what that takes.
 
 In the developer portal (Certificates, Identifiers & Profiles):
 
-1. **Identifiers → App Groups →** register `group.app.iskra`.
-2. **Identifiers → App IDs →** make sure `app.iskra` exists, enable the **App Groups**
+1. **Identifiers → App Groups →** register `group.moscow.swag.iskra`.
+2. **Identifiers → App IDs →** make sure `moscow.swag.iskra` exists, enable the **App Groups**
    capability on it, and assign the group from step 1.
 
 Or let Xcode do it: open `Apps/Iskra.xcodeproj`, select a target, **Signing &
@@ -26,7 +26,7 @@ both under team `936RH3UPR3` for you.
 
 ### Why one identifier and not two
 
-`group.app.iskra` is used as the App Group container **and** as the Keychain access
+`group.moscow.swag.iskra` is used as the App Group container **and** as the Keychain access
 group. An App Group ID is already globally unique — that is what the mandatory
 `group.` prefix buys — so it can serve as a Keychain access group directly, with no
 `$(AppIdentifierPrefix)` team-ID prefix to get wrong.
@@ -45,29 +45,40 @@ add one above `info:`):
     entitlements:
       path: iOS/Iskra.entitlements
       properties:
-        com.apple.security.application-groups: [group.app.iskra]
-        keychain-access-groups: [group.app.iskra]
+        com.apple.security.application-groups: [group.moscow.swag.iskra]
+        keychain-access-groups: [group.moscow.swag.iskra]
         aps-environment: development
 ```
 
 And under the **macOS** target, alongside the sandbox keys it already has:
 
 ```yaml
-        com.apple.security.application-groups: [group.app.iskra]
-        keychain-access-groups: [group.app.iskra]
+        com.apple.security.application-groups: [group.moscow.swag.iskra]
+        keychain-access-groups: [group.moscow.swag.iskra]
 ```
 
 Then regenerate: `cd Apps && xcodegen`.
+
+## 2a. Register the Mac as a device
+
+A Mac App Development profile can only be issued for Macs registered to the team, and
+this one is not. Either build the macOS target once from Xcode (it offers to register
+the machine), or add it in the portal under **Devices**, platform macOS, with this
+Mac's Provisioning UDID:
+
+    00008132-001C398134B9001C
+
+Until that happens the macOS target cannot be signed with these entitlements, and it
+is the only thing standing between the Mac build and shared storage. iOS needs none of
+this: the Simulator ignores provisioning entirely.
 
 ## 3. Flip the switch
 
 In `Sources/IskraCore/Support/AppEnvironment.swift`:
 
-```swift
-public static let `default` = shared   // was: standalone
-```
-
-`AppEnvironment.shared` is already defined and points at `group.app.iskra`.
+Already done — `AppEnvironment.default` is `.shared`, pointing at
+`group.moscow.swag.iskra`. `.standalone` is still there if provisioning ever needs to
+be taken out of the picture while debugging something else.
 
 ## 4. Expect to sign in again
 
@@ -87,12 +98,12 @@ relaunching keeps you signed in.
 
 Signs it is wrong:
 
-- **Crash on launch,** with `App Group "group.app.iskra" is unavailable`. The
+- **Crash on launch,** with `App Group "group.moscow.swag.iskra" is unavailable`. The
   entitlement is missing or the group is not registered. This crash is deliberate —
   see `AppEnvironment.containerURL`. Falling back to the app's own container instead
   would produce an app that works perfectly until the first push arrives and then
   fails a long way from the cause.
-- **`No profiles for 'app.iskra' were found`** at build time. Step 1 has not happened
+- **`No profiles for 'moscow.swag.iskra' were found`** at build time. Step 1 has not happened
   yet, or Xcode has not fetched the profile. Open the project in Xcode once, or build
   with `-allowProvisioningUpdates`. Note that this *writes to your developer account*:
   it registers the App ID and the group.
