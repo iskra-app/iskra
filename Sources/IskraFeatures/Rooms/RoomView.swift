@@ -9,6 +9,7 @@ public struct RoomView: View {
     @State private var draft = ""
     @State private var pickedItem: PhotosPickerItem?
     @State private var isChoosingFile = false
+    @State private var isRecordingVideoNote = false
     @FocusState private var composerFocused: Bool
 
     public init(timeline: TimelineStore) {
@@ -89,7 +90,21 @@ public struct RoomView: View {
                     .navigationGlass(in: .rect(cornerRadius: Theme.Radius.bubble, style: .continuous))
                     .onSubmit(send)
 
-                if !draft.trimmingCharacters(in: .whitespaces).isEmpty {
+                // With nothing typed, the primary action is a video message — the same
+                // place, and the same thumb, as the send button it replaces.
+                if draft.trimmingCharacters(in: .whitespaces).isEmpty {
+                    Button {
+                        isRecordingVideoNote = true
+                    } label: {
+                        Image(systemName: "video.fill")
+                            .font(.body.weight(.medium))
+                            .frame(width: Theme.Size.minimumTapTarget,
+                                   height: Theme.Size.minimumTapTarget)
+                    }
+                    .buttonStyle(.glass)
+                    .accessibilityLabel(Text(Strings.VideoNote.record))
+                    .transition(.scale.combined(with: .opacity))
+                } else {
                     Button(action: send) {
                         Image(systemName: "arrow.up")
                             .font(.body.weight(.semibold))
@@ -105,6 +120,12 @@ public struct RoomView: View {
             .padding(.vertical, Theme.Spacing.close)
         }
         .animation(.smooth(duration: 0.2), value: draft.isEmpty)
+        .sheet(isPresented: $isRecordingVideoNote) {
+            VideoNoteComposer { url in
+                await timeline.send(video: url)
+            }
+            .presentationDetents([.large])
+        }
     }
 
     /// Photos and videos come from the system picker; everything else from the file

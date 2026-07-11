@@ -104,6 +104,15 @@ public enum Strings {
         }
     }
 
+    public enum VideoNote {
+        public static let title = LocalizedStringResource("videoNote.title", bundle: bundle)
+        public static let holdToRecord = LocalizedStringResource("videoNote.holdToRecord", bundle: bundle)
+        public static let sending = LocalizedStringResource("videoNote.sending", bundle: bundle)
+        public static let needsCamera = LocalizedStringResource("videoNote.needsCamera", bundle: bundle)
+        public static let noCamera = LocalizedStringResource("videoNote.noCamera", bundle: bundle)
+        public static let record = LocalizedStringResource("videoNote.record", bundle: bundle)
+    }
+
     public enum Account {
         public static let menu = LocalizedStringResource("account.menu", bundle: bundle)
         public static let signOut = LocalizedStringResource("account.signOut", bundle: bundle)

@@ -125,3 +125,15 @@
 "room.attachPhoto" = "Фото или видео";
 
 "room.attachFile" = "Файл";
+
+"videoNote.title" = "Видеосообщение";
+
+"videoNote.holdToRecord" = "Держите, чтобы записать, отпустите — отправится. До минуты.";
+
+"videoNote.sending" = "Отправляем…";
+
+"videoNote.needsCamera" = "Для этого Iskra нужен доступ к камере и микрофону.";
+
+"videoNote.noCamera" = "На этом устройстве нет камеры.";
+
+"videoNote.record" = "Записать видеосообщение";

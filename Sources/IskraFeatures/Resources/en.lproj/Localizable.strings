@@ -125,3 +125,15 @@
 "room.attachPhoto" = "Photo or video";
 
 "room.attachFile" = "File";
+
+"videoNote.title" = "Video message";
+
+"videoNote.holdToRecord" = "Hold to record, let go to send. Up to a minute.";
+
+"videoNote.sending" = "Sending…";
+
+"videoNote.needsCamera" = "Iskra needs permission to use the camera and microphone for this.";
+
+"videoNote.noCamera" = "No camera is available on this device.";
+
+"videoNote.record" = "Record a video message";
