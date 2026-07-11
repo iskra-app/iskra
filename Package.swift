@@ -13,9 +13,15 @@ import PackageDescription
 // what makes a native Mac build possible at all.
 let package = Package(
     name: "Iskra",
+    // OS 26 across the board. This buys Liquid Glass without a single availability
+    // check, and it also matches reality: the Rust SDK's prebuilt macOS objects are
+    // compiled against the 26.x SDK, so linking them into an older deployment target
+    // is something the linker rightly complains about.
+    // Spelled as strings because `.v26` does not exist in this tools version's
+    // PackageDescription yet.
     platforms: [
-        .iOS(.v18),
-        .macOS(.v14)
+        .iOS("26.0"),
+        .macOS("26.0")
     ],
     products: [
         .library(name: "IskraCore", targets: ["IskraCore"]),
