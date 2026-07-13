@@ -185,6 +185,17 @@ public enum Strings {
         /// Watching what somebody sent.
         public enum Media {
             public static let close = LocalizedStringResource("message.media.close", bundle: bundle)
+            public static let share = LocalizedStringResource("message.media.share", bundle: bundle)
+            /// Into the photo library. Only on iOS: on a Mac the share sheet already offers
+            /// every sensible destination, and a "Save" button beside it would be a second way
+            /// to do the same thing.
+            public static let save = LocalizedStringResource("message.media.save", bundle: bundle)
+            /// The voice message, played. VoiceOver has nothing else to go on: the control is a
+            /// waveform, which is a picture of a sound and not a label.
+            public static let play = LocalizedStringResource("message.media.play", bundle: bundle)
+            public static let pause = LocalizedStringResource("message.media.pause", bundle: bundle)
+            /// A file, opened in whatever the system thinks should open it.
+            public static let openFile = LocalizedStringResource("message.media.openFile", bundle: bundle)
             /// The video would not come down. Said on the bubble, not in an alert — there is
             /// nothing to do about it but press it again.
             public static let loadFailed = LocalizedStringResource("message.media.loadFailed", bundle: bundle)

@@ -101,6 +101,11 @@ targets:
         NSCameraUsageDescription: Iskra uses the camera so you can record video messages and take photos to send.
         NSMicrophoneUsageDescription: Iskra uses the microphone so you can record voice messages.
         NSPhotoLibraryUsageDescription: Iskra needs access to your photos so you can send them in a chat.
+        # Saving a photo out of a conversation. A *separate* permission from the one above, and
+        # much the narrower of the two: "add only" lets the app put a picture in the library and
+        # gives it no way to look at what is already there. Asking for full access to write one
+        # file would be exactly the over-reach a permission prompt exists to make visible.
+        NSPhotoLibraryAddUsageDescription: Iskra needs permission to save a photo or a video from a chat to your library.
         # ASWebAuthenticationSession intercepts the sign-in callback itself, but the
         # scheme is registered so the OAuth provider can hand it back to us.
         CFBundleURLTypes:

@@ -145,6 +145,15 @@ public enum Theme {
         /// quote read as one.
         public static let quoteBar: CGFloat = 4
 
+        /// The play button on a voice message, and the tallest a bar of its waveform may be.
+        ///
+        /// The button is smaller than `minimumTapTarget` and it is allowed to be: it sits
+        /// *inside* a bubble whose every part is already a tap target — the bubble takes the
+        /// long press, the double tap, the reaction — and growing this to 44pt would push the
+        /// waveform out of the bubble rather than making anything easier to hit.
+        public static let voiceButton: CGFloat = 28
+        public static let waveform: CGFloat = 24
+
         /// How wide a quote is allowed to get, above the composer and inside a bubble.
         ///
         /// A limit rather than a size — a short answer to a short message should not be

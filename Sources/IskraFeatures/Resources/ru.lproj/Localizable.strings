@@ -296,3 +296,10 @@
 "room.pinnedTitle" = "Закреплённые";
 "room.pinnedEmpty" = "Здесь пока ничего не закреплено";
 "room.unpin" = "Открепить";
+
+/* The opened photo or video: what you can do with it besides look at it. */
+"message.media.share" = "Поделиться";
+"message.media.save" = "Сохранить в галерею";
+"message.media.play" = "Слушать";
+"message.media.pause" = "Пауза";
+"message.media.openFile" = "Открыть файл";
