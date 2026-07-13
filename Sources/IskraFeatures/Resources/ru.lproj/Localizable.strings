@@ -402,3 +402,7 @@
 "roomList.invite.unattributed" = "Вас приглашают в чат";
 "roomList.invite.accept" = "Войти";
 "roomList.invite.decline" = "Отклонить";
+
+/* «Печатает…» под именем комнаты. Род не угадываем: «печатает» — одно слово для всех. */
+"room.typing" = "печатает…";
+"room.typingBy" = "%@ печатает…";
