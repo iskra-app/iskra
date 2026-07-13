@@ -81,10 +81,13 @@ public struct SessionStore: Sendable {
         let session = try? loadSession()
         try keychain.removeAll()
 
-        if let sessionID = session?.sessionID {
-            for url in [environment.sessionDataURL(forSessionID: sessionID),
-                        environment.sessionCachesURL(forSessionID: sessionID),
-                        environment.searchIndexURL(forSessionID: sessionID)] {
+        // If the container cannot be resolved there is nothing on disk to delete, and
+        // the secrets — the part that matters — are already gone.
+        if let sessionID = session?.sessionID,
+           let urls = try? [environment.sessionDataURL(forSessionID: sessionID),
+                            environment.sessionCachesURL(forSessionID: sessionID),
+                            environment.searchIndexURL(forSessionID: sessionID)] {
+            for url in urls {
                 try? FileManager.default.removeItem(at: url)
             }
         }

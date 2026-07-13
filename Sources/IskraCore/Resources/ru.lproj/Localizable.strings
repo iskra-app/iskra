@@ -58,3 +58,44 @@
 
 /* Shown when a message could not be sent. The SDK retries, so this reassures rather than alarms. */
 "timeline.sendFailed" = "Сообщение не отправилось. Попробуем ещё раз автоматически.";
+
+/* Shown when an emoji reaction could not be sent. Must not say "message" — nothing the user wrote is at stake. */
+"timeline.reactionFailed" = "Реакция не отправилась. Попробуйте ещё раз.";
+
+/* Shown when deleting a message failed. Must be unambiguous: the message is still there, and everyone can still read it. */
+"timeline.deleteFailed" = "Сообщение не удалилось — оно всё ещё в чате. Попробуйте ещё раз.";
+
+/* Why a message is stuck, tapped from the badge beside it. Each names what to do next:
+   the user is the only one who can clear these. No cryptography vocabulary. */
+"sendFailure.insecureDevices" = "Кто-то здесь вошёл с устройства, которое вы ещё не подтвердили. Подтвердите его — и сообщение уйдёт.";
+"sendFailure.identityChanged" = "Кто-то в этом чате вошёл с нового места, и его личность изменилась. Убедитесь, что это правда он, — и сообщение уйдёт.";
+"sendFailure.verificationRequired" = "Подтвердите это устройство, чтобы писать в защищённый чат. Это делается в настройках.";
+"sendFailure.missingMedia" = "Файла больше нет на этом устройстве — отправлять нечего.";
+"sendFailure.unsupportedFileType" = "Такие файлы отправлять нельзя.";
+"sendFailure.server" = "Ваш сервер не принял это сообщение.";
+
+/* The strip above a message that answers another one. */
+"reply.loading" = "Загружаем сообщение…";
+"reply.unavailable" = "Сообщение недоступно";
+
+/* Shown when an edit could not be sent. The message still says the old thing — say so. */
+"timeline.editFailed" = "Изменение не сохранилось — сообщение осталось прежним. Попробуйте ещё раз.";
+
+/* Shown when pinning or unpinning was refused. */
+"timeline.pinFailed" = "Не получилось изменить закреплённые сообщения. Возможно, у вас нет на это прав.";
+
+/* The grey lines across a conversation: people coming and going, the room changing.
+   Written so they are true of anybody: Matrix does not know anyone's gender, so
+   "Аня вошла" is a coin flip on every name. Neutral phrasing sidesteps it entirely. */
+"roomEvent.joined" = "%@ теперь в чате";
+"roomEvent.left" = "%@ больше не в чате";
+"roomEvent.invited" = "Пригласили: %@";
+"roomEvent.removed" = "Исключили: %@";
+"roomEvent.banned" = "Заблокировали: %@";
+"roomEvent.renamedThemselves" = "%1$@ теперь %2$@";
+"roomEvent.roomRenamed" = "Теперь чат называется «%@»";
+"roomEvent.roomTopicChanged" = "Описание чата изменилось";
+"roomEvent.roomPictureChanged" = "У чата новое фото";
+"roomEvent.roomCreated" = "Чат создан";
+"roomEvent.encryptionEnabled" = "Сообщения здесь защищены сквозным шифрованием";
+"roomEvent.pair" = "%1$@ и %2$@";

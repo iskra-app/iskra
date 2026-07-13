@@ -67,6 +67,7 @@ struct VideoNoteComposer: View {
 
     @State private var recorder = VideoNoteRecorder()
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accent) private var accent
 
     var body: some View {
         VStack(spacing: Theme.Spacing.generous) {
@@ -123,17 +124,50 @@ struct VideoNoteComposer: View {
                 .rotationEffect(.degrees(-90))
                 .animation(.linear(duration: 0.1), value: recorder.progress)
         }
+        .overlay(alignment: .bottomTrailing) { flip }
         .accessibilityLabel(Text(Strings.VideoNote.title))
     }
 
+    /// Turns the camera round, and sits on the circle it turns.
+    ///
+    /// On the edge of the preview rather than beside the shutter, because it acts on the
+    /// picture and not on the recording — and because the thumb is already down there. It goes
+    /// away entirely while recording (the lens cannot be swapped mid-clip; see
+    /// `VideoNoteRecorder.flip`) and on a machine with only one camera.
+    @ViewBuilder
+    private var flip: some View {
+        if recorder.canFlip {
+            Button {
+                recorder.flip()
+            } label: {
+                Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90")
+                    .font(.body)
+                    .foregroundStyle(.white)
+                    .frame(width: Theme.Size.minimumTapTarget, height: Theme.Size.minimumTapTarget)
+                    .background(.black.opacity(0.45), in: .circle)
+            }
+            .buttonStyle(.plain)
+            // While the ring is filling there is nothing to turn, so it leaves rather than
+            // sitting there greyed out — a disabled button on a live preview reads as
+            // something the app has broken.
+            .opacity(isRecording ? 0 : 1)
+            .animation(.smooth(duration: 0.2), value: isRecording)
+            .disabled(isRecording)
+            .accessibilityLabel(Text(Strings.VideoNote.flipCamera))
+        }
+    }
+
+    /// Red while it is recording, and the accent before it starts — the same colour the
+    /// send button wears, because this button sends too. Not `Color.accentColor`: that one
+    /// is fixed at build time and would stay blue in a green app. See `AccentTheme`.
     private var shutter: some View {
         Circle()
-            .fill(isRecording ? Color.red : Color.accentColor)
+            .fill(isRecording ? AnyShapeStyle(Color.red) : AnyShapeStyle(accent.color))
             .frame(width: 72, height: 72)
             .overlay {
                 Image(systemName: isRecording ? "stop.fill" : "video.fill")
                     .font(.title2)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(isRecording ? AnyShapeStyle(.white) : accent.foreground)
             }
             .scaleEffect(isRecording ? 1.15 : 1)
             .animation(.smooth(duration: 0.2), value: isRecording)

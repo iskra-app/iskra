@@ -31,6 +31,18 @@ public final class VideoNoteRecorder: NSObject {
     /// Handed to the preview view. Nil until the camera is running.
     public private(set) var session: AVCaptureSession?
 
+    /// Which camera is looking at you.
+    ///
+    /// The front one, to begin with. A video message is somebody talking to the person they
+    /// are writing to, and the camera pointed at their face is the one they meant — needing to
+    /// turn it round every single time would be the app not understanding what it is for. The
+    /// back camera is a minute of the world in front of you, and it is a tap away.
+    public private(set) var camera: AVCaptureDevice.Position = .front
+
+    /// Held so it can be taken out again when the camera is turned round. The microphone
+    /// stays where it is: swapping the lens has nothing to do with the sound.
+    private var cameraInput: AVCaptureDeviceInput?
+
     private let output = AVCaptureMovieFileOutput()
     private var recordingStarted: Date?
     private var ticker: Task<Void, Never>?
@@ -65,21 +77,31 @@ public final class VideoNoteRecorder: NSObject {
         let session = AVCaptureSession()
         session.sessionPreset = .high
 
-        guard let camera = AVCaptureDevice.default(for: .video),
-              let cameraInput = try? AVCaptureDeviceInput(device: camera),
+        // The camera we want, or whatever this machine has if it has no notion of sides.
+        guard let lens = Self.lens(facing: camera) ?? AVCaptureDevice.default(for: .video),
+              let cameraInput = try? AVCaptureDeviceInput(device: lens),
               session.canAddInput(cameraInput)
         else {
             state = .unavailable
             return
         }
         session.addInput(cameraInput)
+        self.cameraInput = cameraInput
 
-        // A video message with no sound is not a video message.
-        if let microphone = AVCaptureDevice.default(for: .audio),
-           let audioInput = try? AVCaptureDeviceInput(device: microphone),
-           session.canAddInput(audioInput) {
-            session.addInput(audioInput)
+        // A video message with no sound is not a video message — so a microphone that cannot
+        // be attached stops the recording rather than quietly producing a silent one. This
+        // used to be an `if let` that shrugged, and a shrug here is invisible: the user
+        // records, watches the preview, sends, and only the person at the other end finds
+        // out that nobody said anything.
+        guard let microphone = AVCaptureDevice.default(for: .audio),
+              let audioInput = try? AVCaptureDeviceInput(device: microphone),
+              session.canAddInput(audioInput)
+        else {
+            Log.media.error("no microphone to record a video note with")
+            state = .unavailable
+            return
         }
+        session.addInput(audioInput)
 
         guard session.canAddOutput(output) else {
             state = .unavailable
@@ -98,6 +120,50 @@ public final class VideoNoteRecorder: NSObject {
         await Task.detached { starting.startRunning() }.value
 
         state = .ready
+    }
+
+    /// Whether there is another camera to turn to. False on a Mac, and on anything else with
+    /// one lens — a button that does nothing is worse than no button.
+    public var canFlip: Bool {
+        Self.lens(facing: .front) != nil && Self.lens(facing: .back) != nil
+    }
+
+    /// Turns the camera round — your face, or what you are looking at.
+    ///
+    /// Only between recordings. Swapping the lens mid-clip means taking the video input out of
+    /// a session that is writing a file from it, and what comes out the other end is a
+    /// recording with a seam in the middle: the picture jumps, the orientation flips, and the
+    /// square crop is computed from a transform that was true for the *first* camera. The
+    /// button is simply not offered while the red ring is filling, which is also what the user
+    /// expects — nobody turns the camera round in the middle of a sentence.
+    public func flip() {
+        guard state == .ready, let session, let cameraInput else { return }
+
+        let wanted: AVCaptureDevice.Position = camera == .front ? .back : .front
+        guard let lens = Self.lens(facing: wanted),
+              let replacement = try? AVCaptureDeviceInput(device: lens) else {
+            Log.media.error("no camera facing the other way")
+            return
+        }
+
+        // One configuration, committed once: the session tears down and rebuilds its
+        // connections when this closes, and doing it in two steps would show the user the
+        // moment in between — a preview with no camera behind it.
+        session.beginConfiguration()
+        session.removeInput(cameraInput)
+
+        if session.canAddInput(replacement) {
+            session.addInput(replacement)
+            self.cameraInput = replacement
+            camera = wanted
+        } else {
+            // Put back what was working. A composer with a dead preview is worse than one
+            // pointing the wrong way.
+            session.addInput(cameraInput)
+            Log.media.error("the other camera would not attach")
+        }
+
+        session.commitConfiguration()
     }
 
     public func start(onRecorded: @escaping (URL) async -> Void) {
@@ -149,6 +215,19 @@ public final class VideoNoteRecorder: NSObject {
         }
         session = nil
         state = .idle
+    }
+
+    /// The ordinary camera on the side asked for. `AVCaptureDevice.default(for: .video)` cannot
+    /// answer this — it hands back the back camera and has no way to be asked for the other one.
+    ///
+    /// Nil is a real answer and must stay one: a Mac has a single camera and it faces the user,
+    /// so asking for the far side of it is a question with no answer. Papering over that with
+    /// the default camera would give the Mac a "turn the camera round" button that turns
+    /// nothing round.
+    private static func lens(facing position: AVCaptureDevice.Position) -> AVCaptureDevice? {
+        AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInWideAngleCamera],
+                                         mediaType: .video,
+                                         position: position).devices.first
     }
 
     private func isPermitted(_ media: AVMediaType) async -> Bool {

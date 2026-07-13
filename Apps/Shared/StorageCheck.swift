@@ -25,9 +25,19 @@ enum StorageCheck {
         print("Iskra storage check")
         print("  mode: \(environment.storage)")
 
-        // Resolving the container is what crashes on launch when the App Group is
-        // missing, so doing it here turns that crash into a sentence.
-        let container = environment.containerURL
+        let container: URL
+        do {
+            container = try environment.containerURL()
+        } catch StorageError.appGroupUnavailable(let group) {
+            print("  ❌ app group \"\(group)\" is unavailable to this build")
+            print("     The entitlement is there, or the build would not have signed — so the")
+            print("     group is most likely not enabled on the App ID, and the profile carries")
+            print("     no application-groups. The Simulator ignores provisioning and hides this.")
+            exit(1)
+        } catch {
+            print("  ❌ app group container: \(error)")
+            exit(1)
+        }
         print("  ✅ app group container: \(container.path(percentEncoded: false))")
 
         guard let accessGroup = environment.keychainAccessGroup else {

@@ -2,15 +2,24 @@
    Edit the values, never the keys. The keys are referenced from Strings.swift.
    Language: en */
 
-/* Accessibility label for the account menu in the toolbar. */
-"account.menu" = "Account";
+/* Accessibility label for the avatar button in the toolbar, which opens the settings. */
+"account.settings" = "Settings";
 
 "account.signOut" = "Sign out";
 
 "message.deleted" = "Message deleted";
 
-/* Accessibility label for a message that has not sent. The SDK retries, so this reassures. */
-"message.delivery.failed" = "Not sent yet — it’ll try again";
+/* Names the red badge beside a message. Deliberately does not promise a retry: most of
+   these failures wait on the user, and the reason that follows says so. */
+"message.delivery.failed" = "Not sent";
+
+/* The other button in the badge's popover, and the only one on a failure nothing will
+   clear. The message never left the device, so this throws it away rather than taking it
+   back from anyone — hence plain "Delete", with nothing about "for everyone". */
+"message.delivery.discard" = "Delete";
+
+/* The button in the badge's popover. Only shown where trying again can actually work. */
+"message.delivery.sendAgain" = "Send again";
 
 "message.delivery.read" = "Read";
 
@@ -72,7 +81,43 @@
 
 "roomList.searchPrompt" = "Search messages";
 
+/* Accessibility label for the button that empties the search field. */
+"roomList.clearSearch" = "Clear search";
+
 "roomList.title" = "Chats";
+
+/* Accessibility label for the "+" button in the top-left corner. */
+"roomList.newConversation" = "New chat or room";
+
+/* A conversation with one other person. */
+"roomList.newChat" = "New chat";
+
+/* A conversation several people can join. */
+"roomList.newRoom" = "New room";
+
+"settings.title" = "Settings";
+
+/* The back button settings draws for itself in a sidebar, where the system gives it none.
+   Never shown on iPhone — there the back button is the system's. */
+"settings.back" = "Back";
+
+"settings.notifications" = "Notifications";
+
+"settings.privacy" = "Privacy";
+
+"settings.appearance" = "Appearance";
+
+"settings.reactions" = "Reactions";
+
+/* Explains why the settings above it are greyed out. Says what will happen, not what is missing. */
+"settings.moreSoon" = "More settings are on the way.";
+
+/* The screen where the double-tap reaction is chosen: the heading over the six emoji, and
+   the line under them. */
+"reactions.quick" = "Quick reaction";
+
+/* Names the gesture rather than the setting — the emoji is useless until you know how to send it. */
+"reactions.quickHelp" = "Double-tap a message to leave it.";
 
 /* Accessibility label for the address field. */
 "signIn.addressLabel" = "Account address";
@@ -137,3 +182,118 @@
 "videoNote.noCamera" = "No camera is available on this device.";
 
 "videoNote.record" = "Record a video message";
+
+/* A conversation with no messages in it. Not a problem — an invitation. */
+"room.emptyTitle" = "Nothing here yet";
+
+"room.emptyMessage" = "Send the first message — that’s how it starts.";
+
+/* The chat could not be opened at all. Must not be confused with an empty chat: the
+   messages are there, we just can't show them. */
+"room.loadFailedTitle" = "Couldn’t open this chat";
+
+"room.loadFailedMessage" = "The messages haven’t gone anywhere — we just couldn’t load them. Check your connection.";
+
+"room.tryAgain" = "Try again";
+
+/* Accessibility hint on the chat header. Says what pressing it does. */
+"room.openDetails" = "Open chat info";
+
+/* Title of the screen behind the chat header. */
+"room.detailsTitle" = "About this chat";
+
+/* Section header above the room's topic — what the room is for. */
+"room.about" = "Description";
+
+/* Shown beside the people who run the room. Never a number: Matrix calls this a power
+   level, and "power level 100" is the data model talking, not a person. */
+"room.administrator" = "Administrator";
+
+"room.moderator" = "Moderator";
+
+/* Long press (right click on a Mac) on a message. */
+"message.menu.copy" = "Copy";
+
+"message.menu.delete" = "Delete";
+
+/* Asked before a message is deleted. The one thing in the menu that cannot be undone. */
+"message.menu.deleteConfirmTitle" = "Delete this message?";
+
+/* Must say plainly that it disappears for everyone, not just for the person deleting it. */
+"message.menu.deleteConfirmMessage" = "It’ll disappear for everyone in the chat, and it can’t be brought back.";
+
+/* Accessibility hints on a reaction. Say what pressing it will do — the pill itself can't. */
+"message.menu.addReaction" = "Add a reaction";
+
+"message.menu.removeReaction" = "Remove your reaction";
+
+/* At the foot of a message's menu: the exact moment. The clock beside the bubble has room
+   for the hour and nothing else; this is the whole date, formatted by the system. */
+"message.menu.sentAt" = "Sent %@";
+
+/* And, on a message that is gone, when it went. */
+"message.menu.deletedAt" = "Deleted %@";
+
+/* The day divider in a conversation. Nobody uses the weekday to work out when something
+   was said: the two nearest days get a word, everything else gets a date. */
+"room.today" = "Today";
+
+"room.yesterday" = "Yesterday";
+
+/* The Appearance screen: the colour the app is painted in. The seven colours of the
+   rainbow, and a mono theme with no colour at all. */
+"appearance.accent" = "App colour";
+
+/* Under the row of swatches. Says what actually changes, rather than that it is a "theme". */
+"appearance.accentHelp" = "It paints your messages, buttons and badges — everywhere in the app.";
+
+/* The names of the colours. They are never seen: a circle of colour has nothing to read
+   out, and VoiceOver names it by its colour. */
+"appearance.color.red" = "Red";
+
+"appearance.color.orange" = "Orange";
+
+"appearance.color.yellow" = "Yellow";
+
+"appearance.color.green" = "Green";
+
+"appearance.color.cyan" = "Cyan";
+
+"appearance.color.blue" = "Blue";
+
+"appearance.color.violet" = "Violet";
+
+"appearance.color.mono" = "Black and white";
+
+/* The photo was picked and could not be read — a refusal that happens before anything is
+   sent, so blaming the server would be a lie. Usually it is still in iCloud, not on the phone. */
+"room.attachmentUnreadable" = "This photo could not be read. That happens when it is still in iCloud — open it in Photos and try again.";
+
+"message.media.close" = "Close";
+
+/* The video would not download. Not an alarm and not a dialog — a line on the message
+   itself, because there is nothing to be done about it but press again. */
+"message.media.loadFailed" = "The video would not load";
+
+/* The button on the preview circle: point the camera at yourself, or away. */
+"videoNote.flipCamera" = "Flip camera";
+
+/* The mark on a message its author went back and changed. */
+"message.edited" = "edited";
+
+/* The long press on a message. */
+"message.menu.reply" = "Reply";
+"message.menu.edit" = "Edit";
+"message.menu.pin" = "Pin";
+"message.menu.unpin" = "Unpin";
+
+/* The strip above the composer: answering somebody, or going back to change your own message. */
+"room.replyingTo" = "Reply";
+"room.editingMessage" = "Editing";
+"room.stopReplying" = "Cancel";
+
+/* Pinned messages: the strip at the top of the room, and the screen behind it. */
+"room.pinned" = "Pinned";
+"room.pinnedTitle" = "Pinned messages";
+"room.pinnedEmpty" = "Nothing is pinned here yet";
+"room.unpin" = "Unpin";

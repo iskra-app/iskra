@@ -18,6 +18,27 @@ public extension EnvironmentValues {
         get { self[MediaLoaderKey.self] }
         set { self[MediaLoaderKey.self] = newValue }
     }
+
+    /// How wide the conversation is. Put here by `RoomView` and read by the one thing that
+    /// needs to know: a video note, which grows to fill it while it plays.
+    ///
+    /// It is measured on the scroll view and handed *down*, and that direction is the whole
+    /// point. A message row cannot measure itself for this — it did, and the app locked up.
+    /// The row's width is decided by what is in it, and what is in it was being sized from
+    /// the row's width: SwiftUI wrote the measurement into state, the state changed the
+    /// content, the content changed the measurement, and the view graph re-entered its own
+    /// update forever. The main thread never came back, so the timeline froze, and the
+    /// download the user was waiting on could not finish either — its continuation was
+    /// queued behind a render loop that never ended. The container's width depends on
+    /// nothing inside it, and so it can be asked.
+    var timelineWidth: CGFloat {
+        get { self[TimelineWidthKey.self] }
+        set { self[TimelineWidthKey.self] = newValue }
+    }
+}
+
+private struct TimelineWidthKey: EnvironmentKey {
+    static let defaultValue: CGFloat = 0
 }
 
 extension Image {

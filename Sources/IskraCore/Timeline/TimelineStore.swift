@@ -16,6 +16,20 @@ public final class TimelineStore {
     /// False once we have reached the beginning of the conversation.
     public private(set) var canLoadMore = true
 
+    /// True once the SDK has told us what is in this room — *including* when the answer is
+    /// "nothing".
+    ///
+    /// Without this, an empty conversation and one that has not arrived yet are the same
+    /// empty array, and the screen has to guess which it is looking at. It always guesses
+    /// wrong at least once: either it says "no messages yet" to someone whose messages are
+    /// half a second away, or it shows a spinner forever to someone in a room that really
+    /// is empty.
+    public private(set) var hasLoaded = false
+
+    /// The room could not be opened at all. Distinct from an empty room, and the only one
+    /// of the two the user can do anything about.
+    public private(set) var didFailToLoad = false
+
     /// Set when sending fails in a way the user should know about.
     public var sendFailure: LocalizedStringResource?
 
@@ -23,27 +37,101 @@ public final class TimelineStore {
     public private(set) var privacy: PrivacyStatus = .unknown
     public private(set) var roomName: String = ""
 
+    /// True when there is exactly one other person here. A conversation with one other
+    /// person does not need their name and face repeated above every message they send —
+    /// you know who they are, and the messages are on their side of the screen.
+    public private(set) var isDirectChat = false
+
+    /// What the header above the conversation needs, and nothing more. The room *info*
+    /// screen asks for the rest — members, topic — through `details()`, because that is
+    /// a screenful of requests and this is a title bar.
+    public private(set) var roomAvatarURL: String?
+    public private(set) var memberCount = 0
+
+    /// The other person's Matrix ID, in a chat that has exactly one other person.
+    ///
+    /// This is what the header shows under their name. It is deliberately *not* a "last
+    /// seen" time: the Rust SDK exposes no presence at all over FFI, and a timestamp
+    /// invented from their last message would say "online 5 minutes ago" about someone
+    /// who has been reading over your shoulder in silence all day. The Matrix ID is the
+    /// thing people actually ask each other for.
+    public private(set) var directCounterpartID: String?
+
     private let room: Room
+    private let ownUserID: String
     private var timeline: Timeline?
 
     /// The SDK timeline, for the media-sending extension in `TimelineStore+Media`.
     /// Nil until `start()` has run.
     var liveTimeline: Timeline? { timeline }
     private var listenerHandle: TaskHandle?
+    private var sendQueueHandle: TaskHandle?
+    private var roomInfoHandle: TaskHandle?
     private var items: [TimelineItem] = []
 
-    init(room: Room) {
+    /// Reactions we have handed to the send queue and not yet heard the end of, and the ones
+    /// we know never got out of it. See `toggleReaction`.
+    private var reactionsInFlight: [InFlightReaction] = []
+    private var unsentReactions = UnsentReactions()
+
+    /// The fetch that refills a conversation the SDK has just emptied — see `refill()`.
+    private var refillTask: Task<Void, Never>?
+
+    /// True while that fetch is running, and the reason the screen does not flicker: see
+    /// `rebuildRows()`.
+    private var isRefilling = false
+
+    /// The rows as they really are, published or not. `rows` is what the screen is showing,
+    /// which during a refill is deliberately the conversation from a moment ago.
+    private var latestRows: [TimelineRow] = []
+
+    init(room: Room, ownUserID: String) {
         self.room = room
+        self.ownUserID = ownUserID
         self.roomID = room.id()
+    }
+
+    /// Everything the room-info screen needs, loaded only when it is opened.
+    public func details() -> RoomDetailsStore {
+        RoomDetailsStore(room: room, ownUserID: ownUserID)
     }
 
     public func start() async throws {
         guard timeline == nil else { return }
 
-        if let info = try? await room.roomInfo() {
-            privacy = PrivacyStatus(info.encryptionState)
-            roomName = info.displayName ?? info.heroes.first?.displayName ?? String(core: CoreStrings.Room.untitled)
+        didFailToLoad = false
+
+        do {
+            try await open()
+        } catch {
+            // Recorded as well as thrown. The screen needs to be able to say "this chat
+            // didn't open" and offer to try again — `try?` at the call site would swallow
+            // the failure and leave it showing an empty room instead, which is a lie about
+            // a conversation that may be full of messages.
+            didFailToLoad = true
+            throw error
         }
+    }
+
+    /// Tries again after a failure. There is nothing to undo first: a `start()` that threw
+    /// left `timeline` nil, which is exactly the state it needs to run again from.
+    public func retryLoading() async {
+        try? await start()
+    }
+
+    private func open() async throws {
+        if let info = try? await room.roomInfo() {
+            adopt(info)
+        }
+
+        // And then keep it up to date. A room is renamed, somebody pins a message, a person
+        // joins — all of that arrives here, and none of it used to: the header and the pinned
+        // strip were a snapshot taken when the room was opened and never looked at again.
+        roomInfoHandle = room.subscribeToRoomInfoUpdates(listener: RoomInfoUpdates { [weak self] info in
+            Task { @MainActor [weak self] in
+                self?.adopt(info)
+            }
+        })
 
         let timeline = try await room.timeline()
         self.timeline = timeline
@@ -56,27 +144,428 @@ public final class TimelineStore {
         }
 
         listenerHandle = await timeline.addListener(listener: listener)
+
+        // What tells us a reaction never made it. `RoomSendQueueUpdate` is `Sendable` — unlike
+        // the timeline's diffs — so it crosses the hop from the Rust callback thread on its own.
+        let queueListener = RoomQueueListener { [weak self] update in
+            Task { @MainActor [weak self] in
+                self?.handle(sendQueueUpdate: update)
+            }
+        }
+        sendQueueHandle = try? await room.subscribeToSendQueueUpdates(listener: queueListener)
+
+        // A live timeline starts *empty*, and this is the single most surprising thing
+        // about it. Subscribing does not hand over the conversation: the SDK streams new
+        // events into the timeline and nothing else, so the first diff a freshly opened
+        // room sends is a reset with zero items in it. The messages already in the room are
+        // fetched, not streamed — opening a conversation has to go and ask for them.
+        //
+        // This used to happen by accident. The spinner at the top of the list carried a
+        // `.task` that called `loadMore()` the moment it appeared, so the room filled as a
+        // side effect of drawing a progress view. Removing that spinner — it span forever
+        // and promised work nobody was doing — quietly removed the only thing that was
+        // loading any messages, and every chat came up empty. The first page is asked for
+        // here now, where it can be seen.
+        //
+        await fillPages(untilAtLeast: Self.screenful, maximumPages: Self.maximumOpeningPages)
+
+        // Only now. Between the empty reset and the first page there is a moment where the
+        // room is genuinely empty and genuinely not loaded, and saying "no messages yet"
+        // into that gap would be wrong about a conversation that is one await away.
+        hasLoaded = true
     }
 
+    /// Everything the header and the pinned strip read, taken from the room as it now is.
+    private func adopt(_ info: RoomInfo) {
+        privacy = PrivacyStatus(info.encryptionState)
+        roomName = info.displayName ?? info.heroes.first?.displayName ?? String(core: CoreStrings.Room.untitled)
+        isDirectChat = info.isDm
+        roomAvatarURL = info.avatarUrl
+        memberCount = Int(info.joinedMembersCount)
+        pinnedEventIDs = info.pinnedEventIds
+        // The heroes are the people the server names to describe a room that has no
+        // name of its own — in a DM, that is the person you are talking to. Falling
+        // back to nothing (rather than to our own ID) is right: a note-to-self room
+        // has no counterpart, and claiming one would put your own address in the
+        // header of your own chat.
+        directCounterpartID = info.isDm ? info.heroes.first(where: { $0.userId != ownUserID })?.userId : nil
+    }
+
+    /// Asks for history until there is enough of it to scroll.
+    ///
+    /// Repeatedly, because a page is 25 *events* and events are not messages: a room can
+    /// answer with twenty-five joins, avatar changes and topic edits, and hand back a screen
+    /// with two bubbles on it. That matters more than it sounds, because scrolling is what
+    /// asks for the next page — a conversation too short to scroll could never ask for one,
+    /// and would sit there half-loaded forever with no way for the user to pull the rest in.
+    ///
+    /// It counts `latestRows` rather than `rows`, because during a refill those are not the same
+    /// thing: `rows` is the old conversation still held on the screen, and a loop watching it
+    /// would never see the new one arrive and would page until it ran out of attempts.
+    private func fillPages(untilAtLeast minimumRows: Int, maximumPages: Int) async {
+        var attempts = 0
+        while latestRows.count < minimumRows, canLoadMore, attempts < maximumPages {
+            await loadMore()
+            attempts += 1
+        }
+    }
+
+    /// Roughly what fills a phone screen. Not exact, and does not need to be: it is the
+    /// point past which the user can scroll, and scrolling is what fetches the rest.
+    private static let screenful = 15
+
+    /// A ceiling on the opening fetch, so a room whose history is nothing but membership
+    /// churn cannot spin here forever looking for fifteen bubbles it will never find.
+    private static let maximumOpeningPages = 4
+
+    /// The same ceiling for a refill, and higher, because a refill is trying to win back
+    /// everything the reader had already scrolled through rather than just a first screenful.
+    private static let maximumRefillPages = 20
+
     public func stop() {
+        refillTask?.cancel()
+        refillTask = nil
         listenerHandle?.cancel()
         listenerHandle = nil
+        sendQueueHandle?.cancel()
+        sendQueueHandle = nil
+        roomInfoHandle?.cancel()
+        roomInfoHandle = nil
     }
 
     // MARK: - Sending
 
     /// Sends a plain text message. Markdown is honoured, because people type `*this*`
     /// and expect it to work.
-    public func send(text: String) async {
+    ///
+    /// `replyingTo` is a *message* ID, which is what the rest of the app deals in. It is only
+    /// ever an answer to something the server already has: `sendReply` names an event, and a
+    /// message still in our own send queue does not have one. A reply to something unsendable
+    /// is sent as an ordinary message rather than refused — the user wrote words and pressed
+    /// send, and swallowing them to protect a quote would be the app losing their message over
+    /// a decoration.
+    public func send(text: String, replyingTo replyID: String? = nil) async {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, let timeline else { return }
 
+        // Not logged, not stored anywhere but the SDK's encrypted send queue.
+        let content = messageEventContentFromMarkdown(md: trimmed)
+
         do {
-            // Not logged, not stored anywhere but the SDK's encrypted send queue.
-            _ = try await timeline.send(msg: messageEventContentFromMarkdown(md: trimmed))
+            if let replyID, let eventID = eventID(for: replyID) {
+                try await timeline.sendReply(msg: content, eventId: eventID)
+            } else {
+                _ = try await timeline.send(msg: content)
+            }
         } catch {
             sendFailure = CoreStrings.Timeline.sendFailed
         }
+    }
+
+    /// Changes what a message says, for everyone.
+    ///
+    /// Matrix does not rewrite the original — it cannot, events are immutable — it sends a new
+    /// event that *replaces* it, and every client that understands the relation shows the new
+    /// words with an "edited" mark beside them. One that does not understand it shows both.
+    /// That is the protocol's business and not ours; what matters here is that the old text
+    /// does not disappear from the server, so an edit is not a way to unsay something. Deleting
+    /// is.
+    ///
+    /// Empty is refused rather than sent. An edit to nothing would leave a bubble with no words
+    /// in it, which is neither a message nor a deletion — the user who wants the message gone
+    /// wants `delete`.
+    public func edit(messageID: String, text: String) async {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, let timeline, let id = eventOrTransactionID(for: messageID) else { return }
+
+        do {
+            let content = messageEventContentFromMarkdown(md: trimmed)
+            try await timeline.edit(eventOrTransactionId: id, newContent: .roomMessage(content: content))
+        } catch {
+            sendFailure = CoreStrings.Timeline.editFailed
+        }
+    }
+
+    /// Sends one stuck message again.
+    ///
+    /// A failure jams things in one of two ways, and the user cannot tell them apart: either
+    /// the SDK paused the whole room's send queue, or it parked this single message and left
+    /// the queue running. So both are undone. Re-enabling an already-enabled queue does
+    /// nothing, and `tryResend` is exactly what the SDK provides for a parked message whose
+    /// obstacle has since been cleared — a device that has now been verified, a server that
+    /// has stopped saying no.
+    ///
+    /// Nothing here composes or re-sends content of its own: it is the message the user
+    /// already wrote, still sitting in the encrypted send queue where they left it.
+    public func retrySending(messageID: String) async {
+        room.enableSendQueue(enable: true)
+
+        guard let handle = sendHandle(for: messageID) else { return }
+        try? await handle.tryResend()
+    }
+
+    /// Throws away a message that never went.
+    ///
+    /// The way out of the two dead ends the red badge otherwise leaves the user in: a
+    /// failure nothing will ever clear — a file that has been deleted, a type the server
+    /// will never accept — and a message they have simply changed their mind about. Both
+    /// used to be permanent, because a stuck message sits in the send queue and is retried
+    /// on every launch.
+    ///
+    /// Nothing is redacted and nobody is told: the message is still in the encrypted send
+    /// queue and has reached no one, so there is no event on the server to take back.
+    /// `abort()` lifts it out of the queue, the SDK drops the local echo, and the bubble
+    /// goes with it.
+    ///
+    /// No confirmation, unlike `delete()`. That one is irreversible *for the whole room*;
+    /// this one only ever touches a message the user is looking at because they opened the
+    /// badge to ask about it, and making them confirm twice to be rid of something they
+    /// never managed to send would be the app arguing with them.
+    ///
+    /// `abort()` answers false if the message went out while the popover was open — it is
+    /// an ordinary sent message now, so there is nothing here to abort and nothing to do:
+    /// the badge disappears of its own accord, and `delete()` becomes the way to take it
+    /// back, offered by the menu the moment `canDelete` turns true.
+    public func discard(messageID: String) async {
+        guard let handle = sendHandle(for: messageID) else { return }
+        _ = try? await handle.abort()
+    }
+
+    /// The SDK's handle on a local echo — the message we sent that never landed. Remote
+    /// events have none, which is the SDK's way of saying there is nothing left to retry.
+    private func sendHandle(for messageID: String) -> SendHandle? {
+        for item in items {
+            guard let event = item.asEvent(),
+                  TimelineMapper.identifier(for: event.eventOrTransactionId) == messageID else { continue }
+            return event.lazyProvider.getSendHandle()
+        }
+        return nil
+    }
+
+    // MARK: - Reacting and unsending
+
+    /// Adds an emoji to a message, or takes it back if it is already ours.
+    ///
+    /// One call for both directions, because that is what the SDK offers and what the UI
+    /// wants: a reaction pill is a toggle, and the user pressing one they have already
+    /// left plainly means "undo".
+    ///
+    /// The pill lights up the moment it is pressed, and that is the SDK's doing, not ours: the
+    /// reaction goes into the same encrypted send queue as a message and is echoed into the
+    /// timeline straight away. **The echo is not proof of anything.** `toggleReaction` returns
+    /// as soon as the reaction is *queued*, so the `try` here catches a reaction the SDK would
+    /// not even take — not one the server never saw. When the send itself fails, the Rust
+    /// timeline keeps the echo exactly where it is, and the pill stays lit on a reaction that
+    /// reached nobody. That is what `unsentReactions` exists to undo.
+    ///
+    /// Only an *added* reaction is watched. A removal that fails leaves the pill on the screen
+    /// where it always was, which is the truth — the reaction is still on the server.
+    public func toggleReaction(messageID: String, key: String) async {
+        guard let timeline, let id = eventOrTransactionID(for: messageID) else { return }
+
+        // A reaction on a message that is gone is one Matrix would accept and nobody wants: an
+        // emoji hanging under the words "message deleted", for the whole room. The menu does not
+        // offer it and a double tap does not send it, but both of those are views, and this is
+        // the one call that actually leaves the device — so the rule is kept here as well.
+        guard message(messageID)?.canReact == true else { return }
+
+        // Pressing a pill we took away is the user saying "try again". The queue stopped when it
+        // failed — it stays disabled until something re-enables it — so start it back up before
+        // handing it anything, exactly as `retrySending` does for a stuck message.
+        let isRetry = unsentReactions.contains(messageID: messageID, key: key)
+        if isRetry {
+            room.enableSendQueue(enable: true)
+            unsentReactions.remove(messageID: messageID, key: key)
+            rebuildRows()
+        }
+
+        // Registered *before* the call, not after: the queue can fail while we are still in
+        // `toggleReaction`, and a failure that arrives before we start watching is a failure
+        // nobody would ever hear about.
+        let reaction = InFlightReaction(messageID: messageID, key: key)
+        reactionsInFlight.append(reaction)
+        stopWatching(reaction, after: Self.reactionSendWindow)
+
+        do {
+            var wasAdded = try await timeline.toggleReaction(itemId: id, key: key)
+
+            // The reaction that failed is still sitting in the SDK's queue, and the SDK still
+            // counts it as ours — so it read this press as "undo" and cancelled the stuck one.
+            // That is not what the user meant. To them the pill was gone, and they are putting
+            // it back. Losing the stuck reaction is no loss at all, but the one they actually
+            // asked for still has to be sent, so ask again.
+            if isRetry, !wasAdded {
+                wasAdded = try await timeline.toggleReaction(itemId: id, key: key)
+            }
+
+            if !wasAdded { forget(reaction) }
+        } catch {
+            forget(reaction)
+            sendFailure = CoreStrings.Timeline.reactionFailed
+        }
+    }
+
+    /// A reaction the send queue has taken and not yet answered for.
+    private struct InFlightReaction: Identifiable {
+        let id = UUID()
+        let messageID: String
+        let key: String
+    }
+
+    /// Everything the send queue has to say about this room. The only part that concerns a
+    /// reaction is a failure.
+    ///
+    /// It is deliberately not asked *which* request failed, and it could not usefully answer.
+    /// A reaction to a message that has not been sent yet is a "dependent request", and those
+    /// report neither success nor failure over FFI; the transaction ID on a `sendError` belongs
+    /// to whatever the queue choked on, which may well be somebody's message. It does not
+    /// matter. A send error stops the room's queue dead, and the queue is first-in-first-out —
+    /// so whatever the error was about, a reaction still waiting behind it is going nowhere.
+    private func handle(sendQueueUpdate update: RoomSendQueueUpdate) {
+        guard case .sendError = update else { return }
+        reactionsDidFail()
+    }
+
+    private func reactionsDidFail() {
+        guard !reactionsInFlight.isEmpty else { return }
+
+        for reaction in reactionsInFlight {
+            unsentReactions.insert(messageID: reaction.messageID, key: reaction.key)
+        }
+        reactionsInFlight.removeAll()
+
+        // The pills go out, and the user is told why. Both: a pill quietly vanishing under the
+        // thumb that just pressed it looks like the app dropped the tap.
+        rebuildRows()
+        sendFailure = CoreStrings.Timeline.reactionFailed
+    }
+
+    private func forget(_ reaction: InFlightReaction) {
+        reactionsInFlight.removeAll { $0.id == reaction.id }
+    }
+
+    /// Stops holding a reaction responsible for a failure that has not happened yet.
+    ///
+    /// There is no success to wait for. The SDK never says a reaction landed — no update, no
+    /// status on the pill, nothing — so "it worked" can only ever be inferred from the absence
+    /// of the failure, and the inference has to be given a deadline or it never completes.
+    /// A reaction the queue has held without complaint for this long has been sent, and a queue
+    /// error after that belongs to whatever the user did next, not to this.
+    ///
+    /// Erring towards forgetting, deliberately. Watching a reaction too long risks pulling a
+    /// pill off a reaction that is really on the server, and telling the user their reaction
+    /// failed when it did not; forgetting one too early only means a rare stuck reaction stays
+    /// lit, which is where every one of them stood before this existed.
+    private func stopWatching(_ reaction: InFlightReaction, after seconds: Int) {
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(seconds))
+            self?.forget(reaction)
+        }
+    }
+
+    /// How long a reaction is watched for. Generous: it covers a slow send behind a media
+    /// upload, and its only cost is a wider window in which a failure is blamed on a reaction
+    /// that had in fact gone out.
+    private static let reactionSendWindow = 30
+
+    /// Takes a message back for everyone.
+    ///
+    /// No reason is given: Matrix lets a redaction carry one, it is visible to the whole
+    /// room, and nothing in this app asks the user for it — sending an empty or invented
+    /// string would be putting words in their mouth.
+    public func delete(messageID: String) async {
+        guard let timeline, let id = eventOrTransactionID(for: messageID) else { return }
+
+        do {
+            try await timeline.redactEvent(eventOrTransactionId: id, reason: nil)
+        } catch {
+            sendFailure = CoreStrings.Timeline.deleteFailed
+        }
+    }
+
+    // MARK: - Pinning
+
+    /// The messages the room has pinned, newest last, as the room itself reports them.
+    ///
+    /// Kept in step by a subscription rather than re-read after every pin: somebody *else*
+    /// pinning a message has to move the banner at the top of the conversation too, and a
+    /// value we only refresh when we act would leave every other client's pin invisible until
+    /// the app was restarted.
+    public private(set) var pinnedEventIDs: [String] = []
+
+    /// Whether a message is currently pinned, which is what decides between the two words the
+    /// menu can offer.
+    public func isPinned(messageID: String) -> Bool {
+        pinnedEventIDs.contains(messageID)
+    }
+
+    /// Pins a message to the top of the room. Everyone sees it; it is a change to the room's
+    /// state, not a note to self.
+    public func pin(messageID: String) async {
+        guard let timeline, let eventID = eventID(for: messageID) else { return }
+
+        do {
+            _ = try await timeline.pinEvent(eventId: eventID)
+        } catch {
+            sendFailure = CoreStrings.Timeline.pinFailed
+        }
+    }
+
+    public func unpin(messageID: String) async {
+        guard let timeline, let eventID = eventID(for: messageID) else { return }
+
+        do {
+            _ = try await timeline.unpinEvent(eventId: eventID)
+        } catch {
+            sendFailure = CoreStrings.Timeline.pinFailed
+        }
+    }
+
+    /// Everything the room has pinned, as its own conversation — for the "Pinned" screen, and
+    /// for the strip above the room that shows the latest of them.
+    ///
+    /// A second timeline over the same room, which the SDK supports directly: a
+    /// `TimelineFocus.pinnedEvents` timeline holds exactly the pinned events and follows them
+    /// as they change. It is built on demand, because most rooms have nothing pinned and an
+    /// unopened one costs nothing.
+    public func pinned() -> PinnedStore {
+        PinnedStore(room: room, ownUserID: ownUserID)
+    }
+
+    // MARK: - Identifiers
+
+    /// The SDK's name for a message, which is an event ID once the server has seen it and
+    /// a local transaction ID before that. `Message.id` is one or the other flattened to a
+    /// string, so this walks back from it to the pair the SDK actually wants.
+    private func eventOrTransactionID(for messageID: String) -> EventOrTransactionId? {
+        for item in items {
+            guard let event = item.asEvent(),
+                  TimelineMapper.identifier(for: event.eventOrTransactionId) == messageID else { continue }
+            return event.eventOrTransactionId
+        }
+        return nil
+    }
+
+    /// The message's event ID, and nil for one the server has never seen.
+    ///
+    /// Replying to a message and pinning one both name an *event*, and a message still sitting
+    /// in the send queue is a transaction ID with nothing on the server behind it. Nil is the
+    /// honest answer, and every caller here treats it as one.
+    ///
+    /// Not private: attachments reply too, and they are sent from `TimelineStore+Media`.
+    func eventID(for messageID: String) -> String? {
+        guard case let .eventId(eventID)? = eventOrTransactionID(for: messageID) else { return nil }
+        return eventID
+    }
+
+    /// The message a row is showing, as the rest of the app knows it — with `canReact` and
+    /// `canDelete` already worked out on it, so those rules are asked rather than restated.
+    private func message(_ id: String) -> Message? {
+        for row in rows {
+            guard case let .message(message) = row, message.id == id else { continue }
+            return message
+        }
+        return nil
     }
 
     /// Tells the server the user has seen the conversation, which is what clears the
@@ -89,7 +578,11 @@ public final class TimelineStore {
     public func loadMore() async {
         guard let timeline, !isPaginating, canLoadMore else { return }
 
-        isPaginating = true
+        // The spinner belongs to the user's own scroll to the top: it answers a request they
+        // made. A refill is repair work nobody asked for, going on behind a conversation that is
+        // still on the screen, and announcing it with a progress view above the first message
+        // would only be the flicker coming back wearing something else.
+        isPaginating = !isRefilling
         defer { isPaginating = false }
 
         // `paginateBackwards` returns true once it has hit the start of the room.
@@ -101,6 +594,8 @@ public final class TimelineStore {
     // MARK: - Diff handling
 
     private func apply(diffs: [TimelineDiff]) {
+        let wasFull = !items.isEmpty
+
         for diff in diffs {
             switch diff {
             case let .append(values):
@@ -131,7 +626,114 @@ public final class TimelineStore {
             }
         }
 
-        rows = TimelineMapper.rows(from: items)
+        // The conversation we had a moment ago is gone. Go and get it back — and say so *first*,
+        // before the rows are rebuilt, because the rebuild is what would otherwise put the empty
+        // room on the screen. `refill()` raises the flag that tells `rebuildRows()` to hold on to
+        // the conversation the reader is looking at, and it measures how much of it to fetch back
+        // from the rows that are still standing. One statement later, both would be gone.
+        if wasFull, items.isEmpty { refill() }
+
+        // Deliberately does *not* set `hasLoaded`. The first diff to arrive is the SDK's
+        // empty reset, which is proof of nothing except that the room is listening — and
+        // treating it as proof of loading is what would flash "no messages yet" across a
+        // conversation whose first page is still in flight. `open()` decides when the room
+        // has loaded, because only it knows the page has landed.
+        rebuildRows()
+    }
+
+    /// The single place the SDK's items become rows, so that a reaction we know never sent is
+    /// subtracted from *every* rebuild — including the ones the SDK triggers on its own, which
+    /// would otherwise put the pill straight back.
+    ///
+    /// It is also where the screen is protected from the SDK emptying the room under it.
+    ///
+    /// Deleting a message or reacting to one makes the event cache throw the timeline away and
+    /// rebuild it (see `refill()`), and it used to do that *on screen*: the rows went to zero,
+    /// the conversation blanked, the placeholder and the spinner had time to appear, and the
+    /// re-fetched messages then dropped back in — which scrolled the view to the bottom, because
+    /// the last row had "changed". A whole chat reloading because one reaction was pressed.
+    ///
+    /// Nothing was wrong with the data; it was only ever the *empty moment in the middle* that
+    /// the user saw. So it is not shown. While a refill is running the last good conversation
+    /// stays on the screen, and the rebuilt one is published when it is at least as complete as
+    /// what it replaces — same rows, same identities, same scroll position, and the deleted
+    /// message quietly becomes "message deleted" in place.
+    private func rebuildRows() {
+        latestRows = TimelineMapper.rows(from: items, ownUserID: ownUserID, unsent: unsentReactions)
+
+        // Half a conversation is not an improvement on the whole one the reader is looking at.
+        if isRefilling, latestRows.count < rows.count { return }
+
+        rows = latestRows
+    }
+
+    /// Fetches the conversation again after the SDK has thrown it away.
+    ///
+    /// It does throw it away, and it is entitled to: the event cache clears a timeline and
+    /// rebuilds it whenever it decides what it holds can no longer be trusted to be
+    /// continuous — after a redaction, after a gappy sync, after a reaction has been echoed
+    /// back by the server. The SDK says so in the only way it can, a `clear` or an empty
+    /// `reset`, and then it repopulates the *live* end of the timeline and stops.
+    ///
+    /// It stops because history is fetched here, not streamed — the same fact that makes a
+    /// freshly opened room start out empty (see `open()`). Nothing was asking for it again,
+    /// so a chat that had been read to the end simply emptied and stayed empty: the user had
+    /// paginated to the start of the room, `canLoadMore` was false, and an empty screen
+    /// cannot be scrolled to ask for more. Reacting to a message, or deleting one, threw away
+    /// the conversation it belonged to.
+    ///
+    /// `canLoadMore` goes back to true because it is a statement about the timeline we hold,
+    /// and we no longer hold it: whatever we had paginated back to went with the rest.
+    /// It is fetched back to the depth the reader had already pulled in, not to one screenful.
+    /// Somebody who has scrolled up through a week of conversation and then deletes a message
+    /// should not be dropped at the live end of a room they had left twenty minutes ago — and
+    /// `rows` is exactly the measure of how much of it they were holding.
+    private func refill() {
+        guard refillTask == nil else { return }
+
+        canLoadMore = true
+        isRefilling = true
+        let depth = rows.count
+
+        refillTask = Task { [weak self] in
+            await self?.fillPages(untilAtLeast: depth, maximumPages: Self.maximumRefillPages)
+
+            guard let self else { return }
+            // Whatever came back is now the conversation, even if it is shorter than what was on
+            // the screen — a room really can have less in it than it did a moment ago, and going
+            // on showing the old rows at that point would be the app refusing to believe it.
+            isRefilling = false
+            refillTask = nil
+            rows = latestRows
+        }
+    }
+}
+
+/// The room telling us it has changed — a new name, a new picture, somebody pinning a message.
+///
+/// `RoomInfo` is `Sendable`, so it crosses from the Rust callback thread on its own; unlike the
+/// timeline's diffs, it needs no `UnsafeTransfer` to carry it.
+private final class RoomInfoUpdates: RoomInfoListener {
+    private let onUpdate: @Sendable (RoomInfo) -> Void
+
+    init(onUpdate: @escaping @Sendable (RoomInfo) -> Void) {
+        self.onUpdate = onUpdate
+    }
+
+    func call(roomInfo: RoomInfo) {
+        onUpdate(roomInfo)
+    }
+}
+
+private final class RoomQueueListener: SendQueueListener {
+    private let onUpdate: @Sendable (RoomSendQueueUpdate) -> Void
+
+    init(onUpdate: @escaping @Sendable (RoomSendQueueUpdate) -> Void) {
+        self.onUpdate = onUpdate
+    }
+
+    func onUpdate(update: RoomSendQueueUpdate) {
+        onUpdate(update)
     }
 }
 

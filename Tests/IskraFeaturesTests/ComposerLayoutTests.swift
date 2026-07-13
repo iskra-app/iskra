@@ -24,14 +24,27 @@ struct ComposerLayoutTests {
         try render(draft: "Hey, are you around?", named: "composer-typing")
     }
 
-    private func render(draft: String, named name: String) throws {
+    /// The attach menu open, with room above the composer for it to open *into*.
+    ///
+    /// The choices used to be drawn straight over the text field and the buttons — a menu
+    /// covering the thing it belongs to — and nothing caught it, because the composer was
+    /// only ever rendered closed. The padding here is what leaves the space they hang in: an
+    /// image cropped to the composer's own bounds would clip them away and prove nothing.
+    @Test("the attach menu opens above the composer, not on top of it")
+    func attachMenuClearsTheComposer() throws {
+        try render(draft: "", named: "composer-attaching", isAttaching: true)
+    }
+
+    private func render(draft: String, named name: String, isAttaching: Bool = false) throws {
         let view = MessageComposer(draft: .constant(draft),
                                    onSend: {},
                                    onRecordVideoNote: {},
-                                   onPickedMedia: { _ in },
-                                   onPickedFile: { _ in })
+                                   onChoosePhoto: {},
+                                   onChooseFile: {},
+                                   isAttaching: isAttaching)
             .frame(width: 420)
-            .padding()
+            .padding(.top, isAttaching ? 140 : 16)
+            .padding([.horizontal, .bottom])
             .background(.background)
 
         let renderer = ImageRenderer(content: view)

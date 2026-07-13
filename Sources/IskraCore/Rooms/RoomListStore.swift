@@ -35,6 +35,9 @@ public final class RoomListStore {
     private var roomList: RoomList?
     private var entriesResult: RoomListEntriesWithDynamicAdaptersResult?
 
+    /// Keeps the previews honest about messages that have not left yet — see `start()`.
+    private var sendQueueHandle: TaskHandle?
+
     /// The room handles, in the order the SDK says they should appear.
     private var orderedRooms: [Room] = []
 
@@ -68,11 +71,34 @@ public final class RoomListStore {
         entriesResult = result
         _ = result.controller().setFilter(kind: .all(filters: []))
 
+        // The second source of truth, and the one the list used to be missing.
+        //
+        // The room list emits a diff when the *server* says something changed. A message
+        // the user has just written has not reached the server — it is sitting in the send
+        // queue — so it moves nothing in that list, no diff arrives, and the previews are
+        // never rebuilt. The room's own `latestEvent()` knew about it all along (it
+        // reports a `.local` event, which `rebuildSummaries` already reads); nothing was
+        // ever asking it again. The result was a chat list that showed the last message
+        // that *landed* while the one the user actually sent was nowhere on the screen —
+        // worst of all for a message that failed, where the list quietly agreed with the
+        // server that nothing had happened.
+        //
+        // The send queue is what knows. Every enqueue, send and failure comes through
+        // here, and each one is a reason to look again.
+        let sendQueueListener = SendQueueListener { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.scheduleRebuild()
+            }
+        }
+        sendQueueHandle = try await client.subscribeToSendQueueUpdates(listener: sendQueueListener)
+
         await service.start()
     }
 
     public func stop() async {
         rebuildTask?.cancel()
+        sendQueueHandle?.cancel()
+        sendQueueHandle = nil
         await syncService?.stop()
     }
 
@@ -151,8 +177,36 @@ public final class RoomListStore {
         }
 
         guard !Task.isCancelled else { return }
-        rooms = summaries
+        rooms = Self.byRecency(summaries)
         isLoadingInitialRooms = false
+    }
+
+    /// Newest conversation first — sorted here rather than taken from the SDK's order.
+    ///
+    /// The two nearly always agree, and where they part company the SDK is answering a
+    /// different question. Its list is ordered by what the *server* knows, and a message
+    /// still sitting in the send queue is by definition something the server knows nothing
+    /// about. So a message that failed to send moved its room's preview and its timestamp —
+    /// both read from `latestEvent()`, which does count local echoes — while leaving the row
+    /// itself wherever it was. Throwing that message away moved them back, and again left the
+    /// row where it was. The order and the timestamps beside it were describing two different
+    /// lists, and the user was reading both at once.
+    ///
+    /// Sorting on `lastActivity` makes the position and the time on the row the same fact.
+    /// Ties keep the SDK's order, so a burst of rooms that share a timestamp does not
+    /// reshuffle itself on every rebuild; a room with nothing in it at all has no recency to
+    /// claim and sinks to the bottom.
+    private static func byRecency(_ summaries: [RoomSummary]) -> [RoomSummary] {
+        summaries.enumerated()
+            .sorted { left, right in
+                switch (left.element.lastActivity, right.element.lastActivity) {
+                case let (l?, r?) where l != r: l > r
+                case (nil, .some): false
+                case (.some, nil): true
+                default: left.offset < right.offset
+                }
+            }
+            .map(\.element)
     }
 
     /// Fetches the live handle for a room, which the timeline needs.
@@ -171,5 +225,24 @@ private final class EntriesListener: RoomListEntriesListener {
 
     func onUpdate(roomEntriesUpdate: [RoomListEntriesUpdate]) {
         onDiff(roomEntriesUpdate)
+    }
+}
+
+/// Says only that the send queue moved, not how.
+///
+/// The update itself is dropped on purpose. Every one of them — enqueued, sent, failed,
+/// cancelled — means the same thing here: some room's newest message is not what we last
+/// thought it was. `rebuildSummaries` then asks the rooms themselves, which is the answer
+/// we would have had to go and fetch anyway. Nothing about the message travels across this
+/// hop, which also means nothing non-`Sendable` does.
+private final class SendQueueListener: SendQueueRoomUpdateListener {
+    private let onUpdate: @Sendable () -> Void
+
+    init(onUpdate: @escaping @Sendable () -> Void) {
+        self.onUpdate = onUpdate
+    }
+
+    func onUpdate(roomId: String, update: RoomSendQueueUpdate) {
+        onUpdate()
     }
 }

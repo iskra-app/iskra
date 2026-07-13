@@ -40,8 +40,108 @@ public enum CoreStrings {
         public static let untitled = LocalizedStringResource("room.untitled", bundle: bundle)
     }
 
+    /// The strip above a message that is answering another one.
+    public enum Reply {
+        /// The original is on its way. The SDK resolves a reply's target lazily, and for a
+        /// message far up the conversation there is a moment where it has the ID and nothing
+        /// else.
+        public static let loading = LocalizedStringResource("reply.loading", bundle: bundle)
+        /// And where it never found it — a message from before this device joined, or one the
+        /// server no longer has.
+        public static let unavailable = LocalizedStringResource("reply.unavailable", bundle: bundle)
+    }
+
+    /// The grey lines across the conversation: people arriving and leaving, the room being
+    /// renamed. See `RoomEventKind`.
+    ///
+    /// Every one of them is written to be true of anybody, because Matrix does not know
+    /// anyone's gender and Russian very much does. "Аня вошла" would be a coin flip on every
+    /// name in every room, so the sentences are built to avoid the question: "Аня теперь в
+    /// чате", not "Аня вошёл(ла)". The English reads a little more plainly than it otherwise
+    /// might; that is the price, and it is a small one.
+    public enum RoomEvent {
+        public static func joined(_ people: String) -> LocalizedStringResource {
+            LocalizedStringResource("roomEvent.joined", defaultValue: "\(people) joined", bundle: bundle)
+        }
+
+        public static func left(_ people: String) -> LocalizedStringResource {
+            LocalizedStringResource("roomEvent.left", defaultValue: "\(people) left", bundle: bundle)
+        }
+
+        public static func invited(_ people: String) -> LocalizedStringResource {
+            LocalizedStringResource("roomEvent.invited", defaultValue: "Invited: \(people)", bundle: bundle)
+        }
+
+        public static func removed(_ people: String) -> LocalizedStringResource {
+            LocalizedStringResource("roomEvent.removed", defaultValue: "Removed: \(people)", bundle: bundle)
+        }
+
+        public static func banned(_ people: String) -> LocalizedStringResource {
+            LocalizedStringResource("roomEvent.banned", defaultValue: "Blocked: \(people)", bundle: bundle)
+        }
+
+        public static func renamedThemselves(from: String, to: String) -> LocalizedStringResource {
+            LocalizedStringResource("roomEvent.renamedThemselves",
+                                    defaultValue: "\(from) is now known as \(to)",
+                                    bundle: bundle)
+        }
+
+        public static func roomRenamed(_ name: String) -> LocalizedStringResource {
+            LocalizedStringResource("roomEvent.roomRenamed",
+                                    defaultValue: "The chat is now called “\(name)”",
+                                    bundle: bundle)
+        }
+
+        public static let roomTopicChanged = LocalizedStringResource("roomEvent.roomTopicChanged", bundle: bundle)
+        public static let roomPictureChanged = LocalizedStringResource("roomEvent.roomPictureChanged", bundle: bundle)
+        public static let roomCreated = LocalizedStringResource("roomEvent.roomCreated", bundle: bundle)
+        public static let encryptionEnabled = LocalizedStringResource("roomEvent.encryptionEnabled", bundle: bundle)
+
+        /// Two people, named. Its own string because "и" sits between them in Russian and
+        /// "and" in English, and neither language is entitled to assume the other's word order.
+        public static func pair(_ first: String, _ second: String) -> LocalizedStringResource {
+            LocalizedStringResource("roomEvent.pair", defaultValue: "\(first) and \(second)", bundle: bundle)
+        }
+
+        /// Three or more: the first person by name, and the rest as a number. Pluralised, and
+        /// therefore in `Localizable.stringsdict` — Russian needs "ещё 2 участника" and "ещё 5
+        /// участников", which `.strings` cannot express.
+        public static func others(_ first: String, _ count: Int) -> LocalizedStringResource {
+            LocalizedStringResource("roomEvent.others",
+                                    defaultValue: "\(first) and \(count) others",
+                                    bundle: bundle)
+        }
+    }
+
     public enum Timeline {
         public static let sendFailed = LocalizedStringResource("timeline.sendFailed", bundle: bundle)
+        /// An edit that did not go through. Its own sentence, because the user is looking at
+        /// their message still saying the old thing and needs to know that is what happened —
+        /// not that a *new* message failed to send.
+        public static let editFailed = LocalizedStringResource("timeline.editFailed", bundle: bundle)
+        /// Pinning is a change to the room's state, and a homeserver will refuse it from
+        /// somebody whose power level does not allow it. The menu hides the item where we know
+        /// that in advance; this is for the times we do not.
+        public static let pinFailed = LocalizedStringResource("timeline.pinFailed", bundle: bundle)
+        /// A reaction that did not land. Its own sentence rather than `sendFailed`: an
+        /// emoji is not a message, and telling someone their *message* failed when they
+        /// tapped a thumbs-up would send them looking for a message that was never there.
+        public static let reactionFailed = LocalizedStringResource("timeline.reactionFailed", bundle: bundle)
+        /// Deleting is the one action here that is meant to be irreversible, so a
+        /// deletion that silently did not happen is the worst possible outcome: the user
+        /// believes a message is gone when everyone else can still read it.
+        public static let deleteFailed = LocalizedStringResource("timeline.deleteFailed", bundle: bundle)
+    }
+
+    /// Why a message is stuck. Each one names the thing the user has to do, because these
+    /// are failures only they can clear — see `SendFailure`.
+    public enum SendFailure {
+        public static let insecureDevices = LocalizedStringResource("sendFailure.insecureDevices", bundle: bundle)
+        public static let identityChanged = LocalizedStringResource("sendFailure.identityChanged", bundle: bundle)
+        public static let verificationRequired = LocalizedStringResource("sendFailure.verificationRequired", bundle: bundle)
+        public static let missingMedia = LocalizedStringResource("sendFailure.missingMedia", bundle: bundle)
+        public static let unsupportedFileType = LocalizedStringResource("sendFailure.unsupportedFileType", bundle: bundle)
+        public static let server = LocalizedStringResource("sendFailure.server", bundle: bundle)
     }
 
     /// Shown in the user's list of signed-in devices, so it is a name, not a model

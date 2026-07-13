@@ -2,15 +2,24 @@
    Edit the values, never the keys. The keys are referenced from Strings.swift.
    Language: ru */
 
-/* Accessibility label for the account menu in the toolbar. */
-"account.menu" = "Аккаунт";
+/* Accessibility label for the avatar button in the toolbar, which opens the settings. */
+"account.settings" = "Настройки";
 
 "account.signOut" = "Выйти";
 
 "message.deleted" = "Сообщение удалено";
 
-/* Accessibility label for a message that has not sent. The SDK retries, so this reassures. */
-"message.delivery.failed" = "Пока не отправлено — попробуем ещё раз";
+/* Names the red badge beside a message. Deliberately does not promise a retry: most of
+   these failures wait on the user, and the reason that follows says so. */
+"message.delivery.failed" = "Не отправлено";
+
+/* The other button in the badge's popover, and the only one on a failure nothing will
+   clear. The message never left the device, so this throws it away rather than taking it
+   back from anyone — hence just "Удалить", with nothing about "у всех". */
+"message.delivery.discard" = "Удалить";
+
+/* The button in the badge's popover. Only shown where trying again can actually work. */
+"message.delivery.sendAgain" = "Отправить заново";
 
 "message.delivery.read" = "Прочитано";
 
@@ -72,7 +81,42 @@
 
 "roomList.searchPrompt" = "Поиск по сообщениям";
 
+/* Accessibility label for the button that empties the search field. */
+"roomList.clearSearch" = "Очистить поиск";
+
 "roomList.title" = "Чаты";
+
+/* Accessibility label for the "+" button in the top-left corner. */
+"roomList.newConversation" = "Новый чат или комната";
+
+/* A conversation with one other person. */
+"roomList.newChat" = "Новый чат";
+
+/* A conversation several people can join. */
+"roomList.newRoom" = "Новая комната";
+
+"settings.title" = "Настройки";
+
+/* The back button settings draws for itself in a sidebar, where the system gives it none.
+   Never shown on iPhone — there the back button is the system's. */
+"settings.back" = "Назад";
+
+"settings.notifications" = "Уведомления";
+
+"settings.privacy" = "Приватность";
+
+"settings.appearance" = "Внешний вид";
+
+"settings.reactions" = "Реакции";
+
+/* Explains why the settings above it are greyed out. Says what will happen, not what is missing. */
+"settings.moreSoon" = "Остальные настройки скоро появятся.";
+
+/* Экран выбора реакции для двойного касания. Заголовок и подпись под шестью эмодзи. */
+"reactions.quick" = "Быстрая реакция";
+
+/* Говорит, откуда она возьмётся: не «настройка реакции», а жест, который её ставит. */
+"reactions.quickHelp" = "Двойное касание сообщения ставит эту реакцию.";
 
 /* Accessibility label for the address field. */
 "signIn.addressLabel" = "Адрес аккаунта";
@@ -137,3 +181,118 @@
 "videoNote.noCamera" = "На этом устройстве нет камеры.";
 
 "videoNote.record" = "Записать видеосообщение";
+
+/* A conversation with no messages in it. Not a problem — an invitation. */
+"room.emptyTitle" = "Здесь пока пусто";
+
+"room.emptyMessage" = "Напишите первое сообщение — с него всё и начнётся.";
+
+/* The chat could not be opened at all. Must not be confused with an empty chat: the
+   messages are there, we just can't show them. */
+"room.loadFailedTitle" = "Не удалось открыть чат";
+
+"room.loadFailedMessage" = "Сообщения никуда не делись — мы просто не смогли их загрузить. Проверьте соединение.";
+
+"room.tryAgain" = "Попробовать снова";
+
+/* Accessibility hint on the chat header. Says what pressing it does. */
+"room.openDetails" = "Открыть информацию о чате";
+
+/* Title of the screen behind the chat header. */
+"room.detailsTitle" = "О чате";
+
+/* Section header above the room's topic — what the room is for. */
+"room.about" = "Описание";
+
+/* Shown beside the people who run the room. Never a number: Matrix calls this a power
+   level, and «уровень прав 100» is the data model talking, not a person. */
+"room.administrator" = "Администратор";
+
+"room.moderator" = "Модератор";
+
+/* Long press (right click on a Mac) on a message. */
+"message.menu.copy" = "Скопировать";
+
+"message.menu.delete" = "Удалить";
+
+/* Asked before a message is deleted. The one thing in the menu that cannot be undone. */
+"message.menu.deleteConfirmTitle" = "Удалить сообщение?";
+
+/* Must say plainly that it disappears for everyone, not just for the person deleting it. */
+"message.menu.deleteConfirmMessage" = "Оно исчезнет у всех участников чата. Вернуть его будет нельзя.";
+
+/* Accessibility hints on a reaction. Say what pressing it will do — the pill itself can't. */
+"message.menu.addReaction" = "Поставить реакцию";
+
+"message.menu.removeReaction" = "Убрать свою реакцию";
+
+/* Внизу меню сообщения: точное время. Часы рядом с пузырём показывают только час и минуты —
+   тут дата целиком. Дату подставляет система, на языке читателя. */
+"message.menu.sentAt" = "Отправлено %@";
+
+/* И то же самое для удалённого сообщения: когда его написали и когда его забрали. */
+"message.menu.deletedAt" = "Удалено %@";
+
+/* Разделитель дня в переписке. Днём недели никто не пользуется, чтобы вспомнить, когда
+   было сообщение: два ближайших дня называют словом, всё остальное — датой. */
+"room.today" = "Сегодня";
+
+"room.yesterday" = "Вчера";
+
+/* Экран «Внешний вид»: выбор цвета, которым покрашено приложение. Семь цветов радуги
+   и чёрно-белая тема без цвета вовсе. */
+"appearance.accent" = "Цвет приложения";
+
+/* Под рядом кружков с цветами. Говорит, что именно изменится, а не то, что это «тема». */
+"appearance.accentHelp" = "Красит ваши сообщения, кнопки и значки — во всём приложении.";
+
+/* Названия цветов. Их не видно на экране: кружок нечем прочитать вслух, и VoiceOver
+   называет цвет по имени. */
+"appearance.color.red" = "Красный";
+
+"appearance.color.orange" = "Оранжевый";
+
+"appearance.color.yellow" = "Жёлтый";
+
+"appearance.color.green" = "Зелёный";
+
+"appearance.color.cyan" = "Голубой";
+
+"appearance.color.blue" = "Синий";
+
+"appearance.color.violet" = "Фиолетовый";
+
+"appearance.color.mono" = "Чёрно-белый";
+
+/* Фото выбрали, но прочитать его не удалось — это отказ ещё до отправки, и говорить
+   про сервер здесь было бы враньём. Частая причина — снимок лежит в iCloud и не скачан. */
+"room.attachmentUnreadable" = "Не удалось прочитать это фото. Бывает, если оно ещё не скачано из iCloud — откройте его в «Фото» и попробуйте снова.";
+
+"message.media.close" = "Закрыть";
+
+/* Видео не скачалось. Не тревога и не окно с кнопкой — просто надпись на самом сообщении:
+   сделать с этим всё равно нечего, кроме как нажать ещё раз. */
+"message.media.loadFailed" = "Видео не загрузилось";
+
+/* Кнопка на кружке предпросмотра: повернуть камеру на себя или от себя. */
+"videoNote.flipCamera" = "Перевернуть камеру";
+
+/* The mark on a message its author went back and changed. */
+"message.edited" = "изменено";
+
+/* The long press on a message. */
+"message.menu.reply" = "Ответить";
+"message.menu.edit" = "Изменить";
+"message.menu.pin" = "Закрепить";
+"message.menu.unpin" = "Открепить";
+
+/* The strip above the composer: answering somebody, or going back to change your own message. */
+"room.replyingTo" = "Ответ";
+"room.editingMessage" = "Изменение сообщения";
+"room.stopReplying" = "Отменить";
+
+/* Pinned messages: the strip at the top of the room, and the screen behind it. */
+"room.pinned" = "Закреплённое";
+"room.pinnedTitle" = "Закреплённые";
+"room.pinnedEmpty" = "Здесь пока ничего не закреплено";
+"room.unpin" = "Открепить";

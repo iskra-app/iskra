@@ -24,6 +24,11 @@ public struct SignInOptions: Sendable, Equatable {
 public enum AuthenticationError: Error {
     /// We could not find a Matrix server at that address.
     case homeserverNotFound
+    /// We found somewhere to ask, and it never answered.
+    ///
+    /// Separate from `homeserverNotFound` because the advice differs: a typo is not the
+    /// problem, the network or the server is.
+    case homeserverUnreachable
     /// We could not open the encrypted store or reach the Keychain.
     ///
     /// Kept separate from `homeserverNotFound` on purpose. Folding the two together
@@ -64,7 +69,14 @@ public actor AuthenticationService {
     public func restorePreviousSession() async throws -> Client? {
         guard let stored = try sessionStore.loadSession() else { return nil }
 
-        let client = try await makeClientBuilder(sessionID: stored.sessionID)
+        let builder: ClientBuilder
+        do {
+            builder = try makeClientBuilder(sessionID: stored.sessionID)
+        } catch {
+            throw AuthenticationError.storageUnavailable(error)
+        }
+
+        let client = try await builder
             .homeserverUrl(url: stored.homeserverURL)
             .build()
 
@@ -92,16 +104,32 @@ public actor AuthenticationService {
             throw AuthenticationError.storageUnavailable(error)
         }
 
+        // Bounded, because everything past this point is the network. An unreachable
+        // server — a homeserver on a LAN the phone is not on, a captive portal, a host
+        // that accepts the connection and then says nothing — otherwise leaves the
+        // "Continue" button spinning with no way out and nothing on screen to explain
+        // it. A wrong answer the user can act on beats a spinner that never stops.
         let client: Client
         do {
-            client = try await builder
-                .serverNameOrHomeserverUrl(serverNameOrUrl: address)
-                .build()
+            client = try await withTimeout(Self.lookupTimeout) {
+                try await builder
+                    .serverNameOrHomeserverUrl(serverNameOrUrl: address)
+                    .build()
+            }
+        } catch is TimeoutError {
+            throw AuthenticationError.homeserverUnreachable
         } catch {
             throw AuthenticationError.homeserverNotFound
         }
 
-        let details = await client.homeserverLoginDetails()
+        let details: HomeserverLoginDetails
+        do {
+            details = try await withTimeout(Self.lookupTimeout) {
+                await client.homeserverLoginDetails()
+            }
+        } catch {
+            throw AuthenticationError.homeserverUnreachable
+        }
 
         pendingClient = client
         pendingSessionID = sessionID
@@ -223,9 +251,9 @@ public actor AuthenticationService {
     /// settings — an encrypted store and an encrypted search index — cannot be
     /// forgotten on one of the paths.
     private func makeClientBuilder(sessionID: String) throws -> ClientBuilder {
-        let dataURL = environment.sessionDataURL(forSessionID: sessionID)
-        let cacheURL = environment.sessionCachesURL(forSessionID: sessionID)
-        let searchURL = environment.searchIndexURL(forSessionID: sessionID)
+        let dataURL = try environment.sessionDataURL(forSessionID: sessionID)
+        let cacheURL = try environment.sessionCachesURL(forSessionID: sessionID)
+        let searchURL = try environment.searchIndexURL(forSessionID: sessionID)
 
         for url in [dataURL, cacheURL, searchURL] {
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
@@ -255,6 +283,10 @@ public actor AuthenticationService {
                            policyUri: nil,
                            staticRegistrations: [:])
     }
+
+    /// Long enough for well-known discovery over a slow mobile connection, short enough
+    /// that a person still believes the app is answering them.
+    private static let lookupTimeout: Duration = .seconds(30)
 
     /// Shown to the user in their list of signed-in devices, so it is a plain name
     /// rather than a model identifier.
