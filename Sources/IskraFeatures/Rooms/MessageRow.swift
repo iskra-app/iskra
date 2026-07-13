@@ -54,6 +54,17 @@ struct MessageRow: View {
     /// `RoomView` can actually scroll the conversation, so it is reported upward.
     var onOpenReply: (String) -> Void = { _ in }
 
+    /// Whether the conversation has just jumped *to* this message, and it is briefly lit so that
+    /// the eye can find it.
+    ///
+    /// The scroll alone is not an answer. Pressing a quote lands the message somewhere in the
+    /// middle of a screenful of other messages, all of them looking exactly like it, and the user
+    /// is left to work out which of them they were sent to. Owned by `RoomView`, because it is a
+    /// fact about the conversation — only one message in it is lit — and not about the row.
+    var isHighlighted: Bool = false
+
+    @Environment(\.accent) private var accent
+
     /// Guarding a redaction behind a confirmation, because it cannot be undone and every
     /// other item in that menu can.
     @State private var isConfirmingDelete = false
@@ -101,6 +112,23 @@ struct MessageRow: View {
             }
         }
         .padding(.top, message.isContinuation ? Theme.Spacing.withinRun : Theme.Spacing.betweenSenders)
+        // Lit, when the conversation has just been sent here. The wash runs the full width of the
+        // row and out into the margins the timeline keeps on either side — it is the *row* that
+        // has been found, and a glow that stopped at the bubble's edge would be one more shape in
+        // a column of shapes rather than a torch shone on one of them.
+        //
+        // The accent, faintly, and not a yellow of its own: this is the app pointing at something,
+        // and the app points in one colour.
+        .background {
+            RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                .fill(accent.color.opacity(isHighlighted ? 0.16 : 0))
+                .padding(.horizontal, -Theme.Spacing.close)
+                .allowsHitTesting(false)
+        }
+        // Slower than a reaction, and it has to be: this one is meant to be *caught*, and a wash
+        // that snapped on and off would be over before the eye arrived from the quote it was
+        // pressed on. It fades out on its own — see `RoomView`, which is what puts the light out.
+        .animation(.smooth(duration: Theme.Timing.reaction * 2), value: isHighlighted)
         // Reactions arrive from other people, unannounced, while you are reading. Popping
         // one into existence under a message moves every message below it by a row with no
         // warning; growing it in says what happened. One `value:` for the whole row, so a
@@ -445,12 +473,14 @@ struct MessageRow: View {
 
         case let .image(attachment):
             quoted {
-                PictureBubble(attachment: attachment, isOwn: message.isOwn, isPlayable: false)
+                PictureBubble(attachment: attachment, isOwn: message.isOwn, isPlayable: false,
+                              sender: senderTitle, timestamp: message.timestamp)
             }
 
         case let .video(attachment):
             quoted {
-                PictureBubble(attachment: attachment, isOwn: message.isOwn, isPlayable: true)
+                PictureBubble(attachment: attachment, isOwn: message.isOwn, isPlayable: true,
+                              sender: senderTitle, timestamp: message.timestamp)
             }
 
         case let .audio(attachment):
@@ -488,18 +518,29 @@ struct MessageRow: View {
         }
     }
 
-    /// The gap a bubble must leave on the far side of the conversation, so that a long message
-    /// is visibly *from* somebody rather than a paragraph spanning the screen.
+    /// The gap a message must leave on the far side of the conversation, so that a long one is
+    /// visibly *from* somebody rather than a paragraph spanning the screen.
     ///
-    /// A video note is the exception, and it is the reason this stopped being the number 60
-    /// written twice. A playing note takes the whole width, and this floor is the one thing
-    /// that would not let it: it is a *minimum*, so the row would honour it by pushing the
-    /// clock off the screen rather than by drawing a smaller circle. There is nothing for the
-    /// gap to protect here anyway — a circle is not a wall of text, and the shape says whose
-    /// it is well enough on its own.
+    /// It is what is left of the width once the message has taken the nine tenths it is allowed
+    /// — and the clock, which stands outside the bubble but is part of the message all the
+    /// same, is counted as the message's. So the gap is a *tenth of the conversation, less the
+    /// clock's column*, and on a phone that arithmetic comes out at nothing: the clock is
+    /// already wider than the tenth, and the column of times is itself the gap. That is the
+    /// intended answer and not a degenerate one — 56pt of quiet beside a bubble is plenty on a
+    /// screen 390pt wide, and it buys the bubble the room the flat 60pt was taking from it.
+    /// On a Mac, where a tenth is a hundred points, the gap reappears and does the job it was
+    /// written for.
+    ///
+    /// A video note is the exception. A playing note takes the whole width, and this floor is
+    /// the one thing that would not let it: it is a *minimum*, so the row would honour it by
+    /// pushing the clock off the screen rather than by drawing a smaller circle. There is
+    /// nothing for the gap to protect here anyway — a circle is not a wall of text, and the
+    /// shape says whose it is well enough on its own.
+    ///
+    /// Nothing at all until the conversation has been measured, which lasts one layout pass.
     private var emptyColumn: CGFloat {
         if case .videoNote = message.kind { return 0 }
-        return 60
+        return max(0, timelineWidth * (1 - Theme.Size.bubbleWidthFraction) - Theme.Size.clockColumn)
     }
 
     /// How big a video note goes while it plays.
@@ -563,8 +604,19 @@ struct MessageRow: View {
         }
     }
 
+    /// Who sent it, in the one form that works when the message is looked at away from the
+    /// side of the screen it was on: a name, and "you" where the name would be your own.
+    ///
+    /// The word is `Spoken.you` — the one VoiceOver reads out — and it is deliberately not a
+    /// second string with the same two letters in it. A translation duplicated is a translation
+    /// that drifts, and there is no sentence in which the app would want to call the user one
+    /// thing aloud and another on screen.
+    private var senderTitle: String {
+        message.isOwn ? String(app: Strings.Message.Spoken.you) : message.senderName
+    }
+
     private var accessibilityLabel: String {
-        let who = message.isOwn ? String(app: Strings.Message.Spoken.you) : message.senderName
+        let who = senderTitle
 
         // A message body is the sender's own words, so it is read back as written.
         // Everything else is a description of what they did, and is translated.
@@ -994,6 +1046,17 @@ private struct PictureBubble: View {
     let isOwn: Bool
     let isPlayable: Bool
 
+    /// Who sent it and when — carried through the bubble to the viewer, which puts them at the
+    /// top of the screen. A photo opened full-screen has none of what the timeline was saying
+    /// around it: no side of the conversation, no name above it, no clock beside it. See
+    /// `MediaViewer`.
+    let sender: String
+    let timestamp: Date
+
+    /// The photograph, once it has arrived, kept so the bubble can be made out of it. See
+    /// `backdrop`.
+    @State private var loaded: Image?
+
     /// The picture, opened. A photo and an ordinary video both come here — a circle does not,
     /// because a circle is a glance and plays where it stands.
     ///
@@ -1007,9 +1070,43 @@ private struct PictureBubble: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            MediaThumbnail(attachment: attachment)
-                .aspectRatio(aspectRatio, contentMode: .fit)
-                .frame(maxWidth: Theme.Size.picture)
+            picture
+
+            if let caption = attachment.caption {
+                Text(caption)
+                    .font(.body)
+                    // White, because what is behind it is a darkened photograph and not the
+                    // bubble fill the rest of the app writes on. `.primary` here would be
+                    // black text on somebody's night sky in the light appearance, and it
+                    // would be unreadable exactly half the time — which is worse than always.
+                    .foregroundStyle(.white)
+                    .padding(.top, Theme.Spacing.close)
+                    .padding(.horizontal, Theme.Spacing.tight)
+            }
+        }
+        .padding(Theme.Spacing.tight)
+        .background { backdrop }
+        .clipShape(BubbleShape())
+        .pictureBorder(isOwn: isOwn)
+        // The bubble, and not the rectangle around it: this is the shape a long press lifts
+        // off the conversation, and it now takes in the blurred frame and the caption as well
+        // as the photograph — which is the point of their being one bubble at all.
+        .contentShape(BubbleShape())
+        // A sheet on both platforms, and not a `fullScreenCover`: the Mac has no such thing,
+        // and a picture on a Mac belongs in a window over the conversation rather than on top
+        // of the entire app.
+        .sheet(isPresented: $isWatching) {
+            MediaViewer(attachment: attachment, isVideo: isPlayable,
+                        sender: sender, timestamp: timestamp)
+        }
+    }
+
+    /// The picture itself, sharp, sitting on the blur of itself. It keeps the image it fetched,
+    /// which is the one `backdrop` blurs — see there.
+    private var picture: some View {
+        MediaThumbnail(attachment: attachment, onLoad: { loaded = $0 })
+            .aspectRatio(aspectRatio, contentMode: .fit)
+            .frame(maxWidth: Theme.Size.picture)
                 // Half the *timeline's* height, not half the screen's: on a Mac the window
                 // is what the picture has to share with the conversation, and on iPhone the
                 // two are the same thing anyway.
@@ -1042,23 +1139,36 @@ private struct PictureBubble: View {
                             .padding(Theme.Spacing.close)
                     }
                 }
-                .clipShape(BubbleShape())
-                .pictureBorder(isOwn: isOwn)
-                .contentShape(BubbleShape())
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.picture, style: .continuous))
+                .contentShape(.rect)
                 .onTapGesture { isWatching = true }
+    }
 
-            if let caption = attachment.caption {
-                Text(caption)
-                    .font(.body)
-                    .padding(.top, Theme.Spacing.close)
-                    .padding(.horizontal, Theme.Spacing.tight)
-            }
-        }
-        // A sheet on both platforms, and not a `fullScreenCover`: the Mac has no such thing,
-        // and a picture on a Mac belongs in a window over the conversation rather than on top
-        // of the entire app.
-        .sheet(isPresented: $isWatching) {
-            MediaViewer(attachment: attachment, isVideo: isPlayable)
+    /// The bubble's fill: this same photograph, blurred past reading and taken down dark.
+    ///
+    /// *This* photograph, and not another copy of it. It used to ask the loader for its own
+    /// 64pt thumbnail, on the reasoning that a blur needs nothing bigger and the SDK is holding
+    /// the bytes anyway — but the SDK's cache is keyed by size, so a second size is a second
+    /// request and a second decode, and every picture in the timeline paid for two. The sharp
+    /// copy above hands its image over the moment it lands (`MediaThumbnail.onLoad`), and this
+    /// blurs what is already there. One fetch.
+    ///
+    /// Nothing at all until then: an empty bubble for the half-second before the picture
+    /// arrives is what the rest of the timeline looks like anyway, and a second spinner behind
+    /// the first one was never worth a round trip.
+    @ViewBuilder
+    private var backdrop: some View {
+        if let loaded {
+            loaded
+                .resizable()
+                .scaledToFill()
+                .blur(radius: Theme.Backdrop.blur)
+                // Drawn larger than the bubble and clipped back to it, so the blur's own soft
+                // edges fall outside the frame — see `Theme.Backdrop.overdraw`.
+                .scaleEffect(Theme.Backdrop.overdraw)
+                .overlay(Color.black.opacity(Theme.Backdrop.dim))
+                // It is scenery. Every press in this bubble belongs to the picture on top of it.
+                .allowsHitTesting(false)
         }
     }
 }

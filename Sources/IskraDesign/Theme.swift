@@ -19,6 +19,12 @@ public enum Theme {
         /// stop meeting: the shape becomes a rounded rectangle that is *almost* a capsule,
         /// which reads as a mistake rather than as a decision.
         public static let bubble: CGFloat = 24
+
+        /// The picture inside a picture bubble. Smaller than the bubble by the padding
+        /// between the two, so the two curves are concentric: a corner drawn at the bubble's
+        /// own radius inside the bubble's own inset would run *outside* the shape it sits in,
+        /// and the eye reads that as a picture pushing through its frame.
+        public static let picture: CGFloat = 20
         public static let card: CGFloat = 16
         public static let control: CGFloat = 12
         /// Avatars and video notes.
@@ -87,6 +93,22 @@ public enum Theme {
         /// it further would not have fixed anything — the jerking was `AVPlayerLayer` running
         /// an animation of its own underneath this one. See `PlayerHostView.noAnimations`.
         public static let videoNote: Animation = .spring(duration: 0.4, bounce: 0.15)
+
+        /// How long a message stays lit after the conversation has jumped to it.
+        ///
+        /// Long enough to find with the eye — the jump lands the message in the middle of a
+        /// screenful of other messages, and without the light the user has to work out which one
+        /// they were sent to. Short enough that it fades on its own: it is an answer to a
+        /// question that has been asked, not a state the room is now in.
+        public static let highlight: TimeInterval = 1.6
+
+        /// How long a finger has to stay down on the record button before it is recording rather
+        /// than tapping it to change what it records.
+        ///
+        /// The twin of `Size.gestureReach`, and it lives here for the same reason: it is a
+        /// threshold the user feels, and a number the app has an opinion about. Long enough that
+        /// a decisive tap never records; short enough that a hold does not feel ignored.
+        public static let holdBegins: Duration = .milliseconds(250)
     }
 
     /// The lines the app draws *around* things rather than under them. There are very few:
@@ -97,6 +119,37 @@ public enum Theme {
         /// The dashes of the outline a deleted message leaves behind — see `deletedBubble`.
         /// Even dash and gap, so the line reads as a placeholder rather than as a decoration.
         public static let dash: [CGFloat] = [4, 4]
+    }
+
+    /// The picture behind a picture: a photo's own bubble is that photo, blurred out of
+    /// legibility and darkened until nothing on it competes with the sharp copy in front.
+    ///
+    /// Every other bubble in the app has a fill — the accent on your own, grey on somebody
+    /// else's — and a photo used to have none at all: it *was* the bubble, and a caption under
+    /// it sat on the bare page. So a picture message had no body, and the words that came with
+    /// the picture belonged to nothing. The blurred photo is that missing body, and it is made
+    /// of the one thing that is certainly the right colour for this message: the message.
+    ///
+    /// This is **not** glass, and no `.navigationGlass()` may go here — a bubble is content
+    /// and content does not get Liquid Glass (see `IskraDesign/Glass.swift`). It is a picture
+    /// with a blur applied to it, which is a different thing entirely: an opaque, static
+    /// backdrop that samples nothing behind it.
+    public enum Backdrop {
+        /// Far enough that no face, no word and no logo survives it. A gentler blur would
+        /// leave a picture legible behind the picture, which is two photographs at once.
+        public static let blur: CGFloat = 24
+
+        /// And how far it is taken down, so that white caption text is readable over a photo
+        /// of a snowfield as surely as over one of a night sky.
+        public static let dim: Double = 0.45
+
+        /// The backdrop is drawn a third larger than the space it fills, and then clipped.
+        ///
+        /// A blur samples the transparency *outside* the view as well as the colour inside it,
+        /// so a blurred image fades out at its own edges — laid straight into the bubble, the
+        /// bubble's rim would go translucent and the conversation would show through the
+        /// frame. Overdrawing pushes those soft edges out past the clip.
+        public static let overdraw: CGFloat = 1.3
     }
 
     public enum Size {
@@ -168,6 +221,18 @@ public enum Theme {
         /// How wide a photo or a video still is drawn in the timeline.
         public static let picture: CGFloat = 280
 
+        /// How much of the conversation's width a message may take before the far side of
+        /// the screen starts pushing back.
+        ///
+        /// A message has to be visibly *from* somebody — a bubble spanning the whole width is
+        /// a paragraph on a page, and the empty column beside it is what says which side of
+        /// the conversation it belongs to. But that column used to be 60 points flat, which is
+        /// a sixth of a phone and a rounding error on a Mac: the same message was cramped on
+        /// the device it was written on and adrift in the window it was read in. A fraction is
+        /// the same *proportion* everywhere, and a tenth is enough of a margin to read as one
+        /// while leaving a long message the room to be long.
+        public static let bubbleWidthFraction: CGFloat = 0.9
+
         /// And how tall a map is. Shorter than it is wide, because a place is a point and the
         /// context that matters around it is the streets either side, not the sky above.
         public static let map: CGFloat = 160
@@ -210,11 +275,28 @@ public enum Theme {
 
         /// How far a thumb has to travel, mid-hold, for the movement to mean something.
         ///
-        /// The escapes from a recording in progress — left to cancel, up to record without
-        /// holding — and it is a real threshold rather than a nicety: a finger held still on a
-        /// button is never actually still, and a few points of drift must not throw away
-        /// somebody's video message.
+        /// The one escape from a recording that does not need the finger lifted — up, to carry
+        /// on hands-free — and it is a real threshold rather than a nicety: a finger held still
+        /// on a button is never actually still, and a few points of drift must not turn somebody
+        /// letting go into somebody locking.
         public static let gestureReach: CGFloat = 60
+
+        /// The camera, while a round video message is being recorded.
+        ///
+        /// Very nearly the width of a phone, and that is the point: this is the one thing on the
+        /// screen, the room behind it is blurred out, and a circle sitting in the middle of all
+        /// that with a hand's breadth of empty blur on either side reads as a preview of a
+        /// preview. It is also what the user is *framing their face in* — a bubble in a
+        /// conversation is looked at, but this is looked *into*, and there is no reason to make
+        /// them do it through a smaller window than the screen can give.
+        ///
+        /// 320 rather than more: the narrowest screen this app runs on is 375pt, and the overlay
+        /// spends `Spacing.roomy` on each side of it.
+        public static let videoNoteCamera: CGFloat = 320
+
+        /// The button that sends what is being recorded. Larger than a composer control on
+        /// purpose: it is the only thing on the screen the thumb is looking for.
+        public static let recordingSend: CGFloat = 72
 
         /// How close to the top of a conversation counts as asking for more of it.
         ///

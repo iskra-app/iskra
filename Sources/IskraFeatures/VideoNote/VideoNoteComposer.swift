@@ -57,11 +57,18 @@ struct CameraPreview: PlatformViewRepresentable {
     }
 }
 
-/// Recording a round video message.
+/// Recording a round video message: the camera over the conversation, not instead of it.
 ///
 /// Hold the button to record, let go to send — the same gesture as the thing this is
 /// modelled on, and the one that makes a sixty-second cap feel like a feature rather
 /// than a restriction.
+///
+/// An overlay and not a sheet. A sheet is a *place you go*: it slides up, it takes the screen,
+/// and it puts the room behind a card. But a round video message is a remark in a conversation
+/// that is still going on — you are answering the thing on the screen, and it should still be
+/// on the screen, blurred back behind the camera rather than shoved out from under it. It also
+/// makes the geometry honest: the shutter is exactly where the composer's button was, because
+/// nothing moved.
 struct VideoNoteComposer: View {
     /// The recorder, owned by the *screen* rather than by this sheet.
     ///
@@ -88,73 +95,64 @@ struct VideoNoteComposer: View {
     /// after the finger lifts, and the shutter becomes a stop button.
     @Binding var isLocked: Bool
 
+    /// Thrown away. The screen owns the recorder, so it owns the throwing away too — and it has
+    /// to take this overlay down with it, which is a thing only the screen can do.
+    let onCancel: () -> Void
+
     let onRecorded: (URL) async -> Void
 
-    @Environment(\.dismiss) private var dismiss
     @Environment(\.accent) private var accent
 
+    // No defaults on the two bindings. `isLocked` used to default to `.constant(true)`, which is
+    // a binding that cannot be written — so a composer built without one would set the lock, the
+    // write would go nowhere, and the screen would never hear that the finger had been let go of.
+    // Every one of these is a channel back to the screen, and a channel with a default is a
+    // channel that can be silently left unplugged.
     init(recorder: VideoNoteRecorder,
-         isHolding: Binding<Bool> = .constant(false),
-         isLocked: Binding<Bool> = .constant(true),
+         isHolding: Binding<Bool>,
+         isLocked: Binding<Bool>,
+         onCancel: @escaping () -> Void,
          onRecorded: @escaping (URL) async -> Void) {
         self.recorder = recorder
         _isHolding = isHolding
         _isLocked = isLocked
+        self.onCancel = onCancel
         self.onRecorded = onRecorded
     }
 
     var body: some View {
-        VStack(spacing: Theme.Spacing.generous) {
-            Text(Strings.VideoNote.title)
-                .font(.headline)
+        ZStack {
+            // The conversation, still there and out of focus. Darkened as well as blurred: a
+            // blur alone leaves a bright room bright, and the camera has to be the lit thing on
+            // the screen.
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .overlay(Color.black.opacity(Theme.Backdrop.dim))
+                .ignoresSafeArea()
 
-            circle
+            VStack(spacing: Theme.Spacing.roomy) {
+                Spacer(minLength: 0)
 
-            Group {
-                switch recorder.state {
-                case .denied:
-                    Text(Strings.VideoNote.needsCamera)
-                case .unavailable:
-                    Text(Strings.VideoNote.noCamera)
-                case .recording:
-                    VStack(spacing: Theme.Spacing.tight) {
-                        Text(Duration.seconds(recorder.elapsed), format: .time(pattern: .minuteSecond))
-                            .monospacedDigit()
-                            .foregroundStyle(.red)
+                circle
 
-                        // Only while the finger is still down on the composer's button. Once
-                        // the recording is hands-free there is nothing to let go of, and
-                        // telling somebody to release a button they are not holding is the app
-                        // talking to itself.
-                        if isHolding {
-                            Text(Strings.VideoNote.releaseToSend)
-                        }
-                    }
-                case .finishing:
-                    Text(Strings.VideoNote.sending)
-                default:
-                    Text(Strings.VideoNote.holdToRecord)
-                }
+                trouble
+
+                Spacer(minLength: 0)
+
+                controls
             }
-            .font(.callout)
-            .foregroundStyle(.secondary)
-            .multilineTextAlignment(.center)
-
-            shutter
+            .padding(Theme.Spacing.roomy)
         }
-        .padding(Theme.Spacing.generous)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task {
             await recorder.prepare()
 
-            // The finger came down on the composer's button, the sheet came up, and the camera
-            // took as long as a camera takes. Recording begins the moment it is ready — which is
-            // the whole point of the hold: one movement, not two.
+            // The finger came down on the composer's button, the camera came up, and it took as
+            // long as a camera takes. Recording begins the moment it is ready — which is the
+            // whole point of the hold: one movement, not two.
             if isHolding {
                 startRecording()
             }
         }
-        .onDisappear { recorder.cancel() }
     }
 
     @ViewBuilder
@@ -166,7 +164,7 @@ struct VideoNoteComposer: View {
                 Circle().fill(.quaternary)
             }
         }
-        .frame(width: 260, height: 260)
+        .frame(width: Theme.Size.videoNoteCamera, height: Theme.Size.videoNoteCamera)
         .clipShape(.circle)
         .overlay {
             // The ring fills as the sixty seconds run down, so the limit is visible
@@ -177,16 +175,57 @@ struct VideoNoteComposer: View {
                 .rotationEffect(.degrees(-90))
                 .animation(.linear(duration: 0.1), value: recorder.progress)
         }
-        .overlay(alignment: .bottomTrailing) { flip }
         .accessibilityLabel(Text(Strings.VideoNote.title))
     }
 
-    /// Turns the camera round, and sits on the circle it turns.
+    /// The two things that can be wrong, and the one thing worth saying while it works.
     ///
-    /// On the edge of the preview rather than beside the shutter, because it acts on the
-    /// picture and not on the recording — and because the thumb is already down there. It goes
-    /// away entirely while recording (the lens cannot be swapped mid-clip; see
-    /// `VideoNoteRecorder.flip`) and on a machine with only one camera.
+    /// No "hold to record" here any more: by the time this is on the screen the hold has already
+    /// happened. What is left to say is how to get out of it hands-free, and only while there is
+    /// still a hand on it.
+    @ViewBuilder
+    private var trouble: some View {
+        Group {
+            switch recorder.state {
+            case .denied:
+                Text(Strings.VideoNote.needsCamera)
+            case .unavailable:
+                Text(Strings.VideoNote.noCamera)
+            case .finishing:
+                Text(Strings.VideoNote.sending)
+            case .recording where isHolding:
+                Text(Strings.VideoNote.releaseToSend)
+            default:
+                EmptyView()
+            }
+        }
+        .font(.callout)
+        .foregroundStyle(.secondary)
+        .multilineTextAlignment(.center)
+    }
+
+    /// The bar along the bottom: what is being recorded, the way out of it, and the way to send
+    /// it — in that order, left to right, ending under the thumb.
+    private var controls: some View {
+        HStack(alignment: .bottom, spacing: Theme.Spacing.close) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.close) {
+                flip
+                RecordingStrip(elapsed: recorder.elapsed,
+                               isHolding: isHolding,
+                               onCamera: true,
+                               onCancel: onCancel)
+            }
+
+            shutter
+        }
+    }
+
+    /// Turns the camera round, mid-recording and all — which is the only time it is any use,
+    /// because with hold-to-record the camera is *always* recording by the time it is on screen.
+    /// See `VideoNoteRecorder.flip`, which used to refuse this and now does not.
+    ///
+    /// Present only where there is a second lens to turn to. On a Mac there is not, and a button
+    /// that does nothing is worse than no button.
     @ViewBuilder
     private var flip: some View {
         if recorder.canFlip {
@@ -200,53 +239,70 @@ struct VideoNoteComposer: View {
                     .background(.black.opacity(0.45), in: .circle)
             }
             .buttonStyle(.plain)
-            // While the ring is filling there is nothing to turn, so it leaves rather than
-            // sitting there greyed out — a disabled button on a live preview reads as
-            // something the app has broken.
-            .opacity(isRecording ? 0 : 1)
-            .animation(.smooth(duration: 0.2), value: isRecording)
-            .disabled(isRecording)
             .accessibilityLabel(Text(Strings.VideoNote.flipCamera))
         }
     }
 
-    /// Red while it is recording, and the accent before it starts — the same colour the
-    /// send button wears, because this button sends too. Not `Color.accentColor`: that one
-    /// is fixed at build time and would stay blue in a green app. See `AccentTheme`.
+    /// Send. The big pale circle in the corner, which is where the finger already is — it is
+    /// directly over the composer's record button, because the overlay did not move anything.
+    ///
+    /// It is a *send* button and not a stop button, even though stopping is what it makes the
+    /// recorder do, because stopping is not why anybody presses it. Before the recording starts
+    /// it is still the shutter: hold it, and the camera runs.
     private var shutter: some View {
         Circle()
-            .fill(isRecording ? AnyShapeStyle(Color.red) : AnyShapeStyle(accent.color))
-            .frame(width: 72, height: 72)
+            .fill(isRecording ? AnyShapeStyle(accent.color) : AnyShapeStyle(.quaternary))
+            .frame(width: Theme.Size.recordingSend, height: Theme.Size.recordingSend)
             .overlay {
-                Image(systemName: isRecording ? "stop.fill" : "video.fill")
-                    .font(.title2)
-                    .foregroundStyle(isRecording ? AnyShapeStyle(.white) : accent.foreground)
+                Image(systemName: isRecording ? "arrow.up" : "video.fill")
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(isRecording ? accent.foreground : AnyShapeStyle(.primary))
             }
-            .scaleEffect(isRecording ? 1.15 : 1)
             .animation(.smooth(duration: 0.2), value: isRecording)
-            .gesture(
-                LongPressGesture(minimumDuration: 0.1)
-                    .onEnded { _ in
-                        // A recording started *in here* belongs to this shutter, not to the
-                        // finger out on the composer — so it is locked. Otherwise letting go of
-                        // the shutter and letting go of the composer's button would both try to
-                        // end the same clip, and the second one would land on a recorder that
-                        // had already sent it.
-                        isLocked = true
-                        startRecording()
-                    }
-                    .sequenced(before: DragGesture(minimumDistance: 0).onEnded { _ in recorder.stop() })
-            )
+            // Two gestures, and which one is live depends on whether anything is being recorded.
+            //
+            // It used to be one: a long press that started the clip, sequenced before a drag
+            // that ended it. That reads well until the recording is already running — started
+            // by the finger out on the composer, and still running hands-free — at which point
+            // this circle is a send button wearing an arrow, and `sequenced` still insisted on
+            // the hundred milliseconds of long press before it would look at the release. A tap
+            // is often shorter than that. So the one button on the screen the thumb is looking
+            // for silently did nothing to a decisive tap, and worked only if you pressed and
+            // held it, which is not a thing a send button has ever asked of anybody.
+            .gesture(hold, isEnabled: !isRecording)
+            .gesture(TapGesture().onEnded { recorder.stop() }, isEnabled: isRecording)
             .disabled(!canRecord)
             .opacity(canRecord ? 1 : 0.4)
-            .accessibilityLabel(Text(Strings.VideoNote.holdToRecord))
+            .accessibilityLabel(Text(isRecording ? Strings.Recording.send : Strings.VideoNote.holdToRecord))
             .accessibilityAddTraits(.isButton)
+            // Neither a long press nor a tap gesture is something VoiceOver performs — it
+            // activates, and an activation reaches neither. Without this the shutter announces
+            // itself as a button and then ignores the only way VoiceOver has of pressing one,
+            // which left a VoiceOver user unable to record a video message at all.
+            .accessibilityAction {
+                if isRecording { recorder.stop() } else { beginFromShutter() }
+            }
     }
 
-    private var isRecording: Bool {
-        if case .recording = recorder.state { return true }
-        return false
+    /// Hold the shutter and the camera runs; the clip is then hands-free and the same circle,
+    /// now an arrow, sends it.
+    ///
+    /// Releasing does *not* send, which is the one way this differs from the composer's button.
+    /// A recording started in here belongs to the shutter rather than to the finger out on the
+    /// composer, and letting the two of them both try to end the same clip meant the second one
+    /// landing on a recorder that had already sent it. So it is locked the moment it begins, and
+    /// there is exactly one thing that ends it: a tap.
+    private var hold: some Gesture {
+        LongPressGesture(minimumDuration: 0.1)
+            .onEnded { _ in beginFromShutter() }
     }
+
+    private func beginFromShutter() {
+        isLocked = true
+        startRecording()
+    }
+
+    private var isRecording: Bool { recorder.isRecording }
 
     private var canRecord: Bool {
         recorder.state == .ready || isRecording
@@ -255,7 +311,6 @@ struct VideoNoteComposer: View {
     private func startRecording() {
         recorder.start { url in
             await onRecorded(url)
-            dismiss()
         }
     }
 }

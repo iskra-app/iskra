@@ -30,8 +30,6 @@ public struct RoomView: View {
     /// Unlike the camera, there is no sheet: a voice message has nothing to show, so the
     /// composer itself becomes the recording for as long as it lasts.
     @State private var voice = VoiceRecorder()
-    @State private var isHoldingVoice = false
-    @State private var isVoiceLocked = false
 
     /// Whether the user is answering somebody, or going back to change what they wrote. Held
     /// here rather than in the composer because both begin in the *timeline* — a menu item on a
@@ -73,6 +71,11 @@ public struct RoomView: View {
 
     /// The width the messages have to live in. See `EnvironmentValues.timelineWidth`.
     @State private var timelineWidth: CGFloat = 0
+
+    /// The message the conversation has just been sent to by pressing a quote, lit until the
+    /// reader has had time to see which one it is — and the timer that puts it out. See `light`.
+    @State private var highlighted: String?
+    @State private var lighting: Task<Void, Never>?
 
     /// Trustworthy *here*, unlike in the sidebar. `RoomView` fills the split view's detail
     /// column, so the size class it reads is the width of the space it actually draws in —
@@ -143,9 +146,9 @@ public struct RoomView: View {
                             .padding()
                     }
 
-                    ForEach(timeline.rows) { row in
-                        view(for: row, in: scroll)
-                            .id(row.id)
+                    ForEach(placedRows) { placed in
+                        view(for: placed.row, followsEvent: placed.followsEvent, in: scroll)
+                            .id(placed.id)
                     }
                 }
                 // A message leaving the conversation is the one change here worth animating.
@@ -165,8 +168,10 @@ public struct RoomView: View {
                 .animation(.smooth(duration: Theme.Timing.deletion), value: timeline.rows.map(\.id))
                 .padding(.horizontal, Theme.Spacing.normal)
                 // The composer floats over the timeline on glass, so the last message
-                // must be able to scroll clear of it.
-                .padding(.bottom, Theme.Spacing.generous)
+                // must be able to scroll clear of it — but only just. The composer already
+                // carries its own padding, and a generous gap on top of that reads as the
+                // conversation having ended some way above the bar you answer it in.
+                .padding(.bottom, Theme.Spacing.close)
             }
             .defaultScrollAnchor(.bottom)
             // How much room the conversation has. Measured here, on the container, and never
@@ -229,6 +234,14 @@ public struct RoomView: View {
         .safeAreaInset(edge: .bottom) {
             composer
         }
+        // Over everything, composer included: while the camera is up, the room is the thing
+        // being answered rather than the thing being used.
+        //
+        // The fade is a `withAnimation` at the two places the flag moves, and *not* an
+        // `.animation(value:)` here: this is the outermost view in the room, and an implicit
+        // animation on it would animate every animatable value in the whole subtree — the
+        // timeline, the rows, the composer — each time the camera came up.
+        .overlay { videoNoteOverlay }
         // The strip at the top of the room, above the conversation and below the toolbar.
         // Present only when there is something pinned — a room with nothing pinned should not
         // give up a row of its screen to say so.
@@ -343,7 +356,23 @@ public struct RoomView: View {
             try? await timeline.start()
             await timeline.markAsRead()
         }
-        .onDisappear { timeline.stop() }
+        // The camera goes with the room, and it has to be said here rather than left to the
+        // overlay: the overlay used to be a sheet, and a sheet took its own `onDisappear` with
+        // it. Nothing else turns the capture session off — leave the room mid-recording and the
+        // lens, the microphone and a ten-a-second ticker all carry on behind a screen that is no
+        // longer there.
+        //
+        // And the microphone alone, for exactly the same reason. A voice message has no overlay
+        // and never had one, so it never had an `onDisappear` to lose — which made it easy to
+        // miss when the camera got one. `VoiceRecorder` holds an audio session and a ticker of
+        // its own and has no `deinit` to fall back on: walk out of a room mid-sentence and it
+        // keeps listening.
+        .onDisappear {
+            timeline.stop()
+            videoNote.cancel()
+            voice.cancel()
+            lighting?.cancel()
+        }
         .alert(Text(Strings.Room.sendFailedTitle),
                isPresented: .init(get: { timeline.sendFailure != nil },
                                   set: { if !$0 { timeline.sendFailure = nil } })) {
@@ -424,23 +453,33 @@ public struct RoomView: View {
                         onStartVoice: { Task { await startVoice() } },
                         onFinishVoice: { Task { await finishVoice() } },
                         onCancelVoice: cancelVoice,
-                        onLockVoice: {
-                            isVoiceLocked = true
-                            isHoldingVoice = false
-                        },
                         voice: voiceRecording,
                         onChoosePhoto: { isChoosingPhoto = true },
                         onChooseFile: { isChoosingFile = true },
                         onChooseLocation: { isChoosingLocation = true })
-            .sheet(isPresented: $isRecordingVideoNote) {
-                VideoNoteComposer(recorder: videoNote,
-                                  isHolding: $isHoldingVideoNote,
-                                  isLocked: $isVideoNoteLocked) { url in
-                    await timeline.send(video: url, replyingTo: replyID)
-                    cancelContext()
-                }
-                .presentationDetents([.large])
+    }
+
+    /// The camera, over the conversation rather than instead of it.
+    ///
+    /// An overlay on the *screen* and not on the composer, which is the whole reason it is up
+    /// here: the composer is handed down as a `safeAreaInset`, and an overlay on it is clipped
+    /// to the bar. This one has to cover the room — that is what it is for.
+    @ViewBuilder
+    private var videoNoteOverlay: some View {
+        if isRecordingVideoNote {
+            VideoNoteComposer(recorder: videoNote,
+                              isHolding: $isHoldingVideoNote,
+                              isLocked: $isVideoNoteLocked,
+                              onCancel: cancelVideoNote) { url in
+                await timeline.send(video: url, replyingTo: replyID)
+                cancelContext()
+                // The same tidying up as cancelling, and `cancel()` is what does it: there is
+                // nothing left to throw away by the time this runs, and what it is being asked
+                // for is the other half of that job — turn the camera off.
+                cancelVideoNote()
             }
+            .transition(.opacity)
+        }
     }
 
     // MARK: - Recording a video note
@@ -450,7 +489,7 @@ public struct RoomView: View {
     private func startVideoNote() {
         isHoldingVideoNote = true
         isVideoNoteLocked = false
-        isRecordingVideoNote = true
+        withAnimation(.smooth(duration: 0.25)) { isRecordingVideoNote = true }
     }
 
     /// The finger came up. That means send — unless the recording has been let go of, in which
@@ -466,11 +505,12 @@ public struct RoomView: View {
         videoNote.stop()
     }
 
-    /// Swiped away. The clip is thrown out and the camera goes with it.
+    /// Cancelled. The clip is thrown out and the camera goes with it.
     private func cancelVideoNote() {
         isHoldingVideoNote = false
+        isVideoNoteLocked = false
         videoNote.cancel()
-        isRecordingVideoNote = false
+        withAnimation(.smooth(duration: 0.25)) { isRecordingVideoNote = false }
     }
 
     // MARK: - Recording a voice message
@@ -478,14 +518,10 @@ public struct RoomView: View {
     /// What the composer draws while somebody is speaking, and nil the rest of the time.
     private var voiceRecording: VoiceRecording? {
         guard voice.state == .recording else { return nil }
-        return VoiceRecording(elapsed: voice.elapsed,
-                              waveform: voice.waveform,
-                              isHolding: isHoldingVoice && !isVoiceLocked)
+        return VoiceRecording(elapsed: voice.elapsed, waveform: voice.waveform)
     }
 
     private func startVoice() async {
-        isHoldingVoice = true
-        isVoiceLocked = false
         await voice.start()
 
         // The microphone was refused. Say so — a hold that produces nothing, with no explanation,
@@ -501,10 +537,6 @@ public struct RoomView: View {
     /// the button — and nil is simply nothing to send. It also hands back a file, in plaintext,
     /// which is deleted the moment the upload has been handed to the send queue.
     private func finishVoice() async {
-        isHoldingVoice = false
-        // A hands-free recording is ended by *pressing* the button, which has become a stop
-        // button and looks like one. Either way the act is the same: send what was said.
-        isVoiceLocked = false
         await sendVoice()
     }
 
@@ -520,8 +552,6 @@ public struct RoomView: View {
     }
 
     private func cancelVoice() {
-        isHoldingVoice = false
-        isVoiceLocked = false
         voice.cancel()
     }
 
@@ -533,14 +563,33 @@ public struct RoomView: View {
     /// gives up on the whole body — "unable to type-check this expression in reasonable time" —
     /// because every closure it has to infer multiplies through the view tree around it.
     @ViewBuilder
-    private func view(for row: TimelineRow, in scroll: ScrollViewProxy) -> some View {
+    private func view(for row: TimelineRow, followsEvent: Bool, in scroll: ScrollViewProxy) -> some View {
         switch row {
         case let .dayDivider(divider):
             DayDividerView(date: divider.date)
         case let .event(event):
-            RoomEventRow(event: event)
+            RoomEventRow(event: event, followsEvent: followsEvent)
         case let .message(message):
             messageRow(message, in: scroll)
+        }
+    }
+
+    /// A row, and the one fact about its neighbours it needs: whether the row above it was
+    /// another service note. Only `RoomEventRow` uses it — to close the gap inside a run of
+    /// notes — but the row cannot work it out alone, and asking for it row by row inside the
+    /// `ForEach` would walk the timeline once per row.
+    private struct PlacedRow: Identifiable {
+        let row: TimelineRow
+        let followsEvent: Bool
+        var id: String { row.id }
+    }
+
+    private var placedRows: [PlacedRow] {
+        var previousWasEvent = false
+        return timeline.rows.map { row in
+            let placed = PlacedRow(row: row, followsEvent: previousWasEvent)
+            if case .event = row { previousWasEvent = true } else { previousWasEvent = false }
+            return placed
         }
     }
 
@@ -562,7 +611,27 @@ public struct RoomView: View {
                        // `scrollTo` on an ID the list does not hold is a no-op, which is the
                        // right failure: nothing moves, and the user is where they were.
                        withAnimation(.smooth) { scroll.scrollTo(eventID, anchor: .center) }
-                   })
+                       light(eventID)
+                   },
+                   isHighlighted: highlighted == message.id)
+    }
+
+    /// Lights the message the conversation has just jumped to, and puts it out again a moment
+    /// later.
+    ///
+    /// The timer is held so that a second jump can call the first one off. Without that, pressing
+    /// two quotes in quick succession leaves the first message's timer still running, and it
+    /// reaches its `sleep` a second later and puts out a light it did not light — the message the
+    /// user is looking at right now goes dark while they are looking at it.
+    private func light(_ eventID: String) {
+        lighting?.cancel()
+        highlighted = eventID
+
+        lighting = Task {
+            try? await Task.sleep(for: .seconds(Theme.Timing.highlight))
+            guard !Task.isCancelled else { return }
+            highlighted = nil
+        }
     }
 
     // MARK: - Answering, changing, pinning
