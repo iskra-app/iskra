@@ -396,3 +396,9 @@
 
 /* Плашка внизу комнаты, когда новое сообщение пришло, а ты читаешь выше. */
 "room.jumpToNewest" = "Новые сообщения";
+
+/* Приглашение в комнату: кто позвал и два ответа. */
+"roomList.invite.from" = "%@ приглашает вас";
+"roomList.invite.unattributed" = "Вас приглашают в чат";
+"roomList.invite.accept" = "Войти";
+"roomList.invite.decline" = "Отклонить";

@@ -30,6 +30,12 @@ public final class RoomListStore {
     /// friendlier than showing an empty list.
     public private(set) var isLoadingInitialRooms = true
 
+    /// An invitation that would not be accepted or declined. Reported the same way `RoomDetailsStore`
+    /// reports a refusal — as a field the screen puts in an alert — rather than thrown, because the
+    /// press that caused it happened in a *row of a list*, and there is no call stack there to catch
+    /// anything on.
+    public var failure: RoomActionFailure?
+
     private let client: Client
     private var syncService: SyncService?
     private var roomList: RoomList?
@@ -253,12 +259,52 @@ public final class RoomListStore {
                 break
             }
 
-            summaries.append(RoomSummary(info: info, lastMessage: preview, lastActivity: activity))
+            guard let summary = RoomSummary(info: info, lastMessage: preview, lastActivity: activity) else {
+                continue
+            }
+            summaries.append(summary)
         }
 
         guard !Task.isCancelled else { return }
         rooms = Self.byRecency(summaries)
         isLoadingInitialRooms = false
+    }
+
+    // MARK: - Invitations
+
+    /// Accepts an invitation. The room becomes an ordinary room.
+    ///
+    /// The list is not touched here. Joining changes the room's membership on the server, the
+    /// server tells the sync loop, the sync loop emits a diff, and the row redraws itself as a
+    /// chat — which is the same road every other change to a room takes, and the only one that
+    /// cannot disagree with what is actually true.
+    public func accept(roomID: String) async {
+        do {
+            _ = try await client.joinRoomById(roomId: roomID)
+        } catch {
+            Log.rooms.error("the invitation would not be accepted: \(error)")
+            failure = .acceptInvite
+        }
+    }
+
+    /// Declines an invitation.
+    ///
+    /// Which is `leave()`, and that is not a workaround: Matrix has no "reject" — the SDK's own
+    /// documentation on `Room.leave` says "only invited and joined rooms can be left", and leaving
+    /// a room you were invited to *is* the decline. The room then fails the `.nonLeft` filter and
+    /// drops out of the list on its own.
+    public func decline(roomID: String) async {
+        guard let room = room(withID: roomID) else {
+            failure = .declineInvite
+            return
+        }
+
+        do {
+            try await room.leave()
+        } catch {
+            Log.rooms.error("the invitation would not be declined: \(error)")
+            failure = .declineInvite
+        }
     }
 
     /// Newest conversation first — sorted here rather than taken from the SDK's order.
@@ -276,10 +322,19 @@ public final class RoomListStore {
     /// Ties keep the SDK's order, so a burst of rooms that share a timestamp does not
     /// reshuffle itself on every rebuild; a room with nothing in it at all has no recency to
     /// claim and sinks to the bottom.
-    private static func byRecency(_ summaries: [RoomSummary]) -> [RoomSummary] {
+    static func byRecency(_ summaries: [RoomSummary]) -> [RoomSummary] {
         summaries.enumerated()
             .sorted { left, right in
-                switch (left.element.lastActivity, right.element.lastActivity) {
+                // Invitations first, and this is not a decoration. An invited room has no messages
+                // in it, so it has no `lastActivity` — which means the recency sort below would
+                // sink every invitation to the *bottom* of the list, underneath every conversation
+                // the user has ever had. The one row that is asking them a question would be the
+                // last one they ever saw.
+                if left.element.isInvitation != right.element.isInvitation {
+                    return left.element.isInvitation
+                }
+
+                return switch (left.element.lastActivity, right.element.lastActivity) {
                 case let (l?, r?) where l != r: l > r
                 case (nil, .some): false
                 case (.some, nil): true

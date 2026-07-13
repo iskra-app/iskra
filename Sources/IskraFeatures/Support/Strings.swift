@@ -57,6 +57,29 @@ public enum Strings {
         public static let emptyMessage = LocalizedStringResource("roomList.emptyMessage", bundle: bundle)
         public static let privateChat = LocalizedStringResource("roomList.privateChat", bundle: bundle)
 
+        /// A room somebody has asked you into, and the two answers to it.
+        ///
+        /// Written to be true of anybody, for the same reason every sentence in `RoomEvent` is:
+        /// Matrix does not know anyone's gender and Russian very much does. "Приглашает" is the
+        /// same word whoever is doing the inviting; "пригласила" would be a coin flip on every
+        /// name in every room.
+        public enum Invite {
+            /// The label on the row, where we know who asked.
+            public static func from(_ person: String) -> LocalizedStringResource {
+                LocalizedStringResource("roomList.invite.from",
+                                        defaultValue: "\(person) invites you",
+                                        bundle: bundle)
+            }
+
+            /// And where we do not — `RoomInfo.inviter` is genuinely optional, even for an
+            /// invitation: the SDK says so, and it happens when the invite event itself is not in
+            /// the store. "You have been invited" is still the whole of what the user needs.
+            public static let unattributed = LocalizedStringResource("roomList.invite.unattributed", bundle: bundle)
+
+            public static let accept = LocalizedStringResource("roomList.invite.accept", bundle: bundle)
+            public static let decline = LocalizedStringResource("roomList.invite.decline", bundle: bundle)
+        }
+
         /// The "+" in the top-left corner, and the two things it can start.
         public static let newConversation = LocalizedStringResource("roomList.newConversation", bundle: bundle)
         public static let newChat = LocalizedStringResource("roomList.newChat", bundle: bundle)
