@@ -106,6 +106,11 @@ targets:
         # gives it no way to look at what is already there. Asking for full access to write one
         # file would be exactly the over-reach a permission prompt exists to make visible.
         NSPhotoLibraryAddUsageDescription: Iskra needs permission to save a photo or a video from a chat to your library.
+        # Only ever asked when the "my location" button on the map is pressed — never on opening
+        # the picker. Somebody sending a pin from a map of a city they are not in should not have
+        # to say where they are to do it. Nothing here tracks anybody: one coordinate, once, to
+        # point a map at.
+        NSLocationWhenInUseUsageDescription: Iskra uses your location only when you ask it to, to put a map on the place you are.
         # ASWebAuthenticationSession intercepts the sign-in callback itself, but the
         # scheme is registered so the OAuth provider can hand it back to us.
         CFBundleURLTypes:
@@ -140,6 +145,7 @@ targets:
         LSMinimumSystemVersion: "26.0"
         NSCameraUsageDescription: Iskra uses the camera so you can record video messages.
         NSMicrophoneUsageDescription: Iskra uses the microphone so you can record voice messages.
+        NSLocationWhenInUseUsageDescription: Iskra uses your location only when you ask it to, to put a map on the place you are.
         CFBundleURLTypes:
           - CFBundleURLName: app.iskra.oauth
             CFBundleURLSchemes: [iskra]
@@ -155,6 +161,9 @@ targets:
         com.apple.security.device.audio-input: true
         # Read-only, and only when the user picks a file to send.
         com.apple.security.files.user-selected.read-only: true
+        # The sandbox refuses `CLLocationManager` outright without this — the "my location"
+        # button on the map picker would return nothing at all, with no prompt and no error.
+        com.apple.security.personal-information.location: true
         # The same group as iOS. On macOS an *unregistered* group would have to be
         # prefixed with the Team ID instead; registering it lets one identifier serve
         # both platforms.

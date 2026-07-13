@@ -225,6 +225,7 @@ public enum Strings {
             public static let sentVoice = LocalizedStringResource("message.spoken.sentVoice", bundle: bundle)
             public static let sentAudio = LocalizedStringResource("message.spoken.sentAudio", bundle: bundle)
             public static let sentFile = LocalizedStringResource("message.spoken.sentFile", bundle: bundle)
+            public static let sentLocation = LocalizedStringResource("message.spoken.sentLocation", bundle: bundle)
             public static let sentUnreadable = LocalizedStringResource("message.spoken.sentUnreadable", bundle: bundle)
             public static let deletedMessage = LocalizedStringResource("message.spoken.deletedMessage", bundle: bundle)
             public static let sentUnsupported = LocalizedStringResource("message.spoken.sentUnsupported", bundle: bundle)
@@ -246,6 +247,28 @@ public enum Strings {
         /// The button on the preview. Only ever shown where there is a second camera to
         /// turn to — see `VideoNoteRecorder.canFlip`.
         public static let flipCamera = LocalizedStringResource("videoNote.flipCamera", bundle: bundle)
+    }
+
+    /// Recording a spoken message. Same gestures as a round video one, and deliberately the
+    /// same words for them — they are two buttons side by side doing the same kind of thing.
+    public enum Voice {
+        public static let record = LocalizedStringResource("voice.record", bundle: bundle)
+        public static let stop = LocalizedStringResource("voice.stop", bundle: bundle)
+        public static let holdToRecord = LocalizedStringResource("voice.holdToRecord", bundle: bundle)
+        /// Said in the composer while the finger is down. It names the two swipes, because they
+        /// are gestures nobody discovers by accident and this is the moment they are needed.
+        public static let slideToCancel = LocalizedStringResource("voice.slideToCancel", bundle: bundle)
+        public static let needsMicrophone = LocalizedStringResource("voice.needsMicrophone", bundle: bundle)
+    }
+
+    /// Sending a place.
+    public enum Location {
+        public static let title = LocalizedStringResource("location.title", bundle: bundle)
+        public static let send = LocalizedStringResource("location.send", bundle: bundle)
+        public static let cancel = LocalizedStringResource("location.cancel", bundle: bundle)
+        public static let myLocation = LocalizedStringResource("location.myLocation", bundle: bundle)
+        /// The third thing the "+" can attach.
+        public static let attach = LocalizedStringResource("location.attach", bundle: bundle)
     }
 
     public enum Account {

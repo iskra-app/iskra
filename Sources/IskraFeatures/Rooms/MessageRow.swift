@@ -459,6 +459,11 @@ struct MessageRow: View {
         case let .file(attachment):
             FileBubble(attachment: attachment, systemImage: "doc", isOwn: message.isOwn)
 
+        case let .location(location):
+            quoted {
+                LocationBubble(location: location, isOwn: message.isOwn)
+            }
+
         case .unreadable:
             // Not an error the user caused, and not one they can fix. Say what
             // happened without the word "decrypt".
@@ -573,6 +578,7 @@ struct MessageRow: View {
         case .voice: String(app: Strings.Message.Spoken.sentVoice)
         case .audio: String(app: Strings.Message.Spoken.sentAudio)
         case .file: String(app: Strings.Message.Spoken.sentFile)
+        case .location: String(app: Strings.Message.Spoken.sentLocation)
         case .unreadable: String(app: Strings.Message.Spoken.sentUnreadable)
         case .deleted: String(app: Strings.Message.Spoken.deletedMessage)
         case .unsupported: String(app: Strings.Message.Spoken.sentUnsupported)

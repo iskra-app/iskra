@@ -315,6 +315,14 @@ enum TimelineMapper {
             }
             return .audio(attachment)
 
+        case let .location(content):
+            // A `geo:` URI this app cannot read is not a location — see `Location.init(geoURI:)`.
+            // It becomes an unsupported message rather than a pin in the middle of the Atlantic.
+            guard let location = Location(geoURI: content.geoUri, name: content.description) else {
+                return .unsupported
+            }
+            return .location(location)
+
         case let .file(content):
             return .file(Attachment(source: content.source,
                                     thumbnailSource: content.info?.thumbnailSource,

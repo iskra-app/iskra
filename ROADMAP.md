@@ -22,12 +22,13 @@
 | «Кружочки»: запись, кроп в квадрат, отправка, круглый рендер | готово — `VideoNote.swift`, `VideoNoteRecorder` |
 | Удалённые сообщения | готово — `MessageKind.deleted` |
 | Редактирование | готово — `TimelineStore.edit`, пометка «изменено» в `MessageRow` |
-| Голосовые | наполовину: воспроизведение есть (`AudioPlayback`), **записи нет** |
+| Голосовые | готово — `VoiceRecorder`, `AudioPlayback` |
 | Настройки комнаты | только чтение — `RoomInfoView`, `RoomDetailsStore` |
 | Настройки аккаунта | оболочка: профиль, акцент, быстрая реакция, выход |
 | Ответы, закрепление, служебные события | готово — этап 1 |
 | Просмотрщик медиа, файлы, шаринг | готово — этап 2 (`MediaViewer`, `FileOpener`) |
-| Геопозиция, пуши | нет вовсе |
+| Геопозиция | готово — `Location`, `LocationPicker`, `LocationBubble` |
+| Пуши | нет вовсе |
 
 Аватарки теперь грузятся: `Avatar` (`IskraFeatures/Support/Avatar.swift`) тянет картинку через
 `MediaLoader.avatar(url:size:)` и кэширует её в памяти на время сессии.
@@ -90,10 +91,10 @@
 
 ## Этап 4 — Недостающие способы отправки
 
-- [ ] **Запись голосового.** `AVAudioRecorder` (m4a/AAC), съём уровня → волна из 128 точек,
+- [x] **Запись голосового.** `AVAudioRecorder` (m4a/AAC), съём уровня → волна из 128 точек,
       hold-to-talk на кнопке в `MessageComposer`, отмена свайпом. Отправка уже написана:
       `TimelineStore.send(voice:duration:waveform:)`.
-- [ ] **Геопозиция.**
+- [x] **Геопозиция.**
       `Timeline.sendLocation(body:geoUri:description:zoomLevel:assetType:repliedToEventId:)` (17191).
       Выбор точки на `Map` (MapKit) плюс «моё местоположение» (CoreLocation — нужен ключ в
       `Info.plist`, то есть в `Apps/project.yml`). Новый `MessageKind.location(...)`, пузырь —

@@ -154,6 +154,9 @@ public enum Theme {
         public static let voiceButton: CGFloat = 28
         public static let waveform: CGFloat = 24
 
+        /// The red dot that says the microphone is live.
+        public static let recordingDot: CGFloat = 10
+
         /// How wide a quote is allowed to get, above the composer and inside a bubble.
         ///
         /// A limit rather than a size — a short answer to a short message should not be
@@ -164,6 +167,13 @@ public enum Theme {
 
         /// How wide a photo or a video still is drawn in the timeline.
         public static let picture: CGFloat = 280
+
+        /// And how tall a map is. Shorter than it is wide, because a place is a point and the
+        /// context that matters around it is the streets either side, not the sky above.
+        public static let map: CGFloat = 160
+
+        /// The pin in the middle of the map picker. Big enough to aim with.
+        public static let crosshair: CGFloat = 32
 
         /// And how tall, at most: half of what is on screen.
         ///

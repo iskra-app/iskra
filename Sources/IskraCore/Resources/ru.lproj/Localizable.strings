@@ -99,3 +99,6 @@
 "roomEvent.roomCreated" = "Чат создан";
 "roomEvent.encryptionEnabled" = "Сообщения здесь защищены сквозным шифрованием";
 "roomEvent.pair" = "%1$@ и %2$@";
+
+/* What a client that cannot draw a map shows instead of one. */
+"timeline.locationBody" = "Геопозиция: %1$.6f, %2$.6f";

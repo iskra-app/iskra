@@ -172,6 +172,7 @@ enum MessageSummary {
         case .voice: String(app: Strings.Message.Spoken.sentVoice)
         case .audio: String(app: Strings.Message.Spoken.sentAudio)
         case .file: String(app: Strings.Message.Spoken.sentFile)
+        case .location: String(app: Strings.Location.title)
         case .unreadable: String(app: Strings.Message.Spoken.sentUnreadable)
         case .deleted: String(app: Strings.Message.deleted)
         default: String(app: Strings.Message.unsupported)

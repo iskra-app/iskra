@@ -307,3 +307,18 @@
 
 /* Recording a round video message by holding the button in the composer. */
 "videoNote.releaseToSend" = "Let go to send. Left to cancel, up to keep recording hands-free";
+
+/* Recording a spoken message by holding the microphone in the composer. */
+"voice.record" = "Record a voice message";
+"voice.stop" = "Stop recording";
+"voice.holdToRecord" = "Hold and speak. Let go to send";
+"voice.slideToCancel" = "← cancel, ↑ hands-free";
+"voice.needsMicrophone" = "Allow access to the microphone to record voice messages";
+
+/* Sending a place. */
+"location.title" = "Location";
+"location.send" = "Send";
+"location.cancel" = "Cancel";
+"location.myLocation" = "My location";
+"location.attach" = "Location";
+"message.spoken.sentLocation" = "sent a location";
