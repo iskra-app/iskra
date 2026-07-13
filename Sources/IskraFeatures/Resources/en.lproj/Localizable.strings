@@ -345,3 +345,8 @@
 "room.manage.leaveHelp" = "New messages will stop arriving. You can only come back by invitation.";
 "room.manage.cancel" = "Cancel";
 "room.manage.failedTitle" = "It didn’t work";
+
+/* Starting a new chat, or a new room. */
+"roomList.new.create" = "Create";
+"roomList.new.start" = "Start";
+"roomList.new.openMeansUnencrypted" = "Anyone who joins an open room can read it, so it isn’t encrypted. A private one is.";

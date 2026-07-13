@@ -34,6 +34,9 @@ public struct RoomListView: View {
     @State private var searchText = ""
     @State private var isShowingSettings = false
 
+    /// Which of the two things the "+" was pressed for, and nil when it was not.
+    @State private var creating: NewConversationView.Kind?
+
     public init(session: UserSession,
                 selectedRoomID: Binding<String?>,
                 isSidebar: Bool,
@@ -89,6 +92,17 @@ public struct RoomListView: View {
             // one in the corner.
             SettingsView(session: session, onSignOut: onSignOut, showsBackButton: isSidebar)
         }
+        // A sheet, not a push: creating a chat is a question with a Cancel, and the answer
+        // to it replaces what is *behind* this column — so it is a thing you put down, not
+        // a place you go back from.
+        .sheet(item: $creating) { kind in
+            NewConversationView(kind: kind, session: session) { roomID in
+                // Openable already: `createRoom` does not come back until the SDK has the
+                // room, so selecting it here does not race the sync that will put it in
+                // the list a moment later. See `UserSession.timeline(forRoomID:)`.
+                selectedRoomID = roomID
+            }
+        }
         .onChange(of: searchText) { _, query in
             session.search.search(query)
         }
@@ -101,21 +115,16 @@ public struct RoomListView: View {
     // MARK: - Chrome
 
     /// The "+": top-left on iPhone, beside the gear on iPad and Mac.
-    ///
-    /// The two items are the shape of a feature that does not exist yet: nothing in
-    /// `IskraCore` wraps the SDK's `createRoom`, and a half-built flow that cannot
-    /// finish would be worse than a menu that plainly does nothing. The actions are
-    /// empty on purpose, and this is the one place to wire them up when creation lands.
     private var newConversationMenu: some View {
         Menu {
             Button {
-                // TODO: create a direct chat once IskraCore can.
+                creating = .directChat
             } label: {
                 Label(Strings.RoomList.newChat, systemImage: "person")
             }
 
             Button {
-                // TODO: create a room once IskraCore can.
+                creating = .room
             } label: {
                 Label(Strings.RoomList.newRoom, systemImage: "person.3")
             }
