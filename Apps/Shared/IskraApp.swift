@@ -28,6 +28,12 @@ struct IskraApp: App {
         if SignInProbe.wasRequested {
             SignInProbe.runAndExit()
         }
+
+        // `Iskra --probe-devices` asks a signed-in homeserver for this account's sessions
+        // through the only door the FFI leaves open. See DeviceProbe, and ROADMAP stage 6.
+        if DeviceProbe.wasRequested {
+            DeviceProbe.runAndExit()
+        }
     }
 
     var body: some Scene {

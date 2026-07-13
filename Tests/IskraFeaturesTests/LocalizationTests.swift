@@ -72,7 +72,14 @@ struct LocalizationTests {
         (Strings.RoomList.New.start, en: "Start", ru: "Начать"),
         (Strings.Room.Manage.alerts, en: "Notifications", ru: "Уведомления"),
         (Strings.Room.Manage.alerts(.muted), en: "Off", ru: "Выключены"),
-        (Strings.Room.Manage.alerts(.mentions), en: "Mentions only", ru: "Только упоминания")
+        (Strings.Room.Manage.alerts(.mentions), en: "Mentions only", ru: "Только упоминания"),
+        (Strings.Account.namePlaceholder, en: "Your name", ru: "Ваше имя"),
+        (Strings.Account.changePicture, en: "Change picture", ru: "Изменить фото"),
+        (Strings.Settings.encryption, en: "Encryption", ru: "Шифрование"),
+        (Strings.Encryption.protect, en: "Protect my messages", ru: "Защитить переписку"),
+        (Strings.Encryption.restore, en: "Bring my messages back", ru: "Восстановить переписку"),
+        (Strings.Encryption.saveKey, en: "Save your key", ru: "Сохраните ключ"),
+        (Strings.Encryption.thisDevice, en: "This device", ru: "Это устройство")
     ]
 
     @Test("app strings resolve in English and in Russian")
@@ -121,6 +128,32 @@ struct LocalizationTests {
         var russian = SendFailure.verificationRequired.explanation
         russian.locale = Locale(identifier: "ru")
         #expect(String(localized: russian).contains("Подтвердите это устройство"))
+    }
+
+    /// The same, from the account's side. Driven from `allCases`, so a failure added to
+    /// `AccountActionFailure` without a sentence fails here rather than surfacing as an
+    /// alert that says "account.newKeyFailed".
+    ///
+    /// The recovery-key failure is the one checked by name: it is the only one on that
+    /// screen the user can do anything about, and what makes it actionable is that it says
+    /// *how* — so a translation that shortened it to "that didn't work" would pass every
+    /// other assertion here and take the point out.
+    @Test("every account failure explains itself in both languages")
+    func accountFailuresAreTranslated() {
+        for failure in AccountActionFailure.allCases {
+            for language in ["en", "ru"] {
+                var explanation = failure.explanation
+                explanation.locale = Locale(identifier: language)
+                let sentence = String(localized: explanation)
+
+                #expect(!sentence.hasPrefix("account."), "\(sentence) is a key, not a sentence")
+                #expect(sentence.count > 10, "\(failure) says too little to act on")
+            }
+        }
+
+        var russian = AccountActionFailure.restore.explanation
+        russian.locale = Locale(identifier: "ru")
+        #expect(String(localized: russian).contains("скопировали его целиком"))
     }
 
     /// Every accent the user can choose has a name in both languages.

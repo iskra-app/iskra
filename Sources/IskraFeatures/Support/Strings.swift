@@ -367,6 +367,55 @@ public enum Strings {
         /// so it is named once.
         public static let settings = LocalizedStringResource("account.settings", bundle: bundle)
         public static let signOut = LocalizedStringResource("account.signOut", bundle: bundle)
+
+        /// The field the name is typed into. It is the *placeholder*, so it has to read as
+        /// an invitation rather than as a label — the row has no label, because the thing
+        /// you are looking at is your own name.
+        public static let namePlaceholder = LocalizedStringResource("account.namePlaceholder", bundle: bundle)
+        public static let changePicture = LocalizedStringResource("account.changePicture", bundle: bundle)
+        public static let removePicture = LocalizedStringResource("account.removePicture", bundle: bundle)
+    }
+
+    /// The state of this account's encryption, in words with no cryptography in them.
+    ///
+    /// Every string here is written to be read by somebody who does not know what a
+    /// cross-signing key is and should not have to. The subject is never "the key" — it is
+    /// "your messages", and what is at stake is whether they come back.
+    public enum Encryption {
+        public static let title = LocalizedStringResource("encryption.title", bundle: bundle)
+
+        public static let on = LocalizedStringResource("encryption.on", bundle: bundle)
+        public static let onHelp = LocalizedStringResource("encryption.onHelp", bundle: bundle)
+
+        public static let off = LocalizedStringResource("encryption.off", bundle: bundle)
+        public static let offHelp = LocalizedStringResource("encryption.offHelp", bundle: bundle)
+        public static let protect = LocalizedStringResource("encryption.protect", bundle: bundle)
+
+        /// Recovery is on for the account, and this device does not hold the key — so the
+        /// history is *there* and unreadable. The distinction from `off` is the whole reason
+        /// `HistoryProtection` has four cases.
+        public static let keyNeeded = LocalizedStringResource("encryption.keyNeeded", bundle: bundle)
+        public static let keyNeededHelp = LocalizedStringResource("encryption.keyNeededHelp", bundle: bundle)
+        public static let keyPlaceholder = LocalizedStringResource("encryption.keyPlaceholder", bundle: bundle)
+        public static let restore = LocalizedStringResource("encryption.restore", bundle: bundle)
+
+        public static let newKey = LocalizedStringResource("encryption.newKey", bundle: bundle)
+        public static let newKeyHelp = LocalizedStringResource("encryption.newKeyHelp", bundle: bundle)
+
+        /// Shown once, when the key is made. There is no screen anywhere in the app that
+        /// shows it again, and `saveKeyHelp` says so before the user taps Done.
+        public static let saveKey = LocalizedStringResource("encryption.saveKey", bundle: bundle)
+        public static let saveKeyHelp = LocalizedStringResource("encryption.saveKeyHelp", bundle: bundle)
+        public static let copyKey = LocalizedStringResource("encryption.copyKey", bundle: bundle)
+        public static let keyCopied = LocalizedStringResource("encryption.keyCopied", bundle: bundle)
+        public static let saved = LocalizedStringResource("encryption.saved", bundle: bundle)
+
+        public static let thisDevice = LocalizedStringResource("encryption.thisDevice", bundle: bundle)
+        public static let deviceVerified = LocalizedStringResource("encryption.deviceVerified", bundle: bundle)
+        public static let deviceUnverified = LocalizedStringResource("encryption.deviceUnverified", bundle: bundle)
+        /// Why this screen lists one device and not all of them. The honest sentence — see
+        /// `ROADMAP.md`, stage 6.
+        public static let otherDevices = LocalizedStringResource("encryption.otherDevices", bundle: bundle)
     }
 
     public enum Settings {
@@ -377,11 +426,11 @@ public enum Strings {
         /// localized — by the system, so this string never appears there.
         public static let back = LocalizedStringResource("settings.back", bundle: bundle)
 
-        /// Sections that exist as structure but have nothing behind them yet. They are
-        /// shown disabled, and `moreSoon` is what says why — a greyed-out row with no
-        /// explanation reads as a bug rather than as a promise.
+        /// The one section here that exists as structure and nothing more. It is shown
+        /// disabled, and `moreSoon` is what says why — a greyed-out row with no explanation
+        /// reads as a bug rather than as a promise. It goes when stage 7 lands.
         public static let notifications = LocalizedStringResource("settings.notifications", bundle: bundle)
-        public static let privacy = LocalizedStringResource("settings.privacy", bundle: bundle)
+        public static let encryption = LocalizedStringResource("settings.encryption", bundle: bundle)
         public static let appearance = LocalizedStringResource("settings.appearance", bundle: bundle)
         /// Where the emoji a double tap sends is chosen — see `QuickReaction`.
         public static let reactions = LocalizedStringResource("settings.reactions", bundle: bundle)

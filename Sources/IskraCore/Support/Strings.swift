@@ -40,6 +40,18 @@ public enum CoreStrings {
         public static let untitled = LocalizedStringResource("room.untitled", bundle: bundle)
     }
 
+    /// A change to the account that did not take — see `AccountActionFailure`.
+    public enum Account {
+        public static let nameFailed = LocalizedStringResource("account.nameFailed", bundle: bundle)
+        public static let pictureFailed = LocalizedStringResource("account.pictureFailed", bundle: bundle)
+        public static let protectFailed = LocalizedStringResource("account.protectFailed", bundle: bundle)
+        public static let newKeyFailed = LocalizedStringResource("account.newKeyFailed", bundle: bundle)
+        /// The one failure on this screen the user can actually fix, so it says how: a
+        /// recovery key is copied and pasted, and a half-copied one is by far the likeliest
+        /// reason it is refused.
+        public static let restoreFailed = LocalizedStringResource("account.restoreFailed", bundle: bundle)
+    }
+
     /// A change to the room that the homeserver would not make. One sentence per act — see
     /// `RoomActionFailure` for why they are not all "something went wrong".
     public enum RoomAction {

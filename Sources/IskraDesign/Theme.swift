@@ -255,6 +255,12 @@ public enum Theme {
         /// size of the spinner it starts out showing.
         public static let viewer: CGFloat = 480
 
+        /// The sheet that shows the recovery key, once and never again. Fixed rather than
+        /// flexible because of the Mac, where a sheet is as wide as it is allowed to be and
+        /// a key allowed to stretch across it stops being a thing you can read back one
+        /// character at a time.
+        public static let keySheet: CGFloat = 360
+
         /// The red badge beside a message that failed to send. Bigger than the delivery
         /// ticks on purpose: those report progress and may be ignored, this one is the
         /// only sign that a message the user believes they sent is still sitting there.
