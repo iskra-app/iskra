@@ -70,6 +70,23 @@ in a signed build on a real device, where the only symptom is a spinner. On a de
 xcrun devicectl device process launch --console --device <id> moscow.swag.iskra --probe-signin matrix.org
 ```
 
+`Iskra --probe-notification` decrypts a push the way the notification extension will, and prints
+what would land on the lock screen. Given no arguments it goes and *finds* a recent message to
+try — a push carries only a room ID and an event ID, and nobody has an event ID to hand, so a
+probe that demanded one would be a probe nobody ran.
+
+```sh
+xcrun simctl launch --console booted moscow.swag.iskra --probe-notification
+xcrun simctl launch --console booted moscow.swag.iskra --probe-notification '!room:matrix.org' '$event'
+```
+
+Be exact about what it proves. It proves `PushDecoder` end to end: the session restores, the
+notification client comes up in `.multipleProcesses`, the event is found and decrypted, and the
+words that come out are the words that would be shown. It does **not** prove the extension's own
+entitlements — it runs in the *app's* process, and the `.appex` is a different bundle ID granted
+the App Group and the Keychain separately — and nothing but a real push proves that iOS wakes the
+extension at all.
+
 ## Architecture
 
 Three SwiftPM library targets, and the dependency rule between them is the whole design:
@@ -150,6 +167,31 @@ The App Group (`group.moscow.swag.iskra`) and the Keychain access group
 (`$(AppIdentifierPrefix)moscow.swag.iskra.shared`) are two different identifiers and have to be: a
 Team Provisioning Profile allows `keychain-access-groups = ["<TeamID>.*"]`, which an App Group ID
 does not match.
+
+### The notification extension is a second process, and it is granted nothing for free
+
+`IskraNotificationService` (`Apps/NotificationService/`) is where a push becomes a sentence: a
+Matrix push carries a room ID and an event ID and nothing else, so in an encrypted room the
+homeserver could not write the notification even if it wanted to — it cannot read the message
+either. `PushDecoder` opens the app's encrypted store from that second process and decrypts the
+event; `PushMapper` turns it into words, sharing `MessagePreview` with the chat list so that a
+photo is not "Photo" in one place and "Image" in the other.
+
+Two things about it are easy to get subtly wrong, and both fail far from their cause:
+
+- **`AppIdentifierPrefix` must be in the extension's own Info.plist.**
+  `AppEnvironment.keychainAccessGroup` reads that key out of `Bundle.main` — and inside an
+  extension `Bundle.main` is the *extension's* bundle, not the app's. Leave it out and the prefix
+  is empty, the Keychain group silently becomes `moscow.swag.iskra.shared` with no team ID in
+  front of it, the lookup returns nothing, and the extension reports *"nobody is signed in"* on a
+  device where somebody plainly is.
+- **`processSetup: .multipleProcesses`, never `.singleProcess`.** The app may be open and holding
+  the same SQLite file at the moment a push arrives. `.multipleProcesses` is what makes the two
+  take a cross-process lock instead of writing over each other.
+
+The extension links `IskraCore` and **not** `IskraFeatures`. It has 24 MB and no screens; dragging
+SwiftUI and every view in the app into a process that exists to write two lines of text is how an
+extension gets killed before it decrypts anything.
 
 ## Invariants that are easy to break by accident
 

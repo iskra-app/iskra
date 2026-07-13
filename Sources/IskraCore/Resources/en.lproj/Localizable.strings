@@ -122,3 +122,6 @@
 "account.protectFailed" = "Your messages couldn’t be protected. Try again — the keys to your old messages are still where they were.";
 "account.newKeyFailed" = "The new key wasn’t created. The old one still works.";
 "account.restoreFailed" = "That key didn’t fit. Check you copied all of it, spaces and all.";
+
+/* Pushes. A message speaks for itself — there is nothing to translate but the invitation. */
+"push.invite" = "%@ invites you to the chat";

@@ -12,7 +12,7 @@ enum MessagePreview {
 
         switch msgLike.kind {
         case let .message(message):
-            return describe(message)
+            return text(for: message.msgType)
         case .sticker:
             return String(core: CoreStrings.Preview.sticker)
         case .poll:
@@ -28,8 +28,15 @@ enum MessagePreview {
         }
     }
 
-    private static func describe(_ message: MessageContent) -> String? {
-        switch message.msgType {
+    /// The words for one message, whichever door it came in by.
+    ///
+    /// The room list reads a message off a `TimelineItemContent` and a push reads the same
+    /// message off a `MessageLikeEventContent` — two different enums, because one comes from
+    /// a timeline the SDK is maintaining and the other from a single event fetched on its
+    /// own. Both carry a `MessageType`, and this is where they meet: a photo is "Photo" in
+    /// the chat list and "Photo" on the lock screen because it is one sentence, written once.
+    static func text(for messageType: MessageType) -> String? {
+        switch messageType {
         // The body of a text message is the user's own words, so it is not a string
         // to translate — it is passed through untouched.
         case let .text(content):

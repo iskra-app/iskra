@@ -29,4 +29,13 @@ public enum Log {
     /// this session's encryption. The rule above matters most here — a recovery key is a
     /// password, and the errors around one are logged without it.
     public static let session = Logger(subsystem: subsystem, category: "session")
+
+    /// Decrypting a push, which happens in the notification extension — a different process,
+    /// with no UI, no debugger and about thirty seconds to live. Nothing it does is visible
+    /// anywhere else, and when it fails the only symptom the user gets is a notification that
+    /// says "New message" forever. This log is the sole witness.
+    ///
+    /// It is also the log most in danger of breaking the rule above: the thing this code is
+    /// holding *is* a decrypted message. The body never goes in — only which step failed.
+    public static let push = Logger(subsystem: subsystem, category: "push")
 }
