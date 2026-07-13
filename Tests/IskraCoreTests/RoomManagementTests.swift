@@ -108,4 +108,20 @@ struct RoomManagementTests {
         russian.locale = Locale(identifier: "ru")
         #expect(String(localized: russian).contains("остался в чате"))
     }
+
+    /// A room that was not created fails in two different ways, and the user can only fix
+    /// one of them — so they are told which one it was.
+    @Test("a room that was not created says why in both languages")
+    func creationFailuresAreTranslated() {
+        for failure in RoomCreationFailure.allCases {
+            for language in ["en", "ru"] {
+                var explanation = failure.explanation
+                explanation.locale = Locale(identifier: language)
+                let sentence = String(localized: explanation)
+
+                #expect(!sentence.hasPrefix("roomAction."), "\(sentence) is a key, not a sentence")
+                #expect(sentence.count > 10, "\(failure) says too little to act on")
+            }
+        }
+    }
 }

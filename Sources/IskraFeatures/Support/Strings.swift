@@ -61,6 +61,19 @@ public enum Strings {
         public static let newChat = LocalizedStringResource("roomList.newChat", bundle: bundle)
         public static let newRoom = LocalizedStringResource("roomList.newRoom", bundle: bundle)
 
+        /// The screen behind them. Its fields are borrowed from the room-info screen — a
+        /// name is a name — so only the two verbs are new, and they are two verbs rather
+        /// than one because you *create* a room and you *start* a conversation with a
+        /// person, and the button ought to say which of those is about to happen.
+        public enum New {
+            public static let create = LocalizedStringResource("roomList.new.create", bundle: bundle)
+            public static let start = LocalizedStringResource("roomList.new.start", bundle: bundle)
+            /// What "open chat" costs, said once, where the switch is. Encryption is not a
+            /// switch of its own in this app — see `UserSession.createRoom`.
+            public static let openMeansUnencrypted = LocalizedStringResource("roomList.new.openMeansUnencrypted",
+                                                                             bundle: bundle)
+        }
+
         /// Pluralised. Russian needs one/few/many, which is why these go through the
         /// catalog's plural rules rather than through string interpolation.
         public static func unread(_ count: Int) -> LocalizedStringResource {

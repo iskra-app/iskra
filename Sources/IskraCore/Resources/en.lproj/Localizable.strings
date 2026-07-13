@@ -113,3 +113,4 @@
 "roomAction.banFailed" = "They couldn’t be blocked. They are still in the chat.";
 "roomAction.roleFailed" = "The role didn’t change. You may not be allowed to.";
 "roomAction.leaveFailed" = "You couldn’t leave the chat. Try again.";
+"roomAction.createFailed" = "The chat wasn’t created. The server may not have answered — try again.";

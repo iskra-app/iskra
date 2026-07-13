@@ -55,6 +55,9 @@ public enum CoreStrings {
         public static let banFailed = LocalizedStringResource("roomAction.banFailed", bundle: bundle)
         public static let roleFailed = LocalizedStringResource("roomAction.roleFailed", bundle: bundle)
         public static let leaveFailed = LocalizedStringResource("roomAction.leaveFailed", bundle: bundle)
+        /// The room was not created at all — which is not the same as a room created and an
+        /// invitation refused, and the user is looking at an empty chat list either way.
+        public static let createFailed = LocalizedStringResource("roomAction.createFailed", bundle: bundle)
     }
 
     /// The strip above a message that is answering another one.

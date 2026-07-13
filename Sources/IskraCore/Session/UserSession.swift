@@ -23,7 +23,10 @@ public final class UserSession {
     public private(set) var displayName: String
     public private(set) var avatarURL: String?
 
-    private let client: Client
+    /// Internal rather than private, because `RoomCreation` is an extension in another
+    /// file and needs it. The rule it is kept under is unchanged: the `Client` does not
+    /// leave `IskraCore`, and nothing above this layer holds one.
+    let client: Client
     private let authentication: AuthenticationService
 
     public init(client: Client, authentication: AuthenticationService) {
@@ -58,12 +61,20 @@ public final class UserSession {
         return String(withoutSigil.prefix { $0 != ":" })
     }
 
-    /// A timeline for one room, or nil if the room list has not seen it yet.
+    /// A timeline for one room, or nil if this account is not in it.
+    ///
+    /// The room list is asked first and the client second, and the second question is not
+    /// redundant: a room the user has *just created* exists on the server and in the SDK's
+    /// store before the room-list stream has caught up with it, and for that half-second
+    /// the list would answer "no such room" about a room whose screen we are opening. See
+    /// `createRoom`, which selects it the moment it exists.
     ///
     /// The user's own ID goes down with it because the timeline has to be able to tell a
     /// reaction the user left from one they merely received — see `MessageReaction`.
     public func timeline(forRoomID roomID: String) -> TimelineStore? {
-        guard let room = roomList.room(withID: roomID) else { return nil }
+        guard let room = roomList.room(withID: roomID) ?? (try? client.getRoom(roomId: roomID)) else {
+            return nil
+        }
         return TimelineStore(room: room, ownUserID: userID)
     }
 

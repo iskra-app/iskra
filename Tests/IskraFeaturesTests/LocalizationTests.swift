@@ -67,7 +67,9 @@ struct LocalizationTests {
         (Strings.Room.Manage.leave, en: "Leave the chat", ru: "Выйти из чата"),
         // The one act on this screen that asks first, and it asks by name — so the name has
         // to survive the trip through the format string in both languages.
-        (Strings.Room.Manage.blockQuestion("Аня"), en: "Block Аня?", ru: "Заблокировать Аня?")
+        (Strings.Room.Manage.blockQuestion("Аня"), en: "Block Аня?", ru: "Заблокировать Аня?"),
+        (Strings.RoomList.New.create, en: "Create", ru: "Создать"),
+        (Strings.RoomList.New.start, en: "Start", ru: "Начать")
     ]
 
     @Test("app strings resolve in English and in Russian")
