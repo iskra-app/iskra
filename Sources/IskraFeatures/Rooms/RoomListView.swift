@@ -18,6 +18,10 @@ public struct RoomListView: View {
     let session: UserSession
     @Binding var selectedRoomID: String?
 
+    /// The message a search result is asking for. Set alongside the room, and read by `RoomView`,
+    /// which goes there and clears it.
+    @Binding var selectedEventID: String?
+
     /// Sign-out unwinds the whole app, not just this screen, so the decision belongs to
     /// whoever owns the session — here it is only reported.
     var onSignOut: () -> Void
@@ -39,10 +43,12 @@ public struct RoomListView: View {
 
     public init(session: UserSession,
                 selectedRoomID: Binding<String?>,
+                selectedEventID: Binding<String?> = .constant(nil),
                 isSidebar: Bool,
                 onSignOut: @escaping () -> Void) {
         self.session = session
         _selectedRoomID = selectedRoomID
+        _selectedEventID = selectedEventID
         self.isSidebar = isSidebar
         self.onSignOut = onSignOut
     }
@@ -187,6 +193,12 @@ public struct RoomListView: View {
         let hits = session.search.hits
         ForEach(Array(hits.enumerated()), id: \.element.id) { index, hit in
             Button {
+                // The room *and* the message. A search that finds a sentence from March and then
+                // drops you at the bottom of today's conversation has not answered the question —
+                // it has only told you which room to go looking in. `hit.id` is the event, and
+                // `RoomView` scrolls to it, paginating the history back until it is there to be
+                // scrolled to.
+                selectedEventID = hit.id
                 selectedRoomID = hit.roomID
             } label: {
                 VStack(alignment: .leading, spacing: Theme.Spacing.tight) {

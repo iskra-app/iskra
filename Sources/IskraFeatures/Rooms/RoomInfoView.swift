@@ -128,6 +128,19 @@ struct RoomInfoView: View {
             case nil: break
             }
         }
+        // And leaving the *screen* is leaving the field.
+        //
+        // Focus loss is what commits an edit, and SwiftUI makes no promise that focus resigns
+        // before a view is torn down. So typing a new room name and tapping the back chevron with
+        // the keyboard still up dropped the rename on the floor: the field showed the new name
+        // right up until the moment you left, and the room was still called the old thing.
+        //
+        // Committing here as well as above cannot double-send: both `rename` and `setTopic` return
+        // early when the text has not actually changed.
+        .onDisappear {
+            if focus == .name { Task { await details.rename(to: draftName) } }
+            if focus == .topic { Task { await details.setTopic(draftTopic) } }
+        }
         // Presented from the root of the screen rather than from inside the menu that asks
         // for it: a `PhotosPicker` declared inside a `Menu` never appears — see
         // `MessageComposer`, where that cost an afternoon.

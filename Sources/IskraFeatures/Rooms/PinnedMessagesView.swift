@@ -14,9 +14,18 @@ import IskraDesign
 struct PinnedStrip: View {
     let pinned: PinnedStore
 
-    /// Opens the full list. Handed the message the strip is showing, so that a future version
-    /// can go straight to it in the conversation instead.
-    let onOpen: (Message) -> Void
+    /// Goes to the message in the conversation. Pressing the strip is *about* the message it is
+    /// showing you, so that is what it does.
+    ///
+    /// It used to open the list, with a note here saying a future version would go to the message
+    /// instead — while `RoomView` had already written the comment describing the behaviour as if
+    /// it existed, and threw the `Message` away. Two files, one of them describing a thing that
+    /// was never built and the other apologising for not having built it.
+    let onGoTo: (Message) -> Void
+
+    /// The rest of them, which is the chevron's job. The strip shows the latest pinned message;
+    /// the way to the other five is the arrow at the end of it.
+    let onOpenList: () -> Void
 
     @Environment(\.accent) private var accent
 
@@ -29,48 +38,61 @@ struct PinnedStrip: View {
 
     var body: some View {
         if let latest {
-            Button {
-                onOpen(latest)
-            } label: {
-                HStack(spacing: Theme.Spacing.close) {
-                    Image(systemName: "pin.fill")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(accent.color)
+            // Two buttons on one surface: the strip goes to the message, the chevron opens the
+            // rest. Both inside one piece of glass, because they are one control to look at — and
+            // `contentShape` on each half so the halves are pressable rather than the labels.
+            HStack(spacing: Theme.Spacing.close) {
+                Button {
+                    onGoTo(latest)
+                } label: {
+                    HStack(spacing: Theme.Spacing.close) {
+                        Image(systemName: "pin.fill")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(accent.color)
 
-                    VStack(alignment: .leading, spacing: 0) {
-                        HStack(spacing: Theme.Spacing.tight) {
-                            Text(Strings.Room.pinned)
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(accent.color)
+                        VStack(alignment: .leading, spacing: 0) {
+                            HStack(spacing: Theme.Spacing.tight) {
+                                Text(Strings.Room.pinned)
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(accent.color)
 
-                            // Only where there is more than one. "Pinned 1" is a number nobody
-                            // asked for; "Pinned 4" is the reason to press it.
-                            if pinned.messages.count > 1 {
-                                Text(pinned.messages.count, format: .number)
-                                    .font(.caption2.weight(.medium).monospacedDigit())
-                                    .foregroundStyle(.secondary)
+                                // Only where there is more than one. "Pinned 1" is a number nobody
+                                // asked for; "Pinned 4" is the reason to press it.
+                                if pinned.messages.count > 1 {
+                                    Text(pinned.messages.count, format: .number)
+                                        .font(.caption2.weight(.medium).monospacedDigit())
+                                        .foregroundStyle(.secondary)
+                                }
                             }
+
+                            Text(summary(of: latest))
+                                .font(.caption)
+                                .foregroundStyle(.primary)
+                                .lineLimit(1)
                         }
 
-                        Text(summary(of: latest))
-                            .font(.caption)
-                            .foregroundStyle(.primary)
-                            .lineLimit(1)
+                        Spacer(minLength: 0)
                     }
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
 
-                    Spacer(minLength: 0)
-
+                Button {
+                    onOpenList()
+                } label: {
                     Image(systemName: "chevron.right")
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(.secondary)
+                        .frame(width: Theme.Spacing.roomy, height: Theme.Spacing.roomy)
+                        .contentShape(.rect)
                 }
-                .padding(.horizontal, Theme.Spacing.roomy)
-                .padding(.vertical, Theme.Spacing.close)
-                .frame(maxWidth: .infinity)
-                .navigationGlass(in: .rect(cornerRadius: Theme.Radius.control, style: .continuous))
-                .contentShape(.rect)
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text(Strings.Room.pinnedTitle))
             }
-            .buttonStyle(.plain)
+            .padding(.horizontal, Theme.Spacing.roomy)
+            .padding(.vertical, Theme.Spacing.close)
+            .frame(maxWidth: .infinity)
+            .navigationGlass(in: .rect(cornerRadius: Theme.Radius.control, style: .continuous))
             .padding(.horizontal, Theme.Spacing.normal)
             .padding(.bottom, Theme.Spacing.close)
         }

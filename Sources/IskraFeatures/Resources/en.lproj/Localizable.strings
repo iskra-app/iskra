@@ -394,3 +394,6 @@
 "encryption.deviceVerified" = "Verified";
 "encryption.deviceUnverified" = "Not verified";
 "encryption.otherDevices" = "Iskra can’t show your other devices yet: the Matrix library it runs on has no way to ask for them. Another session can be ended from your server’s own website.";
+
+/* The pill at the foot of a room when a message arrives while you are reading further up. */
+"room.jumpToNewest" = "New messages";

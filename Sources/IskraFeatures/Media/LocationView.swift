@@ -172,6 +172,9 @@ final class LocationAuthority: NSObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
     private var waiting: CheckedContinuation<CLLocationCoordinate2D?, Never>?
 
+    /// The permission prompt, while the user is looking at it. See `current()`.
+    private var deciding: CheckedContinuation<Void, Never>?
+
     override init() {
         super.init()
         manager.delegate = self
@@ -180,14 +183,28 @@ final class LocationAuthority: NSObject, CLLocationManagerDelegate {
     func current() async -> CLLocationCoordinate2D? {
         // A second press while the first is still being answered must not strand the first
         // continuation — resuming one twice is a crash, and never resuming it is a hang.
-        guard waiting == nil else { return nil }
+        guard waiting == nil, deciding == nil else { return nil }
+
+        // Asking for permission is *asynchronous*, and this is the whole bug it used to hide.
+        // `requestWhenInUseAuthorization()` returns at once, the status is still `.notDetermined`,
+        // and the `requestLocation()` that came immediately after it was answered by CoreLocation
+        // with `kCLErrorDenied` — straight into `didFailWithError`, straight to nil, and the map
+        // did not move. So the very first time anybody pressed "my location", they granted
+        // permission and nothing happened; pressing it a second time worked, which made it look
+        // like a flaky button rather than a missing await.
+        //
+        // The answer arrives at `locationManagerDidChangeAuthorization`. We wait for it.
+        if manager.authorizationStatus == .notDetermined {
+            await withCheckedContinuation { continuation in
+                deciding = continuation
+                manager.requestWhenInUseAuthorization()
+            }
+        }
 
         switch manager.authorizationStatus {
-        case .notDetermined:
-            manager.requestWhenInUseAuthorization()
-        case .restricted, .denied:
-            // Nothing to do about it here. The user said no, and the map still works — they can
-            // drag it to wherever they meant.
+        case .restricted, .denied, .notDetermined:
+            // Nothing to do about it here. The user said no — or said nothing — and the map still
+            // works: they can drag it to wherever they meant.
             return nil
         default:
             break
@@ -206,6 +223,15 @@ final class LocationAuthority: NSObject, CLLocationManagerDelegate {
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         Task { @MainActor in answer(nil) }
+    }
+
+    /// The user has answered the permission prompt — whichever way. Also fires once, unprompted,
+    /// the moment the delegate is set: harmless, because nobody is waiting yet.
+    nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        Task { @MainActor in
+            deciding?.resume()
+            deciding = nil
+        }
     }
 
     private func answer(_ coordinate: CLLocationCoordinate2D?) {
