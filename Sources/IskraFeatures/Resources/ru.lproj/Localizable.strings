@@ -349,3 +349,9 @@
 "roomList.new.create" = "Создать";
 "roomList.new.start" = "Начать";
 "roomList.new.openMeansUnencrypted" = "Открытую комнату читает каждый, кто в неё зашёл, поэтому шифрования в ней нет. В закрытой — есть.";
+
+/* Насколько громко комната может вас перебивать. */
+"room.manage.alerts" = "Уведомления";
+"room.manage.alertsAll" = "Все сообщения";
+"room.manage.alertsMentions" = "Только упоминания";
+"room.manage.alertsMuted" = "Выключены";

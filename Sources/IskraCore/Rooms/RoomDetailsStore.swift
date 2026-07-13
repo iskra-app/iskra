@@ -58,6 +58,25 @@ public struct RoomPermissions: Sendable, Equatable {
 // round: the other way, a control flickers into existence and then vanishes again once the
 // room says no.
 
+/// How loudly a room is allowed to interrupt you.
+///
+/// Three answers, and the middle one is the reason this is not a switch: a room you have
+/// muted and a room that only speaks when it is speaking *to you* are different rooms, and
+/// most group rooms want the second.
+///
+/// What is deliberately not offered is "follow the default". Matrix distinguishes a room
+/// with no rule of its own from one whose rule happens to match the account's, and the user
+/// cannot see that difference — it would be a fourth option that looks identical to
+/// whichever of the three it currently resolves to. The screen shows the answer that is in
+/// force, and choosing one writes it down.
+public enum RoomAlerts: String, Sendable, CaseIterable, Identifiable {
+    case all
+    case mentions
+    case muted
+
+    public var id: String { rawValue }
+}
+
 /// A change to the room that did not happen.
 ///
 /// One case per act, not one sentence for all of them. "Something went wrong" tells the
@@ -74,11 +93,13 @@ public enum RoomActionFailure: String, Sendable, CaseIterable, Identifiable {
     case ban
     case role
     case leave
+    case alerts
 
     public var id: String { rawValue }
 
     public var explanation: LocalizedStringResource {
         switch self {
+        case .alerts: CoreStrings.RoomAction.alertsFailed
         case .rename: CoreStrings.RoomAction.renameFailed
         case .topic: CoreStrings.RoomAction.topicFailed
         case .picture: CoreStrings.RoomAction.pictureFailed
@@ -147,6 +168,10 @@ public final class RoomDetailsStore {
 
     public private(set) var permissions = RoomPermissions()
 
+    /// What this room is allowed to interrupt you with. Everybody has this, whatever their
+    /// power level — it is a rule about your own device, not about the room.
+    public private(set) var alerts: RoomAlerts = .all
+
     /// Set when a change was refused. `var`, because the alert that shows it has to be
     /// able to put it back.
     public var failure: RoomActionFailure?
@@ -158,13 +183,20 @@ public final class RoomDetailsStore {
     private let room: Room
     private let ownUserID: String
 
+    /// Notification rules belong to the account, not to the room — a muted room is a fact
+    /// about this user's devices, and the room never hears about it. So this comes from the
+    /// `Client`, which is why the store is built by `UserSession`.
+    private let client: Client
+    private var notifications: NotificationSettings?
+
     /// Where we stand in the room. Every "may I remove this person" is a comparison
     /// against this, and it is `unlimited` for nobody until the member list says so.
     private var ownAuthority = Authority.level(0)
 
-    init(room: Room, ownUserID: String) {
+    init(room: Room, ownUserID: String, client: Client) {
         self.room = room
         self.ownUserID = ownUserID
+        self.client = client
     }
 
     /// Loads the room, then the people in it.
@@ -188,6 +220,54 @@ public final class RoomDetailsStore {
         isLoadingMembers = false
 
         await loadPermissions()
+        await loadAlerts()
+    }
+
+    /// What the room does to this device — the rule it has been given, or, if it has none,
+    /// the one it inherits.
+    ///
+    /// The inherited answer is not a guess: the account keeps a separate default for
+    /// encrypted rooms and for one-to-one chats, because those are the rooms people expect
+    /// to hear from. Asking for the wrong default would show "all messages" beside a group
+    /// room that is quietly on mentions-only.
+    private func loadAlerts() async {
+        let settings = await notificationSettings()
+
+        if let explicit = try? await settings.getUserDefinedRoomNotificationMode(roomId: room.id()) {
+            alerts = RoomAlerts(explicit)
+            return
+        }
+
+        alerts = RoomAlerts(await settings.getDefaultRoomNotificationMode(isEncrypted: privacy == .protected,
+                                                                          isOneToOne: isDirectChat))
+    }
+
+    /// Writes the rule down. Always explicitly, even when the choice happens to be what the
+    /// room was already inheriting: the user has now said it, and a rule they chose should
+    /// not change under them the day they change the account default.
+    public func setAlerts(_ choice: RoomAlerts) async {
+        guard choice != alerts else { return }
+
+        let previous = alerts
+        alerts = choice
+
+        do {
+            try await notificationSettings().setRoomNotificationMode(roomId: room.id(), mode: choice.mode)
+        } catch {
+            Log.rooms.error("the notification rule would not stick: \(String(describing: error), privacy: .public)")
+            alerts = previous
+            failure = .alerts
+        }
+    }
+
+    /// Fetched once and kept. The SDK builds a fresh object every call, and each one carries
+    /// its own listener registration — a screen that asked on every keystroke would leave a
+    /// trail of them.
+    private func notificationSettings() async -> NotificationSettings {
+        if let notifications { return notifications }
+        let settings = await client.getNotificationSettings()
+        notifications = settings
+        return settings
     }
 
     private func loadInfo() async {
@@ -526,6 +606,26 @@ private extension RoomRole {
         case .creator, .administrator: self = .administrator
         case .moderator: self = .moderator
         default: self = .member
+        }
+    }
+}
+
+extension RoomAlerts {
+    /// The SDK's word for the same three answers. `internal`, and deliberately: the enum
+    /// above is what the app talks in, and `RoomNotificationMode` does not leave `IskraCore`.
+    var mode: RoomNotificationMode {
+        switch self {
+        case .all: .allMessages
+        case .mentions: .mentionsAndKeywordsOnly
+        case .muted: .mute
+        }
+    }
+
+    init(_ mode: RoomNotificationMode) {
+        switch mode {
+        case .allMessages: self = .all
+        case .mentionsAndKeywordsOnly: self = .mentions
+        case .mute: self = .muted
         }
     }
 }

@@ -350,3 +350,9 @@
 "roomList.new.create" = "Create";
 "roomList.new.start" = "Start";
 "roomList.new.openMeansUnencrypted" = "Anyone who joins an open room can read it, so it isn’t encrypted. A private one is.";
+
+/* How loudly a room may interrupt you. */
+"room.manage.alerts" = "Notifications";
+"room.manage.alertsAll" = "Every message";
+"room.manage.alertsMentions" = "Mentions only";
+"room.manage.alertsMuted" = "Off";

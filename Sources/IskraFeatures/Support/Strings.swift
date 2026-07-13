@@ -1,4 +1,5 @@
 import Foundation
+import IskraCore
 import IskraDesign
 
 /// Every piece of user-facing text in the app's screens.
@@ -172,6 +173,19 @@ public enum Strings {
                                         bundle: bundle)
             }
             public static let blockHelp = LocalizedStringResource("room.manage.blockHelp", bundle: bundle)
+
+            /// How loudly the room may interrupt you — the one control on this screen that
+            /// everybody gets, whatever their power level. It is a rule about your own
+            /// device, and the room never hears about it.
+            public static let alerts = LocalizedStringResource("room.manage.alerts", bundle: bundle)
+
+            static func alerts(_ choice: RoomAlerts) -> LocalizedStringResource {
+                switch choice {
+                case .all: LocalizedStringResource("room.manage.alertsAll", bundle: bundle)
+                case .mentions: LocalizedStringResource("room.manage.alertsMentions", bundle: bundle)
+                case .muted: LocalizedStringResource("room.manage.alertsMuted", bundle: bundle)
+                }
+            }
 
             public static let leave = LocalizedStringResource("room.manage.leave", bundle: bundle)
             public static let leaveQuestion = LocalizedStringResource("room.manage.leaveQuestion", bundle: bundle)
