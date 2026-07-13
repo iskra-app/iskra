@@ -83,7 +83,7 @@ public enum RoomAlerts: String, Sendable, CaseIterable, Identifiable {
 /// user nothing they can do; "the room would not let you remove them" tells them it was a
 /// question of rights, and that the person is still in the room — which is the fact they
 /// need, because the list has already been put back the way it was.
-public enum RoomActionFailure: String, Sendable, CaseIterable, Identifiable {
+public enum RoomActionFailure: String, CaseIterable, ActionFailure {
     case rename
     case topic
     case picture

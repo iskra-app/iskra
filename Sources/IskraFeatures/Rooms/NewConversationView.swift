@@ -69,13 +69,7 @@ struct NewConversationView: View {
             // The room is being made on a server that may be slow about it. Nothing here
             // should be touchable while it is: a second "Create" is a second room.
             .disabled(isCreating)
-            .alert(Text(Strings.Room.Manage.failedTitle),
-                   isPresented: Binding(get: { failure != nil }, set: { if !$0 { failure = nil } }),
-                   presenting: failure) { _ in
-                Button(String(app: Strings.Room.ok)) { failure = nil }
-            } message: { failure in
-                Text(failure.explanation)
-            }
+            .failureAlert($failure)
             .onAppear { isFocused = true }
         }
     }

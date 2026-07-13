@@ -23,9 +23,15 @@ public final class UserSession {
     public private(set) var displayName: String
     public private(set) var avatarURL: String?
 
-    /// Set when the server would not take a new name or a new picture. `var`, because the
-    /// alert that shows it has to be able to put it back.
-    public var failure: AccountActionFailure?
+    /// The name of *this* device, as the rest of the account sees it — and the only true
+    /// thing the encryption screen can say about sessions, since the others cannot be
+    /// reached at all (see `ROADMAP.md`, stage 6).
+    ///
+    /// Resolved once, here, exactly like `userID`: it is fixed for the life of the client,
+    /// and asking the SDK again on every read would cross the FFI boundary to be told the
+    /// same thing. Optional rather than `?? ""`, because a device with no ID is a thing the
+    /// screen should decline to talk about rather than a blank line under a heading.
+    public let deviceID: String?
 
     /// Internal rather than private, because `RoomCreation` is an extension in another
     /// file and needs it. The rule it is kept under is unchanged: the `Client` does not
@@ -38,6 +44,7 @@ public final class UserSession {
         self.authentication = authentication
         let userID = (try? client.userId()) ?? ""
         self.userID = userID
+        self.deviceID = try? client.deviceId()
         self.displayName = Self.localPart(of: userID)
         self.roomList = RoomListStore(client: client)
         self.search = SearchStore(client: client)
@@ -105,13 +112,6 @@ public final class UserSession {
         RecoveryStore(encryption: client.encryption())
     }
 
-    /// The name of *this* device, as the rest of the account sees it. The one true thing
-    /// the sessions screen can say — see `ROADMAP.md`, stage 6, on why it cannot list the
-    /// others.
-    public var deviceID: String {
-        (try? client.deviceId()) ?? ""
-    }
-
     // MARK: - Changing who you are
 
     /// The name everyone else sees. Applied at once and put back if the server refuses —
@@ -122,7 +122,14 @@ public final class UserSession {
     /// An empty name is refused rather than sent. Matrix allows it, and the result is a
     /// user whose messages are signed with a bare Matrix ID — which is not a name people
     /// choose, it is one they end up with by deleting the field and tapping away.
-    public func rename(to newName: String) async {
+    ///
+    /// These three *throw* rather than parking the refusal in a `failure` field on the
+    /// session, which is what they used to do. The session is the app-lifetime object every
+    /// screen holds; a settings alert's dismiss state has no business living in it, and the
+    /// field was public and settable, so a view could — and did — write a photo-library
+    /// error into the model layer. Reporting failure as a typed throw is what `RoomCreation`
+    /// already does, and it leaves the alert where the alert belongs.
+    public func rename(to newName: String) async throws(AccountActionFailure) {
         let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, trimmed != displayName else { return }
 
@@ -134,13 +141,13 @@ public final class UserSession {
         } catch {
             Log.session.error("the name would not change: \(error)")
             displayName = previous
-            failure = .name
+            throw .name
         }
     }
 
     /// The picture, as bytes, exactly as a room's picture goes up — see
     /// `RoomDetailsStore.setPicture` for why it is bytes and not a path on disk.
-    public func setPicture(_ data: Data, filename: String) async {
+    public func setPicture(_ data: Data, filename: String) async throws(AccountActionFailure) {
         let info = MediaMetadata.image(data: data, filename: filename)
 
         do {
@@ -148,11 +155,11 @@ public final class UserSession {
             avatarURL = try? await client.avatarUrl()
         } catch {
             Log.session.error("the picture would not change: \(error)")
-            failure = .picture
+            throw .picture
         }
     }
 
-    public func removePicture() async {
+    public func removePicture() async throws(AccountActionFailure) {
         let previous = avatarURL
         avatarURL = nil
 
@@ -161,7 +168,7 @@ public final class UserSession {
         } catch {
             Log.session.error("the picture would not clear: \(error)")
             avatarURL = previous
-            failure = .picture
+            throw .picture
         }
     }
 

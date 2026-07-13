@@ -2,14 +2,6 @@ import SwiftUI
 import IskraCore
 import IskraDesign
 
-// The clipboard is the one thing SwiftUI still has no view-independent API for, so the
-// two platforms are named here and nowhere else in the app.
-#if os(macOS)
-import AppKit
-#else
-import UIKit
-#endif
-
 /// One message in the timeline.
 struct MessageRow: View {
     let message: Message
@@ -281,7 +273,7 @@ struct MessageRow: View {
 
         if let text = copyableText {
             Button {
-                copy(text)
+                Clipboard.copy(text)
             } label: {
                 Label(Strings.Message.Menu.copy, systemImage: "doc.on.doc")
             }
@@ -356,15 +348,6 @@ struct MessageRow: View {
         case let .emote(body): body
         default: nil
         }
-    }
-
-    private func copy(_ text: String) {
-        #if os(macOS)
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
-        #else
-        UIPasteboard.general.string = text
-        #endif
     }
 
     /// The emoji under the bubble — aligned to the side the message is on, indented past

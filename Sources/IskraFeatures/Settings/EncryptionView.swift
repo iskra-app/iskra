@@ -20,14 +20,14 @@ struct EncryptionView: View {
     @State private var recovery: RecoveryStore
 
     /// The one true thing this screen can say about sessions — see the footer, and
-    /// `ROADMAP.md`, stage 6.
-    let deviceID: String
+    /// `ROADMAP.md`, stage 6. Optional because a client with no device ID is a thing to say
+    /// nothing about rather than an empty line under a heading.
+    let deviceID: String?
 
     /// What is being typed into the field, when the key is being typed rather than made.
     @State private var typedKey = ""
-    @State private var hasCopied = false
 
-    init(recovery: RecoveryStore, deviceID: String) {
+    init(recovery: RecoveryStore, deviceID: String?) {
         _recovery = State(initialValue: recovery)
         self.deviceID = deviceID
     }
@@ -41,7 +41,7 @@ struct EncryptionView: View {
                     Button {
                         Task { await recovery.makeNewKey() }
                     } label: {
-                        Label(String(app: Strings.Encryption.newKey), systemImage: "key")
+                        working(Strings.Encryption.newKey)
                     }
                     .disabled(recovery.isWorking)
                 } footer: {
@@ -60,23 +60,14 @@ struct EncryptionView: View {
         // key: the row is inside a `Section` that stops being drawn the moment `protection`
         // flips to `.on`, and a sheet attached to a view that has just been removed never
         // opens. The key would then be minted, held, and shown to nobody.
-        .sheet(isPresented: Binding(get: { recovery.freshKey != nil },
-                                    set: { if !$0 { recovery.forgetFreshKey() } })) {
-            if let key = recovery.freshKey {
-                KeySheet(key: key, hasCopied: $hasCopied) {
-                    recovery.forgetFreshKey()
-                    hasCopied = false
-                }
-            }
+        //
+        // `item:` rather than `isPresented:` — the key's presence *is* the presentation
+        // state, so there is nothing to keep in step and nothing to unwrap twice.
+        .sheet(item: Binding(get: { recovery.freshKey },
+                             set: { if $0 == nil { recovery.forgetFreshKey() } })) { key in
+            KeySheet(key: key.value, onDone: recovery.forgetFreshKey)
         }
-        .alert(Text(Strings.Room.Manage.failedTitle),
-               isPresented: Binding(get: { recovery.failure != nil },
-                                    set: { if !$0 { recovery.failure = nil } }),
-               presenting: recovery.failure) { _ in
-            Button(String(app: Strings.Room.ok)) { recovery.failure = nil }
-        } message: { failure in
-            Text(failure.explanation)
-        }
+        .failureAlert($recovery.failure)
     }
 
     /// Where things stand, and the one button that changes it. Exactly one of these four is
@@ -161,12 +152,14 @@ struct EncryptionView: View {
     /// short list to speak for itself.
     private var thisDevice: some View {
         Section {
-            LabeledContent {
-                Text(deviceID)
-                    .font(.body.monospaced())
-                    .textSelection(.enabled)
-            } label: {
-                Text(Strings.Encryption.thisDevice)
+            if let deviceID {
+                LabeledContent {
+                    Text(deviceID)
+                        .font(.body.monospaced())
+                        .textSelection(.enabled)
+                } label: {
+                    Text(Strings.Encryption.thisDevice)
+                }
             }
 
             Label {
@@ -204,8 +197,11 @@ struct EncryptionView: View {
 /// sheet is not asking the user to agree to anything — it is making them look.
 private struct KeySheet: View {
     let key: String
-    @Binding var hasCopied: Bool
     var onDone: () -> Void
+
+    /// Local, because nobody outside this sheet reads it. SwiftUI rebuilds the sheet's
+    /// content on each presentation, so it starts out false without anybody resetting it.
+    @State private var hasCopied = false
 
     var body: some View {
         VStack(spacing: Theme.Spacing.roomy) {
@@ -252,12 +248,7 @@ private struct KeySheet: View {
     }
 
     private func copy() {
-        #if os(iOS)
-        UIPasteboard.general.string = key
-        #else
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(key, forType: .string)
-        #endif
+        Clipboard.copy(key)
         hasCopied = true
     }
 }
