@@ -311,6 +311,16 @@ public enum Theme {
         /// usually already there by the time they get to where it goes.
         public static let paginationReach: CGFloat = 400
 
+        /// How close to the newest message counts as standing on it — and therefore as having
+        /// asked to be brought along when the next one arrives.
+        ///
+        /// Small, and much smaller than `paginationReach`, because it answers a different
+        /// question. That one is generous on purpose: fetching early is free, and the cost of
+        /// guessing wrong is a page nobody reads. This one decides whether to *move the screen
+        /// under somebody's eyes*, and the cost of guessing wrong is losing their place in a
+        /// conversation they were reading. A screenful of slack would do exactly that.
+        public static let newestReach: CGFloat = 80
+
         /// How much of the title bar the chat's name and avatar may take.
         ///
         /// A limit rather than a size: a title bar has buttons in both corners, and a room

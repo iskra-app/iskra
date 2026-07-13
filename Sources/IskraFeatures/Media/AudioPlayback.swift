@@ -40,12 +40,56 @@ final class AudioPlayback {
     /// object, so it is one: a closure box, kept alive by the player it belongs to.
     private var finish: FinishListener?
 
+    /// Play, pause, or pick up where you left off.
+    ///
+    /// The middle one used to be missing, and the button lied about it: the glyph said
+    /// `pause.fill` and the VoiceOver label said "Pause", while the code called `stop()` —
+    /// which rewinds to zero and throws the decrypted file away. Two minutes forty into a
+    /// three-minute message, "pause" meant "start again, and download it again to do it".
+    ///
+    /// Pausing is not scrubbing, and the argument against a draggable handle (see
+    /// `VoiceMessageView` — a message is not a track) never applied to it. Somebody says your
+    /// name while you are listening; you stop to answer them; you carry on. That is the whole
+    /// of it, and the glyph was right all along.
     func toggle(_ attachment: Attachment, using loader: MediaLoader?) async {
         if isPlaying {
-            stop()
+            pause()
+        } else if player != nil {
+            resume()
         } else {
             await play(attachment, using: loader)
         }
+    }
+
+    /// Holds the place. The player and the decrypted file both stay — the plaintext is on disk
+    /// for exactly as long as this message is the one in your hand, which is the same rule as
+    /// while it is playing, and `stop()` is still what enforces the end of it.
+    private func pause() {
+        player?.pause()
+        isPlaying = false
+
+        ticker?.invalidate()
+        ticker = nil
+    }
+
+    private func resume() {
+        guard let player else { return }
+
+        // Somebody else may have started talking while this one was paused, and the speakers
+        // are one pair — so they give way, exactly as they do in `play`.
+        //
+        // `!== self` is load-bearing and not defensive noise. A paused message is still the
+        // *current* one, so an unguarded `Self.current?.stop()` here would stop **us**: nil the
+        // player, drop the file, rewind to zero — and resuming would silently do nothing at all,
+        // which is precisely the bug this method exists to fix, reintroduced one line further in.
+        if Self.current !== self {
+            Self.current?.stop()
+        }
+        Self.current = self
+
+        player.play()
+        isPlaying = true
+        startTicking()
     }
 
     private func play(_ attachment: Attachment, using loader: MediaLoader?) async {

@@ -310,10 +310,17 @@ private struct RoomRow: View {
             parts.append(String(app: Strings.RoomList.privateChat))
         }
         if let message = room.lastMessage { parts.append(message) }
+
+        // Both, when both are true, and that is the fix rather than a flourish. These used to be
+        // an either/or: a mention suppressed the unread count entirely, so a room with twelve
+        // unread messages and one mention in them showed a red **12** on screen and told VoiceOver
+        // "1 mention". The badge and the voice were reading different numbers off the same row,
+        // and the one you could not see was the one leaving twelve messages out.
+        if room.hasUnread {
+            parts.append(String(app: Strings.RoomList.unread(room.unreadCount)))
+        }
         if room.isMentioned {
             parts.append(String(app: Strings.RoomList.mentions(room.mentionCount)))
-        } else if room.hasUnread {
-            parts.append(String(app: Strings.RoomList.unread(room.unreadCount)))
         }
         return parts.joined(separator: ", ")
     }

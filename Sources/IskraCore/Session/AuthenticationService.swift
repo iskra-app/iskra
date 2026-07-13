@@ -134,6 +134,15 @@ public actor AuthenticationService {
         pendingClient = client
         pendingSessionID = sessionID
 
+        // And the *previous* attempt's half-finished flow goes with it. It used to survive, and
+        // `completeSingleSignOn` asks `if pendingOAuth != nil` first — so a user who opened the
+        // browser against an OAuth server, backed out of it, and then typed a different address
+        // that only speaks legacy SSO would come back to `loginWithOauthCallback` being called on
+        // a client that never began an OAuth flow. The legacy branch was never reached, and the
+        // sign-in failed with an SDK error that named none of this.
+        pendingOAuth = nil
+        pendingSSO = nil
+
         let options = SignInOptions(supportsOAuth: details.supportsOauthLogin(),
                                     supportsLegacySSO: details.supportsSsoLogin(),
                                     supportsPassword: details.supportsPasswordLogin(),

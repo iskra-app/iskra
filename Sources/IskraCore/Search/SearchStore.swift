@@ -58,7 +58,18 @@ public final class SearchStore {
     }
 
     private func run(query: String) async {
-        defer { isSearching = false }
+        // Only the search that is still the current one may put the spinner out.
+        //
+        // This used to be a bare `defer { isSearching = false }`, which fires on *every* way out
+        // — including the three `guard !Task.isCancelled` returns below. So a fast typist got
+        // this: "hel" starts searching, "hell" cancels it and starts its own, and then the
+        // cancelled one unwinds and turns off the spinner belonging to the search that is still
+        // running. The screen says "nothing found" about a query it has not finished asking.
+        defer {
+            if !Task.isCancelled {
+                isSearching = false
+            }
+        }
 
         do {
             let iterator = try await client.searchMessages(query: query,

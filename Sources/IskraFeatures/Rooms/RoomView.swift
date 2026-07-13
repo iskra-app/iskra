@@ -60,6 +60,17 @@ public struct RoomView: View {
     /// until this is true. See the pagination trigger below.
     @State private var hasAnchored = false
 
+    /// Whether the reader is standing at the newest message, which is what decides if an
+    /// arriving message is allowed to move the conversation.
+    ///
+    /// It used to be allowed unconditionally, and that is a bad way to lose your place: you
+    /// scroll up to read something from last week, somebody says "ok" in the room, and you are
+    /// thrown back to the bottom. In a busy room it happens again on every message, and there
+    /// is no way to read anything old at all.
+    ///
+    /// Starts true, because a room opens on its newest message — see `hasAnchored`.
+    @State private var isAtNewest = true
+
     /// The room-info screen, built when the header is first pressed and kept afterwards.
     ///
     /// Held rather than made on the spot, because `navigationDestination` evaluates its
@@ -221,9 +232,27 @@ public struct RoomView: View {
                 // Not animated: this is where the room *opens*, not somewhere it travels to.
                 scroll.scrollTo(last, anchor: .bottom)
             }
-            // And afterwards, a message arriving brings the conversation with it.
+            // Is the reader at the newest message? Measured the same way the pagination trigger
+            // above is, from the other end of the scroll view.
+            .onScrollGeometryChange(for: Bool.self) { geometry in
+                let distanceFromBottom = geometry.contentSize.height
+                    - geometry.contentOffset.y
+                    - geometry.containerSize.height
+                return distanceFromBottom < Theme.Size.newestReach
+            } action: { _, isAtBottom in
+                isAtNewest = isAtBottom
+            }
+            // And afterwards, a message arriving brings the conversation with it — but *only*
+            // if the reader is standing at the end of it. Somebody reading last week's messages
+            // is not asking to be taken to today's, and taking them there anyway is how a busy
+            // room becomes impossible to read backwards at all.
+            //
+            // Your own message is the exception, and it is not really an exception: sending one
+            // is a request to be where it lands. The composer is at the bottom, so you are
+            // answering the newest message by definition.
             .onChange(of: timeline.rows.last?.id) { _, last in
                 guard hasAnchored, let last else { return }
+                guard isAtNewest || timeline.rows.last?.message?.isOwn == true else { return }
                 withAnimation(.smooth) { scroll.scrollTo(last, anchor: .bottom) }
             }
             // Over the timeline but *under* the composer, which is a safe-area inset added
@@ -355,6 +384,20 @@ public struct RoomView: View {
         .task {
             try? await timeline.start()
             await timeline.markAsRead()
+        }
+        // And again whenever something arrives while you are looking at it.
+        //
+        // Marking once, on open, is enough on a phone — a room you are not in is a room you have
+        // left, and you will open it again. It is wrong everywhere else: on an iPad or a Mac the
+        // room stays open beside the list, so three messages could land while you read them and
+        // the sidebar would go on saying "3" for as long as you sat there, while the sender was
+        // never told you had read a word of it.
+        //
+        // Only when you are actually at the newest message, for the same reason the conversation
+        // only follows you there: someone reading last week's messages has not read today's.
+        .onChange(of: timeline.rows.last?.id) { _, _ in
+            guard isAtNewest else { return }
+            Task { await timeline.markAsRead() }
         }
         // The camera goes with the room, and it has to be said here rather than left to the
         // overlay: the overlay used to be a sheet, and a sheet took its own `onDisappear` with
