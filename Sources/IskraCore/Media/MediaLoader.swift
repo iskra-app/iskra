@@ -7,11 +7,24 @@ import MatrixRustSDK
 /// back here is already plaintext and must be treated as such: it is handed to the
 /// view and never written to a cache directory of our own. The SDK's own cache is
 /// the encrypted store we set up at sign-in.
-public struct MediaLoader: Sendable {
+/// `Equatable` for one reason, and it is not a tidiness one: this goes into the SwiftUI
+/// environment (`\.mediaLoader`), and `IskraRootView` hands it down as `session.media()` —
+/// a *fresh value* on every pass through `body`, which is every sync tick. Without a way to
+/// compare two of them, SwiftUI must assume the environment changed and invalidate every view
+/// that reads it: every avatar, every thumbnail, every voice message, every video note, in the
+/// whole tree, several times a second on a busy account.
+///
+/// Two loaders holding the same `Client` are the same loader. The client is a reference, so
+/// identity is the honest comparison — and it is what stops the redraw.
+public struct MediaLoader: Sendable, Equatable {
     private let client: Client
 
     init(client: Client) {
         self.client = client
+    }
+
+    public static func == (lhs: MediaLoader, rhs: MediaLoader) -> Bool {
+        lhs.client === rhs.client
     }
 
     /// Full-size media. Use for the photo the user tapped, not for the timeline.

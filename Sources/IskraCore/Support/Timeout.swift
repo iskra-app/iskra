@@ -11,6 +11,20 @@ private struct TimeoutState<Value: Sendable> {
     var continuation: CheckedContinuation<Value, any Error>?
     var work: Task<Void, Never>?
     var settled = false
+
+    /// A result that arrived before there was anybody to give it to.
+    ///
+    /// This exists because of a hang, and the hang was in the one situation this whole file is
+    /// supposed to cover. `withTaskCancellationHandler` runs `onCancel` **immediately** when the
+    /// surrounding task is *already* cancelled — before the body has run, and therefore before
+    /// `continuation` has been installed. The cancellation would take the lock, mark the race
+    /// settled, find no continuation, and resume nothing; the operation and the timer would then
+    /// both stand down on `guard !settled`; and the caller would wait forever.
+    ///
+    /// That is not a corner. It is a notification extension at `serviceExtensionTimeWillExpire`,
+    /// and a SwiftUI `.task` the instant its view goes away. So a result with no continuation to
+    /// go to is *kept* here, and handed over the moment one appears. `TimeoutTests` pins it.
+    var pending: Result<Value, any Error>?
 }
 
 /// Runs `operation`, and gives up on it after `limit`.
@@ -36,7 +50,14 @@ public func withTimeout<T: Sendable>(
         let continuation = state.withLock { state -> CheckedContinuation<T, any Error>? in
             guard !state.settled else { return nil }
             state.settled = true
-            return state.continuation
+
+            // Nobody to hand it to yet — an already-cancelled caller settles before the body
+            // has even run. Keep it; the body picks it up as soon as it has a continuation.
+            guard let continuation = state.continuation else {
+                state.pending = result
+                return nil
+            }
+            return continuation
         }
         continuation?.resume(with: result)
     }
@@ -50,7 +71,21 @@ public func withTimeout<T: Sendable>(
             // Attached before the work starts, and in that order: a fast operation could
             // otherwise finish and settle into a continuation that is not there yet, and
             // the caller would wait forever — the very bug this is fixing.
-            state.withLock { $0.continuation = continuation }
+            //
+            // And the race can already have been won before we got here at all, by a caller who
+            // was cancelled before the body ran. In that case the answer is waiting in `pending`
+            // and there is nothing left to start: resume with it and do not launch the work or
+            // the timer, which would be a network call made on behalf of somebody who has gone.
+            let pending = state.withLock { state -> Result<T, any Error>? in
+                if let pending = state.pending { return pending }
+                state.continuation = continuation
+                return nil
+            }
+
+            if let pending {
+                continuation.resume(with: pending)
+                return
+            }
 
             let work = Task {
                 do { settle(.success(try await operation())) }
