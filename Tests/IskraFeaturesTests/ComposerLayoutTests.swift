@@ -38,7 +38,6 @@ struct ComposerLayoutTests {
     private func render(draft: String, named name: String, isAttaching: Bool = false) throws {
         let view = MessageComposer(draft: .constant(draft),
                                    onSend: {},
-                                   onRecordVideoNote: {},
                                    onChoosePhoto: {},
                                    onChooseFile: {},
                                    isAttaching: isAttaching)

@@ -303,3 +303,6 @@
 "message.media.play" = "Слушать";
 "message.media.pause" = "Пауза";
 "message.media.openFile" = "Открыть файл";
+
+/* Recording a round video message by holding the button in the composer. */
+"videoNote.releaseToSend" = "Отпустите — отправится. Влево — отмена, вверх — без рук";

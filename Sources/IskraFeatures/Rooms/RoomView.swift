@@ -7,7 +7,22 @@ import IskraDesign
 public struct RoomView: View {
     @State private var timeline: TimelineStore
     @State private var draft = ""
+    /// Recording a round video message.
+    ///
+    /// The recorder lives here and not in the sheet that shows the camera, because the gesture
+    /// that drives it starts *outside* the sheet: the user holds the video button in the
+    /// composer, the sheet comes up while their finger is still down, and lifting that finger is
+    /// what sends. The sheet and the button therefore have to be talking about the same
+    /// recorder, and only the screen can see both.
+    @State private var videoNote = VideoNoteRecorder()
     @State private var isRecordingVideoNote = false
+
+    /// Whether the finger that started the recording is still on the button.
+    @State private var isHoldingVideoNote = false
+
+    /// Whether the recording has been let go of — swiped up, or started from the sheet's own
+    /// shutter. Either way, lifting the finger off the composer must not end it.
+    @State private var isVideoNoteLocked = false
 
     /// Whether the user is answering somebody, or going back to change what they wrote. Held
     /// here rather than in the composer because both begin in the *timeline* — a menu item on a
@@ -368,16 +383,51 @@ public struct RoomView: View {
                         context: composerContext,
                         onCancelContext: cancelContext,
                         onSend: send,
-                        onRecordVideoNote: { isRecordingVideoNote = true },
+                        onStartVideoNote: startVideoNote,
+                        onFinishVideoNote: finishVideoNote,
+                        onCancelVideoNote: cancelVideoNote,
+                        onLockVideoNote: { isVideoNoteLocked = true },
                         onChoosePhoto: { isChoosingPhoto = true },
                         onChooseFile: { isChoosingFile = true })
             .sheet(isPresented: $isRecordingVideoNote) {
-                VideoNoteComposer { url in
+                VideoNoteComposer(recorder: videoNote,
+                                  isHolding: $isHoldingVideoNote,
+                                  isLocked: $isVideoNoteLocked) { url in
                     await timeline.send(video: url, replyingTo: replyID)
                     cancelContext()
                 }
                 .presentationDetents([.large])
             }
+    }
+
+    // MARK: - Recording a video note
+
+    /// The finger came down on the video button. Up comes the camera, and it starts recording
+    /// the moment it is ready — see `VideoNoteComposer`.
+    private func startVideoNote() {
+        isHoldingVideoNote = true
+        isVideoNoteLocked = false
+        isRecordingVideoNote = true
+    }
+
+    /// The finger came up. That means send — unless the recording has been let go of, in which
+    /// case the sheet is in charge of it now and lifting a finger means nothing.
+    ///
+    /// `stop()` is what sends: the recorder crops the clip square and hands it to the closure
+    /// the sheet gave it, which uploads and dismisses. A `stop()` on a recorder that never got
+    /// going is a no-op, which is what a tap on the button amounts to — the sheet stays up, and
+    /// the shutter inside it is there to be held.
+    private func finishVideoNote() {
+        isHoldingVideoNote = false
+        guard !isVideoNoteLocked else { return }
+        videoNote.stop()
+    }
+
+    /// Swiped away. The clip is thrown out and the camera goes with it.
+    private func cancelVideoNote() {
+        isHoldingVideoNote = false
+        videoNote.cancel()
+        isRecordingVideoNote = false
     }
 
     /// One row of the conversation: a message, the date above it, or a note about something

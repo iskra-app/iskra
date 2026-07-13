@@ -198,6 +198,14 @@ public enum Theme {
         /// the composer, and for the same reason — it sits where the thumb already is.
         public static let searchField: CGFloat = 44
 
+        /// How far a thumb has to travel, mid-hold, for the movement to mean something.
+        ///
+        /// The escapes from a recording in progress — left to cancel, up to record without
+        /// holding — and it is a real threshold rather than a nicety: a finger held still on a
+        /// button is never actually still, and a few points of drift must not throw away
+        /// somebody's video message.
+        public static let gestureReach: CGFloat = 60
+
         /// How close to the top of a conversation counts as asking for more of it.
         ///
         /// Not zero, deliberately: fetching only once the user has hit the very top means
