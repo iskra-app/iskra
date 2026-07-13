@@ -80,8 +80,14 @@ public struct RoomView: View {
     /// turns on. See `RoomListView.isSidebar` for the case where this reasoning goes wrong.
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
-    public init(timeline: TimelineStore) {
+    /// Leaving a room takes this whole screen away with it, and this screen cannot do
+    /// that: the room it is showing is chosen above, in the split view. Same shape as
+    /// sign-out in `RoomListView` — the act is reported upwards and performed there.
+    var onLeave: () -> Void
+
+    public init(timeline: TimelineStore, onLeave: @escaping () -> Void) {
         _timeline = State(initialValue: timeline)
+        self.onLeave = onLeave
     }
 
     /// A phone-shaped title bar: an iPhone, or an iPad window squeezed narrow enough to be
@@ -296,7 +302,7 @@ public struct RoomView: View {
         }
         .navigationDestination(isPresented: $isShowingDetails) {
             if let details {
-                RoomInfoView(details: details)
+                RoomInfoView(details: details, onLeave: onLeave)
             }
         }
         .navigationDestination(isPresented: $isShowingPinned) {

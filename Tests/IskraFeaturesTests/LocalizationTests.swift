@@ -58,7 +58,16 @@ struct LocalizationTests {
         (Strings.Room.replyingTo, en: "Reply", ru: "Ответ"),
         (Strings.Room.editingMessage, en: "Editing", ru: "Изменение сообщения"),
         (Strings.Room.pinned, en: "Pinned", ru: "Закреплённое"),
-        (Strings.Room.pinnedTitle, en: "Pinned messages", ru: "Закреплённые")
+        (Strings.Room.pinnedTitle, en: "Pinned messages", ru: "Закреплённые"),
+        (Strings.Room.Manage.invite, en: "Invite", ru: "Пригласить"),
+        (Strings.Room.Manage.remove, en: "Remove", ru: "Исключить"),
+        (Strings.Room.Manage.block, en: "Block", ru: "Заблокировать"),
+        (Strings.Room.Manage.member, en: "Member", ru: "Участник"),
+        (Strings.Room.Manage.openToAnyone, en: "Open chat", ru: "Открытый чат"),
+        (Strings.Room.Manage.leave, en: "Leave the chat", ru: "Выйти из чата"),
+        // The one act on this screen that asks first, and it asks by name — so the name has
+        // to survive the trip through the format string in both languages.
+        (Strings.Room.Manage.blockQuestion("Аня"), en: "Block Аня?", ru: "Заблокировать Аня?")
     ]
 
     @Test("app strings resolve in English and in Russian")

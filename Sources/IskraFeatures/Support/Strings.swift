@@ -119,6 +119,57 @@ public enum Strings {
         public static let administrator = LocalizedStringResource("room.administrator", bundle: bundle)
         public static let moderator = LocalizedStringResource("room.moderator", bundle: bundle)
 
+        /// Running the room. Every one of these appears only for somebody the room's own
+        /// power levels allow to use it — see `RoomPermissions`, and the reason the ones
+        /// that do not apply are *absent* rather than greyed out.
+        public enum Manage {
+            /// The name and the description, as fields rather than as labels. What the
+            /// reader sees is what they can change, in place, with no "Edit" mode in front
+            /// of it — a room's name is one line of text, and a whole screen state to change
+            /// one line of text is a screen too many.
+            public static let namePlaceholder = LocalizedStringResource("room.manage.namePlaceholder", bundle: bundle)
+            public static let topicPlaceholder = LocalizedStringResource("room.manage.topicPlaceholder", bundle: bundle)
+
+            public static let changePicture = LocalizedStringResource("room.manage.changePicture", bundle: bundle)
+            public static let removePicture = LocalizedStringResource("room.manage.removePicture", bundle: bundle)
+
+            /// Who may walk in. The switch is the plain-language half of the join rules —
+            /// the protocol's other answers (knocking, restricted to a space) are not
+            /// offered, because neither can be explained in a sentence a person recognises.
+            public static let openToAnyone = LocalizedStringResource("room.manage.openToAnyone", bundle: bundle)
+            public static let openToAnyoneHelp = LocalizedStringResource("room.manage.openToAnyoneHelp", bundle: bundle)
+
+            public static let invite = LocalizedStringResource("room.manage.invite", bundle: bundle)
+            public static let inviteTitle = LocalizedStringResource("room.manage.inviteTitle", bundle: bundle)
+            public static let inviteHelp = LocalizedStringResource("room.manage.inviteHelp", bundle: bundle)
+            public static let invitePlaceholder = LocalizedStringResource("room.manage.invitePlaceholder", bundle: bundle)
+
+            public static let role = LocalizedStringResource("room.manage.role", bundle: bundle)
+            /// The third rung has no badge in the list — everybody is a member — but it very
+            /// much needs a word in the menu that *demotes* somebody back to being one.
+            public static let member = LocalizedStringResource("room.manage.member", bundle: bundle)
+
+            public static let remove = LocalizedStringResource("room.manage.remove", bundle: bundle)
+            public static let block = LocalizedStringResource("room.manage.block", bundle: bundle)
+            /// Blocking is the one act here with no way back in this interface, so it is
+            /// the one that asks first, by name.
+            public static func blockQuestion(_ name: String) -> LocalizedStringResource {
+                LocalizedStringResource("room.manage.blockQuestion",
+                                        defaultValue: "Block \(name)?",
+                                        bundle: bundle)
+            }
+            public static let blockHelp = LocalizedStringResource("room.manage.blockHelp", bundle: bundle)
+
+            public static let leave = LocalizedStringResource("room.manage.leave", bundle: bundle)
+            public static let leaveQuestion = LocalizedStringResource("room.manage.leaveQuestion", bundle: bundle)
+            public static let leaveHelp = LocalizedStringResource("room.manage.leaveHelp", bundle: bundle)
+
+            public static let cancel = LocalizedStringResource("room.manage.cancel", bundle: bundle)
+            /// The title over any refusal from the homeserver. The sentence underneath it
+            /// comes from `IskraCore`, which is where the app knows *which* act failed.
+            public static let failedTitle = LocalizedStringResource("room.manage.failedTitle", bundle: bundle)
+        }
+
         /// The day divider. Only the two days people actually name have words; everything
         /// older is a date, formatted by `Date.FormatStyle` and so already in the reader's
         /// language.

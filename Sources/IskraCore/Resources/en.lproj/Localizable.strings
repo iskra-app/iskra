@@ -100,3 +100,16 @@
 
 /* What a client that cannot draw a map shows instead of one. */
 "timeline.locationBody" = "Location: %1$.6f, %2$.6f";
+
+/* Changes to a room the homeserver would not make. One sentence each: "something went
+   wrong" tells nobody anything, while "you weren't allowed to" says it was a question of
+   rights and that the room is unchanged. */
+"roomAction.renameFailed" = "The name didn’t change. You may not be allowed to.";
+"roomAction.topicFailed" = "The description didn’t change. You may not be allowed to.";
+"roomAction.pictureFailed" = "The picture didn’t change. You may not be allowed to.";
+"roomAction.visibilityFailed" = "Who can join this chat couldn’t be changed.";
+"roomAction.inviteFailed" = "The invitation didn’t go through. Check the address — it looks like @name:server.";
+"roomAction.removeFailed" = "They couldn’t be removed. They are still in the chat.";
+"roomAction.banFailed" = "They couldn’t be blocked. They are still in the chat.";
+"roomAction.roleFailed" = "The role didn’t change. You may not be allowed to.";
+"roomAction.leaveFailed" = "You couldn’t leave the chat. Try again.";
