@@ -63,7 +63,7 @@
 
 "room.noRoomSelectedTitle" = "Pick a chat";
 
-"room.ok" = "OK";
+"problem.ok" = "OK";
 
 /* Accessibility label for the send button. */
 "room.send" = "Send";
@@ -348,7 +348,7 @@
 "room.manage.leaveQuestion" = "Leave this chat?";
 "room.manage.leaveHelp" = "New messages will stop arriving. You can only come back by invitation.";
 "room.manage.cancel" = "Cancel";
-"room.manage.failedTitle" = "It didn’t work";
+"problem.title" = "It didn’t work";
 
 /* Starting a new chat, or a new room. */
 "roomList.new.create" = "Create";

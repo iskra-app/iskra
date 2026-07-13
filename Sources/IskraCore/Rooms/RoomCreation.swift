@@ -3,7 +3,7 @@ import MatrixRustSDK
 
 /// A room that was not created. Two ways it can go wrong, and they are different acts for
 /// the person who tried: one of them they can fix by retyping an address.
-public enum RoomCreationFailure: String, Sendable, CaseIterable, Identifiable, Error {
+public enum RoomCreationFailure: String, CaseIterable, ActionFailure, Error {
     /// The Matrix ID of somebody to invite is not a Matrix ID.
     case badAddress
     /// The homeserver refused, or never answered.

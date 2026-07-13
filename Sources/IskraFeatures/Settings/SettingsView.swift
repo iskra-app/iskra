@@ -38,6 +38,18 @@ struct SettingsView: View {
     @State private var isChoosingPicture = false
     @State private var pickedPicture: PhotosPickerItem?
 
+    /// A change to the account the server would not make — including a picture the photo
+    /// library would not hand over, which never reached the server at all. It lives here,
+    /// with the alert that shows it, rather than on `UserSession`: the session outlives
+    /// every screen, and the dismiss state of one screen's alert has no business in it.
+    @State private var failure: AccountActionFailure?
+
+    /// The one place this screen can go that is worth building lazily — see the
+    /// `navigationDestination` below.
+    private enum Destination: Hashable {
+        case encryption
+    }
+
     /// Whether this screen has to draw its own way out.
     ///
     /// On iPhone it does not: settings is pushed onto the whole screen, and the system
@@ -75,9 +87,7 @@ struct SettingsView: View {
                     Label(Strings.Settings.reactions, systemImage: "heart")
                 }
 
-                NavigationLink {
-                    EncryptionView(recovery: session.recovery(), deviceID: session.deviceID)
-                } label: {
+                NavigationLink(value: Destination.encryption) {
                     Label(Strings.Settings.encryption, systemImage: "lock")
                 }
 
@@ -98,6 +108,17 @@ struct SettingsView: View {
         .tint(accent.color)
         .navigationTitle(Text(Strings.Settings.title))
         .toolbarTitleDisplayMode(.inline)
+        // Value-based, because a `NavigationLink` with a destination *closure* builds that
+        // destination eagerly, on every pass of this `body` — and this body re-runs on every
+        // keystroke in the name field. `session.recovery()` allocates an SDK `Encryption`
+        // object and a store, so the link-with-a-closure version minted and threw away one
+        // of each per character typed. This closure runs when the row is actually pushed.
+        .navigationDestination(for: Destination.self) { destination in
+            switch destination {
+            case .encryption:
+                EncryptionView(recovery: session.recovery(), deviceID: session.deviceID)
+            }
+        }
         // The field follows the session while it is not being typed in — the name can
         // change under us, from another device — and stops following it the moment it has
         // focus, or a sync landing mid-word would rewrite what is being typed.
@@ -107,7 +128,7 @@ struct SettingsView: View {
         }
         .onChange(of: isNamingSelf) { wasNaming, _ in
             guard wasNaming else { return }
-            Task { await session.rename(to: draftName) }
+            Task { await rename() }
         }
         // At the root of the screen, never inside the menu that asks for it: a
         // `PhotosPicker` declared inside a `Menu` simply never appears.
@@ -116,14 +137,7 @@ struct SettingsView: View {
             guard let item else { return }
             Task { await setPicture(item) }
         }
-        .alert(Text(Strings.Room.Manage.failedTitle),
-               isPresented: Binding(get: { session.failure != nil },
-                                    set: { if !$0 { session.failure = nil } }),
-               presenting: session.failure) { _ in
-            Button(String(app: Strings.Room.ok)) { session.failure = nil }
-        } message: { failure in
-            Text(failure.explanation)
-        }
+        .failureAlert($failure)
         .toolbar {
             if showsBackButton {
                 ToolbarItem(placement: .navigation) {
@@ -179,7 +193,7 @@ struct SettingsView: View {
 
             if session.avatarURL != nil {
                 Button(role: .destructive) {
-                    Task { await session.removePicture() }
+                    Task { await removePicture() }
                 } label: {
                     Label(String(app: Strings.Account.removePicture), systemImage: "trash")
                 }
@@ -200,19 +214,38 @@ struct SettingsView: View {
             .foregroundStyle(.secondary)
     }
 
+    /// The three changes this screen can make, each turning the session's typed refusal
+    /// into the alert. They are methods rather than `do/catch` written inline in a `Task`,
+    /// because inside a `Task` closure Swift loses the thrown type and hands back a bare
+    /// `any Error` — which will not fit the failure the alert is driven by.
+    private func rename() async {
+        do {
+            try await session.rename(to: draftName)
+        } catch {
+            failure = error
+        }
+    }
+
+    private func removePicture() async {
+        do {
+            try await session.removePicture()
+        } catch {
+            failure = error
+        }
+    }
+
     private func setPicture(_ item: PhotosPickerItem) async {
         pickedPicture = nil
 
+        guard let data = await imageData(from: item) else {
+            failure = .picture
+            return
+        }
+
         do {
-            guard let data = try await item.loadTransferable(type: Data.self) else {
-                Log.media.error("the photo library returned no bytes for the account picture")
-                session.failure = .picture
-                return
-            }
-            await session.setPicture(data, filename: "avatar.jpg")
+            try await session.setPicture(data, filename: "avatar.jpg")
         } catch {
-            Log.media.error("the photo library would not hand over the picture: \(String(describing: error), privacy: .public)")
-            session.failure = .picture
+            failure = error
         }
     }
 }

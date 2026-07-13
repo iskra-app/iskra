@@ -63,7 +63,7 @@
 
 "room.noRoomSelectedTitle" = "Выберите чат";
 
-"room.ok" = "Понятно";
+"problem.ok" = "Понятно";
 
 /* Accessibility label for the send button. */
 "room.send" = "Отправить";
@@ -347,7 +347,7 @@
 "room.manage.leaveQuestion" = "Выйти из чата?";
 "room.manage.leaveHelp" = "Новые сообщения приходить перестанут. Вернуться получится только по приглашению.";
 "room.manage.cancel" = "Отмена";
-"room.manage.failedTitle" = "Не получилось";
+"problem.title" = "Не получилось";
 
 /* Экран «новый чат» и «новая комната». */
 "roomList.new.create" = "Создать";

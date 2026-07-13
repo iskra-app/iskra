@@ -177,14 +177,7 @@ struct RoomInfoView: View {
         } message: {
             Text(Strings.Room.Manage.leaveHelp)
         }
-        .alert(Text(Strings.Room.Manage.failedTitle),
-               isPresented: Binding(get: { details.failure != nil },
-                                    set: { if !$0 { details.failure = nil } }),
-               presenting: details.failure) { _ in
-            Button(String(app: Strings.Room.ok)) { details.failure = nil }
-        } message: { failure in
-            Text(failure.explanation)
-        }
+        .failureAlert($details.failure)
         // The room is gone: the screen behind this one is about to be a conversation nobody
         // is in. Both halves are needed — this screen pops itself, and the selection is
         // cleared above, or an iPhone would be left staring at the empty detail column.
@@ -362,17 +355,11 @@ struct RoomInfoView: View {
     private func setPicture(_ item: PhotosPickerItem) async {
         pickedPicture = nil
 
-        do {
-            guard let data = try await item.loadTransferable(type: Data.self) else {
-                Log.media.error("the photo library returned no bytes for the room picture")
-                details.failure = .picture
-                return
-            }
-            await details.setPicture(data, filename: "avatar.jpg")
-        } catch {
-            Log.media.error("the photo library would not hand over the picture: \(String(describing: error), privacy: .public)")
+        guard let data = await imageData(from: item) else {
             details.failure = .picture
+            return
         }
+        await details.setPicture(data, filename: "avatar.jpg")
     }
 }
 

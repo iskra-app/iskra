@@ -97,7 +97,6 @@ public enum Strings {
         /// The picture was chosen and then could not be read — which is a failure *before*
         /// anything was sent, and must not be reported as the server refusing it.
         public static let attachmentUnreadable = LocalizedStringResource("room.attachmentUnreadable", bundle: bundle)
-        public static let ok = LocalizedStringResource("room.ok", bundle: bundle)
         public static let noRoomSelectedTitle = LocalizedStringResource("room.noRoomSelectedTitle", bundle: bundle)
         public static let noRoomSelectedMessage = LocalizedStringResource("room.noRoomSelectedMessage", bundle: bundle)
 
@@ -194,7 +193,6 @@ public enum Strings {
             public static let cancel = LocalizedStringResource("room.manage.cancel", bundle: bundle)
             /// The title over any refusal from the homeserver. The sentence underneath it
             /// comes from `IskraCore`, which is where the app knows *which* act failed.
-            public static let failedTitle = LocalizedStringResource("room.manage.failedTitle", bundle: bundle)
         }
 
         /// The day divider. Only the two days people actually name have words; everything
@@ -359,6 +357,15 @@ public enum Strings {
         public static let myLocation = LocalizedStringResource("location.myLocation", bundle: bundle)
         /// The third thing the "+" can attach.
         public static let attach = LocalizedStringResource("location.attach", bundle: bundle)
+    }
+
+    /// The apology every screen shares — see `View.failureAlert`, which is the only thing
+    /// that says them. They were `Room.ok` and `Room.Manage.failedTitle` until the account
+    /// screens started refusing things too, and a settings alert reaching into the room's
+    /// vocabulary for the word "OK" was the sign they had never belonged to the room.
+    public enum Problem {
+        public static let title = LocalizedStringResource("problem.title", bundle: bundle)
+        public static let ok = LocalizedStringResource("problem.ok", bundle: bundle)
     }
 
     public enum Account {

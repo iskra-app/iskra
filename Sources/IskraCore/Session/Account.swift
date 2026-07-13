@@ -7,7 +7,7 @@ import MatrixRustSDK
 /// and the two failures here that a person can actually act on — a key that did not fit, a
 /// picture the server refused — say so in different words because they call for different
 /// things.
-public enum AccountActionFailure: String, Sendable, CaseIterable, Identifiable {
+public enum AccountActionFailure: String, CaseIterable, ActionFailure, Error {
     case name
     case picture
     case protectHistory
@@ -43,6 +43,16 @@ public enum HistoryProtection: Sendable, Equatable {
     case keyNeeded
 }
 
+/// A recovery key, freshly minted, on its way to being shown once.
+///
+/// A type rather than a bare `String` so that it can be `Identifiable` and drive a sheet
+/// directly. It is its own identity: two different keys are two different things to show,
+/// and the same key shown twice is the same sheet.
+public struct RecoveryKey: Identifiable, Sendable, Equatable {
+    public let value: String
+    public var id: String { value }
+}
+
 /// The state of this account's encryption, and the two things that can be done about it:
 /// protect the history, or get it back.
 ///
@@ -69,7 +79,11 @@ public final class RecoveryStore {
     /// and it is never written anywhere: the whole point of a recovery key is that the
     /// only copy is the one the person keeps. Storing it in the Keychain "for convenience"
     /// would put it on the device whose loss it exists to survive.
-    public private(set) var freshKey: String?
+    ///
+    /// `Identifiable` so the sheet can be driven by `.sheet(item:)` — presence *is* the
+    /// presentation state, and the alternative is a hand-built binding that says
+    /// `freshKey != nil` beside a body that unwraps the same optional a second time.
+    public private(set) var freshKey: RecoveryKey?
 
     public var failure: AccountActionFailure?
 
@@ -92,11 +106,18 @@ public final class RecoveryStore {
         subscription = nil
     }
 
+    /// Reads where things stand, and subscribes so they stay read.
+    ///
+    /// Idempotent, because the screen calls it on every appearance and coming *back* to a
+    /// screen is an appearance: without the guard, a push and a pop would tear the SDK
+    /// listener down and register an identical one in its place, for state that had not
+    /// moved.
     public func load() {
+        guard subscription == nil else { return }
+
         protection = Self.protection(from: encryption.recoveryState())
         isDeviceVerified = encryption.verificationState() == .verified
 
-        subscription?.cancel()
         subscription = encryption.recoveryStateListener(listener: Updates { [weak self] state in
             Task { @MainActor in self?.protection = Self.protection(from: state) }
         })
@@ -114,9 +135,10 @@ public final class RecoveryStore {
         defer { isWorking = false }
 
         do {
-            freshKey = try await encryption.enableRecovery(waitForBackupsToUpload: true,
-                                                          passphrase: nil,
-                                                          progressListener: IgnoreProgress())
+            let key = try await encryption.enableRecovery(waitForBackupsToUpload: true,
+                                                         passphrase: nil,
+                                                         progressListener: IgnoreProgress())
+            freshKey = RecoveryKey(value: key)
             protection = .on
         } catch {
             Log.session.error("recovery would not turn on: \(error)")
@@ -132,7 +154,7 @@ public final class RecoveryStore {
         defer { isWorking = false }
 
         do {
-            freshKey = try await encryption.resetRecoveryKey()
+            freshKey = RecoveryKey(value: try await encryption.resetRecoveryKey())
             protection = .on
         } catch {
             Log.session.error("the recovery key would not reset: \(error)")

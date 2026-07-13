@@ -376,7 +376,7 @@ public struct RoomView: View {
         .alert(Text(Strings.Room.sendFailedTitle),
                isPresented: .init(get: { timeline.sendFailure != nil },
                                   set: { if !$0 { timeline.sendFailure = nil } })) {
-            Button(String(app: Strings.Room.ok), role: .cancel) { timeline.sendFailure = nil }
+            Button(String(app: Strings.Problem.ok), role: .cancel) { timeline.sendFailure = nil }
         } message: {
             if let failure = timeline.sendFailure { Text(failure) }
         }
