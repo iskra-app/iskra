@@ -95,6 +95,13 @@ public enum RoomActionFailure: String, CaseIterable, ActionFailure {
     case leave
     case alerts
 
+    /// An invitation that would not be taken up. Its own sentence rather than `leave`'s or
+    /// `invite`'s: the user pressed "Join" and is looking at a room they are still not in.
+    case acceptInvite
+    /// And one that would not be turned down — which matters more than it sounds, because the user
+    /// believes they are rid of it and it is still there.
+    case declineInvite
+
     public var id: String { rawValue }
 
     public var explanation: LocalizedStringResource {
@@ -109,6 +116,8 @@ public enum RoomActionFailure: String, CaseIterable, ActionFailure {
         case .ban: CoreStrings.RoomAction.banFailed
         case .role: CoreStrings.RoomAction.roleFailed
         case .leave: CoreStrings.RoomAction.leaveFailed
+        case .acceptInvite: CoreStrings.RoomAction.acceptInviteFailed
+        case .declineInvite: CoreStrings.RoomAction.declineInviteFailed
         }
     }
 }

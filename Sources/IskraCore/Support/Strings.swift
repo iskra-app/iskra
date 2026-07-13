@@ -73,6 +73,13 @@ public enum CoreStrings {
         /// A mute that did not take. Worth its own sentence: the user believes the room has
         /// gone quiet, and it has not.
         public static let alertsFailed = LocalizedStringResource("roomAction.alertsFailed", bundle: bundle)
+
+        /// The invitation would not be taken up. Names the likeliest reason, because it is one the
+        /// user can do nothing about but *ought to know*: an invitation can be withdrawn, and a
+        /// room can be gone by the time you answer it.
+        public static let acceptInviteFailed = LocalizedStringResource("roomAction.acceptInviteFailed", bundle: bundle)
+        /// And one that would not be declined. The user believes they are rid of it; they are not.
+        public static let declineInviteFailed = LocalizedStringResource("roomAction.declineInviteFailed", bundle: bundle)
     }
 
     /// The strip above a message that is answering another one.

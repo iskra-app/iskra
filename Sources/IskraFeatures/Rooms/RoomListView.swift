@@ -62,6 +62,9 @@ public struct RoomListView: View {
             }
         }
         .listStyle(.plain)
+        // An invitation that would not be accepted or declined. The same apology every other
+        // refusal in the app gets — see `FailureAlert`.
+        .failureAlert(Bindable(session.roomList).failure)
         .navigationTitle(Text(Strings.RoomList.title))
         // A small title, centred, in the bar itself — not the large scrolling headline
         // SwiftUI would otherwise give this screen. `toolbarTitleDisplayMode` says that
@@ -182,9 +185,23 @@ public struct RoomListView: View {
     private var rooms: some View {
         let rooms = session.roomList.rooms
         ForEach(Array(rooms.enumerated()), id: \.element.id) { index, room in
-            RoomRow(room: room)
-                .tag(room.id)
-                .separatorsBetweenRowsOnly(isFirst: index == 0, isLast: index == rooms.count - 1)
+            Group {
+                if room.isInvitation {
+                    // Deliberately *not* tagged. A tagged row in a `List(selection:)` is a row you
+                    // can open, and there is nothing to open: you are not in this room, its
+                    // timeline is empty, and anything typed into it is refused by the server. That
+                    // is precisely what used to happen — an invitation arrived, rendered as an
+                    // ordinary chat, and led into a dead conversation with no explanation. A
+                    // question is answered, not entered.
+                    InviteRow(room: room,
+                              onAccept: { Task { await session.roomList.accept(roomID: room.id) } },
+                              onDecline: { Task { await session.roomList.decline(roomID: room.id) } })
+                } else {
+                    RoomRow(room: room)
+                        .tag(room.id)
+                }
+            }
+            .separatorsBetweenRowsOnly(isFirst: index == 0, isLast: index == rooms.count - 1)
         }
     }
 
@@ -335,6 +352,79 @@ private struct RoomRow: View {
             parts.append(String(app: Strings.RoomList.mentions(room.mentionCount)))
         }
         return parts.joined(separator: ", ")
+    }
+}
+
+/// A room somebody has asked you into, and the two answers.
+///
+/// It sits in the same list as the conversations and reads like a sibling of `RoomRow` — same
+/// avatar, same name in the same weight — because it *is* one: the difference is not that it is a
+/// different kind of thing, it is that it is asking rather than telling. So instead of a last
+/// message it carries who invited you, and instead of being openable it carries the two buttons
+/// that are the only things you can do with it.
+///
+/// The buttons are `.borderless`, which matters inside a `List`: a plain `Button` in a list row
+/// gives its whole row the tap, so pressing anywhere would fire whichever button SwiftUI picked.
+private struct InviteRow: View {
+    let room: RoomSummary
+    let onAccept: () -> Void
+    let onDecline: () -> Void
+
+    @Environment(\.accent) private var accent
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.normal) {
+            Avatar(name: room.name, url: room.avatarURL, size: Theme.Size.avatar)
+
+            VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                HStack(spacing: Theme.Spacing.tight) {
+                    Text(room.name)
+                        .font(.body.weight(.semibold))
+                        .lineLimit(1)
+
+                    if room.privacy == .protected {
+                        Image(systemName: "lock.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .accessibilityLabel(Text(Strings.RoomList.privateChat))
+                    }
+
+                    Spacer(minLength: 0)
+                }
+
+                Text(invitation)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+
+                HStack(spacing: Theme.Spacing.close) {
+                    Button(String(app: Strings.RoomList.Invite.accept), action: onAccept)
+                        .buttonStyle(.borderedProminent)
+                        .tint(accent.color)
+
+                    Button(String(app: Strings.RoomList.Invite.decline), action: onDecline)
+                        .buttonStyle(.bordered)
+
+                    Spacer(minLength: 0)
+                }
+                .controlSize(.small)
+                .buttonBorderShape(.capsule)
+                .padding(.top, Theme.Spacing.tight)
+            }
+        }
+        .padding(.vertical, Theme.Spacing.tight)
+        // Combined for the *label*, but the buttons stay reachable: VoiceOver reads the row as one
+        // sentence and then offers "Join" and "Decline" as its actions, which is what a question
+        // with two answers ought to sound like.
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text(invitation))
+    }
+
+    private var invitation: String {
+        guard let person = room.invitedBy else {
+            return String(app: Strings.RoomList.Invite.unattributed)
+        }
+        return String(app: Strings.RoomList.Invite.from(person))
     }
 }
 
