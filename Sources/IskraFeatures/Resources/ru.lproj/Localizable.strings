@@ -321,3 +321,26 @@
 "location.myLocation" = "Я здесь";
 "location.attach" = "Геопозиция";
 "message.spoken.sentLocation" = "прислал геопозицию";
+
+/* Управление комнатой. Показывается только тем, кому комната это разрешает. */
+"room.manage.namePlaceholder" = "Название чата";
+"room.manage.topicPlaceholder" = "О чём этот чат";
+"room.manage.changePicture" = "Выбрать фото";
+"room.manage.removePicture" = "Убрать фото";
+"room.manage.openToAnyone" = "Открытый чат";
+"room.manage.openToAnyoneHelp" = "Войти сможет любой, кто найдёт чат. Иначе — только по приглашению.";
+"room.manage.invite" = "Пригласить";
+"room.manage.inviteTitle" = "Кого пригласить?";
+"room.manage.inviteHelp" = "Адрес в Matrix выглядит как @имя:сервер.";
+"room.manage.invitePlaceholder" = "@имя:сервер";
+"room.manage.role" = "Роль";
+"room.manage.member" = "Участник";
+"room.manage.remove" = "Исключить";
+"room.manage.block" = "Заблокировать";
+"room.manage.blockQuestion" = "Заблокировать %@?";
+"room.manage.blockHelp" = "Человек выйдет из чата и не сможет вернуться, пока вы не снимете блокировку.";
+"room.manage.leave" = "Выйти из чата";
+"room.manage.leaveQuestion" = "Выйти из чата?";
+"room.manage.leaveHelp" = "Новые сообщения приходить перестанут. Вернуться получится только по приглашению.";
+"room.manage.cancel" = "Отмена";
+"room.manage.failedTitle" = "Не получилось";

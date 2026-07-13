@@ -18,4 +18,10 @@ public enum Log {
     /// a server as a shrug. Public because the screen is where the picker lives, and the
     /// picker is where half of these failures happen.
     public static let media = Logger(subsystem: subsystem, category: "media")
+
+    /// Changing a room: its name, its picture, who is in it and what they may do. Every one
+    /// of these is a request the homeserver is entitled to refuse on grounds it does not
+    /// explain, and the user is told only that it was refused — this is where the refusal
+    /// itself is kept.
+    public static let rooms = Logger(subsystem: subsystem, category: "rooms")
 }

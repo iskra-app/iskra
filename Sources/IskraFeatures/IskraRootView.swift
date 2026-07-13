@@ -107,11 +107,15 @@ public struct IskraRootView: View {
             // warning was logged. The sidebar column gets a stack of its own from the
             // split view — which is why settings pushed and this did not.
             NavigationStack {
-                if let selectedRoomID, let timeline = session.timeline(forRoomID: selectedRoomID) {
-                    RoomView(timeline: timeline)
+                if let roomID = selectedRoomID, let timeline = session.timeline(forRoomID: roomID) {
+                    // Leaving the room empties this column: the room list drops the room on
+                    // its own, but the *selection* still points at it, and on iPhone that
+                    // would leave the reader pushed onto a conversation that no longer
+                    // exists.
+                    RoomView(timeline: timeline, onLeave: { selectedRoomID = nil })
                         // Rebuilds the view when the user picks a different room, rather
                         // than reusing one room's state for another's messages.
-                        .id(selectedRoomID)
+                        .id(roomID)
                 } else {
                     ContentUnavailableView(String(app: Strings.Room.noRoomSelectedTitle),
                                            systemImage: "bubble.left.and.bubble.right",

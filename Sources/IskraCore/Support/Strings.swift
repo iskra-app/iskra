@@ -40,6 +40,23 @@ public enum CoreStrings {
         public static let untitled = LocalizedStringResource("room.untitled", bundle: bundle)
     }
 
+    /// A change to the room that the homeserver would not make. One sentence per act — see
+    /// `RoomActionFailure` for why they are not all "something went wrong".
+    public enum RoomAction {
+        public static let renameFailed = LocalizedStringResource("roomAction.renameFailed", bundle: bundle)
+        public static let topicFailed = LocalizedStringResource("roomAction.topicFailed", bundle: bundle)
+        public static let pictureFailed = LocalizedStringResource("roomAction.pictureFailed", bundle: bundle)
+        public static let visibilityFailed = LocalizedStringResource("roomAction.visibilityFailed", bundle: bundle)
+        /// Also what a mistyped Matrix ID gets, and deliberately: the sentence names the
+        /// shape of the thing — "@name:server" — because a typo is far and away the likeliest
+        /// reason an invitation does not go through.
+        public static let inviteFailed = LocalizedStringResource("roomAction.inviteFailed", bundle: bundle)
+        public static let removeFailed = LocalizedStringResource("roomAction.removeFailed", bundle: bundle)
+        public static let banFailed = LocalizedStringResource("roomAction.banFailed", bundle: bundle)
+        public static let roleFailed = LocalizedStringResource("roomAction.roleFailed", bundle: bundle)
+        public static let leaveFailed = LocalizedStringResource("roomAction.leaveFailed", bundle: bundle)
+    }
+
     /// The strip above a message that is answering another one.
     public enum Reply {
         /// The original is on its way. The SDK resolves a reply's target lazily, and for a
