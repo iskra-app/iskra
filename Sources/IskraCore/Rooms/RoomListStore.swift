@@ -38,6 +38,18 @@ public final class RoomListStore {
     /// Keeps the previews honest about messages that have not left yet — see `start()`.
     private var sendQueueHandle: TaskHandle?
 
+    /// The thing that actually keeps the diff stream alive.
+    ///
+    /// `entriesWithDynamicAdapters` hands back a result, and the result's `entriesStream()` is the
+    /// `TaskHandle` for the stream itself. Nobody was ever taking it, so nobody was ever cancelling
+    /// it: `stop()` shut the sync service down and left the diffs coming. See `stop()` for what
+    /// that cost.
+    private var entriesHandle: TaskHandle?
+
+    /// Set by `stop()`. A diff already on its way from the Rust side arrives *after* we have shut
+    /// down, and it must not be acted on — see `stop()`.
+    private var hasStopped = false
+
     /// The room handles, in the order the SDK says they should appear.
     private var orderedRooms: [Room] = []
 
@@ -50,9 +62,10 @@ public final class RoomListStore {
         self.client = client
     }
 
-    /// Starts syncing and streaming room updates. Safe to call once.
+    /// Starts syncing and streaming room updates. Safe to call again after `stop()`.
     public func start() async throws {
         guard syncService == nil else { return }
+        hasStopped = false
 
         let service = try await client.syncService().finish()
         syncService = service
@@ -69,6 +82,7 @@ public final class RoomListStore {
 
         let result = try await list.entriesWithDynamicAdapters(pageSize: 100, listener: listener)
         entriesResult = result
+        entriesHandle = result.entriesStream()
         // A room you have walked out of is still a room the SDK knows about, and with no filter
         // at all it keeps its place in the list: the chat sat there after "Leave", could be
         // opened, and read — which reads as the app not having done what it said it did. It had:
@@ -102,16 +116,49 @@ public final class RoomListStore {
         await service.start()
     }
 
+    /// Shuts the list down, and means it.
+    ///
+    /// This used to cancel the rebuild timer, cancel the send-queue handle, and stop the sync
+    /// service — and leave the **entries stream running**, because nobody had ever taken its
+    /// `TaskHandle`. It also left `syncService` non-nil, so `start()` could never run again
+    /// (`guard syncService == nil`); the store was permanently dead and looked perfectly alive.
+    ///
+    /// The live stream is the dangerous half. `UserSession.signOut()` calls this and then logs
+    /// out — which **deletes the SQLite store off the disk**. A diff still in the Rust queue then
+    /// arrives, `apply` takes it, `scheduleRebuild` starts a *new* task (the one cancelled here is
+    /// long gone), and `rebuildSummaries` begins calling `roomInfo()` and `latestEvent()` on room
+    /// handles whose database no longer exists.
+    ///
+    /// So the handle is cancelled, everything is released, and `hasStopped` catches whatever was
+    /// already in the air: a cancelled handle stops *new* diffs, it cannot recall the one that has
+    /// already crossed the FFI boundary and is waiting on a `Task { @MainActor }` hop.
     public func stop() async {
+        hasStopped = true
+
         rebuildTask?.cancel()
+        rebuildTask = nil
+
+        entriesHandle?.cancel()
+        entriesHandle = nil
+
         sendQueueHandle?.cancel()
         sendQueueHandle = nil
+
         await syncService?.stop()
+
+        syncService = nil
+        roomList = nil
+        entriesResult = nil
+        orderedRooms = []
     }
 
     // MARK: - Diff handling
 
     private func apply(diffs: [RoomListEntriesUpdate]) {
+        // Already on its way when we shut down. Acting on it means touching room handles whose
+        // store may have just been deleted from under them — see `stop()`.
+        guard !hasStopped else { return }
+
         for diff in diffs {
             switch diff {
             case let .append(values):
@@ -146,15 +193,41 @@ public final class RoomListStore {
         scheduleRebuild()
     }
 
+    /// Coalesces a burst of diffs into one rebuild — without ever letting the burst prevent one.
+    ///
+    /// It used to be cancel-and-restart: every diff killed the rebuild in flight and started the
+    /// 50 ms timer again. That coalesces beautifully when the diffs stop, and starves completely
+    /// when they do not. `rebuildSummaries` is a sequential FFI round-trip *per room*, so on an
+    /// account with a few hundred rooms it takes real time — and during initial sync the diffs and
+    /// the send-queue updates keep coming for the whole of it. Each one cancelled the rebuild part
+    /// way through, `rooms` was never assigned, `isLoadingInitialRooms` never went false, and the
+    /// user sat looking at the empty-chats screen with every one of their conversations already in
+    /// the store behind it.
+    ///
+    /// Trailing edge instead: one rebuild runs to completion, and anything that arrives while it
+    /// is running raises a flag rather than a knife. When it finishes, it looks at the flag and
+    /// goes round again. Bursts still collapse — a hundred diffs during one rebuild are one more
+    /// rebuild, not a hundred — but a rebuild always *finishes*.
     private func scheduleRebuild() {
-        rebuildTask?.cancel()
+        needsRebuild = true
+        guard rebuildTask == nil else { return }
+
         rebuildTask = Task { [weak self] in
-            // Let a burst of diffs settle before doing the async work.
+            // Let the first burst settle before doing any of the async work.
             try? await Task.sleep(for: .milliseconds(50))
-            guard !Task.isCancelled else { return }
-            await self?.rebuildSummaries()
+
+            while let self, self.needsRebuild, !Task.isCancelled {
+                self.needsRebuild = false
+                await self.rebuildSummaries()
+            }
+
+            self?.rebuildTask = nil
         }
     }
+
+    /// A diff arrived while a rebuild was already running, so another one is owed. See
+    /// `scheduleRebuild`.
+    private var needsRebuild = false
 
     private func rebuildSummaries() async {
         let handles = orderedRooms

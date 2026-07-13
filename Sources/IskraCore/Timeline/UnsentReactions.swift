@@ -34,6 +34,21 @@ struct UnsentReactions: Equatable, Sendable {
         if keysByMessage[messageID]?.isEmpty == true { keysByMessage[messageID] = nil }
     }
 
+    /// Everything held, so that restarting the send queue can put all of it back in flight.
+    ///
+    /// The queue is first-in-first-out and it stops dead on an error — which is why a failure
+    /// belonging to somebody's *message* also strands every reaction queued behind it. The
+    /// mirror image is just as true and used not to be acted on: when the queue is started
+    /// again, everything in it goes, reactions included. They are not unsent any more; they are
+    /// in flight. See `TimelineStore.requeueUnsentReactions`.
+    var all: [(messageID: String, key: String)] {
+        keysByMessage.flatMap { message, keys in keys.map { (message, $0) } }
+    }
+
+    mutating func removeAll() {
+        keysByMessage.removeAll()
+    }
+
     /// Subtracts us from the reactions on one message.
     ///
     /// Only our own vote is removed. Other people's reactions with the same emoji are theirs and

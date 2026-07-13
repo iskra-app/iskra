@@ -78,6 +78,11 @@ public final class TimelineStore {
     /// The fetch that refills a conversation the SDK has just emptied — see `refill()`.
     private var refillTask: Task<Void, Never>?
 
+    /// The page of history currently being fetched, if there is one. The re-entrancy guard for
+    /// `page(showingSpinner:)` — and a task rather than a flag, so that a caller who arrives
+    /// mid-flight can *wait* for the page instead of being turned away without one.
+    private var pageInFlight: Task<Void, Never>?
+
     /// True while that fetch is running, and the reason the screen does not flicker: see
     /// `rebuildRows()`.
     private var isRefilling = false
@@ -105,6 +110,14 @@ public final class TimelineStore {
             // the failure and leave it showing an empty room instead, which is a lie about
             // a conversation that may be full of messages.
             didFailToLoad = true
+
+            // And whatever `open()` raised on its way in comes back down. A reopen that threw
+            // half way would otherwise leave `isRefilling` up for good, and `rebuildRows` would
+            // go on refusing to publish anything shorter than the rows already there — a room
+            // frozen at the moment it failed, which is the bug this whole pass is about.
+            isRefilling = false
+            timeline = nil
+
             throw error
         }
     }
@@ -116,6 +129,17 @@ public final class TimelineStore {
     }
 
     private func open() async throws {
+        // Opening a room we were already in — `stop()` and then `start()` again. The reader is
+        // still looking at the conversation from before, and the fresh listener's very first diff
+        // is an empty reset, so without this the screen would blank and refill in front of them.
+        //
+        // It is the same problem `refill()` solves, so it is solved the same way and with the
+        // same flag: hold what is on the screen until there is at least as much to replace it
+        // with. On a genuinely new room `rows` is empty and none of this does anything.
+        let held = rows.count
+        let isReopening = held > 0
+        isRefilling = isReopening
+
         if let info = try? await room.roomInfo() {
             adopt(info)
         }
@@ -163,7 +187,16 @@ public final class TimelineStore {
         // loading any messages, and every chat came up empty. The first page is asked for
         // here now, where it can be seen.
         //
-        await fillPages(untilAtLeast: Self.screenful, maximumPages: Self.maximumOpeningPages)
+        // Reopening fetches back what the reader had, not one screenful of it — somebody who had
+        // scrolled up through a week of conversation and merely looked at the room info should
+        // not come back to the live end of it. Same reasoning as `refill()`, same ceiling.
+        await fillPages(untilAtLeast: isReopening ? held : Self.screenful,
+                        maximumPages: isReopening ? Self.maximumRefillPages : Self.maximumOpeningPages)
+
+        if isReopening {
+            isRefilling = false
+            rows = latestRows
+        }
 
         // Only now. Between the empty reset and the first page there is a moment where the
         // room is genuinely empty and genuinely not loaded, and saying "no messages yet"
@@ -218,6 +251,19 @@ public final class TimelineStore {
     /// everything the reader had already scrolled through rather than just a first screenful.
     private static let maximumRefillPages = 20
 
+    /// Puts the room down. `start()` picks it up again.
+    ///
+    /// It is a *pause*, and it did not used to be one: it cancelled every handle and then left
+    /// `timeline` set — while `start()` opens with `guard timeline == nil else { return }`. So a
+    /// store that had been stopped could never be started again. It sat there with no listener
+    /// subscribed and a timeline it would not replace, `rows` frozen at whatever was last in
+    /// them, no new message ever arriving, and no way back short of leaving the room. Anything
+    /// that stopped a room it meant to come back to — pushing a screen over it, backgrounding
+    /// the app — killed the conversation quietly and for good.
+    ///
+    /// So everything the SDK owns goes, and `timeline` goes with it. `rows` deliberately stay:
+    /// they are what the reader is looking at, and `open()` holds them on the screen while it
+    /// fetches the conversation back. See the reopening path there.
     public func stop() {
         refillTask?.cancel()
         refillTask = nil
@@ -227,6 +273,16 @@ public final class TimelineStore {
         sendQueueHandle = nil
         roomInfoHandle?.cancel()
         roomInfoHandle = nil
+
+        timeline = nil
+        // The SDK's items belong to the timeline that has just gone. A fresh listener opens with
+        // an empty reset and repopulates from scratch, and leaving the old ones here would have
+        // the next `apply` computing diffs against a timeline that no longer exists.
+        items = []
+
+        isPaginating = false
+        isRefilling = false
+        pageInFlight = nil
     }
 
     // MARK: - Sending
@@ -295,9 +351,41 @@ public final class TimelineStore {
     /// already wrote, still sitting in the encrypted send queue where they left it.
     public func retrySending(messageID: String) async {
         room.enableSendQueue(enable: true)
+        requeueUnsentReactions()
 
         guard let handle = sendHandle(for: messageID) else { return }
         try? await handle.tryResend()
+    }
+
+    /// Restarting the send queue sends everything in it, and that includes the reactions.
+    ///
+    /// This is the other half of `reactionsDidFail`, and it was missing, which made that one a
+    /// trap door. The queue is FIFO and stops dead on an error, so a *message* that fails strands
+    /// every reaction queued behind it — `reactionsDidFail` marks them unsent and takes the pills
+    /// off the screen, correctly. But `enableSendQueue(enable: true)` then restarts the queue and
+    /// **all of it goes out**, the reactions with it. Nothing put them back.
+    ///
+    /// So: user is offline, reacts 👍, sends a message, the message fails, the 👍 pill vanishes.
+    /// They press "Send again". The message goes. The 👍 goes with it — it is on the server, and
+    /// everyone else in the room can see it. And `unsentReactions` still holds it, so `applied(to:)`
+    /// goes on subtracting it from every rebuild for the life of the store: the user is the one
+    /// person who cannot see their own reaction, and where two others also pressed 👍 their pill
+    /// reads "👍 2" while every other client in the room reads "👍 3".
+    ///
+    /// They are not unsent now; they are in flight. So they go back to being watched, exactly as
+    /// a fresh reaction is — and if the queue errors again, `reactionsDidFail` will mark them
+    /// unsent again, which is the truth twice over rather than once.
+    private func requeueUnsentReactions() {
+        guard !unsentReactions.isEmpty else { return }
+
+        for reaction in unsentReactions.all {
+            let inFlight = InFlightReaction(messageID: reaction.messageID, key: reaction.key)
+            reactionsInFlight.append(inFlight)
+            stopWatching(inFlight, after: Self.reactionSendWindow)
+        }
+
+        unsentReactions.removeAll()
+        rebuildRows()
     }
 
     /// Throws away a message that never went.
@@ -572,25 +660,71 @@ public final class TimelineStore {
 
     /// Loads older messages. Called when the user scrolls to the top.
     public func loadMore() async {
-        guard let timeline, !isPaginating, canLoadMore else { return }
+        // The spinner belongs to the user's own scroll: it answers a request they made. A refill
+        // is repair work nobody asked for, going on behind a conversation that is still on the
+        // screen, and announcing it with a progress view above the first message would only be
+        // the flicker coming back wearing something else.
+        await page(showingSpinner: !isRefilling)
+    }
 
-        // The spinner belongs to the user's own scroll to the top: it answers a request they
-        // made. A refill is repair work nobody asked for, going on behind a conversation that is
-        // still on the screen, and announcing it with a progress view above the first message
-        // would only be the flicker coming back wearing something else.
-        isPaginating = !isRefilling
-        defer { isPaginating = false }
-
-        // `paginateBackwards` returns true once it has hit the start of the room.
-        if let reachedStart = try? await timeline.paginateBackwards(numEvents: 25) {
-            canLoadMore = !reachedStart
+    /// One page of history, and never two at once.
+    ///
+    /// The re-entrancy guard and the spinner used to be the *same* flag — `isPaginating = !isRefilling`
+    /// — and one variable doing two jobs broke both of them:
+    ///
+    /// - During a refill the guard was never raised at all, so a user scrolling to the top while
+    ///   the repair was running issued a **second concurrent** `paginateBackwards`. Both wrote
+    ///   `canLoadMore`, and whichever answered last won — including flipping it back to `true`
+    ///   after the real start of the room had been reached.
+    /// - And in the other direction, a refill that arrived while a user page was in flight was
+    ///   simply *turned away* — while `fillPages` counted the turn-away as an attempt. Twenty
+    ///   attempts could burn through without fetching a single event, and the refill would then
+    ///   publish the empty conversation it had failed to fetch. Reacting to a message during a
+    ///   slow pagination emptied the room, which is precisely what `refill()` exists to prevent.
+    ///
+    /// So the guard is a task now, not a flag, and a caller who finds a page already in flight
+    /// **waits for it** rather than being sent away empty-handed. The spinner is a separate
+    /// thing that only the user's own scroll ever lights.
+    private func page(showingSpinner: Bool) async {
+        // Somebody else's page is already on its way. Wait for it and let the caller re-examine
+        // the world — `fillPages` will look again and take another turn if it still needs one.
+        if let inFlight = pageInFlight {
+            await inFlight.value
+            return
         }
+
+        guard let timeline, canLoadMore else { return }
+
+        if showingSpinner { isPaginating = true }
+
+        let task = Task { @MainActor [weak self] in
+            // `paginateBackwards` returns true once it has hit the start of the room.
+            if let reachedStart = try? await timeline.paginateBackwards(numEvents: 25) {
+                self?.canLoadMore = !reachedStart
+            }
+        }
+        pageInFlight = task
+
+        await task.value
+
+        pageInFlight = nil
+        isPaginating = false
     }
 
     // MARK: - Diff handling
 
     private func apply(diffs: [TimelineDiff]) {
-        let wasFull = !items.isEmpty
+        let held = items.count
+
+        // Did the SDK throw the timeline away in this batch? A `clear` or a `reset` is the only
+        // way it says so, and it is the *reason* for a shrink rather than the shrink itself: a
+        // message being deleted removes an item too, and that is not a conversation being lost.
+        let wasThrownAway = diffs.contains { diff in
+            switch diff {
+            case .clear, .reset: true
+            default: false
+            }
+        }
 
         for diff in diffs {
             switch diff {
@@ -627,7 +761,15 @@ public final class TimelineStore {
         // room on the screen. `refill()` raises the flag that tells `rebuildRows()` to hold on to
         // the conversation the reader is looking at, and it measures how much of it to fetch back
         // from the rows that are still standing. One statement later, both would be gone.
-        if wasFull, items.isEmpty { refill() }
+        //
+        // "Shrank", not "emptied", and that is a real difference rather than a defensive widening.
+        // The condition used to be `items.isEmpty`, which only catches the SDK clearing the
+        // timeline and repopulating it in *two* batches. It is equally entitled to do it in one —
+        // `[.clear, .append(liveTail)]`, or a `.reset` carrying the live tail — and then `items`
+        // is not empty at this point, no refill runs, and the reader who had paginated back
+        // through a week of conversation is quietly dropped at the live end of it. Same bug,
+        // wearing the batched form of the same SDK behaviour.
+        if held > 0, items.count < held, wasThrownAway { refill() }
 
         // Deliberately does *not* set `hasLoaded`. The first diff to arrive is the SDK's
         // empty reset, which is proof of nothing except that the room is listening — and

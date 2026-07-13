@@ -91,6 +91,13 @@ public actor AuthenticationService {
     /// `address` is whatever the user typed: "matrix.org", "example.com", or a full
     /// URL. The SDK does well-known discovery, so a bare domain is fine.
     public func startSignIn(homeserverAddress address: String) async throws -> SignInOptions {
+        // Whatever the last attempt made for itself, it is not going to use. Typing a homeserver,
+        // getting it wrong, and typing another is the ordinary way this screen is used, and each
+        // pass through here mints a session ID and three directories to go with it.
+        if let abandoned = pendingSessionID {
+            discardStore(forSessionID: abandoned)
+        }
+
         let sessionID = UUID().uuidString
 
         // Two failures live here and they are not the same failure. Setting up the
@@ -226,10 +233,34 @@ public actor AuthenticationService {
         if let client = pendingClient, let data = pendingOAuth {
             await client.abortOauthAuth(authorizationData: data)
         }
+        if let sessionID = pendingSessionID {
+            discardStore(forSessionID: sessionID)
+        }
+
         pendingClient = nil
         pendingSessionID = nil
         pendingOAuth = nil
         pendingSSO = nil
+    }
+
+    /// Deletes the directories a sign-in attempt made for itself and never used.
+    ///
+    /// `makeClientBuilder` creates three of them — data, caches, search index — for a fresh random
+    /// session ID, and it does it *eagerly*, before the homeserver has even been looked up. So
+    /// every attempt makes a set, and only the attempt that succeeds ever has a use for one.
+    /// Nothing deleted the rest: mistype your homeserver three times before getting it right and
+    /// you left three orphan directories inside the App Group container, one of which may hold a
+    /// real SQLite store if the builder got as far as `build()`. They survived sign-out, too —
+    /// `SessionStore.clear` only knows about the session that was actually saved — so they
+    /// accumulated across the life of the install.
+    private func discardStore(forSessionID id: String) {
+        let urls = [try? environment.sessionDataURL(forSessionID: id),
+                    try? environment.sessionCachesURL(forSessionID: id),
+                    try? environment.searchIndexURL(forSessionID: id)]
+
+        for url in urls.compactMap({ $0 }) {
+            try? FileManager.default.removeItem(at: url)
+        }
     }
 
     // MARK: - Signing out
