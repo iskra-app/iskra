@@ -209,13 +209,26 @@ struct MessageRow: View {
     /// all — so the menu is free to be the real one.
     private var actionableContent: some View {
         content
-            // A double tap is the quick reaction, and nothing else in a conversation answers
-            // to two taps — so there is no single-tap gesture here for it to have to beat.
-            .onTapGesture(count: 2) {
+            // A double tap is the quick reaction, and `highPriorityGesture` is what makes that
+            // true of *every* message rather than only the ones with nothing else to tap.
+            //
+            // It used to be a plain `.onTapGesture(count: 2)`, on the reasoning that nothing else
+            // in a conversation answers to two taps. Several things do, and they are the ones
+            // people react to most: a photograph opens the viewer on one tap, a location opens
+            // Maps, a video note plays. SwiftUI gives the *innermost* gesture first refusal, so on
+            // exactly those three the quick reaction was unreachable — while the settings screen
+            // went on saying "double-tap a message to leave it". The promise was true of text and
+            // of nothing else.
+            //
+            // At high priority the double tap is offered first and the single tap still lands when
+            // it fails, so the photo still opens and the circle still plays. The cost is that a
+            // single tap on those waits out the double-tap interval, which is the price of the
+            // promise being kept.
+            .highPriorityGesture(TapGesture(count: 2).onEnded {
                 guard message.canReact else { return }
                 quickTaps += 1
                 onToggleReaction(quickReaction.key)
-            }
+            })
             // The knock that says the reaction went. Without it a double tap on a message
             // whose pill appears a beat later feels like nothing happened.
             .sensoryFeedback(.impact(weight: .medium), trigger: quickTaps)

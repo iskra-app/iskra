@@ -60,6 +60,26 @@ public struct RoomView: View {
     /// until this is true. See the pagination trigger below.
     @State private var hasAnchored = false
 
+    /// A message arrived while the reader was somewhere else in the conversation.
+    ///
+    /// The other half of not dragging them to the bottom. Left on its own, "we no longer follow
+    /// the newest message" would be a room that goes quiet on you: something is said, nothing
+    /// moves, and you find out ten minutes later. So the room stays where it is and *offers*.
+    @State private var hasUnseenBelow = false
+
+    /// The colour the user chose. The pill that takes you to a new message is the one thing on the
+    /// screen asking to be pressed, so it wears it — the same reason the send button does.
+    @Environment(\.accent) private var accent
+
+    /// A message the room has been asked to go to from *outside* the scrolling view — the pinned
+    /// strip, or a search result the room was opened on.
+    ///
+    /// It has to be left here rather than acted on where it is raised: the `ScrollViewProxy` only
+    /// exists inside `ScrollViewReader`, and the pinned strip is a `safeAreaInset` applied around
+    /// the outside of it. So the request is written down here and picked up in there. See the
+    /// `onChange` beside the scroll geometry.
+    @State private var jumpTarget: String?
+
     /// Whether the reader is standing at the newest message, which is what decides if an
     /// arriving message is allowed to move the conversation.
     ///
@@ -107,11 +127,17 @@ public struct RoomView: View {
 
     public init(timeline: TimelineStore,
                 makeDetails: @escaping () -> RoomDetailsStore?,
+                openAt: Binding<String?> = .constant(nil),
                 onLeave: @escaping () -> Void) {
         _timeline = State(initialValue: timeline)
         self.makeDetails = makeDetails
+        _openAt = openAt
         self.onLeave = onLeave
     }
+
+    /// The message this room is being opened *on*, if it is being opened on one — a search result.
+    /// Consumed once and cleared, so that returning to the room by ordinary means goes nowhere.
+    @Binding private var openAt: String?
 
     /// A phone-shaped title bar: an iPhone, or an iPad window squeezed narrow enough to be
     /// one. Never the Mac, which has no size class worth asking.
@@ -231,6 +257,45 @@ public struct RoomView: View {
                 hasAnchored = true
                 // Not animated: this is where the room *opens*, not somewhere it travels to.
                 scroll.scrollTo(last, anchor: .bottom)
+
+                // …and if it was opened *on* a message — a search result — it goes there next. The
+                // anchor still happens first, and deliberately: a conversation has to have
+                // somewhere to be before it can travel anywhere, and jumping out of a scroll view
+                // that has not yet settled at the bottom lands nowhere in particular.
+                if let openAt {
+                    jumpTarget = openAt
+                    self.openAt = nil
+                }
+            }
+            // Somebody asked to be taken to a message — see `jumpTarget`.
+            //
+            // A pinned message is very often *not loaded*: it was pinned because it matters, and
+            // things that matter get pinned early. `scrollTo` on an identity the list does not hold
+            // does nothing whatsoever — silently — which is why pressing the pinned strip appeared
+            // to open the list instead of going anywhere. So the history is pulled in until the
+            // message is actually there to be scrolled to.
+            //
+            // Bounded, and giving up quietly. A message pinned two years ago is not worth
+            // paginating a room back to its creation for, and a jump that cannot be made is better
+            // as a jump that does not happen than as a room that spends a minute rewinding itself.
+            .onChange(of: jumpTarget) { _, target in
+                guard let target else { return }
+                jumpTarget = nil
+
+                Task {
+                    var pages = 0
+                    while !timeline.rows.contains(where: { $0.id == target }),
+                          timeline.canLoadMore,
+                          pages < Self.jumpPages {
+                        await timeline.loadMore()
+                        pages += 1
+                    }
+
+                    guard timeline.rows.contains(where: { $0.id == target }) else { return }
+
+                    withAnimation(.smooth) { scroll.scrollTo(target, anchor: .center) }
+                    light(target)
+                }
             }
             // Is the reader at the newest message? Measured the same way the pagination trigger
             // above is, from the other end of the scroll view.
@@ -241,6 +306,11 @@ public struct RoomView: View {
                 return distanceFromBottom < Theme.Size.newestReach
             } action: { _, isAtBottom in
                 isAtNewest = isAtBottom
+
+                // Arriving at the bottom is having seen it. The pill has nothing left to offer.
+                if isAtBottom, hasUnseenBelow {
+                    withAnimation(.smooth) { hasUnseenBelow = false }
+                }
             }
             // And afterwards, a message arriving brings the conversation with it — but *only*
             // if the reader is standing at the end of it. Somebody reading last week's messages
@@ -252,13 +322,31 @@ public struct RoomView: View {
             // answering the newest message by definition.
             .onChange(of: timeline.rows.last?.id) { _, last in
                 guard hasAnchored, let last else { return }
-                guard isAtNewest || timeline.rows.last?.message?.isOwn == true else { return }
+
+                guard isAtNewest || timeline.rows.last?.message?.isOwn == true else {
+                    // Not going anywhere — but something *did* arrive, and the reader is not
+                    // looking at it. That is what the pill is for: the room no longer drags them
+                    // to the bottom, so it has to offer.
+                    withAnimation(.smooth) { hasUnseenBelow = true }
+                    return
+                }
+
                 withAnimation(.smooth) { scroll.scrollTo(last, anchor: .bottom) }
             }
             // Over the timeline but *under* the composer, which is a safe-area inset added
             // further down: a placeholder that covered the box you type into would be
             // telling you to say something and hiding the way to say it.
             .overlay { placeholder }
+            // The way back down. Inside the `ScrollViewReader`, because that is the only place the
+            // proxy exists — and at the bottom of the conversation rather than floating in the
+            // middle of it, because that is the direction it takes you.
+            .overlay(alignment: .bottom) {
+                if hasUnseenBelow {
+                    jumpToNewest(in: scroll)
+                        .padding(.bottom, Theme.Spacing.close)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
         }
         .safeAreaInset(edge: .bottom) {
             composer
@@ -276,13 +364,10 @@ public struct RoomView: View {
         // give up a row of its screen to say so.
         .safeAreaInset(edge: .top) {
             if !timeline.pinnedEventIDs.isEmpty, let pinned {
-                PinnedStrip(pinned: pinned) { message in
-                    // Pressing the strip goes to the message. Pressing the count opens the
-                    // list — that is the second button inside `PinnedStrip`.
-                    isShowingPinned = true
-                    _ = message
-                }
-                .transition(.move(edge: .top).combined(with: .opacity))
+                PinnedStrip(pinned: pinned,
+                            onGoTo: { message in jumpTarget = message.id },
+                            onOpenList: { isShowingPinned = true })
+                    .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
         .animation(.smooth, value: timeline.pinnedEventIDs)
@@ -410,7 +495,22 @@ public struct RoomView: View {
         // miss when the camera got one. `VoiceRecorder` holds an audio session and a ticker of
         // its own and has no `deinit` to fall back on: walk out of a room mid-sentence and it
         // keeps listening.
+        // A screen *pushed over* the room disappears it too, and that is not leaving.
+        //
+        // `RoomInfoView` and `PinnedMessagesView` go onto the same `NavigationStack` as the room,
+        // and SwiftUI fires `onDisappear` on the view underneath when a destination covers it. So
+        // opening the room info stopped the timeline, cancelled the listeners, and — worse — threw
+        // away a *locked, hands-free* voice recording that was still running. Coming back, the room
+        // was no longer receiving anything.
+        //
+        // The store recovers from that now (`TimelineStore.stop()` is a pause and `start()` picks
+        // it up again), but recovering from it is not a reason to do it: re-opening the timeline
+        // and paginating the history back is a lot of work to do because somebody glanced at who
+        // is in the room. The flags are the honest signal — we know when we are pushing, because
+        // we are the ones who pushed.
         .onDisappear {
+            guard !isShowingDetails, !isShowingPinned else { return }
+
             timeline.stop()
             videoNote.cancel()
             voice.cancel()
@@ -658,6 +758,36 @@ public struct RoomView: View {
                    },
                    isHighlighted: highlighted == message.id)
     }
+
+    /// The pill that says something was said while you were reading further up, and takes you to
+    /// it. Glass, and on the navigation layer where glass belongs: it floats over the conversation
+    /// and is not part of it.
+    private func jumpToNewest(in scroll: ScrollViewProxy) -> some View {
+        Button {
+            guard let last = timeline.rows.last?.id else { return }
+            withAnimation(.smooth) { scroll.scrollTo(last, anchor: .bottom) }
+            // Not cleared here — arriving is what clears it, and arriving is what the scroll
+            // geometry reports. Clearing it on the press would take the pill away from somebody
+            // whose scroll had not started yet.
+        } label: {
+            HStack(spacing: Theme.Spacing.tight) {
+                Image(systemName: "arrow.down")
+                    .font(.caption.weight(.semibold))
+                Text(Strings.Room.jumpToNewest)
+                    .font(.caption.weight(.medium))
+            }
+            .padding(.horizontal, Theme.Spacing.normal)
+            .padding(.vertical, Theme.Spacing.close)
+            .primaryActionGlass(tint: accent.color)
+            .contentShape(.capsule)
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// How far back a jump is willing to dig for a message that is not loaded. Ten pages of
+    /// twenty-five events is a deep enough reach for anything anybody has actually pinned, and a
+    /// shallow enough one that a room does not appear to hang while it rewinds.
+    private static let jumpPages = 10
 
     /// Lights the message the conversation has just jumped to, and puts it out again a moment
     /// later.

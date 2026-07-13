@@ -87,6 +87,13 @@ public enum Strings {
     }
 
     public enum Room {
+        /// The button that appears when a message arrives while you are reading further up.
+        ///
+        /// It exists because the conversation no longer drags you to the bottom against your will
+        /// — so something has to say that there is a bottom to go to. One without the other would
+        /// be worse than either: the old behaviour at least told you a message had come.
+        public static let jumpToNewest = LocalizedStringResource("room.jumpToNewest", bundle: bundle)
+
         public static let composerPlaceholder = LocalizedStringResource("room.composerPlaceholder", bundle: bundle)
         public static let send = LocalizedStringResource("room.send", bundle: bundle)
         public static let attach = LocalizedStringResource("room.attach", bundle: bundle)

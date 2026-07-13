@@ -53,13 +53,32 @@ public final class VoiceRecorder {
     /// twenty-minute voice message is not a message, it is a podcast nobody agreed to.
     public static let maximumDuration: TimeInterval = 300
 
+    /// Bumped every time the user lets go — see `cancel()` and `finish()`.
+    ///
+    /// `start()` has an `await` in the middle of it, and the first time it is ever called that
+    /// await is the *system's microphone permission alert*: a modal that takes the finger off the
+    /// button by definition. All of `cancel()`, `finish()` and the composer's own state ran while
+    /// `state` was still `.idle` — so they found no recorder, did nothing, and were satisfied. And
+    /// then `start()` resumed, the permission came back granted, and it opened the microphone.
+    ///
+    /// A live recording, behind a screen showing no recording, that nobody is holding. This is how
+    /// the first voice message anyone ever tries to send used to go.
+    private var generation = 0
+
     public func start() async {
         guard state == .idle else { return }
 
+        let generation = self.generation
+
         guard await isPermitted() else {
+            guard generation == self.generation else { return }
             state = .denied
             return
         }
+
+        // Let go while the alert was up, or while the audio session was waking. There is nobody
+        // holding this any more, and there is nothing on screen that would show it if we recorded.
+        guard generation == self.generation, state == .idle else { return }
 
         prepareToRecord()
 
@@ -105,6 +124,10 @@ public final class VoiceRecorder {
     /// finger that brushed the button, not a message, and sending it would put a bubble in the
     /// conversation saying nothing at all.
     public func finish() -> Recording? {
+        // The finger is up. Whatever `start()` is still doing on the other side of the permission
+        // alert, it is no longer wanted — see `generation`.
+        generation += 1
+
         defer { reset() }
 
         guard state == .recording, let recorder, let startedAt, let url else { return nil }
@@ -128,6 +151,8 @@ public final class VoiceRecorder {
     /// Throws it away — the swipe out of a message you have changed your mind about halfway
     /// through. Nothing is sent and the file goes.
     public func cancel() {
+        generation += 1
+
         recorder?.stop()
         if let url { try? FileManager.default.removeItem(at: url) }
         reset()

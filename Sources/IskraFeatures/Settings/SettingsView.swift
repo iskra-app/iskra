@@ -130,6 +130,14 @@ struct SettingsView: View {
             guard wasNaming else { return }
             Task { await rename() }
         }
+        // And leaving the screen is leaving the field — the same reason as `RoomInfoView`. Focus
+        // loss is what commits the name, and SwiftUI does not guarantee focus resigns before the
+        // view is torn down, so closing settings with the keyboard still up lost the new name.
+        // `UserSession.rename` returns early when nothing changed, so this cannot double-send.
+        .onDisappear {
+            guard isNamingSelf else { return }
+            Task { await rename() }
+        }
         // At the root of the screen, never inside the menu that asks for it: a
         // `PhotosPicker` declared inside a `Menu` simply never appears.
         .photosPicker(isPresented: $isChoosingPicture, selection: $pickedPicture, matching: .images)

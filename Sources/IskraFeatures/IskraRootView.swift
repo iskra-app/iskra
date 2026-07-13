@@ -12,6 +12,14 @@ public struct IskraRootView: View {
     @State private var phase: Phase = .starting
     @State private var selectedRoomID: String?
 
+    /// The *message* the room is being opened on, when it is being opened on one — searching finds
+    /// a message, not a room, and landing at the bottom of the conversation it happens to be in is
+    /// not an answer to what was asked.
+    ///
+    /// Cleared by `RoomView` once it has gone there, so that coming back to the same room later by
+    /// ordinary means does not jump anywhere.
+    @State private var selectedEventID: String?
+
     /// The colour the app is painted in, chosen on the appearance screen and read back
     /// here — the one place high enough that everything below it is tinted at once.
     @AppStorage(AccentTheme.storageKey) private var accent: AccentTheme = .default
@@ -97,6 +105,7 @@ public struct IskraRootView: View {
             // Sign-out, though, unwinds the whole app, so only this view can do it.
             RoomListView(session: session,
                          selectedRoomID: $selectedRoomID,
+                         selectedEventID: $selectedEventID,
                          isSidebar: isSidebar,
                          onSignOut: { signOut(session) })
         } detail: {
@@ -114,6 +123,7 @@ public struct IskraRootView: View {
                     // exists.
                     RoomView(timeline: timeline,
                              makeDetails: { session.details(forRoomID: roomID) },
+                             openAt: $selectedEventID,
                              onLeave: { selectedRoomID = nil })
                         // Rebuilds the view when the user picks a different room, rather
                         // than reusing one room's state for another's messages.
