@@ -304,3 +304,6 @@
 "message.media.play" = "Play";
 "message.media.pause" = "Pause";
 "message.media.openFile" = "Open file";
+
+/* Recording a round video message by holding the button in the composer. */
+"videoNote.releaseToSend" = "Let go to send. Left to cancel, up to keep recording hands-free";

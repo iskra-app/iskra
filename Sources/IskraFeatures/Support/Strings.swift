@@ -238,6 +238,11 @@ public enum Strings {
         public static let needsCamera = LocalizedStringResource("videoNote.needsCamera", bundle: bundle)
         public static let noCamera = LocalizedStringResource("videoNote.noCamera", bundle: bundle)
         public static let record = LocalizedStringResource("videoNote.record", bundle: bundle)
+        /// Said under the camera while the finger is still on the button that started it. It
+        /// names all three ways out of a recording in one line, because the two swipes are the
+        /// kind of gesture nobody discovers by accident and the moment to say so is while they
+        /// are holding the button.
+        public static let releaseToSend = LocalizedStringResource("videoNote.releaseToSend", bundle: bundle)
         /// The button on the preview. Only ever shown where there is a second camera to
         /// turn to — see `VideoNoteRecorder.canFlip`.
         public static let flipCamera = LocalizedStringResource("videoNote.flipCamera", bundle: bundle)

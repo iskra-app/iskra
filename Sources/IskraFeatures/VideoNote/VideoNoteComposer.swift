@@ -63,11 +63,45 @@ struct CameraPreview: PlatformViewRepresentable {
 /// modelled on, and the one that makes a sixty-second cap feel like a feature rather
 /// than a restriction.
 struct VideoNoteComposer: View {
+    /// The recorder, owned by the *screen* rather than by this sheet.
+    ///
+    /// It has to be. The hold that starts a recording begins on a button in the composer, and
+    /// the finger is still down on that button while this sheet comes up — so the thing that
+    /// stops the recording when the finger lifts is a gesture out there, and it has to be able
+    /// to reach the same recorder that is in here. A `@State` recorder of this sheet's own would
+    /// be a second one, born the moment the sheet appeared, with nobody holding it.
+    let recorder: VideoNoteRecorder
+
+    /// Whether the finger that opened this sheet is still down on the button that opened it.
+    ///
+    /// True when the sheet was raised by a *hold* on the composer's video button and the user
+    /// has not let go. The screen owns it, because the gesture is out there — and this sheet
+    /// reads it twice: to know whether to start recording the moment the camera wakes up, and to
+    /// know whether to tell the user to let go.
+    ///
+    /// It goes false when they lift their finger, and if the camera has not come up by then,
+    /// nothing is recorded. That is right: there is nothing worth sending in a hold that was
+    /// over before the camera woke.
+    @Binding var isHolding: Bool
+
+    /// Set when the user has swiped up to record without holding. The sheet then keeps recording
+    /// after the finger lifts, and the shutter becomes a stop button.
+    @Binding var isLocked: Bool
+
     let onRecorded: (URL) async -> Void
 
-    @State private var recorder = VideoNoteRecorder()
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accent) private var accent
+
+    init(recorder: VideoNoteRecorder,
+         isHolding: Binding<Bool> = .constant(false),
+         isLocked: Binding<Bool> = .constant(true),
+         onRecorded: @escaping (URL) async -> Void) {
+        self.recorder = recorder
+        _isHolding = isHolding
+        _isLocked = isLocked
+        self.onRecorded = onRecorded
+    }
 
     var body: some View {
         VStack(spacing: Theme.Spacing.generous) {
@@ -83,9 +117,19 @@ struct VideoNoteComposer: View {
                 case .unavailable:
                     Text(Strings.VideoNote.noCamera)
                 case .recording:
-                    Text(Duration.seconds(recorder.elapsed), format: .time(pattern: .minuteSecond))
-                        .monospacedDigit()
-                        .foregroundStyle(.red)
+                    VStack(spacing: Theme.Spacing.tight) {
+                        Text(Duration.seconds(recorder.elapsed), format: .time(pattern: .minuteSecond))
+                            .monospacedDigit()
+                            .foregroundStyle(.red)
+
+                        // Only while the finger is still down on the composer's button. Once
+                        // the recording is hands-free there is nothing to let go of, and
+                        // telling somebody to release a button they are not holding is the app
+                        // talking to itself.
+                        if isHolding {
+                            Text(Strings.VideoNote.releaseToSend)
+                        }
+                    }
                 case .finishing:
                     Text(Strings.VideoNote.sending)
                 default:
@@ -100,7 +144,16 @@ struct VideoNoteComposer: View {
         }
         .padding(Theme.Spacing.generous)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .task { await recorder.prepare() }
+        .task {
+            await recorder.prepare()
+
+            // The finger came down on the composer's button, the sheet came up, and the camera
+            // took as long as a camera takes. Recording begins the moment it is ready — which is
+            // the whole point of the hold: one movement, not two.
+            if isHolding {
+                startRecording()
+            }
+        }
         .onDisappear { recorder.cancel() }
     }
 
@@ -173,7 +226,15 @@ struct VideoNoteComposer: View {
             .animation(.smooth(duration: 0.2), value: isRecording)
             .gesture(
                 LongPressGesture(minimumDuration: 0.1)
-                    .onEnded { _ in startRecording() }
+                    .onEnded { _ in
+                        // A recording started *in here* belongs to this shutter, not to the
+                        // finger out on the composer — so it is locked. Otherwise letting go of
+                        // the shutter and letting go of the composer's button would both try to
+                        // end the same clip, and the second one would land on a recorder that
+                        // had already sent it.
+                        isLocked = true
+                        startRecording()
+                    }
                     .sequenced(before: DragGesture(minimumDistance: 0).onEnded { _ in recorder.stop() })
             )
             .disabled(!canRecord)

@@ -3,11 +3,6 @@ import PhotosUI
 import IskraCore
 import IskraDesign
 
-/// The bar you type into.
-///
-/// A navigation-layer control floating over the timeline, which is exactly what Liquid
-/// Glass is for. Kept out of `RoomView` so it can be rendered — and looked at — on its
-/// own, without a signed-in session and a room behind it.
 /// What the composer is doing besides writing a new message: answering one, or going back to
 /// change one.
 ///
@@ -29,6 +24,11 @@ enum ComposerContext: Equatable {
     }
 }
 
+/// The bar you type into.
+///
+/// A navigation-layer control floating over the timeline, which is exactly what Liquid
+/// Glass is for. Kept out of `RoomView` so it can be rendered — and looked at — on its
+/// own, without a signed-in session and a room behind it.
 struct MessageComposer: View {
     @Binding var draft: String
 
@@ -42,7 +42,18 @@ struct MessageComposer: View {
     var onCancelContext: () -> Void = {}
 
     var onSend: () -> Void
-    var onRecordVideoNote: () -> Void
+
+    /// The four moments of a hold on the video button: it began, it ended (send), it was swiped
+    /// away (cancel), it was swiped up (carry on without me).
+    ///
+    /// Four callbacks and not one, because the recorder they drive lives on the screen — the
+    /// sheet that shows the camera comes up *while the finger is still down on this button*, so
+    /// the thing that stops the recording is out here and the thing that shows it is in there.
+    /// See `VideoNoteComposer.isHolding`.
+    var onStartVideoNote: () -> Void = {}
+    var onFinishVideoNote: () -> Void = {}
+    var onCancelVideoNote: () -> Void = {}
+    var onLockVideoNote: () -> Void = {}
 
     /// Asking for a picker, not opening one.
     ///
@@ -73,7 +84,10 @@ struct MessageComposer: View {
          context: ComposerContext? = nil,
          onCancelContext: @escaping () -> Void = {},
          onSend: @escaping () -> Void,
-         onRecordVideoNote: @escaping () -> Void,
+         onStartVideoNote: @escaping () -> Void = {},
+         onFinishVideoNote: @escaping () -> Void = {},
+         onCancelVideoNote: @escaping () -> Void = {},
+         onLockVideoNote: @escaping () -> Void = {},
          onChoosePhoto: @escaping () -> Void,
          onChooseFile: @escaping () -> Void,
          isAttaching: Bool = false) {
@@ -81,7 +95,10 @@ struct MessageComposer: View {
         self.context = context
         self.onCancelContext = onCancelContext
         self.onSend = onSend
-        self.onRecordVideoNote = onRecordVideoNote
+        self.onStartVideoNote = onStartVideoNote
+        self.onFinishVideoNote = onFinishVideoNote
+        self.onCancelVideoNote = onCancelVideoNote
+        self.onLockVideoNote = onLockVideoNote
         self.onChoosePhoto = onChoosePhoto
         self.onChooseFile = onChooseFile
         _isAttaching = State(initialValue: isAttaching)
@@ -141,10 +158,7 @@ struct MessageComposer: View {
                                action: onSend)
                             .disabled(isEmpty)
                     } else if isEmpty {
-                        button(systemImage: "video.fill",
-                               label: Strings.VideoNote.record,
-                               isPrimary: false,
-                               action: onRecordVideoNote)
+                        videoNoteButton
                     } else {
                         button(systemImage: "arrow.up",
                                label: Strings.Room.send,
@@ -239,6 +253,78 @@ struct MessageComposer: View {
         // follows the composer growing instead of noticing a new object.
         .transition(.move(edge: .bottom).combined(with: .opacity))
     }
+
+    // MARK: - Recording a video note
+
+    /// Hold it, and a round video message records. Let go, and it sends.
+    ///
+    /// One movement. It used to be two: a tap opened the recording sheet, and the *shutter in
+    /// there* was the thing you held — so sending a four-second reply meant tap, wait for the
+    /// camera, find the button, hold, release. The sheet still exists and still has its shutter,
+    /// because a hold is not a gesture everybody will discover and because holding a phone still
+    /// for a minute is not comfortable. But the fast path is now the direct one.
+    ///
+    /// Two escapes, both of which the thumb can reach without letting go:
+    ///
+    /// - **Left** cancels. It is the way out of a recording you regret the moment it starts, and
+    ///   it must not require lifting the finger — lifting is what *sends*.
+    /// - **Up** locks. The recording carries on without the finger, which is the only way to
+    ///   record a full minute without holding a phone rigid against your face for it.
+    ///
+    /// A `DragGesture` with no minimum distance rather than a `LongPressGesture`, and that is
+    /// the load-bearing choice: a long press reports that it succeeded and then goes away, so
+    /// there is nothing left to watch for the swipes. A drag is live for as long as the finger
+    /// is, which is exactly the thing being modelled.
+    private var videoNoteButton: some View {
+        icon("video.fill", isPrimary: false)
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        switch hold {
+                        case .none:
+                            hold = .holding
+                            onStartVideoNote()
+
+                        case .holding:
+                            if value.translation.width < -Theme.Size.gestureReach {
+                                hold = .over
+                                onCancelVideoNote()
+                            } else if value.translation.height < -Theme.Size.gestureReach {
+                                hold = .over
+                                onLockVideoNote()
+                            }
+
+                        case .over:
+                            // Already cancelled or locked. The finger is still on the glass and
+                            // has nothing left to say.
+                            break
+                        }
+                    }
+                    .onEnded { _ in
+                        let wasHolding = hold == .holding
+                        hold = .none
+                        if wasHolding { onFinishVideoNote() }
+                    }
+            )
+            .accessibilityLabel(Text(Strings.VideoNote.record))
+            // The gesture is not something VoiceOver can perform, so the button says what it
+            // does and the screen makes a plain tap open the sheet — which is the path with a
+            // shutter in it that VoiceOver *can* press.
+            .accessibilityAddTraits(.isButton)
+            .accessibilityHint(Text(Strings.VideoNote.holdToRecord))
+    }
+
+    /// Where the finger is in the hold, which a `DragGesture` on its own cannot say.
+    ///
+    /// `over` is the state that matters: once a swipe has cancelled or locked the recording, the
+    /// finger is still down and `onChanged` keeps firing, and without somewhere to record "this
+    /// hold is finished" the same swipe would cancel it four hundred more times on the way to
+    /// the edge of the screen.
+    private enum Hold {
+        case none, holding, over
+    }
+
+    @State private var hold: Hold = .none
 
     // MARK: - Attaching
 

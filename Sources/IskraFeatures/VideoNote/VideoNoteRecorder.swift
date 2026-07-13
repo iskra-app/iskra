@@ -109,6 +109,7 @@ public final class VideoNoteRecorder: NSObject {
         }
         session.addOutput(output)
         output.maxRecordedDuration = CMTime(seconds: VideoNote.maximumDuration, preferredTimescale: 600)
+        recordUnmirrored()
 
         self.session = session
 
@@ -164,6 +165,34 @@ public final class VideoNoteRecorder: NSObject {
         }
 
         session.commitConfiguration()
+
+        // The connection was torn down and rebuilt by that configuration, and it came back with
+        // the defaults. Say it again.
+        recordUnmirrored()
+    }
+
+    /// The preview is a mirror. The recording is not. Both of those are on purpose, and they are
+    /// opposites for a reason.
+    ///
+    /// A person looking at the front camera expects the mirror they have looked into every
+    /// morning of their life: raise your right hand and the person on screen raises the hand on
+    /// the same side. `AVCaptureVideoPreviewLayer` does that of its own accord and is left
+    /// alone.
+    ///
+    /// What must *not* be mirrored is the file, and it is the file this method is about. Send a
+    /// mirrored recording and the person watching sees you as nobody has ever seen you — and any
+    /// writing in the shot, on a book, on a whiteboard, on a T-shirt, arrives backwards. The
+    /// sender cannot catch it: the preview they were watching was mirrored, so it looked right
+    /// to them and the mistake only exists at the other end.
+    ///
+    /// So it is set rather than left to the default. Apple's default happens to be what we want
+    /// today, and a default is not a promise.
+    private func recordUnmirrored() {
+        guard let connection = output.connection(with: .video),
+              connection.isVideoMirroringSupported else { return }
+
+        connection.automaticallyAdjustsVideoMirroring = false
+        connection.isVideoMirrored = false
     }
 
     public func start(onRecorded: @escaping (URL) async -> Void) {
