@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 import IskraCore
 import IskraDesign
 
@@ -14,16 +15,28 @@ import IskraDesign
 /// and this screen must not draw a second one. Inside a sidebar it does not, and this
 /// screen must — see `showsBackButton`.
 ///
-/// Most of what is here is structure without a feature behind it yet. Those rows are
-/// shown, and shown disabled, rather than hidden: the shape of the screen is a promise
-/// about where things will go, and a row that is greyed out with a sentence explaining
-/// why is honest in a way that an empty screen is not.
+/// Notifications is the one row here that is still structure without a feature behind it.
+/// It is shown, and shown disabled, rather than hidden: the shape of the screen is a
+/// promise about where things will go, and a row that is greyed out with a sentence
+/// explaining why is honest in a way that an empty screen is not.
 ///
-/// Signing out is the one thing on this screen that does anything, and it is the one
-/// thing that cannot be undone, so it is last and it is red.
+/// Signing out is the one thing on this screen that cannot be undone, so it is last and it
+/// is red.
 struct SettingsView: View {
+    /// Held, not owned — the session outlives this screen, and `@Observable` tracks it
+    /// through a plain `let` just as well.
     let session: UserSession
     var onSignOut: () -> Void
+
+    /// What is in the name field, which is not the same thing as what the user is called.
+    /// The name is sent when the field is *left*, not on every keystroke — the same
+    /// arrangement as the room's name in `RoomInfoView`, and there is no Save button here
+    /// either.
+    @State private var draftName = ""
+    @FocusState private var isNamingSelf: Bool
+
+    @State private var isChoosingPicture = false
+    @State private var pickedPicture: PhotosPickerItem?
 
     /// Whether this screen has to draw its own way out.
     ///
@@ -62,8 +75,13 @@ struct SettingsView: View {
                     Label(Strings.Settings.reactions, systemImage: "heart")
                 }
 
+                NavigationLink {
+                    EncryptionView(recovery: session.recovery(), deviceID: session.deviceID)
+                } label: {
+                    Label(Strings.Settings.encryption, systemImage: "lock")
+                }
+
                 unbuilt(Strings.Settings.notifications, systemImage: "bell")
-                unbuilt(Strings.Settings.privacy, systemImage: "lock")
             } footer: {
                 Text(Strings.Settings.moreSoon)
             }
@@ -80,6 +98,32 @@ struct SettingsView: View {
         .tint(accent.color)
         .navigationTitle(Text(Strings.Settings.title))
         .toolbarTitleDisplayMode(.inline)
+        // The field follows the session while it is not being typed in — the name can
+        // change under us, from another device — and stops following it the moment it has
+        // focus, or a sync landing mid-word would rewrite what is being typed.
+        .onChange(of: session.displayName, initial: true) { _, name in
+            guard !isNamingSelf else { return }
+            draftName = name
+        }
+        .onChange(of: isNamingSelf) { wasNaming, _ in
+            guard wasNaming else { return }
+            Task { await session.rename(to: draftName) }
+        }
+        // At the root of the screen, never inside the menu that asks for it: a
+        // `PhotosPicker` declared inside a `Menu` simply never appears.
+        .photosPicker(isPresented: $isChoosingPicture, selection: $pickedPicture, matching: .images)
+        .onChange(of: pickedPicture) { _, item in
+            guard let item else { return }
+            Task { await setPicture(item) }
+        }
+        .alert(Text(Strings.Room.Manage.failedTitle),
+               isPresented: Binding(get: { session.failure != nil },
+                                    set: { if !$0 { session.failure = nil } }),
+               presenting: session.failure) { _ in
+            Button(String(app: Strings.Room.ok)) { session.failure = nil }
+        } message: { failure in
+            Text(failure.explanation)
+        }
         .toolbar {
             if showsBackButton {
                 ToolbarItem(placement: .navigation) {
@@ -96,18 +140,23 @@ struct SettingsView: View {
         }
     }
 
-    /// Who you are signed in as. The Matrix ID is shown in full and is selectable,
-    /// because it is the thing people ask each other for.
+    /// Who you are — and, since both halves of it are yours to change, where you change
+    /// them. There is no Edit button and no pencil in the corner: the picture is the thing
+    /// you press to change the picture, and the name is a field.
+    ///
+    /// The Matrix ID underneath is the one part that is not editable, ever, and it is shown
+    /// in full and selectable because it is the thing people ask each other for.
     private var profile: some View {
         HStack(spacing: Theme.Spacing.roomy) {
-            Avatar(name: session.displayName,
-                   url: session.avatarURL,
-                   size: Theme.Size.avatarLarge)
+            picture
 
             VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-                Text(session.displayName)
+                TextField(String(app: Strings.Account.namePlaceholder), text: $draftName)
                     .font(.title3.weight(.semibold))
+                    .textFieldStyle(.plain)
                     .lineLimit(1)
+                    .focused($isNamingSelf)
+                    .onSubmit { isNamingSelf = false }
 
                 Text(session.userID)
                     .font(.subheadline)
@@ -117,12 +166,53 @@ struct SettingsView: View {
             }
         }
         .padding(.vertical, Theme.Spacing.close)
-        .accessibilityElement(children: .combine)
+    }
+
+    /// The face, and a menu on the face itself.
+    private var picture: some View {
+        Menu {
+            Button {
+                isChoosingPicture = true
+            } label: {
+                Label(String(app: Strings.Account.changePicture), systemImage: "photo")
+            }
+
+            if session.avatarURL != nil {
+                Button(role: .destructive) {
+                    Task { await session.removePicture() }
+                } label: {
+                    Label(String(app: Strings.Account.removePicture), systemImage: "trash")
+                }
+            }
+        } label: {
+            Avatar(name: session.displayName,
+                   url: session.avatarURL,
+                   size: Theme.Size.avatarLarge)
+        }
+        .menuIndicator(.hidden)
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(Strings.Account.changePicture))
     }
 
     /// A setting that exists as a place on the screen and nothing more.
     private func unbuilt(_ title: LocalizedStringResource, systemImage: String) -> some View {
         Label(title, systemImage: systemImage)
             .foregroundStyle(.secondary)
+    }
+
+    private func setPicture(_ item: PhotosPickerItem) async {
+        pickedPicture = nil
+
+        do {
+            guard let data = try await item.loadTransferable(type: Data.self) else {
+                Log.media.error("the photo library returned no bytes for the account picture")
+                session.failure = .picture
+                return
+            }
+            await session.setPicture(data, filename: "avatar.jpg")
+        } catch {
+            Log.media.error("the photo library would not hand over the picture: \(String(describing: error), privacy: .public)")
+            session.failure = .picture
+        }
     }
 }

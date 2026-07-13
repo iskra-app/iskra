@@ -103,7 +103,7 @@
 
 "settings.notifications" = "Notifications";
 
-"settings.privacy" = "Privacy";
+"settings.encryption" = "Encryption";
 
 "settings.appearance" = "Appearance";
 
@@ -360,3 +360,37 @@
 "room.manage.alertsAll" = "Every message";
 "room.manage.alertsMentions" = "Mentions only";
 "room.manage.alertsMuted" = "Off";
+
+/* The profile: name and picture. */
+"account.namePlaceholder" = "Your name";
+"account.changePicture" = "Change picture";
+"account.removePicture" = "Remove picture";
+
+/* Encryption: whether your messages will still be readable on your next device. */
+"encryption.title" = "Encryption";
+
+"encryption.on" = "Your messages are protected";
+"encryption.onHelp" = "The keys to your messages are kept on the server, encrypted. With your recovery key you can read everything again on a new device.";
+
+"encryption.off" = "Your messages aren’t protected";
+"encryption.offHelp" = "If you lose this device, nobody will be able to read your old messages — including you. Protect them, and we’ll give you the key that brings them back.";
+"encryption.protect" = "Protect my messages";
+
+"encryption.keyNeeded" = "Your recovery key is needed";
+"encryption.keyNeededHelp" = "Your old messages are encrypted, and this device doesn’t know what opens them. Enter the key you saved when you turned protection on.";
+"encryption.keyPlaceholder" = "Recovery key";
+"encryption.restore" = "Bring my messages back";
+
+"encryption.newKey" = "Create a new key";
+"encryption.newKeyHelp" = "The old key will stop working. Worth doing if it ended up somewhere it shouldn’t have.";
+
+"encryption.saveKey" = "Save your key";
+"encryption.saveKeyHelp" = "We show it once and never again. Write it down or put it in a password manager: without it, your old messages don’t come back.";
+"encryption.copyKey" = "Copy the key";
+"encryption.keyCopied" = "Copied";
+"encryption.saved" = "I’ve saved the key";
+
+"encryption.thisDevice" = "This device";
+"encryption.deviceVerified" = "Verified";
+"encryption.deviceUnverified" = "Not verified";
+"encryption.otherDevices" = "Iskra can’t show your other devices yet: the Matrix library it runs on has no way to ask for them. Another session can be ended from your server’s own website.";

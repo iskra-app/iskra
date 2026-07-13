@@ -23,6 +23,10 @@ public final class UserSession {
     public private(set) var displayName: String
     public private(set) var avatarURL: String?
 
+    /// Set when the server would not take a new name or a new picture. `var`, because the
+    /// alert that shows it has to be able to put it back.
+    public var failure: AccountActionFailure?
+
     /// Internal rather than private, because `RoomCreation` is an extension in another
     /// file and needs it. The rule it is kept under is unchanged: the `Client` does not
     /// leave `IskraCore`, and nothing above this layer holds one.
@@ -94,6 +98,71 @@ public final class UserSession {
     /// Fetches media bytes (a photo, a voice message) on demand.
     public func media() -> MediaLoader {
         MediaLoader(client: client)
+    }
+
+    /// This account's encryption, built when the screen that shows it is opened.
+    public func recovery() -> RecoveryStore {
+        RecoveryStore(encryption: client.encryption())
+    }
+
+    /// The name of *this* device, as the rest of the account sees it. The one true thing
+    /// the sessions screen can say — see `ROADMAP.md`, stage 6, on why it cannot list the
+    /// others.
+    public var deviceID: String {
+        (try? client.deviceId()) ?? ""
+    }
+
+    // MARK: - Changing who you are
+
+    /// The name everyone else sees. Applied at once and put back if the server refuses —
+    /// the same optimism as `RoomDetailsStore.rename`, and for the same reason: this is a
+    /// field the user is looking straight at, and a name that flickers back a second later
+    /// is a clearer report of failure than a name that never moved.
+    ///
+    /// An empty name is refused rather than sent. Matrix allows it, and the result is a
+    /// user whose messages are signed with a bare Matrix ID — which is not a name people
+    /// choose, it is one they end up with by deleting the field and tapping away.
+    public func rename(to newName: String) async {
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed != displayName else { return }
+
+        let previous = displayName
+        displayName = trimmed
+
+        do {
+            try await client.setDisplayName(name: trimmed)
+        } catch {
+            Log.session.error("the name would not change: \(error)")
+            displayName = previous
+            failure = .name
+        }
+    }
+
+    /// The picture, as bytes, exactly as a room's picture goes up — see
+    /// `RoomDetailsStore.setPicture` for why it is bytes and not a path on disk.
+    public func setPicture(_ data: Data, filename: String) async {
+        let info = MediaMetadata.image(data: data, filename: filename)
+
+        do {
+            try await client.uploadAvatar(mimeType: info.mimeType, data: data)
+            avatarURL = try? await client.avatarUrl()
+        } catch {
+            Log.session.error("the picture would not change: \(error)")
+            failure = .picture
+        }
+    }
+
+    public func removePicture() async {
+        let previous = avatarURL
+        avatarURL = nil
+
+        do {
+            try await client.removeAvatar()
+        } catch {
+            Log.session.error("the picture would not clear: \(error)")
+            avatarURL = previous
+            failure = .picture
+        }
     }
 
     public func signOut() async {

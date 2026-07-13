@@ -24,4 +24,9 @@ public enum Log {
     /// explain, and the user is told only that it was refused — this is where the refusal
     /// itself is kept.
     public static let rooms = Logger(subsystem: subsystem, category: "rooms")
+
+    /// The account itself: the name and face the user shows the world, and the state of
+    /// this session's encryption. The rule above matters most here — a recovery key is a
+    /// password, and the errors around one are logged without it.
+    public static let session = Logger(subsystem: subsystem, category: "session")
 }

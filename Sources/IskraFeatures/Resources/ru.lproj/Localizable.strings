@@ -103,7 +103,7 @@
 
 "settings.notifications" = "Уведомления";
 
-"settings.privacy" = "Приватность";
+"settings.encryption" = "Шифрование";
 
 "settings.appearance" = "Внешний вид";
 
@@ -359,3 +359,37 @@
 "room.manage.alertsAll" = "Все сообщения";
 "room.manage.alertsMentions" = "Только упоминания";
 "room.manage.alertsMuted" = "Выключены";
+
+/* Профиль: имя и фото. */
+"account.namePlaceholder" = "Ваше имя";
+"account.changePicture" = "Изменить фото";
+"account.removePicture" = "Удалить фото";
+
+/* Шифрование: доступно ли будет прочитать переписку на новом устройстве. */
+"encryption.title" = "Шифрование";
+
+"encryption.on" = "Переписка защищена";
+"encryption.onHelp" = "Ключи от ваших сообщений лежат на сервере зашифрованными. С ключом восстановления вы прочитаете всю переписку на новом устройстве.";
+
+"encryption.off" = "Переписка не защищена";
+"encryption.offHelp" = "Если это устройство потеряется, старые сообщения не прочитает никто — и вы тоже. Защитите переписку, и мы дадим ключ, который её вернёт.";
+"encryption.protect" = "Защитить переписку";
+
+"encryption.keyNeeded" = "Нужен ключ восстановления";
+"encryption.keyNeededHelp" = "Старые сообщения зашифрованы, и это устройство не знает, чем их открыть. Введите ключ, который вы сохранили, когда включали защиту.";
+"encryption.keyPlaceholder" = "Ключ восстановления";
+"encryption.restore" = "Восстановить переписку";
+
+"encryption.newKey" = "Создать новый ключ";
+"encryption.newKeyHelp" = "Старый ключ перестанет работать. Стоит это сделать, если он попал не в те руки.";
+
+"encryption.saveKey" = "Сохраните ключ";
+"encryption.saveKeyHelp" = "Мы показываем его один раз и больше не покажем никогда. Запишите его или положите в менеджер паролей: без него старую переписку не вернуть.";
+"encryption.copyKey" = "Скопировать ключ";
+"encryption.keyCopied" = "Скопировано";
+"encryption.saved" = "Я сохранил ключ";
+
+"encryption.thisDevice" = "Это устройство";
+"encryption.deviceVerified" = "Проверено";
+"encryption.deviceUnverified" = "Не проверено";
+"encryption.otherDevices" = "Другие ваши устройства Iskra пока не показывает: библиотека Matrix, на которой она работает, не умеет их запрашивать. Чужой сеанс можно завершить с сайта вашего сервера.";
