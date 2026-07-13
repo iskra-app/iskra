@@ -123,6 +123,16 @@ public enum CoreStrings {
         /// somebody whose power level does not allow it. The menu hides the item where we know
         /// that in advance; this is for the times we do not.
         public static let pinFailed = LocalizedStringResource("timeline.pinFailed", bundle: bundle)
+
+        /// What a client that cannot draw a map shows instead of one. Coordinates, spelled out,
+        /// because they are the one thing about a place that anybody can do something with —
+        /// paste them into a map and you are there. The word in front of them is translated; the
+        /// numbers are numbers.
+        public static func locationBody(_ latitude: Double, _ longitude: Double) -> LocalizedStringResource {
+            LocalizedStringResource("timeline.locationBody",
+                                    defaultValue: "Location: \(latitude), \(longitude)",
+                                    bundle: bundle)
+        }
         /// A reaction that did not land. Its own sentence rather than `sendFailed`: an
         /// emoji is not a message, and telling someone their *message* failed when they
         /// tapped a thumbs-up would send them looking for a message that was never there.

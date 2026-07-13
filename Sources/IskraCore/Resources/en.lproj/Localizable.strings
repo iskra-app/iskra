@@ -97,3 +97,6 @@
 "roomEvent.roomCreated" = "The chat was created";
 "roomEvent.encryptionEnabled" = "Messages here are end-to-end encrypted";
 "roomEvent.pair" = "%1$@ and %2$@";
+
+/* What a client that cannot draw a map shows instead of one. */
+"timeline.locationBody" = "Location: %1$.6f, %2$.6f";

@@ -86,6 +86,7 @@ public enum MessageKind: Sendable, Equatable {
     case voice(Attachment, waveform: [Float])
     case audio(Attachment)
     case file(Attachment)
+    case location(Location)
     /// The message is there, but this device was never given the key to read it.
     case unreadable
     case deleted

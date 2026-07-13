@@ -24,6 +24,15 @@ public struct RoomView: View {
     /// shutter. Either way, lifting the finger off the composer must not end it.
     @State private var isVideoNoteLocked = false
 
+    /// Recording a spoken message. Owned here for the same reason the camera is — the gesture
+    /// that ends it is on a button, and the screen is what turns "let go" into "send".
+    ///
+    /// Unlike the camera, there is no sheet: a voice message has nothing to show, so the
+    /// composer itself becomes the recording for as long as it lasts.
+    @State private var voice = VoiceRecorder()
+    @State private var isHoldingVoice = false
+    @State private var isVoiceLocked = false
+
     /// Whether the user is answering somebody, or going back to change what they wrote. Held
     /// here rather than in the composer because both begin in the *timeline* — a menu item on a
     /// message — and only the screen can see both ends.
@@ -41,6 +50,7 @@ public struct RoomView: View {
     /// the root of the screen both pickers open, which is what a picker has to do.
     @State private var isChoosingPhoto = false
     @State private var isChoosingFile = false
+    @State private var isChoosingLocation = false
     @State private var pickedItem: PhotosPickerItem?
 
     /// Whether the conversation has been put where it belongs: on its newest message.
@@ -308,6 +318,12 @@ public struct RoomView: View {
             guard case let .success(url) = result else { return }
             Task { await sendPickedFile(url) }
         }
+        .sheet(isPresented: $isChoosingLocation) {
+            LocationPicker { location in
+                await timeline.send(location: location, replyingTo: replyID)
+                cancelContext()
+            }
+        }
         .task {
             try? await timeline.start()
             await timeline.markAsRead()
@@ -386,9 +402,21 @@ public struct RoomView: View {
                         onStartVideoNote: startVideoNote,
                         onFinishVideoNote: finishVideoNote,
                         onCancelVideoNote: cancelVideoNote,
-                        onLockVideoNote: { isVideoNoteLocked = true },
+                        onLockVideoNote: {
+                            isVideoNoteLocked = true
+                            isHoldingVideoNote = false
+                        },
+                        onStartVoice: { Task { await startVoice() } },
+                        onFinishVoice: { Task { await finishVoice() } },
+                        onCancelVoice: cancelVoice,
+                        onLockVoice: {
+                            isVoiceLocked = true
+                            isHoldingVoice = false
+                        },
+                        voice: voiceRecording,
                         onChoosePhoto: { isChoosingPhoto = true },
-                        onChooseFile: { isChoosingFile = true })
+                        onChooseFile: { isChoosingFile = true },
+                        onChooseLocation: { isChoosingLocation = true })
             .sheet(isPresented: $isRecordingVideoNote) {
                 VideoNoteComposer(recorder: videoNote,
                                   isHolding: $isHoldingVideoNote,
@@ -428,6 +456,58 @@ public struct RoomView: View {
         isHoldingVideoNote = false
         videoNote.cancel()
         isRecordingVideoNote = false
+    }
+
+    // MARK: - Recording a voice message
+
+    /// What the composer draws while somebody is speaking, and nil the rest of the time.
+    private var voiceRecording: VoiceRecording? {
+        guard voice.state == .recording else { return nil }
+        return VoiceRecording(elapsed: voice.elapsed,
+                              waveform: voice.waveform,
+                              isHolding: isHoldingVoice && !isVoiceLocked)
+    }
+
+    private func startVoice() async {
+        isHoldingVoice = true
+        isVoiceLocked = false
+        await voice.start()
+
+        // The microphone was refused. Say so — a hold that produces nothing, with no explanation,
+        // is the app appearing to be broken when in fact it is being obedient.
+        if voice.state == .denied {
+            timeline.sendFailure = Strings.Voice.needsMicrophone
+        }
+    }
+
+    /// The finger came up: send what was said.
+    ///
+    /// `finish()` hands back nil for a recording too short to be a message — a thumb that brushed
+    /// the button — and nil is simply nothing to send. It also hands back a file, in plaintext,
+    /// which is deleted the moment the upload has been handed to the send queue.
+    private func finishVoice() async {
+        isHoldingVoice = false
+        // A hands-free recording is ended by *pressing* the button, which has become a stop
+        // button and looks like one. Either way the act is the same: send what was said.
+        isVoiceLocked = false
+        await sendVoice()
+    }
+
+    private func sendVoice() async {
+        guard let recording = voice.finish() else { return }
+        defer { try? FileManager.default.removeItem(at: recording.url) }
+
+        await timeline.send(voice: recording.url,
+                            duration: recording.duration,
+                            waveform: recording.waveform,
+                            replyingTo: replyID)
+        cancelContext()
+    }
+
+    private func cancelVoice() {
+        isHoldingVoice = false
+        isVoiceLocked = false
+        voice.cancel()
     }
 
     /// One row of the conversation: a message, the date above it, or a note about something

@@ -141,6 +141,43 @@ public extension TimelineStore {
         }
     }
 
+    /// Sends a place.
+    ///
+    /// Not an attachment at all — there is no file, nothing is uploaded, and the whole message is
+    /// two numbers. It lives here because this is where "the things you send that are not words"
+    /// are, and because it takes the same `replyingTo`.
+    ///
+    /// `body` is what a client that does not understand locations will show instead, and it is
+    /// the reason it is a sentence rather than a `geo:` URI: somebody reading this in a client
+    /// from 2019 should see "Location: 55.755800, 37.617300", which they can paste into a map,
+    /// and not a URI scheme.
+    ///
+    /// `assetType: .pin` says the message is *a place*, not *where the sender is*. Matrix has a
+    /// `.sender` type for the latter, and this app does not send it: it would be a claim about
+    /// the user's own position, made on their behalf, that they cannot see on the screen they
+    /// pressed send on. If they want to say "I am here" they drop the pin on themselves, which
+    /// is the same event without the claim.
+    func send(location: Location, replyingTo replyID: String? = nil) async {
+        guard let timeline = liveTimeline else { return }
+
+        let body = String(core: CoreStrings.Timeline.locationBody(location.latitude, location.longitude))
+
+        do {
+            try await timeline.sendLocation(body: body,
+                                            geoUri: location.geoURI,
+                                            description: location.name,
+                                            zoomLevel: Self.locationZoom,
+                                            assetType: .pin,
+                                            repliedToEventId: replyID.flatMap { eventID(for: $0) })
+        } catch {
+            sendFailure = CoreStrings.Timeline.sendFailed
+        }
+    }
+
+    /// How far in the receiver's map should open. Street level: close enough to see which
+    /// building, far enough to see which street it is on.
+    private static let locationZoom: UInt8 = 15
+
     // MARK: - Private
 
     /// Every send goes through here so that one failure message serves them all, and
