@@ -491,11 +491,17 @@ public final class RoomDetailsStore {
 
     /// Promotes or demotes somebody.
     ///
-    /// The power level is the SDK's own suggestion for the role, not a number picked here:
-    /// 100 and 50 are conventions, and a room that has moved them is entitled to. A
-    /// creator's `infinite` cannot be assigned to anybody, which is why the `.value` case
-    /// is the only one that goes through — there is no such thing as promoting someone to
-    /// founder.
+    /// The power level is the SDK's own suggestion for the role. This used to claim that "a room
+    /// that has moved them is entitled to" — which reads as though the room's own table were
+    /// consulted somewhere, and it is not, and it *cannot be*: Matrix has no such table. A power
+    /// level is an integer, `m.room.power_levels` names thresholds for **acts** (ban, kick, invite,
+    /// redact) and nowhere names a threshold for a *role*. "Administrator is 100, moderator is 50"
+    /// is a convention that clients share, not a fact a room can state — so `suggestedPowerLevelForRole`
+    /// is not a fallback here, it is the only honest source there is, and every other Matrix client
+    /// writes the same numbers.
+    ///
+    /// A creator's `infinite` cannot be assigned to anybody, which is why the `.value` case is the
+    /// only one that goes through — there is no such thing as promoting someone to founder.
     public func setRole(_ role: RoomRole, for member: RoomMemberSummary) async {
         guard assignableRoles(for: member).contains(role) else { return }
         guard case .value(let level) = try? suggestedPowerLevelForRole(role: Self.sdkRole(role)) else {
