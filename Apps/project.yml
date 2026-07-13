@@ -46,6 +46,10 @@ targets:
     dependencies:
       - package: Iskra
         product: IskraFeatures
+      # Embedded into the app, which is the only way an extension ships. It is not a
+      # separate download and has no life of its own: iOS launches it, on its own, when a
+      # push arrives — see Apps/NotificationService.
+      - target: IskraNotificationService
     settings:
       base:
         PRODUCT_NAME: Iskra
@@ -117,6 +121,57 @@ targets:
           - CFBundleURLName: app.iskra.oauth
             CFBundleURLSchemes: [iskra]
         UIBackgroundModes: [remote-notification]
+
+  # The process that decrypts a push. iOS wakes it when one arrives, gives it ~30 seconds,
+  # and shows whatever it puts on screen — see Apps/NotificationService/NotificationService.swift.
+  #
+  # iOS only, deliberately. `aps-environment` is on the iOS app and not the Mac one, and a
+  # Mac that is awake has the app itself to notice a message. Nothing here would stop a
+  # macOS extension later; there is just nothing yet for it to do.
+  IskraNotificationService:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: NotificationService
+    dependencies:
+      # IskraCore, not IskraFeatures. The extension has no screens and must not link any:
+      # it is memory-limited (24 MB), and dragging SwiftUI and every view in the app into a
+      # process that exists to write two lines of text is how an extension gets killed
+      # before it decrypts anything.
+      - package: Iskra
+        product: IskraCore
+    settings:
+      base:
+        PRODUCT_NAME: IskraNotificationService
+        PRODUCT_BUNDLE_IDENTIFIER: moscow.swag.iskra.notifications
+    info:
+      path: NotificationService/Info.plist
+      properties:
+        CFBundleDisplayName: Iskra
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [en, ru]
+        # Load-bearing, and the single easiest thing here to leave out.
+        #
+        # `AppEnvironment.keychainAccessGroup` reads this key out of `Bundle.main` to build
+        # the Keychain group — and inside an extension `Bundle.main` is the *extension's*
+        # bundle, not the app's. Without this line the prefix comes back empty, the group
+        # silently becomes "moscow.swag.iskra.shared" with no team ID in front of it, the
+        # Keychain returns nothing, and the extension reports "nobody is signed in" on a
+        # device where somebody plainly is.
+        AppIdentifierPrefix: $(AppIdentifierPrefix)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.usernotifications.service
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).NotificationService
+    entitlements:
+      path: NotificationService/Iskra.entitlements
+      properties:
+        # The same two groups as the app, and this is the entire point of the exercise: the
+        # extension is a different process with a different bundle ID, and it is granted
+        # these separately. It opens the app's encrypted SQLite store and reads the app's
+        # session out of the app's Keychain group — and if either grant is missing, that is
+        # where it fails. `Iskra --probe-notification` is what says so out loud.
+        com.apple.security.application-groups: [group.moscow.swag.iskra]
+        keychain-access-groups: [$(AppIdentifierPrefix)moscow.swag.iskra.shared]
 
   Iskra (macOS):
     type: application

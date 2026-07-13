@@ -41,3 +41,5 @@ Apps/iOS/Info.plist
 Apps/macOS/Info.plist
 Apps/macOS/Iskra.entitlements
 Apps/iOS/Iskra.entitlements
+Apps/NotificationService/Info.plist
+Apps/NotificationService/Iskra.entitlements

@@ -34,6 +34,13 @@ struct IskraApp: App {
         if DeviceProbe.wasRequested {
             DeviceProbe.runAndExit()
         }
+
+        // `Iskra --probe-notification <roomID> <eventID>` decrypts one event the way the
+        // notification extension will. A push carries nothing but those two identifiers, so
+        // this needs no push gateway to be honest — see NotificationProbe, and ROADMAP stage 7.
+        if NotificationProbe.wasRequested {
+            NotificationProbe.runAndExit()
+        }
     }
 
     var body: some Scene {

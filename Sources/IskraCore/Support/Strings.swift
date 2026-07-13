@@ -189,6 +189,23 @@ public enum CoreStrings {
         public static let server = LocalizedStringResource("sendFailure.server", bundle: bundle)
     }
 
+    /// What a push says once it has been decrypted on the device — see `PushDecoder`.
+    ///
+    /// There is almost nothing here, and that is the point: a notification about a message
+    /// says the message, and the message is the user's own words, which are never a string
+    /// to translate. Only the one push that is *not* a message needs a sentence of ours.
+    public enum Push {
+        /// Somebody asking you into a chat. Written to be true of anybody, for the same
+        /// reason every sentence in `RoomEvent` is: Matrix does not know anyone's gender and
+        /// Russian very much does, so "приглашает" — which is the same word whoever is doing
+        /// the inviting — and never "пригласил(а)".
+        public static func invite(_ person: String) -> LocalizedStringResource {
+            LocalizedStringResource("push.invite",
+                                    defaultValue: "\(person) invites you to the chat",
+                                    bundle: bundle)
+        }
+    }
+
     /// Shown in the user's list of signed-in devices, so it is a name, not a model
     /// identifier.
     public enum Device {

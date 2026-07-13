@@ -1,0 +1,138 @@
+import UserNotifications
+import Synchronization
+import IskraCore
+
+/// The process that turns a push into a sentence.
+///
+/// iOS wakes this up when a push arrives with `mutable-content`, hands it the payload the
+/// homeserver sent — which is a room ID, an event ID and nothing else worth reading — and
+/// gives it about thirty seconds to replace the text before it gives up and shows whatever
+/// the server wrote. In an encrypted room the server wrote "New message", because the
+/// server cannot read the message either. Everything the user sees on their lock screen is
+/// decided here.
+///
+/// As thin as the app shells, and for the same reason: the work is `PushDecoder`, in
+/// `IskraCore`, where the `Client` and the crypto store belong. This file knows about
+/// `UNNotificationContent`, and that is all it knows.
+///
+/// `@unchecked Sendable` is not a shrug. Every piece of mutable state here is behind the
+/// `Mutex` below, which is the whole reason the class has one; what the compiler cannot see
+/// is that `UNNotificationServiceExtension` — an Objective-C class it did not write — is
+/// safe to hold across the hop once that is true.
+final class NotificationService: UNNotificationServiceExtension, @unchecked Sendable {
+    /// The one obligation this process has to iOS: call the content handler, exactly once.
+    ///
+    /// Two things race for it — the decrypt finishing, and iOS running out of patience — and
+    /// they arrive on different threads. So it is *taken* out from under a lock rather than
+    /// read: whoever gets here first delivers, and the loser finds nothing and does nothing.
+    /// Calling it twice traps; never calling it means the user gets no notification at all.
+    /// Both failures are invisible in a simulator and obvious on a phone at 3 a.m.
+    /// `@unchecked Sendable` for the same reason `UnsafeTransfer` exists in `RoomListStore`:
+    /// the two things in here are an Objective-C block and an Objective-C content object,
+    /// neither of which carries a `Sendable` promise, and both of which have to cross from
+    /// `didReceive` to the task that decrypts. The box says that out loud instead of quietly
+    /// weakening something bigger. What makes it true is the `Mutex` — the handler is reached
+    /// through the lock, exactly once, and never held anywhere else.
+    private struct Delivery: @unchecked Sendable {
+        let handler: (UNNotificationContent) -> Void
+        /// iOS's own words for this push — "New message", or whatever the homeserver put in
+        /// the payload. Kept, because it is what goes on screen if we run out of time, and
+        /// showing it is better than showing nothing.
+        let fallback: UNNotificationContent
+    }
+
+    private let pending = Mutex<Delivery?>(nil)
+
+    override func didReceive(_ request: UNNotificationRequest,
+                             withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
+        pending.withLock {
+            $0 = Delivery(handler: contentHandler, fallback: request.content)
+        }
+
+        // Matrix's push payload. `room_id` and `event_id` are all a gateway forwards, and all
+        // it *should* forward: anything more would be the homeserver telling APNs — and
+        // therefore Apple — what is inside an end-to-end encrypted room.
+        let payload = request.content.userInfo
+        guard let roomID = payload["room_id"] as? String,
+              let eventID = payload["event_id"] as? String else {
+            // Not a message push, or a payload shape we do not know. Leave it exactly as it
+            // came rather than blanking it: the server says something arrived, and it is not
+            // our place to decide it did not.
+            deliverFallback()
+            return
+        }
+
+        Task {
+            let outcome = await PushDecoder().notification(roomID: roomID, eventID: eventID)
+            deliver(outcome, roomID: roomID)
+        }
+    }
+
+    /// The thirty seconds ran out. Whatever we were doing, it is over — iOS will show
+    /// *something* now whether we speak or not, so we speak, with the best text we have.
+    ///
+    /// `PushDecoder` bounds itself at twenty seconds precisely so this is a backstop and not
+    /// the normal path: by the time iOS loses patience we should already have given up
+    /// ourselves and put an honest fallback on screen.
+    override func serviceExtensionTimeWillExpire() {
+        Log.push.error("iOS ran out of patience before the event decrypted")
+        deliverFallback()
+    }
+
+    // MARK: - Private
+
+    private func deliver(_ outcome: PushOutcome, roomID: String) {
+        guard let delivery = pending.withLock({ $0.take() }) else { return }
+
+        switch outcome {
+        case let .show(notification):
+            delivery.handler(content(for: notification, roomID: roomID))
+
+        case .silence:
+            // Nothing to say. There is no supported way for an extension to *drop* a push
+            // outright — once iOS has woken us it will show something — so the least it can
+            // show is an empty notification, rather than the server's "New message" for a
+            // reaction nobody asked to be told about.
+            delivery.handler(UNMutableNotificationContent())
+
+        case .notSignedIn, .failed:
+            // We could not read it. Leave the server's own text alone: a message described
+            // badly still tells the user a message arrived, and silence does not. Why it
+            // failed is in `Log.push`, for whoever comes looking.
+            delivery.handler(delivery.fallback)
+        }
+    }
+
+    private func deliverFallback() {
+        guard let delivery = pending.withLock({ $0.take() }) else { return }
+        delivery.handler(delivery.fallback)
+    }
+
+    private func content(for notification: PushNotification, roomID: String) -> UNNotificationContent {
+        let content = UNMutableNotificationContent()
+        content.title = notification.title
+        if let sender = notification.sender {
+            content.subtitle = sender
+        }
+        content.body = notification.body
+        content.sound = notification.isNoisy ? .default : nil
+
+        // Collapses every push from one conversation into one entry, so a room that gets
+        // twenty messages is one line on the lock screen and not twenty.
+        content.threadIdentifier = roomID
+
+        // What the app opens to when the notification is tapped. The room, and nothing else —
+        // the app already has the conversation.
+        content.userInfo = ["room_id": roomID]
+        return content
+    }
+}
+
+private extension Optional {
+    /// Reads the value and clears it in one move, so that "exactly once" is a property of the
+    /// lock rather than of everyone who remembers to nil it out afterwards.
+    mutating func take() -> Wrapped? {
+        defer { self = nil }
+        return self
+    }
+}
