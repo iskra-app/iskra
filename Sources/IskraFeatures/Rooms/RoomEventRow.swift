@@ -16,14 +16,23 @@ import IskraDesign
 struct RoomEventRow: View {
     let event: RoomEvent
 
+    /// Whether the note directly above this one is also a note.
+    ///
+    /// A room opening is never one event: it was created, it was named, it was given a picture,
+    /// someone was invited, someone joined — five lines about the same minute. Spaced as if each
+    /// were a separate announcement they fill the screen and read as five separate announcements.
+    /// Closed up they read as one paragraph, which is what they are, and the gap only opens where
+    /// the run begins.
+    var followsEvent: Bool = false
+
     var body: some View {
         Text(event.text)
             .font(.caption)
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
             .padding(.horizontal, Theme.Spacing.normal)
-            .padding(.vertical, Theme.Spacing.close)
+            .padding(.vertical, Theme.Spacing.tight)
             .frame(maxWidth: .infinity)
-            .padding(.top, Theme.Spacing.betweenSenders)
+            .padding(.top, followsEvent ? 0 : Theme.Spacing.betweenSenders)
     }
 }

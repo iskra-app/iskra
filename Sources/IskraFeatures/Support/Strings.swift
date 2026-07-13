@@ -327,15 +327,27 @@ public enum Strings {
         public static let flipCamera = LocalizedStringResource("videoNote.flipCamera", bundle: bundle)
     }
 
+    /// The one button that records, whichever kind of message it is set to. What it says is only
+    /// ever read aloud: the gesture — tap to flip, hold to record — is not one VoiceOver can
+    /// perform, so it has to be a sentence and two actions instead.
+    public enum Recording {
+        public static let hint = LocalizedStringResource("recording.hint", bundle: bundle)
+        public static let switchToVoice = LocalizedStringResource("recording.switchToVoice", bundle: bundle)
+        public static let switchToVideo = LocalizedStringResource("recording.switchToVideo", bundle: bundle)
+        /// On the strip, beside the clock, for both kinds of recording — as a button once the
+        /// finger is off the record button, and as the target of the swipe while it is still down.
+        /// One word either way; `RecordingStrip` explains why it cannot be one *button* either way.
+        public static let cancel = LocalizedStringResource("recording.cancel", bundle: bundle)
+        /// What the record button is called once a recording is running hands-free, and what the
+        /// camera's shutter is called then too — both are showing the arrow, and both send. Read
+        /// aloud only, but it has to follow the glyph rather than the mode.
+        public static let send = LocalizedStringResource("recording.send", bundle: bundle)
+    }
+
     /// Recording a spoken message. Same gestures as a round video one, and deliberately the
-    /// same words for them — they are two buttons side by side doing the same kind of thing.
+    /// same words for them — it is one button, set one way or the other.
     public enum Voice {
         public static let record = LocalizedStringResource("voice.record", bundle: bundle)
-        public static let stop = LocalizedStringResource("voice.stop", bundle: bundle)
-        public static let holdToRecord = LocalizedStringResource("voice.holdToRecord", bundle: bundle)
-        /// Said in the composer while the finger is down. It names the two swipes, because they
-        /// are gestures nobody discovers by accident and this is the moment they are needed.
-        public static let slideToCancel = LocalizedStringResource("voice.slideToCancel", bundle: bundle)
         public static let needsMicrophone = LocalizedStringResource("voice.needsMicrophone", bundle: bundle)
     }
 

@@ -119,6 +119,11 @@ struct MessageRowLayoutTests {
             }
         }
         .frame(width: 390)
+        // What `RoomView` measures and hands down in the app. Without it the rows are drawn
+        // with no idea how wide the conversation is, and the one thing that depends on that —
+        // how far a bubble may run before the far edge pushes back — would be tested at a
+        // width the app never uses. See `MessageRow.emptyColumn`.
+        .environment(\.timelineWidth, 390)
         .padding()
         .background(.background)
 

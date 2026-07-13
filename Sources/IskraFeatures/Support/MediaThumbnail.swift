@@ -67,6 +67,15 @@ struct MediaThumbnail: View {
     /// Longest edge to ask the server for.
     var size: Int = 600
 
+    /// Handed back the moment it arrives, for a caller that needs to draw this same picture a
+    /// second way rather than fetch it a second time.
+    ///
+    /// `PictureBubble` is the one that needs it: the bubble's fill is the photograph itself,
+    /// blurred. Asking the loader for it again — even at 64pt, even with the SDK's cache on —
+    /// is a second request and a second decode, because the cache is keyed by size and a
+    /// different size is a different entry. The picture is already in hand; this passes it over.
+    var onLoad: (Image) -> Void = { _ in }
+
     @Environment(\.mediaLoader) private var loader
 
     @State private var image: Image?
@@ -90,6 +99,7 @@ struct MediaThumbnail: View {
                 let data = try await loader.thumbnail(for: attachment, size: size)
                 image = Image(mediaData: data)
                 failed = (image == nil)
+                if let image { onLoad(image) }
             } catch {
                 // A thumbnail that will not load is not worth an alert. The bubble
                 // stays, with a quiet marker, and the message is still readable.

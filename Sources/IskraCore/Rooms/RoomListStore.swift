@@ -69,7 +69,14 @@ public final class RoomListStore {
 
         let result = try await list.entriesWithDynamicAdapters(pageSize: 100, listener: listener)
         entriesResult = result
-        _ = result.controller().setFilter(kind: .all(filters: []))
+        // A room you have walked out of is still a room the SDK knows about, and with no filter
+        // at all it keeps its place in the list: the chat sat there after "Leave", could be
+        // opened, and read — which reads as the app not having done what it said it did. It had:
+        // the membership really was gone on the server, and the list was simply showing every
+        // room in the store rather than every room you are *in*. `nonLeft` is the SDK's own name
+        // for that distinction, and an invitation you have not answered yet is still not left,
+        // so this hides nothing the user has still to decide about.
+        _ = result.controller().setFilter(kind: .all(filters: [.nonLeft]))
 
         // The second source of truth, and the one the list used to be missing.
         //

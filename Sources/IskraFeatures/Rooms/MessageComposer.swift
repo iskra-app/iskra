@@ -4,13 +4,14 @@ import IskraCore
 import IskraDesign
 
 /// A voice message being recorded, as the composer needs to draw it: how long it has been going,
-/// what it has heard, and whether the finger that started it is still down.
+/// and what it has heard.
+///
+/// It used to carry whether the finger was still down, because the strip said different things
+/// to a held recording and a hands-free one. It no longer needs to: the way out is a button now,
+/// and a button is the same button whether or not somebody is touching something else.
 struct VoiceRecording: Equatable {
     let elapsed: TimeInterval
     let waveform: [Float]
-    /// False once the user has swiped up. The strip then stops telling them to let go, and the
-    /// microphone button becomes the way to stop.
-    let isHolding: Bool
 }
 
 /// What the composer is doing besides writing a new message: answering one, or going back to
@@ -53,26 +54,30 @@ struct MessageComposer: View {
 
     var onSend: () -> Void
 
-    /// The four moments of a hold on the video button: it began, it ended (send), it was swiped
-    /// away (cancel), it was swiped up (carry on without me).
+    /// The four moments of a hold on the record button, in video: it began, it ended (send), it
+    /// was swiped away (cancel), it was swiped up (carry on without me).
     ///
     /// Four callbacks and not one, because the recorder they drive lives on the screen — the
-    /// sheet that shows the camera comes up *while the finger is still down on this button*, so
-    /// the thing that stops the recording is out here and the thing that shows it is in there.
-    /// See `VideoNoteComposer.isHolding`.
+    /// camera comes up *while the finger is still down on this button*, so the thing that stops
+    /// the recording is out here and the thing that shows it is in there. See
+    /// `VideoNoteComposer.isHolding`.
     var onStartVideoNote: () -> Void = {}
     var onFinishVideoNote: () -> Void = {}
     var onCancelVideoNote: () -> Void = {}
     var onLockVideoNote: () -> Void = {}
 
-    /// The same four moments for a spoken message, and the same vocabulary of gestures — hold,
-    /// let go to send, left to cancel, up to carry on hands-free. Deliberately the same: they
-    /// are two buttons side by side doing the same *kind* of thing, and a user who has learned
-    /// one has learned the other.
+    /// The same moments for a spoken message, and the same gestures — hold, let go to send, left
+    /// to cancel, up to carry on hands-free. Deliberately the same: it is one button set two
+    /// ways, and somebody who has learned it one way has learned it both.
+    ///
+    /// There is no `onLockVoice`, and its absence is the point: locking a spoken message asks
+    /// nothing of the screen. The recorder is already running and goes on running; all that
+    /// changes is that this button stops waiting for a finger to lift, which is a fact about the
+    /// composer and known here. A video note is the one that needs telling, because the camera
+    /// on the screen has to hear that the hold is over.
     var onStartVoice: () -> Void = {}
     var onFinishVoice: () -> Void = {}
     var onCancelVoice: () -> Void = {}
-    var onLockVoice: () -> Void = {}
 
     /// What is being recorded right now, if anything. The composer draws it — a voice message
     /// has no sheet and no camera to put on one, so the recording *is* the composer for as long
@@ -116,7 +121,6 @@ struct MessageComposer: View {
          onStartVoice: @escaping () -> Void = {},
          onFinishVoice: @escaping () -> Void = {},
          onCancelVoice: @escaping () -> Void = {},
-         onLockVoice: @escaping () -> Void = {},
          voice: VoiceRecording? = nil,
          onChoosePhoto: @escaping () -> Void,
          onChooseFile: @escaping () -> Void,
@@ -133,7 +137,6 @@ struct MessageComposer: View {
         self.onStartVoice = onStartVoice
         self.onFinishVoice = onFinishVoice
         self.onCancelVoice = onCancelVoice
-        self.onLockVoice = onLockVoice
         self.voice = voice
         self.onChoosePhoto = onChoosePhoto
         self.onChooseFile = onChooseFile
@@ -176,7 +179,11 @@ struct MessageComposer: View {
                     }
 
                     if let voice {
-                        recordingStrip(voice)
+                        RecordingStrip(elapsed: voice.elapsed,
+                                       waveform: voice.waveform,
+                                       isHolding: hold == .holding,
+                                       onCancel: onCancelVoice)
+                            .transition(.opacity)
                     } else {
                         TextField(String(app: Strings.Room.composerPlaceholder), text: $draft, axis: .vertical)
                             .textFieldStyle(.plain)
@@ -189,12 +196,12 @@ struct MessageComposer: View {
                             .onSubmit(onSend)
                     }
 
-                    // With nothing typed, the two primary actions are the two things you can say
-                    // without typing: a spoken message and a round video one. They sit where the
-                    // send button sits, under the same thumb, and both are held rather than
-                    // tapped.
+                    // With nothing typed, there is one button where the send button sits, and it
+                    // is the thing you can say without typing: spoken, or a round video one. One
+                    // button and not two, because they are the same act — hold and speak — and a
+                    // second circle beside the first only asks the thumb to aim.
                     //
-                    // Except while editing, where neither is offered: there is no such thing as
+                    // Except while editing, where it is not offered: there is no such thing as
                     // replacing a message you wrote with a voice message, so the button stays a
                     // send button. It is disabled on an empty field rather than swapped out,
                     // because an empty edit means "delete this", and deleting is a different act
@@ -206,12 +213,7 @@ struct MessageComposer: View {
                                action: onSend)
                             .disabled(isEmpty)
                     } else if isEmpty {
-                        // The camera goes away while a voice message is being recorded: a row of
-                        // buttons for things you cannot do is a row of buttons in the way.
-                        if voice == nil {
-                            videoNoteButton
-                        }
-                        voiceButton
+                        recordButton
                     } else {
                         button(systemImage: "arrow.up",
                                label: Strings.Room.send,
@@ -242,6 +244,13 @@ struct MessageComposer: View {
             // Anchoring the overlay's bottom to the composer's bottom and then pushing it up
             // past the composer is arithmetic instead of a guide, and arithmetic is a thing
             // `ComposerLayoutTests` can look at.
+            //
+            // Present only while the menu is open, and *gone* the rest of the time — which is
+            // load-bearing, and was learned the hard way. Keeping the choices in the tree and
+            // hiding them with `.opacity(0)` left them sitting over the conversation in plain
+            // sight: they are glass, they live in a `GlassEffectContainer`, and the container
+            // draws its material whatever a child inside it has to say about its own opacity.
+            // A closed menu has to actually not be there.
             .overlay(alignment: .bottomLeading) {
                 if isAttaching {
                     attachOptions
@@ -252,6 +261,10 @@ struct MessageComposer: View {
         }
         .animation(.smooth(duration: 0.2), value: isEmpty)
         .animation(.smooth(duration: 0.2), value: context)
+        .onDisappear {
+            arming?.cancel()
+            arming = nil
+        }
         // Starting to type is an answer to "what do you want to attach?" — it is "nothing".
         .onChange(of: isFocused) { _, focused in
             if focused { close() }
@@ -301,21 +314,30 @@ struct MessageComposer: View {
         .padding(.leading, Theme.Spacing.roomy)
         .padding(.trailing, Theme.Spacing.tight)
         .frame(maxWidth: .infinity)
-        .navigationGlass(in: .rect(cornerRadius: Theme.Radius.control, style: .continuous))
+        // The same radius as the field it sits on, and not the smaller `control` it used to
+        // wear: the two are one object — the composer, grown a row taller because it is now
+        // answering something — and a tight rectangle stacked on a soft one reads as a panel
+        // that has landed on top of the bar rather than as the bar itself.
+        .navigationGlass(in: .rect(cornerRadius: Theme.Radius.bubble, style: .continuous))
         // It slides out of the field below it rather than appearing above it, so the eye
         // follows the composer growing instead of noticing a new object.
         .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 
-    // MARK: - Recording a video note
+    // MARK: - Recording without typing
 
-    /// Hold it, and a round video message records. Let go, and it sends.
+    /// The one button for saying something instead of writing it. Tap it to choose *which* —
+    /// a spoken message or a round video one — and hold it to record whichever it is showing.
     ///
-    /// One movement. It used to be two: a tap opened the recording sheet, and the *shutter in
-    /// there* was the thing you held — so sending a four-second reply meant tap, wait for the
-    /// camera, find the button, hold, release. The sheet still exists and still has its shutter,
-    /// because a hold is not a gesture everybody will discover and because holding a phone still
-    /// for a minute is not comfortable. But the fast path is now the direct one.
+    /// The two used to be two buttons, side by side, doing the same kind of thing with the same
+    /// gesture. That is a choice the thumb has to make before every recording, and it makes it
+    /// by aiming at a 44pt circle. Here the choice is made once, it sticks, and the button says
+    /// which way it is set. The hold is then the same hold wherever the finger lands.
+    ///
+    /// Four moments, and the tap is what makes them awkward — a hold *begins* as a tap, and the
+    /// two cannot be told apart until either the finger lifts or the clock runs out. So a press
+    /// starts nothing: it starts a timer, and the recording begins when the timer does, which is
+    /// what `Hold.pressing` is for. Lift before then and it was a tap, and the button flips.
     ///
     /// Two escapes, both of which the thumb can reach without letting go:
     ///
@@ -328,23 +350,48 @@ struct MessageComposer: View {
     /// the load-bearing choice: a long press reports that it succeeded and then goes away, so
     /// there is nothing left to watch for the swipes. A drag is live for as long as the finger
     /// is, which is exactly the thing being modelled.
-    private var videoNoteButton: some View {
-        icon("video.fill", isPrimary: false)
+    ///
+    /// Red while it is recording, which is the one place in the composer that colour appears
+    /// besides the send button: a live microphone is the only thing here the user can forget is
+    /// happening.
+    private var recordButton: some View {
+        icon(glyph, isPrimary: voice != nil, tint: .red)
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { value in
                         switch hold {
                         case .none:
-                            hold = .holding
-                            onStartVideoNote()
+                            hold = .pressing
+
+                            // A press while a hands-free recording is running means stop, not
+                            // start another — the button has become a stop button and looks like
+                            // one. Nothing is armed; the release does the work.
+                            guard voice == nil else { return }
+
+                            arming = Task {
+                                try? await Task.sleep(for: Theme.Timing.holdBegins)
+                                guard !Task.isCancelled, hold == .pressing else { return }
+                                hold = .holding
+                                start()
+                            }
+
+                        case .pressing:
+                            // Still deciding whether this is a tap. There is nothing recording
+                            // yet, so there is nothing a swipe could cancel or lock.
+                            break
 
                         case .holding:
+                            // Left throws it away, up carries on without the finger. Left is
+                            // here rather than left to the strip's Cancel button, because that
+                            // button cannot be reached without lifting the finger — and lifting
+                            // the finger is what *sends*. A recording being held has to have a
+                            // way out that does not go through releasing it.
                             if value.translation.width < -Theme.Size.gestureReach {
                                 hold = .over
-                                onCancelVideoNote()
+                                cancel()
                             } else if value.translation.height < -Theme.Size.gestureReach {
                                 hold = .over
-                                onLockVideoNote()
+                                lock()
                             }
 
                         case .over:
@@ -354,122 +401,137 @@ struct MessageComposer: View {
                         }
                     }
                     .onEnded { _ in
-                        let wasHolding = hold == .holding
+                        let ending = hold
                         hold = .none
-                        if wasHolding { onFinishVideoNote() }
-                    }
-            )
-            .accessibilityLabel(Text(Strings.VideoNote.record))
-            // The gesture is not something VoiceOver can perform, so the button says what it
-            // does and the screen makes a plain tap open the sheet — which is the path with a
-            // shutter in it that VoiceOver *can* press.
-            .accessibilityAddTraits(.isButton)
-            .accessibilityHint(Text(Strings.VideoNote.holdToRecord))
-    }
+                        arming?.cancel()
+                        arming = nil
 
-    // MARK: - Recording a voice message
-
-    /// Hold it and speak. Let go and it sends. The same gesture as the camera beside it, and the
-    /// same three ways out — see `videoNoteButton` for why it is a drag and not a long press.
-    ///
-    /// Red while it is recording, which is the one place in the composer that colour appears
-    /// besides the send button: a live microphone is the only thing here the user can forget is
-    /// happening.
-    private var voiceButton: some View {
-        icon(voice == nil ? "mic.fill" : "stop.fill", isPrimary: voice != nil, tint: .red)
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { value in
-                        switch voiceHold {
-                        case .none:
-                            // A press while a hands-free recording is running means stop, not
-                            // start again — the button has become a stop button and looks like
-                            // one. It is finished on release, like everything else here.
-                            guard voice == nil else {
-                                voiceHold = .holding
-                                return
+                        switch ending {
+                        case .pressing:
+                            // Too quick to be a hold. Which stops a hands-free recording if one
+                            // is running, and otherwise flips the button to the other kind of
+                            // message.
+                            if voice == nil {
+                                withAnimation(.smooth(duration: 0.2)) { mode.toggle() }
+                            } else {
+                                onFinishVoice()
                             }
-                            voiceHold = .holding
-                            onStartVoice()
 
                         case .holding:
-                            if value.translation.width < -Theme.Size.gestureReach {
-                                voiceHold = .over
-                                onCancelVoice()
-                            } else if value.translation.height < -Theme.Size.gestureReach {
-                                voiceHold = .over
-                                onLockVoice()
-                            }
+                            finish()
 
-                        case .over:
+                        case .none, .over:
                             break
                         }
                     }
-                    .onEnded { _ in
-                        let wasHolding = voiceHold == .holding
-                        voiceHold = .none
-                        if wasHolding { onFinishVoice() }
-                    }
             )
-            .accessibilityLabel(Text(voice == nil ? Strings.Voice.record : Strings.Voice.stop))
-            .accessibilityHint(Text(Strings.Voice.holdToRecord))
-    }
-
-    /// What the composer becomes while somebody is speaking into it: a red dot, a clock, and the
-    /// shape of what the microphone is actually hearing.
-    ///
-    /// The waveform is live and it is not decoration. A voice message recorded into a muted
-    /// microphone looks exactly like one recorded into a working microphone — the only way to
-    /// find out is to send it — and a shape that moves when you speak is the one thing that
-    /// answers the question before you send.
-    private func recordingStrip(_ voice: VoiceRecording) -> some View {
-        HStack(spacing: Theme.Spacing.close) {
-            Circle()
-                .fill(.red)
-                .frame(width: Theme.Size.recordingDot, height: Theme.Size.recordingDot)
-                // A pulse, because a red dot that does not move is a design element and a red
-                // dot that breathes is a thing that is happening.
-                .opacity(isPulsing ? 0.3 : 1)
-                .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: isPulsing)
-                .onAppear { isPulsing = true }
-                .onDisappear { isPulsing = false }
-
-            Text(Duration.seconds(voice.elapsed), format: .time(pattern: .minuteSecond))
-                .font(.callout.monospacedDigit())
-                .foregroundStyle(.primary)
-
-            LiveWaveform(samples: voice.waveform)
-
-            Spacer(minLength: 0)
-
-            if voice.isHolding {
-                Text(Strings.Voice.slideToCancel)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+            // The hold is not a gesture VoiceOver can perform, so the button offers the two
+            // things it does as actions instead. Recording goes through the video sheet, which
+            // is the one path with a shutter in it that VoiceOver *can* press, and a spoken
+            // message started this way is stopped by pressing the button again.
+            //
+            // What it *says* follows the glyph and not the mode. While a recording runs this is
+            // a stop button and shows `stop.fill`, and it used to go on announcing itself as
+            // "record a voice message" — telling a VoiceOver user that the button which ends
+            // their recording will begin one.
+            .accessibilityLabel(Text(recordLabel))
+            .accessibilityAddTraits(.isButton)
+            .accessibilityHint(Text(Strings.Recording.hint))
+            // And the switch is offered only when there is nothing running to switch *under*.
+            // Toggling `mode` mid-recording left the composer describing a video message while
+            // the microphone was still on, and `finish()` and `lock()` both dispatch on `mode`
+            // — so the next thing the user did would have been routed to the wrong recorder.
+            .accessibilityActions {
+                if voice == nil {
+                    Button(mode == .voice ? Strings.Recording.switchToVideo
+                                          : Strings.Recording.switchToVoice) {
+                        mode.toggle()
+                    }
+                }
             }
-        }
-        .padding(.horizontal, Theme.Spacing.roomy)
-        .frame(height: Theme.Size.composerControl)
-        .frame(maxWidth: .infinity)
-        .navigationGlass(in: .rect(cornerRadius: Theme.Radius.bubble, style: .continuous))
-        .transition(.opacity)
     }
 
-    @State private var isPulsing = false
+    /// What the button is called, which follows what it is showing — see `glyph`.
+    private var recordLabel: LocalizedStringResource {
+        if voice != nil { return Strings.Recording.send }
+        return mode == .voice ? Strings.Voice.record : Strings.VideoNote.record
+    }
+
+    /// What the button is showing: the microphone, the camera, or — while a hands-free recording
+    /// runs — the arrow that sends what has been said.
+    ///
+    /// An arrow and not a square. Pressing it does stop the recorder, but stopping is not what
+    /// anybody presses it *for*: the message goes the moment it stops, and there is nowhere in
+    /// this app where a stopped recording sits waiting to be looked at. A stop square promises
+    /// that pause, and there is no pause. The same arrow is on the camera's shutter, for the same
+    /// reason — see `VideoNoteComposer.shutter`.
+    private var glyph: String {
+        if voice != nil { return "arrow.up" }
+        return mode == .voice ? "mic.fill" : "video.fill"
+    }
+
+    private func start() {
+        switch mode {
+        case .voice: onStartVoice()
+        case .video: onStartVideoNote()
+        }
+    }
+
+    private func finish() {
+        switch mode {
+        case .voice: onFinishVoice()
+        case .video: onFinishVideoNote()
+        }
+    }
+
+    private func cancel() {
+        switch mode {
+        case .voice: onCancelVoice()
+        case .video: onCancelVideoNote()
+        }
+    }
+
+    /// Swiped up: the recording carries on without the finger.
+    ///
+    /// Only the video note has anything to hear about it — see the callbacks above. A spoken
+    /// message needs nothing said: `hold` is already `.over`, so the release will do nothing,
+    /// and the button has already become a stop button because `voice` is not nil.
+    private func lock() {
+        if case .video = mode { onLockVideoNote() }
+    }
+
+    /// Which kind of message the button records, and therefore which one it is showing. It is
+    /// remembered for as long as the room is open: a person who sends video messages sends
+    /// several, and asking them to flip the button before each one would be worse than the two
+    /// buttons this replaced.
+    enum RecordingMode {
+        case voice, video
+
+        mutating func toggle() {
+            self = self == .voice ? .video : .voice
+        }
+    }
+
+    @State private var mode: RecordingMode = .voice
 
     /// Where the finger is in the hold, which a `DragGesture` on its own cannot say.
     ///
-    /// `over` is the state that matters: once a swipe has cancelled or locked the recording, the
-    /// finger is still down and `onChanged` keeps firing, and without somewhere to record "this
-    /// hold is finished" the same swipe would cancel it four hundred more times on the way to
-    /// the edge of the screen.
+    /// `pressing` is a finger that is down but has not been down long enough to mean anything
+    /// yet — the state a tap lives and dies in. `over` is the one that matters most: once a
+    /// swipe has cancelled or locked the recording, the finger is still down and `onChanged`
+    /// keeps firing, and without somewhere to record "this hold is finished" the same swipe
+    /// would cancel it four hundred more times on the way to the edge of the screen.
     private enum Hold {
-        case none, holding, over
+        case none, pressing, holding, over
     }
 
     @State private var hold: Hold = .none
-    @State private var voiceHold: Hold = .none
+
+    /// The timer that turns a press into a hold, held onto so that lifting the finger can call
+    /// it off. Cancelled on release, and cancelled again when the view goes away with the finger
+    /// still down — a task that outlives the composer would start a recording into a room the
+    /// user has already left.
+    @State private var arming: Task<Void, Never>?
 
     // MARK: - Attaching
 
@@ -606,28 +668,5 @@ struct MessageComposer: View {
             glyph.navigationGlass(in: .circle)
                 .contentShape(.circle)
         }
-    }
-}
-
-/// The microphone's own picture of what it is hearing, drawn as it hears it.
-///
-/// The *last* forty samples, not the first: a voice message is being spoken now, and the shape
-/// that matters is the shape of the words currently going in. Scrolling it is what makes the
-/// strip look like a live meter rather than a chart that filled up and stopped.
-private struct LiveWaveform: View {
-    let samples: [Float]
-
-    private static let visible = 40
-
-    var body: some View {
-        HStack(spacing: 2) {
-            ForEach(Array(samples.suffix(Self.visible).enumerated()), id: \.offset) { _, sample in
-                Capsule()
-                    .fill(.secondary)
-                    .frame(width: 2, height: max(2, CGFloat(sample) * Theme.Size.waveform))
-            }
-        }
-        .frame(height: Theme.Size.waveform, alignment: .center)
-        .animation(.linear(duration: 0.05), value: samples.count)
     }
 }

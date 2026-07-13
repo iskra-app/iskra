@@ -129,16 +129,30 @@ public final class VideoNoteRecorder: NSObject {
         Self.lens(facing: .front) != nil && Self.lens(facing: .back) != nil
     }
 
+    public var isRecording: Bool {
+        if case .recording = state { return true }
+        return false
+    }
+
     /// Turns the camera round — your face, or what you are looking at.
     ///
-    /// Only between recordings. Swapping the lens mid-clip means taking the video input out of
-    /// a session that is writing a file from it, and what comes out the other end is a
-    /// recording with a seam in the middle: the picture jumps, the orientation flips, and the
-    /// square crop is computed from a transform that was true for the *first* camera. The
-    /// button is simply not offered while the red ring is filling, which is also what the user
-    /// expects — nobody turns the camera round in the middle of a sentence.
+    /// Allowed *while recording*, which it did not used to be. The old rule was "only between
+    /// recordings", and the reasoning was sound as far as it went: swapping the lens mid-clip
+    /// takes the video input out of a session that is writing a file from it, and the picture
+    /// jumps. What the reasoning missed is that with hold-to-record there is no "between
+    /// recordings" — the camera starts filming the instant it wakes, so a button that is only
+    /// offered when it is not filming is a button nobody ever sees. A seam in the middle of a
+    /// clip is a thing the user chose; a flip button that never appears is a thing the app got
+    /// wrong.
+    ///
+    /// The two real hazards are both handled here rather than hoped away. Mirroring is re-set
+    /// after the configuration commits, because the rebuilt connection comes back with the
+    /// defaults and a mirrored file arrives backwards at the other end (see `recordUnmirrored`).
+    /// And the *file's* transform is fixed by the first camera, so the square crop stays right:
+    /// `SquareVideoExporter` reads one `preferredTransform` from one track, and one track is
+    /// what a single `AVCaptureMovieFileOutput` recording produces however many lenses fed it.
     public func flip() {
-        guard state == .ready, let session, let cameraInput else { return }
+        guard state == .ready || isRecording, let session, let cameraInput else { return }
 
         let wanted: AVCaptureDevice.Position = camera == .front ? .back : .front
         guard let lens = Self.lens(facing: wanted),
@@ -146,6 +160,24 @@ public final class VideoNoteRecorder: NSObject {
             Log.media.error("no camera facing the other way")
             return
         }
+
+        // The recording is paused across the swap, and this is the whole of what makes flipping
+        // mid-clip possible rather than merely allowed.
+        //
+        // `AVCaptureMovieFileOutput` ends the file when the session it is writing from is
+        // reconfigured — it does not pause, it *finishes*, and finishing is indistinguishable from
+        // the user letting go of the button: the delegate fires, `onRecorded` is still set, and the
+        // half-finished clip goes to the room. Turning the camera round sent the message. Pausing
+        // first is what tells the output that the interruption is ours: it stops writing, survives
+        // the reconfiguration, and resumes into the same file, which arrives as one clip with a cut
+        // in it.
+        //
+        // And the delegate is the belt to that brace: it now sends only a recording that was ended
+        // on purpose — see there. A clip lost to a flip is a bad outcome; a clip *sent* by one is
+        // a worse one, because the user cannot take it back.
+        let resuming = isRecording
+        if resuming { output.pauseRecording() }
+        defer { if resuming { output.resumeRecording() } }
 
         // One configuration, committed once: the session tears down and rebuilds its
         // connections when this closes, and doing it in two steps would show the user the
@@ -283,7 +315,19 @@ extension VideoNoteRecorder: AVCaptureFileOutputRecordingDelegate {
             guard let self else { return }
             defer { teardown() }
 
-            guard recorded, let handler = onRecorded else {
+            // A clip goes to the room only if somebody asked for it to. `stop()` is that asking,
+            // and it leaves `.finishing` behind it; the sixty-second cap is the other way a
+            // recording legitimately ends, and it says so in the error it arrives with.
+            //
+            // Anything else that ends a recording — the session being reconfigured under it, an
+            // interruption, the camera being taken away — used to land here looking exactly like a
+            // finished message and was sent as one. That is how turning the camera round mid-clip
+            // sent it: the flip ended the file, the file arrived here, and nobody had pressed
+            // anything. Now it is thrown away, which is the safe direction. See `flip`.
+            let ended = (state == .finishing || stoppedByCap)
+            if !ended { Log.media.error("a video note ended without being asked to") }
+
+            guard recorded, ended, let handler = onRecorded else {
                 try? FileManager.default.removeItem(at: outputFileURL)
                 return
             }
