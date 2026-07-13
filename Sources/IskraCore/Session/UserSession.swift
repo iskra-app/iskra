@@ -78,6 +78,19 @@ public final class UserSession {
         return TimelineStore(room: room, ownUserID: userID)
     }
 
+    /// Everything the room-info screen needs, built only when it is opened.
+    ///
+    /// Made here rather than by `TimelineStore`, which is where it used to come from, for
+    /// one reason: notification settings hang off the *account*, not off the room, so this
+    /// store needs the `Client` — and the client is the session's to lend. A timeline has
+    /// no business holding one.
+    public func details(forRoomID roomID: String) -> RoomDetailsStore? {
+        guard let room = roomList.room(withID: roomID) ?? (try? client.getRoom(roomId: roomID)) else {
+            return nil
+        }
+        return RoomDetailsStore(room: room, ownUserID: userID, client: client)
+    }
+
     /// Fetches media bytes (a photo, a voice message) on demand.
     public func media() -> MediaLoader {
         MediaLoader(client: client)

@@ -80,13 +80,22 @@ public struct RoomView: View {
     /// turns on. See `RoomListView.isSidebar` for the case where this reasoning goes wrong.
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
+    /// The room-info store, made on demand rather than passed in ready — it is a screenful
+    /// of requests, and most conversations are read without ever opening it. It comes from
+    /// the session, because it needs the `Client` as well as the room: a room's
+    /// notification rule lives on the account.
+    var makeDetails: () -> RoomDetailsStore?
+
     /// Leaving a room takes this whole screen away with it, and this screen cannot do
     /// that: the room it is showing is chosen above, in the split view. Same shape as
     /// sign-out in `RoomListView` — the act is reported upwards and performed there.
     var onLeave: () -> Void
 
-    public init(timeline: TimelineStore, onLeave: @escaping () -> Void) {
+    public init(timeline: TimelineStore,
+                makeDetails: @escaping () -> RoomDetailsStore?,
+                onLeave: @escaping () -> Void) {
         _timeline = State(initialValue: timeline)
+        self.makeDetails = makeDetails
         self.onLeave = onLeave
     }
 
@@ -110,7 +119,7 @@ public struct RoomView: View {
     /// The room-info screen, built on the first press and kept, so going back and forth
     /// does not reload the member list each time.
     private func openDetails() {
-        if details == nil { details = timeline.details() }
+        if details == nil { details = makeDetails() }
         isShowingDetails = true
     }
 

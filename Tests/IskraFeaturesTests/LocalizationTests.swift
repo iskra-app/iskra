@@ -69,7 +69,10 @@ struct LocalizationTests {
         // to survive the trip through the format string in both languages.
         (Strings.Room.Manage.blockQuestion("Аня"), en: "Block Аня?", ru: "Заблокировать Аня?"),
         (Strings.RoomList.New.create, en: "Create", ru: "Создать"),
-        (Strings.RoomList.New.start, en: "Start", ru: "Начать")
+        (Strings.RoomList.New.start, en: "Start", ru: "Начать"),
+        (Strings.Room.Manage.alerts, en: "Notifications", ru: "Уведомления"),
+        (Strings.Room.Manage.alerts(.muted), en: "Off", ru: "Выключены"),
+        (Strings.Room.Manage.alerts(.mentions), en: "Mentions only", ru: "Только упоминания")
     ]
 
     @Test("app strings resolve in English and in Russian")

@@ -58,6 +58,9 @@ public enum CoreStrings {
         /// The room was not created at all — which is not the same as a room created and an
         /// invitation refused, and the user is looking at an empty chat list either way.
         public static let createFailed = LocalizedStringResource("roomAction.createFailed", bundle: bundle)
+        /// A mute that did not take. Worth its own sentence: the user believes the room has
+        /// gone quiet, and it has not.
+        public static let alertsFailed = LocalizedStringResource("roomAction.alertsFailed", bundle: bundle)
     }
 
     /// The strip above a message that is answering another one.

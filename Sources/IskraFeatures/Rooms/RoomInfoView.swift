@@ -84,6 +84,17 @@ struct RoomInfoView: View {
                 }
             }
 
+            Section {
+                Picker(selection: Binding(get: { details.alerts },
+                                          set: { choice in Task { await details.setAlerts(choice) } })) {
+                    ForEach(RoomAlerts.allCases) { choice in
+                        Text(Strings.Room.Manage.alerts(choice)).tag(choice)
+                    }
+                } label: {
+                    Label(String(app: Strings.Room.Manage.alerts), systemImage: alertsIcon)
+                }
+            }
+
             members
 
             Section {
@@ -290,6 +301,16 @@ struct RoomInfoView: View {
         }
         guard details.memberCount > 0 else { return nil }
         return String(app: Strings.Room.participants(details.memberCount))
+    }
+
+    /// The bell says what it is doing without being read: a struck-through one for a muted
+    /// room is the state people most want to check at a glance, and most want to be sure of.
+    private var alertsIcon: String {
+        switch details.alerts {
+        case .all: "bell"
+        case .mentions: "bell.badge"
+        case .muted: "bell.slash"
+        }
     }
 
     /// What the padlock in the header means, spelled out. The sentence comes from

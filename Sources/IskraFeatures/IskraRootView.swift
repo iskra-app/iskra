@@ -112,7 +112,9 @@ public struct IskraRootView: View {
                     // its own, but the *selection* still points at it, and on iPhone that
                     // would leave the reader pushed onto a conversation that no longer
                     // exists.
-                    RoomView(timeline: timeline, onLeave: { selectedRoomID = nil })
+                    RoomView(timeline: timeline,
+                             makeDetails: { session.details(forRoomID: roomID) },
+                             onLeave: { selectedRoomID = nil })
                         // Rebuilds the view when the user picks a different room, rather
                         // than reusing one room's state for another's messages.
                         .id(roomID)

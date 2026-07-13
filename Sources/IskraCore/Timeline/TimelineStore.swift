@@ -43,8 +43,9 @@ public final class TimelineStore {
     public private(set) var isDirectChat = false
 
     /// What the header above the conversation needs, and nothing more. The room *info*
-    /// screen asks for the rest — members, topic — through `details()`, because that is
-    /// a screenful of requests and this is a title bar.
+    /// screen asks for the rest — members, topic, notifications — through
+    /// `UserSession.details(forRoomID:)`, because that is a screenful of requests and this
+    /// is a title bar.
     public private(set) var roomAvatarURL: String?
     public private(set) var memberCount = 0
 
@@ -89,11 +90,6 @@ public final class TimelineStore {
         self.room = room
         self.ownUserID = ownUserID
         self.roomID = room.id()
-    }
-
-    /// Everything the room-info screen needs, loaded only when it is opened.
-    public func details() -> RoomDetailsStore {
-        RoomDetailsStore(room: room, ownUserID: ownUserID)
     }
 
     public func start() async throws {
