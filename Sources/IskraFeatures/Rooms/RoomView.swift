@@ -466,7 +466,32 @@ public struct RoomView: View {
                 cancelContext()
             }
         }
+        // Writing. `typed()` is cheap to call on every keystroke on purpose — it tells the server
+        // once and then only pushes back the moment it takes it back — so this can be exactly what
+        // it looks like: the user typed something.
+        //
+        // An empty box is not writing. Deleting the last character of a draft is the clearest
+        // possible statement that nothing is being written, and `send` empties it too, so this also
+        // covers the moment the message actually goes.
+        .onChange(of: draft) { _, text in
+            if text.isEmpty {
+                Task { await timeline.stoppedTyping() }
+            } else {
+                timeline.typed()
+            }
+        }
         .task {
+            // Whatever was half-written here last time. Restored *before* the room opens, because
+            // it costs nothing and it means the composer is never briefly empty in front of
+            // somebody who left a sentence in it.
+            //
+            // Only when the box is genuinely empty: coming back from the room-info screen re-runs
+            // this task, and overwriting a draft the user is in the middle of typing with the one
+            // they saved a minute ago would be the app taking words out of their mouth.
+            if draft.isEmpty, let saved = await timeline.draft() {
+                draft = saved
+            }
+
             try? await timeline.start()
             await timeline.markAsRead()
         }
@@ -510,6 +535,13 @@ public struct RoomView: View {
         // we are the ones who pushed.
         .onDisappear {
             guard !isShowingDetails, !isShowingPinned else { return }
+
+            // The half-written sentence goes with the room, into the same encrypted store the
+            // conversation lives in — see `TimelineStore.saveDraft`. Captured by value here, and
+            // the store outlives the view, so this finishes after the screen has gone.
+            let unsent = draft
+            let timeline = timeline
+            Task { await timeline.saveDraft(unsent) }
 
             timeline.stop()
             videoNote.cancel()
@@ -573,12 +605,34 @@ public struct RoomView: View {
     ///
     /// Nil until the room has synced enough to say. A header that reads "0 participants"
     /// for a moment is worse than one that is briefly just a name.
+    /// What the line under the room's name says.
+    ///
+    /// Somebody typing displaces it, and displaces it rather than joining it, because the line has
+    /// room for one fact and this is the more urgent one — a member count is true all day, and
+    /// "Аня печатает…" is true for four seconds and is about to become a message.
+    ///
+    /// In a one-to-one chat their name is already the *title*, so naming them again here would say
+    /// it twice; the line just says that writing is happening. In a room full of people it names
+    /// them, because that is the whole of what you want to know.
     private var headerSubtitle: String? {
+        if let typing = typingSubtitle {
+            return typing
+        }
         if timeline.isDirectChat {
             return timeline.directCounterpartID
         }
         guard timeline.memberCount > 0 else { return nil }
         return String(app: Strings.Room.participants(timeline.memberCount))
+    }
+
+    private var typingSubtitle: String? {
+        let names = timeline.typing
+        guard !names.isEmpty else { return nil }
+
+        if timeline.isDirectChat {
+            return String(app: Strings.Room.typing)
+        }
+        return String(app: Strings.Room.typingBy(names.formatted(.list(type: .and))))
     }
 
     private var composer: some View {
@@ -934,6 +988,11 @@ public struct RoomView: View {
             case nil:
                 await timeline.send(text: text)
             }
+
+            // The words have gone; there is nothing left to come back to. Without this the room
+            // would greet the user with the message they had *already sent*, sitting in the
+            // composer waiting to be sent a second time.
+            await timeline.clearDraft()
         }
     }
 }

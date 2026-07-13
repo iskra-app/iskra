@@ -117,6 +117,19 @@ public enum Strings {
         /// be worse than either: the old behaviour at least told you a message had come.
         public static let jumpToNewest = LocalizedStringResource("room.jumpToNewest", bundle: bundle)
 
+        /// Somebody is writing. In a one-to-one chat their name is already the title of the screen,
+        /// so this does not repeat it.
+        public static let typing = LocalizedStringResource("room.typing", bundle: bundle)
+
+        /// And in a room, where it is worth knowing *who*. Gender-neutral in Russian for the same
+        /// reason every sentence in `CoreStrings.RoomEvent` is — "печатает" is the same word
+        /// whoever is doing it, and Matrix does not know anybody's gender.
+        public static func typingBy(_ people: String) -> LocalizedStringResource {
+            LocalizedStringResource("room.typingBy",
+                                    defaultValue: "\(people) is typing…",
+                                    bundle: bundle)
+        }
+
         public static let composerPlaceholder = LocalizedStringResource("room.composerPlaceholder", bundle: bundle)
         public static let send = LocalizedStringResource("room.send", bundle: bundle)
         public static let attach = LocalizedStringResource("room.attach", bundle: bundle)

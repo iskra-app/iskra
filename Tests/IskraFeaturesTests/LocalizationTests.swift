@@ -79,7 +79,20 @@ struct LocalizationTests {
         (Strings.Encryption.protect, en: "Protect my messages", ru: "Защитить переписку"),
         (Strings.Encryption.restore, en: "Bring my messages back", ru: "Восстановить переписку"),
         (Strings.Encryption.saveKey, en: "Save your key", ru: "Сохраните ключ"),
-        (Strings.Encryption.thisDevice, en: "This device", ru: "Это устройство")
+        (Strings.Encryption.thisDevice, en: "This device", ru: "Это устройство"),
+        (Strings.RoomList.Invite.accept, en: "Join", ru: "Войти"),
+        (Strings.RoomList.Invite.decline, en: "Decline", ru: "Отклонить"),
+        (Strings.RoomList.Invite.unattributed, en: "You have been invited", ru: "Вас приглашают в чат"),
+        // Who asked, and — in Russian — without a guess at their gender. "Приглашает" is the same
+        // word whoever is doing the inviting; Matrix does not know, and a coin flip on every name
+        // in every room is exactly how an interface starts reading as machine-translated.
+        (Strings.RoomList.Invite.from("Аня"), en: "Аня invites you", ru: "Аня приглашает вас"),
+        (Strings.Room.jumpToNewest, en: "New messages", ru: "Новые сообщения"),
+        // Same rule again, and the reason both of these exist rather than one: in a one-to-one chat
+        // the person's name is already the title of the screen, so saying it a second time here
+        // would be the app repeating itself.
+        (Strings.Room.typing, en: "typing…", ru: "печатает…"),
+        (Strings.Room.typingBy("Аня"), en: "Аня is typing…", ru: "Аня печатает…")
     ]
 
     @Test("app strings resolve in English and in Russian")

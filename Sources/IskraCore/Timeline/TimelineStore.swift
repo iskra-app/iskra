@@ -58,6 +58,21 @@ public final class TimelineStore {
     /// thing people actually ask each other for.
     public private(set) var directCounterpartID: String?
 
+    /// Who is typing, by the name they are known by in this room. Never includes you.
+    ///
+    /// Names rather than Matrix IDs, resolved here rather than in the view, because the view is
+    /// not allowed to hold a `Room` and resolving one means asking the SDK. Empty is the normal
+    /// state and the reason this is an array rather than a bool: a group can have three people
+    /// typing at once, and "someone is typing" would be a worse thing to say than naming them.
+    public private(set) var typing: [String] = []
+
+    private var typingHandle: TaskHandle?
+
+    /// The last thing we told the server about ourselves, so that we do not tell it again on
+    /// every keystroke — a typing notice is a request, and one per character is a flood.
+    private var isTellingThemWeType = false
+    private var typingStopper: Task<Void, Never>?
+
     private let room: Room
     private let ownUserID: String
     private var timeline: Timeline?
@@ -174,6 +189,14 @@ public final class TimelineStore {
         }
         sendQueueHandle = try? await room.subscribeToSendQueueUpdates(listener: queueListener)
 
+        // Who is typing. `[String]` is `Sendable`, so it crosses from the Rust callback thread on
+        // its own — no `UnsafeTransfer` needed, unlike the timeline's diffs.
+        typingHandle = room.subscribeToTypingNotifications(listener: TypingListener { [weak self] userIDs in
+            Task { @MainActor [weak self] in
+                await self?.adoptTyping(userIDs)
+            }
+        })
+
         // A live timeline starts *empty*, and this is the single most surprising thing
         // about it. Subscribing does not hand over the conversation: the SDK streams new
         // events into the timeline and nothing else, so the first diff a freshly opened
@@ -274,6 +297,20 @@ public final class TimelineStore {
         roomInfoHandle?.cancel()
         roomInfoHandle = nil
 
+        typingHandle?.cancel()
+        typingHandle = nil
+
+        // And we stop saying that *we* are typing. Walking out of a room mid-word must not leave
+        // the other person watching a notice that will never be withdrawn.
+        typingStopper?.cancel()
+        typingStopper = nil
+        if isTellingThemWeType {
+            isTellingThemWeType = false
+            let room = room
+            Task { try? await room.typingNotice(isTyping: false) }
+        }
+        typing = []
+
         timeline = nil
         // The SDK's items belong to the timeline that has just gone. A fresh listener opens with
         // an empty reset and repopulates from scratch, and leaving the old ones here would have
@@ -299,6 +336,11 @@ public final class TimelineStore {
     public func send(text: String, replyingTo replyID: String? = nil) async {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, let timeline else { return }
+
+        // Sending is the end of writing. Waiting for the four-second lull to notice would leave
+        // the other person watching "typing…" for four seconds *after* the message had landed in
+        // front of them, which is the one moment it is obviously untrue.
+        await stoppedTyping()
 
         // Not logged, not stored anywhere but the SDK's encrypted send queue.
         let content = messageEventContentFromMarkdown(md: trimmed)
@@ -658,6 +700,110 @@ public final class TimelineStore {
         try? await room.markAsRead(receiptType: .read)
     }
 
+    // MARK: - Drafts
+
+    /// Half a sentence, kept for when you come back to it.
+    ///
+    /// Through the SDK rather than through `UserDefaults`, and that is a security decision before
+    /// it is a convenience one. A draft is a message — the user's own words, not yet sent, often
+    /// the most considered thing they will write all day — and a plist in the App Group container
+    /// is plaintext on disk. The SDK keeps it in the same passphrase-encrypted SQLite store as the
+    /// conversation it belongs to, which is where a message belongs. Nothing in this app writes
+    /// message content anywhere else, and a draft is not an exception to that rule.
+    ///
+    /// `threadRoot: nil` throughout: this app has no threads, and a draft in the room is a draft in
+    /// the room.
+    public func draft() async -> String? {
+        // Two ways to have no draft, and they flatten to the same answer: the call threw, or the
+        // room simply has none.
+        guard let draft = (try? await room.loadComposerDraft(threadRoot: nil)) ?? nil else {
+            return nil
+        }
+        return draft.plainText
+    }
+
+    public func saveDraft(_ text: String) async {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // An empty draft is not a draft, it is the absence of one — and saving the empty string
+        // rather than clearing it would leave every room the user has ever glanced into holding a
+        // draft of nothing, which is the sort of thing that quietly makes a store grow forever.
+        guard !trimmed.isEmpty else {
+            try? await room.clearComposerDraft(threadRoot: nil)
+            return
+        }
+
+        let draft = ComposerDraft(plainText: text,
+                                  htmlText: nil,
+                                  draftType: .newMessage,
+                                  attachments: [])
+        try? await room.saveComposerDraft(draft: draft, threadRoot: nil)
+    }
+
+    /// The message went. There is nothing left to come back to.
+    public func clearDraft() async {
+        try? await room.clearComposerDraft(threadRoot: nil)
+    }
+
+    // MARK: - Typing
+
+    /// Turns the Matrix IDs the server sends into the names the room knows people by.
+    ///
+    /// Ourselves removed first, and that is not a nicety: the server echoes our own typing notice
+    /// back to us along with everybody else's, so without this the header would tell the user that
+    /// they are typing — which they can see, and which would be the app talking to itself.
+    private func adoptTyping(_ userIDs: [String]) async {
+        var names: [String] = []
+
+        for userID in userIDs where userID != ownUserID {
+            // The name they are known by *in this room*, which is not always the name they are
+            // known by elsewhere. The Matrix ID is what is left when they have chosen none.
+            let name = (try? await room.memberDisplayName(userId: userID)) ?? nil
+            names.append(name ?? userID)
+        }
+
+        typing = names
+    }
+
+    /// Says that the user is writing something — and, a moment later, that they have stopped.
+    ///
+    /// Called on every keystroke, and deliberately cheap about it: a typing notice is an HTTP
+    /// request, and one per character would be a flood. So the *first* keystroke tells the server
+    /// and the rest do nothing but push back the moment we take it back.
+    ///
+    /// Taking it back matters more than sending it. A notice the server is never told to withdraw
+    /// leaves the other person watching "Аня печатает…" for as long as the server's own timeout —
+    /// while Аня has put her phone down mid-word and gone to lunch.
+    public func typed() {
+        typingStopper?.cancel()
+
+        if !isTellingThemWeType {
+            isTellingThemWeType = true
+            Task { try? await room.typingNotice(isTyping: true) }
+        }
+
+        typingStopper = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(Self.typingLull))
+            guard !Task.isCancelled else { return }
+            await self?.stoppedTyping()
+        }
+    }
+
+    /// Withdraws the notice at once — the message has been sent, or the composer has been left.
+    public func stoppedTyping() async {
+        typingStopper?.cancel()
+        typingStopper = nil
+
+        guard isTellingThemWeType else { return }
+        isTellingThemWeType = false
+
+        try? await room.typingNotice(isTyping: false)
+    }
+
+    /// How long a pause counts as having stopped. Long enough to think of the next word, short
+    /// enough that a person who has walked away stops being described as writing.
+    private static let typingLull = 4
+
     /// Loads older messages. Called when the user scrolls to the top.
     public func loadMore() async {
         // The spinner belongs to the user's own scroll: it answers a request they made. A refill
@@ -872,6 +1018,19 @@ private final class RoomQueueListener: SendQueueListener {
 
     func onUpdate(update: RoomSendQueueUpdate) {
         onUpdate(update)
+    }
+}
+
+/// The room telling us who is writing. `[String]` is `Sendable`, so it needs no `UnsafeTransfer`.
+private final class TypingListener: TypingNotificationsListener {
+    private let onUpdate: @Sendable ([String]) -> Void
+
+    init(onUpdate: @escaping @Sendable ([String]) -> Void) {
+        self.onUpdate = onUpdate
+    }
+
+    func call(typingUserIds: [String]) {
+        onUpdate(typingUserIds)
     }
 }
 

@@ -403,3 +403,7 @@
 "roomList.invite.unattributed" = "You have been invited";
 "roomList.invite.accept" = "Join";
 "roomList.invite.decline" = "Decline";
+
+/* "Typing…" under the room's name. */
+"room.typing" = "typing…";
+"room.typingBy" = "%@ is typing…";
