@@ -69,7 +69,7 @@ final class VideoPlayback {
 
             self.file = file
 
-            Self.prepareToBeHeard()
+            PlaybackAudio.prepare()
 
             let player = AVPlayer(url: file.url)
             if stopsAtEnd {
@@ -100,29 +100,6 @@ final class VideoPlayback {
             Log.media.error("video would not load: \(String(describing: error), privacy: .public)")
             failed = true
         }
-    }
-
-    /// Makes the phone willing to make a noise.
-    ///
-    /// Two separate things would otherwise silence a video message, and both of them look
-    /// exactly like a broken player. The app's default category is `soloAmbient`, which the
-    /// ring switch mutes — a video somebody pressed play on is not ambient. And recording a
-    /// video note leaves the session in `playAndRecord`, whose default output is the
-    /// *earpiece*: the sound is there, playing into the side of the phone, and to the user
-    /// holding it at arm's length there is no sound at all.
-    ///
-    /// The result is logged rather than swallowed. A `try?` here was worth nothing: if this
-    /// call fails the only symptom is silence, which is the very thing being debugged.
-    private static func prepareToBeHeard() {
-        #if os(iOS)
-        do {
-            let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playback, mode: .moviePlayback)
-            try session.setActive(true)
-        } catch {
-            Log.media.error("the audio session refused playback: \(String(describing: error), privacy: .public)")
-        }
-        #endif
     }
 
     /// Stops, and lets the bytes go.
@@ -230,53 +207,6 @@ extension PlayerHostView {
     ]
 }
 
-/// An ordinary video, opened. Full screen, black, with the system's own controls — a video
-/// the user has chosen to watch deserves a scrubber, and this is the one place in the app
-/// where `AVKit` is allowed to draw its own.
-struct VideoViewer: View {
-    let attachment: Attachment
-
-    @Environment(\.mediaLoader) private var loader
-    @Environment(\.dismiss) private var dismiss
-
-    @State private var playback = VideoPlayback()
-
-    var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-
-            if let player = playback.player {
-                VideoPlayer(player: player)
-            } else if playback.failed {
-                Label(Strings.Message.Media.loadFailed, systemImage: "exclamationmark.triangle")
-                    .font(.callout)
-                    .foregroundStyle(.white)
-            } else {
-                ProgressView()
-                    .tint(.white)
-            }
-        }
-        .frame(minWidth: Theme.Size.viewer, minHeight: Theme.Size.viewer)
-        .overlay(alignment: .topTrailing) {
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.title3)
-                    .padding(Theme.Spacing.close)
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.white)
-            .padding(Theme.Spacing.normal)
-            .accessibilityLabel(Text(Strings.Message.Media.close))
-        }
-        .task {
-            // The viewer is the video, so it starts the moment it opens rather than
-            // waiting for a second press on a second play button.
-            await playback.play(attachment, using: loader)
-        }
-        .onDisappear {
-            playback.stop()
-        }
-    }
-}
+// `VideoViewer` used to live here — a black sheet with `AVKit`'s controls in it. It is now
+// `MediaViewer`, which does the same for a video and the same again for a photo, and can share
+// and save either: the two screens were the same screen with one of them missing half its job.

@@ -297,3 +297,10 @@
 "room.pinnedTitle" = "Pinned messages";
 "room.pinnedEmpty" = "Nothing is pinned here yet";
 "room.unpin" = "Unpin";
+
+/* The opened photo or video: what you can do with it besides look at it. */
+"message.media.share" = "Share";
+"message.media.save" = "Save to Photos";
+"message.media.play" = "Play";
+"message.media.pause" = "Pause";
+"message.media.openFile" = "Open file";

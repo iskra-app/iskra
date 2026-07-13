@@ -454,12 +454,10 @@ struct MessageRow: View {
             }
 
         case let .audio(attachment):
-            AttachmentPlaceholder(systemImage: "waveform", title: attachment.filename)
-                .messageBubble(isOwn: message.isOwn)
+            FileBubble(attachment: attachment, systemImage: "waveform", isOwn: message.isOwn)
 
         case let .file(attachment):
-            AttachmentPlaceholder(systemImage: "doc", title: attachment.filename)
-                .messageBubble(isOwn: message.isOwn)
+            FileBubble(attachment: attachment, systemImage: "doc", isOwn: message.isOwn)
 
         case .unreadable:
             // Not an error the user caused, and not one they can fix. Say what
@@ -906,44 +904,77 @@ private struct VideoNoteView: View {
     }
 }
 
-/// A voice message: a play button and the shape of the sound.
+/// A voice message: a play button, the shape of the sound, and how far through it is.
+///
+/// The waveform is the sender's own — computed on their device and sent with the message — so
+/// both sides look at the same picture rather than each guessing at one from bytes they have
+/// not downloaded. It doubles as the progress bar: the bars ahead of the playhead are faint and
+/// the ones behind it are solid, which is a scrubber that takes no extra room and needs no
+/// label. There is deliberately no draggable handle: this is a message, not a track, and the
+/// thing people do with a voice message is listen to it from the start.
 private struct VoiceMessageView: View {
     let attachment: Attachment
     let waveform: [Float]
     let isOwn: Bool
 
+    @Environment(\.mediaLoader) private var loader
+
+    @State private var playback = AudioPlayback()
+
+    /// Forty bars, whatever the sender sent. A voice message is a bubble in a conversation, and
+    /// a hundred-and-twenty two-point bars in one is a barcode.
+    private var bars: [Float] {
+        Array(waveform.prefix(40))
+    }
+
     var body: some View {
         HStack(spacing: Theme.Spacing.close) {
-            Image(systemName: "play.fill")
-                .font(.body)
+            Button {
+                Task { await playback.toggle(attachment, using: loader) }
+            } label: {
+                Group {
+                    if playback.isLoading {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill")
+                            .font(.body)
+                            // The glyph swaps under the thumb that pressed it, so it swaps in
+                            // place rather than blinking.
+                            .contentTransition(.symbolEffect(.replace))
+                    }
+                }
+                .frame(width: Theme.Size.voiceButton, height: Theme.Size.voiceButton)
+                .contentShape(.circle)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(playback.isPlaying ? Strings.Message.Media.pause
+                                                        : Strings.Message.Media.play))
 
-            // The waveform the sender's device computed, so both sides see the same
-            // shape rather than each guessing at one.
             HStack(spacing: 2) {
-                ForEach(Array(waveform.prefix(40).enumerated()), id: \.offset) { _, sample in
+                ForEach(Array(bars.enumerated()), id: \.offset) { index, sample in
                     Capsule()
-                        .frame(width: 2, height: max(3, CGFloat(sample) * 24))
+                        .frame(width: 2, height: max(3, CGFloat(sample) * Theme.Size.waveform))
+                        // Played or not. Bars are drawn in the bubble's own ink either way —
+                        // faint ahead of the playhead, solid behind it — so this works on a
+                        // coloured bubble and a grey one without knowing which it is in.
+                        .opacity(hasPlayed(index) ? 1 : 0.35)
                 }
             }
-            .opacity(0.8)
+            .animation(.linear(duration: 0.05), value: playback.progress)
 
             if let duration = attachment.duration {
                 Text(Duration.seconds(duration), format: .time(pattern: .minuteSecond))
                     .font(.caption.monospacedDigit())
             }
         }
+        // The bytes are plaintext on disk while this is playing. Scroll it away and they go.
+        .onDisappear { playback.stop() }
     }
-}
 
-/// Media we can show a bubble for but have not wired to a player yet.
-private struct AttachmentPlaceholder: View {
-    let systemImage: String
-    let title: String
-
-    var body: some View {
-        Label(title, systemImage: systemImage)
-            .font(.body)
-            .lineLimit(1)
+    private func hasPlayed(_ index: Int) -> Bool {
+        guard !bars.isEmpty else { return false }
+        return Double(index) / Double(bars.count) < playback.progress
     }
 }
 
@@ -957,8 +988,11 @@ private struct PictureBubble: View {
     let isOwn: Bool
     let isPlayable: Bool
 
-    /// A video the user has opened. Unlike a circle, an ordinary video is watched rather
-    /// than glanced at, so it gets the whole screen and the system's own controls.
+    /// The picture, opened. A photo and an ordinary video both come here — a circle does not,
+    /// because a circle is a glance and plays where it stands.
+    ///
+    /// Photos used to have no tap at all: the bubble was a picture you could look at and not
+    /// touch, which on a phone reads as a broken app rather than as a decision.
     @State private var isWatching = false
 
     private var aspectRatio: CGFloat {
@@ -1005,10 +1039,7 @@ private struct PictureBubble: View {
                 .clipShape(BubbleShape())
                 .pictureBorder(isOwn: isOwn)
                 .contentShape(BubbleShape())
-                .onTapGesture {
-                    guard isPlayable else { return }
-                    isWatching = true
-                }
+                .onTapGesture { isWatching = true }
 
             if let caption = attachment.caption {
                 Text(caption)
@@ -1018,10 +1049,10 @@ private struct PictureBubble: View {
             }
         }
         // A sheet on both platforms, and not a `fullScreenCover`: the Mac has no such thing,
-        // and a video on a Mac belongs in a window over the conversation rather than on top
+        // and a picture on a Mac belongs in a window over the conversation rather than on top
         // of the entire app.
         .sheet(isPresented: $isWatching) {
-            VideoViewer(attachment: attachment)
+            MediaViewer(attachment: attachment, isVideo: isPlayable)
         }
     }
 }

@@ -60,6 +60,6 @@ struct ReplyQuote: View {
         .contentShape(.rect)
         .onTapGesture { onOpen?() }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(Text(Strings.Room.replyingTo) + Text(": ") + Text(reply.text))
+        .accessibilityLabel(Text("\(String(app: Strings.Room.replyingTo)): \(reply.text)"))
     }
 }
