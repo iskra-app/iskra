@@ -98,14 +98,61 @@ directly, it must be flagged in the commit that does so.
 
 ## Building
 
+The libraries, which is where all the behaviour lives:
+
 ```sh
 swift build            # macOS
 swift test             # includes a test that the Rust SDK links and is callable
 xcodebuild -scheme IskraFeatures -destination 'generic/platform=iOS' build
 ```
 
+## Running the app
+
+The `.xcodeproj` is generated and not committed, so every run starts here:
+
+```sh
+cd Apps && xcodegen && cd ..
+```
+
+**On the Mac:**
+
+```sh
+xcodebuild -project Apps/Iskra.xcodeproj -scheme 'Iskra (macOS)' \
+  -destination 'platform=macOS' -derivedDataPath .build/xcode build
+open .build/xcode/Build/Products/Debug/Iskra.app
+```
+
+**On the iPhone simulator:**
+
+```sh
+# `generic/platform=iOS Simulator` rather than a device name: several simulators can
+# share a name, and xcodebuild refuses an ambiguous one.
+xcodebuild -project Apps/Iskra.xcodeproj -scheme 'Iskra (iOS)' \
+  -destination 'generic/platform=iOS Simulator' \
+  -derivedDataPath .build/xcode build
+
+open -a Simulator     # boot a simulator, any iPhone will do
+xcrun simctl install booted .build/xcode/Build/Products/Debug-iphonesimulator/Iskra.app
+xcrun simctl launch booted moscow.swag.iskra
+```
+
+**Never add `CODE_SIGNING_ALLOWED=NO` to those commands.** It builds and installs
+perfectly, and then the app dies with `SIGTRAP` the moment you sign in — because
+without a signature the system grants the app none of its entitlements, the App Group
+container cannot be resolved, and `AppEnvironment.containerURL` refuses to invent one.
+The trap is doing its job; the build was the lie. The symptom appears at sign-in
+rather than at launch only because that is the first moment anything opens the store.
+
+To ask a build whether it really has the storage it claims — which the test suite
+cannot answer, since `swift test` produces an unsigned binary the Keychain rejects
+outright:
+
+```sh
+xcrun simctl launch --console booted moscow.swag.iskra --verify-storage
+```
+
 ## Not built yet
 
-Sending attachments, recording video notes and voice messages, push notifications
-and the notification service extension, device verification, and the app shells that
-turn these libraries into a shippable `.app`.
+Creating a chat or a room (the `+` in the room list is the shape of it and nothing
+more), voice messages, push notifications and the notification service extension, and
+device verification.

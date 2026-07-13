@@ -2,24 +2,44 @@ import Foundation
 import MatrixRustSDK
 
 public extension TimelineStore {
-    /// Sends a photo.
-    func send(photo url: URL) async {
-        guard let timeline = liveTimeline else { return }
+    /// Sends a photo, as bytes rather than as a path.
+    ///
+    /// The picker hands back the picture in memory, and it used to be written to a file in
+    /// the temporary directory purely so that the SDK could be given a path to it — a file
+    /// that then had to be deleted again, because in an encrypted room it is the user's
+    /// photograph sitting in the clear on disk. Two failures nobody could see lived in that
+    /// round trip: the write could fail, and the file could be swept out from under an
+    /// upload that had not finished reading it.
+    ///
+    /// `UploadSource.data` removes the round trip. The bytes cross to Rust in the call, the
+    /// plaintext never touches the disk, and there is no file whose lifetime has to be
+    /// guessed at.
+    ///
+    /// `replyingTo` threads it onto a message, exactly as text does — `UploadParameters` has
+    /// carried an `inReplyTo` all along and every send in this file passed nil for it.
+    func send(photo data: Data, filename: String, replyingTo replyID: String? = nil) async {
+        guard let timeline = liveTimeline else {
+            Log.media.error("photo dropped: the room has no live timeline")
+            sendFailure = CoreStrings.Timeline.sendFailed
+            return
+        }
 
-        let info = MediaMetadata.image(at: url)
-        let parameters = UploadParameters(source: .file(filename: url.path(percentEncoded: false)),
+        let info = MediaMetadata.image(data: data, filename: filename)
+        let parameters = UploadParameters(source: .data(bytes: data, filename: filename),
                                           caption: nil,
                                           formattedCaption: nil,
                                           mentions: nil,
-                                          inReplyTo: nil)
+                                          inReplyTo: replyID.flatMap { eventID(for: $0) })
 
+        // `blurhash` is not decoration. The SDK refuses an image without one and says
+        // `InvalidAttachmentData` — see `Blurhash`.
         let imageInfo = ImageInfo(height: info.height,
                                   width: info.width,
                                   mimetype: info.mimeType,
                                   size: info.size,
                                   thumbnailInfo: nil,
                                   thumbnailSource: nil,
-                                  blurhash: nil,
+                                  blurhash: info.blurhash,
                                   isAnimated: false)
 
         await upload {
@@ -30,29 +50,51 @@ public extension TimelineStore {
     /// Sends a video. A recorded video note comes through here too — it is an ordinary
     /// `m.video`, and only its shape (square, under a minute) marks it as round. See
     /// `VideoNote` for why it is not tagged with a custom field.
-    func send(video url: URL) async {
+    func send(video url: URL, replyingTo replyID: String? = nil) async {
         guard let timeline = liveTimeline else { return }
 
         let info = await MediaMetadata.video(at: url)
+
+        // A clip with no audio track is a video message nobody can hear, and it is the one
+        // failure the sender cannot see: the preview they just watched had sound, because it
+        // was coming out of the room they are sitting in. So it is said here, once, before
+        // the file leaves. It is a fact about the *file*, not about what is in it.
+        if !info.hasAudio {
+            Log.media.error("sending a video with no sound in it")
+        }
 
         let parameters = UploadParameters(source: .file(filename: url.path(percentEncoded: false)),
                                           caption: nil,
                                           formattedCaption: nil,
                                           mentions: nil,
-                                          inReplyTo: nil)
+                                          inReplyTo: replyID.flatMap { eventID(for: $0) })
 
+        // The thumbnail rides along as its own upload so a receiver has something to
+        // show before the video itself arrives — and it only rides along if it is described
+        // as well as uploaded. `sendVideo` takes the picture and its `ThumbnailInfo` as a
+        // pair and attaches the thumbnail only when it has both; hand it the bytes with no
+        // description, as this did, and it silently sends neither. The event then carries no
+        // still at all, and in an encrypted room no receiver can make one — the server holds
+        // ciphertext it cannot open. That is what made every circle in the timeline grey.
+        let thumbnail: UploadSource? = info.thumbnail.map {
+            .data(bytes: $0.data, filename: "thumbnail.jpg")
+        }
+
+        // Required, exactly as it is for a photo: `BaseVideoInfo` asks for a blurhash too, and
+        // a video sent without one never leaves the device.
         let videoInfo = VideoInfo(duration: info.duration,
                                   height: info.height,
                                   width: info.width,
                                   mimetype: info.mimeType,
                                   size: info.size,
-                                  thumbnailInfo: nil,
+                                  thumbnailInfo: info.thumbnail.map {
+                                      ThumbnailInfo(height: $0.height,
+                                                    width: $0.width,
+                                                    mimetype: $0.mimeType,
+                                                    size: $0.size)
+                                  },
                                   thumbnailSource: nil,
-                                  blurhash: nil)
-
-        // The thumbnail rides along as its own upload so a receiver has something to
-        // show before the video itself arrives.
-        let thumbnail: UploadSource? = info.thumbnail.map { .data(bytes: $0, filename: "thumbnail.jpg") }
+                                  blurhash: info.blurhash)
 
         await upload {
             try timeline.sendVideo(params: parameters, thumbnailSource: thumbnail, videoInfo: videoInfo)
@@ -60,14 +102,14 @@ public extension TimelineStore {
     }
 
     /// Sends any other file.
-    func send(file url: URL) async {
+    func send(file url: URL, replyingTo replyID: String? = nil) async {
         guard let timeline = liveTimeline else { return }
 
         let parameters = UploadParameters(source: .file(filename: url.path(percentEncoded: false)),
                                           caption: nil,
                                           formattedCaption: nil,
                                           mentions: nil,
-                                          inReplyTo: nil)
+                                          inReplyTo: replyID.flatMap { eventID(for: $0) })
 
         await upload {
             try timeline.sendFile(params: parameters, fileInfo: MediaMetadata.file(at: url))
@@ -79,14 +121,14 @@ public extension TimelineStore {
     /// `waveform` is the shape drawn in the bubble; it is computed at record time and
     /// travels with the event so both sides see the same picture rather than each
     /// guessing at one. Samples are 0...1 here and scaled to the wire's 0...1024.
-    func send(voice url: URL, duration: TimeInterval, waveform: [Float]) async {
+    func send(voice url: URL, duration: TimeInterval, waveform: [Float], replyingTo replyID: String? = nil) async {
         guard let timeline = liveTimeline else { return }
 
         let parameters = UploadParameters(source: .file(filename: url.path(percentEncoded: false)),
                                           caption: nil,
                                           formattedCaption: nil,
                                           mentions: nil,
-                                          inReplyTo: nil)
+                                          inReplyTo: replyID.flatMap { eventID(for: $0) })
 
         let audioInfo = AudioInfo(duration: duration,
                                   size: MediaMetadata.fileSize(of: url),
@@ -103,11 +145,20 @@ public extension TimelineStore {
 
     /// Every send goes through here so that one failure message serves them all, and
     /// so the upload is awaited rather than abandoned when the view goes away.
+    ///
+    /// The user is told one sentence; the log is told which of the many things behind that
+    /// sentence actually happened. Without this the only witness to a refused upload was a
+    /// phone saying "the server would not take it" — which is where the sentence ends and
+    /// the debugging has to begin, with nothing to begin from.
+    ///
+    /// What is logged is the *error*, never the attachment: a `RoomError` says "the file was
+    /// too large" or "the server said no", and none of it is the picture.
     private func upload(_ start: () throws -> SendAttachmentJoinHandle) async {
         do {
             let handle = try start()
             try await handle.join()
         } catch {
+            Log.media.error("attachment refused: \(String(describing: error), privacy: .public)")
             sendFailure = CoreStrings.Timeline.sendFailed
         }
     }

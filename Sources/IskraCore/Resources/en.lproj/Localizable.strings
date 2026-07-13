@@ -58,3 +58,42 @@
 
 /* Shown when a message could not be sent. The SDK retries, so this reassures rather than alarms. */
 "timeline.sendFailed" = "Your message didn’t go through. It’ll try again automatically.";
+
+/* Shown when an emoji reaction could not be sent. Must not say "message" — nothing the user wrote is at stake. */
+"timeline.reactionFailed" = "Your reaction didn’t go through. Try again.";
+
+/* Shown when deleting a message failed. Must be unambiguous: the message is still there, and everyone can still read it. */
+"timeline.deleteFailed" = "The message couldn’t be deleted, so it’s still there. Try again.";
+
+/* Why a message is stuck, tapped from the badge beside it. Each names what to do next:
+   the user is the only one who can clear these. No cryptography vocabulary. */
+"sendFailure.insecureDevices" = "Someone here is signed in on a device you haven’t verified yet. Verify it, and this message will go.";
+"sendFailure.identityChanged" = "Someone in this chat signed in somewhere new, so their identity changed. Check it’s really them, and this message will go.";
+"sendFailure.verificationRequired" = "Verify this device before sending to a private chat. Open Settings to do it.";
+"sendFailure.missingMedia" = "The file is no longer on this device, so there is nothing left to send.";
+"sendFailure.unsupportedFileType" = "This kind of file can’t be sent.";
+"sendFailure.server" = "Your homeserver turned this message away.";
+
+/* The strip above a message that answers another one. */
+"reply.loading" = "Loading the message…";
+"reply.unavailable" = "Message unavailable";
+
+/* Shown when an edit could not be sent. The message still says the old thing — say so. */
+"timeline.editFailed" = "The change wasn’t saved, so the message still says what it did. Try again.";
+
+/* Shown when pinning or unpinning was refused. */
+"timeline.pinFailed" = "The pinned messages couldn’t be changed. You may not be allowed to.";
+
+/* The grey lines across a conversation: people coming and going, the room changing. */
+"roomEvent.joined" = "%@ joined";
+"roomEvent.left" = "%@ left";
+"roomEvent.invited" = "Invited: %@";
+"roomEvent.removed" = "Removed: %@";
+"roomEvent.banned" = "Blocked: %@";
+"roomEvent.renamedThemselves" = "%1$@ is now %2$@";
+"roomEvent.roomRenamed" = "The chat is now called “%@”";
+"roomEvent.roomTopicChanged" = "The chat description changed";
+"roomEvent.roomPictureChanged" = "The chat has a new picture";
+"roomEvent.roomCreated" = "The chat was created";
+"roomEvent.encryptionEnabled" = "Messages here are end-to-end encrypted";
+"roomEvent.pair" = "%1$@ and %2$@";

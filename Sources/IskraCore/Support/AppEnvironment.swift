@@ -23,6 +23,13 @@ public enum StorageMode: Sendable, Equatable {
     case standalone
 }
 
+public enum StorageError: Error, Equatable {
+    /// The entitlement is missing, or the App Group is not enabled on the App ID, so
+    /// the shared container does not exist for this build. The Simulator ignores
+    /// provisioning entirely and will happily hide this until you run on a device.
+    case appGroupUnavailable(String)
+}
+
 public struct AppEnvironment: Sendable {
     public let storage: StorageMode
 
@@ -95,17 +102,20 @@ public struct AppEnvironment: Sendable {
     }
 
     /// Root of everything the SDK writes.
-    public var containerURL: URL {
+    ///
+    /// Throws rather than traps when the App Group is unavailable, and the difference
+    /// matters more than it looks. There is still **no fallback** — quietly writing to
+    /// the app's own container would produce an app that works until the first push
+    /// arrives, and that is still forbidden. But the container is first resolved deep
+    /// inside `startSignIn`, on an actor, in response to a tap: trapping there kills
+    /// the app the moment someone presses "Continue", a long way from the provisioning
+    /// mistake that caused it. As an error it travels to `AuthenticationError.storageUnavailable`
+    /// and the screen says what is wrong, which is the same refusal made legible.
+    public func containerURL() throws -> URL {
         switch storage {
         case let .shared(appGroupIdentifier, _):
             guard let url = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
-                // The entitlement is missing or the App Group is not registered. There
-                // is no safe fallback: quietly writing to the app's own container would
-                // produce an app that works until a notification arrives.
-                preconditionFailure("""
-                    App Group "\(appGroupIdentifier)" is unavailable. Either add the entitlement \
-                    and register the group for this App ID, or run with StorageMode.standalone.
-                    """)
+                throw StorageError.appGroupUnavailable(appGroupIdentifier)
             }
             return url
 
@@ -118,17 +128,17 @@ public struct AppEnvironment: Sendable {
 
     /// Durable Matrix state: crypto store, room state, the send queue.
     /// Encrypted at rest with a passphrase held in the Keychain.
-    public func sessionDataURL(forSessionID id: String) -> URL {
-        containerURL.appending(component: "Sessions").appending(component: id)
+    public func sessionDataURL(forSessionID id: String) throws -> URL {
+        try containerURL().appending(component: "Sessions").appending(component: id)
     }
 
     /// Disposable Matrix caches. The SDK can rebuild these, so the OS may purge them.
-    public func sessionCachesURL(forSessionID id: String) -> URL {
-        containerURL.appending(component: "Caches").appending(component: id)
+    public func sessionCachesURL(forSessionID id: String) throws -> URL {
+        try containerURL().appending(component: "Caches").appending(component: id)
     }
 
     /// The local full-text search index, also encrypted with a Keychain-held key.
-    public func searchIndexURL(forSessionID id: String) -> URL {
-        containerURL.appending(component: "Search").appending(component: id)
+    public func searchIndexURL(forSessionID id: String) throws -> URL {
+        try containerURL().appending(component: "Search").appending(component: id)
     }
 }

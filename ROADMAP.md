@@ -21,34 +21,35 @@
 | Вложения: отправка фото, видео, файла, голосового | API готово — `TimelineStore+Media.swift` |
 | «Кружочки»: запись, кроп в квадрат, отправка, круглый рендер | готово — `VideoNote.swift`, `VideoNoteRecorder` |
 | Удалённые сообщения | готово — `MessageKind.deleted` |
-| Редактирование | наполовину: `Message.isEdited` парсится, но не показывается и не отправляется |
+| Редактирование | готово — `TimelineStore.edit`, пометка «изменено» в `MessageRow` |
 | Голосовые | наполовину: есть `send(voice:)` и отрисовка, **нет записи и нет воспроизведения** |
 | Настройки комнаты | только чтение — `RoomInfoView`, `RoomDetailsStore` |
 | Настройки аккаунта | оболочка: профиль, акцент, быстрая реакция, выход |
-| Ответы, пины, служебные события, просмотрщик медиа, геопозиция, пуши | нет вовсе |
+| Ответы, закрепление, служебные события | готово — этап 1 |
+| Просмотрщик медиа, геопозиция, пуши | нет вовсе |
 
-Отдельно, потому что бросается в глаза: `Avatar` (в `IskraDesign`) никогда не грузит `url` —
-рисует только инициалы. Аватарок нет нигде в приложении. Входит в этап 1.
+Аватарки теперь грузятся: `Avatar` (`IskraFeatures/Support/Avatar.swift`) тянет картинку через
+`MediaLoader.avatar(url:size:)` и кэширует её в памяти на время сессии.
 
 ## Этап 1 — Чат целиком
 
-- [ ] **Ответы.** `Timeline.sendReply(msg:eventId:)` (17249). В `Message` — поле
+- [x] **Ответы.** `Timeline.sendReply(msg:eventId:)` (17249). В `Message` — поле
       `replyTo: ReplyPreview?` (отправитель + однострочная выжимка из `MsgLikeContent.inReplyTo`).
       В `TimelineStore` — `send(text:replyingTo:)`. В UI: пункт меню в `MessageRow.menu`,
       полоска-цитата над `MessageComposer`, цитата внутри пузыря. Вложения тоже умеют отвечать —
       у `UploadParameters` уже есть `inReplyTo`, сейчас везде `nil`.
-- [ ] **Редактирование.** `Timeline.edit(eventOrTransactionId:newContent:)` (16858) с
+- [x] **Редактирование.** `Timeline.edit(eventOrTransactionId:newContent:)` (16858) с
       `EditedContent.roomMessage`. Переиспользовать `eventOrTransactionID(for:)`. Показать
       «изменено» в `MessageRow` — флаг уже есть, просто не рисуется. Только свои сообщения.
-- [ ] **Закрепление.** `Timeline.pinEvent/unpinEvent(eventId:)` (17083/17344) плюс отдельный
+- [x] **Закрепление.** `Timeline.pinEvent/unpinEvent(eventId:)` (17083/17344) плюс отдельный
       таймлайн с `TimelineFocus.pinnedEvents` для экрана «Закреплённые». Плашка с закреплённым
       сверху комнаты.
-- [ ] **Служебные события.** `TimelineMapper.kind(from:)` сейчас возвращает `nil` для всего, что
+- [x] **Служебные события.** `TimelineMapper.kind(from:)` сейчас возвращает `nil` для всего, что
       не `.msgLike`, — поэтому вступления и смены имени пропадают. Добавить в `TimelineRow` случай
       `.event(TimelineEvent)` и разобрать `TimelineItemContent.roomMembership` (вход, выход, бан,
       приглашение), `.profileChange` (имя и аватар), `.state` (тема, название). Одна серая строка
       по центру; соседние однотипные схлопываются («Аня и ещё двое вошли»).
-- [ ] **Аватарки.** Научить `Avatar` грузить картинку через `MediaLoader`
+- [x] **Аватарки.** Научить `Avatar` грузить картинку через `MediaLoader`
       (`EnvironmentValues.mediaLoader` уже проброшен), с инициалами как заглушкой.
 
 Файлы: `IskraCore/Timeline/{Message,TimelineMapper,TimelineStore}.swift`,

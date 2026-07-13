@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Three or more people in one grey line: the first by name, the rest as a number.
+	     Russian declines the noun after the number — 1 участник, 2 участника, 5 участников —
+	     and .strings cannot say that, which is the whole reason this file exists in IskraCore. -->
+	<key>roomEvent.others</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$@ и ещё %2$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld участник</string>
+			<key>few</key>
+			<string>%lld участника</string>
+			<key>many</key>
+			<string>%lld участников</string>
+			<key>other</key>
+			<string>%lld участников</string>
+		</dict>
+	</dict>
+</dict>
+</plist>

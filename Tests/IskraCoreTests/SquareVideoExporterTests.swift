@@ -77,6 +77,46 @@ struct SquareVideoExporterTests {
         #expect(VideoNote.isVideoNote(content))
     }
 
+    /// A still with no measurements is a still the SDK throws away: `sendVideo` attaches the
+    /// thumbnail only when it is given the bytes *and* a `ThumbnailInfo` describing them, and
+    /// given one without the other it silently sends neither. That is what made every circle
+    /// in the timeline grey, and nothing else in the app would have noticed.
+    @Test("a video is described with a still the SDK will actually attach")
+    func describesItsThumbnail() async throws {
+        let source = try await makeVideo(width: 1080, height: 1920, seconds: 1)
+        defer { try? FileManager.default.removeItem(at: source) }
+
+        let square = try await SquareVideoExporter.square(source, side: 480)
+        defer { try? FileManager.default.removeItem(at: square) }
+
+        let thumbnail = try #require(await MediaMetadata.video(at: square).thumbnail)
+
+        #expect(thumbnail.width > 0)
+        #expect(thumbnail.height > 0)
+        #expect(thumbnail.size > 0)
+        #expect(thumbnail.mimeType == "image/jpeg")
+    }
+
+    /// The crop must not cost the clip its sound. A video note is somebody talking, and a
+    /// silent one is a stranger mouthing at the camera — which is exactly what shipped: the
+    /// exporter builds a video composition, and it is easy to write one that reaches the
+    /// receiver with the picture intact and the audio track quietly dropped on the floor.
+    @Test("the sound survives the crop")
+    func keepsTheAudioTrack() async throws {
+        let source = try await makeVideo(width: 1080, height: 1920, seconds: 1, withSound: true)
+        defer { try? FileManager.default.removeItem(at: source) }
+
+        // Sanity: the input really does have sound, or this test proves nothing.
+        let before = try await AVURLAsset(url: source).loadTracks(withMediaType: .audio)
+        #expect(before.count == 1)
+
+        let square = try await SquareVideoExporter.square(source, side: 480)
+        defer { try? FileManager.default.removeItem(at: square) }
+
+        let after = try await AVURLAsset(url: square).loadTracks(withMediaType: .audio)
+        #expect(after.count == 1)
+    }
+
     // MARK: - Making a real video to crop
 
     private func dimensions(of url: URL) async throws -> CGSize {
@@ -86,8 +126,10 @@ struct SquareVideoExporterTests {
         return CGSize(width: abs(size.width), height: abs(size.height))
     }
 
-    /// Writes a short clip of solid colour at the requested size.
-    private func makeVideo(width: Int, height: Int, seconds: Int) async throws -> URL {
+    /// Writes a short clip of solid colour at the requested size, with — when asked — an
+    /// audio track of silence on it. Silence is enough: what is being tested is whether the
+    /// track is still *there*, not what is on it.
+    private func makeVideo(width: Int, height: Int, seconds: Int, withSound: Bool = false) async throws -> URL {
         let url = URL.temporaryDirectory.appending(component: "\(UUID().uuidString).mp4")
 
         let writer = try AVAssetWriter(outputURL: url, fileType: .mp4)
@@ -104,6 +146,18 @@ struct SquareVideoExporterTests {
         )
 
         writer.add(input)
+
+        let audio: AVAssetWriterInput? = withSound ? AVAssetWriterInput(mediaType: .audio, outputSettings: [
+            AVFormatIDKey: kAudioFormatMPEG4AAC,
+            AVSampleRateKey: 44_100,
+            AVNumberOfChannelsKey: 1,
+            AVEncoderBitRateKey: 64_000
+        ]) : nil
+        if let audio {
+            audio.expectsMediaDataInRealTime = false
+            writer.add(audio)
+        }
+
         writer.startWriting()
         writer.startSession(atSourceTime: .zero)
 
@@ -125,9 +179,70 @@ struct SquareVideoExporterTests {
             adaptor.append(pixelBuffer, withPresentationTime: CMTime(value: CMTimeValue(frame), timescale: 30))
         }
 
+        if let audio {
+            for second in 0..<seconds {
+                while !audio.isReadyForMoreMediaData {
+                    try await Task.sleep(for: .milliseconds(5))
+                }
+                audio.append(try silence(samples: 44_100,
+                                         at: CMTime(value: CMTimeValue(second), timescale: 1)))
+            }
+            audio.markAsFinished()
+        }
+
         input.markAsFinished()
         await writer.finishWriting()
 
         return url
+    }
+
+    /// A second of nothing, in the shape `AVAssetWriter` will accept: 16-bit mono PCM.
+    private func silence(samples: Int, at time: CMTime) throws -> CMSampleBuffer {
+        var format = AudioStreamBasicDescription(mSampleRate: 44_100,
+                                                 mFormatID: kAudioFormatLinearPCM,
+                                                 mFormatFlags: kAudioFormatFlagIsSignedInteger | kAudioFormatFlagIsPacked,
+                                                 mBytesPerPacket: 2,
+                                                 mFramesPerPacket: 1,
+                                                 mBytesPerFrame: 2,
+                                                 mChannelsPerFrame: 1,
+                                                 mBitsPerChannel: 16,
+                                                 mReserved: 0)
+
+        var description: CMAudioFormatDescription?
+        CMAudioFormatDescriptionCreate(allocator: nil,
+                                       asbd: &format,
+                                       layoutSize: 0,
+                                       layout: nil,
+                                       magicCookieSize: 0,
+                                       magicCookie: nil,
+                                       extensions: nil,
+                                       formatDescriptionOut: &description)
+
+        let bytes = samples * 2
+        var block: CMBlockBuffer?
+        CMBlockBufferCreateWithMemoryBlock(allocator: nil,
+                                           memoryBlock: nil,
+                                           blockLength: bytes,
+                                           blockAllocator: nil,
+                                           customBlockSource: nil,
+                                           offsetToData: 0,
+                                           dataLength: bytes,
+                                           flags: kCMBlockBufferAssureMemoryNowFlag,
+                                           blockBufferOut: &block)
+        let blockBuffer = try #require(block)
+        CMBlockBufferFillDataBytes(with: 0, blockBuffer: blockBuffer, offsetIntoDestination: 0, dataLength: bytes)
+
+        var sample: CMSampleBuffer?
+        CMAudioSampleBufferCreateReadyWithPacketDescriptions(
+            allocator: nil,
+            dataBuffer: blockBuffer,
+            formatDescription: try #require(description),
+            sampleCount: CMItemCount(samples),
+            presentationTimeStamp: time,
+            packetDescriptions: nil,
+            sampleBufferOut: &sample
+        )
+
+        return try #require(sample)
     }
 }

@@ -1,5 +1,6 @@
 import SwiftUI
 import IskraCore
+import IskraDesign
 
 /// The whole app, from launch to conversation.
 ///
@@ -10,6 +11,16 @@ import IskraCore
 public struct IskraRootView: View {
     @State private var phase: Phase = .starting
     @State private var selectedRoomID: String?
+
+    /// The colour the app is painted in, chosen on the appearance screen and read back
+    /// here — the one place high enough that everything below it is tinted at once.
+    @AppStorage(AccentTheme.storageKey) private var accent: AccentTheme = .default
+
+    /// Read here, *outside* the `NavigationSplitView`, because this is the only place it
+    /// means what it appears to mean: the size class of the window. Inside the split view
+    /// each column gets the size class its own width earns, so the sidebar reports
+    /// `.compact` on a full-screen iPad. See `RoomListView.isSidebar`.
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     private enum Phase {
         case starting
@@ -40,6 +51,16 @@ public struct IskraRootView: View {
             }
         }
         .animation(.smooth, value: isSignedIn)
+        // The accent travels down the tree, but it is *not* handed to the system's controls
+        // here. `.tint` is what buttons, links and the sidebar's selection read, and tinting
+        // the whole app with it painted the chrome as loudly as the content: a green app had
+        // green back chevrons, green rows and a green unread badge, and a colour that is
+        // everywhere says nothing anywhere. The chrome is monochrome instead, and the accent
+        // is spent only where it means something — the messages you sent, the reactions that
+        // are yours, the send button that is about to make one, and the icons on the settings
+        // screen, each of which asks for the colour where it stands.
+        .tint(.primary)
+        .environment(\.accent, accent)
     }
 
     private var isSignedIn: Bool {
@@ -47,34 +68,55 @@ public struct IskraRootView: View {
         return false
     }
 
+    /// Signing out unwinds everything: the session, the selected room, and — because the
+    /// whole signed-in tree goes away with it — the settings screen it was asked for on.
+    private func signOut(_ session: UserSession) {
+        Task {
+            await session.signOut()
+            selectedRoomID = nil
+            phase = .signedOut
+        }
+    }
+
+    /// True where the sidebar stays on screen — Mac, and iPad wide enough to keep the split
+    /// view expanded. False on iPhone, and on an iPad squeezed narrow enough that the split
+    /// view collapses to a stack, which is right: there the list *is* the screen, and it
+    /// should look like it does on a phone.
+    private var isSidebar: Bool {
+        #if os(macOS)
+        true
+        #else
+        horizontalSizeClass == .regular
+        #endif
+    }
+
     private func conversations(_ session: UserSession) -> some View {
         NavigationSplitView {
-            RoomListView(session: session, selectedRoomID: $selectedRoomID)
-                .toolbar {
-                    ToolbarItem {
-                        Menu {
-                            Button(String(app: Strings.Account.signOut), systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) {
-                                Task {
-                                    await session.signOut()
-                                    selectedRoomID = nil
-                                    phase = .signedOut
-                                }
-                            }
-                        } label: {
-                            Label(String(app: Strings.Account.menu), systemImage: "person.crop.circle")
-                        }
-                    }
-                }
+            // Settings is pushed onto this column's own navigation stack, so the push,
+            // the back button and the swipe-back gesture all come from the system.
+            // Sign-out, though, unwinds the whole app, so only this view can do it.
+            RoomListView(session: session,
+                         selectedRoomID: $selectedRoomID,
+                         isSidebar: isSidebar,
+                         onSignOut: { signOut(session) })
         } detail: {
-            if let selectedRoomID, let timeline = session.timeline(forRoomID: selectedRoomID) {
-                RoomView(timeline: timeline)
-                    // Rebuilds the view when the user picks a different room, rather
-                    // than reusing one room's state for another's messages.
-                    .id(selectedRoomID)
-            } else {
-                ContentUnavailableView(String(app: Strings.Room.noRoomSelectedTitle),
-                                       systemImage: "bubble.left.and.bubble.right",
-                                       description: Text(Strings.Room.noRoomSelectedMessage))
+            // The stack is load-bearing, and its absence fails in a way that looks like
+            // nothing at all: a `navigationDestination` declared inside a split view's
+            // detail column has no stack to push onto, so it silently does nothing. The
+            // room-info screen behind the chat header was simply never appearing, and no
+            // warning was logged. The sidebar column gets a stack of its own from the
+            // split view — which is why settings pushed and this did not.
+            NavigationStack {
+                if let selectedRoomID, let timeline = session.timeline(forRoomID: selectedRoomID) {
+                    RoomView(timeline: timeline)
+                        // Rebuilds the view when the user picks a different room, rather
+                        // than reusing one room's state for another's messages.
+                        .id(selectedRoomID)
+                } else {
+                    ContentUnavailableView(String(app: Strings.Room.noRoomSelectedTitle),
+                                           systemImage: "bubble.left.and.bubble.right",
+                                           description: Text(Strings.Room.noRoomSelectedMessage))
+                }
             }
         }
     }

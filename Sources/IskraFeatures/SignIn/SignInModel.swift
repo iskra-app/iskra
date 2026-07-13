@@ -53,6 +53,8 @@ public final class SignInModel {
             step = .ready(options)
         } catch AuthenticationError.homeserverNotFound {
             problem = Strings.SignIn.Problem.notFound
+        } catch AuthenticationError.homeserverUnreachable {
+            problem = Strings.SignIn.Problem.unreachable
         } catch AuthenticationError.noSupportedSignInMethod {
             problem = Strings.SignIn.Problem.unsupportedMethod
         } catch AuthenticationError.storageUnavailable {

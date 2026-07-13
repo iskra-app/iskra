@@ -1,4 +1,5 @@
 import SwiftUI
+import IskraCore
 import IskraFeatures
 
 /// The app shell, shared by iPhone, iPad and Mac.
@@ -10,11 +11,22 @@ import IskraFeatures
 @main
 struct IskraApp: App {
     init() {
+        // The SDK is silent until asked, and a signed build on a device has no debugger
+        // attached — the log is the only witness to a sign-in that stalls. Capped at
+        // .info, which is the last level that does not log message bodies.
+        SDKLogging.start()
+
         // `Iskra --verify-storage` answers the one question the test suite cannot:
         // whether this signed build actually has the App Group and the Keychain group
         // it claims. See StorageCheck.
         if StorageCheck.wasRequested {
             StorageCheck.runAndExit()
+        }
+
+        // `Iskra --probe-signin <address>` drives the same lookup the Continue button
+        // does, with the SDK's tracing on. See SignInProbe.
+        if SignInProbe.wasRequested {
+            SignInProbe.runAndExit()
         }
     }
 
