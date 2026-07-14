@@ -122,29 +122,83 @@ public final class TimelineStore {
         self.roomID = room.id()
     }
 
+    /// Which opening of this room we are on.
+    ///
+    /// Every asynchronous thing in this store outlives the room it was started for, and until this
+    /// existed none of them knew it. `stop()` cancels handles and nils fields — but a `Task` that
+    /// is *already awaiting* does not stop merely because somebody cancelled a variable, and when
+    /// it comes back it writes what it learned into a store that has moved on. Three of them did:
+    ///
+    /// - `refill()` never checked `Task.isCancelled` at all, so after `stop()` and `start()` it
+    ///   would wake up in the middle of the *new* `open()` and publish `latestRows` — which at that
+    ///   moment is the fresh listener's empty reset. The conversation blinked empty in front of the
+    ///   reader, and the guard in `rebuildRows()` that exists to prevent exactly that had been
+    ///   turned off by the same zombie.
+    /// - the pagination task held the *old* `timeline` in a local and wrote `canLoadMore` from it,
+    ///   long after that timeline was gone.
+    /// - `start()` guarded on `timeline == nil`, and assigned `timeline` two awaits later — so two
+    ///   callers arriving in that window both opened the room: two listeners, two send-queue
+    ///   subscriptions, two of everything, all feeding one `items` array.
+    ///
+    /// So the store counts its openings. `stop()` bumps the number; anything that spans an await
+    /// takes it on the way in and checks it before writing anything the next opening owns.
+    private var generation = 0
+
+    /// The opening in flight, so a second caller waits for it instead of starting a rival one.
+    private var opening: Task<Void, Error>?
+
     public func start() async throws {
+        // Somebody is already opening this room. Wait for them — and then stop, because the room
+        // they opened is the room we wanted. Turning up second is the ordinary way this happens:
+        // `RoomView.task` runs, the view is pushed over and comes back, and the task runs again
+        // while the first is still two awaits from finishing.
+        if let opening {
+            try await opening.value
+            return
+        }
+
         guard timeline == nil else { return }
 
         didFailToLoad = false
 
-        do {
-            try await open()
-        } catch {
-            // Recorded as well as thrown. The screen needs to be able to say "this chat
-            // didn't open" and offer to try again — `try?` at the call site would swallow
-            // the failure and leave it showing an empty room instead, which is a lie about
-            // a conversation that may be full of messages.
-            didFailToLoad = true
+        let generation = self.generation
+        let task = Task { @MainActor [weak self] in
+            guard let self else { return }
 
-            // And whatever `open()` raised on its way in comes back down. A reopen that threw
-            // half way would otherwise leave `isRefilling` up for good, and `rebuildRows` would
-            // go on refusing to publish anything shorter than the rows already there — a room
-            // frozen at the moment it failed, which is the bug this whole pass is about.
-            isRefilling = false
-            timeline = nil
+            do {
+                try await self.open()
+            } catch {
+                // A `stop()` while we were opening is not a failure to open. It is the reader
+                // walking away, and the room they walked away from is already torn down.
+                guard generation == self.generation else { return }
 
-            throw error
+                // Recorded as well as thrown. The screen needs to be able to say "this chat
+                // didn't open" and offer to try again — `try?` at the call site would swallow
+                // the failure and leave it showing an empty room instead, which is a lie about
+                // a conversation that may be full of messages.
+                self.didFailToLoad = true
+
+                // And everything the half-finished `open()` had already put in place goes with
+                // it. It used to be three fields cleared by hand, which missed the listener and
+                // the room-info subscription — `open()` registers those *before* the call that
+                // can throw, so a room that failed on its way in left them running.
+                self.stop()
+
+                throw error
+            }
         }
+
+        opening = task
+
+        defer {
+            // Only if it is still ours. A `stop()` in the middle of an opening abandons this task
+            // and clears the field, and a fresh `start()` may already have put its own there —
+            // clearing it blindly would leave that one unreachable, and the next caller would open
+            // the room a second time.
+            if generation == self.generation { opening = nil }
+        }
+
+        try await task.value
     }
 
     /// Tries again after a failure. There is nothing to undo first: a `start()` that threw
@@ -165,9 +219,17 @@ public final class TimelineStore {
         let isReopening = held > 0
         isRefilling = isReopening
 
+        // The opening we belong to. Every await below is a chance for the reader to leave the
+        // room, and everything after one is a subscription or a field that the *next* opening
+        // would then own. See `generation`.
+        let generation = self.generation
+
         if let info = try? await room.roomInfo() {
+            guard generation == self.generation else { return }
             adopt(info)
         }
+
+        guard generation == self.generation else { return }
 
         // And then keep it up to date. A room is renamed, somebody pins a message, a person
         // joins — all of that arrives here, and none of it used to: the header and the pinned
@@ -179,6 +241,16 @@ public final class TimelineStore {
         })
 
         let timeline = try await room.timeline()
+
+        // Left while the timeline was being built. The subscription just registered above is not
+        // ours to keep — `stop()` has already run and found nothing to cancel — so it is taken
+        // down here rather than left feeding a store that has moved on.
+        guard generation == self.generation else {
+            roomInfoHandle?.cancel()
+            roomInfoHandle = nil
+            return
+        }
+
         self.timeline = timeline
 
         // The diffs cross to the main actor down a *queue*, and this is not a detail.
@@ -254,6 +326,10 @@ public final class TimelineStore {
         await fillPages(untilAtLeast: isReopening ? held : Self.screenful,
                         maximumPages: isReopening ? Self.maximumRefillPages : Self.maximumOpeningPages)
 
+        // Fetching the history is the longest await here, and the reader is entitled to leave in
+        // the middle of it. Everything below writes what the screen shows.
+        guard generation == self.generation else { return }
+
         if isReopening {
             isRefilling = false
             rows = latestRows
@@ -326,6 +402,15 @@ public final class TimelineStore {
     /// they are what the reader is looking at, and `open()` holds them on the screen while it
     /// fetches the conversation back. See the reopening path there.
     public func stop() {
+        // Everything already in flight belongs to the room we are leaving, and none of it may
+        // write into the room we open next. Cancelling a `Task` does not reach one that is sitting
+        // in an await inside the SDK; the number does. See `generation`.
+        generation += 1
+        opening = nil
+
+        pageInFlight?.cancel()
+        pageInFlight = nil
+
         refillTask?.cancel()
         refillTask = nil
         listenerHandle?.cancel()
@@ -365,7 +450,6 @@ public final class TimelineStore {
 
         isPaginating = false
         isRefilling = false
-        pageInFlight = nil
     }
 
     // MARK: - Sending
@@ -889,19 +973,38 @@ public final class TimelineStore {
 
         if showingSpinner { isPaginating = true }
 
+        // The room this page belongs to. `paginateBackwards` can take as long as the network does,
+        // and the reader can leave and come back inside it — at which point `timeline` here is a
+        // handle on a conversation nobody is looking at any more, and `canLoadMore` describes a
+        // timeline that no longer exists. Writing it into the room that replaced it is how a room
+        // that had been read to its beginning came back claiming there was more.
+        let generation = self.generation
+
         let task = Task { @MainActor [weak self] in
             // `paginateBackwards` returns true once it has hit the start of the room.
-            if let reachedStart = try? await timeline.paginateBackwards(numEvents: 25) {
-                self?.canLoadMore = !reachedStart
-            }
+            let reachedStart = try? await timeline.paginateBackwards(numEvents: Self.pageSize)
+
+            guard let self, generation == self.generation, let reachedStart else { return }
+            self.canLoadMore = !reachedStart
         }
         pageInFlight = task
 
         await task.value
 
+        guard generation == self.generation else { return }
+
         pageInFlight = nil
         isPaginating = false
     }
+
+    /// How many *events* a page of history is. Not messages: a page can come back as twenty-five
+    /// joins and topic changes and put two bubbles on the screen, which is why `fillPages` asks
+    /// again rather than trusting one page to fill anything.
+    ///
+    /// Named because it is already spoken of by name elsewhere — `RoomView` reasons out loud about
+    /// "ten pages of twenty-five events" — and a number two files apart from the sentence that
+    /// depends on it is a number that drifts.
+    private static let pageSize: UInt16 = 25
 
     // MARK: - Diff handling
 
@@ -1078,10 +1181,19 @@ public final class TimelineStore {
         isRefilling = true
         let depth = rows.count
 
+        // The room being repaired. A refill outlives `stop()` — it is a long chain of paginations
+        // and nothing in it was ever cancellable — and it used to wake up inside the *next*
+        // `open()` and publish `latestRows`, which at that moment is the new listener's empty
+        // reset. Delete a message, leave the room, come back: the conversation blinked empty, and
+        // the guard in `rebuildRows()` that exists to stop precisely that had just been switched
+        // off by the same zombie.
+        let generation = self.generation
+
         refillTask = Task { [weak self] in
             await self?.fillPages(untilAtLeast: depth, maximumPages: Self.maximumRefillPages)
 
-            guard let self else { return }
+            guard let self, generation == self.generation else { return }
+
             // Whatever came back is now the conversation, even if it is shorter than what was on
             // the screen — a room really can have less in it than it did a moment ago, and going
             // on showing the old rows at that point would be the app refusing to believe it.
