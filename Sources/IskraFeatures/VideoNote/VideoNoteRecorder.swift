@@ -257,8 +257,11 @@ public final class VideoNoteRecorder: NSObject {
     ///
     /// Two things still have to be said again afterwards, and both are said in `aim`: the rebuilt
     /// connection comes back with the system's defaults, so the mirroring and the rotation we
-    /// chose have to be chosen a second time. Neither is a nicety — a mirrored file arrives
-    /// backwards at the other end, and an unrotated one arrives on its side.
+    /// chose have to be chosen a second time. Neither is a nicety — and the mirroring is now the
+    /// more delicate of the two, because it is no longer the same answer for both lenses: the front
+    /// camera records mirrored and the back camera does not, so a flip that forgot to say so would
+    /// send a rear-facing shot reversed. `camera` is set before `aim()` runs, which is what makes
+    /// the question answerable at all.
     public func flip() {
         guard state == .ready || isRecording, let session, let cameraInput else { return }
 
@@ -294,20 +297,30 @@ public final class VideoNoteRecorder: NSObject {
     /// Which way up, and which way round — set on the connection the frames come down, and set
     /// again every time that connection is rebuilt.
     ///
-    /// **The preview is a mirror. The recording is not.** Both are on purpose, and they are
-    /// opposites for a reason. A person looking at the front camera expects the mirror they have
-    /// looked into every morning of their life, and `AVCaptureVideoPreviewLayer` gives them one of
-    /// its own accord. What must not be mirrored is the *file*: send a mirrored recording and the
-    /// person watching sees you as nobody has ever seen you, and any writing in the shot — a book,
-    /// a whiteboard, a T-shirt — arrives backwards. The sender cannot catch it, because the
-    /// preview they were watching was mirrored and looked right to them. The mistake only exists
-    /// at the other end.
+    /// **On the front camera the recording is mirrored, exactly as the preview is.** They must
+    /// agree, and which of the two moves to meet the other is a real decision — this one was made
+    /// the other way round first, and it was wrong.
+    ///
+    /// `AVCaptureVideoPreviewLayer` mirrors the front camera on its own: a person filming their own
+    /// face is looking into the mirror they have looked into every morning of their life. The file
+    /// used to be recorded unmirrored — truthfully, in the sense that a photograph is truthful — and
+    /// the result was that the round video *flipped the moment it was sent*. Somebody spent a minute
+    /// speaking to a face they knew and got back a face they did not, with their parting on the wrong
+    /// side. "What I saw is what I sent" is the promise the composer makes by showing a preview at
+    /// all, and truthfulness that breaks it is not worth having.
+    ///
+    /// The price is real and is paid knowingly: writing in the shot — a book, a T-shirt, a
+    /// whiteboard — arrives backwards for everyone watching. A round video is a talking face, which
+    /// is why every app that has this format makes the same trade.
+    ///
+    /// The back camera is not mirrored, and must not be: nobody expects a mirror when the phone is
+    /// pointed away from them.
     private func aim() {
         guard let connection = videoOutput.connection(with: .video) else { return }
 
         if connection.isVideoMirroringSupported {
             connection.automaticallyAdjustsVideoMirroring = false
-            connection.isVideoMirrored = false
+            connection.isVideoMirrored = camera == .front
         }
 
         // Rotated here, on the buffers, rather than left to a transform written into the file.
@@ -398,6 +411,12 @@ public final class VideoNoteRecorder: NSObject {
 
             // Square it before it goes anywhere: roundness is carried by the pixels.
             guard let square = try? await SquareVideoExporter.square(url) else { return }
+
+            // `handler` is the send, and it no longer waits for the upload — an attachment is queued
+            // and leaves when the network does. Deleting the file here is still right, because the
+            // send queue takes a copy into its own encrypted store as it accepts the attachment; what
+            // is left behind is a clip of the user's face lying in a temporary directory in the
+            // clear, and that goes.
             defer { try? FileManager.default.removeItem(at: square) }
 
             // And again, because cropping is the slow part — seconds, on a long clip, every one of

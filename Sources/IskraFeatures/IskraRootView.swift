@@ -58,11 +58,6 @@ public struct IskraRootView: View {
         case signedIn(UserSession)
     }
 
-    /// Whether a recovery code was shown on the way in and skipped — which the room list turns into a
-    /// banner that stays until it is dealt with. `@AppStorage`, not `@State`: the skip happened once,
-    /// and the consequence has to outlive the launch it happened on.
-    @AppStorage(AppSettings.unsavedRecoveryCode) private var hasUnsavedRecoveryCode = false
-
     /// Set when the session was ended somewhere else and the app took itself back to sign-in on
     /// its own. It has to be *said*: a person who left the app on a chat and comes back to a
     /// sign-in screen will assume the app lost their account, and go looking for the bug in the
@@ -104,8 +99,7 @@ public struct IskraRootView: View {
                 // ask until the sync loop is up and the SDK has talked to the server — so the
                 // sign-in seam handing over a session it had not started would have made the first
                 // thing the user sees a spinner over an account nobody was syncing.
-                RecoverySetupView(session: session) { didSkip in
-                    hasUnsavedRecoveryCode = didSkip
+                RecoverySetupView(session: session) {
                     phase = .signedIn(session)
                 }
                 .task { try? await session.start() }

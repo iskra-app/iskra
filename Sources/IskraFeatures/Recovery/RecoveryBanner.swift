@@ -8,49 +8,34 @@ import IskraDesign
 /// about, and by then they have already stopped associating it with the screen they skipped. It sits
 /// there, in the way, for as long as its reason is true, and it goes the moment the reason does.
 ///
-/// Two reasons, and they are not two shades of the same thing:
+/// **The history is locked.** There is a backup on the server and this device cannot open it. The old
+/// messages are *there*, unreadable, and one code or one confirmation brings them back.
 ///
-///   - **The history is locked.** There is a backup on the server and this device cannot open it.
-///     The old messages are *there*, unreadable, and one code or one confirmation brings them back.
-///   - **The code was never saved.** Everything works — and the moment this phone is lost, none of
-///     it does. This one is the reason the banner exists at all: it is invisible, it is not urgent,
-///     and it is catastrophic. Nobody discovers it on their own; they discover it on their next
-///     phone, six months later, from a screen that cannot help them.
-///
-/// The second one leads to *making a new code*, and cannot lead anywhere else. A code is shown once
-/// and can never be shown again — a property of how the secret is stored, not a choice made here —
-/// so "show it to me again" is not a thing this app is able to offer, however much it looks like the
-/// obvious button.
+/// It used to have a second reason — "your recovery code was never saved" — which was lit by the
+/// Skip button on the screen that shows the code. That button is gone: the code screen now has one
+/// way out, and it is inert until the reader ticks a box saying they have written the code down. So
+/// there is no longer any such thing as a code the app knows was skipped, and a banner about one
+/// would be a banner that could never appear. What the Skip button bought — a moment where a person
+/// admits to themselves that they have not saved anything — is bought by the tick instead, at the
+/// moment it can still be acted on rather than six months later.
 struct RecoveryBanner: View {
     let recovery: RecoveryStore
 
-    /// Whether the user was shown a code and skipped saving it. Not something the SDK knows or could
-    /// know — it is a fact about what happened on a screen — so it is carried in rather than asked for.
-    let didSkipSavingCode: Bool
-
-    var onTap: (Reason) -> Void
-
-    enum Reason {
-        case locked
-        case unsaved
-    }
+    var onTap: () -> Void
 
     var body: some View {
-        if let reason {
-            Button {
-                onTap(reason)
-            } label: {
+        if recovery.protection == .keyNeeded {
+            Button(action: onTap) {
                 HStack(spacing: Theme.Spacing.close) {
                     // The colour is spent on the symbol and nowhere else. The words used to be orange
                     // too, on an orange wash, and orange-on-pale-orange is about 2:1 — a long way
                     // under the 4.5:1 that ordinary text has to clear, and it was the *warning* that
                     // was hardest to read. Apple's own banners do it this way round: a tinted symbol
                     // carries the alarm, and the sentence stays in the colour sentences are.
-                    Image(systemName: reason == .locked ? "lock.fill" : "key.horizontal.fill")
+                    Image(systemName: "lock.fill")
                         .foregroundStyle(.orange)
 
-                    Text(reason == .locked ? Strings.Recovery.bannerLocked
-                                           : Strings.Recovery.bannerUnsaved)
+                    Text(Strings.Recovery.bannerLocked)
                         .font(.callout)
                         .foregroundStyle(.primary)
                         .multilineTextAlignment(.leading)
@@ -63,7 +48,7 @@ struct RecoveryBanner: View {
                 }
                 .padding(.horizontal, Theme.Spacing.roomy)
                 .padding(.vertical, Theme.Spacing.normal)
-                // A row of one line of `.callout` between two `Spacing.normal` padatops comes out
+                // A row of one line of `.callout` between two `Spacing.normal` paddings comes out
                 // under 44pt, and this is a button. It is the one control in the app a person is
                 // meant to hit while their mind is on something else.
                 .frame(maxWidth: .infinity, minHeight: Theme.Size.minimumTapTarget)
@@ -75,13 +60,5 @@ struct RecoveryBanner: View {
             // heard the sentence, heard "button", and had no idea what pressing it would do.
             .accessibilityHint(Text(Strings.Recovery.bannerHint))
         }
-    }
-
-    /// Locked beats unsaved when both are somehow true: a person who cannot read their conversations
-    /// has a problem *now*, and the one they have in six months can wait until this one is fixed.
-    private var reason: Reason? {
-        if recovery.protection == .keyNeeded { return .locked }
-        if didSkipSavingCode { return .unsaved }
-        return nil
     }
 }

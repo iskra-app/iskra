@@ -25,23 +25,7 @@ enum AppSettings {
         AccentTheme.storageKey,
         AppearanceMode.storageKey,
         QuickReaction.storageKey,
-        unsavedRecoveryCode,
     ]
-
-    /// Whether the user was shown a recovery code and chose not to save it — which is the one thing
-    /// about this account's encryption that the SDK cannot tell us, because it is not a fact about
-    /// the account at all. It is a fact about what somebody did on a screen, and only this side of
-    /// the app was watching.
-    ///
-    /// It is **`unsaved`, not `saved`, and it defaults to `false`** — which reads backwards until you
-    /// consider the upgrade. Phrased the other way round, every person who has been using Iskra for
-    /// months and wrote their code down in January would open the new build to a banner accusing them
-    /// of never having saved a code they have had all along. So the flag is only ever raised by *this
-    /// app*, in the one place a code is ever shown, when the person in front of it presses "skip".
-    ///
-    /// Cleared on sign-out along with everything else here — and it must be, or the next person to
-    /// sign in on this phone inherits a stranger's warning about a code that was never theirs.
-    static let unsavedRecoveryCode = "recovery.codeUnsaved"
 
     static func forget() {
         let defaults = UserDefaults.standard
