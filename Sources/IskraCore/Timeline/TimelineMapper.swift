@@ -6,6 +6,24 @@ import MatrixRustSDK
 /// This is the only place that knows about `MsgLikeKind`, `EventSendState` and the
 /// rest of the SDK's vocabulary. Everything above it deals in `Message`s.
 enum TimelineMapper {
+    /// How close together two messages from the same person have to be to read as one remark
+    /// continued rather than two remarks.
+    ///
+    /// Five minutes. A product decision and not a protocol one, which is exactly why it is named:
+    /// as a bare `300` in the middle of a condition it read as a number somebody had to look up,
+    /// and the one thing it is not is a number anybody can look up. Only the first message in a run
+    /// carries a name and a face; this is where a run ends.
+    static let runWindow: TimeInterval = 5 * 60
+
+    /// What a waveform sample means on the wire.
+    ///
+    /// The Matrix voice-message extension carries `0...1024` per sample and the interface wants
+    /// `0...1`, so every sample is divided by this on the way in and multiplied by it on the way
+    /// out (`TimelineStore+Media`). It was written out as a bare `1024` in both, which is the
+    /// classic shape of a bug that only appears if somebody changes one of them: the waveforms
+    /// would all be a thousand times too tall, and only on messages this app had sent.
+    static let waveformScale = 1024
+
     /// `ownUserID` is here for one reason: a reaction pill has to know whether *you* are
     /// among the people who left it, because pressing it again takes it back. The SDK
     /// tells us who reacted, not whether one of them is us.
@@ -50,7 +68,7 @@ enum TimelineMapper {
             // the first one in a run carries a name and an avatar.
             if let previous,
                previous.senderID == message.senderID,
-               message.timestamp.timeIntervalSince(previous.timestamp) < 300 {
+               message.timestamp.timeIntervalSince(previous.timestamp) < runWindow {
                 message.isContinuation = true
             }
 
@@ -366,9 +384,9 @@ enum TimelineMapper {
                                         blurhash: nil)
             // `voice` is the marker other Matrix clients set on spoken messages.
             if content.voice != nil {
-                // The wire format is 0...1024 per sample; the UI wants 0...1 so it can
+                // The wire format is 0...`waveformScale` per sample; the UI wants 0...1 so it can
                 // just multiply by a bar height.
-                let waveform = (content.audio?.waveform ?? []).map { Float($0) / 1024 }
+                let waveform = (content.audio?.waveform ?? []).map { Float($0) / Float(waveformScale) }
                 return .voice(attachment, waveform: waveform)
             }
             return .audio(attachment)

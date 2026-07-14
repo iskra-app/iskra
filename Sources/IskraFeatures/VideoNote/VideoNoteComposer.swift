@@ -228,7 +228,7 @@ struct VideoNoteComposer: View {
             // is not allowed" is two, and a sentence that runs into the bezel reads as broken.
             .frame(maxWidth: Theme.Size.videoNoteHint)
             .opacity(hint == nil ? 0 : 1)
-            .animation(.smooth(duration: 0.2), value: hint == nil)
+            .animation(.smooth(duration: Theme.Timing.chrome), value: hint == nil)
             .accessibilityHidden(hint == nil)
     }
 
@@ -278,7 +278,7 @@ struct VideoNoteComposer: View {
                 shutter
             }
         }
-        .animation(.smooth(duration: 0.2), value: lock.isVisible)
+        .animation(.smooth(duration: Theme.Timing.chrome), value: lock.isVisible)
     }
 
     /// Turns the camera round, mid-recording and all — which is the only time it is any use,
@@ -297,7 +297,7 @@ struct VideoNoteComposer: View {
                     .font(.body)
                     .foregroundStyle(.white)
                     .frame(width: Theme.Size.minimumTapTarget, height: Theme.Size.minimumTapTarget)
-                    .background(.black.opacity(0.45), in: .circle)
+                    .background(.black.opacity(Theme.Backdrop.plate), in: .circle)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text(Strings.VideoNote.flipCamera))
@@ -319,7 +319,7 @@ struct VideoNoteComposer: View {
                     .font(.title2.weight(.semibold))
                     .foregroundStyle(isRecording ? accent.foreground : AnyShapeStyle(.primary))
             }
-            .animation(.smooth(duration: 0.2), value: isRecording)
+            .animation(.smooth(duration: Theme.Timing.chrome), value: isRecording)
             // Two gestures, and which one is live depends on whether anything is being recorded.
             //
             // It used to be one: a long press that started the clip, sequenced before a drag

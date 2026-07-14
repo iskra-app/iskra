@@ -377,10 +377,30 @@ public final class TimelineStore {
     /// thing: `rows` is the old conversation still held on the screen, and a loop watching it
     /// would never see the new one arrive and would page until it ran out of attempts.
     private func fillPages(untilAtLeast minimumRows: Int, maximumPages: Int) async {
-        var attempts = 0
-        while latestRows.count < minimumRows, canLoadMore, attempts < maximumPages {
-            await loadMore()
-            attempts += 1
+        var fetched = 0
+        var waited = 0
+
+        // Two counters, because a turn round this loop is not always a page. `page()` may find one
+        // already in flight — put there by the reader scrolling, or by a refill — in which case it
+        // waits for that one and comes back having fetched nothing itself. Counting that as an
+        // attempt spent the budget on *waiting*: on a slow server a refill could burn all twenty
+        // turns without a single request of its own, and then publish the empty conversation it had
+        // failed to fetch. That is the exact failure `refill()` exists to prevent, arriving by the
+        // back door.
+        //
+        // The wait still has a ceiling of its own. It should be unreachable — the page we waited on
+        // has finished by the time we look again, so the next turn fetches — but a loop whose
+        // termination depends on that reasoning being right is a loop that hangs the moment it is
+        // not.
+        while latestRows.count < minimumRows,
+              canLoadMore,
+              fetched < maximumPages,
+              waited < maximumPages {
+            if await page(showingSpinner: !isRefilling) {
+                fetched += 1
+            } else {
+                waited += 1
+            }
         }
     }
 
@@ -849,8 +869,18 @@ public final class TimelineStore {
 
     /// The message a row is showing, as the rest of the app knows it — with `canReact` and
     /// `canDelete` already worked out on it, so those rules are asked rather than restated.
+    /// The message as it *is*, not as the screen is currently drawing it.
+    ///
+    /// `latestRows`, not `rows`, and the difference is the whole reason this note exists. During a
+    /// refill `rows` is deliberately the conversation from a moment ago — that is what stops the
+    /// screen blinking empty while the history is fetched back (see `rebuildRows()`). It is a
+    /// *picture*, and asking a picture whether a message can still be reacted to is asking the wrong
+    /// thing: `toggleReaction` consults `canReact` before making the one call in this file that
+    /// leaves the device, and a message deleted while the refill was in flight is still standing in
+    /// `rows`, still answering yes. The reaction goes to the server and hangs under the words
+    /// "message deleted", for the whole room to see.
     private func message(_ id: String) -> Message? {
-        for row in rows {
+        for row in latestRows {
             guard case let .message(message) = row, message.id == id else { continue }
             return message
         }
@@ -994,15 +1024,20 @@ public final class TimelineStore {
     /// So the guard is a task now, not a flag, and a caller who finds a page already in flight
     /// **waits for it** rather than being sent away empty-handed. The spinner is a separate
     /// thing that only the user's own scroll ever lights.
-    private func page(showingSpinner: Bool) async {
+    ///
+    /// Returns whether a page was actually fetched *by this call*. Waiting for somebody else's is
+    /// not fetching one, and `fillPages` has to be able to tell the difference — see the two
+    /// counters there.
+    @discardableResult
+    private func page(showingSpinner: Bool) async -> Bool {
         // Somebody else's page is already on its way. Wait for it and let the caller re-examine
         // the world — `fillPages` will look again and take another turn if it still needs one.
         if let inFlight = pageInFlight {
             await inFlight.value
-            return
+            return false
         }
 
-        guard let timeline, canLoadMore else { return }
+        guard let timeline, canLoadMore else { return false }
 
         if showingSpinner { isPaginating = true }
 
@@ -1024,10 +1059,12 @@ public final class TimelineStore {
 
         await task.value
 
-        guard generation == self.generation else { return }
+        guard generation == self.generation else { return true }
 
         pageInFlight = nil
         isPaginating = false
+
+        return true
     }
 
     /// How many *events* a page of history is. Not messages: a page can come back as twenty-five

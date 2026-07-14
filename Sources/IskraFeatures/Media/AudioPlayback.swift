@@ -31,7 +31,9 @@ final class AudioPlayback {
 
     /// What moves the bar. A timer rather than a delegate callback, because there is no
     /// callback for "still playing" — only for "finished".
-    private var ticker: Timer?
+    /// `nonisolated(unsafe)` so that `deinit` — which is not on the main actor — can reach it.
+    /// Every other access is on the main actor, and the deinit's is a hop back to it.
+    nonisolated(unsafe) private var ticker: Timer?
 
     @MainActor
     private static weak var current: AudioPlayback?
@@ -156,14 +158,43 @@ final class AudioPlayback {
 
     private func startTicking() {
         ticker?.invalidate()
+
         // Twenty times a second: fast enough that a bar filling looks like it is filling, slow
         // enough that it is not a timer worth thinking about.
-        ticker = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
+        let ticker = Timer(timeInterval: 0.05, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self, let player = self.player else { return }
                 self.progress = player.duration > 0 ? player.currentTime / player.duration : 0
             }
         }
+
+        // `.common`, and this is the whole reason the timer is built by hand rather than by
+        // `scheduledTimer`. That convenience adds it in `.default` mode, and a run loop in
+        // `.default` mode is a run loop that is *not* tracking a scroll: drag the conversation
+        // while a voice message is playing and the timer simply stops firing. The sound carries on
+        // — it is on another thread entirely — while the bar underneath it freezes, and then jumps
+        // when the finger comes up. It reads as the audio having stuck, which is precisely the one
+        // thing that has not happened.
+        RunLoop.main.add(ticker, forMode: .common)
+        self.ticker = ticker
+    }
+
+    /// A repeating `Timer` is owned by the run loop and never stops on its own. Every ordinary way
+    /// out of a playback calls `stop()`, which invalidates it — but "ordinary" is doing a lot of
+    /// work in that sentence, and a playback that is simply let go of has no way out at all: the
+    /// timer goes on firing twenty times a second, for the life of the app, into a `[weak self]`
+    /// that is nil.
+    ///
+    /// Two awkward things, and both are the reason this is four lines instead of one.
+    /// `deinit` on a `@MainActor` class is *not* on the main actor, so it cannot read main-actor
+    /// state — hence `nonisolated(unsafe)` on the local. And `Timer` must be invalidated on the run
+    /// loop it was added to, which is why it is hopped back to the main queue rather than
+    /// invalidated where we stand.
+    deinit {
+        nonisolated(unsafe) let timer = ticker
+        guard timer != nil else { return }
+
+        DispatchQueue.main.async { timer?.invalidate() }
     }
 }
 

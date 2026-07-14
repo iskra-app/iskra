@@ -318,9 +318,9 @@ struct MessageComposer: View {
                     .transition(.scale(scale: 0.4, anchor: .bottom).combined(with: .opacity))
             }
         }
-        .animation(.smooth(duration: 0.2), value: isEmpty)
-        .animation(.smooth(duration: 0.2), value: context)
-        .animation(.smooth(duration: 0.2), value: locking.isVisible)
+        .animation(.smooth(duration: Theme.Timing.chrome), value: isEmpty)
+        .animation(.smooth(duration: Theme.Timing.chrome), value: context)
+        .animation(.smooth(duration: Theme.Timing.chrome), value: locking.isVisible)
         // The phone answering the finger. There is nothing else that can: a hold that has taken
         // begins a recording the user cannot see (a video note's camera takes a moment to wake,
         // and a spoken message has no camera at all), so without this the first half-second of
@@ -524,7 +524,7 @@ struct MessageComposer: View {
                             // is running, and otherwise flips the button to the other kind of
                             // message.
                             if voice == nil {
-                                withAnimation(.smooth(duration: 0.2)) { mode.toggle() }
+                                withAnimation(.smooth(duration: Theme.Timing.chrome)) { mode.toggle() }
                             } else {
                                 onFinishVoice()
                             }

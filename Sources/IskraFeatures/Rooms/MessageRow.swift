@@ -973,7 +973,7 @@ private struct VideoNoteView: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, Theme.Spacing.close)
                     .padding(.vertical, 2)
-                    .background(.black.opacity(0.4), in: Capsule())
+                    .background(.black.opacity(Theme.Backdrop.plate), in: Capsule())
                     .padding(.bottom, Theme.Spacing.normal)
                     .transition(.opacity)
             }
@@ -990,7 +990,7 @@ private struct VideoNoteView: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, Theme.Spacing.close)
                     .padding(.vertical, 2)
-                    .background(.black.opacity(0.5), in: Capsule())
+                    .background(.black.opacity(Theme.Backdrop.plate), in: Capsule())
                     .padding(.bottom, Theme.Spacing.normal)
             }
         }
@@ -1269,7 +1269,7 @@ private struct PictureBubble: View {
                             .foregroundStyle(.white)
                             .padding(.horizontal, Theme.Spacing.close)
                             .padding(.vertical, 2)
-                            .background(.black.opacity(0.45), in: Capsule())
+                            .background(.black.opacity(Theme.Backdrop.plate), in: Capsule())
                             .padding(Theme.Spacing.close)
                     }
                 }
