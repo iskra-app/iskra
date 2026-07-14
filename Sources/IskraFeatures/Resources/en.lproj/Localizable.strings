@@ -138,6 +138,12 @@
 /* Explains why the settings above it are greyed out. Says what will happen, not what is missing. */
 "settings.moreSoon" = "More settings are on the way.";
 
+/* The app about itself, at the very foot of the screen, under the way out. The name is not
+   translated — it is what the app is called in both languages. The version and the build sit
+   together, because on its own neither number says much. */
+"settings.appName" = "Iskra App";
+"settings.version" = "Version %1$@ (%2$@)";
+
 /* The screen where the double-tap reaction is chosen: the heading over the six emoji, and
    the line under them. */
 "reactions.quick" = "Quick reaction";
