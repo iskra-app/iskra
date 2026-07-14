@@ -7,7 +7,12 @@ import IskraDesign
 /// The three stores are shown separately rather than as one number, because one number answers
 /// the wrong question. "Iskra: 640 MB" tells you to delete the app; "photos and messages you can
 /// re-download: 480 MB, keys you cannot: 4 MB" tells you what to press. So each row carries a
-/// sentence about what losing it would cost, and only the row that costs a download has a button.
+/// sentence about what losing it would cost, and only what can be thrown away has a button.
+///
+/// There are two, and they are not the same button with a different scope. One is about space and
+/// takes the cache (and the index with it). The other takes the index alone, and it is there for a
+/// reason nobody would guess from the word "cache": a message deleted long enough ago can have left
+/// its words behind in the index, and wiping the index is the only way to take them back.
 struct StorageView: View {
     /// Owned, not handed in, and that is the whole difference between this screen working and
     /// this screen reading "Zero KB" over twenty-two megabytes of cache.
@@ -30,7 +35,9 @@ struct StorageView: View {
     }
 
     @State private var isConfirmingClear = false
+    @State private var isConfirmingSearchClear = false
     @State private var didFail = false
+    @State private var didFailSearch = false
 
     var body: some View {
         Form {
@@ -81,6 +88,28 @@ struct StorageView: View {
             } footer: {
                 Text(Strings.Storage.cacheExplained)
             }
+
+            // Its own section, and its own sentence, because it answers a different question. The
+            // button above is about space; this one is about a message somebody deleted whose words
+            // the index may still be holding — and nobody would guess that from "clear cache".
+            Section {
+                Button(role: .destructive) {
+                    isConfirmingSearchClear = true
+                } label: {
+                    HStack {
+                        Text(storage.isClearing ? Strings.Storage.clearing : Strings.Storage.clearSearch)
+                        Spacer()
+                        if !storage.isClearing {
+                            Text(size(storage.searchIndexBytes))
+                                .foregroundStyle(.secondary)
+                                .monospacedDigit()
+                        }
+                    }
+                }
+                .disabled(storage.isClearing || storage.searchIndexBytes == 0)
+            } footer: {
+                Text(Strings.Storage.clearSearchWhy)
+            }
         }
         .formStyle(.grouped)
         .navigationTitle(Text(Strings.Storage.title))
@@ -100,7 +129,20 @@ struct StorageView: View {
         } message: {
             Text(Strings.Storage.confirmBody)
         }
+        .confirmationDialog(Text(Strings.Storage.clearSearchTitle),
+                            isPresented: $isConfirmingSearchClear,
+                            titleVisibility: .visible) {
+            Button(String(app: Strings.Storage.confirmAction), role: .destructive) {
+                Task { await clearSearchIndex() }
+            }
+            Button(String(app: Strings.Storage.cancel), role: .cancel) {}
+        } message: {
+            Text(Strings.Storage.clearSearchBody)
+        }
         .alert(Text(Strings.Storage.failed), isPresented: $didFail) {
+            Button(String(app: Strings.Problem.ok)) {}
+        }
+        .alert(Text(Strings.Storage.clearSearchFailed), isPresented: $didFailSearch) {
             Button(String(app: Strings.Problem.ok)) {}
         }
     }
@@ -178,6 +220,17 @@ struct StorageView: View {
             onCleared()
         } catch {
             didFail = true
+        }
+    }
+
+    /// Same ending as `clear()`, and for the same reason: the store was pulled out from under a
+    /// client that had it open, and the app owes itself a new one. `onCleared` is what gets it.
+    private func clearSearchIndex() async {
+        do {
+            try await storage.clearSearchIndex()
+            onCleared()
+        } catch {
+            didFailSearch = true
         }
     }
 

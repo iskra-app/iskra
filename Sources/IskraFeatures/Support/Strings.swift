@@ -721,6 +721,15 @@ public enum Strings {
         public static let confirmAction = LocalizedStringResource("storage.confirm.action", bundle: bundle)
         public static let cancel = LocalizedStringResource("storage.cancel", bundle: bundle)
         public static let failed = LocalizedStringResource("storage.failed", bundle: bundle)
+
+        /// The button that clears the index and nothing else. It exists for one reason, and the
+        /// footer says it in plain words: a message deleted long ago can have left its words
+        /// behind here, and this is the only way to take them back.
+        public static let clearSearch = LocalizedStringResource("storage.search.clear", bundle: bundle)
+        public static let clearSearchWhy = LocalizedStringResource("storage.search.clear.why", bundle: bundle)
+        public static let clearSearchTitle = LocalizedStringResource("storage.search.confirm.title", bundle: bundle)
+        public static let clearSearchBody = LocalizedStringResource("storage.search.confirm.body", bundle: bundle)
+        public static let clearSearchFailed = LocalizedStringResource("storage.search.failed", bundle: bundle)
     }
 
     /// Choosing what a double tap on a message leaves behind.

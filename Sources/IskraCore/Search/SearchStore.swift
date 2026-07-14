@@ -95,7 +95,7 @@ public final class SearchStore {
 
     private func hit(from result: GlobalSearchResult) -> SearchHit? {
         let event = result.result
-        guard let excerpt = MessagePreview.text(for: event.content) else { return nil }
+        guard let excerpt = Self.excerpt(for: event.content) else { return nil }
 
         var senderName = event.sender
         if case let .ready(displayName, _, _) = event.senderProfile, let displayName {
@@ -107,5 +107,31 @@ public final class SearchStore {
                          senderName: senderName,
                          excerpt: excerpt,
                          timestamp: MessagePreview.date(from: event.timestamp))
+    }
+
+    /// The words for one search result — or nil for an event that must not be a result at all.
+    ///
+    /// A deleted message may not come back from a search, and this is the only thing standing
+    /// between it and the screen.
+    ///
+    /// The index holds the words; it is keyed by event ID and stores nothing else about the
+    /// event. So a hit arrives as an event ID, and the SDK then loads the event *as it is now*
+    /// — which, for a message that has since been deleted, is a redacted one. The words the
+    /// query matched are the words the message used to say, and they are still in the index:
+    /// the SDK drops an event from it when it sees the redaction, but only if it still holds
+    /// the original event in its event cache, which it does not for old history and does not
+    /// at all after `StorageStore.clearCache()`. There is no FFI to remove a document by hand.
+    ///
+    /// Handed that redacted event, `MessagePreview` would do exactly its job and return
+    /// "Сообщение удалено" — and the deleted message would appear as a search result, matched
+    /// by what it said, under its sender's name and the time it was sent. Being unable to
+    /// *print* the words is not the same as not leaking them. So the rule here is narrower
+    /// than a preview's: a hit must be a message that still exists, and everything else — a
+    /// redaction above all — is not a hit and never reaches `hits`.
+    nonisolated static func excerpt(for content: TimelineItemContent) -> String? {
+        guard case let .msgLike(msgLike) = content,
+              case let .message(message) = msgLike.kind else { return nil }
+
+        return MessagePreview.text(for: message.msgType)
     }
 }
