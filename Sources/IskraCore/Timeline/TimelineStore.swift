@@ -1201,17 +1201,6 @@ public final class TimelineStore {
 ///
 /// `RoomInfo` is `Sendable`, so it crosses from the Rust callback thread on its own; unlike the
 /// timeline's diffs, it needs no `UnsafeTransfer` to carry it.
-private final class RoomInfoUpdates: RoomInfoListener {
-    private let onUpdate: @Sendable (RoomInfo) -> Void
-
-    init(onUpdate: @escaping @Sendable (RoomInfo) -> Void) {
-        self.onUpdate = onUpdate
-    }
-
-    func call(roomInfo: RoomInfo) {
-        onUpdate(roomInfo)
-    }
-}
 
 private final class RoomQueueListener: SendQueueListener {
     private let onUpdate: @Sendable (RoomSendQueueUpdate) -> Void

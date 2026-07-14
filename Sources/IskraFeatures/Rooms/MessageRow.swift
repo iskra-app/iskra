@@ -82,6 +82,15 @@ struct MessageRow: View {
     /// and merely doubles on a Mac or an iPad — see `playingDiameter`.
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
+    /// The face beside a message, at whatever size the reader's text has grown it to.
+    ///
+    /// Read here and used in three places — the avatar itself, the blank column that indents the
+    /// rest of a run under it, and the arithmetic that decides how wide a bubble may be — because
+    /// they must be the *same* number. `Avatar` scales itself (see `TextScale`), and had these
+    /// three gone on quoting the unscaled constant, the picture would have grown while the space
+    /// reserved for it did not: every message after the first in a run would line up under nothing.
+    @ScaledSize(Theme.Size.avatarSmall) private var avatarSize
+
     /// Who sent it is said by the side of the screen and, in a room, by the name above
     /// the bubble. Nothing else needs to repeat it.
     private var showsSender: Bool {
@@ -187,7 +196,7 @@ struct MessageRow: View {
             // to line up under it.
             if showsSender {
                 if message.isContinuation {
-                    Color.clear.frame(width: Theme.Size.avatarSmall)
+                    Color.clear.frame(width: avatarSize)
                 } else {
                     Avatar(name: message.senderName, url: message.senderAvatarURL, size: Theme.Size.avatarSmall)
                 }
@@ -429,7 +438,7 @@ struct MessageRow: View {
     /// step in from the bubble's own leading edge — and that one is only spent on someone
     /// else's message, because your own steps in from the *right* instead.
     private var leadingInset: CGFloat {
-        let avatarColumn = showsSender ? Theme.Size.avatarSmall + Theme.Spacing.close : 0
+        let avatarColumn = showsSender ? avatarSize + Theme.Spacing.close : 0
         return avatarColumn + (message.isOwn ? 0 : Theme.Spacing.reactionInset)
     }
 
@@ -591,7 +600,7 @@ struct MessageRow: View {
     /// on a narrow window either of those would mean "growing" it into something smaller than
     /// it was.
     private var playingDiameter: CGFloat {
-        let avatarColumn = showsSender ? Theme.Size.avatarSmall + Theme.Spacing.close : 0
+        let avatarColumn = showsSender ? avatarSize + Theme.Spacing.close : 0
         let available = timelineWidth - avatarColumn - Theme.Size.clockColumn
 
         let wanted = horizontalSizeClass == .compact

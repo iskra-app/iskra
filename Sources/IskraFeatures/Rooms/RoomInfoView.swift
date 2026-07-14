@@ -140,6 +140,11 @@ struct RoomInfoView: View {
         .onDisappear {
             if focus == .name { Task { await details.rename(to: draftName) } }
             if focus == .topic { Task { await details.setTopic(draftTopic) } }
+
+            // And the subscription this screen took out on the room goes with it. It follows the
+            // room as it is renamed from other devices — see `RoomDetailsStore.load()` — and a
+            // listener nobody cancels is a listener that runs until the account is signed out.
+            details.stop()
         }
         // Presented from the root of the screen rather than from inside the menu that asks
         // for it: a `PhotosPicker` declared inside a `Menu` never appears — see

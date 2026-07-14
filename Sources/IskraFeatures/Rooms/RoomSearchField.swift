@@ -15,6 +15,10 @@ struct RoomSearchField: View {
 
     @FocusState private var isFocused: Bool
 
+    /// The field grows with what is typed into it. At the accessibility sizes a line of text is
+    /// taller than the 44pt box it was being written in, and the box won — see `ScaledSize`.
+    @ScaledSize(Theme.Size.searchField) private var fieldHeight
+
     private var isSearching: Bool {
         !text.trimmingCharacters(in: .whitespaces).isEmpty
     }
@@ -51,7 +55,7 @@ struct RoomSearchField: View {
             }
         }
         .padding(.horizontal, Theme.Spacing.roomy)
-        .frame(height: Theme.Size.searchField)
+        .frame(height: fieldHeight)
         .navigationGlass(in: .capsule)
         .padding(.horizontal, Theme.Spacing.normal)
         .padding(.bottom, Theme.Spacing.close)
