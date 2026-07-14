@@ -190,7 +190,7 @@ targets:
         # scheme is registered so the OAuth provider can hand it back to us.
         CFBundleURLTypes:
           - CFBundleURLName: app.iskra.oauth
-            CFBundleURLSchemes: [iskra]
+            CFBundleURLSchemes: [app.iskra]
         UIBackgroundModes: [remote-notification]
 
   # The process that decrypts a push. iOS wakes it when one arrives, gives it ~30 seconds,
@@ -283,7 +283,7 @@ targets:
         NSLocationWhenInUseUsageDescription: Iskra uses your location only when you ask it to, to put a map on the place you are.
         CFBundleURLTypes:
           - CFBundleURLName: app.iskra.oauth
-            CFBundleURLSchemes: [iskra]
+            CFBundleURLSchemes: [app.iskra]
     entitlements:
       path: macOS/Iskra.entitlements
       properties:

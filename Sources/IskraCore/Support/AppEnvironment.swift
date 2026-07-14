@@ -34,13 +34,34 @@ public struct AppEnvironment: Sendable {
     public let storage: StorageMode
 
     /// Where the OAuth provider sends the user back after they sign in.
+    ///
+    /// **`app.iskra:`, and not `iskra:`, and the difference is the whole of OAuth working.** It was
+    /// `iskra://oauth-callback` and matrix.org refused to register the client at all:
+    ///
+    /// ```
+    /// client registration failed: invalid_redirect_uri: invalid redirect_uri
+    /// ```
+    ///
+    /// A homeserver running the authentication service will only accept a private-use URI scheme
+    /// that is the *reverse-DNS of the client's own domain* — that is the rule for native apps, and
+    /// it exists so that a scheme cannot be claimed by an app that does not own the domain behind
+    /// it. `clientUri` is `https://iskra.app`, so the one scheme permitted is `app.iskra`. A bare
+    /// `iskra:` belongs to nobody and is refused.
+    ///
+    /// The failure is worth recognising on sight, because it happens *before the browser opens* and
+    /// therefore looks nothing like a redirect problem: no browser appears, nothing comes back, and
+    /// the screen says the sign-in did not complete. `Iskra --probe-signin matrix.org` names it in
+    /// one line.
+    ///
+    /// The scheme is declared in `Apps/project.yml` (`CFBundleURLSchemes`), and the two must agree
+    /// or the browser comes back to an app that is not listening.
     public let oauthRedirectURI: String
 
     /// Shown to the user on the homeserver's consent screen, so keep it human.
     public let clientName: String
 
     public init(storage: StorageMode,
-                oauthRedirectURI: String = "iskra://oauth-callback",
+                oauthRedirectURI: String = "app.iskra:/oauth-callback",
                 clientName: String = "Iskra") {
         self.storage = storage
         self.oauthRedirectURI = oauthRedirectURI

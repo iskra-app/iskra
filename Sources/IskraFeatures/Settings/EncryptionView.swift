@@ -42,6 +42,11 @@ struct EncryptionView: View {
 
     @State private var isVerifying = false
 
+    /// The code just minted, for exactly as long as this sheet shows it — and nowhere else. See the
+    /// sheet below for why it is not on the store any more.
+    @State private var freshCode: RecoveryKey?
+
+
     /// Whether settings has a "My devices" row to send the reader to — see `otherDevices`.
     let hasDeviceManagement: Bool
 
@@ -62,7 +67,7 @@ struct EncryptionView: View {
             if recovery.protection == .on {
                 Section {
                     Button {
-                        Task { await recovery.makeNewKey() }
+                        Task { freshCode = await recovery.makeNewKey() }
                     } label: {
                         working(Strings.Encryption.newKey)
                     }
@@ -88,18 +93,20 @@ struct EncryptionView: View {
             }
         }
         // Presented from the root of the screen rather than from the row that produces the
-        // key: the row is inside a `Section` that stops being drawn the moment `protection`
+        // code: the row is inside a `Section` that stops being drawn the moment `protection`
         // flips to `.on`, and a sheet attached to a view that has just been removed never
-        // opens. The key would then be minted, held, and shown to nobody.
+        // opens. The code would then be minted, held, and shown to nobody.
         //
-        // `item:` rather than `isPresented:` — the key's presence *is* the presentation
-        // state, so there is nothing to keep in step and nothing to unwrap twice.
-        .sheet(item: Binding(get: { recovery.freshKey },
-                             set: { if $0 == nil { recovery.forgetFreshKey() } })) { key in
+        // The code is this screen's, in `@State`, and not the session store's. It used to be the
+        // store's — and the store is the session's, so the code outlived the screen that made it and
+        // was visible to every other screen that cared to look. Two views bound sheets to the same
+        // optional and could clear it out from under each other. Held here, it exists while this
+        // sheet is up and is gone when it is not, which is what "shown once" has to mean.
+        .sheet(item: $freshCode) { code in
             // No "skip" here, unlike the setup flow: nobody arrives on this sheet by accident. They
             // pressed a button that says "make me a new code", and there is nothing to nag them
             // about afterwards that they have not just done on purpose.
-            RecoveryCodeView(code: key.value, onSaved: recovery.forgetFreshKey)
+            RecoveryCodeView(code: code.value, onSaved: { freshCode = nil })
         }
         // `Bindable`, not `$recovery` — the store is the session's now and is held as a plain `let`,
         // so there is no `@State` projection to reach through. Same as the room list does with its own.
@@ -140,7 +147,7 @@ struct EncryptionView: View {
                 }
 
                 Button {
-                    Task { await recovery.protectHistory() }
+                    Task { freshCode = await recovery.protectHistory() }
                 } label: {
                     working(Strings.Encryption.protect)
                 }

@@ -90,18 +90,6 @@ public final class RecoveryStore {
     /// them is quick — enabling recovery uploads every room key this device holds.
     public private(set) var isWorking = false
 
-    /// A recovery key that has just been made, and that the user has not yet been shown.
-    ///
-    /// It is held here, in memory, for exactly as long as the sheet showing it is open,
-    /// and it is never written anywhere: the whole point of a recovery key is that the
-    /// only copy is the one the person keeps. Storing it in the Keychain "for convenience"
-    /// would put it on the device whose loss it exists to survive.
-    ///
-    /// `Identifiable` so the sheet can be driven by `.sheet(item:)` — presence *is* the
-    /// presentation state, and the alternative is a hand-built binding that says
-    /// `freshKey != nil` beside a body that unwraps the same optional a second time.
-    public private(set) var freshKey: RecoveryKey?
-
     public var failure: AccountActionFailure?
 
     private let encryption: Encryption
@@ -156,14 +144,31 @@ public final class RecoveryStore {
         })
     }
 
-    /// Turn recovery on: back the room keys up, and mint the key that unlocks them.
+    // MARK: - Minting a code
+    //
+    // Both of these *hand the code back* rather than parking it in a property on this store, and
+    // that is the whole of how "shown exactly once" is enforced.
+    //
+    // It used to be a `freshKey` on the store, which was fine while the store was built by the one
+    // screen that showed it and died with it. It is not fine now: this store belongs to the session,
+    // so a code left on it outlives the screen that minted it, sits in memory as plaintext for the
+    // rest of the sign-in, and — worse — is *shared*. Two screens bound sheets to the same optional.
+    // Either could clear it out from under the other, and opening settings could pop up, unbidden, a
+    // code that had already been shown and dealt with. A secret that is shown once must be owned by
+    // whoever is showing it, and must die when they do.
+    //
+    // So the code goes straight to the caller, who holds it in view state for exactly as long as it
+    // is on screen. Nothing here keeps a copy. It is never written to disk in any form: the Keychain
+    // would put it on the very device whose loss it exists to survive.
+
+    /// Turn recovery on: back the room keys up, and mint the code that unlocks them.
     ///
-    /// `waitForBackupsToUpload` is true, and it has to be. The alternative returns a key
+    /// `waitForBackupsToUpload` is true, and it has to be. The alternative returns a code
     /// the moment the backup *exists*, while the keys are still going up — and a person
-    /// who writes that key down and immediately reinstalls the app gets back a fraction of
+    /// who writes that code down and immediately reinstalls the app gets back a fraction of
     /// their history and no explanation. Better to make them wait for the spinner.
-    public func protectHistory() async {
-        guard !isWorking else { return }
+    public func protectHistory() async -> RecoveryKey? {
+        guard !isWorking else { return nil }
         isWorking = true
         defer { isWorking = false }
 
@@ -171,27 +176,31 @@ public final class RecoveryStore {
             let key = try await encryption.enableRecovery(waitForBackupsToUpload: true,
                                                          passphrase: nil,
                                                          progressListener: IgnoreProgress())
-            freshKey = RecoveryKey(value: key)
             protection = .on
+            return RecoveryKey(value: key)
         } catch {
             Log.session.error("recovery would not turn on: \(Log.describe(error), privacy: .public)")
             failure = .protectHistory
+            return nil
         }
     }
 
-    /// Throw the old key away and make a new one. What you do when the paper it was written
-    /// on is somewhere you would rather it were not.
-    public func makeNewKey() async {
-        guard !isWorking else { return }
+    /// Throw the old code away and make a new one. What you do when the paper it was written
+    /// on is somewhere you would rather it were not — and the only answer to a code that was
+    /// never saved, because the old one cannot be shown again by anybody, ever.
+    public func makeNewKey() async -> RecoveryKey? {
+        guard !isWorking else { return nil }
         isWorking = true
         defer { isWorking = false }
 
         do {
-            freshKey = RecoveryKey(value: try await encryption.resetRecoveryKey())
+            let key = try await encryption.resetRecoveryKey()
             protection = .on
+            return RecoveryKey(value: key)
         } catch {
-            Log.session.error("the recovery key would not reset: \(Log.describe(error), privacy: .public)")
+            Log.session.error("the recovery code would not reset: \(Log.describe(error), privacy: .public)")
             failure = .newKey
+            return nil
         }
     }
 
@@ -212,12 +221,6 @@ public final class RecoveryStore {
             Log.session.error("the recovery key was refused: \(Log.describe(error), privacy: .public)")
             failure = .restore
         }
-    }
-
-    /// Called when the sheet showing the key is dismissed. From then on the only copy is
-    /// wherever the user put it, which is the arrangement.
-    public func forgetFreshKey() {
-        freshKey = nil
     }
 
     // MARK: - The moment after signing in

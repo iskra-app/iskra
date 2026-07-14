@@ -50,7 +50,7 @@ struct RecoverySetupView: View {
 
                 case .code:
                     if let code = model.code {
-                        RecoveryCodeView(code: code,
+                        RecoveryCodeView(code: code.value,
                                          onSaved: model.savedCode,
                                          onSkip: model.skippedCode)
                     }
