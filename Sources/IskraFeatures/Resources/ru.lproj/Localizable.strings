@@ -172,7 +172,6 @@
 "signIn.differentAddress" = "Указать другой адрес";
 
 /* Separator between the single sign-on button and the password form. */
-"signIn.or" = "или";
 
 "signIn.password" = "Пароль";
 
@@ -209,6 +208,12 @@
 "signIn.signIn" = "Войти";
 
 "signIn.signInWithPassword" = "Войти с паролем";
+
+/* Тихая ссылка под кнопкой входа, а не второй равноправный путь. Сервер с OAuth умеет и
+   пароль тоже — но человеку, которому предложили два способа войти в один аккаунт, надо
+   сначала решить задачу, которой у него не было. Пусть будет один способ и подсказка для
+   тех, у кого он не работает. */
+"signIn.usePasswordInstead" = "У меня только логин и пароль";
 
 "signIn.tagline" = "Личная переписка на ваших условиях.";
 
@@ -413,6 +418,10 @@
 "room.manage.leave" = "Выйти из чата";
 "room.manage.leaveQuestion" = "Выйти из чата?";
 "room.manage.leaveHelp" = "Новые сообщения приходить перестанут. Вернуться получится только по приглашению.";
+
+/* Why everything on the room-settings screen is greyed out. Shown only while offline. Must say
+   what still works — reading and writing — rather than only what does not. */
+"room.manage.offline" = "Без сети чат можно читать и писать в него, но не менять.";
 "room.manage.cancel" = "Отмена";
 "problem.title" = "Не получилось";
 

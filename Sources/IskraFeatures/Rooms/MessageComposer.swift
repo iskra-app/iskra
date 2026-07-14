@@ -176,6 +176,12 @@ struct MessageComposer: View {
 
     @Environment(\.accent) private var accent
 
+    /// Whether the app can reach the server. The composer is the one place in the app that stays
+    /// *useful* offline — a typed message is queued and sent later — and also the one place where
+    /// that promise has an edge to it: everything with a file behind it does not queue. See where
+    /// this is read, twice, above.
+    @Environment(\.isOffline) private var isOffline
+
     /// The one namespace the glass morphs across. Every piece of glass that should flow
     /// into another — the "+" and the two choices it becomes — is identified within it.
     @Namespace private var glass
@@ -202,7 +208,14 @@ struct MessageComposer: View {
                     // The "+" is not offered mid-recording: attaching a photograph to a voice
                     // message you are in the middle of speaking is not a thing, and the choices
                     // would open over the strip that is telling you how to send it.
-                    if voice == nil {
+                    // And not offered offline either, which is the one place the composer's promise
+                    // does not hold. A *text* message survives the network being gone: it goes into
+                    // the send queue on disk and leaves when the network comes back. An attachment
+                    // does not — sending one uploads the file first and waits for the upload to
+                    // finish, so offline it fails on the spot, taking the photograph with it. The
+                    // difference is invisible from the outside, and this is where it stops being
+                    // offered as though it were not there. See `TimelineStore+Media.upload`.
+                    if voice == nil, !isOffline {
                         attachButton
                     }
 
@@ -248,13 +261,19 @@ struct MessageComposer: View {
                                isPrimary: true,
                                action: onSend)
                             .disabled(isEmpty)
-                    } else if isEmpty {
+                    } else if isEmpty, !isOffline {
                         recordButton
                     } else {
+                        // Offline this is what stands where the microphone would: a voice message and
+                        // a round video are recordings that have to be *uploaded*, and an upload with
+                        // no network is a minute of somebody's voice thrown away at the moment they
+                        // let go of the button. Typing still works, so the send button stays — quiet
+                        // and disabled over an empty field, exactly as it is while editing.
                         button(systemImage: "arrow.up",
                                label: Strings.Room.send,
                                isPrimary: true,
                                action: onSend)
+                            .disabled(isEmpty)
                     }
                 }
             }

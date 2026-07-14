@@ -79,21 +79,46 @@ public final class SignInModel {
     }
 
     /// The browser round-trip that signing in and registering have in common.
+    ///
+    /// Every failure here used to arrive as the same sentence — "that sign-in didn't complete" — and
+    /// nothing was written down, so a browser that closed itself the instant it opened looked exactly
+    /// like a server that refused the code. It was in fact the first of those, for weeks, and the
+    /// screen had no way to say so. The three steps are told apart now, and each says which one it
+    /// was in the log. The *user* still gets one sentence, because there is only one thing they can
+    /// do about any of them; the developer gets three.
     private func inBrowser(_ address: @escaping () async throws -> URL) async {
         isBusy = true
         problem = nil
+        defer { isBusy = false }
 
+        let url: URL
         do {
-            let url = try await address()
+            url = try await address()
+        } catch {
+            Log.session.error("could not work out where to send the browser: \(Log.describe(error), privacy: .public)")
+            problem = Strings.SignIn.Problem.ssoIncomplete
+            return
+        }
+
+        let callback: URL
+        do {
             let scheme = URL(string: AppEnvironment.default.oauthRedirectURI)?.scheme
-            let callback = try await WebAuthentication.run(url: url, callbackScheme: scheme)
-            let session = try await authentication.completeSingleSignOn(callbackURL: callback)
-            await finish(with: session)
+            callback = try await WebAuthentication.run(url: url, callbackScheme: scheme)
         } catch is CancellationError {
             // The user closed the browser. Not an error, and not worth a message.
-            isBusy = false
+            return
         } catch {
-            isBusy = false
+            // The error, not the URL: a callback URL carries the authorization code.
+            Log.session.error("the browser did not come back: \(Log.describe(error), privacy: .public)")
+            problem = Strings.SignIn.Problem.ssoIncomplete
+            return
+        }
+
+        do {
+            let session = try await authentication.completeSingleSignOn(callbackURL: callback)
+            await finish(with: session)
+        } catch {
+            Log.session.error("the server would not finish the sign-in: \(Log.describe(error), privacy: .public)")
             problem = Strings.SignIn.Problem.ssoIncomplete
         }
     }

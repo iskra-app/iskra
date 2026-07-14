@@ -28,31 +28,49 @@ enum WebAuthentication {
     /// should not be reported as one.
     @MainActor
     static func run(url: URL, callbackScheme: String?) async throws -> URL {
-        // Held for the life of the call: `ASWebAuthenticationSession` cancels itself when it is
-        // deallocated, and a session that is only referenced by the continuation is a session that
-        // closes the browser the instant it opens.
-        var session: ASWebAuthenticationSession?
+        // Held for the life of the call, and *read* at the end of it, which is the whole point.
+        //
+        // `ASWebAuthenticationSession` cancels itself the moment it is deallocated, and the only
+        // other reference to it is the one the system holds while the browser is up — so a session
+        // owned by nothing on our side is a browser that closes as fast as it opens. It used to live
+        // in a property on `SignInModel`; when this moved out into a function, it became a local
+        // that was assigned and never looked at again, which is a variable the compiler is entitled
+        // to release immediately. It said so, in a warning, and the warning was right: signing in
+        // with OAuth stopped working.
+        //
+        // The `defer` is not tidiness. It is the read that keeps the box — and the session inside it
+        // — alive across the suspension.
+        let holder = Holder()
+        defer { holder.session = nil }
 
         return try await withCheckedThrowingContinuation { continuation in
-            let started = ASWebAuthenticationSession(url: url, callbackURLScheme: callbackScheme) { callbackURL, error in
+            let session = ASWebAuthenticationSession(url: url, callbackURLScheme: callbackScheme) { callbackURL, error in
                 if let callbackURL {
                     continuation.resume(returning: callbackURL)
                 } else if let error = error as? ASWebAuthenticationSessionError,
                           error.code == .canceledLogin {
                     continuation.resume(throwing: CancellationError())
+                } else if let error {
+                    continuation.resume(throwing: Failure.browser(code: (error as NSError).code))
                 } else {
-                    continuation.resume(throwing: error ?? Failure.noCallback)
+                    continuation.resume(throwing: Failure.noCallback)
                 }
             }
 
-            started.presentationContextProvider = Anchor.shared
+            session.presentationContextProvider = Anchor.shared
             // The user may already be signed in to their provider in Safari; letting that session be
             // reused is the difference between one tap and a password.
-            started.prefersEphemeralWebBrowserSession = false
+            session.prefersEphemeralWebBrowserSession = false
 
-            session = started
-            started.start()
+            holder.session = session
+            session.start()
         }
+    }
+
+    /// Somewhere for the session to live that is not a local the optimiser can throw away.
+    @MainActor
+    private final class Holder {
+        var session: ASWebAuthenticationSession?
     }
 
     /// Opens `url` and waits only for the browser to be *closed*, with no callback expected.
@@ -69,7 +87,13 @@ enum WebAuthentication {
     }
 
     enum Failure: Error {
+        /// The browser closed with neither a callback nor an error, which should not happen and
+        /// therefore is exactly the thing worth naming.
         case noCallback
+        /// The browser itself refused. The code is carried so the log can say *which* refusal —
+        /// the URL is not, because a callback URL carries the authorization code and is worth as
+        /// much as the token it buys.
+        case browser(code: Int)
     }
 
     /// `ASWebAuthenticationSession` needs somewhere to put its browser.
