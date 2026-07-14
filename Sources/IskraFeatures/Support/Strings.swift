@@ -820,6 +820,13 @@ public enum Strings {
         public static let accent = LocalizedStringResource("appearance.accent", bundle: bundle)
         public static let accentHelp = LocalizedStringResource("appearance.accentHelp", bundle: bundle)
 
+        /// The switch that lets the accent out of the messages and onto the chrome — see
+        /// `AccentTheme.tintsChromeKey`. `tintChromeMono` is the footer it gets when the accent is
+        /// the mono one and there is no colour to spread.
+        public static let tintChrome = LocalizedStringResource("appearance.tintChrome", bundle: bundle)
+        public static let tintChromeHelp = LocalizedStringResource("appearance.tintChromeHelp", bundle: bundle)
+        public static let tintChromeMono = LocalizedStringResource("appearance.tintChromeMono", bundle: bundle)
+
         /// Three lines of a conversation that never happened, so that a colour can be judged as
         /// what it will actually be — the fill behind everything the user ever says — rather than
         /// as a circle on a settings screen. The middle one is theirs, and is the one painted.

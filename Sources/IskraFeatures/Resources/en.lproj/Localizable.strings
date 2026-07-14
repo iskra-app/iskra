@@ -316,6 +316,18 @@
 /* Under the row of swatches. Says what actually changes, rather than that it is a "theme". */
 "appearance.accentHelp" = "It paints your messages, buttons and badges — everywhere in the app.";
 
+/* The switch under the swatches. Hands the chosen colour to everything else — the back
+   chevrons, the switches, the selected row in the list, the unread badges. Off by default:
+   a colour that is everywhere emphasises nothing. */
+"appearance.tintChrome" = "Tint the interface";
+
+/* Under the switch. Says what actually changes, rather than that it is an "accent". */
+"appearance.tintChromeHelp" = "Normally the colour goes no further than your messages and the send button. Turn this on and the arrows, switches and badges everywhere in the app take it too.";
+
+/* The same footer when the black-and-white theme is chosen: there is nothing to tint with, and
+   the switch is disabled. Not "unavailable" but why — and what to do about it. */
+"appearance.tintChromeMono" = "The black-and-white theme has no colour to tint with. Pick one above.";
+
 /* The names of the colours. They are never seen: a circle of colour has nothing to read
    out, and VoiceOver names it by its colour. */
 "appearance.color.red" = "Red";

@@ -142,7 +142,10 @@ struct LocalizationTests {
         // of the incoming flow is that neither of them reads as the easy one — a "Yes, allow" beside
         // a "Cancel" would be the app quietly recommending the answer that hands over the keys.
         (Strings.Verification.mine, en: "It's me", ru: "Это я"),
-        (Strings.Verification.notMine, en: "It isn't me", ru: "Это не я")
+        (Strings.Verification.notMine, en: "It isn't me", ru: "Это не я"),
+        // The switch that lets the accent out onto the chrome. Pinned because it is a setting whose
+        // label is the only thing explaining what it will do to the whole app.
+        (Strings.Appearance.tintChrome, en: "Tint the interface", ru: "Тонировать интерфейс")
     ]
 
     @Test("app strings resolve in English and in Russian")

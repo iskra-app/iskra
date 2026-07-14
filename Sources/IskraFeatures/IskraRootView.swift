@@ -28,6 +28,10 @@ public struct IskraRootView: View {
     /// not, which is why this is applied as an *optional* scheme and not as a flag.
     @AppStorage(AppearanceMode.storageKey) private var appearance: AppearanceMode = .default
 
+    /// Whether the accent is handed to the system's controls as well — see the `.tint` below, and
+    /// `AccentTheme.tintsChromeKey` for why it is a choice rather than a default.
+    @AppStorage(AccentTheme.tintsChromeKey) private var tintsChrome = false
+
     /// Read here, *outside* the `NavigationSplitView`, because this is the only place it
     /// means what it appears to mean: the size class of the window. Inside the split view
     /// each column gets the size class its own width earns, so the sidebar reports
@@ -185,15 +189,22 @@ public struct IskraRootView: View {
         } message: {
             Text(Strings.Session.endedMessage)
         }
-        // The accent travels down the tree, but it is *not* handed to the system's controls
-        // here. `.tint` is what buttons, links and the sidebar's selection read, and tinting
-        // the whole app with it painted the chrome as loudly as the content: a green app had
-        // green back chevrons, green rows and a green unread badge, and a colour that is
-        // everywhere says nothing anywhere. The chrome is monochrome instead, and the accent
-        // is spent only where it means something — the messages you sent, the reactions that
-        // are yours, the send button that is about to make one, and the icons on the settings
-        // screen, each of which asks for the colour where it stands.
-        .tint(.primary)
+        // The accent travels down the tree — and whether it is *also* handed to the system's
+        // controls is the one thing the user is asked here. `.tint` is what buttons, links and the
+        // sidebar's selection read, and tinting the whole app with it paints the chrome as loudly
+        // as the content: a green app has green back chevrons, green rows and a green unread badge,
+        // and a colour that is everywhere says nothing anywhere. So the default is monochrome
+        // chrome, with the accent spent only where it means something — the messages you sent, the
+        // reactions that are yours, the send button that is about to make one, and the icons on the
+        // settings screen, each of which asks for the colour where it stands.
+        //
+        // But that is a matter of taste and not of correctness, and the whole app comes from one
+        // line, so it is a switch: "Тонировать интерфейс" turns the accent loose on the chrome as
+        // well. This is the only place `.tint` is set for the app, which is what makes the switch
+        // reach everything at once. `.mono` is the case where the two branches meet — its colour
+        // *is* `.primary` — so the switch honestly does nothing there, and the appearance screen
+        // says so rather than offering a control that cannot move.
+        .tint(tintsChrome ? accent.color : .primary)
         .environment(\.accent, accent)
         // And light or dark, if the user asked for either. Applied at the root, above everything,
         // because a colour scheme is not a property of a screen — a sheet or a media viewer left
