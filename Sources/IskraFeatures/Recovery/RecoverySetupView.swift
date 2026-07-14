@@ -43,6 +43,12 @@ struct RecoverySetupView: View {
                 case .preparing:
                     waiting(Strings.Recovery.preparing)
 
+                case .confirmNew:
+                    confirmNew
+
+                case .approving:
+                    approving
+
                 case .creating, .startingOver:
                     creating
 
@@ -130,12 +136,93 @@ struct RecoverySetupView: View {
     /// something that cannot be shown again. The rest are questions, and a question may be ignored.
     private var canLeave: Bool {
         switch model.step {
-        case .choose, .entering, .lost, .password: true
-        case .preparing, .creating, .startingOver, .code, .done: false
+        case .choose, .entering, .lost, .password, .confirmNew: true
+        // `.approving` has two answers of its own and needs neither a third nor a silent one: a
+        // reset half-approved on the server is exactly the state not to walk away from.
+        case .preparing, .creating, .startingOver, .code, .done, .approving: false
         }
     }
 
     // MARK: - The steps
+
+    /// The question in front of every code this flow destroys.
+    ///
+    /// Reached after the user has proved this device against another one, having said they could not
+    /// find their code. It used to mint on the spot — and the comparison does not touch the secret
+    /// storage, so the old code was never dead until the app killed it. "Later" is a real answer here
+    /// and not a courtesy: the history is already open, the account is in order, and the old code, if
+    /// it turns up in a password manager tonight, still works.
+    private var confirmNew: some View {
+        VStack(spacing: Theme.Spacing.roomy) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.largeTitle)
+                .foregroundStyle(.orange)
+
+            heading(Strings.Recovery.newTitle, Strings.Recovery.newMessage)
+
+            Button {
+                Task { await model.confirmNewCode() }
+            } label: {
+                busy(Strings.Recovery.newConfirm)
+            }
+            .buttonStyle(.glassAction)
+            .controlSize(.large)
+            .frame(maxWidth: .infinity)
+            .disabled(model.isWorking)
+
+            Button {
+                model.keepOldCode()
+            } label: {
+                Text(Strings.Recovery.keepOldCode)
+                    .font(.footnote)
+                    .frame(maxWidth: .infinity, minHeight: Theme.Size.minimumTapTarget)
+                    .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+        }
+    }
+
+    /// The browser has closed, and the app has no idea what happened in it.
+    ///
+    /// It cannot have: the approval page redirects nowhere the app is listening, so
+    /// `ASWebAuthenticationSession` reports the same thing whether the user approved and closed it or
+    /// closed it instead of approving. Guessing is what the app used to do, and it guessed "approved"
+    /// — which meant somebody who read what a reset costs and backed out got an error alert instead of
+    /// the quiet nothing they had asked for.
+    ///
+    /// So it asks. Neither answer is styled as the easy one: on the other side of "Continue" is every
+    /// message this account has ever received, and there is no undo.
+    private var approving: some View {
+        VStack(spacing: Theme.Spacing.roomy) {
+            Image(systemName: "checkmark.shield")
+                .font(.largeTitle)
+                .foregroundStyle(.orange)
+
+            heading(Strings.Recovery.approveTitle, Strings.Recovery.approveMessage)
+
+            Button {
+                Task { await model.approved() }
+            } label: {
+                busy(Strings.Recovery.approveConfirm)
+            }
+            .buttonStyle(.glass)
+            .controlSize(.large)
+            .frame(maxWidth: .infinity)
+            .disabled(model.isWorking)
+
+            Button {
+                Task { await model.abandonStartOver() }
+            } label: {
+                Text(Strings.Recovery.approveCancel)
+                    .font(.footnote)
+                    .frame(maxWidth: .infinity, minHeight: Theme.Size.minimumTapTarget)
+                    .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+        }
+    }
 
     private func waiting(_ message: LocalizedStringResource) -> some View {
         VStack(spacing: Theme.Spacing.roomy) {
