@@ -277,7 +277,7 @@ private struct RoomRow: View {
 
     var body: some View {
         HStack(spacing: Theme.Spacing.normal) {
-            Avatar(name: room.name, url: room.avatarURL, size: Theme.Size.avatar)
+            Avatar(name: room.name, url: room.avatarURL, size: Theme.Size.roomAvatar)
 
             VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
                 HStack(spacing: Theme.Spacing.tight) {
@@ -302,11 +302,21 @@ private struct RoomRow: View {
                     }
                 }
 
-                HStack(spacing: Theme.Spacing.close) {
+                // Top-aligned, because the preview is now two lines and the badge is one: centred,
+                // it would drift down beside a long message and sit level with the middle of a
+                // sentence rather than with the row it belongs to.
+                HStack(alignment: .top, spacing: Theme.Spacing.close) {
                     Text(room.lastMessage ?? " ")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                        // Two lines, and the space for both is kept even when only one is used.
+                        //
+                        // Without `reservesSpace` a list of chats has rows of two different
+                        // heights, depending on how long each last message happens to be — and the
+                        // eye reads that ragged column as the list being *sorted* by something,
+                        // which it is not. A steady row is what lets the faces beside them scan as
+                        // a column at all.
+                        .lineLimit(2, reservesSpace: true)
 
                     Spacer(minLength: 0)
 
@@ -332,7 +342,18 @@ private struct RoomRow: View {
                 }
             }
         }
-        .padding(.vertical, Theme.Spacing.tight)
+        // The row's own height, rather than the one `List` gives it.
+        //
+        // Most of the gap between two chats was never ours: it is the system's row inset, and it
+        // is generous because it is sized for a single line of text — a settings row, a name in a
+        // list. A chat row is three lines tall on its own and does not need the same air around it,
+        // and with the faces enlarged the column of them was reading as a list of *cards* with the
+        // conversations a long way apart. Set here rather than at the `List`, so the invitation
+        // rows — which carry two buttons and genuinely want the room — keep the system's.
+        .listRowInsets(EdgeInsets(top: Theme.Spacing.normal,
+                                  leading: Theme.Spacing.roomy,
+                                  bottom: Theme.Spacing.normal,
+                                  trailing: Theme.Spacing.roomy))
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
     }
@@ -380,7 +401,7 @@ private struct InviteRow: View {
 
     var body: some View {
         HStack(spacing: Theme.Spacing.normal) {
-            Avatar(name: room.name, url: room.avatarURL, size: Theme.Size.avatar)
+            Avatar(name: room.name, url: room.avatarURL, size: Theme.Size.roomAvatar)
 
             VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
                 HStack(spacing: Theme.Spacing.tight) {
