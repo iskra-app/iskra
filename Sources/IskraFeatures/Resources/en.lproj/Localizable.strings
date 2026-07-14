@@ -173,7 +173,6 @@
 "signIn.differentAddress" = "Use a different address";
 
 /* Separator between the single sign-on button and the password form. */
-"signIn.or" = "or";
 
 "signIn.password" = "Password";
 
@@ -210,6 +209,11 @@
 "signIn.signIn" = "Sign in";
 
 "signIn.signInWithPassword" = "Sign in with a password";
+
+/* A quiet link under the sign-in button, not a second equal path. A server with OAuth usually
+   accepts a password too — but somebody offered two ways into one account has to solve a problem
+   they did not have. One way, and a hint for the people it does not work for. */
+"signIn.usePasswordInstead" = "I only have a username and password";
 
 "signIn.tagline" = "Private messages, on your terms.";
 
@@ -413,6 +417,10 @@
 "room.manage.leave" = "Leave the chat";
 "room.manage.leaveQuestion" = "Leave this chat?";
 "room.manage.leaveHelp" = "New messages will stop arriving. You can only come back by invitation.";
+
+/* Why everything on the room-settings screen is greyed out. Shown only while offline. Must say
+   what still works — reading and writing — rather than only what does not. */
+"room.manage.offline" = "With no network you can read this chat and write to it, but not change it.";
 "room.manage.cancel" = "Cancel";
 "problem.title" = "It didn’t work";
 

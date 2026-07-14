@@ -14,6 +14,13 @@ public struct SignInView: View {
 
     private enum Field { case address, username, password }
 
+    /// Whether the visitor has asked for the password form on a server that also has OAuth.
+    ///
+    /// Only ever true because somebody said so out loud. It is not remembered between launches and
+    /// it is not guessed at: the default is the way in that works for almost everybody, and the
+    /// other one is a door you have to open.
+    @State private var isUsingPassword = false
+
     public init(onSignedIn: @escaping @MainActor (UserSession) -> Void) {
         _model = State(initialValue: SignInModel(onSignedIn: onSignedIn))
     }
@@ -142,6 +149,19 @@ public struct SignInView: View {
         .onAppear { focus = .address }
     }
 
+    /// How you get in, once the server has said how it lets people in.
+    ///
+    /// **One way in, not two.** This screen used to show the browser button and the password form
+    /// together, separated by the word "or", each with a button of its own — and that is a screen
+    /// handing the visitor a decision instead of a door. A server that speaks OAuth almost always
+    /// accepts a password as well, so almost everybody was being asked to choose between two ways
+    /// into the same account, on their first encounter with the app, on no information whatsoever.
+    /// Nobody arrives wanting to pick an authentication method. They arrive wanting to be let in.
+    ///
+    /// So: where the server has OAuth, that *is* the way in, and the password form is behind a quiet
+    /// sentence for the people who know they need it — and they do know; that is the whole character
+    /// of the case. Where the server has no OAuth, there is no choice to hide and no cleverness
+    /// required: it is a username, a password, and a button.
     @ViewBuilder
     private func signInForm(_ options: SignInOptions) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.roomy) {
@@ -163,79 +183,101 @@ public struct SignInView: View {
                 .controlSize(.large)
                 .frame(maxWidth: .infinity)
                 .disabled(model.isBusy)
-            }
 
-            // Making an account, where the server says it can make one. Plain glass, not tinted:
-            // most people arriving here already have an account and are here to sign in, and the
-            // tinted button is spent on the thing the screen is actually about.
-            //
-            // Absent on servers that do not speak OIDC — not disabled, absent. There is no way to
-            // register through this app on such a server at all, and a greyed-out button would be
-            // the app implying otherwise.
-            if options.supportsRegistration {
-                Button {
-                    Task { await model.createAccount() }
-                } label: {
-                    busyLabel(Strings.SignIn.createAccount)
-                }
-                .buttonStyle(.glass)
-                .controlSize(.large)
-                .frame(maxWidth: .infinity)
-                .disabled(model.isBusy)
-            }
-
-            if options.canUseSingleSignOn && options.supportsPassword {
-                Text(Strings.SignIn.or)
-                    .font(.footnote)
-                    .foregroundStyle(.tertiary)
+                // Making an account, where the server says it can make one. Plain glass, not tinted:
+                // most people arriving here already have an account and are here to sign in, and the
+                // tinted button is spent on the thing the screen is actually about.
+                //
+                // Absent on servers that do not speak OIDC — not disabled, absent. There is no way to
+                // register through this app on such a server at all, and a greyed-out button would be
+                // the app implying otherwise.
+                if options.supportsRegistration {
+                    Button {
+                        Task { await model.createAccount() }
+                    } label: {
+                        busyLabel(Strings.SignIn.createAccount)
+                    }
+                    .buttonStyle(.glass)
+                    .controlSize(.large)
                     .frame(maxWidth: .infinity)
-            }
-
-            if options.supportsPassword {
-                VStack(alignment: .leading, spacing: Theme.Spacing.normal) {
-                    TextField(String(app: Strings.SignIn.username), text: $model.username)
-                        .textContentType(.username)
-                        #if !os(macOS)
-                        .textInputAutocapitalization(.never)
-                        #endif
-                        .autocorrectionDisabled()
-                        .focused($focus, equals: .username)
-
-                    SecureField(String(app: Strings.SignIn.password), text: $model.password)
-                        .textContentType(.password)
-                        .focused($focus, equals: .password)
-                        .onSubmit { Task { await model.signInWithPassword() } }
+                    .disabled(model.isBusy)
                 }
-                .textFieldStyle(.plain)
-                .padding(Theme.Spacing.normal)
-                .background(.quaternary, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
 
-                // When SSO is also on offer, the password button is the secondary
-                // path, so it gets plain glass. Tinted glass is reserved for the one
-                // action the screen is actually about.
-                let passwordButton = Button {
-                    Task { await model.signInWithPassword() }
-                } label: {
-                    busyLabel(options.canUseSingleSignOn ? Strings.SignIn.signInWithPassword : Strings.SignIn.signIn)
+                if options.supportsPassword {
+                    if isUsingPassword {
+                        passwordFields
+                        passwordButton(prominent: false)
+                    } else {
+                        Button(String(app: Strings.SignIn.usePasswordInstead)) {
+                            isUsingPassword = true
+                            focus = .username
+                        }
+                        .font(.footnote)
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                    }
                 }
-                .controlSize(.large)
-                .frame(maxWidth: .infinity)
-                .disabled(model.isBusy || model.username.isEmpty || model.password.isEmpty)
-
-                if options.canUseSingleSignOn {
-                    passwordButton.buttonStyle(.glass)
-                } else {
-                    passwordButton.buttonStyle(.glassProminent)
-                }
+            } else if options.supportsPassword {
+                // No OAuth, so nothing to hide behind anything: this is the way in, and it is the
+                // only way in. No disclosure, no hint, no second thought.
+                passwordFields
+                passwordButton(prominent: true)
             }
 
             Button(String(app: Strings.SignIn.differentAddress)) {
+                // The disclosure goes back with the address. It was a decision about *that* server,
+                // and the next one may not even have a password to offer — arriving at it with the
+                // form already open would be this screen remembering something that is not true any
+                // more.
+                isUsingPassword = false
                 Task { await model.startOver() }
             }
             .font(.footnote)
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity)
+        }
+        .animation(.smooth, value: isUsingPassword)
+    }
+
+    private var passwordFields: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.normal) {
+            TextField(String(app: Strings.SignIn.username), text: $model.username)
+                .textContentType(.username)
+                #if !os(macOS)
+                .textInputAutocapitalization(.never)
+                #endif
+                .autocorrectionDisabled()
+                .focused($focus, equals: .username)
+
+            SecureField(String(app: Strings.SignIn.password), text: $model.password)
+                .textContentType(.password)
+                .focused($focus, equals: .password)
+                .onSubmit { Task { await model.signInWithPassword() } }
+        }
+        .textFieldStyle(.plain)
+        .padding(Theme.Spacing.normal)
+        .background(.quaternary, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
+    }
+
+    /// Tinted only where it is the whole of the screen. Behind the browser button it is the fallback
+    /// somebody went looking for, and tinted glass is spent on the one action a screen is about.
+    @ViewBuilder
+    private func passwordButton(prominent: Bool) -> some View {
+        let button = Button {
+            Task { await model.signInWithPassword() }
+        } label: {
+            busyLabel(prominent ? Strings.SignIn.signIn : Strings.SignIn.signInWithPassword)
+        }
+        .controlSize(.large)
+        .frame(maxWidth: .infinity)
+        .disabled(model.isBusy || model.username.isEmpty || model.password.isEmpty)
+
+        if prominent {
+            button.buttonStyle(.glassProminent)
+        } else {
+            button.buttonStyle(.glass)
         }
     }
 

@@ -27,6 +27,17 @@ struct RoomInfoView: View {
 
     @Environment(\.dismiss) private var dismiss
 
+    /// Offline, this screen is a *description* of the room rather than a way to change it. Every
+    /// control on it — the name, the topic, the picture, who is in it, whether it is open, and the
+    /// way out of it — is a call straight to the server with no queue behind it, so all of them are
+    /// turned off rather than left to fail one at a time.
+    ///
+    /// The name and topic fields matter most here, and not for the obvious reason. They commit when
+    /// they *lose focus* — so offline somebody could type a new name, watch it sit there looking
+    /// applied, walk away, and have it quietly thrown out by a server that was never asked. Disabled,
+    /// the field never takes the text in the first place.
+    @Environment(\.isOffline) private var isOffline
+
     /// What is in the two fields, which is not the same thing as what the room is called.
     /// The room is renamed when the field is *left*, not on every keystroke.
     @State private var draftName = ""
@@ -65,8 +76,10 @@ struct RoomInfoView: View {
             Section {
                 identity
             }
+            .disabled(isOffline)
 
             about
+                .disabled(isOffline)
 
             Section {
                 privacy
@@ -81,6 +94,7 @@ struct RoomInfoView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
+                    .disabled(isOffline)
                 }
             }
 
@@ -93,6 +107,15 @@ struct RoomInfoView: View {
                 } label: {
                     Label(String(app: Strings.Room.Manage.alerts), systemImage: alertsIcon)
                 }
+                .disabled(isOffline)
+            } footer: {
+                // Said once, at the top of everything this screen can no longer do, rather than as a
+                // grey control the reader is left to interpret. A disabled switch explains nothing on
+                // its own; a person who has not noticed the strip at the top of the screen would
+                // simply think the app had broken.
+                if isOffline {
+                    Text(Strings.Room.Manage.offline)
+                }
             }
 
             members
@@ -104,6 +127,11 @@ struct RoomInfoView: View {
                     Text(Strings.Room.Manage.leave)
                         .frame(maxWidth: .infinity, alignment: .center)
                 }
+                // Leaving is `room.leave()`, straight to the server. Offline it would fail, and it is
+                // the one action here where failing quietly would be alarming: a person who pressed
+                // "Leave", saw nothing happen, and came back to find themselves still in the room has
+                // no way to know whether they left or not.
+                .disabled(isOffline)
             }
         }
         .formStyle(.grouped)
@@ -353,6 +381,7 @@ struct RoomInfoView: View {
                 } label: {
                     Label(String(app: Strings.Room.Manage.invite), systemImage: "person.badge.plus")
                 }
+                .disabled(isOffline)
             }
 
             if details.isLoadingMembers && details.members.isEmpty {
@@ -404,8 +433,14 @@ private struct MemberRow: View {
     let remove: () -> Void
     let block: () -> Void
 
+    @Environment(\.isOffline) private var isOffline
+
+    /// Nothing in this menu — a role, a removal, a block — is anything but a request to the server,
+    /// so offline the row is a row and not a control. The menu is withheld rather than shown greyed:
+    /// a context menu the reader has to open in order to find out that it is empty is worse than one
+    /// that does not appear.
     private var hasMenu: Bool {
-        !roles.isEmpty || canRemove || canBlock
+        !isOffline && (!roles.isEmpty || canRemove || canBlock)
     }
 
     var body: some View {

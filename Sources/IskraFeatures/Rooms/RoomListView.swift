@@ -39,6 +39,13 @@ public struct RoomListView: View {
     @State private var searchText = ""
     @State private var isShowingSettings = false
 
+    /// Offline, the app is a *reader*. Everything that would have to ask the server — making a room,
+    /// answering an invitation — is turned off rather than left to fail on the last press. Reading
+    /// and writing a message still work: a message goes into the send queue and leaves when the
+    /// network comes back, which is the one thing here that does not need the server to be there
+    /// *now*. See `OfflineBanner`, which is what explains all this on screen.
+    @Environment(\.isOffline) private var isOffline
+
     /// Whether a recovery code was shown on the way in and never saved — see `RecoveryBanner`. Read
     /// here rather than passed down, because the banner is the only thing that cares and this is
     /// where it lives.
@@ -183,6 +190,11 @@ public struct RoomListView: View {
         }
         .menuIndicator(.hidden)
         .accessibilityLabel(Text(Strings.RoomList.newConversation))
+        // Making a room is a conversation with the server, and offline there is nobody to have it
+        // with: `client.createRoom` is a plain network call with no queue behind it. Left enabled, it
+        // would take somebody through the whole New Chat screen — a name, a topic, a person to invite
+        // — and refuse at the last press. The button that cannot work says so before it is pressed.
+        .disabled(isOffline)
     }
 
     /// The user's own face, top right — the iPhone's way into settings, and the twin of the
@@ -434,6 +446,7 @@ private struct InviteRow: View {
     let onDecline: () -> Void
 
     @Environment(\.accent) private var accent
+    @Environment(\.isOffline) private var isOffline
 
     var body: some View {
         HStack(spacing: Theme.Spacing.normal) {
@@ -473,6 +486,10 @@ private struct InviteRow: View {
                 .controlSize(.small)
                 .buttonBorderShape(.capsule)
                 .padding(.top, Theme.Spacing.tight)
+                // Joining is `client.joinRoomById` and declining is `room.leave()` — both go straight
+                // to the server, and neither is queued. The invitation keeps until the network is
+                // back; a press that silently did nothing would not.
+                .disabled(isOffline)
             }
         }
         .padding(.vertical, Theme.Spacing.tight)

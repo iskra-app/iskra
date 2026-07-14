@@ -36,10 +36,18 @@ public enum Strings {
         /// could not keep would be worse than no offer.
         public static let createAccount = LocalizedStringResource("signIn.createAccount", bundle: bundle)
         public static let signIn = LocalizedStringResource("signIn.signIn", bundle: bundle)
-        public static let or = LocalizedStringResource("signIn.or", bundle: bundle)
         public static let username = LocalizedStringResource("signIn.username", bundle: bundle)
         public static let password = LocalizedStringResource("signIn.password", bundle: bundle)
         public static let signInWithPassword = LocalizedStringResource("signIn.signInWithPassword", bundle: bundle)
+
+        /// The quiet way to the password fields, on a server that offers both.
+        ///
+        /// There used to be an "or" here, with two buttons of equal weight under it, and that was
+        /// the screen handing the user a decision instead of a way in. Almost nobody arriving at a
+        /// server with OAuth *wants* the password form — they want to be let in — and the ones who
+        /// do need it know they need it. So there is one way in, and a sentence for the people it
+        /// does not work for.
+        public static let usePasswordInstead = LocalizedStringResource("signIn.usePasswordInstead", bundle: bundle)
         public static let differentAddress = LocalizedStringResource("signIn.differentAddress", bundle: bundle)
 
         /// Errors. Each says what happened and what to do; none names a protocol.
@@ -259,6 +267,10 @@ public enum Strings {
             public static let leave = LocalizedStringResource("room.manage.leave", bundle: bundle)
             public static let leaveQuestion = LocalizedStringResource("room.manage.leaveQuestion", bundle: bundle)
             public static let leaveHelp = LocalizedStringResource("room.manage.leaveHelp", bundle: bundle)
+
+            /// Why every control on this screen is grey. Without it a disabled form is just a broken
+            /// one — see `RoomInfoView`.
+            public static let offline = LocalizedStringResource("room.manage.offline", bundle: bundle)
 
             public static let cancel = LocalizedStringResource("room.manage.cancel", bundle: bundle)
             /// The title over any refusal from the homeserver. The sentence underneath it

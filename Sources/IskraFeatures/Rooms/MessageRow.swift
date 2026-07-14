@@ -76,6 +76,12 @@ struct MessageRow: View {
     /// what is in it, and what was in it was being sized from the row's width — so every pass
     /// of the view graph rewrote the state that started the pass. See
     /// `EnvironmentValues.timelineWidth`.
+    /// Offline, a message can be read, quoted and copied — and nothing else. Reacting, editing,
+    /// deleting and pinning are all changes to what the *room* holds, and a room offline is a room
+    /// nobody can be told about. Replying is the exception, and only looks like one: a reply is a new
+    /// message, and a new message goes into the send queue and leaves when the network does.
+    @Environment(\.isOffline) private var isOffline
+
     @Environment(\.timelineWidth) private var timelineWidth
 
     /// Whether this is a phone-shaped layout. A playing video note fills the width of a phone
@@ -267,7 +273,11 @@ struct MessageRow: View {
             // single tap on those waits out the double-tap interval, which is the price of the
             // promise being kept.
             .highPriorityGesture(TapGesture(count: 2).onEnded {
-                guard message.canReact else { return }
+                // Offline the gesture is not merely refused, it is *silent* — and that is the whole
+                // reason to guard it here as well as in the menu. A double tap that puts no pill on
+                // the message reads as an app that did not notice the tap, so somebody would tap
+                // again, harder, and go on tapping. See `isOffline`.
+                guard message.canReact, !isOffline else { return }
                 quickTaps += 1
                 onToggleReaction(quickReaction.key)
             })
@@ -299,7 +309,7 @@ struct MessageRow: View {
     /// enforces as well.
     @ViewBuilder
     private var menu: some View {
-        if message.canReact {
+        if message.canReact && !isOffline {
             // A `ControlGroup` is what makes a menu lay its buttons out side by side instead
             // of stacking six near-identical emoji into six lines.
             ControlGroup {
@@ -320,7 +330,7 @@ struct MessageRow: View {
             }
         }
 
-        if message.canEdit {
+        if message.canEdit && !isOffline {
             Button(action: onEdit) {
                 Label(Strings.Message.Menu.edit, systemImage: "pencil")
             }
@@ -339,14 +349,14 @@ struct MessageRow: View {
         // room's state and needs the power level for it — and that refusal is said in an alert
         // rather than predicted here, because a menu item that quietly disappears teaches the
         // user nothing about why.
-        if message.canReply {
+        if message.canReply && !isOffline {
             Button(action: onTogglePin) {
                 Label(isPinned ? Strings.Message.Menu.unpin : Strings.Message.Menu.pin,
                       systemImage: isPinned ? "pin.slash" : "pin")
             }
         }
 
-        if message.canDelete {
+        if message.canDelete && !isOffline {
             Button(role: .destructive) {
                 isConfirmingDelete = true
             } label: {
