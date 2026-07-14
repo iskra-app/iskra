@@ -536,9 +536,11 @@
 "verification.declined.message" = "If the emoji really did not match, do not trust this connection, and try again. It may also be that you simply started the verification twice.";
 "verification.refused.title" = "You said no";
 "verification.refused.message" = "That device was given no access to your conversations. But if the sign-in wasn't yours, then somebody else knows your password — and it needs changing right now.";
+"verification.refused.endSession" = "End this session";
 "verification.failed.title" = "That didn't work";
 "verification.failed.message" = "The verification did not finish. Try again.";
 "verification.close" = "Close";
+"verification.signIn.title" = "Account sign-in";
 
 /* --- Getting your messages back ----------------------------------------------
    The screen between signing in and the conversations, and the strip that reminds
@@ -598,6 +600,8 @@
    somebody who didn’t save it finds out six months later — unless they’re reminded. */
 "recovery.banner.locked" = "Your old messages are locked";
 "recovery.banner.unsaved" = "Your recovery code isn’t saved";
+"recovery.banner.hint" = "Opens recovery setup";
+"recovery.close" = "Close";
 
 "settings.devices" = "My devices";
 "settings.devicesHelp" = "The list of your devices, and signing out of them, lives on your server’s website — where you signed in.";

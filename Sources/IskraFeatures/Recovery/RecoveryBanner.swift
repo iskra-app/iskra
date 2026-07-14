@@ -41,25 +41,39 @@ struct RecoveryBanner: View {
                 onTap(reason)
             } label: {
                 HStack(spacing: Theme.Spacing.close) {
+                    // The colour is spent on the symbol and nowhere else. The words used to be orange
+                    // too, on an orange wash, and orange-on-pale-orange is about 2:1 — a long way
+                    // under the 4.5:1 that ordinary text has to clear, and it was the *warning* that
+                    // was hardest to read. Apple's own banners do it this way round: a tinted symbol
+                    // carries the alarm, and the sentence stays in the colour sentences are.
                     Image(systemName: reason == .locked ? "lock.fill" : "key.horizontal.fill")
+                        .foregroundStyle(.orange)
 
                     Text(reason == .locked ? Strings.Recovery.bannerLocked
                                            : Strings.Recovery.bannerUnsaved)
                         .font(.callout)
+                        .foregroundStyle(.primary)
                         .multilineTextAlignment(.leading)
 
                     Spacer(minLength: Theme.Spacing.close)
 
                     Image(systemName: "chevron.right")
                         .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.secondary)
                 }
-                .foregroundStyle(.orange)
                 .padding(.horizontal, Theme.Spacing.roomy)
                 .padding(.vertical, Theme.Spacing.normal)
-                .frame(maxWidth: .infinity)
+                // A row of one line of `.callout` between two `Spacing.normal` padatops comes out
+                // under 44pt, and this is a button. It is the one control in the app a person is
+                // meant to hit while their mind is on something else.
+                .frame(maxWidth: .infinity, minHeight: Theme.Size.minimumTapTarget)
                 .background(.orange.opacity(Theme.Backdrop.wash))
+                .contentShape(.rect)
             }
             .buttonStyle(.plain)
+            // The chevron is what tells a sighted reader this strip goes somewhere. A screen reader
+            // heard the sentence, heard "button", and had no idea what pressing it would do.
+            .accessibilityHint(Text(Strings.Recovery.bannerHint))
         }
     }
 

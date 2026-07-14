@@ -86,16 +86,23 @@ struct RecoverySetupView: View {
         // away (a half-finished reset is not a thing to leave lying around), and absent on the code
         // itself, which is the one screen in the app that must be *read* rather than dismissed: the
         // code cannot be shown twice, so a code closed by reflex is a code that is gone.
+        // The system's close button, and not a hand-drawn "×" any more. It was an `Image` inside a
+        // `.plain` button with no label of any kind, which is a control VoiceOver announces as
+        // "button" — the one control on the screen whose entire job is to be the way out, and it
+        // could not say so. The rest of the app labels its icon buttons; this one was simply missed.
+        //
+        // `role: .close` is what buys the standard appearance, the standard placement in a sheet and
+        // the standard label, in every language, without this file naming any of them. The glass is
+        // right here and is not a general licence: a floating control over scrolling content is the
+        // navigation layer, which is exactly where `CLAUDE.md` puts it.
         .overlay(alignment: .topTrailing) {
             if let onCancel, canLeave {
-                Button(action: onCancel) {
-                    Image(systemName: "xmark")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: Theme.Size.minimumTapTarget,
-                               height: Theme.Size.minimumTapTarget)
+                Button(role: .close, action: onCancel) {
+                    Label(String(app: Strings.Recovery.close), systemImage: "xmark")
+                        .labelStyle(.iconOnly)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.glass)
+                .controlSize(.large)
                 .padding(Theme.Spacing.close)
             }
         }
@@ -225,11 +232,17 @@ struct RecoverySetupView: View {
 
             // The quiet third way out, for the person for whom neither of the two above is true. It
             // has to be here, and it has to be findable: without it this screen is a locked door.
+            //
+            // Quiet, and still 44pt tall — a `.plain` button is only as tall as its words, which for
+            // a line of `.callout` is about 20. Being understated is a matter of colour and weight,
+            // not of being difficult to hit.
             Button {
                 Task { await model.lostTheCode() }
             } label: {
                 Text(Strings.Recovery.neither)
                     .font(.callout)
+                    .frame(maxWidth: .infinity, minHeight: Theme.Size.minimumTapTarget)
+                    .contentShape(.rect)
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
@@ -264,6 +277,8 @@ struct RecoverySetupView: View {
             } label: {
                 Text(Strings.Recovery.lostCode)
                     .font(.callout)
+                    .frame(maxWidth: .infinity, minHeight: Theme.Size.minimumTapTarget)
+                    .contentShape(.rect)
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)

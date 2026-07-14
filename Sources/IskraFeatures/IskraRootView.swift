@@ -69,6 +69,16 @@ public struct IskraRootView: View {
     /// wrong place — which is exactly where the developer would go looking too.
     @State private var wasSignedOutRemotely = false
 
+    /// The server's own sessions page, resolved once the session is up.
+    ///
+    /// It is read here, at the root, for the sake of one moment on the verification sheet: a device
+    /// signs in, the user says it is not theirs, and the app has to be able to *do* something about
+    /// that rather than merely say so. Ending a session is not something the FFI exports — this URL
+    /// is the only door there is, and the root is where the incoming request lands, so this is where
+    /// the door has to be held. `nil` on a server that hands over no such page, and the sheet then
+    /// simply has one button instead of two.
+    @State private var devicesURL: URL?
+
     private let authentication = AuthenticationService()
 
     public init() {}
@@ -139,10 +149,15 @@ public struct IskraRootView: View {
                     // `VerificationSheet`.
                     .sheet(isPresented: Binding(get: { session.verification.incoming != nil },
                                                 set: { if !$0 { session.verification.reset() } })) {
-                        VerificationSheet(verification: session.verification) {
-                            session.verification.reset()
-                        }
+                        VerificationSheet(verification: session.verification,
+                                          onDone: { session.verification.reset() },
+                                          devicesURL: devicesURL)
                     }
+                    // Asked for once, and long before it is needed. The moment it *is* needed — the
+                    // user has just told the app a device is not theirs — is the worst possible moment
+                    // to start a network round-trip and leave them looking at a sheet that has not
+                    // decided yet whether it can help them.
+                    .task { devicesURL = await session.deviceManagementURL() }
                     // The sync loop goes down with the app, on the phone. Not to save battery — iOS
                     // suspends the process anyway — but because the moment the app is in a pocket is
                     // the moment a push arrives, and a push wakes the notification extension, which
