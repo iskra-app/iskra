@@ -147,6 +147,9 @@ public final class TimelineStore {
     /// The opening in flight, so a second caller waits for it instead of starting a rival one.
     private var opening: Task<Void, Error>?
 
+    /// The pinned timeline over this same room, once anything has asked for one. See `pinned()`.
+    private var pinnedStore: PinnedStore?
+
     public func start() async throws {
         // Somebody is already opening this room. Wait for them — and then stop, because the room
         // they opened is the room we wanted. Turning up second is the ordinary way this happens:
@@ -199,6 +202,11 @@ public final class TimelineStore {
         }
 
         try await task.value
+
+        // And the pinned strip back up with the room, if this room ever had one. `stop()` is a
+        // pause for both of them, and a pause only one of them woke from would leave the strip at
+        // the top of the screen frozen on whatever was pinned when the reader last left.
+        await pinnedStore?.start()
     }
 
     /// Tries again after a failure. There is nothing to undo first: a `start()` that threw
@@ -407,6 +415,11 @@ public final class TimelineStore {
         // in an await inside the SDK; the number does. See `generation`.
         generation += 1
         opening = nil
+
+        // The second timeline over this room goes down with the first. Nothing else was ever going
+        // to do it: the pinned store is handed to a view, and a view has no idea that the account
+        // it belongs to is being signed out from three screens away.
+        pinnedStore?.stop()
 
         pageInFlight?.cancel()
         pageInFlight = nil
@@ -793,8 +806,19 @@ public final class TimelineStore {
     /// `TimelineFocus.pinnedEvents` timeline holds exactly the pinned events and follows them
     /// as they change. It is built on demand, because most rooms have nothing pinned and an
     /// unopened one costs nothing.
+    ///
+    /// Held once made, and that is the fix rather than the convenience. This used to hand back a
+    /// *new* store on every call, owned by whoever asked and stopped by nobody — `PinnedStore.stop`
+    /// had no callers at all. Its listener therefore outlived the room, and outlived the sign-out:
+    /// `logout()` deletes the SQLite store off the disk, and a live `addListener` on a pinned
+    /// timeline was still pointed at it. Now the timeline that made it takes it down with itself,
+    /// and brings it back up in `start()` — see both.
     public func pinned() -> PinnedStore {
-        PinnedStore(room: room, ownUserID: ownUserID)
+        if let pinnedStore { return pinnedStore }
+
+        let store = PinnedStore(room: room, ownUserID: ownUserID)
+        pinnedStore = store
+        return store
     }
 
     // MARK: - Identifiers

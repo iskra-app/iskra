@@ -141,6 +141,10 @@ public struct RoomView: View {
     @State private var details: RoomDetailsStore?
     @State private var isShowingDetails = false
 
+    /// Whether the room has already been put down. See `tearDown()` — there are two ways out and
+    /// they can both fire.
+    @State private var hasTornDown = false
+
     /// The width the messages have to live in. See `EnvironmentValues.timelineWidth`.
     @State private var timelineWidth: CGFloat = 0
 
@@ -668,7 +672,17 @@ public struct RoomView: View {
         }
         .navigationDestination(isPresented: $isShowingDetails) {
             if let details {
-                RoomInfoView(details: details, onLeave: onLeave)
+                // Leaving the room from the info screen is still leaving the room — and it was the
+                // one way out that tore nothing down. `onDisappear` below declines to clean up when
+                // the room is merely covered by a pushed screen, and at the moment "Leave" takes
+                // effect the info screen *is* still pushed, so the guard held and the whole teardown
+                // was skipped: the draft unsaved, the listeners running, "typing…" left standing in
+                // a room the user had just walked out of, and a locked voice recording still
+                // listening. So it is done here, explicitly, before the room goes.
+                RoomInfoView(details: details, onLeave: {
+                    tearDown()
+                    onLeave()
+                })
             }
         }
         .navigationDestination(isPresented: $isShowingPinned) {
@@ -784,28 +798,7 @@ public struct RoomView: View {
         // we are the ones who pushed.
         .onDisappear {
             guard !isShowingDetails, !isShowingPinned else { return }
-
-            // The half-written sentence goes with the room, into the same encrypted store the
-            // conversation lives in — see `TimelineStore.saveDraft`. Captured by value here, and
-            // the store outlives the view, so this finishes after the screen has gone.
-            //
-            // Unless the words in the box are not the user's. An *edit* fills the composer with
-            // the message being changed, and `cancelContext()` says why that draft must never
-            // outlive the edit: come back to it with no edit in progress and the composer is
-            // holding a message that has already been sent, ready to be sent again as a new one.
-            // Every other way out of an edit knew this. Walking out of the room did not — so
-            // editing "Привет", changing your mind, and leaving put a second "Привет" in the
-            // conversation the next time the send button was pressed.
-            let isEditing = composerContext?.isEditing == true
-            let unsent = isEditing ? "" : draft
-            let timeline = timeline
-            Task { await timeline.saveDraft(unsent) }
-
-            timeline.stop()
-            videoNote.cancel()
-            voice.cancel()
-            lighting?.cancel()
-            spinnerRest?.cancel()
+            tearDown()
         }
         .alert(Text(Strings.Room.sendFailedTitle),
                isPresented: .init(get: { timeline.sendFailure != nil },
@@ -814,6 +807,41 @@ public struct RoomView: View {
         } message: {
             if let failure = timeline.sendFailure { Text(failure) }
         }
+    }
+
+    /// Putting the room down: the draft, the listeners, the camera, the microphone.
+    ///
+    /// Called from the two ways out, which are not the same way. Ordinarily the view simply
+    /// disappears and `onDisappear` does this. But "Leave" on the info screen unwinds the room from
+    /// *underneath* a screen that is still pushed over it, and `onDisappear` deliberately does
+    /// nothing while a screen is pushed over the room — so that path calls this itself. Guarded so
+    /// that the two cannot both land: leaving pops the info screen as well, and the disappearance
+    /// that follows would otherwise save the draft a second time into a room the user has left.
+    private func tearDown() {
+        guard !hasTornDown else { return }
+        hasTornDown = true
+
+        // The half-written sentence goes with the room, into the same encrypted store the
+        // conversation lives in — see `TimelineStore.saveDraft`. Captured by value here, and
+        // the store outlives the view, so this finishes after the screen has gone.
+        //
+        // Unless the words in the box are not the user's. An *edit* fills the composer with
+        // the message being changed, and `cancelContext()` says why that draft must never
+        // outlive the edit: come back to it with no edit in progress and the composer is
+        // holding a message that has already been sent, ready to be sent again as a new one.
+        // Every other way out of an edit knew this. Walking out of the room did not — so
+        // editing "Привет", changing your mind, and leaving put a second "Привет" in the
+        // conversation the next time the send button was pressed.
+        let isEditing = composerContext?.isEditing == true
+        let unsent = isEditing ? "" : draft
+        let timeline = timeline
+        Task { await timeline.saveDraft(unsent) }
+
+        timeline.stop()
+        videoNote.cancel()
+        voice.cancel()
+        lighting?.cancel()
+        spinnerRest?.cancel()
     }
 
     /// What fills a conversation that has nothing in it.
