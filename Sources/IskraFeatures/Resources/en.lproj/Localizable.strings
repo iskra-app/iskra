@@ -456,3 +456,11 @@
    account, so this names the cause rather than merely stating the fact. */
 "session.ended.title" = "You are no longer signed in";
 "session.ended.message" = "Your server has stopped accepting this session. You most likely ended it from another device. Sign in again — none of your conversations have gone anywhere.";
+
+/* What the media bubbles are called for VoiceOver. A photo and a video note are opened by a tap
+   gesture, and a tap gesture does not exist in the accessibility tree at all — with no name and no
+   action there was nothing there to press. */
+"message.media.photo" = "Photo";
+"message.media.video" = "Video";
+"message.media.videoNote" = "Video message";
+"message.media.openFullScreen" = "Open";

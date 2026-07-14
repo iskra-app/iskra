@@ -159,6 +159,15 @@ public enum Theme {
 
     public enum Size {
         public static let avatar: CGFloat = 40
+
+        /// The face beside a conversation in the chat list.
+        ///
+        /// Bigger than `avatar`, and it is a size of its own rather than a bump to that one
+        /// because `avatar` is also worn by the members of a room — a list of *names*, where the
+        /// picture is an ornament beside the word that matters. In the chat list the picture is
+        /// how a conversation is found: the eye goes down the column of faces, not down the column
+        /// of names, and at 40pt it was doing that work at the size of a footnote.
+        public static let roomAvatar: CGFloat = 56
         public static let avatarSmall: CGFloat = 28
         /// A picture that *is* a button in the title bar: the chat's, at the end of a room's
         /// bar, and the user's own at the end of the room list's.

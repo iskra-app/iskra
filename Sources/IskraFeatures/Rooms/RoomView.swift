@@ -788,7 +788,16 @@ public struct RoomView: View {
             // The half-written sentence goes with the room, into the same encrypted store the
             // conversation lives in — see `TimelineStore.saveDraft`. Captured by value here, and
             // the store outlives the view, so this finishes after the screen has gone.
-            let unsent = draft
+            //
+            // Unless the words in the box are not the user's. An *edit* fills the composer with
+            // the message being changed, and `cancelContext()` says why that draft must never
+            // outlive the edit: come back to it with no edit in progress and the composer is
+            // holding a message that has already been sent, ready to be sent again as a new one.
+            // Every other way out of an edit knew this. Walking out of the room did not — so
+            // editing "Привет", changing your mind, and leaving put a second "Привет" in the
+            // conversation the next time the send button was pressed.
+            let isEditing = composerContext?.isEditing == true
+            let unsent = isEditing ? "" : draft
             let timeline = timeline
             Task { await timeline.saveDraft(unsent) }
 
@@ -796,6 +805,7 @@ public struct RoomView: View {
             videoNote.cancel()
             voice.cancel()
             lighting?.cancel()
+            spinnerRest?.cancel()
         }
         .alert(Text(Strings.Room.sendFailedTitle),
                isPresented: .init(get: { timeline.sendFailure != nil },

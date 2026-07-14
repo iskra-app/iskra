@@ -522,28 +522,47 @@ struct MessageComposer: View {
                         }
                     }
             )
-            // The hold is not a gesture VoiceOver can perform, so the button offers the two
-            // things it does as actions instead. Recording goes through the video sheet, which
-            // is the one path with a shutter in it that VoiceOver *can* press, and a spoken
-            // message started this way is stopped by pressing the button again.
+            // The hold is not a gesture VoiceOver can perform — and this used to say so and then do
+            // nothing about it. The button carried a label, a hint and `.isButton`, and underneath
+            // it was a `DragGesture` on a clear rectangle: VoiceOver does not synthesise a drag, so
+            // a double tap on it did *nothing whatsoever*. There was no way to record a voice
+            // message. The comment here explained the problem and called it the solution.
             //
-            // What it *says* follows the glyph and not the mode. While a recording runs this is
-            // a stop button and shows `stop.fill`, and it used to go on announcing itself as
-            // "record a voice message" — telling a VoiceOver user that the button which ends
-            // their recording will begin one.
+            // A default action is what a double tap actually runs, so that is what recording hangs
+            // off now: press once to begin, press again to finish and send. It is the hands-free
+            // path — the one the swipe up gives everybody else — reached by the gesture VoiceOver
+            // has. Cancelling is offered as an action of its own, because the way out of a
+            // recording must not be a swipe either.
+            //
+            // What it *says* follows the glyph and not the mode. While a recording runs this is a
+            // send button, and it used to go on announcing itself as "record a voice message" —
+            // telling a VoiceOver user that the button which ends their recording will begin one.
             .accessibilityLabel(Text(recordLabel))
             .accessibilityAddTraits(.isButton)
             .accessibilityHint(Text(Strings.Recording.hint))
-            // And the switch is offered only when there is nothing running to switch *under*.
-            // Toggling `mode` mid-recording left the composer describing a video message while
-            // the microphone was still on, and `finish()` and `lock()` both dispatch on `mode`
-            // — so the next thing the user did would have been routed to the wrong recorder.
+            .accessibilityAction {
+                if voice == nil {
+                    // Nothing is running: begin, and lock it straight away. A recording that
+                    // depended on a finger staying down would end the moment VoiceOver moved the
+                    // focus — which it does, constantly, because that is how it is used.
+                    start()
+                    lock()
+                } else {
+                    finish()
+                }
+            }
             .accessibilityActions {
+                // The switch is offered only when there is nothing running to switch *under*.
+                // Toggling `mode` mid-recording left the composer describing a video message while
+                // the microphone was still on, and `finish()` and `lock()` both dispatch on `mode`
+                // — so the next thing the user did would have been routed to the wrong recorder.
                 if voice == nil {
                     Button(mode == .voice ? Strings.Recording.switchToVideo
                                           : Strings.Recording.switchToVoice) {
                         mode.toggle()
                     }
+                } else {
+                    Button(Strings.Recording.cancel) { cancel() }
                 }
             }
     }
