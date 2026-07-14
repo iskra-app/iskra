@@ -1,0 +1,143 @@
+# SwiftLint, written around the conventions in CLAUDE.md rather than against them.
+#
+# The most important thing this config does is *stay quiet* about the thing a linter would
+# normally shout at hardest: length. The long prose above every non-obvious decision is the
+# house style, not debt — `RoomView.body` is half explanation, and half of `TimelineStore` is
+# the reason it is written the way it is. A linter that nagged about that would be a linter
+# somebody turns off, and a linter that is off is worth nothing.
+#
+# What it *is* here for is the four things the audit had to find by grepping, all of which a
+# machine can hold on to and a person cannot:
+#
+#   1. A size hard-coded into a view instead of taken from `Theme`  (~60 of them)
+#   2. An error logged in a way os_log will redact to <private> on the device the log exists for
+#   3. A user-facing string written straight into a view instead of `Strings.swift`
+#   4. A target reaching across a boundary it is not allowed to cross
+#
+# Not installed by the build, and deliberately: `swift build` and `swift test` must work on a
+# machine that has never heard of SwiftLint. Run it by hand, or in CI:
+#
+#     brew install swiftlint && swiftlint
+
+included:
+  - Sources
+  - Apps
+  - Tests
+
+excluded:
+  - .build
+  - Apps/Iskra.xcodeproj
+  # The blurhash constants are the format's own, not ours to rename.
+  - Sources/IskraCore/Media/Blurhash.swift
+
+disabled_rules:
+  - line_length            # prose wraps where the sentence ends, not at column 120
+  - file_length
+  - type_body_length
+  - function_body_length   # see the note above: the long bodies here are mostly explanation
+  - cyclomatic_complexity  # a switch over twelve diff cases is the SDK's shape, not complexity
+  - trailing_comma
+  - opening_brace          # SwiftUI modifier chains defeat the heuristic
+  - todo                   # replaced by the stricter custom rule below
+
+opt_in_rules:
+  - force_unwrapping
+  - implicitly_unwrapped_optional
+  - unused_import
+  - unused_declaration
+  - empty_count
+  - empty_string
+  - first_where
+  - last_where
+  - contains_over_first_not_nil
+  - redundant_nil_coalescing
+  - fatal_error_message
+  - toggle_bool
+  - modifier_order
+  - sorted_first_last
+  - flatmap_over_map_reduce
+  - reduce_into
+  - collection_alignment
+  - explicit_init
+  - closure_spacing
+  - vertical_whitespace_closing_braces
+
+analyzer_rules:
+  - unused_declaration
+  - unused_import
+
+# The base is already clean of these, so they are errors rather than warnings: the point is to
+# keep it that way, not to accumulate a backlog nobody reads.
+force_unwrapping:
+  severity: error
+force_try:
+  severity: error
+force_cast:
+  severity: error
+
+identifier_name:
+  min_length: 2
+  max_length: 60
+  excluded: [id, x, y, i, n, ok]
+
+nesting:
+  type_level: 3            # Strings.Room.Manage.* is three, and legitimately so
+
+custom_rules:
+  # 1. Sizes come from Theme. CLAUDE.md: "a view that hard-codes .padding(12) is a bug waiting
+  #    to drift" — and it had drifted: one play button drawn at 44 and its twin at 40, three
+  #    different scrims for the same badge.
+  hardcoded_layout_metric:
+    included: ".*/Sources/(IskraFeatures|IskraDesign)/.*\\.swift"
+    regex: "\\.(padding|cornerRadius)\\(\\s*[1-9][0-9]*(\\.[0-9]+)?\\s*[),]"
+    message: "Sizes come from Theme, not from thin air. See IskraDesign/Theme.swift."
+    severity: warning
+
+  hardcoded_frame:
+    included: ".*/Sources/(IskraFeatures|IskraDesign)/.*\\.swift"
+    regex: "\\.frame\\([^)]*(width|height|minHeight):\\s*[1-9][0-9]*(\\.[0-9]+)?\\s*[,)]"
+    message: "Sizes come from Theme. (.infinity and Theme.* are fine.)"
+    severity: warning
+
+  # 2. An error interpolated bare is redacted to <private> by os_log on a real device — which is
+  #    the only device the log exists for. Log.swift explains the rule; twenty sites broke it.
+  redacted_error_log:
+    included: ".*/Sources/.*\\.swift"
+    regex: "Log\\.\\w+\\.(error|warning|fault)\\(\"[^\"]*\\\\\\(error\\)"
+    message: "os_log will hide this as <private>. Use \\(String(describing: error), privacy: .public)."
+    severity: warning
+
+  # 3. No user-facing string in a view. Ever. Russian is written first.
+  literal_string_in_view:
+    included: ".*/Sources/IskraFeatures/.*\\.swift"
+    excluded: ".*/Support/Strings\\.swift"
+    regex: "(Text|Label|Button)\\(\\s*\"[^\"]{2,}\""
+    message: "User-facing text lives in Strings.swift. Write the Russian first."
+    severity: error
+
+  # 4. The dependency rule the whole three-platform design rests on.
+  core_must_not_import_swiftui:
+    included: ".*/Sources/IskraCore/.*\\.swift"
+    regex: "^import SwiftUI"
+    message: "IskraCore does not know about SwiftUI."
+    severity: error
+
+  design_must_not_import_matrix:
+    included: ".*/Sources/IskraDesign/.*\\.swift"
+    regex: "^import MatrixRustSDK"
+    message: "IskraDesign does not know about Matrix."
+    severity: error
+
+  # 5. Glass belongs to the navigation layer, and there is deliberately no general .glass().
+  no_general_glass:
+    included: ".*/Sources/(IskraFeatures)/.*\\.swift"
+    regex: "\\.glassEffect\\("
+    message: "Glass goes through .navigationGlass()/.primaryActionGlass() — see IskraDesign/Glass.swift."
+    severity: warning
+
+  # 6. Unfinished work lives in ROADMAP.md, where it is read. There are currently zero of these.
+  todo_needs_context:
+    included: ".*/Sources/.*\\.swift"
+    regex: "//\\s*(TODO|FIXME|HACK)\\s*:?\\s*$"
+    message: "Unfinished work belongs in ROADMAP.md. A bare marker is a note to nobody."
+    severity: warning
