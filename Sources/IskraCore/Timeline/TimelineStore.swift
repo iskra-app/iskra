@@ -459,15 +459,45 @@ public final class TimelineStore {
     /// There is more of this conversation, and we could not reach it. The reader is looking at
     /// everything that was on the device, which offline is the ordinary end of the road: the event
     /// cache goes back as far as it goes, and the page beyond it needs the server.
+    ///
+    /// Deliberately **not** conditioned on `isPaginating`, and that is not a detail. This decides
+    /// whether a row exists at the head of the list, and a row that comes and goes changes the height
+    /// of the content — which `RoomView` watches, and answers by asking for another page. So a line
+    /// that blinked while a retry ran was not merely ugly: it was a loop, feeding the very scroll
+    /// event that started it. It flickered, and the conversation stuttered under the reader's finger.
     public var historyIsStranded: Bool {
-        hasLoaded && canLoadMore && !isPaginating && didFailToPaginate
+        hasLoaded && canLoadMore && didFailToPaginate
     }
 
     /// The button's call. It asks for a *screenful*, not a page: one press that bought two more
     /// events would leave the reader at the same dead end one page further along.
     public func loadMoreHistory() async {
+        // The press *is* permission to try again. Without this the guard in `loadMore` would have
+        // grown teeth it was never meant to have: a room whose history failed once could never ask
+        // for it again, and the line offering to try would have been a line that did nothing.
+        didFailToPaginate = false
+
         await fillPages(untilAtLeast: rows.count + Self.screenful,
                         maximumPages: Self.maximumOpeningPages)
+    }
+
+    /// The network came back, or went away. Told to us by `UserSession`, which hears it from the one
+    /// thing in the app that knows — the sync loop. See `RoomListStore.syncStateChanged`.
+    ///
+    /// A room open at the moment the network returns has to be *let go of*: `loadMore` refuses to
+    /// ask for history after a page has failed, and offline every page fails, so without this the
+    /// conversation the reader is sitting in would stay stranded at the edge of its cache for as
+    /// long as it stayed open — with the network back, the banner gone, and nothing to explain why
+    /// scrolling up did nothing at all.
+    func connectivityChanged(offline: Bool) async {
+        guard !offline, didFailToPaginate else { return }
+
+        didFailToPaginate = false
+
+        // And go and get what the reader was denied while the network was away, rather than waiting
+        // for them to scroll again to find out that they may now.
+        await fillPages(untilAtLeast: max(rows.count, Self.screenful),
+                        maximumPages: Self.maximumRefillPages)
     }
 
     /// Roughly what fills a phone screen. Not exact, and does not need to be: it is the
@@ -1068,6 +1098,20 @@ public final class TimelineStore {
 
     /// Loads older messages. Called when the user scrolls to the top.
     public func loadMore() async {
+        // One failure is enough. `RoomView` asks for history on every change of scroll geometry —
+        // deliberately, and the comment there explains why it is right to ask eagerly: `loadMore`
+        // was supposed to be free to call. Offline it is the opposite of free. The page fails, the
+        // reader is still near the top, the next frame asks again, and the room spends every frame
+        // of every scroll going into Rust to be told once more that there is no network. That is the
+        // stutter; the line at the top of the list blinking in and out of existence was the same
+        // loop, seen.
+        //
+        // So a failed page stops the *automatic* asking. It does not stop the reader: pressing the
+        // line at the top of the room calls `loadMoreHistory`, which clears this and tries again. Nor
+        // does it outlive the network — `connectivityChanged(offline:)` clears it the moment sync
+        // reports it is back, and the conversation goes on filling as though nothing had happened.
+        guard !didFailToPaginate else { return }
+
         // The spinner belongs to the user's own scroll: it answers a request they made. A refill
         // is repair work nobody asked for, going on behind a conversation that is still on the
         // screen, and announcing it with a progress view above the first message would only be

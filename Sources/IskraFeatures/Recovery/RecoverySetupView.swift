@@ -11,9 +11,9 @@ import IskraDesign
 struct RecoverySetupView: View {
     @State private var model: RecoverySetupModel
 
-    /// Called once, when there is nothing left to ask. The root takes the app into the conversations
-    /// and carries `didSkipSavingCode` with it, so the room list knows whether to nag.
-    var onDone: (Bool) -> Void
+    /// Called once, when there is nothing left to ask, and the root takes the app into the
+    /// conversations.
+    var onDone: () -> Void
 
     /// A way out, for the times this is a sheet somebody opened rather than a gate they must pass.
     ///
@@ -23,17 +23,15 @@ struct RecoverySetupView: View {
     /// destroying their encryption.
     ///
     /// `nil` on the way in from signing in, where there is genuinely nothing to go back *to* — the
-    /// app is not behind this screen yet. Even then nobody is cornered: every branch ends in `.done`,
-    /// and skipping the code is a button.
+    /// app is not behind this screen yet. Even then nobody is cornered: every branch ends in `.done`.
     var onCancel: (() -> Void)?
 
     @State private var isConfirming = false
 
     init(session: UserSession,
-         entry: RecoverySetupModel.Entry = .afterSignIn,
          onCancel: (() -> Void)? = nil,
-         onDone: @escaping (Bool) -> Void) {
-        _model = State(initialValue: RecoverySetupModel(session: session, entry: entry))
+         onDone: @escaping () -> Void) {
+        _model = State(initialValue: RecoverySetupModel(session: session))
         self.onCancel = onCancel
         self.onDone = onDone
     }
@@ -45,17 +43,12 @@ struct RecoverySetupView: View {
                 case .preparing:
                     waiting(Strings.Recovery.preparing)
 
-                case .confirmNew:
-                    confirmNew
-
                 case .creating, .startingOver:
                     creating
 
                 case .code:
                     if let code = model.code {
-                        RecoveryCodeView(code: code.value,
-                                         onSaved: model.savedCode,
-                                         onSkip: model.skippedCode)
+                        RecoveryCodeView(code: code.value, onSaved: model.savedCode)
                     }
 
                 case .choose:
@@ -107,7 +100,7 @@ struct RecoverySetupView: View {
         .task { await model.begin() }
         .onChange(of: model.step) { _, step in
             guard step == .done else { return }
-            onDone(model.didSkipSavingCode)
+            onDone()
         }
         // The picture-comparison sheet, exactly the one the settings screen puts up and exactly the
         // one that answers an incoming request at the root. It was written to work in both directions
@@ -137,41 +130,12 @@ struct RecoverySetupView: View {
     /// something that cannot be shown again. The rest are questions, and a question may be ignored.
     private var canLeave: Bool {
         switch model.step {
-        case .choose, .entering, .lost, .password, .confirmNew: true
+        case .choose, .entering, .lost, .password: true
         case .preparing, .creating, .startingOver, .code, .done: false
         }
     }
 
     // MARK: - The steps
-
-    /// The question that was not being asked.
-    ///
-    /// Everything else destructive in this app asks first, and this did not: the banner in the room
-    /// list took one tap straight into `resetRecoveryKey()`, so somebody who tapped it to find out
-    /// what it *meant* destroyed the very code it was asking them about. They found out on their next
-    /// phone, from a screen telling them to check their typing.
-    ///
-    /// The cost is stated in the plainest words available — the old code stops working, and there is
-    /// no undo — and the way out is the same "×" as every other question here.
-    private var confirmNew: some View {
-        VStack(spacing: Theme.Spacing.roomy) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.largeTitle)
-                .foregroundStyle(.orange)
-
-            heading(Strings.Recovery.newTitle, Strings.Recovery.newMessage)
-
-            Button {
-                Task { await model.confirmNewCode() }
-            } label: {
-                busy(Strings.Recovery.newConfirm)
-            }
-            .buttonStyle(.glassAction)
-            .controlSize(.large)
-            .frame(maxWidth: .infinity)
-            .disabled(model.isWorking)
-        }
-    }
 
     private func waiting(_ message: LocalizedStringResource) -> some View {
         VStack(spacing: Theme.Spacing.roomy) {
@@ -308,6 +272,25 @@ struct RecoverySetupView: View {
                 .buttonStyle(.glassAction)
                 .controlSize(.large)
                 .frame(maxWidth: .infinity)
+
+                // The door that was not there, and whose absence made this screen a locked room.
+                //
+                // `hasOtherDevices` is the *account's* answer, and the account does not know that the
+                // laptop was sold, that the other client will not open, or that the phone is at the
+                // bottom of a lake. A person who had already said — on the previous screen, out loud,
+                // by pressing "I have neither" — that they had no other device could land here and be
+                // shown a single button reading "confirm from another device", with nothing else on
+                // the screen. The app asked, was answered, and then insisted.
+                Button {
+                    model.noAccessToOtherDevice()
+                } label: {
+                    Text(Strings.Recovery.noAccessToOtherDevice)
+                        .font(.footnote)
+                        .frame(maxWidth: .infinity, minHeight: Theme.Size.minimumTapTarget)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
             }
         } else {
             VStack(spacing: Theme.Spacing.roomy) {

@@ -138,7 +138,23 @@ public final class UserSession {
         // actually has to branch on the answer calls `waitForSetup()` and waits properly.
         recovery.load()
 
+        // The one road from "the sync loop noticed the network" to "the room on screen noticed it
+        // too". `RoomListStore` learns about the network and knows nothing about timelines; the
+        // timelines are stranded and know nothing about the network. This is the only object that
+        // holds both, so it is the only place the two can be introduced.
+        roomList.onConnectivityChange = { [weak self] offline in
+            await self?.connectivityChanged(offline: offline)
+        }
+
         try await roomList.start()
+    }
+
+    /// Passes the news to every room that is open. See `TimelineStore.connectivityChanged`, which is
+    /// what a room does with it: unstick the history that failed to load while the network was gone.
+    private func connectivityChanged(offline: Bool) async {
+        for box in openTimelines.values {
+            await box.value?.connectivityChanged(offline: offline)
+        }
     }
 
     /// Tears the session down locally, without asking the server for permission it has already
@@ -366,6 +382,11 @@ public final class UserSession {
             box.value?.stop()
         }
         openTimelines = [:]
+
+        // Nothing to tell any more, and nobody to tell. The closure holds `self` weakly, so this is
+        // not a leak being cleaned up — it is the store being left with no reason to call into a
+        // session that is on its way out.
+        roomList.onConnectivityChange = nil
 
         await roomList.stop()
     }

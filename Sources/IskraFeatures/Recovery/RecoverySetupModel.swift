@@ -29,17 +29,6 @@ public final class RecoverySetupModel {
         /// Asking the SDK what this device knows. Brief, and never skipped: the answer is not
         /// available the instant a sign-in lands.
         case preparing
-        /// About to throw the current code away and mint a replacement — and asking first.
-        ///
-        /// This step exists because it was missing, and its absence destroyed a real user's recovery
-        /// code. The room-list banner said "your code was never saved"; tapping it went *straight* to
-        /// `resetRecoveryKey()`. So a single tap — the tap of somebody finding out what the banner
-        /// wanted — silently invalidated the code they were already holding, and they found out weeks
-        /// later, on a new phone, from a screen that told them to check their typing.
-        ///
-        /// Minting a code is destructive. It is the only destructive thing in this flow that used to
-        /// happen without a question.
-        case confirmNew
         /// Making the backup and minting the first code. Slow, and honestly so.
         case creating
         /// The code is on screen, for the only time it ever will be.
@@ -86,32 +75,6 @@ public final class RecoverySetupModel {
 
     public var failure: AccountActionFailure?
 
-    /// Set when the user skipped saving the code, so the room list can nag them about it for as long
-    /// as it is true. Read by `RecoveryBanner`; written here because this is the only place a code is
-    /// ever shown, and therefore the only place one can be skipped.
-    public private(set) var didSkipSavingCode = false
-
-    /// Why this flow was opened, which decides where it starts.
-    ///
-    /// The banner is the reason this is a parameter rather than always "wherever the account happens
-    /// to be". Somebody whose code is merely *unsaved* has an account in perfect order — `.on`, with
-    /// a backup, with nothing to fix — so asking where the account stands would route them straight
-    /// to `.done` and the banner they just tapped would do nothing at all. What they need is a new
-    /// code, and the only way to get one is to make one: the old code cannot be shown again, by
-    /// anybody, ever.
-    /// `Identifiable` so that the room list's banner can drive the sheet with `.sheet(item:)`: the
-    /// reason the banner was tapped *is* the presentation state, and there is nothing to keep in step.
-    public enum Entry: Identifiable, Equatable {
-        /// Just signed in: ask the account where it stands and go there.
-        case afterSignIn
-        /// The code was never saved. Replace it — see above for why "show it again" is not on offer.
-        case makeNewCode
-
-        public var id: Self { self }
-    }
-
-    private let entry: Entry
-
     public let session: UserSession
 
     private var recovery: RecoveryStore { session.recovery }
@@ -132,9 +95,8 @@ public final class RecoverySetupModel {
 
     public var isWorking: Bool { recovery.isWorking }
 
-    public init(session: UserSession, entry: Entry = .afterSignIn) {
+    public init(session: UserSession) {
         self.session = session
-        self.entry = entry
     }
 
     /// Where a given state of the account sends the user.
@@ -158,13 +120,6 @@ public final class RecoverySetupModel {
 
     /// Finds out where this account stands, and goes there.
     public func begin() async {
-        // Asked, not done. See `Step.confirmNew` — this used to mint on arrival, which made the
-        // banner a booby trap: tapping it to read it destroyed the code it was asking about.
-        if entry == .makeNewCode {
-            step = .confirmNew
-            return
-        }
-
         // Bounded, because the alternative is a person held in front of a spinner by a server that
         // has stopped answering. Letting them into the app on a timeout is the safe failure: the
         // conversations may be locked, but the banner and the settings screen are both still there,
@@ -207,17 +162,11 @@ public final class RecoverySetupModel {
     }
 
     /// The user says they have written the code down. Taken at their word — there is nothing to check
-    /// it against, and a fake "confirm the code" step would only teach people to copy and paste.
+    /// it against, and a fake "type it back to me" step would only teach people to copy and paste.
+    ///
+    /// There is no longer a way to leave that screen *without* saying so, and the button that says so
+    /// is dead until the claim is ticked. See `RecoveryCodeView`.
     public func savedCode() {
-        didSkipSavingCode = false
-        forget()
-    }
-
-    /// The user has skipped it. Allowed — the design note allows it — and remembered, because a code
-    /// that was never saved is a code that is gone, and they will find that out in six months from a
-    /// screen that cannot help them. The banner is what stands between them and that.
-    public func skippedCode() {
-        didSkipSavingCode = true
         forget()
     }
 
@@ -273,11 +222,6 @@ public final class RecoverySetupModel {
         }
     }
 
-    /// The user has been told what minting a new code costs, and has said yes anyway.
-    public func confirmNewCode() async {
-        await mintNewCode()
-    }
-
     /// Throws the old code away and makes one to replace it.
     ///
     /// The only answer to "I lost my code", and the only answer to "I never saved it" — because both
@@ -306,6 +250,23 @@ public final class RecoverySetupModel {
     public func recoverWithAnotherDevice() async {
         afterConfirming = .mintNewCode
         await verification.start()
+    }
+
+    /// The account has a device that could vouch for this one, and the user cannot get at it.
+    ///
+    /// This is the door that was not there, and its absence was a locked room. `hasOtherDevices` is
+    /// the *account's* answer — a device is "there" if it is cross-signed and not dehydrated — and
+    /// the account cannot know that the laptop was sold, that the other client will not open, or that
+    /// the session belongs to a phone at the bottom of a lake. So a person who had already said, on
+    /// the previous screen, that they had neither a code nor another device could be shown a screen
+    /// whose only button was "confirm from another device", with no way past it. The app asked them a
+    /// question, was told the answer, and then insisted.
+    ///
+    /// Saying so does not throw anything away. It moves to the screen that explains what starting
+    /// over costs, which has its own button and its own plain warning, and that screen is where the
+    /// decision is actually made.
+    public func noAccessToOtherDevice() {
+        hasOtherDevices = false
     }
 
     /// Throws this account's encryption away and starts again with an empty history.
