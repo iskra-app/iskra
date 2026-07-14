@@ -317,6 +317,16 @@ public struct IskraRootView: View {
                          isSidebar: isSidebar,
                          onSignOut: { await signOut(session) },
                          onClearedCache: { restart() })
+                // Fixed rather than content-derived, and that is what keeps the app from
+                // hanging when a settings row is opened. Settings pushes onto this column's
+                // own stack — a `Form` onto a `Form` — and a column whose width is derived
+                // from its content re-measures on that push, which re-lays-out the pushed
+                // `Form`, which changes the width it is deriving from: a layout loop that
+                // pins the main thread. Handing the column an absolute width leaves nothing
+                // to derive. See `Theme.Size.sidebar*`.
+                .navigationSplitViewColumnWidth(min: Theme.Size.sidebarMinimum,
+                                                ideal: Theme.Size.sidebarIdeal,
+                                                max: Theme.Size.sidebarMaximum)
         } detail: {
             // The stack is load-bearing, and its absence fails in a way that looks like
             // nothing at all: a `navigationDestination` declared inside a split view's
