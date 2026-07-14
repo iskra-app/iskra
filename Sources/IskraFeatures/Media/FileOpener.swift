@@ -64,15 +64,42 @@ final class FileOpener {
     /// returns, the `MediaFile` deallocates and the SDK deletes the bytes out from under it.
     /// Preview would open on a file that no longer exists.
     ///
-    /// So the plaintext is written to the temporary directory under the sender's own filename,
-    /// and it stays there. That is a real cost and it is stated plainly: a file somebody sent
-    /// you, in the clear, in a directory the system empties when it feels like it. The
-    /// alternative is a file that cannot be opened at all, and the user asked to open it.
+    /// So there is plaintext on the disk, and something has to own it. Nothing did: the copy went
+    /// straight into the temporary directory under the sender's own filename and stayed there —
+    /// past the preview closing, past sign-out, until the system felt like sweeping the directory,
+    /// which may be months. Open ten documents somebody sent you and ten decrypted copies of them
+    /// are sitting in `/var/folders` under names that describe their contents.
+    ///
+    /// They live in a directory of our own now, and `sweep()` empties it. It cannot be done when
+    /// the preview closes — we are never told, the file belongs to another application by then —
+    /// so it is done on the way *in*: opening anything clears what the last one left. The window
+    /// in which a decrypted file exists on disk is now "until the next thing is opened, or until
+    /// the app is next launched", instead of "indefinitely".
     private func handOff(_ file: MediaFile, named filename: String) throws {
-        let destination = URL.temporaryDirectory.appending(component: filename)
+        Self.sweep()
+
+        // The sender's filename is kept — it is what the other application uses to decide what it
+        // is opening, and a UUID would hand Preview a file it does not recognise — but it is kept
+        // *inside* a directory we own and empty, rather than loose in the system's.
+        let directory = Self.handOffDirectory
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+
+        let destination = directory.appending(component: filename)
         try? FileManager.default.removeItem(at: destination)
         try FileManager.default.copyItem(at: file.url, to: destination)
+
         NSWorkspace.shared.open(destination)
+    }
+
+    /// Everything handed to another application last time. Cleared on the way into this one, and
+    /// again at launch and at sign-out — see `IskraRootView`. Sign-out matters most: a decrypted
+    /// document must not outlive the account it came from.
+    static func sweep() {
+        try? FileManager.default.removeItem(at: handOffDirectory)
+    }
+
+    private static var handOffDirectory: URL {
+        URL.temporaryDirectory.appending(component: "iskra-open")
     }
     #endif
 }

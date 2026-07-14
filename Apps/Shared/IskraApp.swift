@@ -16,6 +16,19 @@ struct IskraApp: App {
         // .info, which is the last level that does not log message bodies.
         SDKLogging.start()
 
+        // The probes, and they are compiled *out* of a release build entirely.
+        //
+        // They were not, and one of them prints decrypted message bodies to standard output —
+        // `--probe-notification`, whose whole job is to show what would land on a lock screen, and
+        // which cannot do that job without showing it. Guarded by nothing but a command-line flag,
+        // that is a released binary in which anybody who can start the app with an argument can
+        // read the user's messages out of the console; and on a device, `print` goes to the unified
+        // log, which — unlike `Logger` — does not redact anything.
+        //
+        // The flag was never the protection. `#if DEBUG` is: the code, the strings and the ability
+        // are not in the shipped app at all. Every command in `CLAUDE.md` builds Debug, so nothing
+        // about how these are run changes.
+        #if DEBUG
         // `Iskra --verify-storage` answers the one question the test suite cannot:
         // whether this signed build actually has the App Group and the Keychain group
         // it claims. See StorageCheck.
@@ -41,6 +54,7 @@ struct IskraApp: App {
         if NotificationProbe.wasRequested {
             NotificationProbe.runAndExit()
         }
+        #endif
     }
 
     #if os(iOS)

@@ -131,6 +131,15 @@ public struct IskraRootView: View {
             await PushPermission.shared.signingOut(session)
 
             await session.signOut()
+
+            // And any document handed to another application on the way. `SessionStore.clear` knows
+            // about the encrypted store and nothing about a PDF copied out of it in the clear so
+            // that Preview could open it — see `FileOpener.handOff`. A decrypted file must not
+            // outlive the account it came from.
+            #if os(macOS)
+            FileOpener.sweep()
+            #endif
+
             AppSettings.forget()
             selectedRoomID = nil
             selectedEventID = nil
@@ -211,6 +220,14 @@ public struct IskraRootView: View {
 
     /// Brings back the signed-in user, if there is one, before showing anything.
     private func restore() async {
+        // Whatever the last run left lying about. A file opened on the Mac is copied out of the
+        // encrypted store in the clear so another application can read it, and the app is never
+        // told when that application is finished — so the sweeping is done at the two moments we
+        // *are* here: launch, and sign-out.
+        #if os(macOS)
+        FileOpener.sweep()
+        #endif
+
         do {
             if let client = try await authentication.restorePreviousSession() {
                 let session = UserSession(client: client, authentication: authentication)
