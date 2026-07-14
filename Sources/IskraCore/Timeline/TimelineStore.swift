@@ -256,7 +256,7 @@ public final class TimelineStore {
         // would then own. See `generation`.
         let generation = self.generation
 
-        if let info = try? await room.roomInfo() {
+        if let info = try? await withTimeout(Self.sdkTimeout, operation: { [room] in try await room.roomInfo() }) {
             guard generation == self.generation else { return }
             adopt(info)
         }
@@ -272,7 +272,13 @@ public final class TimelineStore {
             }
         })
 
-        let timeline = try await room.timeline()
+        // Bounded like every other SDK call the reader waits on. `room.timeline()` reads the event
+        // store to build the timeline, and a store whose cross-process lock is held by another
+        // process — the notification extension, a lingering instance of the app — is a read that
+        // can stall. Unbounded, that stall is the whole of `open()` stuck before the first page,
+        // `hasLoaded` never set, and a spinner with no way out. A timeout is thrown instead, and
+        // `start()` turns it into the "this chat didn't open — try again" screen.
+        let timeline = try await withTimeout(Self.sdkTimeout) { [room] in try await room.timeline() }
 
         // Left while the timeline was being built. The subscription just registered above is not
         // ours to keep — `stop()` has already run and found nothing to cancel — so it is taken
@@ -367,10 +373,32 @@ public final class TimelineStore {
             rows = latestRows
         }
 
+        // A fresh room whose first page could not be fetched at all is a chat that did not open,
+        // not an empty one — and "no messages yet" is the wrong, frightening thing to tell someone
+        // whose conversation is on the far side of a request that stalled or a network that is gone.
+        // So it is escalated to the same failure `start()` already catches, which puts up the
+        // "this chat didn't open — try again" screen instead of a false empty room.
+        //
+        // Guarded so neither of the two legitimately-empty cases is mistaken for it: a reopening is
+        // still holding its old rows, and an actually-empty room comes back with `paginateBackwards`
+        // having reached the start successfully, so `didFailToPaginate` is false.
+        if !isReopening, didFailToPaginate, latestRows.isEmpty {
+            throw TimelineOpenError.firstPageUnavailable
+        }
+
         // Only now. Between the empty reset and the first page there is a moment where the
         // room is genuinely empty and genuinely not loaded, and saying "no messages yet"
         // into that gap would be wrong about a conversation that is one await away.
         hasLoaded = true
+    }
+
+    /// Why an opening was given up on from inside `open()` itself, rather than by an SDK call
+    /// throwing. Thrown so it lands in the same `start()` catch as any other opening failure — and
+    /// so `retryLoading()` can run again from the clean state `stop()` leaves.
+    private enum TimelineOpenError: Error {
+        /// A brand-new room's first page could not be fetched — the store stalled, or the network
+        /// is gone and nothing was cached. See `open()`.
+        case firstPageUnavailable
     }
 
     /// Everything the header and the pinned strip read, taken from the room as it now is.
@@ -511,6 +539,14 @@ public final class TimelineStore {
     /// The same ceiling for a refill, and higher, because a refill is trying to win back
     /// everything the reader had already scrolled through rather than just a first screenful.
     private static let maximumRefillPages = 20
+
+    /// The ceiling on a single SDK call the reader waits on while a room opens — the store read that
+    /// builds the timeline, the room-info read, and each paginate that reaches the network. It is
+    /// the timeline's share of the app-wide invariant that *every* call the user waits on is bounded
+    /// (see `withTimeout`): without it, a store lock held by another process or a server that
+    /// accepts a request and never answers leaves the room on a spinner with no way out. Generous,
+    /// because a slow network is not a failure — finite, because a stalled one must not be forever.
+    private static let sdkTimeout: Duration = .seconds(30)
 
     /// Puts the room down. `start()` picks it up again.
     ///
@@ -1172,7 +1208,13 @@ public final class TimelineStore {
             // and reported to `fillPages` as a page like any other, which is the bug: four
             // failures in a row spent the whole opening budget without fetching a single event,
             // and the loop then walked away from a room it had put nothing in.
-            guard let reachedStart = try? await timeline.paginateBackwards(numEvents: Self.pageSize) else {
+            // Bounded, and the timeout joins the throw above: a server that accepts the request and
+            // then says nothing is exactly the "page that could not be fetched" this already knows
+            // how to survive — `.failed` on the way out, and during an opening `open()` turns an
+            // empty first page into the "try again" screen rather than a spinner without end.
+            guard let reachedStart = try? await withTimeout(Self.sdkTimeout, operation: {
+                try await timeline.paginateBackwards(numEvents: Self.pageSize)
+            }) else {
                 return false
             }
 
