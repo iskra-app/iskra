@@ -59,6 +59,11 @@ public final class StorageStore {
             .reduce(0) { $0 + $1.bytes }
     }
 
+    /// What the index alone weighs — the number on the button that clears only it.
+    public var searchIndexBytes: Int64 {
+        amounts.first { $0.kind == .search }?.bytes ?? 0
+    }
+
     private let client: Client
     private let roomList: RoomListStore
     private let locations: [StorageKind: URL]
@@ -150,6 +155,38 @@ public final class StorageStore {
             if let directory = locations[kind] {
                 try? FileManager.default.removeItem(at: directory)
             }
+        }
+
+        await measure()
+    }
+
+    /// Throws away the search index alone, and leaves the cache where it is.
+    ///
+    /// This is the one thing in the app that can take back the words of a message somebody deleted.
+    /// The SDK drops a message from the index when it sees the redaction — but only if it still
+    /// holds the original event, and for a message deleted long after it was sent, it does not. No
+    /// FFI removes a document by hand: build the store, search it, iterate. So the whole index is
+    /// the smallest thing anyone can delete, and this is the button that deletes it.
+    ///
+    /// **The client is finished afterwards, exactly as in `clearCache`, and the caller must replace
+    /// it.** Not because the SDK says so this time — `clearCaches` is never called — but because
+    /// the store has been pulled out from under a client that has it open. The sync service is
+    /// stopped first, and that is the part that matters: the SDK writes to this index as events
+    /// arrive, and a directory deleted out from under a live indexer is how you get half an index
+    /// written back into the hole it left. Stop the events, delete, hand the app to `restore()`,
+    /// and the new client makes the store again on its way up.
+    ///
+    /// What it costs is a search that is briefly short of history, and no more. The index is not
+    /// downloaded, it is written as the app reads: it fills again as rooms are opened and scrolled.
+    /// Nothing is signed out; no message, photo or key is touched.
+    public func clearSearchIndex() async throws {
+        isClearing = true
+        defer { isClearing = false }
+
+        await roomList.currentSyncService?.stop()
+
+        if let index = locations[.search] {
+            try FileManager.default.removeItem(at: index)
         }
 
         await measure()
