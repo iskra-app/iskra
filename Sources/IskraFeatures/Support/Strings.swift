@@ -830,12 +830,12 @@ public enum Strings {
         public static let accent = LocalizedStringResource("appearance.accent", bundle: bundle)
         public static let accentHelp = LocalizedStringResource("appearance.accentHelp", bundle: bundle)
 
-        /// The switch that lets the accent out of the messages and onto the chrome — see
-        /// `AccentTheme.tintsChromeKey`. `tintChromeMono` is the footer it gets when the accent is
-        /// the mono one and there is no colour to spread.
-        public static let tintChrome = LocalizedStringResource("appearance.tintChrome", bundle: bundle)
-        public static let tintChromeHelp = LocalizedStringResource("appearance.tintChromeHelp", bundle: bundle)
-        public static let tintChromeMono = LocalizedStringResource("appearance.tintChromeMono", bundle: bundle)
+        /// The switch that washes the accent across the whole interface — see
+        /// `AccentTheme.tintsInterfaceKey`. `tintInterfaceMono` is the footer it gets when the accent
+        /// is the mono one and there is no colour to spread.
+        public static let tintInterface = LocalizedStringResource("appearance.tintInterface", bundle: bundle)
+        public static let tintInterfaceHelp = LocalizedStringResource("appearance.tintInterfaceHelp", bundle: bundle)
+        public static let tintInterfaceMono = LocalizedStringResource("appearance.tintInterfaceMono", bundle: bundle)
 
         /// Three lines of a conversation that never happened, so that a colour can be judged as
         /// what it will actually be — the fill behind everything the user ever says — rather than

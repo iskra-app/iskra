@@ -183,6 +183,19 @@ public enum Theme {
         public static let overdraw: CGFloat = 1.3
     }
 
+    public enum Tint {
+        /// How much of the accent is washed across the whole app when "tint the interface" is on:
+        /// a single translucent sheet of the accent laid over everything the app has drawn, so the
+        /// page, the message bubbles and the words all take a breath of the colour at once.
+        ///
+        /// Deliberately faint. This sits *over* the text as well as the background — it has to, or
+        /// it could not reach the system's own grouped-list backgrounds, which are drawn opaque and
+        /// answer to nothing else — so anything heavier would start to grey out the very words it is
+        /// tinting. Eight percent is the most the colour can say here before legibility is the thing
+        /// paying for it.
+        public static let interface: Double = 0.08
+    }
+
     public enum Size {
         public static let avatar: CGFloat = 40
 

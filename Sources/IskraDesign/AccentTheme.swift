@@ -21,21 +21,21 @@ public enum AccentTheme: String, CaseIterable, Identifiable, Sendable {
     /// appearance screen; `@AppStorage` on both ends keeps them in step.
     public static let storageKey = "appearance.accent"
 
-    /// Whether the accent is also spent on the *chrome*: the back chevrons, the sidebar's
-    /// selection, the switches on the settings screen, the unread badges — everything
-    /// `.tint(_:)` reaches and `\.accent` does not.
+    /// Whether the accent is washed across the *whole interface* — every screen's background, the
+    /// words on it, the message bubbles, the chrome — rather than spent only on the content that is
+    /// already the user's.
     ///
     /// It is a second key and not a ninth colour, because it is a second question. The accent
-    /// answers "what colour is this app"; this answers "how loudly", and the two are chosen
-    /// independently — the same green can be a green send button on monochrome chrome or a green
-    /// app throughout, and neither is a different colour.
+    /// answers "what colour is this app"; this answers "how far it spreads", and the two are chosen
+    /// independently — the same green can be a green send button on a plain page or a room bathed in
+    /// green throughout, and neither is a different colour.
     ///
-    /// **Off by default, and that is an opinion, not an oversight.** A colour that is everywhere
-    /// says nothing anywhere: tinted chrome means the back arrow, the row you are standing on and
-    /// the badge counting your unread messages are all painted the same as the message you just
-    /// sent, and none of them is emphasis any more. So the app stays monochrome unless somebody
-    /// asks for this, and spends the accent only where it means something. See `IskraRootView`.
-    public static let tintsChromeKey = "appearance.tintsChrome"
+    /// **Off by default, and that is an opinion, not an oversight.** A colour laid over everything is
+    /// a colour that emphasises nothing: once the page, the words and the bubbles are all the same
+    /// green, the message you just sent no longer stands out as yours. So the app stays plain unless
+    /// somebody asks for this, and spends the accent only where it means something. See the wash in
+    /// `IskraRootView`.
+    public static let tintsInterfaceKey = "appearance.tintsInterface"
 
     public var id: String { rawValue }
 
