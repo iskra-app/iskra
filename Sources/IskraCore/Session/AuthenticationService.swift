@@ -544,6 +544,14 @@ public actor AuthenticationService {
 
         return ClientBuilder()
             .sqliteStore(config: store)
+            // What the server writes in the user's list of signed-in devices. Without it the SDK
+            // sends its own User-Agent, which describes a Rust library, and the account page says
+            // "Unknown device" — which it was right to.
+            //
+            // It is the *only* lever for a session signed in through the browser: `login` takes an
+            // `initialDeviceName` and always passed one, but `urlForOauth` has no such parameter and
+            // the FFI exports no way to rename a device afterwards. See `DeviceDescription`.
+            .userAgent(userAgent: DeviceDescription.userAgent)
             // The one thing that keeps the Keychain telling the truth about this session for
             // longer than an hour. The SDK refreshes tokens by itself and holds the new pair in
             // memory; without a delegate to hand them to, the pair on disk is the one from
