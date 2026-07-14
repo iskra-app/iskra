@@ -58,7 +58,48 @@ enum TimelineMapper {
             previous = message
         }
 
-        return rows
+        return withoutEmptyDays(rows)
+    }
+
+    /// Drops the date headers that have nothing under them.
+    ///
+    /// "Вчера" was appearing over a day on which nobody said anything, and the reason is that the
+    /// SDK and this app do not agree about what a day *contains*. The SDK puts a date divider
+    /// before every event it holds, and it holds a great many events this app deliberately never
+    /// shows: somebody changing their picture, a power level being adjusted, a topic edit, an
+    /// event so exotic the SDK could not parse it either. Every one of those is dropped above —
+    /// correctly, a conversation is not an audit log — and the header that was put up to introduce
+    /// them stayed behind, announcing a day whose entire contents had just been thrown away.
+    ///
+    /// So the last word on a divider belongs to this pass, after the dropping is finished, rather
+    /// than to the moment it arrives, when what follows it is not yet known. A divider survives if
+    /// there is any row under it before the next divider — a message, or a grey line about
+    /// something that happened, which is a real thing to have happened on a day. It does not
+    /// survive being the last row in the list, and that is the same rule and not an exception: a
+    /// header at the very bottom is a promise of messages that are not there.
+    ///
+    /// This also settles two dividers in a row, which is the same fault wearing a different shape
+    /// and arrives at a page boundary while history is being fetched.
+    /// Not private: `DayDividerTests` drives it directly, which is the only way to test it —
+    /// building fake `TimelineItem`s means building SDK types this app is not allowed to invent.
+    static func withoutEmptyDays(_ rows: [TimelineRow]) -> [TimelineRow] {
+        rows.enumerated().filter { index, row in
+            guard case .dayDivider = row else { return true }
+
+            // The very next row, and nothing further. What a day contains is what lies between
+            // its header and the next one, so the row immediately below is the whole question: a
+            // message or a grey line means the day happened, and another header — or the end of
+            // the list — means it did not.
+            //
+            // "Is there any content *anywhere* below" was the first way this was written, and it
+            // is wrong in the exact case that was reported: yesterday's header, today's header,
+            // today's messages. Yesterday can see today's messages from where it stands, and kept
+            // itself on that basis. The tests caught it.
+            guard rows.indices.contains(index + 1) else { return false }
+            if case .dayDivider = rows[index + 1] { return false }
+            return true
+        }
+        .map(\.element)
     }
 
     /// Adds a room event, pooling it into the one above where they say the same kind of thing.
