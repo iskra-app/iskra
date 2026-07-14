@@ -46,6 +46,10 @@ struct RecordingStrip: View {
 
     let onCancel: () -> Void
 
+    /// The strip sits in the row of composer buttons and must be exactly as tall as they are — so
+    /// it scales with the reader's text exactly as they do. See `ScaledSize`.
+    @ScaledSize(Theme.Size.composerControl) private var control
+
     @State private var isPulsing = false
 
     /// Glass under the strip in the composer, an opaque dark fill under the camera — and in both
@@ -145,7 +149,7 @@ struct RecordingStrip: View {
         }
         .foregroundStyle(onCamera ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
         .padding(.horizontal, Theme.Spacing.roomy)
-        .frame(height: Theme.Size.composerControl)
+        .frame(height: control)
         .frame(maxWidth: .infinity)
     }
 }

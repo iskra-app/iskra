@@ -198,6 +198,10 @@ public final class RoomDetailsStore {
     private let room: Room
     private let ownUserID: String
 
+    /// The room telling us it has changed. Kept alive because dropping it unsubscribes — see
+    /// `stop()`, and see `load()` for why this screen needs one at all.
+    private var infoHandle: TaskHandle?
+
     /// Notification rules belong to the account, not to the room — a muted room is a fact
     /// about this user's devices, and the room never hears about it. So this comes from the
     /// `Client`, which is why the store is built by `UserSession`.
@@ -236,6 +240,22 @@ public final class RoomDetailsStore {
             failure = .load
             return
         }
+
+        // And then keep it up to date, which this screen used not to do.
+        //
+        // The room's name and picture had two sources of truth: the header above the conversation
+        // is fed by `TimelineStore`, which subscribes and follows the room as it changes, and this
+        // screen took a single snapshot with `roomInfo()` and held it. So renaming the room from
+        // another device while its info screen was open updated the header behind the screen and
+        // never the screen itself — and the field the user was looking at, which is the field they
+        // would have edited, showed a name the room no longer had.
+        //
+        // The same subscription, and the same `adopt`, so the two cannot drift again.
+        infoHandle = room.subscribeToRoomInfoUpdates(listener: RoomInfoUpdates { [weak self] info in
+            Task { @MainActor [weak self] in
+                self?.adopt(info)
+            }
+        })
 
         if let cached = try? await room.membersNoSync() {
             apply(Self.summaries(from: cached))
@@ -311,6 +331,16 @@ public final class RoomDetailsStore {
             return false
         }
 
+        adopt(info)
+        return true
+    }
+
+    /// What the room says about itself, whether we asked just now or the SDK volunteered it.
+    ///
+    /// One function, called from both, deliberately: the first read and every update afterwards
+    /// must produce the same fields from the same `RoomInfo`, or the screen would change its mind
+    /// about what the room is called the moment somebody else changed something unrelated.
+    private func adopt(_ info: RoomInfo) {
         name = info.displayName ?? info.heroes.first?.displayName ?? String(core: CoreStrings.Room.untitled)
         topic = info.topic
         avatarURL = info.avatarUrl
@@ -319,8 +349,14 @@ public final class RoomDetailsStore {
         isPublic = info.isPublic ?? false
         memberCount = Int(info.joinedMembersCount)
         counterpartID = info.isDm ? info.heroes.first(where: { $0.userId != ownUserID })?.userId : nil
+    }
 
-        return true
+    /// Closing the screen. Kept alive by the handle, and dropping the handle is what unsubscribes —
+    /// so this is not tidiness, it is the difference between a listener that ends with the screen
+    /// and one that runs until the account is signed out.
+    public func stop() {
+        infoHandle?.cancel()
+        infoHandle = nil
     }
 
     /// What the room lets this account do — asked of the room, not inferred from the badge

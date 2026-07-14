@@ -19,12 +19,21 @@ struct Avatar: View {
 
     @Environment(\.mediaLoader) private var loader
 
+    /// The face grows with the name beside it. A 28pt circle next to a line of text that is twice
+    /// its height at the accessibility sizes reads as a bug in the layout, because it is one — see
+    /// `TextScale`, and note the cap: text may take all the room it needs, furniture takes some and
+    /// then stops.
+    @TextScale private var textScale
+
     @State private var image: Image?
+
+    /// What is actually drawn, as opposed to what the caller asked for.
+    private var diameter: CGFloat { size * textScale }
 
     var body: some View {
         Circle()
             .fill(.quaternary)
-            .frame(width: size, height: size)
+            .frame(width: diameter, height: diameter)
             .overlay {
                 if let image {
                     image
@@ -33,7 +42,7 @@ struct Avatar: View {
                         .clipShape(.circle)
                 } else {
                     Text(initials)
-                        .font(.system(size: size * 0.4, weight: .medium))
+                        .font(.system(size: diameter * 0.4, weight: .medium))
                         .foregroundStyle(.secondary)
                 }
             }
@@ -58,8 +67,9 @@ struct Avatar: View {
 
         // Points are not pixels. Asking the server for a 28-pixel picture and drawing it in a
         // 28-*point* circle produces a smeared thumbnail on every device Apple has shipped
-        // this decade, so the request is made at the screen's own scale.
-        let pixels = Int(size * 3)
+        // this decade, so the request is made at the screen's own scale — and at the size the
+        // circle has actually grown to, not the one it was asked for.
+        let pixels = Int(diameter * 3)
 
         guard let data = try? await loader.avatar(url: url, size: pixels),
               let loaded = Image(mediaData: data) else { return }

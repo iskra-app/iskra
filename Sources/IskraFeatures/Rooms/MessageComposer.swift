@@ -125,6 +125,15 @@ struct MessageComposer: View {
     /// wraps.
     @State private var height: CGFloat = Theme.Size.composerControl + 2 * Theme.Spacing.close
 
+    /// The round buttons, and the field's resting height, at whatever size the reader's text has
+    /// grown them to.
+    ///
+    /// These hold SF Symbols, and a symbol scales with the font whether the button does or not. At
+    /// the accessibility sizes the glyph simply grew out of its 44pt circle and was clipped by it —
+    /// a send button with the corners bitten off. See `ScaledSize`, and note the cap: the buttons
+    /// grow enough to hold their own contents, not enough to leave no room for the message.
+    @ScaledSize(Theme.Size.composerControl) private var control
+
     init(draft: Binding<String>,
          context: ComposerContext? = nil,
          onCancelContext: @escaping () -> Void = {},
@@ -218,7 +227,7 @@ struct MessageComposer: View {
                             .focused($isFocused)
                             .padding(.horizontal, Theme.Spacing.roomy)
                             .padding(.vertical, Theme.Spacing.normal)
-                            .frame(minHeight: Theme.Size.composerControl)
+                            .frame(minHeight: control)
                             .navigationGlass(in: .rect(cornerRadius: Theme.Radius.bubble, style: .continuous))
                             .onSubmit(onSend)
                     }
@@ -303,7 +312,7 @@ struct MessageComposer: View {
         .overlay(alignment: .bottomTrailing) {
             if locking.isVisible {
                 RecordLock(gesture: locking)
-                    .frame(width: Theme.Size.composerControl)
+                    .frame(width: control)
                     .padding(.trailing, Theme.Spacing.normal)
                     .offset(y: -(height + Theme.Spacing.close))
                     .transition(.scale(scale: 0.4, anchor: .bottom).combined(with: .opacity))
@@ -439,7 +448,7 @@ struct MessageComposer: View {
         // This shape is the same shape in every state, so it survives everything drawn on top of
         // it — and the hold survives with it.
         Color.clear
-            .frame(width: Theme.Size.composerControl, height: Theme.Size.composerControl)
+            .frame(width: control, height: control)
             .overlay { icon(glyph, isPrimary: voice != nil, tint: .red) }
             .contentShape(.circle)
             .gesture(
@@ -836,7 +845,7 @@ struct MessageComposer: View {
             }
             .foregroundStyle(.primary)
             .padding(.horizontal, Theme.Spacing.roomy)
-            .frame(height: Theme.Size.composerControl)
+            .frame(height: control)
             .navigationGlass(in: .capsule)
             .contentShape(.capsule)
         }
@@ -891,7 +900,7 @@ struct MessageComposer: View {
             // change a view's layout size, so the glyph spins inside a square that never
             // moves — and the glass, applied after the frame, never turns at all.
             .rotationEffect(rotation)
-            .frame(width: Theme.Size.composerControl, height: Theme.Size.composerControl)
+            .frame(width: control, height: control)
 
         if isPrimary {
             glyph.primaryActionGlass(tint: tint ?? accent.color, in: .circle)
