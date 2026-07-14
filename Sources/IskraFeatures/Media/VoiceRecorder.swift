@@ -21,11 +21,37 @@ public final class VoiceRecorder {
     public enum State: Equatable {
         case idle
         case recording
+        /// The microphone stopped without being asked to, and what was said up to that point is
+        /// still worth sending.
+        ///
+        /// Three things do this and the user cannot tell them apart: the five-minute cap, a phone
+        /// call, and the app being sent to the background — in every one of them iOS takes the
+        /// microphone away and `AVAudioRecorder` simply stops. Until this case existed the app did
+        /// not notice: `state` stayed `.recording`, so the composer went on showing a pulsing red
+        /// dot over a frozen clock, and the person went on talking into a microphone that had been
+        /// switched off minutes ago.
+        ///
+        /// A separate case rather than going straight back to `.idle`, because the recording is
+        /// *good* — it is simply finished. Throwing it away because iOS took the microphone would
+        /// lose the user their message; showing a live recording that is not live is a lie. What
+        /// is left is to say so, and let them send it.
+        case stopped
         case denied
         case unavailable
     }
 
     public private(set) var state: State = .idle
+
+    /// How long has actually been recorded — which is not how long ago the recording started.
+    ///
+    /// Taken from `AVAudioRecorder.currentTime`, sampled while the microphone is running, rather
+    /// than from the wall clock. The two agree right up until the recording is interrupted, and
+    /// then they part company completely: a call that lasts three minutes puts three minutes on
+    /// the wall clock and not one second into the file. A voice message that announced itself as
+    /// 3:40 and played twelve seconds of audio is what the wall clock produced.
+    ///
+    /// `currentTime` cannot simply be read at the end, either — a stopped `AVAudioRecorder`
+    /// reports zero — so it is remembered as it goes.
     public private(set) var elapsed: TimeInterval = 0
 
     /// The shape of what has been said so far, 0...1. Drawn live in the composer, so the user can
@@ -37,7 +63,6 @@ public final class VoiceRecorder {
     private var recorder: AVAudioRecorder?
     private var url: URL?
     private var ticker: Task<Void, Never>?
-    private var startedAt: Date?
 
     public init() {}
 
@@ -106,7 +131,6 @@ public final class VoiceRecorder {
 
             self.recorder = recorder
             self.url = url
-            startedAt = .now
             waveform = []
             elapsed = 0
             state = .recording
@@ -130,14 +154,15 @@ public final class VoiceRecorder {
 
         defer { reset() }
 
-        guard state == .recording, let recorder, let startedAt, let url else { return nil }
+        // `.stopped` as well as `.recording`: the microphone may have been taken away by the cap,
+        // by a phone call or by the app going to the background, and what was said before that is
+        // a message the user still means to send.
+        guard state == .recording || state == .stopped, let recorder, let url else { return nil }
 
-        // Measured from the clock, not from `recorder.currentTime`. The cap is enforced by
-        // `record(forDuration:)`, which *stops the recorder* when it is reached — and a stopped
-        // `AVAudioRecorder` reports a `currentTime` of zero. So a voice message that ran the full
-        // five minutes would have come out as a recording of length nothing, and been thrown away
-        // for being too short to be a message.
-        let duration = min(Date.now.timeIntervalSince(startedAt), Self.maximumDuration)
+        // What is *in the file*, not how long ago we started. See `elapsed`: the two are the same
+        // number until something interrupts the recording, and then the wall clock goes on counting
+        // a microphone that is switched off.
+        let duration = min(elapsed, Self.maximumDuration)
         recorder.stop()
 
         guard duration >= Self.minimumDuration else {
@@ -176,27 +201,43 @@ public final class VoiceRecorder {
         ticker = nil
         recorder = nil
         url = nil
-        startedAt = nil
         state = .idle
+
+        // And the microphone is handed back. See `deactivate()` — without it, whatever was playing
+        // before the recording never comes back.
+        deactivate()
     }
 
     private func startSampling() {
         ticker = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: Self.samplingInterval)
-                guard let self, let recorder, let startedAt else { return }
+                guard let self, let recorder else { return }
+
+                // Whether the microphone is still ours — asked *first*, and acted on rather than
+                // merely noticed. It stops without telling anybody: at the five-minute cap, when a
+                // call comes in, when the app is put in the background. This used to be a bare
+                // `return` at the bottom of the loop, and returning is exactly what left the
+                // composer showing a live recording that had ended: a pulsing red dot, a frozen
+                // clock, and a person still talking.
+                guard recorder.isRecording else {
+                    stoppedByItself()
+                    return
+                }
 
                 recorder.updateMeters()
                 waveform.append(Self.level(fromDecibels: recorder.averagePower(forChannel: 0)))
-                elapsed = Date.now.timeIntervalSince(startedAt)
 
-                // The cap is enforced by `record(forDuration:)`, which stops the recorder — so
-                // the only thing left to do here is notice, and let the screen send what there is.
-                if !recorder.isRecording {
-                    return
-                }
+                // What is in the file, not what is on the clock. See `elapsed`.
+                elapsed = min(recorder.currentTime, Self.maximumDuration)
             }
         }
+    }
+
+    /// The microphone was taken away. Say so, and keep what was said.
+    private func stoppedByItself() {
+        guard state == .recording else { return }
+        state = .stopped
     }
 
     /// Decibels to something a bar height can be drawn from.
@@ -253,6 +294,29 @@ public final class VoiceRecorder {
             try session.setActive(true)
         } catch {
             Log.media.error("the audio session refused the microphone: \(String(describing: error), privacy: .public)")
+        }
+        #endif
+    }
+
+    /// Gives the microphone back, and tells whoever was using the speaker that they may have it.
+    ///
+    /// This was missing entirely, and what it cost was somebody else's music. Recording activates
+    /// the session in `playAndRecord` and nothing ever deactivated it — not `finish()`, not
+    /// `cancel()` — so a podcast that was paused to let the user record a voice message stayed
+    /// paused. Not for a moment: **until the app was killed**. Every other app on the phone was
+    /// waiting for a microphone Iskra had stopped using and never let go of.
+    ///
+    /// `notifyOthersOnDeactivation` is the half that actually resumes them. Deactivating without it
+    /// releases the session and tells nobody, and a paused podcast has no way to know it may start
+    /// again.
+    private func deactivate() {
+        #if os(iOS)
+        do {
+            try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        } catch {
+            // Worth a line and not worth a sentence to the user: the recording itself is fine, and
+            // this only decides whether their music comes back on its own.
+            Log.media.error("the audio session would not stand down: \(String(describing: error), privacy: .public)")
         }
         #endif
     }
