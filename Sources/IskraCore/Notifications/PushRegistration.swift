@@ -88,7 +88,7 @@ public struct PushRegistration: Sendable {
                 append: false
             )
         } catch {
-            Log.push.error("the server would not take our push token: \(String(describing: error), privacy: .public)")
+            Log.push.error("the server would not take our push token: \(Log.describe(error), privacy: .public)")
         }
     }
 
@@ -111,7 +111,7 @@ public struct PushRegistration: Sendable {
                 identifiers: PusherIdentifiers(pushkey: pushkey, appId: Self.appID)
             )
         } catch {
-            Log.push.error("the server would not forget our push token: \(String(describing: error), privacy: .public)")
+            Log.push.error("the server would not forget our push token: \(Log.describe(error), privacy: .public)")
         }
     }
 }

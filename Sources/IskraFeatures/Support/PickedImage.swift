@@ -20,7 +20,7 @@ func imageData(from item: PhotosPickerItem) async -> Data? {
         }
         return data
     } catch {
-        Log.media.error("the photo library would not hand over the picture: \(String(describing: error), privacy: .public)")
+        Log.media.error("the photo library would not hand over the picture: \(Log.describe(error), privacy: .public)")
         return nil
     }
 }

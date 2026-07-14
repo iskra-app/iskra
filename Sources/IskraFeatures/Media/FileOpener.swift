@@ -46,7 +46,7 @@ final class FileOpener {
             previewing = file
             #endif
         } catch {
-            Log.media.error("the file would not open: \(String(describing: error), privacy: .public)")
+            Log.media.error("the file would not open: \(Log.describe(error), privacy: .public)")
             failed = true
         }
     }

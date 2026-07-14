@@ -127,7 +127,7 @@ final class AudioPlayback {
             isPlaying = true
             startTicking()
         } catch {
-            Log.media.error("the voice message would not play: \(String(describing: error), privacy: .public)")
+            Log.media.error("the voice message would not play: \(Log.describe(error), privacy: .public)")
             failed = true
         }
     }

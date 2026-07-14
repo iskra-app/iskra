@@ -148,7 +148,7 @@ public final class VerificationStore {
                 }
             })
         } catch {
-            Log.session.error("verification is not available: \(String(describing: error), privacy: .public)")
+            Log.session.error("verification is not available: \(Log.describe(error), privacy: .public)")
         }
     }
 
@@ -171,7 +171,7 @@ public final class VerificationStore {
             step = .waitingForOtherDevice
             try await controller.requestDeviceVerification()
         } catch {
-            Log.session.error("the verification would not start: \(String(describing: error), privacy: .public)")
+            Log.session.error("the verification would not start: \(Log.describe(error), privacy: .public)")
             step = .failed
         }
     }
@@ -198,7 +198,7 @@ public final class VerificationStore {
             step = .negotiating
             try await controller?.acceptVerificationRequest()
         } catch {
-            Log.session.error("the verification would not be accepted: \(String(describing: error), privacy: .public)")
+            Log.session.error("the verification would not be accepted: \(Log.describe(error), privacy: .public)")
             step = .failed
         }
     }
@@ -236,7 +236,7 @@ public final class VerificationStore {
         do {
             try await controller?.approveVerification()
         } catch {
-            Log.session.error("the verification would not complete: \(String(describing: error), privacy: .public)")
+            Log.session.error("the verification would not complete: \(Log.describe(error), privacy: .public)")
             step = .failed
         }
     }
@@ -326,7 +326,7 @@ public final class VerificationStore {
             do {
                 try await controller?.startSasVerification()
             } catch {
-                Log.session.error("the comparison would not start: \(String(describing: error), privacy: .public)")
+                Log.session.error("the comparison would not start: \(Log.describe(error), privacy: .public)")
                 step = .failed
             }
 

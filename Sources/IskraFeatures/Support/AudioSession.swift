@@ -103,7 +103,7 @@ enum AudioSession {
             }
             try session.setActive(true)
         } catch {
-            Log.media.error("the audio session refused \(String(describing: use), privacy: .public): \(String(describing: error), privacy: .public)")
+            Log.media.error("the audio session refused \(String(describing: use), privacy: .public): \(Log.describe(error), privacy: .public)")
         }
         #endif
     }
@@ -118,7 +118,7 @@ enum AudioSession {
         } catch {
             // Worth a line and not worth a sentence to the user: the recording itself is fine, and
             // this only decides whether their music comes back on its own.
-            Log.media.error("the audio session would not stand down: \(String(describing: error), privacy: .public)")
+            Log.media.error("the audio session would not stand down: \(Log.describe(error), privacy: .public)")
         }
         #endif
     }
