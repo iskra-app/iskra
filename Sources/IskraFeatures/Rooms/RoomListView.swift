@@ -475,8 +475,7 @@ private struct InviteRow: View {
 
                 HStack(spacing: Theme.Spacing.close) {
                     Button(String(app: Strings.RoomList.Invite.accept), action: onAccept)
-                        .buttonStyle(.borderedProminent)
-                        .tint(accent.color)
+                        .buttonStyle(.primaryAction)
 
                     Button(String(app: Strings.RoomList.Invite.decline), action: onDecline)
                         .buttonStyle(.bordered)
