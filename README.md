@@ -153,6 +153,28 @@ xcrun simctl launch --console booted moscow.swag.iskra --verify-storage
 
 ## Not built yet
 
-Creating a chat or a room (the `+` in the room list is the shape of it and nothing
-more), voice messages, push notifications and the notification service extension, and
-device verification.
+Almost everything this section used to list has been built, and it went on listing it —
+which is the failure mode a "not built yet" section has. It said creating a room was "the
+shape of it and nothing more", that there were no voice messages, no notification
+extension, and no device verification. All four exist. `ROADMAP.md` is the file that is
+kept honest, in the commit that finishes each thing; this one had simply fallen out of the
+ritual.
+
+What is actually left:
+
+- **A push gateway.** The homeserver does not talk to APNs — it talks to a gateway, which
+  holds the app's APNs key and does. The public one at matrix.org only accepts app ids
+  registered with them, so `moscow.swag.iskra` needs a [Sygnal](https://github.com/matrix-org/sygnal)
+  of its own. Everything on this side of it is written: the permission is asked for, the
+  device token is caught, and `Client.setPusher` is called the moment there is a URL to
+  give it. See `docs/PUSH-GATEWAY.md`.
+
+- **Answering a verification request.** Iskra can ask to be verified — seven emoji, compared
+  against a device that is already trusted — and cannot yet answer somebody else who asks. So
+  a new Iskra device is verified from Element, or from the web client, or with the recovery
+  key; two Iskra devices cannot yet verify each other.
+
+- **A list of your other sessions.** Not an omission: `Client.devices()` does not exist in the
+  FFI, and the internal HTTP client that could reach the endpoint carries no access token.
+  `Iskra --probe-devices` demonstrates it against a real homeserver, and `ROADMAP.md` stage 6
+  records the answer.
