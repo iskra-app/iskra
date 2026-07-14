@@ -316,6 +316,20 @@ public actor AuthenticationService {
     /// going to answer does not get to keep the user signed in while it thinks about it.
     private static let logoutTimeout: Duration = .seconds(10)
 
+    /// Forgets the session without asking the server to.
+    ///
+    /// For the sign-out nobody here performed: the server has stopped accepting this session —
+    /// somebody ended it from another device, or the account was deactivated — and there is
+    /// nothing left to log out *of*. Asking anyway would send a dead token to a server that has
+    /// already said what it thinks of it, and then wait ten seconds to be told so again.
+    ///
+    /// Everything local still goes, and that is the part that matters: the keys, the tokens, and
+    /// the encrypted store. A session the server has revoked must not leave the room keys sitting
+    /// on the disk of a device that can no longer reach the account they belong to.
+    public func forgetSession() {
+        try? sessionStore.clear(environment: environment)
+    }
+
     // MARK: - Private
 
     private func persist(client: Client, sessionID: String) throws -> Client {
@@ -360,6 +374,22 @@ public actor AuthenticationService {
             // sign-in, and a refresh token is single-use — so the *next cold start* presents a
             // dead token and the user is silently signed out. See `SessionDelegate`.
             .setSessionDelegate(sessionDelegate: sessionDelegate)
+            // Back the room keys up from the start, and sign this device into the account's own
+            // web of trust from the start. Both default to *off* in the SDK, and both were off.
+            //
+            // What that meant is worth saying in full, because nothing on any screen would have
+            // said it: a person installs Iskra, talks to people for a year, and loses their phone.
+            // The messages are on the server. The keys that open them were only ever on the phone.
+            // There is no backup, because a backup is something you get by opening the encryption
+            // screen and pressing a button nobody told you about — and the history is gone, all of
+            // it, permanently.
+            //
+            // The recovery *key* stays manual, and should: it is the one secret only the user can
+            // keep, and minting it behind their back would be a key nobody has written down. This
+            // is the other half — the part that has to already be true by the time they think to
+            // ask for one.
+            .autoEnableBackups(autoEnableBackups: true)
+            .autoEnableCrossSigning(autoEnableCrossSigning: true)
             // The search index is a second copy of every message we can read, so it
             // gets the same treatment rather than being left in the clear.
             .withSearchIndexStore(path: searchURL.path(percentEncoded: false),

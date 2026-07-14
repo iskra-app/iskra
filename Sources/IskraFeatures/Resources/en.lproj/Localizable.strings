@@ -450,3 +450,9 @@
 "appearance.previewAnswer" = "This one. What do you think?";
 "appearance.previewReply" = "Looks great";
 "appearance.previewLabel" = "How your messages will look";
+
+/* The session was ended somewhere else — from another device, or because the account is gone.
+   Somebody dropped back onto the sign-in screen with no explanation assumes the app lost their
+   account, so this names the cause rather than merely stating the fact. */
+"session.ended.title" = "You are no longer signed in";
+"session.ended.message" = "Your server has stopped accepting this session. You most likely ended it from another device. Sign in again — none of your conversations have gone anywhere.";
