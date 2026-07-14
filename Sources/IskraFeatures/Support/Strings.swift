@@ -30,6 +30,11 @@ public enum Strings {
 
         public static let readyTitle = LocalizedStringResource("signIn.readyTitle", bundle: bundle)
         public static let readyHelp = LocalizedStringResource("signIn.readyHelp", bundle: bundle)
+
+        /// Shown only where the server says it can make accounts — OIDC advertises `prompt=create`,
+        /// and a server that does not cannot register anybody through this app at all. An offer we
+        /// could not keep would be worse than no offer.
+        public static let createAccount = LocalizedStringResource("signIn.createAccount", bundle: bundle)
         public static let signIn = LocalizedStringResource("signIn.signIn", bundle: bundle)
         public static let or = LocalizedStringResource("signIn.or", bundle: bundle)
         public static let username = LocalizedStringResource("signIn.username", bundle: bundle)
@@ -46,6 +51,11 @@ public enum Strings {
             public static let ssoIncomplete = LocalizedStringResource("signIn.problem.ssoIncomplete", bundle: bundle)
             public static let badCredentials = LocalizedStringResource("signIn.problem.badCredentials", bundle: bundle)
         }
+    }
+
+    /// The state of the connection, said out loud. See `OfflineBanner`.
+    public enum Connection {
+        public static let offline = LocalizedStringResource("connection.offline", bundle: bundle)
     }
 
     public enum RoomList {
@@ -120,6 +130,19 @@ public enum Strings {
         /// The round button in the corner that takes you to the bottom of a room you have read a
         /// long way up. Read aloud only — the arrow in it is the whole of what it says on screen.
         public static let scrollToBottom = LocalizedStringResource("room.scrollToBottom", bundle: bundle)
+
+        /// The way into a conversation that is too short to scroll and yet has more behind it.
+        ///
+        /// Older messages are asked for by scrolling to the top, and a room showing two messages
+        /// cannot be scrolled at all — so when the opening fetch comes up short, this is the only
+        /// thing left that can ask. See `TimelineStore.needsMoreHistory`.
+        public static let loadEarlier = LocalizedStringResource("room.loadEarlier", bundle: bundle)
+
+        /// What stands in `loadEarlier`'s place when the older messages could not be fetched — see
+        /// `TimelineStore.historyIsStranded`. It has to explain rather than offer: the button next
+        /// to it would fail, and a reader who presses a button twice and sees nothing concludes the
+        /// app has lost the conversation.
+        public static let earlierUnavailable = LocalizedStringResource("room.earlierUnavailable", bundle: bundle)
 
         /// Somebody is writing. In a one-to-one chat their name is already the title of the screen,
         /// so this does not repeat it.
@@ -510,6 +533,13 @@ public enum Strings {
     public enum Session {
         public static let endedTitle = LocalizedStringResource("session.ended.title", bundle: bundle)
         public static let endedMessage = LocalizedStringResource("session.ended.message", bundle: bundle)
+
+        /// The launch that could not reach the server. The opposite of the two above, and the
+        /// distinction is the whole point: nobody has been signed out, so this must not mention
+        /// signing in. See `IskraRootView.Phase.offline`.
+        public static let offlineTitle = LocalizedStringResource("session.offlineTitle", bundle: bundle)
+        public static let offlineMessage = LocalizedStringResource("session.offlineMessage", bundle: bundle)
+        public static let tryAgain = LocalizedStringResource("session.tryAgain", bundle: bundle)
     }
 
     public enum Account {
@@ -525,6 +555,61 @@ public enum Strings {
         public static let namePlaceholder = LocalizedStringResource("account.namePlaceholder", bundle: bundle)
         public static let changePicture = LocalizedStringResource("account.changePicture", bundle: bundle)
         public static let removePicture = LocalizedStringResource("account.removePicture", bundle: bundle)
+    }
+
+    /// Getting your messages back: the screen between signing in and the conversations, and the
+    /// strip in the chat list that will not let you forget about it.
+    ///
+    /// The whole vocabulary of this flow is one word — a *recovery code* — and it behaves like the
+    /// backup code from an authenticator app, which is a thing people already understand. Nothing
+    /// here says "verification", "cross-signing" or "secret storage", and nothing here should ever
+    /// be made to: the person who has just signed in on a new phone does not want to learn what a
+    /// megolm session is, they want to read yesterday's messages.
+    public enum Recovery {
+        public static let preparing = LocalizedStringResource("recovery.preparing", bundle: bundle)
+
+        public static let creatingTitle = LocalizedStringResource("recovery.creating.title", bundle: bundle)
+        public static let creatingMessage = LocalizedStringResource("recovery.creating.message", bundle: bundle)
+
+        /// Offered under the freshly-minted code, because the design note allows it — and because a
+        /// modal with no way out is a modal people learn to dismiss without reading. The banner is
+        /// what makes skipping survivable.
+        public static let skip = LocalizedStringResource("recovery.skip", bundle: bundle)
+
+        /// The two ways in, and they are deliberately of equal weight. Ranking them — making the
+        /// code "the real way" and the picture-check "the fallback" — is exactly what this flow was
+        /// written to avoid, so neither of these gets the prominent button.
+        public static let chooseTitle = LocalizedStringResource("recovery.choose.title", bundle: bundle)
+        public static let chooseMessage = LocalizedStringResource("recovery.choose.message", bundle: bundle)
+        public static let haveCode = LocalizedStringResource("recovery.choose.haveCode", bundle: bundle)
+        public static let otherDevice = LocalizedStringResource("recovery.choose.otherDevice", bundle: bundle)
+        public static let neither = LocalizedStringResource("recovery.choose.neither", bundle: bundle)
+
+        public static let enterTitle = LocalizedStringResource("recovery.enter.title", bundle: bundle)
+        public static let enterMessage = LocalizedStringResource("recovery.enter.message", bundle: bundle)
+        public static let unlock = LocalizedStringResource("recovery.enter.unlock", bundle: bundle)
+        public static let lostCode = LocalizedStringResource("recovery.enter.lost", bundle: bundle)
+
+        public static let lostTitle = LocalizedStringResource("recovery.lost.title", bundle: bundle)
+        public static let lostHasDevices = LocalizedStringResource("recovery.lost.hasDevices", bundle: bundle)
+
+        public static let aloneTitle = LocalizedStringResource("recovery.lost.alone.title", bundle: bundle)
+        public static let aloneMessage = LocalizedStringResource("recovery.lost.alone.message", bundle: bundle)
+
+        /// The sentence that keeps two different things apart, and it earns its place. Resetting an
+        /// account password and getting the keys to old messages back are not the same act, and a
+        /// person who believes they are will reset their password, find the messages still gone, and
+        /// conclude the app is broken.
+        public static let notPassword = LocalizedStringResource("recovery.lost.alone.notPassword", bundle: bundle)
+        public static let startOver = LocalizedStringResource("recovery.lost.alone.start", bundle: bundle)
+
+        public static let passwordTitle = LocalizedStringResource("recovery.password.title", bundle: bundle)
+        public static let passwordMessage = LocalizedStringResource("recovery.password.message", bundle: bundle)
+        public static let passwordPlaceholder = LocalizedStringResource("recovery.password.placeholder", bundle: bundle)
+        public static let passwordConfirm = LocalizedStringResource("recovery.password.confirm", bundle: bundle)
+
+        public static let bannerLocked = LocalizedStringResource("recovery.banner.locked", bundle: bundle)
+        public static let bannerUnsaved = LocalizedStringResource("recovery.banner.unsaved", bundle: bundle)
     }
 
     /// The state of this account's encryption, in words with no cryptography in them.
@@ -582,6 +667,15 @@ public enum Strings {
         /// reads as a bug rather than as a promise. It goes when stage 7 lands.
         public static let notifications = LocalizedStringResource("settings.notifications", bundle: bundle)
         public static let encryption = LocalizedStringResource("settings.encryption", bundle: bundle)
+
+        /// The row that leads out of the app entirely, to the server's own page — because there is
+        /// no native list of devices to lead to instead. The FFI does not export one, and on a
+        /// server running the authentication service the endpoint that would delete a device is
+        /// gone rather than merely guarded. A link to the page that *can* do it is the honest
+        /// answer; a screen that listed nothing would be a dishonest one.
+        public static let devices = LocalizedStringResource("settings.devices", bundle: bundle)
+        public static let devicesHelp = LocalizedStringResource("settings.devicesHelp", bundle: bundle)
+
         public static let appearance = LocalizedStringResource("settings.appearance", bundle: bundle)
         /// Where the emoji a double tap sends is chosen — see `QuickReaction`.
         public static let reactions = LocalizedStringResource("settings.reactions", bundle: bundle)

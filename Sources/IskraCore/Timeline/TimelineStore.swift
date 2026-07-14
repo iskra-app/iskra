@@ -30,6 +30,19 @@ public final class TimelineStore {
     /// of the two the user can do anything about.
     public private(set) var didFailToLoad = false
 
+    /// The last page of history we asked for did not arrive.
+    ///
+    /// Not the same fact as `canLoadMore`, and the difference is what the reader sees. `canLoadMore`
+    /// going false means the conversation has no more history — we paginated back to the day the room
+    /// was made. This means there *is* more and we could not get it, which offline is the ordinary
+    /// case: the event cache answers as far back as it goes, and then the next page needs the server.
+    ///
+    /// Both used to look identical from outside, because `page()` threw the error away. What the
+    /// reader got was the "Show earlier messages" button — over a conversation whose earlier messages
+    /// could not be shown, so pressing it did nothing but fail again, silently. A button that cannot
+    /// work is worse than no button: it says the app could do this if only you pressed harder.
+    public private(set) var didFailToPaginate = false
+
     /// Something the user asked the room to do, and it did not happen.
     ///
     /// An `ActionFailure`, like every other store's — and it was the one that was not. It used to be
@@ -113,7 +126,10 @@ public final class TimelineStore {
     /// The page of history currently being fetched, if there is one. The re-entrancy guard for
     /// `page(showingSpinner:)` — and a task rather than a flag, so that a caller who arrives
     /// mid-flight can *wait* for the page instead of being turned away without one.
-    private var pageInFlight: Task<Void, Never>?
+    ///
+    /// It answers whether the pagination itself succeeded, which is not the same question as
+    /// whether there is more history. See `PageOutcome`.
+    private var pageInFlight: Task<Bool, Never>?
 
     /// True while that fetch is running, and the reason the screen does not flicker: see
     /// `rebuildRows()`.
@@ -170,6 +186,7 @@ public final class TimelineStore {
         guard timeline == nil else { return }
 
         didFailToLoad = false
+        didFailToPaginate = false
 
         let generation = self.generation
         let task = Task { @MainActor [weak self] in
@@ -403,12 +420,54 @@ public final class TimelineStore {
               canLoadMore,
               fetched < maximumPages,
               waited < maximumPages {
-            if await page(showingSpinner: !isRefilling) {
+            switch await page(showingSpinner: !isRefilling) {
+            case .fetched:
                 fetched += 1
-            } else {
+            case .waited:
                 waited += 1
+            case .failed:
+                // Asking again immediately would only fail again, and four times over it would
+                // fail quietly: the loop would end having spent its budget, and the room would
+                // settle on however little it had — which is the room that opens with two
+                // messages in it. So it stops here and leaves the shortfall *visible*, for
+                // `needsMoreHistory` to offer the reader a way out of.
+                return
             }
         }
+    }
+
+    /// There is more of this conversation, and nothing on the screen can ask for it.
+    ///
+    /// History is fetched by scrolling to the top — and a room holding two messages cannot be
+    /// scrolled. Its content is shorter than the window it sits in, so there is no gesture to
+    /// make and no change of geometry for `RoomView` to notice one by. The opening fetch is what
+    /// is supposed to prevent that, and there are two ways it does not: a page can *fail*, and
+    /// the budget of `maximumOpeningPages` can simply run out in a room whose recent history is
+    /// mostly joins and renames. Both end in the same place — a couple of messages on screen,
+    /// the rest of the conversation behind them, and nothing left that will ever ask for it.
+    ///
+    /// So the room says so, and the screen puts a button where the older messages ought to be.
+    /// Same rule as the first page: the fetch is an explicit call you can see, never a side
+    /// effect of drawing something.
+    /// `didFailToPaginate` excluded, because the button is an offer to go and fetch the rest — and
+    /// when the last attempt failed, that offer cannot be kept. The room says what is true instead;
+    /// see `RoomView.loadEarlier`.
+    public var needsMoreHistory: Bool {
+        hasLoaded && canLoadMore && !isPaginating && !didFailToPaginate && rows.count < Self.screenful
+    }
+
+    /// There is more of this conversation, and we could not reach it. The reader is looking at
+    /// everything that was on the device, which offline is the ordinary end of the road: the event
+    /// cache goes back as far as it goes, and the page beyond it needs the server.
+    public var historyIsStranded: Bool {
+        hasLoaded && canLoadMore && !isPaginating && didFailToPaginate
+    }
+
+    /// The button's call. It asks for a *screenful*, not a page: one press that bought two more
+    /// events would leave the reader at the same dead end one page further along.
+    public func loadMoreHistory() async {
+        await fillPages(untilAtLeast: rows.count + Self.screenful,
+                        maximumPages: Self.maximumOpeningPages)
     }
 
     /// Roughly what fills a phone screen. Not exact, and does not need to be: it is the
@@ -487,6 +546,9 @@ public final class TimelineStore {
         // an empty reset and repopulates from scratch, and leaving the old ones here would have
         // the next `apply` computing diffs against a timeline that no longer exists.
         items = []
+
+        // And what we had asked about them. See `askedForReplyDetails`.
+        askedForReplyDetails.removeAll()
 
         isPaginating = false
         isRefilling = false
@@ -1036,15 +1098,18 @@ public final class TimelineStore {
     /// not fetching one, and `fillPages` has to be able to tell the difference — see the two
     /// counters there.
     @discardableResult
-    private func page(showingSpinner: Bool) async -> Bool {
+    private func page(showingSpinner: Bool) async -> PageOutcome {
         // Somebody else's page is already on its way. Wait for it and let the caller re-examine
         // the world — `fillPages` will look again and take another turn if it still needs one.
         if let inFlight = pageInFlight {
             await inFlight.value
-            return false
+            return .waited
         }
 
-        guard let timeline, canLoadMore else { return false }
+        // No timeline is not "no more history" — it is a room that is not open. Saying `waited`
+        // here would have `fillPages` spin its whole budget against a room that cannot answer.
+        guard let timeline else { return .failed }
+        guard canLoadMore else { return .waited }
 
         if showingSpinner { isPaginating = true }
 
@@ -1055,23 +1120,48 @@ public final class TimelineStore {
         // that had been read to its beginning came back claiming there was more.
         let generation = self.generation
 
-        let task = Task { @MainActor [weak self] in
+        let task = Task { @MainActor [weak self] () -> Bool in
             // `paginateBackwards` returns true once it has hit the start of the room.
-            let reachedStart = try? await timeline.paginateBackwards(numEvents: Self.pageSize)
+            //
+            // And it *throws* when the page could not be fetched at all — a server that is not
+            // answering, a store that could not be read. That used to be swallowed by a `try?`
+            // and reported to `fillPages` as a page like any other, which is the bug: four
+            // failures in a row spent the whole opening budget without fetching a single event,
+            // and the loop then walked away from a room it had put nothing in.
+            guard let reachedStart = try? await timeline.paginateBackwards(numEvents: Self.pageSize) else {
+                return false
+            }
 
-            guard let self, generation == self.generation, let reachedStart else { return }
+            guard let self, generation == self.generation else { return true }
             self.canLoadMore = !reachedStart
+            return true
         }
         pageInFlight = task
 
-        await task.value
+        let didFetch = await task.value
 
-        guard generation == self.generation else { return true }
+        guard generation == self.generation else { return .fetched }
 
         pageInFlight = nil
         isPaginating = false
 
-        return true
+        // Remembered rather than merely returned. `fillPages` acts on this and then forgets it, but
+        // the *screen* has to go on knowing: it is the difference between offering a button that
+        // fetches the rest of the conversation and explaining that the rest of it is on the other
+        // side of a network that is not there. See `didFailToPaginate`.
+        didFailToPaginate = !didFetch
+
+        return didFetch ? .fetched : .failed
+    }
+
+    /// What one turn round `fillPages` actually achieved — and the reason it is three answers
+    /// rather than a `Bool`. A page that was *not fetched* is either somebody else's page we
+    /// waited on, which costs nothing and can be tried again in a moment, or a page that failed,
+    /// which will go on failing and must not be paid for out of the same budget.
+    private enum PageOutcome {
+        case fetched
+        case waited
+        case failed
     }
 
     /// How many *events* a page of history is. Not messages: a page can come back as twenty-five
@@ -1184,10 +1274,54 @@ public final class TimelineStore {
     private func rebuildRows() {
         latestRows = TimelineMapper.rows(from: items, ownUserID: ownUserID, unsent: unsentReactions)
 
+        // A reply whose original the SDK is holding nothing for is not a lost message — it is a
+        // message nobody has asked for. Ask.
+        fetchReplyDetails()
+
         // Half a conversation is not an improvement on the whole one the reader is looking at.
         if isRefilling, latestRows.count < rows.count { return }
 
         rows = latestRows
+    }
+
+    /// The replies we have already asked the SDK to finish, so that a rebuild does not ask again.
+    ///
+    /// Every rebuild would otherwise re-issue the same request: `rebuildRows()` runs on every diff,
+    /// the details take a network round trip to arrive, and in between them the reply still reads
+    /// as unresolved. A busy room would ask for the same original a dozen times.
+    ///
+    /// Emptied by `stop()`, with `items`. The next opening is a fresh timeline and its items are
+    /// fresh SDK objects; what we asked the last one for tells us nothing about them.
+    private var askedForReplyDetails: Set<String> = []
+
+    /// Goes and gets the messages the replies on screen are answering.
+    ///
+    /// This is the whole of why a reply to anything older than the current screenful read
+    /// "Message unavailable" — including, maddeningly, after the original had been paginated back
+    /// in and was sitting in plain view a few rows up. The SDK resolves an `inReplyTo` only when
+    /// asked to (`fetchDetailsForEvent`), it says so by answering `.unavailable` rather than by
+    /// failing, and this app had simply never asked. Nothing was broken; nobody was fetching.
+    ///
+    /// The answer arrives as an ordinary diff — the SDK updates the item in place and the timeline
+    /// listener brings it back through `apply` — so there is nothing to write here and nothing to
+    /// wait for. Which is also why the quote fixes itself on screen rather than only on reopening.
+    private func fetchReplyDetails() {
+        guard let timeline else { return }
+
+        let missing = TimelineMapper.repliesMissingTheirOriginal(in: items)
+            .filter { !askedForReplyDetails.contains($0) }
+
+        guard !missing.isEmpty else { return }
+        askedForReplyDetails.formUnion(missing)
+
+        Task {
+            for eventID in missing {
+                // A reply nobody can resolve — the original was redacted, or is on a server that
+                // will not hand it over — is not an error worth reporting. The quote already says
+                // what it can, and it is the true thing to say.
+                try? await timeline.fetchDetailsForEvent(eventId: eventID)
+            }
+        }
     }
 
     /// Fetches the conversation again after the SDK has thrown it away.

@@ -185,6 +185,18 @@
 
 "signIn.problem.unsupportedMethod" = "That service uses a way of signing in that Iskra doesn’t support yet.";
 
+/* The app started, could not reach the server, and nobody has been signed out. Must not say
+   anything about signing in: the account is fine and the messages are on the device. */
+"session.offlineTitle" = "No connection";
+
+"session.offlineMessage" = "Your conversations are here, on this device. We just can’t reach the server right now — check your network.";
+
+"session.tryAgain" = "Try again";
+
+/* The strip at the top of the screen while the app cannot reach the server. Short: it sits above
+   the conversations and must not push them off the screen. */
+"connection.offline" = "No network";
+
 "signIn.readyHelp" = "We’ll open your browser so you can sign in the usual way.";
 
 "signIn.readyTitle" = "You’re all set";
@@ -418,30 +430,30 @@
 "encryption.title" = "Encryption";
 
 "encryption.on" = "Your messages are protected";
-"encryption.onHelp" = "The keys to your messages are kept on the server, encrypted. With your recovery key you can read everything again on a new device.";
+"encryption.onHelp" = "Your conversations are kept on the server in a backup, encrypted. With your recovery code you can read them on any new device.";
 
 "encryption.off" = "Your messages aren’t protected";
-"encryption.offHelp" = "If you lose this device, nobody will be able to read your old messages — including you. Protect them, and we’ll give you the key that brings them back.";
+"encryption.offHelp" = "If you lose this device, nobody will be able to read your old messages — including you. Protect them, and we’ll give you the code that brings them back.";
 "encryption.protect" = "Protect my messages";
 
-"encryption.keyNeeded" = "Your recovery key is needed";
-"encryption.keyNeededHelp" = "Your old messages are encrypted, and this device doesn’t know what opens them. Enter the key you saved when you turned protection on.";
-"encryption.keyPlaceholder" = "Recovery key";
+"encryption.keyNeeded" = "Your recovery code is needed";
+"encryption.keyNeededHelp" = "Your old messages are encrypted, and this device can’t open them yet. Enter the code you saved when you turned the backup on.";
+"encryption.keyPlaceholder" = "Recovery code";
 "encryption.restore" = "Bring my messages back";
 
-"encryption.newKey" = "Create a new key";
-"encryption.newKeyHelp" = "The old key will stop working. Worth doing if it ended up somewhere it shouldn’t have.";
+"encryption.newKey" = "Create a new code";
+"encryption.newKeyHelp" = "The old code will stop working. Worth doing if it ended up somewhere it shouldn’t have.";
 
-"encryption.saveKey" = "Save your key";
+"encryption.saveKey" = "Save your code";
 "encryption.saveKeyHelp" = "We show it once and never again. Write it down or put it in a password manager: without it, your old messages don’t come back.";
-"encryption.copyKey" = "Copy the key";
+"encryption.copyKey" = "Copy the code";
 "encryption.keyCopied" = "Copied";
-"encryption.saved" = "I’ve saved the key";
+"encryption.saved" = "I’ve saved the code";
 
 "encryption.thisDevice" = "This device";
 "encryption.deviceVerified" = "Verified";
-"encryption.deviceUnverified" = "Not verified";
-"encryption.otherDevices" = "Iskra can’t show your other devices yet. To end a session on another device, go to your server’s website.";
+"encryption.deviceUnverified" = "New device";
+"encryption.otherDevices" = "Your other devices are under “My devices”.";
 
 /* The pill at the foot of a room when a message arrives while you are reading further up. */
 "room.jumpToNewest" = "New messages";
@@ -457,6 +469,11 @@
 "room.typingBy" = "%@ is typing…";
 
 "room.scrollToBottom" = "Go to the latest message";
+"room.loadEarlier" = "Show what came before";
+
+/* Stands where the "show earlier" button would be, when the older messages could not be fetched —
+   offline, this is where the cached history runs out. Explains; does not promise. */
+"room.earlierUnavailable" = "We’ll show what came before once you’re back online";
 "appearance.previewAsk" = "Which colour did you pick?";
 "appearance.previewAnswer" = "This one. What do you think?";
 "appearance.previewReply" = "Looks great";
@@ -483,7 +500,7 @@
 "verification.title" = "Verification";
 "verification.why" = "Until this device is verified, your account has no way to know it is really you — and your older conversations will not come through to it. You can verify it from a phone or computer where you are already signed in.";
 "verification.waiting.title" = "Look at your other device";
-"verification.waiting.message" = "Open Iskra where you are already signed in and agree to verify this device. If you have no other device, your recovery key is the way back into your older conversations.";
+"verification.waiting.message" = "Open Iskra where you are already signed in and agree to verify this device. If you have no other device, your recovery code is the way back into your older conversations.";
 "verification.asked.message" = "This device has just signed in to your account and is asking you to verify it. If that was you, agree — and then compare the pictures. If it wasn't, refuse: somebody else knows your password.";
 "verification.unnamedDevice" = "An unnamed device";
 "verification.mine" = "It's me";
@@ -502,3 +519,65 @@
 "verification.failed.title" = "That didn't work";
 "verification.failed.message" = "The verification did not finish. Try again.";
 "verification.close" = "Close";
+
+/* --- Getting your messages back ----------------------------------------------
+   The screen between signing in and the conversations, and the strip that reminds
+   you about it. The words are chosen so that nobody ever meets "verification",
+   "cross-signing" or "secret storage". There is exactly one thing — a recovery
+   code — and it behaves like a backup code from an authenticator app. */
+
+/* While the SDK works out what this device knows. Seconds, but saying nothing is not an option. */
+"recovery.preparing" = "One moment, looking through your messages";
+
+/* Flow 1. The backup turns itself on, without asking, and the wait is a real one:
+   the whole history goes up to the server. Promising "instant" would be a lie. */
+"recovery.creating.title" = "Setting up your backup";
+"recovery.creating.message" = "We’re putting your messages into a backup so you can read them from any device. This can take a minute.";
+
+/* The button under the code. Skipping is allowed — but the strip in the chat list won’t let you forget. */
+"recovery.skip" = "Skip";
+
+/* Flow 2. Two buttons of equal weight. Neither is "the main one": somebody who picks the
+   picture check should not feel they picked the fallback. */
+"recovery.choose.title" = "Unlock your messages";
+"recovery.choose.message" = "Your earlier messages are encrypted, and this device can’t open them yet. There are two ways — both of them work.";
+"recovery.choose.haveCode" = "I have my recovery code";
+"recovery.choose.otherDevice" = "Confirm from another device";
+"recovery.choose.neither" = "I have neither";
+
+/* Entering the code. The keyboard has no business helping here — this arrives by paste. */
+"recovery.enter.title" = "Enter your recovery code";
+"recovery.enter.message" = "The code we showed you when the backup was turned on.";
+"recovery.enter.unlock" = "Unlock my messages";
+"recovery.enter.lost" = "I can’t find my code";
+
+/* Flow 3, the branch where another device exists. Losing the code is not a disaster, and the tone says so. */
+"recovery.lost.title" = "Can’t find it?";
+"recovery.lost.hasDevices" = "That’s all right. Confirm this device from a phone or computer where you’re already signed in, and we’ll give you a new code to replace the lost one.";
+
+/* Flow 3, the branch where there is nothing else. Said plainly, without frightening anyone:
+   losing your messages is bad, but being frightened and not knowing what to do is worse. */
+"recovery.lost.alone.title" = "Let’s start fresh";
+"recovery.lost.alone.message" = "Without the code and without another device, your old messages can’t come back — they stay encrypted for good. New messages will arrive as usual, and we’ll give you a new recovery code.";
+
+/* The design note asks for this to be separated from a password reset explicitly, so that
+   nobody — the developer included — confuses the two. A password opens the account, not the messages. */
+"recovery.lost.alone.notPassword" = "Your account password has nothing to do with this: it opens your account, not your old messages.";
+"recovery.lost.alone.start" = "Start fresh";
+
+/* The server wants to see the person again before it allows the reset. */
+"recovery.password.title" = "Enter your password";
+"recovery.password.message" = "Your server is asking you to confirm it’s really you.";
+"recovery.password.placeholder" = "Password";
+"recovery.password.confirm" = "Confirm";
+
+/* The strip in the chat list. It stays until the reason is gone: the code is shown once, and
+   somebody who didn’t save it finds out six months later — unless they’re reminded. */
+"recovery.banner.locked" = "Your old messages are locked";
+"recovery.banner.unsaved" = "Your recovery code isn’t saved";
+
+"settings.devices" = "My devices";
+"settings.devicesHelp" = "The list of your devices, and signing out of them, lives on your server’s website — where you signed in.";
+
+/* The button appears only where the server itself says it can make accounts. */
+"signIn.createAccount" = "Create an account";

@@ -317,6 +317,12 @@ public enum Theme {
         /// character at a time.
         public static let keySheet: CGFloat = 360
 
+        /// The single centred column that getting into the app is laid out in — the sign-in screen,
+        /// and the recovery screen that follows it. Named once and shared, because the two are one
+        /// continuous act to the person performing it, and a column that changed width halfway
+        /// through would be the seam showing.
+        public static let signInColumn: CGFloat = 420
+
         /// The red badge beside a message that failed to send. Bigger than the delivery
         /// ticks on purpose: those report progress and may be ignored, this one is the
         /// only sign that a message the user believes they sent is still sitting there.

@@ -13,6 +13,7 @@ public enum AccountActionFailure: String, CaseIterable, ActionFailure, Error {
     case protectHistory
     case newKey
     case restore
+    case startOver
 
     public var id: String { rawValue }
 
@@ -23,8 +24,24 @@ public enum AccountActionFailure: String, CaseIterable, ActionFailure, Error {
         case .protectHistory: CoreStrings.Account.protectFailed
         case .newKey: CoreStrings.Account.newKeyFailed
         case .restore: CoreStrings.Account.restoreFailed
+        case .startOver: CoreStrings.Account.startOverFailed
         }
     }
+}
+
+/// What the server wants before it will let this account throw its encryption away and start again.
+///
+/// The answer is the server's, not ours — `IdentityResetHandle.authType()` — and the three cases are
+/// the three shapes it comes in. It is carried up as a value rather than acted on down here for the
+/// usual reason: opening a browser is not something `IskraCore` is allowed to do, and a URL is a fact
+/// about the account rather than a screen.
+public enum StartOverApproval: Sendable, Equatable {
+    /// The server is satisfied already. Go straight on.
+    case none
+    /// The user must approve it on the server's own page, in a browser, and come back.
+    case browser(URL)
+    /// The server wants the account password typed in again.
+    case password
 }
 
 /// Whether this account's history survives losing this device — which is the only thing
@@ -201,6 +218,125 @@ public final class RecoveryStore {
     /// wherever the user put it, which is the arrangement.
     public func forgetFreshKey() {
         freshKey = nil
+    }
+
+    // MARK: - The moment after signing in
+
+    /// Waits until the SDK has finished working out what this device knows, and reads the answer.
+    ///
+    /// This is what makes the question askable at all. `recoveryState()` immediately after a sign-in
+    /// is `.unknown` — not "off", not "on", *unknown* — because the SDK has not yet talked to the
+    /// server about backups and cross-signing. A screen that branched on it a moment too early would
+    /// send a user with a perfectly good backup down the "let's make you a new code" path and reset
+    /// the very history they signed in to read.
+    ///
+    /// Unbounded on purpose, and called from a screen that shows a spinner while it runs: the caller
+    /// decides how long it is prepared to wait, because the honest fallback is "let them into the app
+    /// anyway", and that is a decision about a screen and not about an account.
+    public func waitForSetup() async {
+        await encryption.waitForE2eeInitializationTasks()
+
+        load()
+
+        // And read it again, because `load()` is idempotent: by the time we get here the session has
+        // usually started and subscribed already, so `load()` was a no-op and the value it left
+        // behind is the one from *before* the wait — which is the one thing we came here not to use.
+        protection = Self.protection(from: encryption.recoveryState())
+    }
+
+    /// Whether the account has another device that could vouch for this one.
+    ///
+    /// Asked only when the user says they have lost the code, and never to decide whether to *offer*
+    /// the comparison — the two ways in are equal, and hiding one of them because we peeked would be
+    /// exactly the ranking this flow exists to avoid.
+    ///
+    /// `false` when the question cannot be answered. A wrong "no" sends the user to the honest dead
+    /// end; a wrong "yes" sends them to a screen that waits forever for a device that is not there.
+    public func hasOtherDevices() async -> Bool {
+        do {
+            return try await encryption.hasDevicesToVerifyAgainst()
+        } catch {
+            Log.session.error("could not ask whether other devices exist: \(Log.describe(error), privacy: .public)")
+            return false
+        }
+    }
+
+    // MARK: - Starting again from nothing
+
+    /// The reset, once it is under way and waiting on the user. Held because the server's approval
+    /// arrives in a *second* step — a browser round-trip, or a password — and the handle is what the
+    /// two steps have in common.
+    private var reset: IdentityResetHandle?
+
+    /// Throws this account's encryption away: the backup, the secret storage, and the cross-signing
+    /// identity underneath both.
+    ///
+    /// This is the bottom of the flow — the user has no code and no other device — and it is the one
+    /// place `resetRecoveryKey()` would have been the obvious wrong answer. A device in that position
+    /// is not verified and cannot reach the account's cross-signing keys, so it cannot *re-key* the
+    /// secret storage; it has nothing to sign the new key with. There is no key to reset. The only
+    /// honest move left is to declare a new identity and let the old history stay unreadable, which
+    /// is what it is: encrypted with keys nobody holds any more.
+    ///
+    /// Two steps, because most servers want to see the user again before they allow it. This one
+    /// starts it and reports what the server is asking for; `finishStartOver` is what completes it.
+    public func beginStartOver() async throws(AccountActionFailure) -> StartOverApproval {
+        do {
+            let handle = try await encryption.resetIdentity()
+            reset = handle
+
+            switch handle?.authType() {
+            case nil:
+                // No handle at all: the SDK is telling us there is nothing to reset. Not a failure —
+                // there is simply no identity in the way, and the caller may go on and make a key.
+                return .none
+            case .uiaa:
+                return .password
+            case let .oAuth(info):
+                guard let url = URL(string: info.approvalUrl) else { throw AccountActionFailure.startOver }
+                return .browser(url)
+            }
+        } catch {
+            Log.session.error("the reset would not start: \(Log.describe(error), privacy: .public)")
+            reset = nil
+            throw .startOver
+        }
+    }
+
+    /// Finishes the reset the server has now approved.
+    ///
+    /// The password is `nil` on every path but `.password` — and it is never logged, never stored, and
+    /// goes straight back out of memory with the handle.
+    public func finishStartOver(password: String? = nil, userID: String? = nil) async throws(AccountActionFailure) {
+        guard let reset else {
+            // `beginStartOver` returned `.none`: there was no identity to throw away. Nothing to do
+            // here, and saying so is not a failure.
+            return
+        }
+
+        self.reset = nil
+        isWorking = true
+        defer { isWorking = false }
+
+        do {
+            if let password, let userID {
+                let details = AuthDataPasswordDetails(identifier: userID, password: password)
+                try await reset.reset(auth: .password(passwordDetails: details))
+            } else {
+                try await reset.reset(auth: nil)
+            }
+        } catch {
+            Log.session.error("the reset would not finish: \(Log.describe(error), privacy: .public)")
+            throw .startOver
+        }
+    }
+
+    /// Abandons a reset the user backed out of — they closed the browser, or thought better of it.
+    /// The SDK is told, rather than left holding a flow nobody is going to finish.
+    public func cancelStartOver() async {
+        guard let reset else { return }
+        self.reset = nil
+        await reset.cancel()
     }
 
     private static func protection(from state: RecoveryState) -> HistoryProtection {

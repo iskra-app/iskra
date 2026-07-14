@@ -23,6 +23,12 @@ struct LocalizationTests {
         (Strings.SignIn.whereIsAccount, en: "Where’s your account?", ru: "Где ваш аккаунт?"),
         (Strings.SignIn.continue, en: "Continue", ru: "Продолжить"),
         (Strings.RoomList.title, en: "Chats", ru: "Чаты"),
+        // The offline sentences. They are the ones a person reads at the worst moment — no network,
+        // and a screen that has to convince them their conversations are not gone — so a fallback to
+        // the wrong language here would be felt more than most.
+        (Strings.Session.offlineTitle, en: "No connection", ru: "Нет соединения"),
+        (Strings.Session.tryAgain, en: "Try again", ru: "Повторить"),
+        (Strings.Connection.offline, en: "No network", ru: "Нет сети"),
         (Strings.RoomList.searchPrompt, en: "Search messages", ru: "Поиск по сообщениям"),
         (Strings.RoomList.newChat, en: "New chat", ru: "Новый чат"),
         (Strings.RoomList.newRoom, en: "New room", ru: "Новая комната"),
@@ -88,7 +94,16 @@ struct LocalizationTests {
         (Strings.Settings.encryption, en: "Encryption", ru: "Шифрование"),
         (Strings.Encryption.protect, en: "Protect my messages", ru: "Защитить переписку"),
         (Strings.Encryption.restore, en: "Bring my messages back", ru: "Восстановить переписку"),
-        (Strings.Encryption.saveKey, en: "Save your key", ru: "Сохраните ключ"),
+        // "Code", not "key", and the same word in both languages and on every screen. The whole flow
+        // is built on there being exactly one thing to remember — a recovery code, which behaves like
+        // the backup code from an authenticator app — and an app that calls it a key in one place and
+        // a code in another has quietly made it two things.
+        (Strings.Encryption.saveKey, en: "Save your code", ru: "Сохраните код"),
+        (Strings.Recovery.haveCode, en: "I have my recovery code", ru: "У меня есть код восстановления"),
+
+        // Neutral, not alarming. An unverified device is the ordinary state of a device somebody has
+        // just signed in on, and "Not verified" in red made it read as a break-in.
+        (Strings.Encryption.deviceUnverified, en: "New device", ru: "Новое устройство"),
         (Strings.Encryption.thisDevice, en: "This device", ru: "Это устройство"),
         (Strings.RoomList.Invite.accept, en: "Join", ru: "Войти"),
         (Strings.RoomList.Invite.decline, en: "Decline", ru: "Отклонить"),

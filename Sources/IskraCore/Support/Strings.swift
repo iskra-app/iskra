@@ -50,6 +50,7 @@ public enum CoreStrings {
         /// recovery key is copied and pasted, and a half-copied one is by far the likeliest
         /// reason it is refused.
         public static let restoreFailed = LocalizedStringResource("account.restoreFailed", bundle: bundle)
+        public static let startOverFailed = LocalizedStringResource("account.startOverFailed", bundle: bundle)
     }
 
     /// A change to the room that the homeserver would not make. One sentence per act — see
