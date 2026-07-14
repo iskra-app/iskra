@@ -122,6 +122,7 @@
 "account.protectFailed" = "Your messages couldn’t be protected. Try again — the keys to your old messages are still where they were.";
 "account.newKeyFailed" = "The new code wasn’t created. The old one still works.";
 "account.restoreFailed" = "That code didn’t fit. Check you copied all of it, spaces and all.";
+"account.staleCodeFailed" = "The code is put together correctly — and still does not fit this account. That happens when a recovery code has been created again: the previous one stops working for good.";
 
 /* The reset failed — the rare case where failure is the good news: nothing was lost. */
 "account.startOverFailed" = "Couldn’t start again. Try again — for now, everything is as it was.";

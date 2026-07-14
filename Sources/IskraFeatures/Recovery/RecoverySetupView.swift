@@ -45,6 +45,9 @@ struct RecoverySetupView: View {
                 case .preparing:
                     waiting(Strings.Recovery.preparing)
 
+                case .confirmNew:
+                    confirmNew
+
                 case .creating, .startingOver:
                     creating
 
@@ -129,12 +132,39 @@ struct RecoverySetupView: View {
     /// something that cannot be shown again. The rest are questions, and a question may be ignored.
     private var canLeave: Bool {
         switch model.step {
-        case .choose, .entering, .lost, .password: true
+        case .choose, .entering, .lost, .password, .confirmNew: true
         case .preparing, .creating, .startingOver, .code, .done: false
         }
     }
 
     // MARK: - The steps
+
+    /// The question that was not being asked.
+    ///
+    /// Everything else destructive in this app asks first, and this did not: the banner in the room
+    /// list took one tap straight into `resetRecoveryKey()`, so somebody who tapped it to find out
+    /// what it *meant* destroyed the very code it was asking them about. They found out on their next
+    /// phone, from a screen telling them to check their typing.
+    ///
+    /// The cost is stated in the plainest words available — the old code stops working, and there is
+    /// no undo — and the way out is the same "×" as every other question here.
+    private var confirmNew: some View {
+        VStack(spacing: Theme.Spacing.roomy) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.largeTitle)
+                .foregroundStyle(.orange)
+
+            heading(Strings.Recovery.newTitle, Strings.Recovery.newMessage)
+
+            Button {
+                Task { await model.confirmNewCode() }
+            } label: {
+                busy(Strings.Recovery.newConfirm)
+            }
+            .buttonStyle(.glassAction)
+            .disabled(model.isWorking)
+        }
+    }
 
     private func waiting(_ message: LocalizedStringResource) -> some View {
         VStack(spacing: Theme.Spacing.roomy) {

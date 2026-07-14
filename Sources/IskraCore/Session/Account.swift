@@ -13,6 +13,10 @@ public enum AccountActionFailure: String, CaseIterable, ActionFailure, Error {
     case protectHistory
     case newKey
     case restore
+    /// The code was put together correctly — right length, right alphabet, checksum intact — and it
+    /// still does not open this account. That is a different sentence from "check your typing", and
+    /// telling somebody to check their typing when the code is *perfect* sends them round in circles.
+    case staleCode
     case startOver
 
     public var id: String { rawValue }
@@ -24,6 +28,7 @@ public enum AccountActionFailure: String, CaseIterable, ActionFailure, Error {
         case .protectHistory: CoreStrings.Account.protectFailed
         case .newKey: CoreStrings.Account.newKeyFailed
         case .restore: CoreStrings.Account.restoreFailed
+        case .staleCode: CoreStrings.Account.staleCodeFailed
         case .startOver: CoreStrings.Account.startOverFailed
         }
     }
@@ -226,9 +231,30 @@ public final class RecoveryStore {
             return true
         } catch {
             Log.session.error("the recovery code was refused: \(Self.describe(error), privacy: .public)")
-            failure = .restore
+            failure = Self.isStale(error) ? .staleCode : .restore
             return false
         }
+    }
+
+    /// Whether the code is a *good* code that this account has stopped recognising.
+    ///
+    /// The SDK says `The MAC check for the secret storage key failed`, and that sentence means more
+    /// than it looks. A recovery code carries its own checksum, so a mistyped or truncated one fails
+    /// to *decode* and never reaches a MAC check at all. Getting this far means the code is genuine —
+    /// right length, right alphabet, checksum intact — and simply is not the key this account's secret
+    /// storage was locked with. Which happens for exactly one reason: a new code was minted after this
+    /// one was written down, and minting a code destroys its predecessor.
+    ///
+    /// So the user must not be told to check their typing. Their typing is fine. What they are holding
+    /// is a key to a lock that has been changed.
+    ///
+    /// Matched on the SDK's wording, which is not something to be pleased about — `RecoveryError`
+    /// flattens every secret-storage failure into one case with a string. If a future SDK rephrases
+    /// it, this falls back to the older, vaguer message rather than lying, which is the right way
+    /// round for a guess to fail.
+    private static func isStale(_ error: some Error) -> Bool {
+        guard case let .SecretStorage(message)? = error as? RecoveryError else { return false }
+        return message.localizedCaseInsensitiveContains("MAC check")
     }
 
     /// What went wrong, in the SDK's own words — and this is the one place in the app that prints an
