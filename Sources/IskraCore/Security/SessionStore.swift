@@ -109,16 +109,36 @@ public struct SessionStore: Sendable {
         if let existing = try keychain.data(for: key), let secret = String(data: existing, encoding: .utf8) {
             return secret
         }
-        let secret = Self.randomSecret()
+        let secret = try Self.randomSecret()
         try keychain.set(Data(secret.utf8), for: key)
         return secret
     }
 
     /// 32 bytes from the system CSPRNG, base64'd so it survives being a `String`.
-    static func randomSecret() -> String {
-        var bytes = [UInt8](repeating: 0, count: 32)
+    ///
+    /// It **throws** where it used to trap, and the refusal is unchanged: a key this app cannot
+    /// generate properly is a key it must not invent. What changes is who dies for it.
+    ///
+    /// `precondition` kills the process. That is defensible in an app — the screen is there, the
+    /// user sees a crash, somebody files a report — and it is indefensible in the notification
+    /// extension, which calls this by way of `storePassphrase()` every time a push arrives. A trap
+    /// there is a process that vanishes without a word: no notification, no log, no crash the user
+    /// would ever connect to anything. Just a message that never appeared.
+    ///
+    /// Everything around this already throws (`storePassphrase()`, `searchIndexPassword()`), so the
+    /// error travels the road that was already built for it.
+    static func randomSecret() throws -> String {
+        var bytes = [UInt8](repeating: 0, count: keyLength)
         let status = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
-        precondition(status == errSecSuccess, "The system CSPRNG failed; refusing to invent a key.")
+
+        guard status == errSecSuccess else {
+            throw KeychainError.unexpectedStatus(status)
+        }
+
         return Data(bytes).base64EncodedString()
     }
+
+    /// 256 bits. Named because it is a security parameter, and a security parameter written as a
+    /// bare `32` in the middle of a line is one nobody will ever find again.
+    private static let keyLength = 32
 }

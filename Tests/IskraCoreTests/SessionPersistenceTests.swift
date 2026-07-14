@@ -143,3 +143,63 @@ struct SessionPersistenceTests {
         }
     }
 }
+
+/// The store itself, which had no tests at all — while `SecretStoring` exists for the sole purpose
+/// of making it testable without a Keychain the test binary cannot open.
+///
+/// What is pinned here is not the plumbing but the two promises the rest of the app is built on:
+/// the keys that encrypt the store and the search index are **stable** across calls (fetch one
+/// twice and it is the same key, or the database will not open tomorrow) and **different** from
+/// each other (one key for two stores is one key to lose).
+@Suite
+struct SessionStoreTests {
+    @Test("the store passphrase is the same one every time it is asked for")
+    func passphraseIsStable() throws {
+        let store = SessionStore(secrets: InMemorySecrets())
+
+        let first = try store.storePassphrase()
+        let second = try store.storePassphrase()
+
+        #expect(first == second)
+        #expect(!first.isEmpty)
+    }
+
+    /// Two stores, two keys. Sharing one would mean that losing it loses both — and that the search
+    /// index, which is a second plaintext copy of every message, is protected by exactly the same
+    /// secret as the thing it is a copy of.
+    @Test("the search index has a key of its own")
+    func searchKeyDiffersFromThePassphrase() throws {
+        let store = SessionStore(secrets: InMemorySecrets())
+
+        #expect(try store.storePassphrase() != store.searchIndexPassword())
+    }
+
+    @Test("a fresh secret is 32 bytes and never the same twice")
+    func secretsAreRandom() throws {
+        let first = try SessionStore.randomSecret()
+        let second = try SessionStore.randomSecret()
+
+        #expect(first != second)
+        // Base64 of 32 bytes: 44 characters, the last of which is padding.
+        #expect(Data(base64Encoded: first)?.count == 32)
+    }
+
+    @Test("signing out forgets the session")
+    func clearForgetsEverything() throws {
+        let store = SessionStore(secrets: InMemorySecrets())
+
+        try store.save(StoredSession(sessionID: "session-1",
+                                     session: Session(accessToken: "token",
+                                                      refreshToken: nil,
+                                                      userId: "@boris:matrix.org",
+                                                      deviceId: "DEVICE",
+                                                      homeserverUrl: "https://matrix.org",
+                                                      oauthData: nil,
+                                                      slidingSyncVersion: .native)))
+        #expect(try store.loadSession() != nil)
+
+        try store.clear(environment: AppEnvironment(storage: .standalone))
+
+        #expect(try store.loadSession() == nil)
+    }
+}
