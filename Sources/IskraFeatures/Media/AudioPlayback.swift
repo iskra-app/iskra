@@ -112,7 +112,10 @@ final class AudioPlayback {
 
             self.file = file
 
-            PlaybackAudio.prepare()
+            await AudioSession.prepare(for: .playback)
+
+            // Awaited, so a second press may have landed in the meantime and taken the speakers.
+            guard Self.current === self else { return }
 
             let player = try AVAudioPlayer(contentsOf: file.url)
             let finish = FinishListener { [weak self] in self?.stop() }

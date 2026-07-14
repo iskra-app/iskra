@@ -367,7 +367,7 @@ struct MediaViewer: View {
             self.file = file
 
             if isVideo {
-                PlaybackAudio.prepare()
+                await AudioSession.prepare(for: .playback)
                 let player = AVPlayer(url: file.url)
                 self.player = player
                 // The viewer *is* the video: it starts on opening rather than waiting for a
