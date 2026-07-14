@@ -37,6 +37,10 @@ struct LocalizationTests {
         // that — so what these two are checked for is the word in front of it.
         (Strings.Message.Menu.sentAt("12:03"), en: "Sent 12:03", ru: "Отправлено 12:03"),
         (Strings.Message.Menu.deletedAt("12:03"), en: "Deleted 12:03", ru: "Удалено 12:03"),
+        (Strings.Message.Spoken.sentSticker, en: "a sticker", ru: "стикер"),
+        // VoiceOver is the only place a sticker's description is ever said out loud — nothing
+        // is drawn under the picture — so the sentence it goes into is checked in both.
+        (Strings.Message.Spoken.sentStickerNamed("😄"), en: "a sticker, 😄", ru: "стикер «😄»"),
         (Strings.Settings.reactions, en: "Reactions", ru: "Реакции"),
         (Strings.Reactions.quick, en: "Quick reaction", ru: "Быстрая реакция"),
         (Strings.Reactions.quickHelp,
@@ -98,7 +102,12 @@ struct LocalizationTests {
         // the person's name is already the title of the screen, so saying it a second time here
         // would be the app repeating itself.
         (Strings.Room.typing, en: "typing…", ru: "печатает…"),
-        (Strings.Room.typingBy("Аня"), en: "Аня is typing…", ru: "Аня печатает…")
+        (Strings.Room.typingBy("Аня"), en: "Аня is typing…", ru: "Аня печатает…"),
+        // The two answers to a device asking to be trusted. Pinned here because the whole security
+        // of the incoming flow is that neither of them reads as the easy one — a "Yes, allow" beside
+        // a "Cancel" would be the app quietly recommending the answer that hands over the keys.
+        (Strings.Verification.mine, en: "It's me", ru: "Это я"),
+        (Strings.Verification.notMine, en: "It isn't me", ru: "Это не я")
     ]
 
     @Test("app strings resolve in English and in Russian")
@@ -229,6 +238,36 @@ struct LocalizationTests {
             let looksLikeAKey = resolved.contains(".") && !resolved.contains(" ")
             #expect(!looksLikeAKey, "\(resolved) looks like a key, not a sentence")
         }
+    }
+
+    /// The two files must know exactly the same strings.
+    ///
+    /// This is the test the curated table above cannot be: that table pins the *wording* of the
+    /// sentences somebody thought to list, and a key added to English and forgotten in Russian is
+    /// simply not in it. What that failure looks like in the app is a Russian screen with one line
+    /// of English in the middle of it — or, if the key is missing from both, a screen reading
+    /// "verification.mine" — and nothing catches it, because everything still compiles and every
+    /// listed string still resolves.
+    ///
+    /// So this reads the two `.strings` files as the property lists they are and compares their
+    /// keys. It needs nobody to remember anything, which is the entire point of it.
+    @Test("both languages know exactly the same strings")
+    func neitherLanguageIsMissingAString() throws {
+        func keys(_ language: String) throws -> Set<String> {
+            let url = try #require(Strings.resourceBundle.url(forResource: "Localizable",
+                                                              withExtension: "strings",
+                                                              subdirectory: nil,
+                                                              localization: language),
+                                   "no Localizable.strings for \(language)")
+            let table = try #require(NSDictionary(contentsOf: url) as? [String: String])
+            return Set(table.keys)
+        }
+
+        let english = try keys("en")
+        let russian = try keys("ru")
+
+        #expect(english.subtracting(russian).isEmpty, "missing from Russian: \(english.subtracting(russian).sorted())")
+        #expect(russian.subtracting(english).isEmpty, "missing from English: \(russian.subtracting(english).sorted())")
     }
 
     /// The bundle must actually ship both languages.

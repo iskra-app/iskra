@@ -36,6 +36,11 @@
 
 "message.spoken.sentPhoto" = "a photo";
 
+"message.spoken.sentSticker" = "a sticker";
+
+/* %@ — how the sender described the sticker: an emoji, or a word. */
+"message.spoken.sentStickerNamed" = "a sticker, %@";
+
 "message.spoken.sentUnreadable" = "a message you can’t read";
 
 "message.spoken.sentUnsupported" = "something Iskra can’t show";
@@ -479,6 +484,12 @@
 "verification.why" = "Until this device is verified, your account has no way to know it is really you — and your older conversations will not come through to it. You can verify it from a phone or computer where you are already signed in.";
 "verification.waiting.title" = "Look at your other device";
 "verification.waiting.message" = "Open Iskra where you are already signed in and agree to verify this device. If you have no other device, your recovery key is the way back into your older conversations.";
+"verification.asked.message" = "This device has just signed in to your account and is asking you to verify it. If that was you, agree — and then compare the pictures. If it wasn't, refuse: somebody else knows your password.";
+"verification.unnamedDevice" = "An unnamed device";
+"verification.mine" = "It's me";
+"verification.notMine" = "It isn't me";
+"verification.negotiating.title" = "One moment";
+"verification.negotiating.message" = "The two devices are working it out between them. The pictures are about to appear on both screens.";
 "verification.compare" = "Your other device is showing the same seven pictures. Check that they match — and that they are in the same order.";
 "verification.match" = "They match";
 "verification.noMatch" = "They don't match";
@@ -486,6 +497,8 @@
 "verification.done.message" = "Your account trusts this device now. Your older conversations will appear here on their own.";
 "verification.declined.title" = "Verification stopped";
 "verification.declined.message" = "If the pictures really did not match, do not trust this connection, and try again. It may also be that you simply started the verification twice.";
+"verification.refused.title" = "You said no";
+"verification.refused.message" = "That device was given no access to your conversations. But if the sign-in wasn't yours, then somebody else knows your password — and it needs changing right now.";
 "verification.failed.title" = "That didn't work";
 "verification.failed.message" = "The verification did not finish. Try again.";
 "verification.close" = "Close";

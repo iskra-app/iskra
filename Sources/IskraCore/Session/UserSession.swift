@@ -13,6 +13,17 @@ public final class UserSession {
     public let roomList: RoomListStore
     public let search: SearchStore
 
+    /// Proving devices are yours, in both directions — see `VerificationStore`.
+    ///
+    /// Owned by the session and not made on demand like the stores below it, and the difference is
+    /// not tidiness. Verification is the one thing here that the *other* side can start: a new
+    /// phone signing in asks this device to vouch for it, and that request arrives whenever it
+    /// arrives — while the user is reading a chat, or scrolling the room list, or nowhere near
+    /// settings. A store built by the encryption screen would have its delegate registered only
+    /// while the encryption screen was open, and every request that came at any other moment would
+    /// land on nobody at all.
+    public let verification: VerificationStore
+
     /// What the user calls themselves, for the toolbar avatar and the settings screen.
     ///
     /// Starts as the local part of the Matrix ID — "@boris:matrix.org" reads as
@@ -48,6 +59,7 @@ public final class UserSession {
         self.displayName = Self.localPart(of: userID)
         self.roomList = RoomListStore(client: client)
         self.search = SearchStore(client: client)
+        self.verification = VerificationStore(client: client, ownUserID: userID)
     }
 
     /// The server has stopped accepting this session, and nobody on this device asked it to.
@@ -76,6 +88,12 @@ public final class UserSession {
         })
 
         await loadProfile()
+
+        // Before the room list, because it is the only listener in the app that has to be in place
+        // for something *other people's devices* do. Everything else here is started so that this
+        // device can ask a question; this is started so that it can be asked one.
+        await verification.listen()
+
         try await roomList.start()
     }
 
@@ -87,6 +105,7 @@ public final class UserSession {
 
         Log.session.error("the server no longer accepts this session; signing out locally")
 
+        verification.stop()
         await roomList.stop()
 
         authErrorHandle?.cancel()
@@ -152,12 +171,6 @@ public final class UserSession {
     /// This account's encryption, built when the screen that shows it is opened.
     public func recovery() -> RecoveryStore {
         RecoveryStore(encryption: client.encryption())
-    }
-
-    /// Proving this device is yours, by comparing pictures with one that already is. Built when
-    /// somebody asks to do it — most sessions never will, because most people have one device.
-    public func verification() -> VerificationStore {
-        VerificationStore(client: client)
     }
 
     /// Telling the homeserver where to send a push. See `PushRegistration` — and note that the
@@ -240,6 +253,7 @@ public final class UserSession {
         authErrorHandle?.cancel()
         authErrorHandle = nil
 
+        verification.stop()
         await roomList.stop()
         await authentication.signOut(client: client)
     }

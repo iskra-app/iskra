@@ -357,6 +357,17 @@ public enum Strings {
         public enum Spoken {
             public static let you = LocalizedStringResource("message.spoken.you", bundle: bundle)
             public static let sentPhoto = LocalizedStringResource("message.spoken.sentPhoto", bundle: bundle)
+            public static let sentSticker = LocalizedStringResource("message.spoken.sentSticker", bundle: bundle)
+
+            /// The same, for a sticker whose sender described it — which most of them do, with
+            /// an emoji or a word. It is the only thing that tells two stickers apart when you
+            /// cannot see either of them, so it is said rather than dropped.
+            public static func sentStickerNamed(_ description: String) -> LocalizedStringResource {
+                LocalizedStringResource("message.spoken.sentStickerNamed",
+                                        defaultValue: "a sticker, \(description)",
+                                        bundle: bundle)
+            }
+
             public static let sentVideo = LocalizedStringResource("message.spoken.sentVideo", bundle: bundle)
             public static let sentVideoNote = LocalizedStringResource("message.spoken.sentVideoNote", bundle: bundle)
             public static let sentVoice = LocalizedStringResource("message.spoken.sentVoice", bundle: bundle)
@@ -445,6 +456,23 @@ public enum Strings {
         public static let waitingTitle = LocalizedStringResource("verification.waiting.title", bundle: bundle)
         public static let waitingMessage = LocalizedStringResource("verification.waiting.message", bundle: bundle)
 
+        /// A device of this user's, signing in and asking to be trusted — the question that starts
+        /// the flow from the other end. The device's own name carries the message, so this says
+        /// what the two answers *mean* rather than repeating the name back.
+        public static let askedMessage = LocalizedStringResource("verification.asked.message", bundle: bundle)
+
+        /// What to call a device whose owner never named it. Not "Unknown device", which sounds
+        /// like the app failed to find something out: the account knows exactly what it is, it
+        /// simply has no name, and saying so is less alarming and more true.
+        public static let unnamedDevice = LocalizedStringResource("verification.unnamedDevice", bundle: bundle)
+
+        /// The two answers to it. As with `match`/`noMatch`, neither is worded as the easy one.
+        public static let mine = LocalizedStringResource("verification.mine", bundle: bundle)
+        public static let notMine = LocalizedStringResource("verification.notMine", bundle: bundle)
+
+        public static let negotiatingTitle = LocalizedStringResource("verification.negotiating.title", bundle: bundle)
+        public static let negotiatingMessage = LocalizedStringResource("verification.negotiating.message", bundle: bundle)
+
         public static let compare = LocalizedStringResource("verification.compare", bundle: bundle)
 
         /// The two answers. Neither is styled as the obvious one, and neither is worded as one:
@@ -458,6 +486,13 @@ public enum Strings {
 
         public static let declinedTitle = LocalizedStringResource("verification.declined.title", bundle: bundle)
         public static let declinedMessage = LocalizedStringResource("verification.declined.message", bundle: bundle)
+
+        /// The user was asked to trust a device and said it was not theirs. Deliberately not the
+        /// same words as `declined`: that one is a verification that did not happen, and this one
+        /// is a report that somebody else is signing in with this account's password. It is the
+        /// only place in the app that tells the user to go and do something *outside* it.
+        public static let refusedTitle = LocalizedStringResource("verification.refused.title", bundle: bundle)
+        public static let refusedMessage = LocalizedStringResource("verification.refused.message", bundle: bundle)
 
         public static let failedTitle = LocalizedStringResource("verification.failed.title", bundle: bundle)
         public static let failedMessage = LocalizedStringResource("verification.failed.message", bundle: bundle)
