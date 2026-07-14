@@ -580,7 +580,7 @@ public struct RoomView: View {
                         .transition(.scale.combined(with: .opacity))
                 }
             }
-            .animation(.smooth(duration: 0.2), value: isAtNewest)
+            .animation(.smooth(duration: Theme.Timing.chrome), value: isAtNewest)
         }
         .safeAreaInset(edge: .bottom) {
             composer

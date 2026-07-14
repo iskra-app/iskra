@@ -317,10 +317,28 @@ public final class RoomDetailsStore {
     /// trail of them.
     private func notificationSettings() async -> NotificationSettings {
         if let notifications { return notifications }
-        let settings = await client.getNotificationSettings()
+
+        // The `await` below is where two callers meet. `loadAlerts` asks for this, and so does every
+        // change to the room's alerts, and an `if let` followed by an `await` is not a lock: both
+        // callers see nil, both go to the SDK, and the second one to come back overwrites the first
+        // — which leaves two `NotificationSettings` objects alive, each with its own listener
+        // registration. That is the exact duplication the cache was introduced to prevent, and
+        // caching the *task* rather than the result is what actually prevents it: the second caller
+        // finds the first one's work in flight and waits for it.
+        if let fetching { return await fetching.value }
+
+        let task = Task { await client.getNotificationSettings() }
+        fetching = task
+
+        let settings = await task.value
         notifications = settings
+        fetching = nil
+
         return settings
     }
+
+    /// The fetch for `notifications`, while it is in flight. See `notificationSettings()`.
+    private var fetching: Task<NotificationSettings, Never>?
 
     /// Reads the room. False when it could not be read, which is a thing the caller has to know:
     /// everything else on this screen is a detail of a room that may not have opened.

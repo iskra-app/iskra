@@ -136,7 +136,8 @@ public extension TimelineStore {
     ///
     /// `waveform` is the shape drawn in the bubble; it is computed at record time and
     /// travels with the event so both sides see the same picture rather than each
-    /// guessing at one. Samples are 0...1 here and scaled to the wire's 0...1024.
+    /// guessing at one. Samples are 0...1 here and scaled to the wire's range on the way out —
+    /// see `TimelineMapper.waveformScale`, which is the same number the way back in.
     func send(voice url: URL, duration: TimeInterval, waveform: [Float], replyingTo replyID: String? = nil) async {
         guard let timeline = liveTimeline else {
             // Not a silent return. The user pressed send; if nothing is going to happen, they are
@@ -161,7 +162,7 @@ public extension TimelineStore {
         await upload {
             try timeline.sendVoiceMessage(params: parameters,
                                           audioInfo: audioInfo,
-                                          waveform: waveform.map { $0 * 1024 })
+                                          waveform: waveform.map { $0 * Float(TimelineMapper.waveformScale) })
         }
     }
 

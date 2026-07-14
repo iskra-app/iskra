@@ -2,10 +2,17 @@ import SwiftUI
 
 /// The handful of numbers the whole app agrees on.
 ///
-/// Everything here is a multiple of 4 and all corners are `.continuous`, which is
-/// what gives Apple's own apps their soft, un-fussy geometry. Sizes are *not*
-/// hard-coded anywhere else: a bubble that says `.padding(12)` is a bug waiting to
-/// drift out of line with the one next to it.
+/// Spacings and sizes are multiples of 4 and all corners are `.continuous`, which is what gives
+/// Apple's own apps their soft, un-fussy geometry. Sizes are *not* hard-coded anywhere else: a
+/// bubble that says `.padding(12)` is a bug waiting to drift out of line with the one next to it.
+///
+/// Two things in here are **not** multiples of 4, and the rule used to claim otherwise about them —
+/// which is a small lie of the kind that eventually gets one of them "corrected". `Spacing.withinRun`
+/// is 2, because the gap inside a run of messages from one person is meant to be *tighter* than the
+/// grid, and 4 reads as two separate remarks. `Size.recordingDot` is 10, because it is a dot and a
+/// dot is sized by eye against the text beside it, not by a grid it is not standing on.
+///
+/// The grid is for the things that line up with each other. These two line up with nothing.
 public enum Theme {
     public enum Radius {
         /// Message bubbles, on every corner. Large enough that a one-line message comes
@@ -72,6 +79,14 @@ public enum Theme {
 
         /// Reactions arriving and leaving.
         public static let reaction: TimeInterval = 0.25
+
+        /// The furniture rearranging itself: the composer growing a strip, the send button taking
+        /// the microphone's place, the search field opening, the jump-to-newest button appearing.
+        ///
+        /// Written out as a bare `0.25` in nine different places, which is not nine decisions — it
+        /// is one decision made once and copied, and the ninth copy is where somebody types `0.3`
+        /// by accident and nobody ever notices that one control moves differently from the rest.
+        public static let chrome: TimeInterval = 0.2
 
         /// A message being taken back: the bubble collapsing into the "deleted" line, or —
         /// for one that never left the device — leaving the timeline altogether.
@@ -143,6 +158,17 @@ public enum Theme {
         /// Far enough that no face, no word and no logo survives it. A gentler blur would
         /// leave a picture legible behind the picture, which is two photographs at once.
         public static let blur: CGFloat = 24
+
+        /// The dark capsule that carries white text over a photograph or a video — the clock in
+        /// the corner of a picture, the duration on a video note, "couldn't load this".
+        ///
+        /// One number, and it was three: 0.4, 0.45 and 0.5, on three capsules that are the same
+        /// capsule doing the same job in the same place. Nobody chose three; somebody wrote one,
+        /// somebody else needed another and typed a number that looked about right, and a third
+        /// did it again. The photograph underneath is unknown and may be white, so the plate has
+        /// to be dark enough to carry white text over a snowfield — and it has to be *the same*
+        /// plate every time, or the app looks as though it was assembled rather than designed.
+        public static let plate: Double = 0.45
 
         /// And how far it is taken down, so that white caption text is readable over a photo
         /// of a snowfield as surely as over one of a night sky.

@@ -59,6 +59,6 @@ struct RoomSearchField: View {
         .navigationGlass(in: .capsule)
         .padding(.horizontal, Theme.Spacing.normal)
         .padding(.bottom, Theme.Spacing.close)
-        .animation(.smooth(duration: 0.2), value: isSearching)
+        .animation(.smooth(duration: Theme.Timing.chrome), value: isSearching)
     }
 }
