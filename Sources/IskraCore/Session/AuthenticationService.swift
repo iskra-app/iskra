@@ -594,10 +594,17 @@ public actor AuthenticationService {
             .slidingSyncVersionBuilder(versionBuilder: slidingSync)
     }
 
+    /// What Iskra tells the homeserver it is, when it asks to be let in.
+    ///
+    /// `clientUri` is load-bearing and is not merely a link on a consent screen: a server running the
+    /// authentication service derives the *only* redirect scheme it will accept from this domain,
+    /// reversed. `iskra.swag.moscow` is what makes `moscow.swag.iskra:` legal — see
+    /// `AppEnvironment.oauthRedirectURI`, which must be kept in step with it, as must
+    /// `CFBundleURLSchemes` in `Apps/project.yml`.
     private func oauthConfiguration() -> OAuthConfiguration {
         OAuthConfiguration(clientName: environment.clientName,
                            redirectUri: environment.oauthRedirectURI,
-                           clientUri: "https://iskra.app",
+                           clientUri: "https://iskra.swag.moscow",
                            logoUri: nil,
                            tosUri: nil,
                            policyUri: nil,

@@ -80,21 +80,19 @@ struct RecoverySetupView: View {
             .frame(maxWidth: .infinity)
             .padding(Theme.Spacing.generous)
         }
+        .scrollBounceBehavior(.basedOnSize)
         .animation(.smooth, value: model.step)
         // The way out, where there is one to offer — and only on the steps where walking away is
         // harmless. It is deliberately absent while the backup is being built or the identity thrown
         // away (a half-finished reset is not a thing to leave lying around), and absent on the code
         // itself, which is the one screen in the app that must be *read* rather than dismissed: the
         // code cannot be shown twice, so a code closed by reflex is a code that is gone.
-        // The system's close button, and not a hand-drawn "×" any more. It was an `Image` inside a
-        // `.plain` button with no label of any kind, which is a control VoiceOver announces as
-        // "button" — the one control on the screen whose entire job is to be the way out, and it
-        // could not say so. The rest of the app labels its icon buttons; this one was simply missed.
         //
-        // `role: .close` is what buys the standard appearance, the standard placement in a sheet and
-        // the standard label, in every language, without this file naming any of them. The glass is
-        // right here and is not a general licence: a floating control over scrolling content is the
-        // navigation layer, which is exactly where `CLAUDE.md` puts it.
+        // It is the system's close button and not a hand-drawn "×" any more. It used to be an `Image`
+        // inside a `.plain` button with no label of any kind, which VoiceOver announces as "button":
+        // the one control on the screen whose entire job is to be the way out, and it could not say
+        // so. `role: .close` buys the standard look, the standard placement and the standard label,
+        // in every language, without this file naming any of them.
         .overlay(alignment: .topTrailing) {
             if let onCancel, canLeave {
                 Button(role: .close, action: onCancel) {
@@ -169,6 +167,8 @@ struct RecoverySetupView: View {
                 busy(Strings.Recovery.newConfirm)
             }
             .buttonStyle(.glassAction)
+            .controlSize(.large)
+            .frame(maxWidth: .infinity)
             .disabled(model.isWorking)
         }
     }
@@ -220,6 +220,7 @@ struct RecoverySetupView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.glass)
+            .controlSize(.large)
 
             Button {
                 isConfirming = true
@@ -229,6 +230,7 @@ struct RecoverySetupView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.glass)
+            .controlSize(.large)
 
             // The quiet third way out, for the person for whom neither of the two above is true. It
             // has to be here, and it has to be findable: without it this screen is a locked door.
@@ -240,7 +242,7 @@ struct RecoverySetupView: View {
                 Task { await model.lostTheCode() }
             } label: {
                 Text(Strings.Recovery.neither)
-                    .font(.callout)
+                    .font(.footnote)
                     .frame(maxWidth: .infinity, minHeight: Theme.Size.minimumTapTarget)
                     .contentShape(.rect)
             }
@@ -257,12 +259,12 @@ struct RecoverySetupView: View {
             // A recovery code arrives by paste, out of a password manager, and it is not a word
             // anyone's keyboard should be helping with.
             TextField(String(app: Strings.Encryption.keyPlaceholder), text: $model.typedCode)
-                .textFieldStyle(.roundedBorder)
                 .textContentType(.password)
                 .autocorrectionDisabled()
                 #if os(iOS)
                 .textInputAutocapitalization(.never)
                 #endif
+                .entryField()
 
             Button {
                 Task { await model.unlock() }
@@ -270,13 +272,15 @@ struct RecoverySetupView: View {
                 busy(Strings.Recovery.unlock)
             }
             .buttonStyle(.glassAction)
+            .controlSize(.large)
+            .frame(maxWidth: .infinity)
             .disabled(model.isWorking || model.typedCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
             Button {
                 Task { await model.lostTheCode() }
             } label: {
                 Text(Strings.Recovery.lostCode)
-                    .font(.callout)
+                    .font(.footnote)
                     .frame(maxWidth: .infinity, minHeight: Theme.Size.minimumTapTarget)
                     .contentShape(.rect)
             }
@@ -302,6 +306,8 @@ struct RecoverySetupView: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.glassAction)
+                .controlSize(.large)
+                .frame(maxWidth: .infinity)
             }
         } else {
             VStack(spacing: Theme.Spacing.roomy) {
@@ -321,6 +327,8 @@ struct RecoverySetupView: View {
                     busy(Strings.Recovery.startOver)
                 }
                 .buttonStyle(.glassAction)
+                .controlSize(.large)
+                .frame(maxWidth: .infinity)
                 .disabled(model.isWorking)
             }
         }
@@ -331,7 +339,7 @@ struct RecoverySetupView: View {
             heading(Strings.Recovery.passwordTitle, Strings.Recovery.passwordMessage)
 
             SecureField(String(app: Strings.Recovery.passwordPlaceholder), text: $model.password)
-                .textFieldStyle(.roundedBorder)
+                .entryField()
 
             Button {
                 Task { await model.confirmWithPassword() }
@@ -339,6 +347,8 @@ struct RecoverySetupView: View {
                 busy(Strings.Recovery.passwordConfirm)
             }
             .buttonStyle(.glassAction)
+            .controlSize(.large)
+            .frame(maxWidth: .infinity)
             .disabled(model.isWorking || model.password.isEmpty)
         }
     }
@@ -365,6 +375,7 @@ struct RecoverySetupView: View {
     private func busy(_ title: LocalizedStringResource) -> some View {
         if model.isWorking {
             ProgressView()
+                .controlSize(.small)
                 .frame(maxWidth: .infinity)
         } else {
             Text(title)
