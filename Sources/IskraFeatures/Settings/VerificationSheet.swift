@@ -28,7 +28,26 @@ struct VerificationSheet: View {
     /// its own flag to lower, the root has only the store — so it is the caller's to say.
     let onDone: () -> Void
 
+    /// Where this account's sessions are managed, when the server hands over such a page.
+    ///
+    /// It is here for exactly one moment: the user has just said a device signing in is *not theirs*,
+    /// which means somebody else has their password. Until now the app said so and then showed them
+    /// a Close button — the only screen in Iskra that names an emergency and offers no way to act on
+    /// it. This is the way to act on it, and it is the server's page because ending a session is not
+    /// something the FFI exports (see `Settings.devices`).
+    ///
+    /// `nil` on a server that has no such page, and on the sheet the encryption screen puts up —
+    /// that one is *this* device asking to be trusted, where refusal is not reachable at all.
+    var devicesURL: URL?
+
     @Environment(\.accent) private var accent
+
+    /// The pictures grow with the reader's text size. They did not, and of everything in the app
+    /// that could have been left un-scaled this was the worst candidate: the entire security of the
+    /// screen is a person *looking* at seven small symbols and deciding whether they are the same
+    /// seven. Someone who turned the text size up because small things are hard to see got a
+    /// larger explanation of the emoji and the same unreadable emoji.
+    @ScaledMetric(relativeTo: .largeTitle) private var emojiSize = Theme.Size.verificationEmoji
 
     var body: some View {
         NavigationStack {
@@ -62,7 +81,12 @@ struct VerificationSheet: View {
                     outcome(systemImage: "exclamationmark.shield.fill",
                             tint: .red,
                             title: Strings.Verification.refusedTitle,
-                            message: Strings.Verification.refusedMessage)
+                            message: Strings.Verification.refusedMessage,
+                            // The one screen in the app that tells the user to go and do something
+                            // outside it — so it takes them there, rather than describing the errand.
+                            act: devicesURL.map { url in
+                                (Strings.Verification.endSession, { await WebAuthentication.approve(url: url) })
+                            })
 
                 case .failed:
                     outcome(systemImage: "xmark.circle.fill",
@@ -71,7 +95,7 @@ struct VerificationSheet: View {
                             message: Strings.Verification.failedMessage)
                 }
             }
-            .navigationTitle(Text(Strings.Verification.title))
+            .navigationTitle(Text(title))
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
                 // No way out of the question but through it. While the user is being asked whether
@@ -97,6 +121,21 @@ struct VerificationSheet: View {
     }
 
     private var isAsking: Bool { verification.step == .asked }
+
+    /// What this sheet is about, in the navigation bar — and the two directions are not about the
+    /// same thing at all.
+    ///
+    /// Incoming, a device has just signed in to the account and the user is being told. That is
+    /// news, and the title says so. It used to say "Verification", which reads as a task the app
+    /// wants done rather than as something that has happened to your account, and it was the last
+    /// place in this flow still being coy: the sentence below it already said a device had just
+    /// signed in.
+    ///
+    /// Outgoing, the user pressed a button asking to have *this* device trusted. Nothing has
+    /// happened to anybody, and announcing a sign-in would be alarming nonsense.
+    private var title: LocalizedStringResource {
+        verification.incoming == nil ? Strings.Verification.title : Strings.Verification.signInTitle
+    }
 
     /// Whether the answer has already been given and the buttons are spent.
     ///
@@ -214,7 +253,7 @@ struct VerificationSheet: View {
             FlowLayout(spacing: Theme.Spacing.roomy, alignment: .center) {
                 ForEach(Array(symbols.enumerated()), id: \.offset) { _, symbol in
                     Text(symbol)
-                        .font(.system(size: Theme.Size.verificationEmoji))
+                        .font(.system(size: emojiSize))
                 }
             }
             .frame(maxWidth: .infinity)
@@ -266,10 +305,17 @@ struct VerificationSheet: View {
         .padding(.top, Theme.Spacing.generous)
     }
 
+    /// How every one of these ends: a symbol, what happened, and the way on.
+    ///
+    /// `act` is the thing to *do* about it, where there is one — today only the refusal has one, and
+    /// it is the whole reason this parameter exists. When it is there it takes the prominent button
+    /// and "Close" steps back to being an ordinary one, because at that moment leaving is not the
+    /// action the screen is recommending.
     private func outcome(systemImage: String,
                          tint: Color,
                          title: LocalizedStringResource,
-                         message: LocalizedStringResource) -> some View {
+                         message: LocalizedStringResource,
+                         act: (LocalizedStringResource, () async -> Void)? = nil) -> some View {
         ContentUnavailableView {
             Label {
                 Text(title)
@@ -280,8 +326,20 @@ struct VerificationSheet: View {
         } description: {
             Text(message)
         } actions: {
-            Button(String(app: Strings.Verification.close), action: onDone)
-                .buttonStyle(.primaryAction)
+            VStack(spacing: Theme.Spacing.normal) {
+                if let (label, run) = act {
+                    Button(String(app: label)) {
+                        Task { await run() }
+                    }
+                    .buttonStyle(.primaryAction)
+
+                    Button(String(app: Strings.Verification.close), action: onDone)
+                        .buttonStyle(.bordered)
+                } else {
+                    Button(String(app: Strings.Verification.close), action: onDone)
+                        .buttonStyle(.primaryAction)
+                }
+            }
         }
     }
 }

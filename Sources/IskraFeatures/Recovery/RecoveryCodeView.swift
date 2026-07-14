@@ -71,6 +71,11 @@ struct RecoveryCodeView: View {
             if let onSkip {
                 Button(action: onSkip) {
                     Text(Strings.Recovery.skip)
+                        // A `.plain` button is exactly as tall as its words — about 20pt for a line
+                        // of `.body`, against the 44 Apple asks for. It is a quiet button on purpose;
+                        // quiet is not the same as hard to hit.
+                        .frame(maxWidth: .infinity, minHeight: Theme.Size.minimumTapTarget)
+                        .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)

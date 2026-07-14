@@ -529,10 +529,31 @@ public enum Strings {
         public static let refusedTitle = LocalizedStringResource("verification.refused.title", bundle: bundle)
         public static let refusedMessage = LocalizedStringResource("verification.refused.message", bundle: bundle)
 
+        /// The one thing a person can actually *do* about a device that is not theirs, and until now
+        /// the app named it without offering it: the sentence said "somebody else knows your
+        /// password, change it now" and then presented a Close button. Advice with no door next to it
+        /// is advice nobody follows — they close the sheet, mean to deal with it later, and don't.
+        ///
+        /// The door is the server's own sessions page, which is the only place a session can be
+        /// killed (see `Settings.devices` — the FFI exports no way to do it natively). It exists only
+        /// where the server hands one over, so the button appears only then.
+        public static let endSession = LocalizedStringResource("verification.refused.endSession", bundle: bundle)
+
         public static let failedTitle = LocalizedStringResource("verification.failed.title", bundle: bundle)
         public static let failedMessage = LocalizedStringResource("verification.failed.message", bundle: bundle)
 
         public static let close = LocalizedStringResource("verification.close", bundle: bundle)
+
+        /// The title over an *incoming* request, where the neutral "Verification" used to sit.
+        ///
+        /// It is the closest thing this app has to an alert that somebody signed in, and for a long
+        /// time it did not say so: a sheet headed "Verification" showing a device name reads as a
+        /// chore the app is asking for, not as news about the account. The words underneath already
+        /// said what had happened; the title was the one part still being coy about it.
+        ///
+        /// Only on the incoming side. Asking to have *this* device trusted is not news about
+        /// anything, and it keeps the plain title.
+        public static let signInTitle = LocalizedStringResource("verification.signIn.title", bundle: bundle)
     }
 
     /// The sign-out nobody here performed — the server stopped accepting this session, because
@@ -627,6 +648,16 @@ public enum Strings {
 
         public static let bannerLocked = LocalizedStringResource("recovery.banner.locked", bundle: bundle)
         public static let bannerUnsaved = LocalizedStringResource("recovery.banner.unsaved", bundle: bundle)
+
+        /// What the banner is *for*, said to a screen reader — which saw only the sentence and a
+        /// chevron and had no way to know the strip was a button at all, let alone what pressing it
+        /// would do. The sighted reader gets that from the chevron; everybody else got nothing.
+        public static let bannerHint = LocalizedStringResource("recovery.banner.hint", bundle: bundle)
+
+        /// The way out of the flow, for a screen reader. The control is an "×" and nothing else, and
+        /// an unlabelled image in a button is announced as "button" — a control whose entire purpose
+        /// is to be the way out, and which cannot say so.
+        public static let close = LocalizedStringResource("recovery.close", bundle: bundle)
     }
 
     /// The state of this account's encryption, in words with no cryptography in them.
