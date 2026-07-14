@@ -157,7 +157,7 @@ public final class RecoveryStore {
             freshKey = RecoveryKey(value: key)
             protection = .on
         } catch {
-            Log.session.error("recovery would not turn on: \(error)")
+            Log.session.error("recovery would not turn on: \(String(describing: error), privacy: .public)")
             failure = .protectHistory
         }
     }
@@ -173,7 +173,7 @@ public final class RecoveryStore {
             freshKey = RecoveryKey(value: try await encryption.resetRecoveryKey())
             protection = .on
         } catch {
-            Log.session.error("the recovery key would not reset: \(error)")
+            Log.session.error("the recovery key would not reset: \(String(describing: error), privacy: .public)")
             failure = .newKey
         }
     }
@@ -192,7 +192,7 @@ public final class RecoveryStore {
         } catch {
             // Not logged with the key in it, obviously — it is the one string in this file
             // that is worth as much as the password.
-            Log.session.error("the recovery key was refused: \(error)")
+            Log.session.error("the recovery key was refused: \(String(describing: error), privacy: .public)")
             failure = .restore
         }
     }

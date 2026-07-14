@@ -203,7 +203,7 @@ public final class UserSession {
         do {
             try await client.setDisplayName(name: trimmed)
         } catch {
-            Log.session.error("the name would not change: \(error)")
+            Log.session.error("the name would not change: \(String(describing: error), privacy: .public)")
             displayName = previous
             throw .name
         }
@@ -218,7 +218,7 @@ public final class UserSession {
             try await client.uploadAvatar(mimeType: info.mimeType, data: data)
             avatarURL = try? await client.avatarUrl()
         } catch {
-            Log.session.error("the picture would not change: \(error)")
+            Log.session.error("the picture would not change: \(String(describing: error), privacy: .public)")
             throw .picture
         }
     }
@@ -230,7 +230,7 @@ public final class UserSession {
         do {
             try await client.removeAvatar()
         } catch {
-            Log.session.error("the picture would not clear: \(error)")
+            Log.session.error("the picture would not clear: \(String(describing: error), privacy: .public)")
             avatarURL = previous
             throw .picture
         }

@@ -408,7 +408,7 @@ public final class RoomListStore {
         do {
             _ = try await client.joinRoomById(roomId: roomID)
         } catch {
-            Log.rooms.error("the invitation would not be accepted: \(error)")
+            Log.rooms.error("the invitation would not be accepted: \(String(describing: error), privacy: .public)")
             failure = .acceptInvite
         }
     }
@@ -428,7 +428,7 @@ public final class RoomListStore {
         do {
             try await room.leave()
         } catch {
-            Log.rooms.error("the invitation would not be declined: \(error)")
+            Log.rooms.error("the invitation would not be declined: \(String(describing: error), privacy: .public)")
             failure = .declineInvite
         }
     }
