@@ -77,6 +77,34 @@ public final class UserSession {
     /// Kept alive because dropping it unsubscribes. Cancelled in `signOut()`.
     private var authErrorHandle: TaskHandle?
 
+    /// The timelines this session has handed out and that are still on screen, by room.
+    ///
+    /// It does two jobs, and it is worth being explicit that they are two, because either alone
+    /// would have justified it.
+    ///
+    /// **It is how sign-out reaches them.** Signing out ends with `logout()`, which deletes the
+    /// encrypted SQLite store from the disk. Anything still subscribed to it at that moment —
+    /// `addListener`, `subscribeToRoomInfoUpdates`, `subscribeToSendQueueUpdates`,
+    /// `subscribeToTypingNotifications` — is a live listener over a file that no longer exists. And
+    /// a room *is* still open at that moment on every platform where the app has two columns: on
+    /// the Mac and on a wide iPad the conversation stays in the detail column while the user signs
+    /// out from the sidebar. The room list was being stopped and nothing else was.
+    ///
+    /// **It is how the same room stops being two stores.** `timeline(forRoomID:)` is called from
+    /// inside `IskraRootView.body`, which SwiftUI re-runs whenever anything it reads changes. Every
+    /// one of those passes used to mint a fresh `TimelineStore` — an FFI call to find the room and
+    /// an object thrown away microseconds later, saved from being a real bug only by `@State`
+    /// holding on to the first one. Returning the live store instead makes the call idempotent,
+    /// which is what the view was assuming all along.
+    ///
+    /// Weakly, because the screen owns the store and this is only a way to reach it. When the room
+    /// closes, the box empties on its own and the next visit builds a new one.
+    private var openTimelines: [String: WeakBox<TimelineStore>] = [:]
+
+    private struct WeakBox<T: AnyObject> {
+        weak var value: T?
+    }
+
     /// Starts the sync loop. Everything else follows from this.
     public func start() async throws {
         // Before the sync loop, not after: the token can be refused by the very first request the
@@ -105,8 +133,7 @@ public final class UserSession {
 
         Log.session.error("the server no longer accepts this session; signing out locally")
 
-        verification.stop()
-        await roomList.stop()
+        await stopEverything()
 
         authErrorHandle?.cancel()
         authErrorHandle = nil
@@ -144,10 +171,22 @@ public final class UserSession {
     /// The user's own ID goes down with it because the timeline has to be able to tell a
     /// reaction the user left from one they merely received — see `MessageReaction`.
     public func timeline(forRoomID roomID: String) -> TimelineStore? {
+        // The one that is already open, if this room is the one on screen. See `openTimelines`.
+        if let open = openTimelines[roomID]?.value { return open }
+
         guard let room = roomList.room(withID: roomID) ?? (try? client.getRoom(roomId: roomID)) else {
             return nil
         }
-        return TimelineStore(room: room, ownUserID: userID)
+
+        let store = TimelineStore(room: room, ownUserID: userID)
+
+        // The empty boxes go on the way past. There is no timer and no bookkeeping: a box is added
+        // only when a room is opened, and nobody opens enough rooms in one sitting for the sweep to
+        // be worth thinking about.
+        openTimelines = openTimelines.filter { $0.value.value != nil }
+        openTimelines[roomID] = WeakBox(value: store)
+
+        return store
     }
 
     /// Everything the room-info screen needs, built only when it is opened.
@@ -253,9 +292,28 @@ public final class UserSession {
         authErrorHandle?.cancel()
         authErrorHandle = nil
 
-        verification.stop()
-        await roomList.stop()
+        // Before `signOut`, which ends in `logout()`, which deletes the encrypted store off the
+        // disk. Every listener still registered at that moment is a listener over a file that has
+        // been unlinked underneath it. See `openTimelines`.
+        await stopEverything()
+
         await authentication.signOut(client: client)
+    }
+
+    /// Everything this session handed out that is still listening to the SDK.
+    ///
+    /// Called from both ways out — the user signing out, and the server having already signed them
+    /// out — because the store on the disk goes away in both, and a room left open in the detail
+    /// column does not know that.
+    private func stopEverything() async {
+        verification.stop()
+
+        for box in openTimelines.values {
+            box.value?.stop()
+        }
+        openTimelines = [:]
+
+        await roomList.stop()
     }
 }
 
