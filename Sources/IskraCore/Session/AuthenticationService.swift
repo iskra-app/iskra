@@ -75,6 +75,22 @@ public actor AuthenticationService {
 
     /// Brings back the previously signed-in user, if there is one.
     ///
+    /// A `UserSession` and not a `Client`, and that is not a convenience. `Client` is the SDK's
+    /// type, and the rule this whole package is arranged around is that the SDK does not leave
+    /// `IskraCore` — yet this and the two sign-in calls handed one straight out through the public
+    /// API, so the sign-in screen had to `import MatrixRustSDK` in order to name the thing it was
+    /// being given. The rule was kept by everybody except the layer that defines it.
+    ///
+    /// The client is still built here and still owned by `UserSession`. It simply never surfaces.
+    public func restorePreviousSession() async throws -> UserSession? {
+        guard let client = try await restoreClient() else { return nil }
+        return await UserSession(client: client, authentication: self)
+    }
+
+    /// The client itself, for the callers *inside* `IskraCore` that need one: the notification
+    /// extension, which has no screens and wants a notification client rather than a session, and
+    /// the probes.
+    ///
     /// Bounded, like everything else the user waits on — and it was the one call that was not.
     /// This is what runs while the launch screen shows a spinner, and `restoreSession` reaches the
     /// network: a homeserver that accepts the connection and then says nothing left the app on that
@@ -84,7 +100,7 @@ public actor AuthenticationService {
     /// The same deadline covers the notification extension, which restores a session too and has
     /// thirty seconds to live before iOS takes the process away. See `PushDecoder`, whose budget
     /// used to start counting only after this had already returned.
-    public func restorePreviousSession() async throws -> Client? {
+    func restoreClient() async throws -> Client? {
         guard let stored = try sessionStore.loadSession() else { return nil }
 
         let builder: ClientBuilder
@@ -224,7 +240,7 @@ public actor AuthenticationService {
     }
 
     /// Finishes single sign-on once the browser redirects back to us.
-    public func completeSingleSignOn(callbackURL: URL) async throws -> Client {
+    public func completeSingleSignOn(callbackURL: URL) async throws -> UserSession {
         guard let client = pendingClient, let sessionID = pendingSessionID else {
             throw AuthenticationError.noSignInInProgress
         }
@@ -243,11 +259,11 @@ public actor AuthenticationService {
             throw AuthenticationError.sdk(error)
         }
 
-        return try persist(client: client, sessionID: sessionID)
+        return try await persist(client: client, sessionID: sessionID)
     }
 
     /// The fallback for homeservers without any SSO.
-    public func signIn(username: String, password: String) async throws -> Client {
+    public func signIn(username: String, password: String) async throws -> UserSession {
         guard let client = pendingClient, let sessionID = pendingSessionID else {
             throw AuthenticationError.noSignInInProgress
         }
@@ -261,7 +277,7 @@ public actor AuthenticationService {
             throw AuthenticationError.sdk(error)
         }
 
-        return try persist(client: client, sessionID: sessionID)
+        return try await persist(client: client, sessionID: sessionID)
     }
 
     /// Abandons a half-finished sign-in and lets the SDK tear down its side.
@@ -395,7 +411,7 @@ public actor AuthenticationService {
 
     // MARK: - Private
 
-    private func persist(client: Client, sessionID: String) throws -> Client {
+    private func persist(client: Client, sessionID: String) async throws -> UserSession {
         let stored = StoredSession(sessionID: sessionID, session: try client.session())
         try sessionStore.save(stored)
 
@@ -404,7 +420,7 @@ public actor AuthenticationService {
         pendingOAuth = nil
         pendingSSO = nil
 
-        return client
+        return await UserSession(client: client, authentication: self)
     }
 
     /// The one place a `ClientBuilder` is configured, so the security-relevant

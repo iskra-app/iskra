@@ -275,8 +275,7 @@ public struct IskraRootView: View {
         await authentication.sweepOrphanedStores()
 
         do {
-            if let client = try await authentication.restorePreviousSession() {
-                let session = UserSession(client: client, authentication: authentication)
+            if let session = try await authentication.restorePreviousSession() {
                 phase = .signedIn(session)
                 try? await session.start()
                 return
