@@ -81,6 +81,30 @@ public final class VideoNoteRecorder: NSObject {
     private var ticker: Task<Void, Never>?
     private var onRecorded: ((URL) async -> Void)?
 
+    /// Which recording we are on. Bumped by `cancel()`, and the answer to two different bugs that
+    /// are really the same bug: **work started before the user backed out must not land after it.**
+    ///
+    /// `VoiceRecorder` has one of these already, for the same reason and with the same name. The
+    /// camera needed it twice over, and neither case is exotic:
+    ///
+    /// - `prepare()` has three awaits in it — two permission prompts and the building of the
+    ///   capture session, which is the better part of a second. Let go, swipe away, or leave the
+    ///   room during any of them and `cancel()` runs, `teardown()` puts the state back to `.idle`,
+    ///   and the overlay comes down. Then `prepare()` resumes and assigns a **running**
+    ///   `AVCaptureSession` over the top of it. Camera and microphone live, indicator lit, nothing
+    ///   on screen that would show it, for as long as the room stays open.
+    ///
+    /// - `stop()` hands the take to an async chain — close the file, crop it square, upload — and
+    ///   cropping a long clip takes seconds. The "Cancel" button is on the screen for every one of
+    ///   them. Pressing it used to do nothing at all: `cancel()` can clear `onRecorded`, but
+    ///   `stop()` has already copied the closure into its own task. The overlay came down, the user
+    ///   believed the recording was gone, and a moment later a circle with their face in it
+    ///   appeared in the conversation.
+    ///
+    /// So the two async paths take a snapshot on the way in and check it before they touch
+    /// anything — the state, the session, or the closure that sends.
+    private var generation = 0
+
     public override init() {
         super.init()
     }
@@ -112,10 +136,18 @@ public final class VideoNoteRecorder: NSObject {
         guard state == .idle else { return }
         state = .preparing
 
+        // Everything below has to survive the user changing their mind, and the awaits below are
+        // exactly where they get the chance to — the first of them is a *modal permission alert*,
+        // which takes the finger off the button by definition. See `generation`.
+        let generation = self.generation
+
         guard await isPermitted(.video), await isPermitted(.audio) else {
+            guard generation == self.generation else { return }
             state = .denied
             return
         }
+
+        guard generation == self.generation else { return }
 
         let wanted = camera
 
@@ -166,7 +198,18 @@ public final class VideoNoteRecorder: NSObject {
             session.startRunning()
             return Camera(session: session, input: cameraInput, lens: lens)
         }.value else {
+            guard generation == self.generation else { return }
             state = .unavailable
+            return
+        }
+
+        // The camera is up — and there may be nobody left who wants it. `startRunning()` blocks
+        // until the lens is open, and a finger lifted in the meantime has already torn everything
+        // down. Assigning this now would hand the screen a live session it is no longer showing,
+        // and `teardown()` has been and gone: nothing would ever turn it off.
+        guard generation == self.generation else {
+            nonisolated(unsafe) let stopping = built.session
+            Task.detached { stopping.stopRunning() }
             return
         }
 
@@ -321,6 +364,12 @@ public final class VideoNoteRecorder: NSObject {
     }
 
     /// Stops and sends. The cap may also stop us on its own, and lands here.
+    ///
+    /// Everything after this point is asynchronous and slow — closing the file, cropping it square,
+    /// handing it to the upload — and the user is looking at a screen with a "Cancel" button on it
+    /// the whole time. So the take is stamped with the generation it belongs to, and the stamp is
+    /// checked at the one moment that cannot be taken back: just before the clip is handed to the
+    /// closure that sends it. See `generation`.
     public func stop() {
         guard case .recording = state else { return }
         state = .finishing
@@ -330,6 +379,8 @@ public final class VideoNoteRecorder: NSObject {
 
         let handler = onRecorded
         onRecorded = nil
+
+        let generation = self.generation
 
         Task {
             let url = await close()
@@ -341,16 +392,34 @@ public final class VideoNoteRecorder: NSObject {
             }
             defer { try? FileManager.default.removeItem(at: url) }
 
+            // Backed out while the file was closing. The bytes are on the disk, in the clear, and
+            // nobody asked for them: they go, and nothing is sent.
+            guard generation == self.generation else { return }
+
             // Square it before it goes anywhere: roundness is carried by the pixels.
             guard let square = try? await SquareVideoExporter.square(url) else { return }
             defer { try? FileManager.default.removeItem(at: square) }
+
+            // And again, because cropping is the slow part — seconds, on a long clip, every one of
+            // them with the way out on screen. Without this the press did nothing whatsoever: the
+            // closure was copied out of `onRecorded` before `cancel()` could ever clear it, so the
+            // overlay came down, the user believed the recording was gone, and their face appeared
+            // in the conversation a moment later.
+            guard generation == self.generation else { return }
 
             await handler(square)
         }
     }
 
     /// Throws the recording away. Used when the user backs out.
+    ///
+    /// Which means backing out of *whatever is in flight*, not merely out of a recording that is
+    /// running: a camera still being opened, and a clip already being cropped for sending, are both
+    /// things the user is entitled to cancel — and both used to carry on regardless. Bumping the
+    /// generation is what reaches them. See `generation`.
     public func cancel() {
+        generation += 1
+
         onRecorded = nil
         frames.async { [take] in take.claim()?.cancel() }
         teardown()
