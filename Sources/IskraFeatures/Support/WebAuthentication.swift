@@ -44,7 +44,14 @@ enum WebAuthentication {
         defer { holder.session = nil }
 
         return try await withCheckedThrowingContinuation { continuation in
-            let session = ASWebAuthenticationSession(url: url, callbackURLScheme: callbackScheme) { callbackURL, error in
+            // `@Sendable` is load-bearing, not a formality. Formed inside a `@MainActor` function, a
+            // non-`Sendable` completion handler inherits main-actor isolation — and on macOS 26
+            // AuthenticationServices delivers this callback on a background XPC reply queue, not the
+            // main thread. The runtime's executor-identity check at the top of a main-actor closure
+            // then traps (`SIGTRAP`, `dispatch_assert_queue_fail`) the instant sign-in completes.
+            // `@Sendable` makes the closure non-isolated so it may run on whatever queue calls it;
+            // its body only resumes the continuation, which is safe from any thread.
+            let session = ASWebAuthenticationSession(url: url, callbackURLScheme: callbackScheme) { @Sendable callbackURL, error in
                 if let callbackURL {
                     continuation.resume(returning: callbackURL)
                 } else if let error = error as? ASWebAuthenticationSessionError,
