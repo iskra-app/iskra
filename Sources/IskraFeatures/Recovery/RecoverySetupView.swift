@@ -201,26 +201,33 @@ struct RecoverySetupView: View {
 
             heading(Strings.Recovery.approveTitle, Strings.Recovery.approveMessage)
 
+            // Red, and labelled by its consequence — the two things that keep it from being pressed
+            // by reflex. `.bordered` + `.tint(.red)` is the app's own destructive language, the same
+            // pair the verification sheet uses for "It's not me"; the forbidden `.glassProminent`
+            // would fill with the root tint and come back white. See `PrimaryActionStyle`.
             Button {
                 Task { await model.approved() }
             } label: {
                 busy(Strings.Recovery.approveConfirm)
             }
-            .buttonStyle(.glass)
+            .buttonStyle(.bordered)
+            .tint(.red)
             .controlSize(.large)
             .frame(maxWidth: .infinity)
             .disabled(model.isWorking)
 
+            // The same size as the destructive one, not a footnote underneath it. When the two
+            // answers are "erase everything" and "don't", the safe one must not be the smaller,
+            // quieter target — the shape of the screen should not lean on the reader.
             Button {
                 Task { await model.abandonStartOver() }
             } label: {
                 Text(Strings.Recovery.approveCancel)
-                    .font(.footnote)
-                    .frame(maxWidth: .infinity, minHeight: Theme.Size.minimumTapTarget)
-                    .contentShape(.rect)
+                    .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
+            .buttonStyle(.glass)
+            .controlSize(.large)
+            .frame(maxWidth: .infinity)
         }
     }
 

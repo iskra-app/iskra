@@ -635,6 +635,10 @@ public enum Strings {
         /// of the quiet nothing they had asked for. So it asks.
         public static let approveTitle = LocalizedStringResource("recovery.approve.title", bundle: bundle)
         public static let approveMessage = LocalizedStringResource("recovery.approve.message", bundle: bundle)
+        /// The destructive answer, and it says what it does rather than "carry on": on the far side
+        /// of this button every message the account ever received becomes permanently unreadable.
+        /// It is painted red and worded as the act itself — a button labelled by its consequence is
+        /// the one a person cannot press by mistake.
         public static let approveConfirm = LocalizedStringResource("recovery.approve.confirm", bundle: bundle)
         public static let approveCancel = LocalizedStringResource("recovery.approve.cancel", bundle: bundle)
 
