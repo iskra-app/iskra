@@ -90,6 +90,22 @@ public struct IskraRootView: View {
                         phase = .signedOut
                         wasSignedOutRemotely = true
                     }
+                    // A device of this user's is signing in and asking to be trusted. It is put up
+                    // here, at the root, rather than on the encryption screen where the *outgoing*
+                    // verification lives — and that is the whole difference between the two
+                    // directions. Asking to be verified is something the user goes somewhere to do.
+                    // Being asked is something that happens to them, while they are reading a chat,
+                    // and the question has to reach them there or it does not reach them at all.
+                    //
+                    // The sheet answers for itself: it cannot be swiped away while the question is
+                    // on it, and it takes itself down when the store has nothing left to say. See
+                    // `VerificationSheet`.
+                    .sheet(isPresented: Binding(get: { session.verification.incoming != nil },
+                                                set: { if !$0 { session.verification.reset() } })) {
+                        VerificationSheet(verification: session.verification) {
+                            session.verification.reset()
+                        }
+                    }
             }
         }
         .animation(.smooth, value: isSignedIn)

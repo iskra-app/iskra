@@ -128,7 +128,7 @@ struct SettingsView: View {
             switch destination {
             case .encryption:
                 EncryptionView(recovery: session.recovery(),
-                               verification: session.verification(),
+                               verification: session.verification,
                                deviceID: session.deviceID)
             case .storage:
                 // Built here, on the push, for the same reason as the encryption screen above:
