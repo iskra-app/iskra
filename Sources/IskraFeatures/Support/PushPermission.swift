@@ -53,7 +53,7 @@ public final class PushPermission {
                 return
             }
         } catch {
-            Log.push.error("the notification permission could not be asked for: \(String(describing: error), privacy: .public)")
+            Log.push.error("the notification permission could not be asked for: \(Log.describe(error), privacy: .public)")
             return
         }
 

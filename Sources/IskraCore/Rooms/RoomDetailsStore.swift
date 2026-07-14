@@ -286,7 +286,7 @@ public final class RoomDetailsStore {
         do {
             try await notificationSettings().setRoomNotificationMode(roomId: room.id(), mode: choice.mode)
         } catch {
-            Log.rooms.error("the notification rule would not stick: \(String(describing: error), privacy: .public)")
+            Log.rooms.error("the notification rule would not stick: \(Log.describe(error), privacy: .public)")
             rollBack(\.alerts, to: previous, ifStillEqualTo: choice)
             failure = .alerts
         }
@@ -424,7 +424,7 @@ public final class RoomDetailsStore {
         do {
             try await room.setName(name: trimmed)
         } catch {
-            Log.rooms.error("rename refused: \(String(describing: error), privacy: .public)")
+            Log.rooms.error("rename refused: \(Log.describe(error), privacy: .public)")
             rollBack(\.name, to: previous, ifStillEqualTo: trimmed)
             failure = .rename
         }
@@ -445,7 +445,7 @@ public final class RoomDetailsStore {
         do {
             try await room.setTopic(topic: trimmed)
         } catch {
-            Log.rooms.error("topic refused: \(String(describing: error), privacy: .public)")
+            Log.rooms.error("topic refused: \(Log.describe(error), privacy: .public)")
             rollBack(\.topic, to: previous, ifStillEqualTo: attempted)
             failure = .topic
         }
@@ -461,7 +461,7 @@ public final class RoomDetailsStore {
             try await room.uploadAvatar(mimeType: info.mimeType, data: data, mediaInfo: nil)
             await loadInfo()
         } catch {
-            Log.rooms.error("room picture refused: \(String(describing: error), privacy: .public)")
+            Log.rooms.error("room picture refused: \(Log.describe(error), privacy: .public)")
             failure = .picture
         }
     }
@@ -473,7 +473,7 @@ public final class RoomDetailsStore {
         do {
             try await room.removeAvatar()
         } catch {
-            Log.rooms.error("room picture would not clear: \(String(describing: error), privacy: .public)")
+            Log.rooms.error("room picture would not clear: \(Log.describe(error), privacy: .public)")
             rollBack(\.avatarURL, to: previous, ifStillEqualTo: nil)
             failure = .picture
         }
@@ -494,7 +494,7 @@ public final class RoomDetailsStore {
         do {
             try await room.updateJoinRules(newRule: shouldBePublic ? .public : .invite)
         } catch {
-            Log.rooms.error("join rule refused: \(String(describing: error), privacy: .public)")
+            Log.rooms.error("join rule refused: \(Log.describe(error), privacy: .public)")
             rollBack(\.isPublic, to: previous, ifStillEqualTo: shouldBePublic)
             failure = .visibility
         }
@@ -516,7 +516,7 @@ public final class RoomDetailsStore {
         do {
             try await room.inviteUserById(userId: userID)
         } catch {
-            Log.rooms.error("invitation refused: \(String(describing: error), privacy: .public)")
+            Log.rooms.error("invitation refused: \(Log.describe(error), privacy: .public)")
             failure = .invite
         }
     }
@@ -528,7 +528,7 @@ public final class RoomDetailsStore {
             try await room.kickUser(userId: member.id, reason: nil)
             await refreshMembers()
         } catch {
-            Log.rooms.error("removal refused: \(String(describing: error), privacy: .public)")
+            Log.rooms.error("removal refused: \(Log.describe(error), privacy: .public)")
             failure = .remove
         }
     }
@@ -543,7 +543,7 @@ public final class RoomDetailsStore {
             try await room.banUser(userId: member.id, reason: nil)
             await refreshMembers()
         } catch {
-            Log.rooms.error("ban refused: \(String(describing: error), privacy: .public)")
+            Log.rooms.error("ban refused: \(Log.describe(error), privacy: .public)")
             failure = .ban
         }
     }
@@ -573,7 +573,7 @@ public final class RoomDetailsStore {
                                                                                     powerLevel: level)])
             await refreshMembers()
         } catch {
-            Log.rooms.error("role change refused: \(String(describing: error), privacy: .public)")
+            Log.rooms.error("role change refused: \(Log.describe(error), privacy: .public)")
             failure = .role
         }
     }
@@ -584,7 +584,7 @@ public final class RoomDetailsStore {
             try await room.leave()
             hasLeft = true
         } catch {
-            Log.rooms.error("leaving refused: \(String(describing: error), privacy: .public)")
+            Log.rooms.error("leaving refused: \(Log.describe(error), privacy: .public)")
             failure = .leave
         }
     }

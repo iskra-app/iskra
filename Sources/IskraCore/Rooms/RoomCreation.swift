@@ -90,7 +90,7 @@ public extension UserSession {
 
             return roomID
         } catch {
-            Log.rooms.error("the room was not created: \(String(describing: error), privacy: .public)")
+            Log.rooms.error("the room was not created: \(Log.describe(error), privacy: .public)")
             throw .refused
         }
     }

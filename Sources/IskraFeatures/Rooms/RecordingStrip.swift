@@ -33,6 +33,17 @@ struct RecordingStrip: View {
     /// there it is an opaque dark fill, the same one the flip button wears, on the same backdrop.
     var onCamera: Bool = false
 
+    /// Whether the microphone is still listening.
+    ///
+    /// It is not always, and the strip stays up when it stops: iOS ends a recording without asking
+    /// at the five-minute cap, when a call comes in, and when the app is put away, and what was said
+    /// up to that point is still there and still worth sending. So the strip has to be able to say
+    /// "this recording has ended and is waiting for you" as well as "I am listening" — and the
+    /// difference is entirely in the dot, because the clock stops on its own. A dot that goes on
+    /// breathing over a microphone that has been switched off is the screen telling a small lie to
+    /// somebody who is still talking into it.
+    var isLive: Bool = true
+
     let onCancel: () -> Void
 
     @State private var isPulsing = false
@@ -61,11 +72,15 @@ struct RecordingStrip: View {
     private var strip: some View {
         HStack(spacing: Theme.Spacing.close) {
             Circle()
-                .fill(.red)
+                // Grey once the microphone has stopped. Red is the colour of the thing that is
+                // happening, and when it has stopped happening the dot is a full stop and not a
+                // light. See `isLive`.
+                .fill(isLive ? Color.red : Color.secondary)
                 .frame(width: Theme.Size.recordingDot, height: Theme.Size.recordingDot)
                 // A pulse, because a red dot that does not move is a design element and a red
-                // dot that breathes is a thing that is happening.
-                .opacity(isPulsing ? 0.3 : 1)
+                // dot that breathes is a thing that is happening. And when it is no longer
+                // happening the dot stops breathing, which is the same sentence read backwards.
+                .opacity(isPulsing && isLive ? 0.3 : 1)
                 .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: isPulsing)
                 .onAppear { isPulsing = true }
                 .onDisappear { isPulsing = false }

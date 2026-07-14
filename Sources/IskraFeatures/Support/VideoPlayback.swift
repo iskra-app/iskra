@@ -101,7 +101,7 @@ final class VideoPlayback {
         } catch {
             // The video would not come down. Say so on the bubble; there is nothing here
             // worth an alert, and nothing the user can do about it but try again.
-            Log.media.error("video would not load: \(String(describing: error), privacy: .public)")
+            Log.media.error("video would not load: \(Log.describe(error), privacy: .public)")
             failed = true
         }
     }

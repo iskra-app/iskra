@@ -504,6 +504,14 @@ struct MessageRow: View {
                               sender: senderTitle, timestamp: message.timestamp)
             }
 
+        case let .sticker(attachment):
+            // No bubble, and nothing to open. A sticker is already the shape its sender drew,
+            // and the transparency around it is most of what makes it one — put it on a fill
+            // and it becomes a small photograph of a sticker.
+            quoted {
+                StickerView(attachment: attachment)
+            }
+
         case let .video(attachment):
             quoted {
                 PictureBubble(attachment: attachment, isOwn: message.isOwn, isPlayable: true,
@@ -652,6 +660,12 @@ struct MessageRow: View {
         case let .notice(body): body
         case let .emote(body): body
         case .image: String(app: Strings.Message.Spoken.sentPhoto)
+        case let .sticker(attachment):
+            if let description = attachment.caption {
+                String(app: Strings.Message.Spoken.sentStickerNamed(description))
+            } else {
+                String(app: Strings.Message.Spoken.sentSticker)
+            }
         case .video: String(app: Strings.Message.Spoken.sentVideo)
         case .videoNote: String(app: Strings.Message.Spoken.sentVideoNote)
         case .voice: String(app: Strings.Message.Spoken.sentVoice)
@@ -1080,6 +1094,70 @@ private struct VoiceMessageView: View {
     private func hasPlayed(_ index: Int) -> Bool {
         guard !bars.isEmpty else { return false }
         return Double(index) / Double(bars.count) < playback.progress
+    }
+}
+
+/// A sticker: the picture its sender drew, at the size it was drawn, on nothing at all.
+///
+/// The *file*, not a thumbnail, and that is the one decision in here worth defending. Three
+/// reasons, any one of which would be enough. A sticker is small by construction — the pack
+/// formats cap them around 512 points and a few tens of kilobytes — so a thumbnail saves
+/// nothing worth having. `getMediaThumbnail` asks the *server* to do the resizing, and a
+/// sticker sent as an encrypted file is ciphertext to the server: it is the same wall video
+/// notes hit, and the answer would be a grey box. And a server that does resize it is free to
+/// hand back a JPEG, which cannot carry transparency — the sticker would arrive matted onto a
+/// black rectangle, which is precisely the thing a sticker must not be.
+///
+/// An animated sticker shows its first frame: `UIImage(data:)` does not animate APNG or WebP,
+/// and teaching it to is a job of its own. A still sticker is still a sticker; an empty square
+/// is not.
+private struct StickerView: View {
+    let attachment: Attachment
+
+    @Environment(\.mediaLoader) private var loader
+
+    @State private var image: Image?
+    @State private var failed = false
+
+    /// The sticker's own shape, fitted into `Theme.Size.sticker` on its longest edge — worked
+    /// out from the event rather than from the bytes, so the row is the right size before the
+    /// picture lands and the conversation does not jump when it does. A sticker whose sender
+    /// sent no dimensions is assumed square, which is what almost all of them are.
+    private var size: CGSize {
+        let ratio = CGFloat(attachment.aspectRatio ?? 1)
+        guard ratio > 0 else { return CGSize(width: Theme.Size.sticker, height: Theme.Size.sticker) }
+
+        return ratio >= 1
+            ? CGSize(width: Theme.Size.sticker, height: Theme.Size.sticker / ratio)
+            : CGSize(width: Theme.Size.sticker * ratio, height: Theme.Size.sticker)
+    }
+
+    var body: some View {
+        Group {
+            if let image {
+                image
+                    .resizable()
+                    .scaledToFit()
+            } else if failed {
+                // No bubble to put a marker in, so the marker is the whole message. Quiet, and
+                // the same glyph a picture that would not load gets.
+                Image(systemName: "photo.badge.exclamationmark")
+                    .font(.title2)
+                    .foregroundStyle(.secondary)
+            } else {
+                ProgressView()
+            }
+        }
+        .frame(width: size.width, height: size.height)
+        .task(id: attachment.mediaID) {
+            guard image == nil, let loader else { return }
+            do {
+                image = Image(mediaData: try await loader.data(for: attachment))
+                failed = (image == nil)
+            } catch {
+                failed = true
+            }
+        }
     }
 }
 

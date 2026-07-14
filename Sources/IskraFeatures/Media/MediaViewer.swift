@@ -385,7 +385,7 @@ struct MediaViewer: View {
                 self.image = image
             }
         } catch {
-            Log.media.error("the attachment would not open: \(String(describing: error), privacy: .public)")
+            Log.media.error("the attachment would not open: \(Log.describe(error), privacy: .public)")
             failed = true
         }
     }
@@ -437,7 +437,7 @@ struct MediaViewer: View {
             saveState = .saved
         } catch {
             // Not the picture, and not where it came from: only that the library refused it.
-            Log.media.error("the photo library would not take the file: \(String(describing: error), privacy: .public)")
+            Log.media.error("the photo library would not take the file: \(Log.describe(error), privacy: .public)")
             saveState = .failed
         }
     }

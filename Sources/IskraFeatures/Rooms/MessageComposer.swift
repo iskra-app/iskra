@@ -12,6 +12,11 @@ import IskraDesign
 struct VoiceRecording: Equatable {
     let elapsed: TimeInterval
     let waveform: [Float]
+
+    /// Whether the microphone is still listening. False when iOS ended the recording without being
+    /// asked — the five-minute cap, an incoming call, the app being put away — and what was said is
+    /// sitting there waiting to be sent. See `RecordingStrip.isLive`.
+    let isLive: Bool
 }
 
 /// What the composer is doing besides writing a new message: answering one, or going back to
@@ -195,6 +200,7 @@ struct MessageComposer: View {
                     if let voice {
                         RecordingStrip(elapsed: voice.elapsed,
                                        waveform: voice.waveform,
+                                       isLive: voice.isLive,
                                        onCancel: onCancelVoice)
                             // Out by shrinking as it fades, and that is not decoration: sending and
                             // cancelling both simply *stop* the recorder, and the strip was

@@ -145,7 +145,7 @@ public final class VoiceRecorder {
 
             startSampling()
         } catch {
-            Log.media.error("the recorder would not open: \(String(describing: error), privacy: .public)")
+            Log.media.error("the recorder would not open: \(Log.describe(error), privacy: .public)")
             state = .unavailable
         }
     }

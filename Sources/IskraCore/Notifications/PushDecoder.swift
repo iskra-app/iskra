@@ -49,7 +49,7 @@ public actor PushDecoder {
             Log.push.error("the push did not decrypt inside \(Self.budget)")
             return .failed("timed out after \(Self.budget)")
         } catch {
-            Log.push.error("the push would not decrypt: \(String(describing: error), privacy: .public)")
+            Log.push.error("the push would not decrypt: \(Log.describe(error), privacy: .public)")
             return .failed(String(describing: error))
         }
     }
@@ -68,7 +68,7 @@ public actor PushDecoder {
             // extension has a different bundle ID from the app, so it needs the App Group
             // and the Keychain group granted to it *separately*, and a profile that forgot
             // one of them fails here and nowhere else.
-            Log.push.error("the session would not open in this process: \(String(describing: error), privacy: .public)")
+            Log.push.error("the session would not open in this process: \(Log.describe(error), privacy: .public)")
             return .failed(String(describing: error))
         }
 

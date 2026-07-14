@@ -227,7 +227,7 @@ public extension TimelineStore {
             let handle = try start()
             try await handle.join()
         } catch {
-            Log.media.error("attachment refused: \(String(describing: error), privacy: .public)")
+            Log.media.error("attachment refused: \(Log.describe(error), privacy: .public)")
             sendFailure = CoreStrings.Timeline.sendFailed
         }
     }

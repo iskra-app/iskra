@@ -38,4 +38,46 @@ public enum Log {
     /// It is also the log most in danger of breaking the rule above: the thing this code is
     /// holding *is* a decrypted message. The body never goes in — only which step failed.
     public static let push = Logger(subsystem: subsystem, category: "push")
+
+    /// What may be written down about a failure.
+    ///
+    /// Every error in this app used to reach the log as `String(describing: error)`, and that was
+    /// two different mistakes wearing one spelling.
+    ///
+    /// Where it was marked `.public`, it *leaks*. An `NSError` from Foundation, Photos or QuickLook
+    /// carries a `userInfo` dictionary, and `NSFilePath` is very often in it — so a failure to open
+    /// an attachment wrote the name of the user's file into the system log, and the user's file is
+    /// called `паспорт_скан.pdf`. The SDK's own errors are no safer: `ClientError.generic` carries
+    /// a message and a details string that come from the homeserver's response.
+    ///
+    /// Where it was *not* marked `.public`, `os.Logger` redacted the whole thing to `<private>` —
+    /// which means the log that exists precisely because a signed build on a phone has no debugger
+    /// attached said nothing at all on a phone.
+    ///
+    /// So: the kind of the failure, and nothing it is carrying. For a Swift error — which is what
+    /// the SDK's are, and ours — that is the type and the case, with the payload left behind:
+    /// `ClientError.generic`, not the server's sentence. For anything that is really an `NSError`,
+    /// the domain and the code and *not* the `userInfo`: `NSCocoaErrorDomain #260`, which is
+    /// "no such file" and gives away no file. Both are the answer to "which step failed", which is
+    /// the whole reason the line was ever written.
+    ///
+    /// It is safe to mark `.public` at every call site, and it is meant to be — an error nobody can
+    /// read is not a log entry, it is a decoration.
+    public static func describe(_ error: some Error) -> String {
+        let mirror = Mirror(reflecting: error)
+
+        if mirror.displayStyle == .enum {
+            // A case with a payload reflects as one child, labelled with the case name. The payload
+            // itself is exactly what must not be printed, so only the label is taken.
+            if let caseName = mirror.children.first?.label {
+                return "\(type(of: error)).\(caseName)"
+            }
+
+            // A case with nothing in it has nothing to leak, and its own description *is* the name.
+            return "\(type(of: error)).\(error)"
+        }
+
+        let asNSError = error as NSError
+        return "\(asNSError.domain) #\(asNSError.code)"
+    }
 }

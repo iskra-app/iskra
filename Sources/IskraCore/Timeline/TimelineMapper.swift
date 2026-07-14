@@ -295,6 +295,23 @@ enum TimelineMapper {
         switch msgLike.kind {
         case let .message(message):
             return kind(from: message)
+        case let .sticker(body, info, source):
+            // A sticker is not an `m.room.message` at all — it is an event type of its own,
+            // which is why it arrives here beside `.message` rather than inside it, and why
+            // it has no `msgType` to look at.
+            //
+            // The body is the sender's description of it — an emoji, or a word like "hug" —
+            // and it is carried as the caption because that is the one place it can still be
+            // read: nothing is drawn under a sticker, but VoiceOver has to say *which* one.
+            return .sticker(Attachment(source: source,
+                                       thumbnailSource: info.thumbnailSource,
+                                       filename: "sticker",
+                                       caption: body.isEmpty ? nil : body,
+                                       width: info.width.map(Int.init),
+                                       height: info.height.map(Int.init),
+                                       duration: nil,
+                                       mimeType: info.mimetype,
+                                       blurhash: info.blurhash))
         case .redacted:
             return .deleted
         case .unableToDecrypt:

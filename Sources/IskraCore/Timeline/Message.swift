@@ -80,6 +80,10 @@ public enum MessageKind: Sendable, Equatable {
     case emote(String)
     case notice(String)
     case image(Attachment)
+    /// A sticker. A picture in Matrix's vocabulary and a different thing in a conversation:
+    /// it is not an *attachment* somebody sent, it is a thing they said. Its own case, because
+    /// the difference is the whole of how it is drawn — no bubble, no caption, nothing to open.
+    case sticker(Attachment)
     case video(Attachment)
     /// A round video message, recorded in the chat. See `VideoNote`.
     case videoNote(Attachment)
@@ -127,6 +131,14 @@ public struct Attachment: Sendable, Equatable {
         guard let width, let height, let duration else { return false }
         return width == height && width > 0 && duration <= VideoNote.maximumDuration
     }
+
+    /// What identifies the bytes behind this attachment: the `mxc://` URL the room event
+    /// points at.
+    ///
+    /// A view needs one to key a fetch on, and `filename` is not it — every sticker in the
+    /// app is called "sticker", so a view that keyed on the name would go on showing the
+    /// picture it fetched for the last one.
+    public var mediaID: String { source.url() }
 
     public var aspectRatio: Double? {
         guard let width, let height, height > 0 else { return nil }

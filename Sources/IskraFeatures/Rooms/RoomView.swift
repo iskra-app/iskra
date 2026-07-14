@@ -1009,7 +1009,9 @@ public struct RoomView: View {
     /// which is the truth.
     private var voiceRecording: VoiceRecording? {
         guard voice.state == .recording || voice.state == .stopped else { return nil }
-        return VoiceRecording(elapsed: voice.elapsed, waveform: voice.waveform)
+        return VoiceRecording(elapsed: voice.elapsed,
+                              waveform: voice.waveform,
+                              isLive: voice.state == .recording)
     }
 
     private func startVoice() async {
@@ -1264,7 +1266,7 @@ public struct RoomView: View {
         do {
             data = try await item.loadTransferable(type: Data.self)
         } catch {
-            Log.media.error("the photo library would not hand over the item: \(String(describing: error), privacy: .public)")
+            Log.media.error("the photo library would not hand over the item: \(Log.describe(error), privacy: .public)")
             timeline.sendFailure = Strings.Room.attachmentUnreadable
             return
         }
@@ -1293,7 +1295,7 @@ public struct RoomView: View {
         do {
             try data.write(to: url, options: .atomic)
         } catch {
-            Log.media.error("the video could not be staged for upload: \(String(describing: error), privacy: .public)")
+            Log.media.error("the video could not be staged for upload: \(Log.describe(error), privacy: .public)")
             timeline.sendFailure = Strings.Room.attachmentUnreadable
             return
         }

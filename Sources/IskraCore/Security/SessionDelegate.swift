@@ -93,7 +93,7 @@ final class SessionDelegate: ClientSessionDelegate {
             // of debugging will find it.
             Log.session.error("""
                 the refreshed token would not go into the Keychain: \
-                \(String(describing: error), privacy: .public)
+                \(Log.describe(error), privacy: .public)
                 """)
         }
     }

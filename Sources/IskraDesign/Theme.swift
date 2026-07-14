@@ -186,6 +186,12 @@ public enum Theme {
         /// Video notes are circles; this is their diameter in the timeline.
         public static let videoNote: CGFloat = 200
 
+        /// The longest edge of a sticker. Smaller than a photo (`Radius.picture`'s bubble is
+        /// 280 across) on purpose: a sticker is a remark, not something to look at, and one
+        /// blown up to the width of the conversation stops being a gesture and becomes a
+        /// poster.
+        public static let sticker: CGFloat = 160
+
         /// How much bigger a video note gets while it plays, where it is not simply filling
         /// the screen — a Mac or an iPad. Twice: enough to be watched from across a desk,
         /// small enough to still be a message in a conversation.
