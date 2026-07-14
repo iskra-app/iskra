@@ -281,7 +281,10 @@ private struct KeySheet: View {
     }
 
     private func copy() {
-        Clipboard.copy(key)
+        // The *secret* path, not the ordinary one. See `Clipboard.copySecret`: this string is the
+        // password to every message the account has ever received, and the general pasteboard
+        // syncs to every other device on the Apple ID and keeps what it is given indefinitely.
+        Clipboard.copySecret(key)
         hasCopied = true
     }
 }
