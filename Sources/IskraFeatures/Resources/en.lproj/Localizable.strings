@@ -575,6 +575,11 @@
 "recovery.new.title" = "Create a new code?";
 "recovery.new.message" = "The old code stops working immediately, and there is no getting it back. If you have it written down somewhere, that copy becomes useless.";
 "recovery.new.confirm" = "Create a new code";
+"recovery.new.keepOld" = "Later — I’ll go and look for the old one";
+"recovery.approve.title" = "Did you approve it?";
+"recovery.approve.message" = "The reset has to be approved on your server’s page. If you did that, carry on — and your old messages are gone for good. If you changed your mind, nothing happens.";
+"recovery.approve.confirm" = "I approved it, carry on";
+"recovery.approve.cancel" = "I changed my mind";
 "recovery.choose.title" = "Unlock your messages";
 "recovery.choose.message" = "Your earlier messages are encrypted, and this device can’t open them yet. There are two ways — both of them work.";
 "recovery.choose.haveCode" = "I have my recovery code";
