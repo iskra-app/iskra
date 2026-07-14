@@ -43,6 +43,14 @@ struct IskraApp: App {
         }
     }
 
+    #if os(iOS)
+    /// APNs hands a device token to a `UIApplicationDelegate` and to nothing else — there is no
+    /// SwiftUI door for it. So there is a delegate, and it is three lines long: it catches the
+    /// bytes and hands them to `IskraFeatures`, which is where the decision about what to do with
+    /// them lives.
+    @UIApplicationDelegateAdaptor(PushDelegate.self) private var pushDelegate
+    #endif
+
     var body: some Scene {
         WindowGroup {
             IskraRootView()
@@ -55,3 +63,22 @@ struct IskraApp: App {
         #endif
     }
 }
+
+#if os(iOS)
+/// The one thing `UIApplication` still has to be asked for by hand.
+final class PushDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication,
+                     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        Task { @MainActor in
+            PushPermission.shared.received(deviceToken: deviceToken)
+        }
+    }
+
+    func application(_ application: UIApplication,
+                     didFailToRegisterForRemoteNotificationsWithError error: any Error) {
+        // Ordinary on a simulator, which has no APNs at all, and worth a line on a device — where
+        // it is the difference between "push is broken" and "push never started".
+        Log.push.error("APNs would not register this device: \(String(describing: error), privacy: .public)")
+    }
+}
+#endif

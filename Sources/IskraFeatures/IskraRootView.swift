@@ -66,6 +66,16 @@ public struct IskraRootView: View {
             case let .signedIn(session):
                 conversations(session)
                     .environment(\.mediaLoader, session.media())
+                    // Notifications are asked for *here*, and the timing is the whole of the
+                    // decision. On the sign-in screen the question is about nothing — no account,
+                    // no chats, nothing that could notify anybody — and it gets the answer a
+                    // question about nothing deserves, once, permanently. Here there are
+                    // conversations on the screen behind the prompt, and the question means what
+                    // it says.
+                    .task {
+                        PushPermission.shared.signedIn(session)
+                        await PushPermission.shared.request()
+                    }
                     // The server stopped accepting this session while the app was open — somebody
                     // ended it from another device, or the account was deactivated. `UserSession`
                     // has already torn down the local half; what is left is to take the screens
@@ -113,6 +123,13 @@ public struct IskraRootView: View {
     /// whole signed-in tree goes away with it — the settings screen it was asked for on.
     private func signOut(_ session: UserSession) {
         Task {
+            // Before the session goes, because telling the server to stop pushing here is a request
+            // that needs the session to make it. Without it the homeserver goes on pushing this
+            // account's messages to a phone that has been signed out of: the extension wakes, finds
+            // nobody signed in, and shows the server's own "New message" — notifications, forever,
+            // about conversations the user can no longer open.
+            await PushPermission.shared.signingOut(session)
+
             await session.signOut()
             AppSettings.forget()
             selectedRoomID = nil
