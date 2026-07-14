@@ -319,6 +319,20 @@ public enum Strings {
             public static let pause = LocalizedStringResource("message.media.pause", bundle: bundle)
             /// A file, opened in whatever the system thinks should open it.
             public static let openFile = LocalizedStringResource("message.media.openFile", bundle: bundle)
+
+            /// What the bubble *is*, said aloud — for the three whose whole content is a picture
+            /// or a sound and which therefore have nothing a screen reader can read.
+            ///
+            /// These are not decoration. A photograph and a video note are opened by a tap
+            /// gesture, and a tap gesture does not exist in the accessibility tree at all: without
+            /// a name and an action there was no element there to press, and no way to open either
+            /// of them with VoiceOver on.
+            public static let photo = LocalizedStringResource("message.media.photo", bundle: bundle)
+            public static let video = LocalizedStringResource("message.media.video", bundle: bundle)
+            public static let videoNote = LocalizedStringResource("message.media.videoNote", bundle: bundle)
+
+            /// The hint on both: what pressing them does.
+            public static let openFullScreen = LocalizedStringResource("message.media.openFullScreen", bundle: bundle)
             /// The video would not come down. Said on the bubble, not in an alert — there is
             /// nothing to do about it but press it again.
             public static let loadFailed = LocalizedStringResource("message.media.loadFailed", bundle: bundle)

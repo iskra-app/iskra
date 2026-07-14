@@ -140,7 +140,40 @@ struct MessageRow: View {
                                 removal: .scale(scale: 0.85).combined(with: .opacity)))
     }
 
+    /// Whether the bubble has something inside it that has to be *pressed* — a play button, a
+    /// photograph that opens, a file that opens.
+    ///
+    /// It decides how the row is presented to VoiceOver, and the decision matters more than it
+    /// looks. `.combine` flattens a row into one element with one sentence, which is exactly right
+    /// for a message made of words: "Аня: привет, 14:32" is one thought, and making somebody swipe
+    /// through three fragments to hear it would be worse. But flattening a row also flattens the
+    /// button inside it — and for a voice message, a video note, a photograph or a file, that
+    /// button is the *entire message*. It was possible to hear that Аня had sent a voice message
+    /// and impossible to play it.
+    ///
+    /// So a row whose content can be pressed is a container to be entered rather than a sentence
+    /// to be read. Everything else stays one sentence.
+    private var hasPressableContent: Bool {
+        switch message.kind {
+        case .voice, .audio, .image, .video, .videoNote, .file: true
+        default: false
+        }
+    }
+
+    @ViewBuilder
     private var bubbleRow: some View {
+        let row = bubbleRowContent
+
+        if hasPressableContent {
+            row.accessibilityElement(children: .contain)
+        } else {
+            row
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(accessibilityLabel)
+        }
+    }
+
+    private var bubbleRowContent: some View {
         HStack(alignment: .bottom, spacing: Theme.Spacing.close) {
             if message.isOwn {
                 Spacer(minLength: emptyColumn)
@@ -189,8 +222,6 @@ struct MessageRow: View {
                 Spacer(minLength: emptyColumn)
             }
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibilityLabel)
     }
 
     /// The bubble, with everything you can do to it hanging off it.
@@ -945,16 +976,29 @@ private struct VideoNoteView: View {
         // reacted to, and the quick reaction on one is left to the long press. That is the
         // right way round — a video message you cannot watch is worse than one you cannot
         // put an emoji on in one gesture.
-        .onTapGesture {
-            if playback.isPlaying {
-                playback.stop()
-            } else {
-                Task { await playback.play(attachment, using: loader, stopsAtEnd: true) }
-            }
-        }
+        .onTapGesture { toggle() }
+        // …and the same thing said in the one language a tap gesture does not speak.
+        //
+        // A `.onTapGesture` is invisible to VoiceOver. Not hard to reach, not badly labelled —
+        // *absent*: the accessibility tree has no button here, so there was no way to play a video
+        // message at all. The gesture stays for the eye and the finger; this is the same act,
+        // offered to everyone else.
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { toggle() }
+        .accessibilityLabel(Text(Strings.Message.Media.videoNote))
+        .accessibilityHint(Text(playback.isPlaying ? Strings.Message.Media.pause
+                                                   : Strings.Message.Media.play))
         // The bytes are plaintext on disk while this is on screen. Scroll the message away
         // and they go with it.
         .onDisappear { playback.stop() }
+    }
+
+    private func toggle() {
+        if playback.isPlaying {
+            playback.stop()
+        } else {
+            Task { await playback.play(attachment, using: loader, stopsAtEnd: true) }
+        }
     }
 }
 
@@ -1138,6 +1182,14 @@ private struct PictureBubble: View {
                 .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.picture, style: .continuous))
                 .contentShape(.rect)
                 .onTapGesture { isWatching = true }
+                // The same act, in the language a tap gesture does not speak — see `VideoNoteView`.
+                // Without this there is no way to open a photograph with VoiceOver on: the gesture
+                // simply does not exist in the accessibility tree.
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction { isWatching = true }
+                .accessibilityLabel(Text(isPlayable ? Strings.Message.Media.video
+                                                    : Strings.Message.Media.photo))
+                .accessibilityHint(Text(Strings.Message.Media.openFullScreen))
     }
 
     /// The bubble's fill: this same photograph, blurred past reading and taken down dark.
