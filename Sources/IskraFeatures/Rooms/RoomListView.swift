@@ -296,7 +296,9 @@ private struct RoomRow: View {
                     Spacer(minLength: 0)
 
                     if let date = room.lastActivity {
-                        Text(date, format: .relative(presentation: .numeric, unitsStyle: .narrow))
+                        // See `RoomTimestamp`: not `.relative`, which says "-3 мин" in Russian and
+                        // then goes on saying it for an hour.
+                        Text(RoomTimestamp.label(for: date))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
