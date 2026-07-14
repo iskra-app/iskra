@@ -49,8 +49,14 @@ public final class StorageStore {
     /// What clearing the cache would actually win back. Shown on the button, because "clear
     /// cache" without a number is asking someone to take an action whose only visible effect is
     /// that their photos have to download again.
+    ///
+    /// The index counts too, because the button now takes it: a number that left it out would be
+    /// short by however much the words of every message weigh, and the one thing this screen must
+    /// not do is under-report what it is about to delete.
     public var reclaimable: Int64 {
-        amounts.first { $0.kind == .cache }?.bytes ?? 0
+        amounts
+            .filter { $0.kind == .cache || $0.kind == .search }
+            .reduce(0) { $0 + $1.bytes }
     }
 
     private let client: Client
@@ -115,14 +121,35 @@ public final class StorageStore {
     /// service is down, the client is unusable by the SDK's own account, and the caller is about
     /// to build a new one — which recreates the directory on its way up. This is the window, and
     /// there is no other.
+    ///
+    /// **The search index goes with it, and that is not tidiness — it is the point.** The index is
+    /// the app's own copy of the words of every message it has seen, and `clearCaches` does not
+    /// touch it: it empties the event cache and the state store, and leaves the words behind.
+    ///
+    /// That would be merely untidy if the two were independent, and they are not. The SDK removes
+    /// a message from the index when it sees the redaction — but to do it, it has to find the
+    /// original event in the *event cache* first, and this button has just emptied that. So every
+    /// message deleted from then on, in a room not yet read back in, is a message the SDK can no
+    /// longer recognise: the words stay in the index, and they stay there until sign-out. Clearing
+    /// the cache and keeping the index is the one combination that strands the text of deleted
+    /// messages on the phone — which is the exact thing a person clearing their storage would
+    /// least expect to be leaving behind.
+    ///
+    /// It costs less than it sounds. The index is not fetched, it is *written as the app reads*:
+    /// the SDK indexes events as they enter the event cache, back-pagination included. So it comes
+    /// back the same way the timelines do — by opening rooms and scrolling — and the search that
+    /// is briefly short of history is short of exactly the history the cache is short of. The
+    /// screen says so before the button is pressed.
     public func clearCache() async throws {
         isClearing = true
         defer { isClearing = false }
 
         try await client.clearCaches(syncService: roomList.currentSyncService)
 
-        if let cache = locations[.cache] {
-            try? FileManager.default.removeItem(at: cache)
+        for kind in [StorageKind.cache, .search] {
+            if let directory = locations[kind] {
+                try? FileManager.default.removeItem(at: directory)
+            }
         }
 
         await measure()
