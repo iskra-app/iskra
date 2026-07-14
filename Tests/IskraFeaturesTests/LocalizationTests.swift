@@ -174,15 +174,16 @@ struct LocalizationTests {
 
     /// The storage screen's second button, in both languages.
     ///
-    /// It gets its own test because it is the button somebody presses to take back the words of a
-    /// message they deleted — and a key on screen where the explanation should be ("Если вы удаляли
-    /// сообщения…" reading `storage.search.clear.why`) would leave them pressing a destructive
-    /// button with no idea what it does. The list above is hand-written, so a string added without
-    /// a line in it is a string nothing checks; these are checked here.
+    /// It gets its own test because it is a destructive button, and the confirmation dialog is the
+    /// one thing standing between a tap and a wiped index — a key on screen where its title or body
+    /// should be ("storage.search.confirm.body") would leave somebody confirming a destructive
+    /// action with no idea what it does. The list above is hand-written, so a string added without
+    /// a line in it is a string nothing checks; these are checked here. The button carries no
+    /// footer any more — the row above already names the index, and the dialog says what clearing
+    /// it costs — so there is no standing sentence to guard.
     @Test("clearing the search index explains itself in both languages")
     func clearingTheSearchIndexIsExplained() {
         let strings = [Strings.Storage.clearSearch,
-                       Strings.Storage.clearSearchWhy,
                        Strings.Storage.clearSearchTitle,
                        Strings.Storage.clearSearchBody,
                        Strings.Storage.clearSearchFailed]
@@ -196,23 +197,6 @@ struct LocalizationTests {
                 #expect(!words.hasPrefix("storage."), "\(words) is a key, not a sentence")
             }
         }
-
-        // And the footer does not frighten anybody.
-        //
-        // This used to pin the opposite: the sentence *had* to say that words from messages deleted
-        // long ago may still be sitting in the index. That is true, and leading with it was still
-        // wrong. It reads as a confession; it invites a person to wonder what else the app has kept;
-        // and it does so on a settings screen where nothing is the matter and nobody came looking to
-        // be alarmed. The reason people actually press this button is disk space.
-        //
-        // So the test guards the new intent, and guards it from the most likely way it will be
-        // undone — somebody restoring the old sentence because it was more thorough.
-        var why = Strings.Storage.clearSearchWhy
-        why.locale = Locale(identifier: "ru")
-        let russian = String(localized: why)
-
-        #expect(russian.contains("Освободит место"), "the footer should lead with what the button is for")
-        #expect(!russian.contains("удал"), "the footer must not raise deleted messages: \(russian)")
     }
 
     /// Every reason a message can be stuck has to be a sentence in both languages. A
