@@ -32,6 +32,10 @@ public final class PinnedStore {
     private var listenerHandle: TaskHandle?
     private var items: [TimelineItem] = []
 
+    /// Whether the list is being read again after the diffs stopped making sense — see `resync()`.
+    /// One fault can arrive as a batch of twenty impossible indices; it is still one fault.
+    private var isResyncing = false
+
     init(room: Room, ownUserID: String) {
         self.room = room
         self.ownUserID = ownUserID
@@ -99,31 +103,41 @@ public final class PinnedStore {
     }
 
     private func apply(diffs: [TimelineDiff]) {
-        for diff in diffs {
-            switch diff {
-            case let .append(values): items.append(contentsOf: values)
-            case .clear: items.removeAll()
-            case let .pushFront(value): items.insert(value, at: 0)
-            case let .pushBack(value): items.append(value)
-            case .popFront: if !items.isEmpty { items.removeFirst() }
-            case .popBack: if !items.isEmpty { items.removeLast() }
-            case let .insert(index, value): items.insert(value, at: min(Int(index), items.count))
-            case let .set(index, value):
-                let i = Int(index)
-                if items.indices.contains(i) { items[i] = value }
-            case let .remove(index):
-                let i = Int(index)
-                if items.indices.contains(i) { items.remove(at: i) }
-            case let .truncate(length):
-                let n = Int(length)
-                if n < items.count { items.removeSubrange(n...) }
-            case let .reset(values): items = values
-            }
+        // The same arithmetic the room's own timeline uses, and — until this — *not* the same
+        // arithmetic. This store had its own copy of the twelve cases, and its copy was the old
+        // one: it clamped an out-of-range insert to the end of the list and swallowed an
+        // out-of-range `set` and `remove` entirely. `TimelineStore` carries a long comment about
+        // why that is the wrong answer, and it was written while this file went on doing it. The
+        // strip at the top of the room would simply have been wrong, in the same untraceable way,
+        // and rather more quietly, since nobody looks hard at four pinned messages.
+        switch items.apply(diffs.map(\.asListDiff)) {
+        case let .desynced(what):
+            Log.rooms.error("The pinned list is out of step with the SDK: \(what, privacy: .public). Reading it again.")
+            Task { await resync() }
+            return
+
+        case .applied:
+            break
         }
 
         // Only the messages. A pinned timeline carries date dividers like any other, and a
         // list of four pinned messages is not a conversation that needs its days marked.
         messages = TimelineMapper.rows(from: items, ownUserID: ownUserID).compactMap(\.message)
+    }
+
+    /// What we hold is no longer what the SDK is talking about, so it is asked again.
+    ///
+    /// Stopping and starting is the whole of it, for the same reason it is in `TimelineStore`: a
+    /// fresh listener opens with a `reset`, which is the SDK's own account of what it is holding —
+    /// the very thing that has been lost. There is nothing to preserve here and no reader to keep
+    /// their place for; a pinned list is short and arrives whole.
+    private func resync() async {
+        guard !isResyncing else { return }
+        isResyncing = true
+        defer { isResyncing = false }
+
+        stop()
+        await start()
     }
 }
 

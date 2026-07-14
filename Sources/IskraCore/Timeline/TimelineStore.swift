@@ -1054,54 +1054,14 @@ public final class TimelineStore {
             }
         }
 
-        for diff in diffs {
-            switch diff {
-            case let .append(values):
-                items.append(contentsOf: values)
-            case .clear:
-                items.removeAll()
-            case let .pushFront(value):
-                items.insert(value, at: 0)
-            case let .pushBack(value):
-                items.append(value)
-            case .popFront:
-                if !items.isEmpty { items.removeFirst() }
-            case .popBack:
-                if !items.isEmpty { items.removeLast() }
-
-            // An index we do not have is not a small thing to be stepped over. It is the SDK
-            // addressing a list we are not holding — which means our copy has already come apart
-            // from its own, and every positional diff after this one lands in the wrong place too.
-            //
-            // These three used to clamp and swallow. `insert` put the item on the end instead of
-            // where it was asked to go, `set` and `remove` did nothing at all, and the array
-            // stayed quietly, permanently wrong — no crash, no log, nothing to find. That is how
-            // the reordering bug hid: a race applied two batches out of order, these guards
-            // absorbed the impossible indices that followed, and the conversation was left
-            // shuffled with no trace of why.
-            //
-            // So an impossible index now *means* something: it is the timeline saying it can no
-            // longer be trusted, and the answer to that is to go and read it again.
-            case let .insert(index, value):
-                let i = Int(index)
-                guard i <= items.count else { return desynced("insert at \(i) of \(items.count)") }
-                items.insert(value, at: i)
-            case let .set(index, value):
-                let i = Int(index)
-                guard items.indices.contains(i) else { return desynced("set at \(i) of \(items.count)") }
-                items[i] = value
-            case let .remove(index):
-                let i = Int(index)
-                guard items.indices.contains(i) else { return desynced("remove at \(i) of \(items.count)") }
-                items.remove(at: i)
-            case let .truncate(length):
-                let n = Int(length)
-                guard n <= items.count else { return desynced("truncate to \(n) of \(items.count)") }
-                items.removeSubrange(n...)
-
-            case let .reset(values):
-                items = values
-            }
+        // The dozen positional operations, and the three bounds checks that decide whether this
+        // conversation is still the conversation the SDK is describing. They live in `ListDiff` —
+        // out of reach of the SDK's types, and therefore, at last, under a test.
+        switch items.apply(diffs.map(\.asListDiff)) {
+        case let .desynced(what):
+            return desynced(what)
+        case .applied:
+            break
         }
 
         // The conversation we had a moment ago is gone. Go and get it back — and say so *first*,
