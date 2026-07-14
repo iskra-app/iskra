@@ -169,6 +169,8 @@ struct MessageRow: View {
         }
     }
 
+    // MARK: - The bubble, and what can be done to it
+
     @ViewBuilder
     private var bubbleRow: some View {
         let row = bubbleRowContent
@@ -411,6 +413,8 @@ struct MessageRow: View {
     /// would move the pills without telling the layout, leaving a bubble-shaped hole of
     /// empty space behind them and the next message pushed down past it. A negative padding
     /// moves them *and* closes the gap they came from.
+    // MARK: - Reactions
+
     private var reactions: some View {
         FlowLayout(spacing: Theme.Spacing.tight,
                    alignment: message.isOwn ? .trailing : .leading) {
@@ -475,6 +479,8 @@ struct MessageRow: View {
         .fixedSize()
         .padding(.bottom, Theme.Spacing.tight)
     }
+
+    // MARK: - What is actually in the message
 
     @ViewBuilder
     private var content: some View {
@@ -658,6 +664,8 @@ struct MessageRow: View {
     private var senderTitle: String {
         message.isOwn ? String(app: Strings.Message.Spoken.you) : message.senderName
     }
+
+    // MARK: - What VoiceOver reads
 
     private var accessibilityLabel: String {
         let who = senderTitle
