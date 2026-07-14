@@ -49,8 +49,19 @@ public final class StorageStore {
     /// What clearing the cache would actually win back. Shown on the button, because "clear
     /// cache" without a number is asking someone to take an action whose only visible effect is
     /// that their photos have to download again.
+    ///
+    /// The index counts too, because the button now takes it: a number that left it out would be
+    /// short by however much the words of every message weigh, and the one thing this screen must
+    /// not do is under-report what it is about to delete.
     public var reclaimable: Int64 {
-        amounts.first { $0.kind == .cache }?.bytes ?? 0
+        amounts
+            .filter { $0.kind == .cache || $0.kind == .search }
+            .reduce(0) { $0 + $1.bytes }
+    }
+
+    /// What the index alone weighs — the number on the button that clears only it.
+    public var searchIndexBytes: Int64 {
+        amounts.first { $0.kind == .search }?.bytes ?? 0
     }
 
     private let client: Client
@@ -115,14 +126,67 @@ public final class StorageStore {
     /// service is down, the client is unusable by the SDK's own account, and the caller is about
     /// to build a new one — which recreates the directory on its way up. This is the window, and
     /// there is no other.
+    ///
+    /// **The search index goes with it, and that is not tidiness — it is the point.** The index is
+    /// the app's own copy of the words of every message it has seen, and `clearCaches` does not
+    /// touch it: it empties the event cache and the state store, and leaves the words behind.
+    ///
+    /// That would be merely untidy if the two were independent, and they are not. The SDK removes
+    /// a message from the index when it sees the redaction — but to do it, it has to find the
+    /// original event in the *event cache* first, and this button has just emptied that. So every
+    /// message deleted from then on, in a room not yet read back in, is a message the SDK can no
+    /// longer recognise: the words stay in the index, and they stay there until sign-out. Clearing
+    /// the cache and keeping the index is the one combination that strands the text of deleted
+    /// messages on the phone — which is the exact thing a person clearing their storage would
+    /// least expect to be leaving behind.
+    ///
+    /// It costs less than it sounds. The index is not fetched, it is *written as the app reads*:
+    /// the SDK indexes events as they enter the event cache, back-pagination included. So it comes
+    /// back the same way the timelines do — by opening rooms and scrolling — and the search that
+    /// is briefly short of history is short of exactly the history the cache is short of. The
+    /// screen says so before the button is pressed.
     public func clearCache() async throws {
         isClearing = true
         defer { isClearing = false }
 
         try await client.clearCaches(syncService: roomList.currentSyncService)
 
-        if let cache = locations[.cache] {
-            try? FileManager.default.removeItem(at: cache)
+        for kind in [StorageKind.cache, .search] {
+            if let directory = locations[kind] {
+                try? FileManager.default.removeItem(at: directory)
+            }
+        }
+
+        await measure()
+    }
+
+    /// Throws away the search index alone, and leaves the cache where it is.
+    ///
+    /// This is the one thing in the app that can take back the words of a message somebody deleted.
+    /// The SDK drops a message from the index when it sees the redaction — but only if it still
+    /// holds the original event, and for a message deleted long after it was sent, it does not. No
+    /// FFI removes a document by hand: build the store, search it, iterate. So the whole index is
+    /// the smallest thing anyone can delete, and this is the button that deletes it.
+    ///
+    /// **The client is finished afterwards, exactly as in `clearCache`, and the caller must replace
+    /// it.** Not because the SDK says so this time — `clearCaches` is never called — but because
+    /// the store has been pulled out from under a client that has it open. The sync service is
+    /// stopped first, and that is the part that matters: the SDK writes to this index as events
+    /// arrive, and a directory deleted out from under a live indexer is how you get half an index
+    /// written back into the hole it left. Stop the events, delete, hand the app to `restore()`,
+    /// and the new client makes the store again on its way up.
+    ///
+    /// What it costs is a search that is briefly short of history, and no more. The index is not
+    /// downloaded, it is written as the app reads: it fills again as rooms are opened and scrolled.
+    /// Nothing is signed out; no message, photo or key is touched.
+    public func clearSearchIndex() async throws {
+        isClearing = true
+        defer { isClearing = false }
+
+        await roomList.currentSyncService?.stop()
+
+        if let index = locations[.search] {
+            try FileManager.default.removeItem(at: index)
         }
 
         await measure()

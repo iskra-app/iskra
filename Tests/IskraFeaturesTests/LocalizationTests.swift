@@ -149,6 +149,36 @@ struct LocalizationTests {
         #expect(String(localized: protected).contains("только участники чата"))
     }
 
+    /// The storage screen's second button, in both languages.
+    ///
+    /// It gets its own test because it is the button somebody presses to take back the words of a
+    /// message they deleted — and a key on screen where the explanation should be ("Если вы удаляли
+    /// сообщения…" reading `storage.search.clear.why`) would leave them pressing a destructive
+    /// button with no idea what it does. The list above is hand-written, so a string added without
+    /// a line in it is a string nothing checks; these are checked here.
+    @Test("clearing the search index explains itself in both languages")
+    func clearingTheSearchIndexIsExplained() {
+        let strings = [Strings.Storage.clearSearch,
+                       Strings.Storage.clearSearchWhy,
+                       Strings.Storage.clearSearchTitle,
+                       Strings.Storage.clearSearchBody,
+                       Strings.Storage.clearSearchFailed]
+
+        for string in strings {
+            for language in ["en", "ru"] {
+                var resource = string
+                resource.locale = Locale(identifier: language)
+                let words = String(localized: resource)
+
+                #expect(!words.hasPrefix("storage."), "\(words) is a key, not a sentence")
+            }
+        }
+
+        var why = Strings.Storage.clearSearchWhy
+        why.locale = Locale(identifier: "ru")
+        #expect(String(localized: why).contains("остаться в индексе"))
+    }
+
     /// Every reason a message can be stuck has to be a sentence in both languages. A
     /// missing one would surface as the badge's popover reading "sendFailure.server",
     /// which is exactly the failure `noStringLeaksItsKey` exists to catch — so the
