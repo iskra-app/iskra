@@ -591,6 +591,11 @@ public enum Strings {
         /// The two ways in, and they are deliberately of equal weight. Ranking them — making the
         /// code "the real way" and the picture-check "the fallback" — is exactly what this flow was
         /// written to avoid, so neither of these gets the prominent button.
+        /// The question the banner used to skip. See `RecoverySetupModel.Step.confirmNew`.
+        public static let newTitle = LocalizedStringResource("recovery.new.title", bundle: bundle)
+        public static let newMessage = LocalizedStringResource("recovery.new.message", bundle: bundle)
+        public static let newConfirm = LocalizedStringResource("recovery.new.confirm", bundle: bundle)
+
         public static let chooseTitle = LocalizedStringResource("recovery.choose.title", bundle: bundle)
         public static let chooseMessage = LocalizedStringResource("recovery.choose.message", bundle: bundle)
         public static let haveCode = LocalizedStringResource("recovery.choose.haveCode", bundle: bundle)

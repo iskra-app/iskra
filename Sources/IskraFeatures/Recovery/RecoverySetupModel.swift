@@ -29,6 +29,17 @@ public final class RecoverySetupModel {
         /// Asking the SDK what this device knows. Brief, and never skipped: the answer is not
         /// available the instant a sign-in lands.
         case preparing
+        /// About to throw the current code away and mint a replacement — and asking first.
+        ///
+        /// This step exists because it was missing, and its absence destroyed a real user's recovery
+        /// code. The room-list banner said "your code was never saved"; tapping it went *straight* to
+        /// `resetRecoveryKey()`. So a single tap — the tap of somebody finding out what the banner
+        /// wanted — silently invalidated the code they were already holding, and they found out weeks
+        /// later, on a new phone, from a screen that told them to check their typing.
+        ///
+        /// Minting a code is destructive. It is the only destructive thing in this flow that used to
+        /// happen without a question.
+        case confirmNew
         /// Making the backup and minting the first code. Slow, and honestly so.
         case creating
         /// The code is on screen, for the only time it ever will be.
@@ -147,8 +158,10 @@ public final class RecoverySetupModel {
 
     /// Finds out where this account stands, and goes there.
     public func begin() async {
+        // Asked, not done. See `Step.confirmNew` — this used to mint on arrival, which made the
+        // banner a booby trap: tapping it to read it destroyed the code it was asking about.
         if entry == .makeNewCode {
-            await mintNewCode()
+            step = .confirmNew
             return
         }
 
@@ -258,6 +271,11 @@ public final class RecoverySetupModel {
             // them right back here with nothing.
             await mintNewCode()
         }
+    }
+
+    /// The user has been told what minting a new code costs, and has said yes anyway.
+    public func confirmNewCode() async {
+        await mintNewCode()
     }
 
     /// Throws the old code away and makes one to replace it.

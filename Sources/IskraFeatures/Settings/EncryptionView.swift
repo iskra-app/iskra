@@ -46,6 +46,9 @@ struct EncryptionView: View {
     /// sheet below for why it is not on the store any more.
     @State private var freshCode: RecoveryKey?
 
+    /// Whether the "are you sure" for a new code is up. See the button.
+    @State private var isMintingNewCode = false
+
 
     /// Whether settings has a "My devices" row to send the reader to — see `otherDevices`.
     let hasDeviceManagement: Bool
@@ -66,8 +69,13 @@ struct EncryptionView: View {
 
             if recovery.protection == .on {
                 Section {
+                    // Asks first. Minting a code destroys the one before it, permanently and with no
+                    // undo, and this row used to do that on a single tap — as did the room-list
+                    // banner, which is how a real recovery code was lost. The footer already said the
+                    // old code would stop working; a footer is not a question, and people press
+                    // buttons without reading footers. This is the same act as `Step.confirmNew`.
                     Button {
-                        Task { freshCode = await recovery.makeNewKey() }
+                        isMintingNewCode = true
                     } label: {
                         working(Strings.Encryption.newKey)
                     }
@@ -102,6 +110,15 @@ struct EncryptionView: View {
         // was visible to every other screen that cared to look. Two views bound sheets to the same
         // optional and could clear it out from under each other. Held here, it exists while this
         // sheet is up and is gone when it is not, which is what "shown once" has to mean.
+        .confirmationDialog(Text(Strings.Recovery.newTitle),
+                            isPresented: $isMintingNewCode,
+                            titleVisibility: .visible) {
+            Button(String(app: Strings.Recovery.newConfirm), role: .destructive) {
+                Task { freshCode = await recovery.makeNewKey() }
+            }
+        } message: {
+            Text(Strings.Recovery.newMessage)
+        }
         .sheet(item: $freshCode) { code in
             // No "skip" here, unlike the setup flow: nobody arrives on this sheet by accident. They
             // pressed a button that says "make me a new code", and there is nothing to nag them

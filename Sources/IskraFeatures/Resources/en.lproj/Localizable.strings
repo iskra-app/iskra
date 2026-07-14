@@ -559,6 +559,9 @@
 
 /* Flow 2. Two buttons of equal weight. Neither is "the main one": somebody who picks the
    picture check should not feel they picked the fallback. */
+"recovery.new.title" = "Create a new code?";
+"recovery.new.message" = "The old code stops working immediately, and there is no getting it back. If you have it written down somewhere, that copy becomes useless.";
+"recovery.new.confirm" = "Create a new code";
 "recovery.choose.title" = "Unlock your messages";
 "recovery.choose.message" = "Your earlier messages are encrypted, and this device can’t open them yet. There are two ways — both of them work.";
 "recovery.choose.haveCode" = "I have my recovery code";
