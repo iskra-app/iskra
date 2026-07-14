@@ -903,7 +903,7 @@ struct SendFailureReason: View {
                         Label(Strings.Message.Delivery.sendAgain, systemImage: "arrow.clockwise")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.primaryAction)
                 }
 
                 // Always offered, and on the failures above it is the only thing here: a

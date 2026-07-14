@@ -226,6 +226,16 @@ content, never on glass. There is deliberately no general `.glass()` modifier â€
 are opaque fills. If `.navigationGlass()` feels like the wrong name where you are about to put it,
 that is the guideline talking.
 
+**The main button on a screen is `.primaryAction` or `.glassAction`** (`IskraDesign/PrimaryAction.swift`),
+**never `.borderedProminent` or `.glassProminent`.** The system's prominent styles fill themselves with
+the *tint*, and the tint at the root of this app is `.primary` â€” so a prominent button that does not
+tint itself is a solid white slab in the dark, with a white label the system draws on top of it: a
+button with nothing written on it. Tinting each site by hand is not the fix either, because on the
+mono accent the tint *is* `.primary` and the slab comes straight back. The two styles here draw the
+fill and the words from `AccentTheme.color` and `AccentTheme.foreground(in:)`, which is the pair
+"the accent, and what stays readable on top of it". Use `.glassAction` on the navigation layer
+(sign-in, recovery) and `.primaryAction` in content.
+
 **Sizes come from `Theme`.** Every spacing, radius and size is a named constant in
 `IskraDesign/Theme.swift`, all multiples of 4, corners `.continuous`. A view that hard-codes
 `.padding(12)` is a bug waiting to drift.

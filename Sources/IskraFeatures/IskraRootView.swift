@@ -234,7 +234,7 @@ public struct IskraRootView: View {
             Button(String(app: Strings.Session.tryAgain)) {
                 phase = .starting
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.primaryAction)
         }
     }
 

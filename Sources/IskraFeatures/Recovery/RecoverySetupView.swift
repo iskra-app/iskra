@@ -168,7 +168,7 @@ struct RecoverySetupView: View {
 
     /// The two ways in.
     ///
-    /// Both buttons are `.glass`, and **neither** is `.glassProminent`. That is the one piece of
+    /// Both buttons are `.glass`, and **neither** is `.glassAction`. That is the one piece of
     /// styling in this file that is a decision rather than a default: making the code the prominent
     /// button would quietly tell everyone that comparing pictures is the lesser option, and the whole
     /// design of this flow is that it is not.
@@ -226,7 +226,7 @@ struct RecoverySetupView: View {
             } label: {
                 busy(Strings.Recovery.unlock)
             }
-            .buttonStyle(.glassProminent)
+            .buttonStyle(.glassAction)
             .disabled(model.isWorking || model.typedCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
             Button {
@@ -256,7 +256,7 @@ struct RecoverySetupView: View {
                     Text(Strings.Recovery.otherDevice)
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.glassProminent)
+                .buttonStyle(.glassAction)
             }
         } else {
             VStack(spacing: Theme.Spacing.roomy) {
@@ -275,7 +275,7 @@ struct RecoverySetupView: View {
                 } label: {
                     busy(Strings.Recovery.startOver)
                 }
-                .buttonStyle(.glassProminent)
+                .buttonStyle(.glassAction)
                 .disabled(model.isWorking)
             }
         }
@@ -293,7 +293,7 @@ struct RecoverySetupView: View {
             } label: {
                 busy(Strings.Recovery.passwordConfirm)
             }
-            .buttonStyle(.glassProminent)
+            .buttonStyle(.glassAction)
             .disabled(model.isWorking || model.password.isEmpty)
         }
     }
