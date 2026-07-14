@@ -17,8 +17,8 @@ struct AppearanceView: View {
     @AppStorage(AppearanceMode.storageKey) private var appearance: AppearanceMode = .default
 
     /// Whether the colour is let out of the messages and onto the chrome as well. Written here and
-    /// read at the root — see `AccentTheme.tintsChromeKey`.
-    @AppStorage(AccentTheme.tintsChromeKey) private var tintsChrome = false
+    /// read at the root — see `AccentTheme.tintsInterfaceKey`.
+    @AppStorage(AccentTheme.tintsInterfaceKey) private var tintsInterface = false
 
     /// Sized by the swatch, not by a column count. Eight circles are a comfortable row on a
     /// Mac and a wrapped pair of rows on a phone, and neither has to be spelled out.
@@ -65,19 +65,19 @@ struct AppearanceView: View {
             // sense before one has been picked. Its own section, so that the footer explaining it
             // is not a second footer under the swatches.
             //
-            // Flipping it repaints the screen it is standing on — the switch itself, the back
-            // button, the segmented picker above — which is the demonstration, and the reason this
-            // does not need a preview of its own the way the accent does.
+            // Flipping it bathes the screen it is standing on — this very Form, its background, the
+            // words on it — in the accent, which is the demonstration, and the reason this does not
+            // need a preview of its own the way the accent does.
             Section {
-                Toggle(isOn: $tintsChrome.animation(.smooth(duration: Theme.Timing.reaction))) {
-                    Text(Strings.Appearance.tintChrome)
+                Toggle(isOn: $tintsInterface.animation(.smooth(duration: Theme.Timing.reaction))) {
+                    Text(Strings.Appearance.tintInterface)
                 }
-                // The mono theme's colour *is* the foreground colour, so there is nothing here to
-                // tint the chrome *with*: the switch would move and the app would not change. It
+                // The mono theme's colour *is* the foreground colour, so a wash of it would grey the
+                // app down rather than tint it: the switch would move and the app would only dim. It
                 // says so instead of pretending.
                 .disabled(accent == .mono)
             } footer: {
-                Text(accent == .mono ? Strings.Appearance.tintChromeMono : Strings.Appearance.tintChromeHelp)
+                Text(accent == .mono ? Strings.Appearance.tintInterfaceMono : Strings.Appearance.tintInterfaceHelp)
             }
         }
         .formStyle(.grouped)

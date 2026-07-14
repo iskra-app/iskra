@@ -28,9 +28,10 @@ public struct IskraRootView: View {
     /// not, which is why this is applied as an *optional* scheme and not as a flag.
     @AppStorage(AppearanceMode.storageKey) private var appearance: AppearanceMode = .default
 
-    /// Whether the accent is handed to the system's controls as well — see the `.tint` below, and
-    /// `AccentTheme.tintsChromeKey` for why it is a choice rather than a default.
-    @AppStorage(AccentTheme.tintsChromeKey) private var tintsChrome = false
+    /// Whether the accent is washed across the whole interface — every screen's background, the
+    /// words on it, the message bubbles — and not only spent on the content that is already the
+    /// user's. See the wash below, and `AccentTheme.tintsInterfaceKey` for why it is off by default.
+    @AppStorage(AccentTheme.tintsInterfaceKey) private var tintsInterface = false
 
     /// Read here, *outside* the `NavigationSplitView`, because this is the only place it
     /// means what it appears to mean: the size class of the window. Inside the split view
@@ -183,22 +184,35 @@ public struct IskraRootView: View {
         } message: {
             Text(Strings.Session.endedMessage)
         }
-        // The accent travels down the tree — and whether it is *also* handed to the system's
-        // controls is the one thing the user is asked here. `.tint` is what buttons, links and the
-        // sidebar's selection read, and tinting the whole app with it paints the chrome as loudly
-        // as the content: a green app has green back chevrons, green rows and a green unread badge,
-        // and a colour that is everywhere says nothing anywhere. So the default is monochrome
-        // chrome, with the accent spent only where it means something — the messages you sent, the
-        // reactions that are yours, the send button that is about to make one, and the icons on the
-        // settings screen, each of which asks for the colour where it stands.
+        // "Тонировать интерфейс": a single translucent sheet of the accent, laid over the whole
+        // app so that every screen's background, the words on it and the bubbles all take a breath
+        // of the colour at once — not the accent spent only on the content that is already yours,
+        // but the whole surface bathed in it.
         //
-        // But that is a matter of taste and not of correctness, and the whole app comes from one
-        // line, so it is a switch: "Тонировать интерфейс" turns the accent loose on the chrome as
-        // well. This is the only place `.tint` is set for the app, which is what makes the switch
-        // reach everything at once. `.mono` is the case where the two branches meet — its colour
-        // *is* `.primary` — so the switch honestly does nothing there, and the appearance screen
-        // says so rather than offering a control that cannot move.
-        .tint(tintsChrome ? accent.color : .primary)
+        // It is an *overlay* and not a background, and that is not a stylistic choice. The screens
+        // in this app sit on the system's own grouped-list and page backgrounds, which are drawn
+        // opaque and answer to no colour we hand down — a tint laid *under* them would never be
+        // seen. Laid *over* everything, ignoring the safe area and deaf to touches, the wash reaches
+        // the system's backgrounds, the content, and the text with the one lever that reaches them
+        // all. Faint enough (`Theme.Tint.interface`) that it colours rather than dims. The chrome is
+        // handed the accent in the same breath, so the tinted app is tinted through and through
+        // rather than washed content under monochrome controls.
+        //
+        // Off, the app is exactly what it was: `.primary` chrome and no wash — the accent spent only
+        // where it means something, the messages you sent, the reactions that are yours, the send
+        // button about to make one. `.mono` is where the two would meet — its colour *is* `.primary`,
+        // so a wash of it would grey the app rather than tint it — so the switch is disabled there,
+        // and the appearance screen says why.
+        .tint(tintsInterface ? accent.color : .primary)
+        .overlay {
+            if tintsInterface {
+                accent.color
+                    .opacity(Theme.Tint.interface)
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+            }
+        }
+        .animation(.smooth(duration: Theme.Timing.reaction), value: tintsInterface)
         .environment(\.accent, accent)
         // And light or dark, if the user asked for either. Applied at the root, above everything,
         // because a colour scheme is not a property of a screen — a sheet or a media viewer left
