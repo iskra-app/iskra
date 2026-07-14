@@ -101,14 +101,21 @@ public enum MessageKind: Sendable, Equatable {
 /// A downloadable piece of media. The bytes are fetched lazily via `MediaLoader`,
 /// because a timeline of a hundred photos should not pull a hundred photos.
 public struct Attachment: Sendable, Equatable {
-    public let source: MediaSource
+    /// Where the bytes are, in the SDK's terms.
+    ///
+    /// Internal, not public, and the compiler now says so. `MediaSource` is a `MatrixRustSDK` type,
+    /// and this was the one place an SDK type reached the public surface of `IskraCore` — the rule
+    /// that the SDK does not leave this target was being kept by discipline rather than by anything
+    /// that would stop you. Nothing above ever read it (`MediaLoader`, in here, is the only caller),
+    /// so nothing had to change but the word.
+    let source: MediaSource
     /// The still the *sender* uploaded alongside the file, when they uploaded one.
     ///
     /// This is the only way a video ever gets a picture in an encrypted room. Asking the
     /// server to thumbnail the file itself — which is what `getMediaThumbnail` does — cannot
     /// work there: what the server holds is ciphertext, and it has no key and no video
     /// decoder to point at it. It answers with an error and the bubble stays grey.
-    public let thumbnailSource: MediaSource?
+    let thumbnailSource: MediaSource?
     public let filename: String
     public let caption: String?
     public let width: Int?

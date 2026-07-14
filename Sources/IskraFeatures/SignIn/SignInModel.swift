@@ -2,7 +2,6 @@ import Foundation
 import Observation
 import AuthenticationServices
 import IskraCore
-import MatrixRustSDK
 
 /// Drives the sign-in screen.
 ///
@@ -74,8 +73,8 @@ public final class SignInModel {
         do {
             let url = try await authentication.singleSignOnURL()
             let callback = try await presentWebAuthentication(url: url)
-            let client = try await authentication.completeSingleSignOn(callbackURL: callback)
-            await finish(with: client)
+            let session = try await authentication.completeSingleSignOn(callbackURL: callback)
+            await finish(with: session)
         } catch is CancellationError {
             // The user closed the browser. Not an error, and not worth a message.
             isBusy = false
@@ -90,10 +89,10 @@ public final class SignInModel {
         problem = nil
 
         do {
-            let client = try await authentication.signIn(username: username, password: password)
+            let session = try await authentication.signIn(username: username, password: password)
             // The password has done its job; do not keep it in memory a moment longer.
             password = ""
-            await finish(with: client)
+            await finish(with: session)
         } catch {
             isBusy = false
             password = ""
@@ -109,8 +108,13 @@ public final class SignInModel {
         password = ""
     }
 
-    private func finish(with client: Client) async {
-        let session = UserSession(client: client, authentication: authentication)
+    /// Signed in. The screen above is handed the session and takes the app into it.
+    ///
+    /// It used to be handed a `Client` — the SDK's own type — and build the session itself, which
+    /// is why this file used to `import MatrixRustSDK` for exactly one word. The sign-in screen has
+    /// no business naming a Matrix type, and now it does not: `AuthenticationService` hands back a
+    /// `UserSession` and the client never leaves `IskraCore`.
+    private func finish(with session: UserSession) async {
         isBusy = false
         onSignedIn(session)
     }

@@ -59,7 +59,7 @@ public actor PushDecoder {
         let client: Client
         do {
             guard let restored = try await AuthenticationService(environment: environment)
-                .restorePreviousSession() else {
+                .restoreClient() else {
                 return .notSignedIn
             }
             client = restored
@@ -92,7 +92,7 @@ public actor PushDecoder {
     /// `RecentMessage` for why it has to exist at all.
     public func recentMessage() async -> (roomID: String, eventID: String)? {
         guard let client = try? await AuthenticationService(environment: environment)
-            .restorePreviousSession() else {
+            .restoreClient() else {
             return nil
         }
         return await RecentMessage.mostRecent(client: client)

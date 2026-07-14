@@ -29,7 +29,7 @@ public enum DeviceListProbe {
     }
 
     public static func run() async -> Verdict {
-        guard let client = try? await AuthenticationService().restorePreviousSession() else {
+        guard let client = try? await AuthenticationService().restoreClient() else {
             return .notSignedIn
         }
 
