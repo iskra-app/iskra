@@ -28,23 +28,23 @@
 "message.delivery.sent" = "Sent";
 
 /* VoiceOver: what someone did, read as part of a sentence. */
-"message.spoken.deletedMessage" = "deleted a message";
+"message.spoken.deletedMessage" = "message deleted";
 
-"message.spoken.sentAudio" = "sent an audio file";
+"message.spoken.sentAudio" = "an audio file";
 
-"message.spoken.sentFile" = "sent a file";
+"message.spoken.sentFile" = "a file";
 
-"message.spoken.sentPhoto" = "sent a photo";
+"message.spoken.sentPhoto" = "a photo";
 
-"message.spoken.sentUnreadable" = "sent a message you can’t read";
+"message.spoken.sentUnreadable" = "a message you can’t read";
 
-"message.spoken.sentUnsupported" = "sent something Iskra can’t show";
+"message.spoken.sentUnsupported" = "something Iskra can’t show";
 
-"message.spoken.sentVideo" = "sent a video";
+"message.spoken.sentVideo" = "a video";
 
-"message.spoken.sentVideoNote" = "sent a video message";
+"message.spoken.sentVideoNote" = "a video message";
 
-"message.spoken.sentVoice" = "sent a voice message";
+"message.spoken.sentVoice" = "a voice message";
 
 /* VoiceOver: how the user's own messages are attributed. */
 "message.spoken.you" = "You";
@@ -346,7 +346,7 @@
 "videoNote.releaseToSend" = "Let go to send. Swipe up to carry on recording without holding";
 
 /* The one button in the composer that records: tap to choose voice or video, hold to record. */
-"recording.hint" = "Tap for voice or video, hold to record. Up for hands-free";
+"recording.hint" = "Tap to choose voice or video. Hold to record, and swipe up to keep recording hands-free.";
 "recording.switchToVoice" = "Switch to a voice message";
 "recording.switchToVideo" = "Switch to a video message";
 "recording.cancel" = "Cancel";
@@ -362,7 +362,7 @@
 "location.cancel" = "Cancel";
 "location.myLocation" = "My location";
 "location.attach" = "Location";
-"message.spoken.sentLocation" = "sent a location";
+"message.spoken.sentLocation" = "a location";
 
 /* Running a room. Shown only to whoever the room allows to do it. */
 "room.manage.namePlaceholder" = "Chat name";
@@ -430,7 +430,7 @@
 "encryption.thisDevice" = "This device";
 "encryption.deviceVerified" = "Verified";
 "encryption.deviceUnverified" = "Not verified";
-"encryption.otherDevices" = "Iskra can’t show your other devices yet: the Matrix library it runs on has no way to ask for them. Another session can be ended from your server’s own website.";
+"encryption.otherDevices" = "Iskra can’t show your other devices yet. To end a session on another device, go to your server’s website.";
 
 /* The pill at the foot of a room when a message arrives while you are reading further up. */
 "room.jumpToNewest" = "New messages";

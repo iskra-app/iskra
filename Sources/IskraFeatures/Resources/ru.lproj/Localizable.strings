@@ -28,23 +28,23 @@
 "message.delivery.sent" = "Отправлено";
 
 /* VoiceOver: what someone did, read as part of a sentence. */
-"message.spoken.deletedMessage" = "удалил сообщение";
+"message.spoken.deletedMessage" = "сообщение удалено";
 
-"message.spoken.sentAudio" = "отправил аудиофайл";
+"message.spoken.sentAudio" = "аудиофайл";
 
-"message.spoken.sentFile" = "отправил файл";
+"message.spoken.sentFile" = "файл";
 
-"message.spoken.sentPhoto" = "отправил фото";
+"message.spoken.sentPhoto" = "фото";
 
-"message.spoken.sentUnreadable" = "отправил сообщение, которое не открыть";
+"message.spoken.sentUnreadable" = "сообщение, которое не открыть";
 
-"message.spoken.sentUnsupported" = "отправил то, что Iskra пока не показывает";
+"message.spoken.sentUnsupported" = "то, что Iskra пока не показывает";
 
-"message.spoken.sentVideo" = "отправил видео";
+"message.spoken.sentVideo" = "видео";
 
-"message.spoken.sentVideoNote" = "отправил видеосообщение";
+"message.spoken.sentVideoNote" = "видеосообщение";
 
-"message.spoken.sentVoice" = "отправил голосовое сообщение";
+"message.spoken.sentVoice" = "голосовое сообщение";
 
 /* VoiceOver: how the user's own messages are attributed. */
 "message.spoken.you" = "Вы";
@@ -346,7 +346,7 @@
 "videoNote.releaseToSend" = "Отпустите — отправится. Проведите вверх, чтобы записывать без рук";
 
 /* The one button in the composer that records: tap to choose voice or video, hold to record. */
-"recording.hint" = "Тап — голосовое или видео, зажать — запись. Вверх — без рук";
+"recording.hint" = "Нажмите, чтобы выбрать голосовое или видео. Удерживайте, чтобы записать, и проведите вверх, чтобы записывать без рук.";
 "recording.switchToVoice" = "Переключить на голосовое";
 "recording.switchToVideo" = "Переключить на видеосообщение";
 "recording.cancel" = "Отмена";
@@ -362,7 +362,7 @@
 "location.cancel" = "Отмена";
 "location.myLocation" = "Я здесь";
 "location.attach" = "Геопозиция";
-"message.spoken.sentLocation" = "прислал геопозицию";
+"message.spoken.sentLocation" = "геопозиция";
 
 /* Управление комнатой. Показывается только тем, кому комната это разрешает. */
 "room.manage.namePlaceholder" = "Название чата";
@@ -430,7 +430,7 @@
 "encryption.thisDevice" = "Это устройство";
 "encryption.deviceVerified" = "Проверено";
 "encryption.deviceUnverified" = "Не проверено";
-"encryption.otherDevices" = "Другие ваши устройства Iskra пока не показывает: библиотека Matrix, на которой она работает, не умеет их запрашивать. Чужой сеанс можно завершить с сайта вашего сервера.";
+"encryption.otherDevices" = "Другие ваши устройства Iskra пока не показывает. Завершить сеанс на чужом устройстве можно на сайте вашего сервера.";
 
 /* Плашка внизу комнаты, когда новое сообщение пришло, а ты читаешь выше. */
 "room.jumpToNewest" = "Новые сообщения";
