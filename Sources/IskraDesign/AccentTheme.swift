@@ -58,6 +58,21 @@ public enum AccentTheme: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    /// The same pair as `foreground`, with the mono case spelled out instead of named.
+    ///
+    /// `.background` is a *contextual* style: it means "the background of the thing this is being
+    /// drawn into", and it is resolved by whatever the label is sitting on. On an opaque bubble that
+    /// is the page, and it comes out the right way round. Inside a Liquid Glass button it is *the
+    /// glass* — so a mono label asking for `.background` was drawn in the colour of the pill it was
+    /// written on, and the sign-in button came out blank. A shape style cannot see the colour scheme
+    /// on its own, so the scheme is handed in and the black/white pair is chosen here.
+    func foreground(in scheme: ColorScheme) -> AnyShapeStyle {
+        switch self {
+        case .mono: AnyShapeStyle(scheme == .dark ? Color.black : Color.white)
+        default: foreground
+        }
+    }
+
     /// The fill behind a message you sent.
     ///
     /// The accent, for the seven colours. Not for mono: a bubble filled with `.primary` is a

@@ -141,7 +141,7 @@ public struct SignInView: View {
             } label: {
                 busyLabel(Strings.SignIn.continue)
             }
-            .buttonStyle(.glassProminent)
+            .buttonStyle(.glassAction)
             .controlSize(.large)
             .frame(maxWidth: .infinity)
             .disabled(!model.canContinue)
@@ -179,7 +179,7 @@ public struct SignInView: View {
                 } label: {
                     busyLabel(Strings.SignIn.signIn)
                 }
-                .buttonStyle(.glassProminent)
+                .buttonStyle(.glassAction)
                 .controlSize(.large)
                 .frame(maxWidth: .infinity)
                 .disabled(model.isBusy)
@@ -275,7 +275,7 @@ public struct SignInView: View {
         .disabled(model.isBusy || model.username.isEmpty || model.password.isEmpty)
 
         if prominent {
-            button.buttonStyle(.glassProminent)
+            button.buttonStyle(.glassAction)
         } else {
             button.buttonStyle(.glass)
         }
