@@ -604,15 +604,19 @@ public enum Strings {
         public static let creatingTitle = LocalizedStringResource("recovery.creating.title", bundle: bundle)
         public static let creatingMessage = LocalizedStringResource("recovery.creating.message", bundle: bundle)
 
-        /// Offered under the freshly-minted code, because the design note allows it — and because a
-        /// modal with no way out is a modal people learn to dismiss without reading. The banner is
-        /// what makes skipping survivable.
-        public static let skip = LocalizedStringResource("recovery.skip", bundle: bundle)
+        /// What is actually at stake, under the code, in the plainest words there are — and the tick
+        /// that has to be made before the only button on that screen comes alive.
+        ///
+        /// These two replace "Skip". A modal with no way out is one people learn to dismiss without
+        /// reading, which is why Skip existed; but the way out it offered was a *tap*, and a tap is a
+        /// reflex. The tick is a claim, and it is the last honest moment to notice that you have not
+        /// in fact written anything down. The warning is there so the claim is made against a full
+        /// account of what it costs to be wrong.
+        public static let saveWarning = LocalizedStringResource("recovery.save.warning", bundle: bundle)
+        public static let saveConfirm = LocalizedStringResource("recovery.save.confirm", bundle: bundle)
 
-        /// The two ways in, and they are deliberately of equal weight. Ranking them — making the
-        /// code "the real way" and the picture-check "the fallback" — is exactly what this flow was
-        /// written to avoid, so neither of these gets the prominent button.
-        /// The question the banner used to skip. See `RecoverySetupModel.Step.confirmNew`.
+        /// The question asked before a new code replaces the old one — in settings, where minting one
+        /// is a thing somebody goes out of their way to do. See `EncryptionView`.
         public static let newTitle = LocalizedStringResource("recovery.new.title", bundle: bundle)
         public static let newMessage = LocalizedStringResource("recovery.new.message", bundle: bundle)
         public static let newConfirm = LocalizedStringResource("recovery.new.confirm", bundle: bundle)
@@ -631,6 +635,13 @@ public enum Strings {
         public static let lostTitle = LocalizedStringResource("recovery.lost.title", bundle: bundle)
         public static let lostHasDevices = LocalizedStringResource("recovery.lost.hasDevices", bundle: bundle)
 
+        /// The way past a screen that would otherwise be a locked room.
+        ///
+        /// `hasOtherDevices` is the account's answer, and the account does not know that the laptop
+        /// was sold or that the other client will not open. Without this, somebody who had just said
+        /// they had no other device could be shown a single button telling them to use one.
+        public static let noAccessToOtherDevice = LocalizedStringResource("recovery.lost.noAccess", bundle: bundle)
+
         public static let aloneTitle = LocalizedStringResource("recovery.lost.alone.title", bundle: bundle)
         public static let aloneMessage = LocalizedStringResource("recovery.lost.alone.message", bundle: bundle)
 
@@ -647,7 +658,6 @@ public enum Strings {
         public static let passwordConfirm = LocalizedStringResource("recovery.password.confirm", bundle: bundle)
 
         public static let bannerLocked = LocalizedStringResource("recovery.banner.locked", bundle: bundle)
-        public static let bannerUnsaved = LocalizedStringResource("recovery.banner.unsaved", bundle: bundle)
 
         /// What the banner is *for*, said to a screen reader — which saw only the sentence and a
         /// chevron and had no way to know the strip was a button at all, let alone what pressing it

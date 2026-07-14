@@ -73,7 +73,8 @@ struct EncryptionView: View {
                     // undo, and this row used to do that on a single tap — as did the room-list
                     // banner, which is how a real recovery code was lost. The footer already said the
                     // old code would stop working; a footer is not a question, and people press
-                    // buttons without reading footers. This is the same act as `Step.confirmNew`.
+                    // buttons without reading footers. Settings is the only place a code is minted
+                    // deliberately now, so this dialog is the only place the question is asked.
                     Button {
                         isMintingNewCode = true
                     } label: {

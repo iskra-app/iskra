@@ -46,14 +46,9 @@ public struct RoomListView: View {
     /// *now*. See `OfflineBanner`, which is what explains all this on screen.
     @Environment(\.isOffline) private var isOffline
 
-    /// Whether a recovery code was shown on the way in and never saved — see `RecoveryBanner`. Read
-    /// here rather than passed down, because the banner is the only thing that cares and this is
-    /// where it lives.
-    @AppStorage(AppSettings.unsavedRecoveryCode) private var hasUnsavedRecoveryCode = false
-
-    /// The recovery flow, when the banner has been tapped. `item:` rather than a flag — the reason it
-    /// was tapped decides where the flow *starts*, so the reason is the presentation state.
-    @State private var fixing: RecoverySetupModel.Entry?
+    /// The recovery flow, when the banner has been tapped. The banner has one reason to exist now —
+    /// the history is locked — so there is nothing to carry into the flow but the fact of the tap.
+    @State private var isFixingRecovery = false
 
     /// Which of the two things the "+" was pressed for, and nil when it was not.
     @State private var creating: NewConversationView.Kind?
@@ -114,21 +109,18 @@ public struct RoomListView: View {
         // very much — but being in the way is not the same as sitting on top of the first
         // conversation, which is what an overlay would have done.
         .safeAreaInset(edge: .top) {
-            RecoveryBanner(recovery: session.recovery,
-                           didSkipSavingCode: hasUnsavedRecoveryCode) { reason in
-                fixing = reason == .locked ? .afterSignIn : .makeNewCode
+            RecoveryBanner(recovery: session.recovery) {
+                isFixingRecovery = true
             }
         }
-        .sheet(item: $fixing) { entry in
+        .sheet(isPresented: $isFixingRecovery) {
             // With a way out, unlike the copy of this the root puts up after signing in. There it is
             // a gate; here it is a sheet somebody opened out of curiosity about a banner, and a
             // curious person must be allowed to leave. The banner does not go anywhere — it will ask
             // again tomorrow, which is its whole job.
             RecoverySetupView(session: session,
-                              entry: entry,
-                              onCancel: { fixing = nil }) { didSkip in
-                hasUnsavedRecoveryCode = didSkip
-                fixing = nil
+                              onCancel: { isFixingRecovery = false }) {
+                isFixingRecovery = false
             }
         }
         // And the same again at the top when the network is gone — see `OfflineBanner`, which is an

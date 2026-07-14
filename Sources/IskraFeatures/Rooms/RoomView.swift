@@ -1052,6 +1052,17 @@ public struct RoomView: View {
     /// vanishing between one frame and the next.
     private func sendVoice() async {
         guard let recording = withAnimation(.smooth(duration: 0.25), { voice.finish() }) else { return }
+
+        // Safe to delete the moment the send returns, and it is worth knowing *why*, because it
+        // stopped being safe for the obvious reason. `send(voice:)` no longer waits for the upload —
+        // an attachment goes into the send queue and leaves when the network does — so this file is
+        // no longer being held open by anybody we are waiting on. What makes it safe is the queue
+        // itself: the SDK copies the content into its own encrypted store the instant the attachment
+        // is queued ("the file's content is immediately cached in the EventCacheStore"), before any
+        // upload is attempted. The recording on disk has done its job by then.
+        //
+        // And it must go. It is a minute of somebody's voice sitting unencrypted in a temporary
+        // directory; the copy the queue keeps is inside the encrypted store, and this one is not.
         defer { try? FileManager.default.removeItem(at: recording.url) }
 
         await timeline.send(voice: recording.url,
@@ -1358,6 +1369,9 @@ public struct RoomView: View {
             problem = .unreadableAttachment
             return
         }
+        // Gone as soon as the send returns, and still correct now that the send does not wait for
+        // the upload: the queue copies the file into its own encrypted store as it takes it. See
+        // `sendVoice`, where the same reasoning is set out at length.
         defer { try? FileManager.default.removeItem(at: url) }
 
         await timeline.send(video: url, replyingTo: replyID)
