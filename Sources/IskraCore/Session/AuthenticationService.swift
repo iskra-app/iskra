@@ -57,10 +57,18 @@ public actor AuthenticationService {
     private var pendingOAuth: OAuthAuthorizationData?
     private var pendingSSO: SsoHandler?
 
+    /// What keeps the Keychain current after a token refresh. Built once, here, and handed to
+    /// every `ClientBuilder` this service makes — see `SessionDelegate` for what goes wrong
+    /// without it, which is an app that signs the user out overnight and cannot say why.
+    private let sessionDelegate: SessionDelegate
+
     public init(environment: AppEnvironment = .default,
                 sessionStore: SessionStore? = nil) {
+        let store = sessionStore ?? SessionStore(environment: environment)
+
         self.environment = environment
-        self.sessionStore = sessionStore ?? SessionStore(environment: environment)
+        self.sessionStore = store
+        self.sessionDelegate = SessionDelegate(sessionStore: store)
     }
 
     // MARK: - Restoring
@@ -340,8 +348,18 @@ public actor AuthenticationService {
                                        cachePath: cacheURL.path(percentEncoded: false))
             .passphrase(passphrase: try sessionStore.storePassphrase())
 
+        // Which session the tokens the SDK is about to refresh belong to. Said *before* the
+        // client exists, because the first refresh can happen as early as `restoreSession`.
+        sessionDelegate.willBuildClient(forSessionID: sessionID)
+
         return ClientBuilder()
             .sqliteStore(config: store)
+            // The one thing that keeps the Keychain telling the truth about this session for
+            // longer than an hour. The SDK refreshes tokens by itself and holds the new pair in
+            // memory; without a delegate to hand them to, the pair on disk is the one from
+            // sign-in, and a refresh token is single-use — so the *next cold start* presents a
+            // dead token and the user is silently signed out. See `SessionDelegate`.
+            .setSessionDelegate(sessionDelegate: sessionDelegate)
             // The search index is a second copy of every message we can read, so it
             // gets the same treatment rather than being left in the clear.
             .withSearchIndexStore(path: searchURL.path(percentEncoded: false),
