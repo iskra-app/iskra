@@ -520,7 +520,7 @@
 "verification.title" = "Verification";
 "verification.why" = "Until this device is verified, your account has no way to know it is really you — and your older conversations will not come through to it. You can verify it from a phone or computer where you are already signed in.";
 "verification.waiting.title" = "Look at your other device";
-"verification.waiting.message" = "Open Iskra where you are already signed in and agree to verify this device. If you have no other device, your recovery code is the way back into your older conversations.";
+"verification.waiting.message" = "Only a device with the app open right now will see the request — so go and open it. Any app you are signed in to this account with will do, not necessarily this one. If you have no other device, your recovery code is the way back into your older conversations.";
 "verification.asked.message" = "This device has just signed in to your account and is asking you to verify it. If that was you, agree — and then compare the emoji. If it wasn't, refuse: somebody else knows your password.";
 "verification.unnamedDevice" = "An unnamed device";
 "verification.mine" = "It's me";

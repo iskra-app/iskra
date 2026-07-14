@@ -222,17 +222,22 @@ public final class RecoverySetupModel {
     }
 
     /// Hands the typed code to the SDK.
+    ///
+    /// Success is what `restore` *says*, not what `protection` reads back as afterwards. The store's
+    /// `protection` is also written by the SDK's recovery listener, whenever it feels like it, and
+    /// `await` above is a suspension point that listener can land in — so a code that worked could
+    /// read back as a code that did not, with no `failure` set and therefore no alert either: the
+    /// screen would simply sit there having accepted a correct code and said nothing.
     public func unlock() async {
-        await recovery.restore(with: typedCode)
-
-        if recovery.protection == .on {
-            typedCode = ""
-            step = .done
-        } else {
+        guard await recovery.restore(with: typedCode) else {
             // The failure alert says what happened, and "I can't find my code" is still on screen
             // underneath it — which is the whole point of leaving the step where it is.
             failure = recovery.failure
+            return
         }
+
+        typedCode = ""
+        step = .done
     }
 
     /// Asks another device to vouch for this one. The picture-comparison sheet takes it from here.

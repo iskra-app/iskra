@@ -98,6 +98,14 @@ struct VerificationSheet: View {
 
     private var isAsking: Bool { verification.step == .asked }
 
+    /// Whether the answer has already been given and the buttons are spent.
+    ///
+    /// Not just `isWorking`. That goes false again the moment *our* request comes back, but the
+    /// screen does not move on until the other device has answered as well — so the buttons used to
+    /// come back to life under a person who had already pressed one, on a question that was already
+    /// answered. Pressing again did nothing, which made the app look broken rather than busy.
+    private var hasAnswered: Bool { verification.isWorking || verification.hasAnswered }
+
     /// A device of yours signing in, asking to be trusted — and the one thing the user is being
     /// asked to do is *recognise it*. So the device's name is the largest thing on the screen, and
     /// the ID is under it in a monospaced font, because names are chosen by whoever set the device
@@ -132,26 +140,33 @@ struct VerificationSheet: View {
 
                 Spacer()
 
+                // Red and green, and the same equal-heights treatment as the picture comparison
+                // below — for the same two reasons. The colours carry the *meaning* and not a
+                // recommendation: green is agreement, red is refusal, and everyone reads them that
+                // way without being taught. Neither is prominent, so the app still is not nudging
+                // anybody towards the answer that grants trust.
                 HStack(spacing: Theme.Spacing.normal) {
                     Button {
                         Task { await verification.refuse() }
                     } label: {
                         Text(Strings.Verification.notMine)
-                            .frame(maxWidth: .infinity)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                     .buttonStyle(.bordered)
+                    .tint(.red)
 
                     Button {
                         Task { await verification.accept() }
                     } label: {
                         Text(Strings.Verification.mine)
-                            .frame(maxWidth: .infinity)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                     .buttonStyle(.bordered)
-                    .tint(accent.color)
+                    .tint(.green)
                 }
+                .fixedSize(horizontal: false, vertical: true)
                 .controlSize(.large)
-                .disabled(verification.isWorking)
+                .disabled(hasAnswered)
             }
             .padding(Theme.Spacing.generous)
         }
@@ -244,7 +259,7 @@ struct VerificationSheet: View {
             // labels stretch it into whatever space the `Spacer` above has left lying around.
             .fixedSize(horizontal: false, vertical: true)
             .controlSize(.large)
-            .disabled(verification.isWorking)
+            .disabled(hasAnswered)
             .padding(.horizontal, Theme.Spacing.generous)
             .padding(.bottom, Theme.Spacing.generous)
         }

@@ -26,7 +26,12 @@ struct SettingsView: View {
     /// Held, not owned — the session outlives this screen, and `@Observable` tracks it
     /// through a plain `let` just as well.
     let session: UserSession
-    var onSignOut: () -> Void
+
+    /// `async`, because signing out is not instant and this screen has to be able to say so — it
+    /// ends the session on the server and deletes the encrypted store. As a plain closure it
+    /// returned immediately, the screen sat there looking untouched, and the button got pressed
+    /// again by somebody who had every reason to think the first press had missed.
+    var onSignOut: () async -> Void
 
     /// Emptying the cache leaves the SDK's client unusable, so the app has to build a new one —
     /// see `StorageStore.clearCache`. Only the root of the app can, which is where this goes.
@@ -41,6 +46,9 @@ struct SettingsView: View {
 
     @State private var isChoosingPicture = false
     @State private var pickedPicture: PhotosPickerItem?
+
+    /// Set when the sign-out starts, and never cleared — see the button.
+    @State private var isSigningOut = false
 
     /// A change to the account the server would not make — including a picture the photo
     /// library would not hand over, which never reached the server at all. It lives here,
@@ -146,10 +154,26 @@ struct SettingsView: View {
 
             Section {
                 Button(role: .destructive) {
-                    onSignOut()
+                    isSigningOut = true
+                    Task { await onSignOut() }
                 } label: {
-                    Text(Strings.Account.signOut)
+                    // The spinner sits beside the words rather than replacing them, so the row does
+                    // not change height or lose its label at the moment it becomes unpressable —
+                    // the button still says what it is doing while it does it.
+                    //
+                    // `isSigningOut` is never set back to false, and does not need to be: signing
+                    // out ends by taking the whole signed-in tree down, this screen with it. If it
+                    // fails, the session is already half torn down and there is nothing here to go
+                    // back to — the app goes to the sign-in screen either way.
+                    HStack(spacing: Theme.Spacing.close) {
+                        Text(Strings.Account.signOut)
+                        if isSigningOut {
+                            Spacer()
+                            ProgressView()
+                        }
+                    }
                 }
+                .disabled(isSigningOut)
             } footer: {
                 about
             }

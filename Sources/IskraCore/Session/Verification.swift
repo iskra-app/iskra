@@ -100,7 +100,14 @@ public final class VerificationStore {
         case refused
     }
 
-    public private(set) var step: Step = .idle
+    public private(set) var step: Step = .idle {
+        didSet {
+            // A new question deserves fresh buttons. Every answer moves the step — accepting goes
+            // to `.negotiating`, declining to `.declined`, approving eventually to `.succeeded` —
+            // so this is exactly the moment `hasAnswered` stops being true.
+            if step != oldValue { hasAnswered = false }
+        }
+    }
 
     /// The device asking to be trusted, for as long as that conversation is on screen — through
     /// the question, the pictures and the outcome, because it is the same sheet throughout and it
@@ -112,6 +119,15 @@ public final class VerificationStore {
     /// True while a request is in flight, so the screen can stop somebody pressing the button
     /// twice and starting two verifications of the same device.
     public private(set) var isWorking = false
+
+    /// The user has answered, and the answer has gone. `isWorking` is not enough on its own and the
+    /// difference is visible on screen: it is false again the instant *our* request returns, but the
+    /// step does not move until the **other device** has answered too — the SDK calls `didFinish`
+    /// when both ends agree, not when one of them does. So for the seconds in between, "They match"
+    /// went back to looking like a button waiting to be pressed, on a screen whose question had
+    /// already been answered. Pressing it again did nothing (the SDK guards it), which is arguably
+    /// worse: the app looked broken rather than busy.
+    public private(set) var hasAnswered = false
 
     /// Which end of this we are. See the note on the type: it decides who starts the comparison.
     private var isIncoming = false
@@ -182,8 +198,9 @@ public final class VerificationStore {
     /// later, by `approve()`, after a person has compared seven pictures. Saying yes here is saying
     /// yes to a question about a name on a screen, and the protocol treats it as exactly that.
     public func accept() async {
-        guard step == .asked, let request = incoming, !isWorking else { return }
+        guard step == .asked, let request = incoming, !isWorking, !hasAnswered else { return }
 
+        hasAnswered = true
         isWorking = true
         defer { isWorking = false }
 
@@ -209,8 +226,9 @@ public final class VerificationStore {
     /// is the part that matters: a device signing in to this account that the person holding the
     /// phone does not recognise is somebody else holding the password.
     public func refuse() async {
-        guard step == .asked, let request = incoming, !isWorking else { return }
+        guard step == .asked, let request = incoming, !isWorking, !hasAnswered else { return }
 
+        hasAnswered = true
         isWorking = true
         defer { isWorking = false }
 
@@ -228,8 +246,9 @@ public final class VerificationStore {
     /// exactly why the screen asks them to *look*, and why there is a "they don't match" beside it
     /// rather than only a way to agree.
     public func approve() async {
-        guard case .comparing = step else { return }
+        guard case .comparing = step, !hasAnswered else { return }
 
+        hasAnswered = true
         isWorking = true
         defer { isWorking = false }
 
@@ -244,8 +263,9 @@ public final class VerificationStore {
     /// They are not the same. Somebody is in the middle, or — far more likely — this was started
     /// twice and the user is looking at the wrong one. Either way the answer is no.
     public func decline() async {
-        guard case .comparing = step else { return }
+        guard case .comparing = step, !hasAnswered else { return }
 
+        hasAnswered = true
         isWorking = true
         defer { isWorking = false }
 

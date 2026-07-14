@@ -179,7 +179,7 @@ public final class RecoveryStore {
             protection = .on
             return RecoveryKey(value: key)
         } catch {
-            Log.session.error("recovery would not turn on: \(Log.describe(error), privacy: .public)")
+            Log.session.error("recovery would not turn on: \(Self.describe(error), privacy: .public)")
             failure = .protectHistory
             return nil
         }
@@ -198,16 +198,24 @@ public final class RecoveryStore {
             protection = .on
             return RecoveryKey(value: key)
         } catch {
-            Log.session.error("the recovery code would not reset: \(Log.describe(error), privacy: .public)")
+            Log.session.error("the recovery code would not reset: \(Self.describe(error), privacy: .public)")
             failure = .newKey
             return nil
         }
     }
 
     /// Hand the key back to the SDK and let it unlock what is already on the server.
-    public func restore(with key: String) async {
+    ///
+    /// **Returns whether it worked, and the caller must use the answer rather than re-reading
+    /// `protection`.** That is not fussiness: `protection` is also written by the SDK's recovery
+    /// listener, on its own schedule, and a caller that awaits this and then looks at `protection`
+    /// is looking at it across a suspension point the listener can land in. A successful restore
+    /// could therefore read back as a failure — and as a failure with no `failure` set, so the
+    /// screen would refuse to move on and show nothing at all to explain why.
+    @discardableResult
+    public func restore(with key: String) async -> Bool {
         let key = key.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !key.isEmpty, !isWorking else { return }
+        guard !key.isEmpty, !isWorking else { return false }
 
         isWorking = true
         defer { isWorking = false }
@@ -215,11 +223,46 @@ public final class RecoveryStore {
         do {
             try await encryption.recover(recoveryKey: key)
             protection = .on
+            return true
         } catch {
-            // Not logged with the key in it, obviously — it is the one string in this file
-            // that is worth as much as the password.
-            Log.session.error("the recovery key was refused: \(Log.describe(error), privacy: .public)")
+            Log.session.error("the recovery code was refused: \(Self.describe(error), privacy: .public)")
             failure = .restore
+            return false
+        }
+    }
+
+    /// What went wrong, in the SDK's own words — and this is the one place in the app that prints an
+    /// error's payload instead of only its case name.
+    ///
+    /// `Log.describe` drops payloads on purpose, because an error out of a messaging SDK can carry a
+    /// message in it. It cost us a day here. "The recovery code was refused" came out as
+    /// `Error.SecretStorage` and stopped, and `RecoveryError.SecretStorage` is *two completely
+    /// different failures wearing one name*:
+    ///
+    ///   - the string is not a recovery code at all — mistyped, truncated, a stray paste;
+    ///   - the string is a perfectly good recovery code, for a secret storage that no longer exists.
+    ///     Every `enableRecovery` writes a **new** default key over the account's old one, so a code
+    ///     from before the last reset opens nothing, and the person holding it has no way to know.
+    ///
+    /// One of those is the user's mistake and one of them is ours, and we could not tell which,
+    /// because the only thing that knows is the sentence we were throwing away.
+    ///
+    /// It is safe to print: `RecoveryError` carries the SDK's own diagnostic text — "the MAC of the
+    /// secret storage key did not match", a base58 complaint about a character — and never the key,
+    /// which is the *input* to the call and not a thing the error has to repeat back. Narrow on
+    /// purpose: only `RecoveryError`, and everything else still goes through `Log.describe`.
+    private static func describe(_ error: some Error) -> String {
+        guard let recovery = error as? RecoveryError else { return Log.describe(error) }
+
+        return switch recovery {
+        case .BackupExistsOnServer:
+            "RecoveryError.BackupExistsOnServer"
+        case let .SecretStorage(message):
+            "RecoveryError.SecretStorage: \(message)"
+        case let .Import(message):
+            "RecoveryError.Import: \(message)"
+        case let .Client(source):
+            "RecoveryError.Client: \(Log.describe(source))"
         }
     }
 
