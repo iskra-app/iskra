@@ -40,6 +40,12 @@ public struct IskraRootView: View {
         case signedIn(UserSession)
     }
 
+    /// Set when the session was ended somewhere else and the app took itself back to sign-in on
+    /// its own. It has to be *said*: a person who left the app on a chat and comes back to a
+    /// sign-in screen will assume the app lost their account, and go looking for the bug in the
+    /// wrong place — which is exactly where the developer would go looking too.
+    @State private var wasSignedOutRemotely = false
+
     private let authentication = AuthenticationService()
 
     public init() {}
@@ -60,9 +66,28 @@ public struct IskraRootView: View {
             case let .signedIn(session):
                 conversations(session)
                     .environment(\.mediaLoader, session.media())
+                    // The server stopped accepting this session while the app was open — somebody
+                    // ended it from another device, or the account was deactivated. `UserSession`
+                    // has already torn down the local half; what is left is to take the screens
+                    // down with it and say what happened, because the alternative is what this
+                    // used to do: nothing at all, on an app that goes on looking connected while
+                    // every message it sends waits in a queue for a server that will not have it.
+                    .onChange(of: session.wasEndedElsewhere) { _, wasEnded in
+                        guard wasEnded else { return }
+                        AppSettings.forget()
+                        selectedRoomID = nil
+                        selectedEventID = nil
+                        phase = .signedOut
+                        wasSignedOutRemotely = true
+                    }
             }
         }
         .animation(.smooth, value: isSignedIn)
+        .alert(Text(Strings.Session.endedTitle), isPresented: $wasSignedOutRemotely) {
+            Button(String(app: Strings.Problem.ok), role: .cancel) {}
+        } message: {
+            Text(Strings.Session.endedMessage)
+        }
         // The accent travels down the tree, but it is *not* handed to the system's controls
         // here. `.tint` is what buttons, links and the sidebar's selection read, and tinting
         // the whole app with it painted the chrome as loudly as the content: a green app had

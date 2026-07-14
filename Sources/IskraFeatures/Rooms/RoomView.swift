@@ -371,19 +371,32 @@ public struct RoomView: View {
             // watched. History is a request the reader makes by scrolling; they cannot make
             // it before they have been shown where the conversation actually is.
             //
-            .onScrollGeometryChange(for: Bool.self) { geometry in
-                geometry.contentOffset.y < Theme.Size.paginationReach
-            } action: { _, isNearTop in
-                guard isNearTop, hasAnchored else { return }
-                Task { await timeline.loadMore() }
-            }
-            // Where the conversation is standing, and the two moments it has to be put somewhere
-            // other than where the scroll view would leave it.
+            // Where the conversation is standing: what asks for history, and the two moments the
+            // scroll view has to be put somewhere other than where it would leave itself.
+            //
+            // The request for history used to hang off its own observer, watching a *Bool* —
+            // "is the reader within reach of the top" — and `onScrollGeometryChange` only calls
+            // its action when the value it watches **changes**. That is the whole of why loading
+            // older messages worked in fits and starts. A page of twenty-five events can be two
+            // rows tall, so the content grew by less than the reach and the reader was still
+            // within it: the Bool was true before the page and true after it, never changed, and
+            // never fired again. The room sat at its top with more history to give and nothing
+            // asking for it, and the only way to shake another page out of it was to scroll *down*
+            // far enough to make the answer false and come back up.
+            //
+            // Watching the geometry itself has no such gap: every scroll and every change of
+            // content is a call, and being near the top is simply asked afresh each time.
+            // Firing it eagerly costs nothing — `loadMore` ignores a call while a page is already
+            // in flight, and does nothing once the room has no more history.
             .onScrollGeometryChange(for: ScrollMetrics.self) { geometry in
                 ScrollMetrics(contentHeight: geometry.contentSize.height,
                               offset: geometry.contentOffset.y)
             } action: { _, metrics in
                 self.metrics = metrics
+
+                if metrics.offset < Theme.Size.paginationReach, hasAnchored {
+                    Task { await timeline.loadMore() }
+                }
 
                 // A room opens on its newest message, and *stays* there until the reader takes
                 // hold of it. One `scrollTo` at the moment the first page lands is not enough and

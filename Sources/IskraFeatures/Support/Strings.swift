@@ -415,6 +415,18 @@ public enum Strings {
         public static let ok = LocalizedStringResource("problem.ok", bundle: bundle)
     }
 
+    /// The sign-out nobody here performed — the server stopped accepting this session, because
+    /// somebody ended it from another device or the account was closed.
+    ///
+    /// It gets a sentence of its own rather than the generic apology, and the sentence names the
+    /// likely cause. A person put back on the sign-in screen without explanation will conclude the
+    /// app lost their account; telling them *what* happened is the difference between a moment of
+    /// irritation and an evening of doubt about where their messages went.
+    public enum Session {
+        public static let endedTitle = LocalizedStringResource("session.ended.title", bundle: bundle)
+        public static let endedMessage = LocalizedStringResource("session.ended.message", bundle: bundle)
+    }
+
     public enum Account {
         /// The button in the top-right corner that opens settings — the user's avatar on
         /// iPhone, a gear in the sidebar on iPad and Mac. It is the same door either way,

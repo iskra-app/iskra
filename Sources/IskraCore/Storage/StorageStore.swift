@@ -99,14 +99,33 @@ public final class StorageStore {
     /// Nothing is signed out: the tokens and the keys are untouched, only what could be downloaded
     /// again is gone.
     ///
-    /// It does *not* re-measure. The numbers it would read are the numbers of a store that is
-    /// about to be rebuilt by a client that does not exist yet — and the screen asking for them is
-    /// itself about to be torn down with the rest of the signed-in tree.
+    /// And then the directory itself goes, which is not belt-and-braces — it is the only part of
+    /// this that gives the space back.
+    ///
+    /// `clearCaches` empties the *tables*. SQLite frees those pages inside its own file and hands
+    /// nothing back to the filesystem: the rows are gone, the messages and the photos are gone,
+    /// and the file on disk is exactly as many megabytes as it was. So the screen went on
+    /// reporting twenty-two megabytes over an empty cache, and it was not wrong — that is what the
+    /// cache was *taking*, which is the question the screen asks. Vacuuming would be the tidy
+    /// answer and we cannot: the client that owns the connection is, by this point, deliberately
+    /// dead.
+    ///
+    /// Which is exactly what makes deleting the directory safe, and it is the one moment it ever
+    /// is. Nothing is holding those files open with any intention of using them again: the sync
+    /// service is down, the client is unusable by the SDK's own account, and the caller is about
+    /// to build a new one — which recreates the directory on its way up. This is the window, and
+    /// there is no other.
     public func clearCache() async throws {
         isClearing = true
         defer { isClearing = false }
 
         try await client.clearCaches(syncService: roomList.currentSyncService)
+
+        if let cache = locations[.cache] {
+            try? FileManager.default.removeItem(at: cache)
+        }
+
+        await measure()
     }
 
     /// The size of a directory tree, in bytes on disk.

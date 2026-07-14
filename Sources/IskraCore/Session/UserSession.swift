@@ -50,10 +50,52 @@ public final class UserSession {
         self.search = SearchStore(client: client)
     }
 
+    /// The server has stopped accepting this session, and nobody on this device asked it to.
+    ///
+    /// Somebody ended the session from another client, or an administrator deactivated the
+    /// account. Until this existed the app simply *did not find out*: sync began failing, the room
+    /// list froze on whatever was in the cache, messages went into the send queue and stayed
+    /// there, and every screen went on looking exactly as it had. The only symptom was an app that
+    /// had quietly stopped being connected to anything, and the only cure was to guess as much and
+    /// sign out by hand.
+    ///
+    /// Read by `IskraRootView`, which takes the app back to the sign-in screen and says why.
+    public private(set) var wasEndedElsewhere = false
+
+    /// Kept alive because dropping it unsubscribes. Cancelled in `signOut()`.
+    private var authErrorHandle: TaskHandle?
+
     /// Starts the sync loop. Everything else follows from this.
     public func start() async throws {
+        // Before the sync loop, not after: the token can be refused by the very first request the
+        // loop makes, and a delegate registered afterwards would miss it.
+        authErrorHandle = try? client.setDelegate(delegate: AuthErrors { [weak self] in
+            Task { @MainActor [weak self] in
+                await self?.endedElsewhere()
+            }
+        })
+
         await loadProfile()
         try await roomList.start()
+    }
+
+    /// Tears the session down locally, without asking the server for permission it has already
+    /// withdrawn. See `wasEndedElsewhere`.
+    private func endedElsewhere() async {
+        guard !wasEndedElsewhere else { return }
+        wasEndedElsewhere = true
+
+        Log.session.error("the server no longer accepts this session; signing out locally")
+
+        await roomList.stop()
+
+        authErrorHandle?.cancel()
+        authErrorHandle = nil
+
+        // Not `signOut()`: that one asks the server to forget the device, and the server has
+        // already forgotten it. The local half — keys, tokens, the encrypted store — happens
+        // exactly as it would have.
+        await authentication.forgetSession()
     }
 
     /// The user's own name and picture. Failing to fetch either is not an error worth
@@ -182,7 +224,33 @@ public final class UserSession {
     }
 
     public func signOut() async {
+        authErrorHandle?.cancel()
+        authErrorHandle = nil
+
         await roomList.stop()
         await authentication.signOut(client: client)
     }
+}
+
+/// The SDK telling us the server has stopped accepting our token.
+///
+/// `isSoftLogout` is dropped, and the distinction it draws is one this app cannot act on. A soft
+/// logout means the tokens are dead but the encrypted store could be kept and re-attached to a
+/// fresh sign-in by the same user — which is a real optimisation and a real screen ("sign back in
+/// as Boris"), and Iskra has neither. Treating both as "you are signed out" is the honest
+/// simplification: the alternative is a store kept for a flow that does not exist.
+private final class AuthErrors: ClientDelegate {
+    private let onAuthError: @Sendable () -> Void
+
+    init(onAuthError: @escaping @Sendable () -> Void) {
+        self.onAuthError = onAuthError
+    }
+
+    func didReceiveAuthError(isSoftLogout: Bool) {
+        onAuthError()
+    }
+
+    /// The SDK's own note says an embedder that does not run background jobs may leave this empty.
+    /// This one does not.
+    func onBackgroundTaskErrorReport(taskName: String, error: BackgroundTaskFailureReason) {}
 }
