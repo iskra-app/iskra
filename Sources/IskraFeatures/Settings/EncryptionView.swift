@@ -27,8 +27,16 @@ struct EncryptionView: View {
     /// What is being typed into the field, when the key is being typed rather than made.
     @State private var typedKey = ""
 
-    init(recovery: RecoveryStore, deviceID: String?) {
+    /// Proving this device is yours. Built by the session, held here for as long as the screen is,
+    /// and taken down with it — the SDK's controller carries a delegate registration, and a screen
+    /// that made a fresh one on every redraw would leave a trail of them.
+    @State private var verification: VerificationStore
+
+    @State private var isVerifying = false
+
+    init(recovery: RecoveryStore, verification: VerificationStore, deviceID: String?) {
         _recovery = State(initialValue: recovery)
+        _verification = State(initialValue: verification)
         self.deviceID = deviceID
     }
 
@@ -55,7 +63,16 @@ struct EncryptionView: View {
         .navigationTitle(Text(Strings.Encryption.title))
         .toolbarTitleDisplayMode(.inline)
         .onAppear { recovery.load() }
-        .onDisappear { recovery.stop() }
+        .onDisappear {
+            recovery.stop()
+            verification.stop()
+        }
+        .sheet(isPresented: $isVerifying) {
+            VerificationSheet(verification: verification) {
+                isVerifying = false
+                verification.reset()
+            }
+        }
         // Presented from the root of the screen rather than from the row that produces the
         // key: the row is inside a `Section` that stops being drawn the moment `protection`
         // flips to `.on`, and a sheet attached to a view that has just been removed never
@@ -170,8 +187,23 @@ struct EncryptionView: View {
                 Image(systemName: recovery.isDeviceVerified ? "checkmark.seal.fill" : "seal")
                     .foregroundStyle(recovery.isDeviceVerified ? .green : .secondary)
             }
+
+            // And, if it is not verified, the way to verify it — which for a long time did not
+            // exist while the rest of the app cheerfully told people to come here and do it. A
+            // message that would not send said "verify this device — it's done in settings", and
+            // settings said "Not verified" and offered nothing. The instruction led to a wall.
+            if !recovery.isDeviceVerified {
+                Button {
+                    isVerifying = true
+                    Task { await verification.start() }
+                } label: {
+                    working(Strings.Verification.verify, isWorking: verification.isWorking)
+                }
+                .disabled(verification.isWorking)
+            }
         } footer: {
-            Text(Strings.Encryption.otherDevices)
+            Text(recovery.isDeviceVerified ? Strings.Encryption.otherDevices
+                                           : Strings.Verification.why)
         }
     }
 
@@ -179,10 +211,11 @@ struct EncryptionView: View {
     /// talks to the server, and enabling recovery uploads every room key this device holds
     /// — which on an old account is not a moment, it is a minute.
     @ViewBuilder
-    private func working(_ title: LocalizedStringResource) -> some View {
+    private func working(_ title: LocalizedStringResource,
+                         isWorking: Bool? = nil) -> some View {
         HStack(spacing: Theme.Spacing.close) {
             Text(title)
-            if recovery.isWorking {
+            if isWorking ?? recovery.isWorking {
                 Spacer()
                 ProgressView()
             }
@@ -250,5 +283,151 @@ private struct KeySheet: View {
     private func copy() {
         Clipboard.copy(key)
         hasCopied = true
+    }
+}
+
+/// Comparing seven pictures with a device that is already trusted.
+///
+/// The whole security of this rests on the user *looking*, so the screen is built to make looking
+/// the easy thing and agreeing the deliberate one. The pictures are large. The two answers sit
+/// side by side and neither is styled as the obvious one — a prominent "They match" beside a
+/// quiet "They don't" would be the app nudging somebody towards the answer that grants trust,
+/// which is precisely the answer an attacker in the middle needs them to give.
+///
+/// What the pictures *are* is the SDK's business and stays there: they come out of a secret the two
+/// devices worked out between them, and a third device that is not in the conversation cannot
+/// produce the same seven. No cryptography is performed here. This is a list and two buttons.
+private struct VerificationSheet: View {
+    let verification: VerificationStore
+    let onDone: () -> Void
+
+    @Environment(\.accent) private var accent
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                switch verification.step {
+                case .idle, .waitingForOtherDevice:
+                    waiting
+
+                case let .comparing(symbols):
+                    comparing(symbols)
+
+                case .succeeded:
+                    outcome(systemImage: "checkmark.seal.fill",
+                            tint: .green,
+                            title: Strings.Verification.doneTitle,
+                            message: Strings.Verification.doneMessage)
+
+                case .declined:
+                    outcome(systemImage: "exclamationmark.triangle.fill",
+                            tint: .orange,
+                            title: Strings.Verification.declinedTitle,
+                            message: Strings.Verification.declinedMessage)
+
+                case .failed:
+                    outcome(systemImage: "xmark.circle.fill",
+                            tint: .secondary,
+                            title: Strings.Verification.failedTitle,
+                            message: Strings.Verification.failedMessage)
+                }
+            }
+            .navigationTitle(Text(Strings.Verification.title))
+            .toolbarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(String(app: Strings.Verification.close)) {
+                        Task {
+                            await verification.cancel()
+                            onDone()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Nothing to do but wait for somebody to notice on the other device — and to be told, plainly,
+    /// what "the other device" means. A person with one phone cannot do this at all, and the screen
+    /// says so rather than spinning at them forever.
+    private var waiting: some View {
+        ContentUnavailableView {
+            Label(Strings.Verification.waitingTitle, systemImage: "iphone.and.arrow.forward")
+        } description: {
+            Text(Strings.Verification.waitingMessage)
+        } actions: {
+            ProgressView()
+        }
+    }
+
+    private func comparing(_ symbols: [String]) -> some View {
+        VStack(spacing: Theme.Spacing.generous) {
+            Text(Strings.Verification.compare)
+                .font(.body)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, Theme.Spacing.generous)
+
+            // Wrapped rather than in one row: seven emoji at a size worth looking at do not fit
+            // across a phone, and shrinking them to make them fit would be defeating the purpose of
+            // the screen to preserve its layout.
+            FlowLayout(spacing: Theme.Spacing.roomy) {
+                ForEach(Array(symbols.enumerated()), id: \.offset) { _, symbol in
+                    Text(symbol)
+                        .font(.system(size: Theme.Size.verificationEmoji))
+                }
+            }
+            .padding(.horizontal, Theme.Spacing.generous)
+            // One element to VoiceOver, reading the seven in order: a screen reader user compares
+            // them by hearing them, and seven separate stops with no context is not a comparison.
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(Text(symbols.joined(separator: ", ")))
+
+            Spacer()
+
+            // Neither answer is the prominent one. See the note on the type.
+            HStack(spacing: Theme.Spacing.normal) {
+                Button {
+                    Task { await verification.decline() }
+                } label: {
+                    Text(Strings.Verification.noMatch)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+
+                Button {
+                    Task { await verification.approve() }
+                } label: {
+                    Text(Strings.Verification.match)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .tint(accent.color)
+            }
+            .controlSize(.large)
+            .disabled(verification.isWorking)
+            .padding(.horizontal, Theme.Spacing.generous)
+            .padding(.bottom, Theme.Spacing.generous)
+        }
+        .padding(.top, Theme.Spacing.generous)
+    }
+
+    private func outcome(systemImage: String,
+                         tint: Color,
+                         title: LocalizedStringResource,
+                         message: LocalizedStringResource) -> some View {
+        ContentUnavailableView {
+            Label {
+                Text(title)
+            } icon: {
+                Image(systemName: systemImage)
+                    .foregroundStyle(tint)
+            }
+        } description: {
+            Text(message)
+        } actions: {
+            Button(String(app: Strings.Verification.close), action: onDone)
+                .buttonStyle(.borderedProminent)
+        }
     }
 }

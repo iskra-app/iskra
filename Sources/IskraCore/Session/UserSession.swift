@@ -154,6 +154,12 @@ public final class UserSession {
         RecoveryStore(encryption: client.encryption())
     }
 
+    /// Proving this device is yours, by comparing pictures with one that already is. Built when
+    /// somebody asks to do it — most sessions never will, because most people have one device.
+    public func verification() -> VerificationStore {
+        VerificationStore(client: client)
+    }
+
     /// What this account is keeping on the device, built when the screen that shows it is opened.
     ///
     /// It takes the room list with it, and not for the rooms: clearing the cache means taking the

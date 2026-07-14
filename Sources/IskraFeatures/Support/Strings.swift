@@ -429,6 +429,42 @@ public enum Strings {
         public static let ok = LocalizedStringResource("problem.ok", bundle: bundle)
     }
 
+    /// Proving this device is yours, by comparing seven pictures with a device that already is.
+    ///
+    /// Every word here is written around one idea and never around the cryptography behind it: the
+    /// user is being asked to *look at two screens and say whether they show the same thing*. They
+    /// are not being asked to understand cross-signing, and a screen that mentioned it would be
+    /// asking them to.
+    public enum Verification {
+        public static let verify = LocalizedStringResource("verification.verify", bundle: bundle)
+        public static let title = LocalizedStringResource("verification.title", bundle: bundle)
+
+        /// Why anyone should bother — shown under the button, before it is pressed.
+        public static let why = LocalizedStringResource("verification.why", bundle: bundle)
+
+        public static let waitingTitle = LocalizedStringResource("verification.waiting.title", bundle: bundle)
+        public static let waitingMessage = LocalizedStringResource("verification.waiting.message", bundle: bundle)
+
+        public static let compare = LocalizedStringResource("verification.compare", bundle: bundle)
+
+        /// The two answers. Neither is styled as the obvious one, and neither is worded as one:
+        /// "yes" is the answer that grants trust, and it is the answer somebody standing in the
+        /// middle of the conversation needs the user to give without looking.
+        public static let match = LocalizedStringResource("verification.match", bundle: bundle)
+        public static let noMatch = LocalizedStringResource("verification.noMatch", bundle: bundle)
+
+        public static let doneTitle = LocalizedStringResource("verification.done.title", bundle: bundle)
+        public static let doneMessage = LocalizedStringResource("verification.done.message", bundle: bundle)
+
+        public static let declinedTitle = LocalizedStringResource("verification.declined.title", bundle: bundle)
+        public static let declinedMessage = LocalizedStringResource("verification.declined.message", bundle: bundle)
+
+        public static let failedTitle = LocalizedStringResource("verification.failed.title", bundle: bundle)
+        public static let failedMessage = LocalizedStringResource("verification.failed.message", bundle: bundle)
+
+        public static let close = LocalizedStringResource("verification.close", bundle: bundle)
+    }
+
     /// The sign-out nobody here performed — the server stopped accepting this session, because
     /// somebody ended it from another device or the account was closed.
     ///
