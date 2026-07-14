@@ -20,7 +20,7 @@ public extension TimelineStore {
     func send(photo data: Data, filename: String, replyingTo replyID: String? = nil) async {
         guard let timeline = liveTimeline else {
             Log.media.error("photo dropped: the room has no live timeline")
-            sendFailure = CoreStrings.Timeline.sendFailed
+            failure = .send
             return
         }
 
@@ -57,7 +57,7 @@ public extension TimelineStore {
             // which is the exact failure this whole codebase is written against. `send(photo:)` had
             // this and the other four did not.
             Log.media.error("nothing was sent: the room has no live timeline")
-            sendFailure = CoreStrings.Timeline.sendFailed
+            failure = .send
             return
         }
 
@@ -117,7 +117,7 @@ public extension TimelineStore {
             // which is the exact failure this whole codebase is written against. `send(photo:)` had
             // this and the other four did not.
             Log.media.error("nothing was sent: the room has no live timeline")
-            sendFailure = CoreStrings.Timeline.sendFailed
+            failure = .send
             return
         }
 
@@ -145,7 +145,7 @@ public extension TimelineStore {
             // which is the exact failure this whole codebase is written against. `send(photo:)` had
             // this and the other four did not.
             Log.media.error("nothing was sent: the room has no live timeline")
-            sendFailure = CoreStrings.Timeline.sendFailed
+            failure = .send
             return
         }
 
@@ -189,7 +189,7 @@ public extension TimelineStore {
             // which is the exact failure this whole codebase is written against. `send(photo:)` had
             // this and the other four did not.
             Log.media.error("nothing was sent: the room has no live timeline")
-            sendFailure = CoreStrings.Timeline.sendFailed
+            failure = .send
             return
         }
 
@@ -203,7 +203,7 @@ public extension TimelineStore {
                                             assetType: .pin,
                                             repliedToEventId: replyID.flatMap { eventID(for: $0) })
         } catch {
-            sendFailure = CoreStrings.Timeline.sendFailed
+            failure = .send
         }
     }
 
@@ -229,7 +229,7 @@ public extension TimelineStore {
             try await handle.join()
         } catch {
             Log.media.error("attachment refused: \(Log.describe(error), privacy: .public)")
-            sendFailure = CoreStrings.Timeline.sendFailed
+            failure = .send
         }
     }
 }

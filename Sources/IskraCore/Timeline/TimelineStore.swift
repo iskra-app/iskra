@@ -30,8 +30,15 @@ public final class TimelineStore {
     /// of the two the user can do anything about.
     public private(set) var didFailToLoad = false
 
-    /// Set when sending fails in a way the user should know about.
-    public var sendFailure: LocalizedStringResource?
+    /// Something the user asked the room to do, and it did not happen.
+    ///
+    /// An `ActionFailure`, like every other store's — and it was the one that was not. It used to be
+    /// a bare `LocalizedStringResource?`, which meant the *model layer* was handing the view a
+    /// finished sentence and the view could not use `.failureAlert($…)` with it, so `RoomView` built
+    /// the alert by hand: seven lines reimplementing, slightly differently, the modifier three other
+    /// screens share. A sentence is not a failure. A failure is a thing that happened, and the
+    /// sentence is how it is said.
+    public var failure: TimelineActionFailure?
 
     public let roomID: String
     public private(set) var privacy: PrivacyStatus = .unknown
@@ -505,7 +512,7 @@ public final class TimelineStore {
 
         guard let timeline else {
             Log.media.error("nothing was sent: the room has no live timeline")
-            sendFailure = CoreStrings.Timeline.sendFailed
+            failure = .send
             return
         }
 
@@ -524,7 +531,7 @@ public final class TimelineStore {
                 _ = try await timeline.send(msg: content)
             }
         } catch {
-            sendFailure = CoreStrings.Timeline.sendFailed
+            failure = .send
         }
     }
 
@@ -548,7 +555,7 @@ public final class TimelineStore {
             let content = messageEventContentFromMarkdown(md: trimmed)
             try await timeline.edit(eventOrTransactionId: id, newContent: .roomMessage(content: content))
         } catch {
-            sendFailure = CoreStrings.Timeline.editFailed
+            failure = .edit
         }
     }
 
@@ -699,7 +706,7 @@ public final class TimelineStore {
             if !wasAdded { forget(reaction) }
         } catch {
             forget(reaction)
-            sendFailure = CoreStrings.Timeline.reactionFailed
+            failure = .reaction
         }
     }
 
@@ -735,7 +742,7 @@ public final class TimelineStore {
         // The pills go out, and the user is told why. Both: a pill quietly vanishing under the
         // thumb that just pressed it looks like the app dropped the tap.
         rebuildRows()
-        sendFailure = CoreStrings.Timeline.reactionFailed
+        failure = .reaction
     }
 
     private func forget(_ reaction: InFlightReaction) {
@@ -777,7 +784,7 @@ public final class TimelineStore {
         do {
             try await timeline.redactEvent(eventOrTransactionId: id, reason: nil)
         } catch {
-            sendFailure = CoreStrings.Timeline.deleteFailed
+            failure = .delete
         }
     }
 
@@ -805,7 +812,7 @@ public final class TimelineStore {
         do {
             _ = try await timeline.pinEvent(eventId: eventID)
         } catch {
-            sendFailure = CoreStrings.Timeline.pinFailed
+            failure = .pin
         }
     }
 
@@ -815,7 +822,7 @@ public final class TimelineStore {
         do {
             _ = try await timeline.unpinEvent(eventId: eventID)
         } catch {
-            sendFailure = CoreStrings.Timeline.pinFailed
+            failure = .pin
         }
     }
 

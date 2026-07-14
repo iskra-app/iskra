@@ -145,6 +145,10 @@ public struct RoomView: View {
     /// they can both fire.
     @State private var hasTornDown = false
 
+    /// Something the *device* refused — the microphone, an unreadable file. It lives here, with the
+    /// alert that shows it, and not in the store: see `RoomProblem`.
+    @State private var problem: RoomProblem?
+
     /// The width the messages have to live in. See `EnvironmentValues.timelineWidth`.
     @State private var timelineWidth: CGFloat = 0
 
@@ -800,13 +804,14 @@ public struct RoomView: View {
             guard !isShowingDetails, !isShowingPinned else { return }
             tearDown()
         }
-        .alert(Text(Strings.Room.sendFailedTitle),
-               isPresented: .init(get: { timeline.sendFailure != nil },
-                                  set: { if !$0 { timeline.sendFailure = nil } })) {
-            Button(String(app: Strings.Problem.ok), role: .cancel) { timeline.sendFailure = nil }
-        } message: {
-            if let failure = timeline.sendFailure { Text(failure) }
-        }
+        // Two alerts, because there are two kinds of bad news and they come from different places.
+        // The room refusing something is the store's (`TimelineActionFailure`); the device refusing
+        // something is this screen's (`RoomProblem`) — see that type for why the second one no
+        // longer gets written into the first. Both go through the shared modifier now: this used to
+        // be seven lines of hand-rolled `.alert` doing, slightly differently, what three other
+        // screens already had a modifier for.
+        .failureAlert($timeline.failure)
+        .failureAlert($problem)
     }
 
     /// Putting the room down: the draft, the listeners, the camera, the microphone.
@@ -1020,7 +1025,7 @@ public struct RoomView: View {
         // The microphone was refused. Say so — a hold that produces nothing, with no explanation,
         // is the app appearing to be broken when in fact it is being obedient.
         if voice.state == .denied {
-            timeline.sendFailure = Strings.Voice.needsMicrophone
+            problem = .microphone
         }
     }
 
@@ -1267,13 +1272,13 @@ public struct RoomView: View {
             data = try await item.loadTransferable(type: Data.self)
         } catch {
             Log.media.error("the photo library would not hand over the item: \(Log.describe(error), privacy: .public)")
-            timeline.sendFailure = Strings.Room.attachmentUnreadable
+            problem = .unreadableAttachment
             return
         }
 
         guard let data else {
             Log.media.error("the photo library returned no bytes for the picked item")
-            timeline.sendFailure = Strings.Room.attachmentUnreadable
+            problem = .unreadableAttachment
             return
         }
 
@@ -1296,7 +1301,7 @@ public struct RoomView: View {
             try data.write(to: url, options: .atomic)
         } catch {
             Log.media.error("the video could not be staged for upload: \(Log.describe(error), privacy: .public)")
-            timeline.sendFailure = Strings.Room.attachmentUnreadable
+            problem = .unreadableAttachment
             return
         }
         defer { try? FileManager.default.removeItem(at: url) }
