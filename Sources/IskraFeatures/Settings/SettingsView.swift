@@ -111,6 +111,8 @@ struct SettingsView: View {
                 } label: {
                     Text(Strings.Account.signOut)
                 }
+            } footer: {
+                about
             }
         }
         .formStyle(.grouped)
@@ -230,6 +232,24 @@ struct SettingsView: View {
         .menuIndicator(.hidden)
         .buttonStyle(.plain)
         .accessibilityLabel(Text(Strings.Account.changePicture))
+    }
+
+    /// The app saying what it is and which build of it this is.
+    ///
+    /// A footer rather than a row, and centred, because it is not a setting: there is nothing
+    /// here to press. It sits below sign-out — the last thing on the screen, where every other
+    /// app puts it, and where somebody who has come looking for a version number to quote in a
+    /// bug report will look for it. The numbers come from the bundle; see `AppVersion`.
+    private var about: some View {
+        VStack(spacing: Theme.Spacing.tight) {
+            Text(Strings.Settings.appName)
+            Text(Strings.Settings.version(AppVersion.marketing, build: AppVersion.build))
+        }
+        .font(.footnote)
+        .foregroundStyle(.secondary)
+        .frame(maxWidth: .infinity)
+        .padding(.top, Theme.Spacing.roomy)
+        .textSelection(.enabled)
     }
 
     /// A setting that exists as a place on the screen and nothing more.

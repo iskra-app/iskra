@@ -552,6 +552,20 @@ public enum Strings {
         public static let reactions = LocalizedStringResource("settings.reactions", bundle: bundle)
         public static let storage = LocalizedStringResource("settings.storage", bundle: bundle)
         public static let moreSoon = LocalizedStringResource("settings.moreSoon", bundle: bundle)
+
+        /// The app's own name, at the foot of the screen. Not the bundle's display name and
+        /// not translated: it is what the app is called, in both languages, and it is here so
+        /// that somebody reporting a bug can say which app they mean.
+        public static let appName = LocalizedStringResource("settings.appName", bundle: bundle)
+
+        /// And which build of it they are holding. Two numbers, because either alone is
+        /// useless: the version says what the app is, the build says which of the many
+        /// attempts at that version this one is.
+        public static func version(_ version: String, build: String) -> LocalizedStringResource {
+            LocalizedStringResource("settings.version",
+                                    defaultValue: "Version \(version) (\(build))",
+                                    bundle: bundle)
+        }
     }
 
     /// What the app is keeping on the device, and the one part of it the user can throw away.
