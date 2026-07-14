@@ -61,8 +61,8 @@ public struct MediaLoader: Sendable, Equatable {
         }
 
         return try await client.getMediaThumbnail(mediaSource: attachment.source,
-                                                  width: UInt64(size),
-                                                  height: UInt64(size))
+                                                  width: UInt64(max(0, size)),
+                                                  height: UInt64(max(0, size)))
     }
 
     /// Somebody's face, or a room's picture, from the `mxc://` URL the server hands out
