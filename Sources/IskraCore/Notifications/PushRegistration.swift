@@ -103,15 +103,29 @@ public struct PushRegistration: Sendable {
     /// Best-effort, like `logout()` beside it: a device that cannot reach the server on its way out
     /// still signs out locally, and a stale pusher on the server is a much smaller problem than
     /// keys left on a phone the user believes is signed out.
+    ///
+    /// "Best-effort" is what the timeout is *for*, and without one the words were not true. This is
+    /// the first thing the sign-out does — before the session is torn down, because deleting the
+    /// pusher is a request that needs the session to make it — so a homeserver that accepts the
+    /// connection and then says nothing held the entire sign-out here, ahead of everything: no
+    /// logout, no store cleared, no settings forgotten, no screen change. The user taps "Sign out"
+    /// and the app sits there. `logout()` learned this lesson already (`AuthenticationService`);
+    /// this call was standing in front of it, unbounded, and undoing it.
     public func unregister(deviceToken: Data) async {
         let pushkey = deviceToken.map { String(format: "%02x", $0) }.joined()
 
         do {
-            try await client.deletePusher(
-                identifiers: PusherIdentifiers(pushkey: pushkey, appId: Self.appID)
-            )
+            try await withTimeout(Self.unregisterTimeout) { [client] in
+                try await client.deletePusher(
+                    identifiers: PusherIdentifiers(pushkey: pushkey, appId: Self.appID)
+                )
+            }
         } catch {
             Log.push.error("the server would not forget our push token: \(Log.describe(error), privacy: .public)")
         }
     }
+
+    /// The same ten seconds `logout()` gets, and for the same reason: nobody may be kept signed in
+    /// by a server thinking about a request whose answer does not change what happens next.
+    private static let unregisterTimeout: Duration = .seconds(10)
 }

@@ -881,7 +881,7 @@ public struct RoomView: View {
                 Button(String(app: Strings.Room.tryAgain)) {
                     Task { await timeline.retryLoading() }
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.primaryAction)
             }
         } else if !timeline.hasLoaded {
             EmptyView()

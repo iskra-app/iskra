@@ -266,7 +266,7 @@ struct VerificationSheet: View {
             Text(message)
         } actions: {
             Button(String(app: Strings.Verification.close), action: onDone)
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.primaryAction)
         }
     }
 }

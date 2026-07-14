@@ -66,7 +66,7 @@ struct RecoveryCodeView: View {
                 Text(Strings.Encryption.saved)
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.primaryAction)
 
             if let onSkip {
                 Button(action: onSkip) {
