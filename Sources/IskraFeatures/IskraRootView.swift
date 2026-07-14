@@ -24,6 +24,10 @@ public struct IskraRootView: View {
     /// here — the one place high enough that everything below it is tinted at once.
     @AppStorage(AccentTheme.storageKey) private var accent: AccentTheme = .default
 
+    /// Light or dark, when the user has asked for one of them — and nothing at all when they have
+    /// not, which is why this is applied as an *optional* scheme and not as a flag.
+    @AppStorage(AppearanceMode.storageKey) private var appearance: AppearanceMode = .default
+
     /// Read here, *outside* the `NavigationSplitView`, because this is the only place it
     /// means what it appears to mean: the size class of the window. Inside the split view
     /// each column gets the size class its own width earns, so the sidebar reports
@@ -69,6 +73,10 @@ public struct IskraRootView: View {
         // screen, each of which asks for the colour where it stands.
         .tint(.primary)
         .environment(\.accent, accent)
+        // And light or dark, if the user asked for either. Applied at the root, above everything,
+        // because a colour scheme is not a property of a screen — a sheet or a media viewer left
+        // out of it would be the one place the app changed its mind about what time of day it is.
+        .preferredColorScheme(appearance.colorScheme)
     }
 
     private var isSignedIn: Bool {
@@ -81,9 +89,30 @@ public struct IskraRootView: View {
     private func signOut(_ session: UserSession) {
         Task {
             await session.signOut()
+            AppSettings.forget()
             selectedRoomID = nil
+            selectedEventID = nil
             phase = .signedOut
         }
+    }
+
+    /// Builds the app a new client, without signing anybody out.
+    ///
+    /// This is what emptying the cache costs. `Client.clearCaches` says so itself — "the Client
+    /// will be in an unstable state, and it is required that the caller reinstantiates a new
+    /// Client instance" — and it is not a formality: the store the client was reading has been
+    /// pulled out from under it. Going on with the old one is why the button appeared to do
+    /// nothing at all.
+    ///
+    /// Going back to `.starting` is the whole of it: the signed-in tree comes down, taking the
+    /// settings screen and the old session with it, and the progress view's `.task` runs
+    /// `restore()` again — which builds a fresh client from the session that is still, untouched,
+    /// in the Keychain. Nobody is signed out; the account, the keys and the messages on the server
+    /// are exactly where they were, and what was thrown away downloads again.
+    private func restart() {
+        selectedRoomID = nil
+        selectedEventID = nil
+        phase = .starting
     }
 
     /// True where the sidebar stays on screen — Mac, and iPad wide enough to keep the split
@@ -107,7 +136,8 @@ public struct IskraRootView: View {
                          selectedRoomID: $selectedRoomID,
                          selectedEventID: $selectedEventID,
                          isSidebar: isSidebar,
-                         onSignOut: { signOut(session) })
+                         onSignOut: { signOut(session) },
+                         onClearedCache: { restart() })
         } detail: {
             // The stack is load-bearing, and its absence fails in a way that looks like
             // nothing at all: a `navigationDestination` declared inside a split view's

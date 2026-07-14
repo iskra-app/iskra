@@ -94,6 +94,15 @@ public final class RecoveryStore {
     /// — and a screen showing the stale answer would offer the wrong button.
     private var subscription: TaskHandle?
 
+    /// The same thing for whether the device is trusted, and it was missing.
+    ///
+    /// `isDeviceVerified` was read once, in `load`, and then believed forever — but the most
+    /// common way for it to *become* true is the thing this very screen does: type the recovery
+    /// key in. So the user typed the key, the history came back, and the screen went on saying
+    /// "this device is not verified" underneath it. Leaving and coming back fixed it, which is the
+    /// signature of a value that is fetched rather than watched.
+    private var verification: TaskHandle?
+
     init(encryption: Encryption) {
         self.encryption = encryption
     }
@@ -104,6 +113,9 @@ public final class RecoveryStore {
     public func stop() {
         subscription?.cancel()
         subscription = nil
+
+        verification?.cancel()
+        verification = nil
     }
 
     /// Reads where things stand, and subscribes so they stay read.
@@ -120,6 +132,10 @@ public final class RecoveryStore {
 
         subscription = encryption.recoveryStateListener(listener: Updates { [weak self] state in
             Task { @MainActor in self?.protection = Self.protection(from: state) }
+        })
+
+        verification = encryption.verificationStateListener(listener: Verification { [weak self] state in
+            Task { @MainActor in self?.isDeviceVerified = state == .verified }
         })
     }
 
@@ -201,6 +217,18 @@ public final class RecoveryStore {
     /// account and crawls for a large one tells the user less than a plain spinner does.
     private final class IgnoreProgress: EnableRecoveryProgressListener {
         func onUpdate(status: EnableRecoveryProgress) {}
+    }
+
+    private final class Verification: VerificationStateListener {
+        private let changed: @Sendable (VerificationState) -> Void
+
+        init(_ changed: @escaping @Sendable (VerificationState) -> Void) {
+            self.changed = changed
+        }
+
+        func onUpdate(status: VerificationState) {
+            changed(status)
+        }
     }
 
     private final class Updates: RecoveryStateListener {

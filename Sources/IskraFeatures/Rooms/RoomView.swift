@@ -24,6 +24,15 @@ public struct RoomView: View {
     /// shutter. Either way, lifting the finger off the composer must not end it.
     @State private var isVideoNoteLocked = false
 
+    /// The swipe up that would let go of the recording, as it is being made.
+    ///
+    /// Held here only to be carried across: the gesture belongs to the composer, and the composer
+    /// draws its own pill from it — but the camera is a full-screen overlay laid *over* the
+    /// composer, so during a video note that pill is behind a blur and the overlay has to draw
+    /// its own above the shutter. It is the same swipe. The screen is the only place that can see
+    /// both ends of it.
+    @State private var lock = LockGesture()
+
     /// Recording a spoken message. Owned here for the same reason the camera is — the gesture
     /// that ends it is on a button, and the screen is what turns "let go" into "send".
     ///
@@ -60,6 +69,21 @@ public struct RoomView: View {
     /// until this is true. See the pagination trigger below.
     @State private var hasAnchored = false
 
+    /// Whether the room is still coming up, in which case it belongs at its newest message and is
+    /// kept there — see the scroll-metrics observer. It stops the moment the reader touches the
+    /// conversation, because from then on where it sits is their business and not ours.
+    @State private var isOpening = true
+
+    /// Whether the room is *saying* it is fetching history, which is not quite the same as
+    /// fetching it — see the spinner. The task is what puts the disc away again.
+    @State private var isFetchingHistory = false
+    @State private var spinnerRest: Task<Void, Never>?
+
+    /// How long the spinner stays after the page has landed. Long enough to be seen and read as
+    /// "there is more, it is coming", short enough that nobody is kept waiting by it — the page
+    /// is already on screen underneath it.
+    private static let spinnerRest: Duration = .milliseconds(450)
+
     /// A message arrived while the reader was somewhere else in the conversation.
     ///
     /// The other half of not dragging them to the bottom. Left on its own, "we no longer follow
@@ -88,8 +112,25 @@ public struct RoomView: View {
     /// thrown back to the bottom. In a busy room it happens again on every message, and there
     /// is no way to read anything old at all.
     ///
+    /// It is answered twice, by two signals that cannot both be wrong, and *either* saying yes is
+    /// yes. Neither can say yes when the reader is not at the end — one measures a distance, the
+    /// other asks whether the end of the conversation is on the screen — so their union is safe,
+    /// and their union is what was missing. The scroll geometry alone got this wrong in exactly one
+    /// place, and it is the place people actually sit: the composer is a `safeAreaInset`, and
+    /// depending on how the scroll view accounts for that inset a list resting against its last
+    /// message can report itself a composer's height short of the bottom, forever. That is why the
+    /// way-down button would not go away until the list was heaved past its own end, into the
+    /// rubber band, where the arithmetic finally went negative.
+    ///
     /// Starts true, because a room opens on its newest message — see `hasAnchored`.
-    @State private var isAtNewest = true
+    private var isAtNewest: Bool { isNearBottom || endIsOnScreen }
+
+    /// Distance to the end, from the scroll view.
+    @State private var isNearBottom = true
+
+    /// The end of the conversation, as a thing that is either on the screen or is not — see the
+    /// marker under the last row.
+    @State private var endIsOnScreen = true
 
     /// The room-info screen, built when the header is first pressed and kept afterwards.
     ///
@@ -102,6 +143,26 @@ public struct RoomView: View {
 
     /// The width the messages have to live in. See `EnvironmentValues.timelineWidth`.
     @State private var timelineWidth: CGFloat = 0
+
+    /// How tall the conversation is and how far into it the reader has come.
+    private struct ScrollMetrics: Equatable {
+        let contentHeight: CGFloat
+        let offset: CGFloat
+    }
+
+    @State private var metrics = ScrollMetrics(contentHeight: 0, offset: 0)
+
+    /// Where the reader was standing when a message arrived at the far end of a conversation they
+    /// are not looking at — the one place the bottom anchor has to be overruled, and the only
+    /// thing this view moves the scroll view *in points* for. Everything else it does through the
+    /// `ScrollViewReader`, which speaks in rows.
+    @State private var held: ScrollMetrics?
+
+    @State private var scrollPosition = ScrollPosition()
+
+    /// How much of the end of the list the deletion animation watches. See the `.animation` on
+    /// the stack: only unsent messages are ever removed, and they are the last rows there are.
+    private static let animatedTail = 20
 
     /// The message the conversation has just been sent to by pressing a quote, lit until the
     /// reader has had time to see which one it is — and the timer that puts it out. See `light`.
@@ -167,26 +228,12 @@ public struct RoomView: View {
         ScrollViewReader { scroll in
             ScrollView {
                 LazyVStack(spacing: 0) {
-                    // Only while something is actually being fetched.
-                    //
-                    // This used to be shown whenever `canLoadMore` was true — and that is
-                    // true from the moment a room opens until the user has paginated all
-                    // the way back to the day it was created, which for any real
-                    // conversation is never. So every chat wore a spinner at the top
-                    // forever, promising work that was not happening. The spinner also
-                    // *was* the trigger: it started pagination when it appeared, which is
-                    // why it could not simply be hidden. Scrolling near the top is what
-                    // asks for more history now, so the two jobs are separate and the
-                    // spinner is free to tell the truth.
-                    if timeline.isPaginating {
-                        ProgressView()
-                            .padding()
-                    }
-
                     ForEach(placedRows) { placed in
                         view(for: placed.row, followsEvent: placed.followsEvent, in: scroll)
                             .id(placed.id)
                     }
+
+                    endMarker
                 }
                 // A message leaving the conversation is the one change here worth animating.
                 //
@@ -202,7 +249,17 @@ public struct RoomView: View {
                 // and every reaction rewrites a row without changing the shape of the list,
                 // and animating the whole stack each time one of them lands would set the
                 // conversation quietly shifting under the reader for no reason.
-                .animation(.smooth(duration: Theme.Timing.deletion), value: timeline.rows.map(\.id))
+                //
+                // And scoped to the *end* of the list, because the removals it exists for all
+                // happen there: an unsent message is at the bottom by definition. A page of
+                // history arriving at the top also changes the identities, and watching the
+                // whole list meant animating twenty-five rows into existence above the reader —
+                // which grows the content over a quarter of a second rather than at once, so
+                // there is no single moment at which the scroll view can be put back where it
+                // was. The tail cannot be changed by pagination, so it is the honest thing to
+                // watch.
+                .animation(.smooth(duration: Theme.Timing.deletion),
+                           value: timeline.rows.suffix(Self.animatedTail).map(\.id))
                 .padding(.horizontal, Theme.Spacing.normal)
                 // The composer floats over the timeline on glass, so the last message
                 // must be able to scroll clear of it — but only just. The composer already
@@ -211,6 +268,76 @@ public struct RoomView: View {
                 .padding(.bottom, Theme.Spacing.close)
             }
             .defaultScrollAnchor(.bottom)
+            // What keeps the conversation still while history lands on top of it.
+            //
+            // A scroll view holds its offset from the *top* of the content, so anything added
+            // above the reader pushes what they are reading down the screen — and a page of
+            // history is nothing but twenty-five things added above the reader. Anchoring size
+            // changes to the bottom inverts that: the end of the conversation is what stays put,
+            // and the content grows away from it, upwards, out of sight.
+            //
+            // This is what an anchor kept by hand could never do, and it is worth knowing why.
+            // A page does not arrive as one change. The SDK hands its diffs over in batches, each
+            // batch crosses to the main actor as its own `Task`, and each publishes `rows` again —
+            // so the content grows in several steps across several frames. Then the older events
+            // *decrypt*, and their rows change height where they stand, above the reader, after
+            // they have already been laid out. Then the photos in them arrive and change height
+            // again. There is no single moment to measure and put back; there are a dozen, and the
+            // only cure is to make the scroll view hold the end it is not being changed at.
+            .defaultScrollAnchor(.bottom, for: .sizeChanges)
+            .scrollPosition($scrollPosition)
+            // The spinner floats over the top of the conversation rather than standing at the
+            // head of it.
+            //
+            // It used to be the first row of the stack, and a row it cannot be: it appears the
+            // moment a page is asked for and leaves the moment the page lands, so it grew and
+            // shrank the content *above* the reader twice per page — two shoves in opposite
+            // directions, on top of the shove the page itself gave. Nothing it says is worth a
+            // line of the conversation moving.
+            //
+            // Which is *not* a reason to leave it out, and it was left out: a bare `ProgressView`
+            // laid over the top of a conversation, at the very edge of the scroll view, under a
+            // glass toolbar. It was drawn and nobody could see it, which is the same as not
+            // fetching anything at all as far as the reader is concerned — they pull up, the room
+            // sits there, and nothing tells them the rest of the conversation is on its way. So it
+            // is a disc of glass now, clear of the toolbar, on the navigation layer where a
+            // floating control belongs.
+            .overlay(alignment: .top) {
+                if isFetchingHistory {
+                    ProgressView()
+                        .controlSize(.small)
+                        .padding(Theme.Spacing.close)
+                        .navigationGlass(in: .circle)
+                        .padding(.top, Theme.Spacing.normal)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
+            // The spinner is shown for a *little longer* than the fetch it stands for, and this is
+            // not decoration.
+            //
+            // History almost always comes out of the SDK's own store on this device, not off the
+            // network: `paginateBackwards` reads the encrypted event cache and returns in
+            // milliseconds. So `isPaginating` went up and came down inside a single frame, the
+            // spinner was drawn for none of it, and the reader pulling at the top of a room saw
+            // absolutely nothing happen — which is exactly what they would see if the room had no
+            // more history to give. Telling those two apart is the spinner's whole job.
+            //
+            // Held for a beat, then. It is not a lie: the fetch did happen, and the disc is
+            // reporting it slightly slower than it occurred so that a person can read it.
+            .onChange(of: timeline.isPaginating) { _, isPaginating in
+                spinnerRest?.cancel()
+
+                guard !isPaginating else {
+                    withAnimation(.smooth) { isFetchingHistory = true }
+                    return
+                }
+
+                spinnerRest = Task {
+                    try? await Task.sleep(for: Self.spinnerRest)
+                    guard !Task.isCancelled else { return }
+                    withAnimation(.smooth) { isFetchingHistory = false }
+                }
+            }
             // How much room the conversation has. Measured here, on the container, and never
             // inside a row — see `EnvironmentValues.timelineWidth` for the lock-up that
             // taught us the difference. The horizontal padding is taken off because it is
@@ -243,11 +370,55 @@ public struct RoomView: View {
             // again, and again. The room wound itself back to its first day while the reader
             // watched. History is a request the reader makes by scrolling; they cannot make
             // it before they have been shown where the conversation actually is.
+            //
             .onScrollGeometryChange(for: Bool.self) { geometry in
                 geometry.contentOffset.y < Theme.Size.paginationReach
             } action: { _, isNearTop in
                 guard isNearTop, hasAnchored else { return }
                 Task { await timeline.loadMore() }
+            }
+            // Where the conversation is standing, and the two moments it has to be put somewhere
+            // other than where the scroll view would leave it.
+            .onScrollGeometryChange(for: ScrollMetrics.self) { geometry in
+                ScrollMetrics(contentHeight: geometry.contentSize.height,
+                              offset: geometry.contentOffset.y)
+            } action: { _, metrics in
+                self.metrics = metrics
+
+                // A room opens on its newest message, and *stays* there until the reader takes
+                // hold of it. One `scrollTo` at the moment the first page lands is not enough and
+                // this is why: opening a room is not one change of size, it is a long series of
+                // them. The store keeps fetching until it has a screenful, each batch of diffs
+                // publishes its own rows, the events then decrypt and their rows change height,
+                // and the photos in them arrive and change height again. Scrolling to the bottom
+                // once, in the middle of that, lands on a conversation that is still growing —
+                // which is precisely the room that opened a few messages short of the end. So the
+                // end is *held* until the reader disagrees by scrolling.
+                if isOpening {
+                    scrollPosition.scrollTo(edge: .bottom)
+                    return
+                }
+
+                guard let place = held, metrics.contentHeight > place.contentHeight else { return }
+                held = nil
+                scrollPosition.scrollTo(y: place.offset)
+            }
+            // Moving the conversation is what says the reader wants it left where they put it.
+            // An arriving message is not the reader, and neither is a photo finishing its
+            // download — but *any* way of scrolling is.
+            //
+            // It used to listen for `.interacting` alone, which is a finger on the glass and
+            // nothing else. A trackpad, a mouse wheel and a scroll bar do not produce it, so on
+            // those the room went on holding its own end for as long as it was open: history could
+            // not be asked for, because the hold outranked the request, and the only way to break
+            // out was to *drag* the list hard enough to reach the rubber band. That is the bug
+            // reported as "scrolling to the top only loads more if you pull".
+            //
+            // So every phase counts except the two that are not the reader: `.idle`, and the
+            // `.animating` of a scroll this view asked for itself — including the hold's own.
+            .onScrollPhaseChange { _, phase in
+                guard phase != .idle, phase != .animating else { return }
+                isOpening = false
             }
             // Opening a room puts it on its newest message, once — the moment the first
             // fetch has come back with something to show. `initial: true` covers a room
@@ -255,7 +426,9 @@ public struct RoomView: View {
             .onChange(of: isReady, initial: true) { _, ready in
                 guard ready, !hasAnchored, let last = timeline.rows.last?.id else { return }
                 hasAnchored = true
-                // Not animated: this is where the room *opens*, not somewhere it travels to.
+                // Not animated: this is where the room *opens*, not somewhere it travels to. The
+                // hold above keeps it there while the conversation finishes arriving; this is
+                // only the first of those moves, made as soon as there is a row to make it to.
                 scroll.scrollTo(last, anchor: .bottom)
 
                 // …and if it was opened *on* a message — a search result — it goes there next. The
@@ -281,6 +454,9 @@ public struct RoomView: View {
             .onChange(of: jumpTarget) { _, target in
                 guard let target else { return }
                 jumpTarget = nil
+                // Being sent to a message is a place to be, so the room stops holding the end of
+                // the conversation — otherwise the hold would haul it straight back.
+                isOpening = false
 
                 Task {
                     var pages = 0
@@ -297,20 +473,22 @@ public struct RoomView: View {
                     light(target)
                 }
             }
-            // Is the reader at the newest message? Measured the same way the pagination trigger
-            // above is, from the other end of the scroll view.
+            // How near the end the reader is, measured the same way the pagination trigger above
+            // is, from the other end of the scroll view. Half of the answer — the other half is the
+            // marker under the last row, and `isAtNewest` says why there are two.
             .onScrollGeometryChange(for: Bool.self) { geometry in
                 let distanceFromBottom = geometry.contentSize.height
+                    + geometry.contentInsets.bottom
                     - geometry.contentOffset.y
                     - geometry.containerSize.height
                 return distanceFromBottom < Theme.Size.newestReach
-            } action: { _, isAtBottom in
-                isAtNewest = isAtBottom
-
-                // Arriving at the bottom is having seen it. The pill has nothing left to offer.
-                if isAtBottom, hasUnseenBelow {
-                    withAnimation(.smooth) { hasUnseenBelow = false }
-                }
+            } action: { _, isNear in
+                isNearBottom = isNear
+            }
+            // Arriving at the end is having seen it. The pill has nothing left to offer.
+            .onChange(of: isAtNewest) { _, atNewest in
+                guard atNewest, hasUnseenBelow else { return }
+                withAnimation(.smooth) { hasUnseenBelow = false }
             }
             // And afterwards, a message arriving brings the conversation with it — but *only*
             // if the reader is standing at the end of it. Somebody reading last week's messages
@@ -328,6 +506,16 @@ public struct RoomView: View {
                     // looking at it. That is what the pill is for: the room no longer drags them
                     // to the bottom, so it has to offer.
                     withAnimation(.smooth) { hasUnseenBelow = true }
+
+                    // And the anchor has to be overruled, this once. It holds the *bottom* of the
+                    // conversation still, which is exactly right while history piles up above the
+                    // reader and exactly wrong when a message lands below them: holding the bottom
+                    // still would drag them down to meet it, which is the very thing the pill
+                    // exists to avoid. So where they are standing now is noted, and put back the
+                    // moment the message has made the conversation taller. Read *before* the
+                    // arriving row is laid out — `onChange` runs on the change, not on the frame
+                    // it produces — so this is the conversation as it was without it.
+                    held = metrics
                     return
                 }
 
@@ -347,6 +535,25 @@ public struct RoomView: View {
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
+            // And the plain way down, for when nothing has been said and you are simply a long
+            // way up. This did not exist, and its absence is only invisible on a short
+            // conversation: reading back through a year of a room left the only route to the
+            // bottom being to *scroll* there, past the whole year, or to leave the room and come
+            // back in. The pill above cannot serve — it is about a message that arrived, and on a
+            // quiet room it never appears.
+            //
+            // Trailing, and up in the corner rather than in the middle: it is a control, not an
+            // announcement, and the middle of the screen belongs to the pill on the rare occasions
+            // there is one. When both are on screen they do not collide.
+            .overlay(alignment: .bottomTrailing) {
+                if !isAtNewest {
+                    scrollToBottom(in: scroll)
+                        .padding(.trailing, Theme.Spacing.normal)
+                        .padding(.bottom, Theme.Spacing.close)
+                        .transition(.scale.combined(with: .opacity))
+                }
+            }
+            .animation(.smooth(duration: 0.2), value: isAtNewest)
         }
         .safeAreaInset(edge: .bottom) {
             composer
@@ -650,6 +857,7 @@ public struct RoomView: View {
                         onStartVoice: { Task { await startVoice() } },
                         onFinishVoice: { Task { await finishVoice() } },
                         onCancelVoice: cancelVoice,
+                        onLockGesture: { lock = $0 },
                         voice: voiceRecording,
                         onChoosePhoto: { isChoosingPhoto = true },
                         onChooseFile: { isChoosingFile = true },
@@ -667,6 +875,7 @@ public struct RoomView: View {
             VideoNoteComposer(recorder: videoNote,
                               isHolding: $isHoldingVideoNote,
                               isLocked: $isVideoNoteLocked,
+                              lock: lock,
                               onCancel: cancelVideoNote) { url in
                 await timeline.send(video: url, replyingTo: replyID)
                 cancelContext()
@@ -737,8 +946,14 @@ public struct RoomView: View {
         await sendVoice()
     }
 
+    /// Ending a recording is a change to the recorder, and the composer only *watches* the
+    /// recorder — so the strip going away has to be animated from here, where the change is made.
+    /// An `.animation(value:)` on the composer is not enough on its own: the value it watches is
+    /// derived from an `@Observable` mutated outside any animation transaction, and what SwiftUI
+    /// does with that is redraw. Which is what it was doing: a minute of somebody's voice
+    /// vanishing between one frame and the next.
     private func sendVoice() async {
-        guard let recording = voice.finish() else { return }
+        guard let recording = withAnimation(.smooth(duration: 0.25), { voice.finish() }) else { return }
         defer { try? FileManager.default.removeItem(at: recording.url) }
 
         await timeline.send(voice: recording.url,
@@ -749,7 +964,7 @@ public struct RoomView: View {
     }
 
     private func cancelVoice() {
-        voice.cancel()
+        withAnimation(.smooth(duration: 0.25)) { voice.cancel() }
     }
 
     /// One row of the conversation: a message, the date above it, or a note about something
@@ -818,8 +1033,7 @@ public struct RoomView: View {
     /// and is not part of it.
     private func jumpToNewest(in scroll: ScrollViewProxy) -> some View {
         Button {
-            guard let last = timeline.rows.last?.id else { return }
-            withAnimation(.smooth) { scroll.scrollTo(last, anchor: .bottom) }
+            goToNewest(in: scroll)
             // Not cleared here — arriving is what clears it, and arriving is what the scroll
             // geometry reports. Clearing it on the press would take the pill away from somebody
             // whose scroll had not started yet.
@@ -832,10 +1046,59 @@ public struct RoomView: View {
             }
             .padding(.horizontal, Theme.Spacing.normal)
             .padding(.vertical, Theme.Spacing.close)
-            .primaryActionGlass(tint: accent.color)
+            // Plain glass, not the accent.
+            //
+            // The tint is reserved for *the* primary action — the send button, "Continue" on
+            // sign-in — and this is not one. It is a notice that something was said while you
+            // were reading, and it is offering to take you there; painting it in the same colour
+            // as the button that sends a message put two loudest-things-on-the-screen on the
+            // screen at once, a few points apart, both round, both accented. The eye had to be
+            // told which was which. Glass says "floating control" without claiming to be the
+            // point of the room, and the point of the room is the conversation behind it.
+            .navigationGlass(in: .capsule)
             .contentShape(.capsule)
         }
         .buttonStyle(.plain)
+    }
+
+    /// The end of the conversation, asked of the screen rather than worked out from it.
+    ///
+    /// Everything that turns on "is the reader at the end" — following an arriving message,
+    /// offering the way down — used to be answered by a sum over content size, offset, container
+    /// and insets, and that sum has one answer per convention about what those four things mean.
+    /// This has one answer: the floor under the last message is either in front of the reader or
+    /// it is not. See `isAtNewest`.
+    private var endMarker: some View {
+        Color.clear
+            .frame(height: Theme.Border.hairline)
+            .onScrollVisibilityChange(threshold: 0.01) { visible in
+                endIsOnScreen = visible
+            }
+    }
+
+    /// The way back down when nothing has arrived — just a room you have read a long way up.
+    ///
+    /// A circle with an arrow in it and no words, because there is nothing to say: the pill above
+    /// exists to *tell* you something and therefore has a sentence in it, and this exists only to
+    /// take you somewhere.
+    private func scrollToBottom(in scroll: ScrollViewProxy) -> some View {
+        Button {
+            goToNewest(in: scroll)
+        } label: {
+            Image(systemName: "chevron.down")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.primary)
+                .frame(width: Theme.Size.composerControl, height: Theme.Size.composerControl)
+                .navigationGlass(in: .circle)
+                .contentShape(.circle)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(Strings.Room.scrollToBottom))
+    }
+
+    private func goToNewest(in scroll: ScrollViewProxy) {
+        guard let last = timeline.rows.last?.id else { return }
+        withAnimation(.smooth) { scroll.scrollTo(last, anchor: .bottom) }
     }
 
     /// How far back a jump is willing to dig for a message that is not loaded. Ten pages of

@@ -253,6 +253,26 @@ public actor AuthenticationService {
     /// real SQLite store if the builder got as far as `build()`. They survived sign-out, too —
     /// `SessionStore.clear` only knows about the session that was actually saved — so they
     /// accumulated across the life of the install.
+    /// Where the signed-in session's three stores are, by kind — what the storage screen adds up.
+    ///
+    /// Asked of the session that was actually *saved*, not of the one being signed in with: the
+    /// same reasoning as `discardStore` below, from the other side. A failed sign-in attempt may
+    /// have left a directory behind, and it is not this account's.
+    /// `nonisolated` because it is a question about the *filesystem*, not about this actor's
+    /// state: it reads the Keychain and joins paths, touching nothing that sign-in mutates. The
+    /// screen that asks for it is built synchronously on a navigation push, and making it `await`
+    /// would mean an actor hop for two directory names.
+    nonisolated func storageURLs() -> [StorageKind: URL] {
+        guard let id = (try? sessionStore.loadSession())?.sessionID else { return [:] }
+
+        let urls: [StorageKind: URL?] = [
+            .session: try? environment.sessionDataURL(forSessionID: id),
+            .cache: try? environment.sessionCachesURL(forSessionID: id),
+            .search: try? environment.searchIndexURL(forSessionID: id),
+        ]
+        return urls.compactMapValues { $0 }
+    }
+
     private func discardStore(forSessionID id: String) {
         let urls = [try? environment.sessionDataURL(forSessionID: id),
                     try? environment.sessionCachesURL(forSessionID: id),
@@ -269,9 +289,24 @@ public actor AuthenticationService {
         // Ask the server to forget the device first; even if that fails we still
         // destroy everything locally, because a stale device on the server is a far
         // smaller problem than keys left on a device the user thinks is signed out.
-        try? await client.logout()
+        //
+        // Bounded, like every other SDK call the user waits on — and this one was not, which is
+        // the whole of the bug it fixes. `logout()` reaches the network. A homeserver that accepts
+        // the connection and then says nothing left the app with a spinner and no way out of it:
+        // the sign-out never returned, so the tree above never got as far as `phase = .signedOut`,
+        // and the screen it was signing out *of* stayed exactly where it was, alive, and dead to
+        // the touch. There is nothing to retry and nothing to explain — the local half is what
+        // signing out actually means, and it happens regardless.
+        _ = try? await withTimeout(Self.logoutTimeout) {
+            try await client.logout()
+        }
+
         try? sessionStore.clear(environment: environment)
     }
+
+    /// Long enough for a server that is merely slow, short enough that a server which is never
+    /// going to answer does not get to keep the user signed in while it thinks about it.
+    private static let logoutTimeout: Duration = .seconds(10)
 
     // MARK: - Private
 

@@ -95,6 +95,21 @@ struct VideoNoteComposer: View {
     /// after the finger lifts, and the shutter becomes a stop button.
     @Binding var isLocked: Bool
 
+    /// The swipe up that would let go of the recording — read from the composer's gesture, by way
+    /// of the screen, and only drawn here.
+    ///
+    /// The pill the thumb is climbing towards has to be drawn twice: the composer draws one above
+    /// its record button, and this overlay is *on top of the composer*, blurring it out. The
+    /// finger is still down on a button it can no longer see. So the same pill is drawn again
+    /// here, above the shutter — which stands in exactly the place the record button stands, on
+    /// purpose (see `shutter`), so the thumb is climbing towards the same point on the glass
+    /// either way and never learns that it changed hands.
+    ///
+    /// Handed over whole rather than worked out again from `isHolding` and `isLocked`. Those two
+    /// move in the same instant when a swipe catches, and an overlay that watched them separately
+    /// would blink the pill out on the very movement it is there to confirm.
+    var lock: LockGesture = LockGesture()
+
     /// Thrown away. The screen owns the recorder, so it owns the throwing away too — and it has
     /// to take this overlay down with it, which is a thing only the screen can do.
     let onCancel: () -> Void
@@ -111,11 +126,13 @@ struct VideoNoteComposer: View {
     init(recorder: VideoNoteRecorder,
          isHolding: Binding<Bool>,
          isLocked: Binding<Bool>,
+         lock: LockGesture = LockGesture(),
          onCancel: @escaping () -> Void,
          onRecorded: @escaping (URL) async -> Void) {
         self.recorder = recorder
         _isHolding = isHolding
         _isLocked = isLocked
+        self.lock = lock
         self.onCancel = onCancel
         self.onRecorded = onRecorded
     }
@@ -141,7 +158,10 @@ struct VideoNoteComposer: View {
 
                 controls
             }
-            .padding(Theme.Spacing.roomy)
+            // Narrow at the sides, because the circle is now measured against them: a roomy
+            // margin here is width taken off the thing the user is framing their face in.
+            .padding(.vertical, Theme.Spacing.roomy)
+            .padding(.horizontal, Theme.Spacing.close)
         }
         .task {
             await recorder.prepare()
@@ -153,6 +173,10 @@ struct VideoNoteComposer: View {
                 startRecording()
             }
         }
+        // The camera takes a moment to wake, so this tap is the only thing that says the clip is
+        // running. Heavy, at full intensity — it has to be felt through a phone held at arm's
+        // length, in a hand that is busy holding the thing steady.
+        .sensoryFeedback(.impact(weight: .heavy, intensity: 1), trigger: started)
     }
 
     @ViewBuilder
@@ -164,14 +188,21 @@ struct VideoNoteComposer: View {
                 Circle().fill(.quaternary)
             }
         }
-        .frame(width: Theme.Size.videoNoteCamera, height: Theme.Size.videoNoteCamera)
+        // Square by aspect rather than by a fixed width, so the circle grows to whatever the
+        // screen gives it and `videoNoteCamera` is only the point at which it stops.
+        .aspectRatio(1, contentMode: .fit)
+        .frame(maxWidth: Theme.Size.videoNoteCamera)
         .clipShape(.circle)
         .overlay {
             // The ring fills as the sixty seconds run down, so the limit is visible
             // rather than a surprise.
             Circle()
                 .trim(from: 0, to: recorder.progress)
-                .stroke(.red, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                // White, not red. Red is the colour of a warning, and nothing here is going
+                // wrong — the ring is just the minute running out. It also has to read against
+                // whatever the camera happens to be pointing at, and white on a dimmed,
+                // blurred backdrop reads where red on a red jumper does not.
+                .stroke(.white, style: StrokeStyle(lineWidth: 4, lineCap: .round))
                 .rotationEffect(.degrees(-90))
                 .animation(.linear(duration: 0.1), value: recorder.progress)
         }
@@ -183,25 +214,34 @@ struct VideoNoteComposer: View {
     /// No "hold to record" here any more: by the time this is on the screen the hold has already
     /// happened. What is left to say is how to get out of it hands-free, and only while there is
     /// still a hand on it.
-    @ViewBuilder
+    /// It is never *removed*, only faded out, and the line it leaves behind is left holding its
+    /// own height. Taking it away instead is what made the whole overlay jump the moment a hold
+    /// became a locked recording — the circle and the controls, which have nothing to do with what
+    /// the line says, slid up the screen to fill a gap in the sentence underneath them. Locking a
+    /// recording should look like nothing happening to the camera.
     private var trouble: some View {
-        Group {
-            switch recorder.state {
-            case .denied:
-                Text(Strings.VideoNote.needsCamera)
-            case .unavailable:
-                Text(Strings.VideoNote.noCamera)
-            case .finishing:
-                Text(Strings.VideoNote.sending)
-            case .recording where isHolding:
-                Text(Strings.VideoNote.releaseToSend)
-            default:
-                EmptyView()
-            }
+        Text(hint ?? " ")
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
+            // Kept off the edges of the phone — "hold to send" is a short line, but "the camera
+            // is not allowed" is two, and a sentence that runs into the bezel reads as broken.
+            .frame(maxWidth: Theme.Size.videoNoteHint)
+            .opacity(hint == nil ? 0 : 1)
+            .animation(.smooth(duration: 0.2), value: hint == nil)
+            .accessibilityHidden(hint == nil)
+    }
+
+    /// The two things that can be wrong, and the one thing worth saying while it works — or
+    /// nothing, which is a state the line above still occupies.
+    private var hint: LocalizedStringResource? {
+        switch recorder.state {
+        case .denied: Strings.VideoNote.needsCamera
+        case .unavailable: Strings.VideoNote.noCamera
+        case .finishing: Strings.VideoNote.sending
+        case .recording where isHolding: Strings.VideoNote.releaseToSend
+        default: nil
         }
-        .font(.callout)
-        .foregroundStyle(.secondary)
-        .multilineTextAlignment(.center)
     }
 
     /// The bar along the bottom: what is being recorded, the way out of it, and the way to send
@@ -211,13 +251,34 @@ struct VideoNoteComposer: View {
             VStack(alignment: .leading, spacing: Theme.Spacing.close) {
                 flip
                 RecordingStrip(elapsed: recorder.elapsed,
-                               isHolding: isHolding,
                                onCamera: true,
                                onCancel: onCancel)
             }
 
-            shutter
+            // The pill sits directly over the shutter, which sits directly over the composer's
+            // record button, which is where the finger is. Three things in one column, and the
+            // user only ever sees the ones that are theirs to see — a recording begun from the
+            // shutter is hands-free already, was never held, and is offered no way to let go of
+            // something nobody is holding.
+            // The pill is always *here*, and only sometimes visible. Taken out of the layout when
+            // it is not — which is what an `if` does — it takes its height with it, the bar of
+            // controls shrinks, and the whole overlay above them slides down: the camera jumped
+            // at the exact moment the lock caught, which is the moment it must not. Fading and
+            // shrinking it in place leaves the room it stands in untouched.
+            //
+            // Safe here in a way it would not be in the composer: this pill is an opaque fill on a
+            // blurred backdrop, not glass, so nothing draws it whatever it says about its own
+            // opacity. In `MessageComposer` it lives inside a `GlassEffectContainer`, which draws
+            // its material regardless — see `RecordLock`'s note, and leave the `if` there alone.
+            VStack(spacing: Theme.Spacing.close) {
+                RecordLock(gesture: lock, onCamera: true)
+                    .scaleEffect(lock.isVisible ? 1 : 0.4, anchor: .bottom)
+                    .opacity(lock.isVisible ? 1 : 0)
+
+                shutter
+            }
         }
+        .animation(.smooth(duration: 0.2), value: lock.isVisible)
     }
 
     /// Turns the camera round, mid-recording and all — which is the only time it is any use,
@@ -299,8 +360,18 @@ struct VideoNoteComposer: View {
 
     private func beginFromShutter() {
         isLocked = true
+        started += 1
         startRecording()
     }
+
+    /// The camera rolling, felt rather than seen.
+    ///
+    /// Only for a recording begun *here*, on the shutter. One begun by a hold out on the composer
+    /// has already been answered by the composer's own tap, and a second one landing half a second
+    /// later — when the camera finally wakes — would read as a stutter rather than as an answer.
+    /// The lock has no tap here either, for the same reason: the swipe that sets it is the
+    /// composer's gesture, and the composer has already said so, in the same movement.
+    @State private var started = 0
 
     private var isRecording: Bool { recorder.isRecording }
 

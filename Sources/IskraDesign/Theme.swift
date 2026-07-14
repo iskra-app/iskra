@@ -135,6 +135,11 @@ public enum Theme {
     /// with a blur applied to it, which is a different thing entirely: an opaque, static
     /// backdrop that samples nothing behind it.
     public enum Backdrop {
+        /// A colour laid under text as a *panel* rather than as a fill — the red behind the
+        /// sign-in error. Faint enough that the words on it stay the loudest thing there, strong
+        /// enough that the panel is a shape and not a smudge.
+        public static let wash: Double = 0.12
+
         /// Far enough that no face, no word and no logo survives it. A gentler blur would
         /// leave a picture legible behind the picture, which is two photographs at once.
         public static let blur: CGFloat = 24
@@ -209,6 +214,16 @@ public enum Theme {
 
         /// The red dot that says the microphone is live.
         public static let recordingDot: CGFloat = 10
+
+        /// The little pill above the record button, and the thing the swipe up is swiping
+        /// *towards*.
+        ///
+        /// It is not decoration and it is not a button — nobody presses it, and it is gone the
+        /// moment it has been reached. It exists because the gesture had no target: the reach is
+        /// `gestureReach` and there was nothing at the end of it, so a user who lifted a thumb
+        /// halfway there could not tell whether the app had refused the lock or never offered it.
+        /// Narrower than the button it sits over, and tall enough to be visibly *travelled*.
+        public static let recordLock = CGSize(width: 40, height: 64)
 
         /// How wide a quote is allowed to get, above the composer and inside a bubble.
         ///
@@ -296,9 +311,17 @@ public enum Theme {
         /// conversation is looked at, but this is looked *into*, and there is no reason to make
         /// them do it through a smaller window than the screen can give.
         ///
-        /// 320 rather than more: the narrowest screen this app runs on is 375pt, and the overlay
-        /// spends `Spacing.roomy` on each side of it.
-        public static let videoNoteCamera: CGFloat = 320
+        /// This is a *ceiling*, not a size: the circle takes the width it is given and stops
+        /// here. On a phone it is the screen minus a hair of margin either side; the cap only
+        /// bites on an iPad or a Mac window, where a preview the size of a dinner plate would
+        /// stop being a preview and start being a mirror.
+        public static let videoNoteCamera: CGFloat = 440
+
+        /// How wide the line under the camera may run — "let go to send", or the two sentences it
+        /// takes to say the camera is not allowed. Narrower than the circle above it on purpose:
+        /// text that reaches further than the thing it is about looks like it belongs to the
+        /// screen rather than to the picture.
+        public static let videoNoteHint: CGFloat = 300
 
         /// The button that sends what is being recorded. Larger than a composer control on
         /// purpose: it is the only thing on the screen the thumb is looking for.
@@ -327,6 +350,45 @@ public enum Theme {
         /// called "Design — everything, all of it, forever" will happily walk straight over
         /// them given the chance. Capped, the name truncates instead.
         public static let roomHeader: CGFloat = 260
+
+        /// The bar on the storage screen that shows what is taking the room up.
+        ///
+        /// Thick enough that a sliver of a few megabytes beside a few hundred is still a
+        /// visible band of colour rather than a hairline, and thin enough to read as a
+        /// measurement rather than as a block of decoration.
+        public static let storageBar: CGFloat = 16
+
+        /// The narrowest a band on that bar may be drawn.
+        ///
+        /// A category with a hundredth of the space still exists, and a bar that rounds it to
+        /// nothing is answering "what is on this device" with a lie. It is rounded *up* to a
+        /// mark you can see, which costs the largest band a couple of points it will not miss.
+        public static let storageBarLeast: CGFloat = 4
+    }
+
+    /// The colours of the storage bar, which are the one place in the app that colour carries
+    /// information rather than tone.
+    ///
+    /// Deliberately not the accent. The accent is the user's, it means "press this", and it
+    /// changes under them — a chart whose key changed colour when somebody picked a new tint
+    /// would be telling them something different every time. These are fixed, in the system's
+    /// own palette, so they follow light and dark and increased contrast without our help.
+    ///
+    /// A *list*, not three named colours, and taken in order: the categories are the bands, and
+    /// the bands are however many categories there turn out to be. A fourth kind of data can be
+    /// added to `StorageKind` without anybody having to remember there was a colour to choose for
+    /// it — it takes the next one here. The order is fixed and the assignment is positional, which
+    /// is the one thing that must not drift: a band that changed colour between two openings of
+    /// the screen would be a chart telling a different story each time.
+    public enum Storage {
+        public static let bands: [Color] = [.red, .yellow, .green, .blue, .purple]
+
+        /// The colour of the nth band. Wraps rather than runs out — a sixth category getting the
+        /// first colour again is worse than a sixth category getting no colour at all, but only
+        /// just, and both are better than a crash on a screen about disk space.
+        public static func band(_ index: Int) -> Color {
+            bands[index % bands.count]
+        }
     }
 }
 

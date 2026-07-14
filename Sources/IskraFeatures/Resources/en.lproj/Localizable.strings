@@ -109,6 +109,32 @@
 
 "settings.reactions" = "Reactions";
 
+"settings.storage" = "Storage";
+
+/* The storage screen: how much room the app is taking, what is taking it, and which part of it
+   can be thrown away. Each kind gets a sentence as well as a name — a row reading "Cache, 412 MB"
+   and nothing else invites a blind press. */
+"storage.title" = "Storage";
+"storage.total" = "On this device";
+"storage.measuring" = "Adding it up…";
+
+"storage.session" = "Keys and rooms";
+"storage.session.explained" = "Encryption keys, room state, and messages that have not gone out yet. This is never cleared: without the keys, this phone cannot read the conversations it already has.";
+
+"storage.cache" = "Messages and media";
+"storage.cache.explained" = "Downloaded messages, photos, voice notes and files. These can go — they download again when you need them.";
+
+"storage.search" = "Search index";
+"storage.search.explained" = "A copy of your messages for search to read. It is why search runs on the device and your query never reaches the server.";
+
+"storage.clear" = "Clear cache";
+"storage.clearing" = "Clearing…";
+"storage.confirm.title" = "Clear the cache?";
+"storage.confirm.body" = "The app will reload, and messages, photos and files will download again when you open them. You stay signed in: your keys and your unsent messages are untouched.";
+"storage.confirm.action" = "Clear";
+"storage.cancel" = "Cancel";
+"storage.failed" = "The cache could not be cleared. Try again.";
+
 /* Explains why the settings above it are greyed out. Says what will happen, not what is missing. */
 "settings.moreSoon" = "More settings are on the way.";
 
@@ -240,6 +266,16 @@
 
 "room.yesterday" = "Yesterday";
 
+/* The Appearance screen: light or dark. "System" is the ordinary case and the default; the
+   other two are for people whose phone is light while their messages ought to be dark. */
+"appearance.theme" = "Theme";
+"appearance.mode.system" = "System";
+"appearance.mode.light" = "Light";
+"appearance.mode.dark" = "Dark";
+
+/* Under the switch. Says that the choice reaches no further than this app. */
+"appearance.themeHelp" = "Iskra only. Everything else on the device stays as it was.";
+
 /* The Appearance screen: the colour the app is painted in. The seven colours of the
    rainbow, and a mono theme with no colour at all. */
 "appearance.accent" = "App colour";
@@ -305,8 +341,9 @@
 "message.media.pause" = "Pause";
 "message.media.openFile" = "Open file";
 
-/* Recording a round video message by holding the button in the composer. */
-"videoNote.releaseToSend" = "Let go to send. Left to cancel, up to keep recording hands-free";
+/* While a finger is holding the record button down. Nothing about swiping left any more: cancel
+   became a button, and the hint was promising a gesture that no longer exists. */
+"videoNote.releaseToSend" = "Let go to send. Swipe up to carry on recording without holding";
 
 /* The one button in the composer that records: tap to choose voice or video, hold to record. */
 "recording.hint" = "Tap for voice or video, hold to record. Up for hands-free";
@@ -407,3 +444,9 @@
 /* "Typing…" under the room's name. */
 "room.typing" = "typing…";
 "room.typingBy" = "%@ is typing…";
+
+"room.scrollToBottom" = "Go to the latest message";
+"appearance.previewAsk" = "Which colour did you pick?";
+"appearance.previewAnswer" = "This one. What do you think?";
+"appearance.previewReply" = "Looks great";
+"appearance.previewLabel" = "How your messages will look";

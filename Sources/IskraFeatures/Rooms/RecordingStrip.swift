@@ -9,16 +9,12 @@ import IskraDesign
 /// its own for exactly that reason: it belongs to neither caller, and it was briefly kept in one
 /// of them, which meant the other had to reach into that file's scope to draw a waveform.
 ///
-/// Cancel is always there and always says "cancel". What changes is how you work it, and that is
-/// a consequence of the gesture rather than a choice of style.
-///
-/// A held recording is sent by letting go. So a Cancel *button* drawn under a finger that is still
-/// down is a trap: reaching for it means releasing the record button, and releasing it is what
-/// sends the message the user was trying to throw away. While the finger is down, Cancel is
-/// therefore the target of the swipe — the word, in red, behind the arrow pointing the way to it
-/// — and it becomes a plain button the moment the recording is running hands-free and there is a
-/// hand free to press it. Which is also when it is most needed: a minute later, when the swipe is
-/// long forgotten and somebody changes their mind.
+/// Cancel is always there, always says "cancel", and always looks the same — one word, whether the
+/// finger is still down on the record button or the recording has been let go of and is running
+/// hands-free. It used to grow an arrow mid-hold, pointing back along the swipe that also cancels;
+/// it no longer does. The swipe is signposted at the record button, under the thumb, where the
+/// thumb can see it — see `RecordLock` for the other half of that gesture. A strip with a live
+/// recording in it does not also need to be a diagram.
 struct RecordingStrip: View {
     let elapsed: TimeInterval
 
@@ -26,10 +22,6 @@ struct RecordingStrip: View {
     /// drawing. Empty under the camera: a waveform beside a live picture of somebody's face is
     /// a second thing to look at, and the face already says the recording is working.
     var waveform: [Float] = []
-
-    /// Whether a finger is still down on the record button. It decides which way out this offers
-    /// — see above: the button is unpressable, and worse than unpressable, until the finger lifts.
-    var isHolding: Bool = false
 
     /// Whether the strip is being drawn over the camera rather than in the composer, which
     /// decides what it is made of.
@@ -88,51 +80,50 @@ struct RecordingStrip: View {
                 .fixedSize()
                 .layoutPriority(1)
 
-            // The waveform takes what is left over, and never a point more — which is what it
-            // used to do. Forty bars four points apart is a hundred and sixty points of *fixed*
-            // width, and a fixed-width thing in an `HStack` does not give way: on a phone it
-            // simply shouldered Cancel off the end of the strip, where it could not be read and
-            // could not be pressed. So it is drawn inside a frame that is happy with whatever
-            // space it is given, clipped to it, and told to be the last in the queue for that
-            // space. Clipped from the *left*, because the newest sound is on the right and the
-            // newest sound is the one being made.
+            // The waveform takes what is left over, and never a point more. This has been got
+            // wrong twice, both times the same way: the bars were an `HStack` of forty capsules
+            // of a fixed width, and a frame around a fixed-width child only caps its *maximum* —
+            // the minimum it still inherits, so the thing reported a hundred and sixty points as
+            // the least it could live with and shouldered Cancel off the end of the strip. A
+            // `maxWidth: .infinity` does not fix that, and neither does clipping, which changes
+            // only what is drawn and not what is asked for.
+            //
+            // So the bars have no width of their own to insist on: `LiveWaveform` is a `Canvas`,
+            // which has no ideal size and takes whatever it is proposed, down to nothing. The
+            // strip cannot be broken by it now, whatever else changes above.
             if !waveform.isEmpty {
                 LiveWaveform(samples: waveform)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                    .clipped()
+                    .frame(minWidth: 0, maxWidth: .infinity)
                     .layoutPriority(-1)
             } else {
                 Spacer(minLength: 0)
             }
 
-            // Cancel is a button either way, and is *always* a button — that is the change. It
-            // was a plain red label while the finger was down, on the reasoning that a button
-            // under a finger that cannot let go is a button nobody can press. Which is true of
-            // the finger that is holding the record button, and false of the other nine.
+            // Cancel is a button either way, and is *always* a button. It was a plain red label
+            // while the finger was down, on the reasoning that a button under a finger that cannot
+            // let go is a button nobody can press. Which is true of the finger that is holding the
+            // record button, and false of the other nine.
             //
             // Pressing it mid-hold is safe, and that is worth saying because it looks as though
             // it should not be: releasing the record button afterwards runs `onFinishVoice`, and
             // `VoiceRecorder.finish()` on a recording that has been thrown away hands back
             // nothing. Nothing is what gets sent.
             //
-            // What changes with the finger is only what it *says*: while the recording is being
-            // held, the arrow says the swipe will reach it, because that is the way out most
-            // thumbs will take.
+            // One word, and the same word throughout — the arrow that used to grow out of it
+            // mid-hold is gone. It was there to say "the swipe left ends at this word", and it
+            // said it by putting a second, silent instruction into a strip that already has a
+            // clock, a waveform and a live recording in it. The swipe is worth signposting where
+            // the thumb *is*, which is the record button, and not at the far end of the bar where
+            // nothing is happening.
             Button(action: onCancel) {
-                HStack(spacing: Theme.Spacing.tight) {
-                    if isHolding {
-                        Image(systemName: "chevron.left")
-                    }
-
-                    Text(Strings.Recording.cancel)
-                }
-                .font(.callout.weight(.medium))
-                .foregroundStyle(.red)
-                .lineLimit(1)
-                .fixedSize()
-                .padding(.horizontal, Theme.Spacing.close)
-                .frame(minHeight: Theme.Size.minimumTapTarget)
-                .contentShape(.rect)
+                Text(Strings.Recording.cancel)
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(.red)
+                    .lineLimit(1)
+                    .fixedSize()
+                    .padding(.horizontal, Theme.Spacing.close)
+                    .frame(minHeight: Theme.Size.minimumTapTarget)
+                    .contentShape(.rect)
             }
             .buttonStyle(.plain)
             .layoutPriority(1)
@@ -146,23 +137,43 @@ struct RecordingStrip: View {
 
 /// The microphone's own picture of what it is hearing, drawn as it hears it.
 ///
-/// The *last* forty samples, not the first: a voice message is being spoken now, and the shape
-/// that matters is the shape of the words currently going in. Scrolling it is what makes the
-/// strip look like a live meter rather than a chart that filled up and stopped.
+/// The *last* samples, not the first: a voice message is being spoken now, and the shape that
+/// matters is the shape of the words currently going in. Scrolling it is what makes the strip
+/// look like a live meter rather than a chart that filled up and stopped.
+///
+/// It is a `Canvas` rather than a stack of `Capsule`s, and that is a layout decision before it is
+/// a drawing one — see the caller. A view built out of fixed-width children has a minimum width
+/// it will not go below, and in a row with a clock and a Cancel button that minimum is a battering
+/// ram. A `Canvas` has none: it accepts whatever width it is proposed, and *then* decides how many
+/// bars fit in it. Narrow strip, fewer bars; no strip at all, nothing drawn and nothing broken.
 struct LiveWaveform: View {
     let samples: [Float]
 
-    private static let visible = 40
+    private static let barWidth: CGFloat = 2
+    private static let spacing: CGFloat = 2
 
     var body: some View {
-        HStack(spacing: 2) {
-            ForEach(Array(samples.suffix(Self.visible).enumerated()), id: \.offset) { _, sample in
-                Capsule()
-                    .fill(.secondary)
-                    .frame(width: 2, height: max(2, CGFloat(sample) * Theme.Size.waveform))
+        Canvas { context, size in
+            let step = Self.barWidth + Self.spacing
+            let fitting = max(0, Int(size.width / step))
+            guard fitting > 0 else { return }
+
+            let visible = samples.suffix(fitting)
+            let colour = GraphicsContext.Shading.style(.secondary)
+
+            // Drawn right to left, from the trailing edge: the newest sound is the one being made,
+            // and it stays put while the older bars run off the left of whatever room there is.
+            for (index, sample) in visible.reversed().enumerated() {
+                let height = max(Self.barWidth, CGFloat(sample) * size.height)
+                let x = size.width - CGFloat(index + 1) * step
+                let bar = CGRect(x: x,
+                                 y: (size.height - height) / 2,
+                                 width: Self.barWidth,
+                                 height: height)
+
+                context.fill(Path(roundedRect: bar, cornerRadius: Self.barWidth / 2), with: colour)
             }
         }
-        .frame(height: Theme.Size.waveform, alignment: .center)
-        .animation(.linear(duration: 0.05), value: samples.count)
+        .frame(height: Theme.Size.waveform)
     }
 }

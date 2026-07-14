@@ -117,7 +117,59 @@ struct SquareVideoExporterTests {
         #expect(after.count == 1)
     }
 
+    /// The corners are what the person filming never saw: they framed their face in a round
+    /// viewfinder, and everything outside it — the room, the doorway, whoever walked past —
+    /// went into the file anyway, where every other Matrix client renders it. So the exporter
+    /// paints them out, and this is the check that it did: black in the corner, picture in the
+    /// middle. The source clip is a solid mid-grey precisely so that "black" means the mask and
+    /// nothing else.
+    @Test("what falls outside the circle is painted out of the file")
+    func blacksOutTheCorners() async throws {
+        let source = try await makeVideo(width: 1080, height: 1920, seconds: 1)
+        defer { try? FileManager.default.removeItem(at: source) }
+
+        let square = try await SquareVideoExporter.square(source, side: 480)
+        defer { try? FileManager.default.removeItem(at: square) }
+
+        let frame = try await firstFrame(of: square)
+
+        // Deep in a corner, and just inside it — both are outside the circle.
+        #expect(try brightness(of: frame, x: 4, y: 4) < 16)
+        #expect(try brightness(of: frame, x: 40, y: 40) < 16)
+
+        // The middle is still the video.
+        #expect(try brightness(of: frame, x: 240, y: 240) > 64)
+
+        // And so is the edge of the circle the app masks the player with: the black is cut by
+        // a *wider* circle, so it never reaches what we draw. This is the point of the
+        // overshoot, and without it this pixel is a dark fringe on somebody's cheek.
+        #expect(try brightness(of: frame, x: 240, y: 6) > 64)
+    }
+
     // MARK: - Making a real video to crop
+
+    private func firstFrame(of url: URL) async throws -> CGImage {
+        let generator = AVAssetImageGenerator(asset: AVURLAsset(url: url))
+        generator.appliesPreferredTrackTransform = true
+        generator.requestedTimeToleranceBefore = .zero
+        generator.requestedTimeToleranceAfter = .positiveInfinity
+        return try await generator.image(at: CMTime(value: 1, timescale: 2)).image
+    }
+
+    /// 0–255 at one pixel, so a test can say "black" and "not black" and mean it.
+    private func brightness(of image: CGImage, x: Int, y: Int) throws -> Int {
+        var pixel: [UInt8] = [0, 0, 0, 0]
+        let context = try #require(CGContext(data: &pixel,
+                                             width: 1,
+                                             height: 1,
+                                             bitsPerComponent: 8,
+                                             bytesPerRow: 4,
+                                             space: CGColorSpaceCreateDeviceRGB(),
+                                             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        context.draw(image, in: CGRect(x: -x, y: -(image.height - 1 - y),
+                                       width: image.width, height: image.height))
+        return (Int(pixel[0]) + Int(pixel[1]) + Int(pixel[2])) / 3
+    }
 
     private func dimensions(of url: URL) async throws -> CGSize {
         let asset = AVURLAsset(url: url)

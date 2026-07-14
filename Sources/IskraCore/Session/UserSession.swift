@@ -112,6 +112,15 @@ public final class UserSession {
         RecoveryStore(encryption: client.encryption())
     }
 
+    /// What this account is keeping on the device, built when the screen that shows it is opened.
+    ///
+    /// It takes the room list with it, and not for the rooms: clearing the cache means taking the
+    /// sync service down and bringing it back up, and the room list is the only thing that holds
+    /// one.
+    public func storage() -> StorageStore {
+        StorageStore(client: client, roomList: roomList, locations: authentication.storageURLs())
+    }
+
     // MARK: - Changing who you are
 
     /// The name everyone else sees. Applied at once and put back if the server refuses —

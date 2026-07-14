@@ -14,6 +14,7 @@ import IskraDesign
 /// swatch, where only VoiceOver reads them.
 struct AppearanceView: View {
     @AppStorage(AccentTheme.storageKey) private var accent: AccentTheme = .default
+    @AppStorage(AppearanceMode.storageKey) private var appearance: AppearanceMode = .default
 
     /// Sized by the swatch, not by a column count. Eight circles are a comfortable row on a
     /// Mac and a wrapped pair of rows on a phone, and neither has to be spelled out.
@@ -23,6 +24,26 @@ struct AppearanceView: View {
 
     var body: some View {
         Form {
+            Section {
+                conversation
+            }
+
+            // A segmented picker and not a grid: these three have names and *only* names — there
+            // is nothing to look at, and "System" cannot be drawn as a swatch. The preview above
+            // is the one thing that shows what was chosen, and it repaints with the screen.
+            Section {
+                Picker(selection: $appearance) {
+                    ForEach(AppearanceMode.allCases) { mode in
+                        Text(Strings.Appearance.mode(mode)).tag(mode)
+                    }
+                } label: {
+                    Text(Strings.Appearance.theme)
+                }
+                .pickerStyle(.segmented)
+            } footer: {
+                Text(Strings.Appearance.themeHelp)
+            }
+
             Section {
                 LazyVGrid(columns: columns, spacing: Theme.Spacing.roomy) {
                     ForEach(AccentTheme.allCases) { theme in
@@ -39,6 +60,43 @@ struct AppearanceView: View {
         .formStyle(.grouped)
         .navigationTitle(Text(Strings.Settings.appearance))
         .toolbarTitleDisplayMode(.inline)
+    }
+
+    /// Three lines of a conversation that never happened, so the colour can be chosen by looking
+    /// at the thing it is for.
+    ///
+    /// The swatches say what the colour *is*; they cannot say what it will look like as a
+    /// message. Those are different questions, and the second one is the one being asked: an
+    /// accent is not a circle on a settings screen, it is the fill behind everything you will
+    /// ever say. A yellow that is cheerful as a dot can be unreadable as a bubble, and until now
+    /// the only way to find that out was to leave this screen, open a room, and say something.
+    ///
+    /// It repaints as the swatch is pressed, and it costs nothing to make it: `messageBubble`
+    /// reads the accent from the environment, the environment reads it from the same
+    /// `@AppStorage` this screen writes, so the bubbles below are already listening.
+    ///
+    /// The middle line is the user's own, and it is the only one that matters here — an incoming
+    /// bubble is grey in every theme. It is there for contrast: a colour is chosen against what
+    /// sits next to it, and what sits next to it is grey.
+    private var conversation: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.close) {
+            bubble(Strings.Appearance.previewAsk, isOwn: false)
+            bubble(Strings.Appearance.previewAnswer, isOwn: true)
+            bubble(Strings.Appearance.previewReply, isOwn: false)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, Theme.Spacing.close)
+        // One thing, read as one thing. Three bubbles apiece would have VoiceOver walk somebody
+        // through a fake conversation on the way to the colours they came for.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(Strings.Appearance.previewLabel))
+    }
+
+    private func bubble(_ line: LocalizedStringResource, isOwn: Bool) -> some View {
+        Text(line)
+            .font(.callout)
+            .messageBubble(isOwn: isOwn)
+            .frame(maxWidth: .infinity, alignment: isOwn ? .trailing : .leading)
     }
 
     private func swatch(_ theme: AccentTheme) -> some View {
