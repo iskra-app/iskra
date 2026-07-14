@@ -24,7 +24,7 @@ public struct RoomListView: View {
 
     /// Sign-out unwinds the whole app, not just this screen, so the decision belongs to
     /// whoever owns the session — here it is only reported.
-    var onSignOut: () -> Void
+    var onSignOut: () async -> Void
     var onClearedCache: () -> Void
 
     /// Whether this list is a column beside the conversation rather than the whole screen.
@@ -62,7 +62,7 @@ public struct RoomListView: View {
                 selectedRoomID: Binding<String?>,
                 selectedEventID: Binding<String?> = .constant(nil),
                 isSidebar: Bool,
-                onSignOut: @escaping () -> Void,
+                onSignOut: @escaping () async -> Void,
                 onClearedCache: @escaping () -> Void) {
         self.session = session
         _selectedRoomID = selectedRoomID

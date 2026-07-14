@@ -193,30 +193,33 @@ public struct IskraRootView: View {
 
     /// Signing out unwinds everything: the session, the selected room, and — because the
     /// whole signed-in tree goes away with it — the settings screen it was asked for on.
-    private func signOut(_ session: UserSession) {
-        Task {
-            // Before the session goes, because telling the server to stop pushing here is a request
-            // that needs the session to make it. Without it the homeserver goes on pushing this
-            // account's messages to a phone that has been signed out of: the extension wakes, finds
-            // nobody signed in, and shows the server's own "New message" — notifications, forever,
-            // about conversations the user can no longer open.
-            await PushPermission.shared.signingOut(session)
+    ///
+    /// `async`, and awaited by the button that calls it, rather than firing a detached `Task` and
+    /// returning at once. It is not instant — it tells the server to stop pushing, ends the session,
+    /// and deletes the encrypted store — and while it ran, the screen it was pressed on sat there
+    /// looking untouched. So it got pressed again. Now the caller can await it and say so.
+    private func signOut(_ session: UserSession) async {
+        // Before the session goes, because telling the server to stop pushing here is a request
+        // that needs the session to make it. Without it the homeserver goes on pushing this
+        // account's messages to a phone that has been signed out of: the extension wakes, finds
+        // nobody signed in, and shows the server's own "New message" — notifications, forever,
+        // about conversations the user can no longer open.
+        await PushPermission.shared.signingOut(session)
 
-            await session.signOut()
+        await session.signOut()
 
-            // And any document handed to another application on the way. `SessionStore.clear` knows
-            // about the encrypted store and nothing about a PDF copied out of it in the clear so
-            // that Preview could open it — see `FileOpener.handOff`. A decrypted file must not
-            // outlive the account it came from.
-            #if os(macOS)
-            FileOpener.sweep()
-            #endif
+        // And any document handed to another application on the way. `SessionStore.clear` knows
+        // about the encrypted store and nothing about a PDF copied out of it in the clear so
+        // that Preview could open it — see `FileOpener.handOff`. A decrypted file must not
+        // outlive the account it came from.
+        #if os(macOS)
+        FileOpener.sweep()
+        #endif
 
-            AppSettings.forget()
-            selectedRoomID = nil
-            selectedEventID = nil
-            phase = .signedOut
-        }
+        AppSettings.forget()
+        selectedRoomID = nil
+        selectedEventID = nil
+        phase = .signedOut
     }
 
     /// The launch that could not reach the server.
@@ -278,7 +281,7 @@ public struct IskraRootView: View {
                          selectedRoomID: $selectedRoomID,
                          selectedEventID: $selectedEventID,
                          isSidebar: isSidebar,
-                         onSignOut: { signOut(session) },
+                         onSignOut: { await signOut(session) },
                          onClearedCache: { restart() })
         } detail: {
             // The stack is load-bearing, and its absence fails in a way that looks like
