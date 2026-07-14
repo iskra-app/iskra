@@ -61,6 +61,15 @@ public enum SquareVideoExporter {
         let height = abs(oriented.height)
         let edge = min(width, height)
 
+        // A track that claims no size — zero, or NaN, which a damaged file is entitled to say and
+        // `AVFoundation` is entitled to repeat. Dividing by it gives an infinite scale, and an
+        // infinite scale goes into a `CGAffineTransform` without complaint and comes out the other
+        // end as an export that produces a file nobody can play. Refusing it here means the send
+        // fails with a reason, which is what the caller already knows how to say.
+        guard edge.isFinite, edge > 0 else {
+            throw Failure.noVideoTrack
+        }
+
         let output = CGSize(width: CGFloat(side), height: CGFloat(side))
         let scale = CGFloat(side) / edge
 

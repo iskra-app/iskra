@@ -90,13 +90,13 @@ enum MediaMetadata {
             let transform = try? await track.load(.preferredTransform)
             if let size, let transform {
                 let oriented = size.applying(transform)
-                width = UInt64(abs(oriented.width))
-                height = UInt64(abs(oriented.height))
+                width = pixels(abs(oriented.width))
+                height = pixels(abs(oriented.height))
             }
         }
 
         if let cmDuration = try? await asset.load(.duration) {
-            duration = CMTimeGetSeconds(cmDuration)
+            duration = seconds(CMTimeGetSeconds(cmDuration))
         }
 
         // The still serves twice: as the picture a receiver sees before the video downloads,
@@ -132,6 +132,33 @@ enum MediaMetadata {
     }
 
     // MARK: - Helpers
+
+    /// A pixel count, or nothing at all — never a crash.
+    ///
+    /// `UInt64(someDouble)` **traps**. Not an optional, not a clamp: it kills the process with
+    /// "Double value cannot be converted to UInt64 because it is either infinite or NaN". And the
+    /// double in question comes out of `AVFoundation`, computed from a `naturalSize` and a
+    /// `preferredTransform` that were read from a file *the user chose* — so a corrupt or exotic
+    /// clip whose track claims a size of NaN did not fail to send. It took the app down.
+    ///
+    /// Nil is the honest answer and costs nothing: `width` and `height` are optional all the way
+    /// out to the event, and a video sent without them arrives as a video whose bubble is laid out
+    /// from its still instead. The only thing lost is a shape hint. The alternative is a crash on
+    /// the ordinary path of sending a file somebody sent you.
+    /// Not private, so that `MediaMetadataTests` can ask it the three questions that used to
+    /// crash: what is NaN, what is infinite, and what is negative.
+    static func pixels(_ value: CGFloat) -> UInt64? {
+        guard value.isFinite, value >= 0 else { return nil }
+        return UInt64(value)
+    }
+
+    /// The same rule for a duration. `CMTimeGetSeconds` answers NaN for an indefinite time and
+    /// infinity for an unknown one, and both are ordinary answers about a stream — they are simply
+    /// not answers about a *file*, which is what this is asked about.
+    static func seconds(_ value: TimeInterval) -> TimeInterval? {
+        guard value.isFinite, value >= 0 else { return nil }
+        return value
+    }
 
     private static func thumbnail(from image: CGImage) -> Thumbnail? {
         guard let data = jpeg(from: image) else { return nil }
