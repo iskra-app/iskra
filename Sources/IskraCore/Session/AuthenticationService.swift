@@ -13,6 +13,15 @@ public struct SignInOptions: Sendable, Equatable {
     /// The older redirect-to-a-web-page SSO.
     public let supportsLegacySSO: Bool
     public let supportsPassword: Bool
+
+    /// Whether this server will let somebody make an account, rather than only sign in to one.
+    ///
+    /// The server's own answer, not a guess: OIDC advertises the prompts it honours, and `create` is
+    /// the one that means "and you may send me people who do not have an account yet". Servers that
+    /// do not speak OIDC cannot do this at all — there is no `register` in the FFI and no
+    /// user-interactive auth to drive one with — so on those the button is not offered. An offer we
+    /// could not keep would be worse than no offer.
+    public let supportsRegistration: Bool
     /// The address we actually resolved, which may differ from what was typed
     /// (typing "example.com" can resolve to "https://matrix.example.com").
     public let resolvedHomeserverURL: String
@@ -35,6 +44,13 @@ public enum AuthenticationError: Error {
     /// would report a Keychain entitlement problem to the user as "check the address
     /// you typed", which is untrue and impossible to act on.
     case storageUnavailable(Error)
+    /// The session is intact and the network is not there.
+    ///
+    /// Only ever thrown while *restoring* a session, and it exists to keep that case away from
+    /// `signedOut`. The tokens, the keys and every message are still on the device; the app simply
+    /// could not reach the server on its way in. A person on a train is not a person who has been
+    /// signed out, and they must not be shown a sign-in screen — see `IskraRootView.restore`.
+    case networkUnavailable
     /// The server does not offer any sign-in method we can drive.
     case noSupportedSignInMethod
     /// `startSignIn` was not called, or the flow was abandoned.
@@ -105,19 +121,65 @@ public actor AuthenticationService {
 
         let builder: ClientBuilder
         do {
-            builder = try makeClientBuilder(sessionID: stored.sessionID)
+            // `.native`, and not `.discoverNative` as signing in uses: the discovery was done then,
+            // and doing it again is the whole reason a launch with no network used to end on the
+            // sign-in screen. See `makeClientBuilder`.
+            builder = try makeClientBuilder(sessionID: stored.sessionID, slidingSync: .native)
         } catch {
             throw AuthenticationError.storageUnavailable(error)
         }
 
-        return try await withTimeout(Self.restoreTimeout) {
-            let client = try await builder
-                .homeserverUrl(url: stored.homeserverURL)
-                .build()
+        do {
+            return try await withTimeout(Self.restoreTimeout) {
+                // Neither of these two should now reach the network. `homeserverUrl` takes the URL
+                // we already resolved and stored, rather than looking one up the way
+                // `serverNameOrHomeserverUrl` does on the sign-in path; `restoreSession` loads the
+                // rooms out of the local store. The bound stays anyway — a call that *should* not
+                // reach the network is not a call that may hold the launch screen forever if it does.
+                let client = try await builder
+                    .homeserverUrl(url: stored.homeserverURL)
+                    .build()
 
-            try await client.restoreSession(session: stored.rustSession)
-            return client
+                try await client.restoreSession(session: stored.rustSession)
+                return client
+            }
+        } catch {
+            // What kind of failure this was decides whether the user keeps their account, so it is
+            // worth being exact about. A session that cannot be restored *because the network is
+            // gone* is not a session that has ended: the tokens are in the Keychain, the messages
+            // are in the store, and nothing about either has changed. Reporting that as a signed-out
+            // user — which is what happened, because the caller could not tell the two apart — threw
+            // away the conversations of anybody who opened the app on a train.
+            //
+            // A dead token is the opposite, and is left to travel up as itself. It is the one honest
+            // reason to ask somebody to sign in again.
+            throw Self.isNetworkFailure(error) ? AuthenticationError.networkUnavailable : error
         }
+    }
+
+    /// Whether this is the network's fault rather than the session's.
+    ///
+    /// Two error hierarchies meet here and only one of them can say "offline" out loud.
+    /// `ClientBuilder.build()` throws `ClientBuildError`, which names the network cases outright.
+    /// `Client.restoreSession` throws `ClientError`, which has no network case at all — a dead token
+    /// arrives as `.MatrixApi(kind: .unknownToken)` and everything else, network included, arrives as
+    /// `.Generic`. So `.Generic` is deliberately *not* treated as offline: the sole case we can name
+    /// with certainty in that hierarchy is the one that means the account is gone, and guessing in the
+    /// other direction would keep somebody staring at "no connection" when they had really been
+    /// signed out.
+    private static func isNetworkFailure(_ error: Error) -> Bool {
+        if error is TimeoutError { return true }
+
+        if let build = error as? ClientBuildError {
+            switch build {
+            case .ServerUnreachable, .WellKnownLookupFailed, .SlidingSyncVersion:
+                return true
+            default:
+                return false
+            }
+        }
+
+        return false
     }
 
     /// Long enough for a slow network and a large store, short enough that a server which is never
@@ -158,7 +220,7 @@ public actor AuthenticationService {
         // user's to fix, so only the second one may be reported as such.
         let builder: ClientBuilder
         do {
-            builder = try makeClientBuilder(sessionID: sessionID)
+            builder = try makeClientBuilder(sessionID: sessionID, slidingSync: .discoverNative)
         } catch {
             throw AuthenticationError.storageUnavailable(error)
         }
@@ -205,6 +267,7 @@ public actor AuthenticationService {
         let options = SignInOptions(supportsOAuth: details.supportsOauthLogin(),
                                     supportsLegacySSO: details.supportsSsoLogin(),
                                     supportsPassword: details.supportsPasswordLogin(),
+                                    supportsRegistration: details.supportedOauthPrompts().contains(.create),
                                     resolvedHomeserverURL: details.url())
 
         guard options.canUseSingleSignOn || options.supportsPassword else {
@@ -222,13 +285,7 @@ public actor AuthenticationService {
 
         let urlString: String
         if await client.homeserverLoginDetails().supportsOauthLogin() {
-            let data = try await client.urlForOauth(oauthConfiguration: oauthConfiguration(),
-                                                    prompt: nil,
-                                                    loginHint: nil,
-                                                    deviceId: nil,
-                                                    additionalScopes: nil)
-            pendingOAuth = data
-            urlString = data.loginUrl()
+            urlString = try await oauthURL(client: client, prompt: nil)
         } else {
             let handler = try await client.startSsoLogin(redirectUrl: environment.oauthRedirectURI, idpId: nil)
             pendingSSO = handler
@@ -237,6 +294,35 @@ public actor AuthenticationService {
 
         guard let url = URL(string: urlString) else { throw AuthenticationError.invalidCallbackURL }
         return url
+    }
+
+    /// The URL to open in the browser to *make* an account, rather than sign in to one.
+    ///
+    /// The same browser round-trip as signing in, with one argument different — `prompt: .create` is
+    /// OIDC's way of saying "this person does not have an account yet, show them the page that makes
+    /// one". The way back is the same too: the server redirects to the same callback, and
+    /// `completeSingleSignOn` finishes it without needing to know which of the two it was. From here
+    /// down, a new account and an old one are the same thing.
+    ///
+    /// There is no legacy fallback, and there cannot be: registration over the old API needs
+    /// user-interactive auth, which the FFI does not expose. `SignInOptions.supportsRegistration` is
+    /// what stops this being offered where it cannot work.
+    public func registrationURL() async throws -> URL {
+        guard let client = pendingClient else { throw AuthenticationError.noSignInInProgress }
+
+        let urlString = try await oauthURL(client: client, prompt: .create)
+        guard let url = URL(string: urlString) else { throw AuthenticationError.invalidCallbackURL }
+        return url
+    }
+
+    private func oauthURL(client: Client, prompt: OAuthPrompt?) async throws -> String {
+        let data = try await client.urlForOauth(oauthConfiguration: oauthConfiguration(),
+                                                prompt: prompt,
+                                                loginHint: nil,
+                                                deviceId: nil,
+                                                additionalScopes: nil)
+        pendingOAuth = data
+        return data.loginUrl()
     }
 
     /// Finishes single sign-on once the browser redirects back to us.
@@ -426,7 +512,18 @@ public actor AuthenticationService {
     /// The one place a `ClientBuilder` is configured, so the security-relevant
     /// settings — an encrypted store and an encrypted search index — cannot be
     /// forgotten on one of the paths.
-    private func makeClientBuilder(sessionID: String) throws -> ClientBuilder {
+    /// - Parameter slidingSync: how to settle on a sliding-sync version, and the one thing in here
+    ///   that differs between signing in and coming back.
+    ///
+    ///   `.discoverNative` asks the homeserver — `/versions`, over the network — whether it speaks
+    ///   native sliding sync. That is the right question to ask of a server we have never met, and
+    ///   the wrong one to ask on every launch afterwards: the answer was already had at sign-in and
+    ///   is written down in the session (`StoredSession.rustSession` pins `slidingSyncVersion:
+    ///   .native`). Asking again made `build()` reach the network in the one code path that has no
+    ///   business needing it, and so a launch with no network could not get past it — see
+    ///   `restoreClient`, which is where that cost the user their conversations.
+    private func makeClientBuilder(sessionID: String,
+                                   slidingSync: SlidingSyncVersionBuilder) throws -> ClientBuilder {
         let dataURL = try environment.sessionDataURL(forSessionID: sessionID)
         let cacheURL = try environment.sessionCachesURL(forSessionID: sessionID)
         let searchURL = try environment.searchIndexURL(forSessionID: sessionID)
@@ -486,7 +583,7 @@ public actor AuthenticationService {
             // gets the same treatment rather than being left in the clear.
             .withSearchIndexStore(path: searchURL.path(percentEncoded: false),
                                   password: try sessionStore.searchIndexPassword())
-            .slidingSyncVersionBuilder(versionBuilder: .discoverNative)
+            .slidingSyncVersionBuilder(versionBuilder: slidingSync)
     }
 
     private func oauthConfiguration() -> OAuthConfiguration {

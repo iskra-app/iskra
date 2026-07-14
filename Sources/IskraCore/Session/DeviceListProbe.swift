@@ -10,10 +10,18 @@ import MatrixRustSDK
 /// without learning any of it. `Apps/Shared/DeviceProbe.swift` is a `print` and nothing
 /// more.
 ///
-/// The question itself: the FFI has no `Client.devices()`. What it has is `getUrl`, a GET
-/// "through the SDK's internal HTTP client" — and everything turns on whether that client
-/// carries the access token. It does not, and this is what says so out loud, from a real
-/// session, rather than from a reading of the SDK.
+/// The original question was: the FFI has no `Client.devices()`, but it has `getUrl`, a GET
+/// "through the SDK's internal HTTP client" — does that client carry the access token? It does not,
+/// and `listEndpoint()` still says so out loud, from a real session, rather than from a reading of
+/// the SDK.
+///
+/// That answer was right and the conclusion drawn from it — "no device management is possible" — was
+/// wrong, which is the more useful thing this file now records. `getUrl` was simply the wrong call.
+/// `Client.accountUrl(action:)` builds the address of the server's own device page out of cached
+/// OAuth metadata, and hands it over with the session the user already has. So there are two
+/// questions here now, and `managementPage()` is the one that decides whether the row in settings
+/// appears — which is why it is worth being able to ask it from a real signed-in device instead of
+/// staring at a screen where a row is missing and guessing why.
 public enum DeviceListProbe {
     public enum Verdict: Sendable {
         /// Nobody is signed in on this device, so there is nothing to ask about.
@@ -28,7 +36,20 @@ public enum DeviceListProbe {
         case refused(String)
     }
 
-    public static func run() async -> Verdict {
+    /// Where the user manages their devices — the question the settings row actually asks.
+    public enum Page: Sendable {
+        case notSignedIn
+        /// The address of the server's device page. The row appears, and leads here.
+        case at(String)
+        /// The SDK has no such address: this session was not obtained through OAuth, so there is no
+        /// account-management page to point at. The row is not drawn, and that is correct — but it is
+        /// worth being able to tell this apart from a bug, which is the whole point of asking.
+        case none
+        case refused(String)
+    }
+
+    /// Can we reach the device list ourselves? (No. Kept because the negative is the finding.)
+    public static func listEndpoint() async -> Verdict {
         guard let client = try? await AuthenticationService().restoreClient() else {
             return .notSignedIn
         }
@@ -49,6 +70,20 @@ public enum DeviceListProbe {
             // body, which is where the error code is.
             let described = String(describing: error)
             return described.contains("M_MISSING_TOKEN") ? .unauthenticated : .refused(described)
+        }
+    }
+
+    /// Can we at least send the user somewhere that can? (Yes, on an OAuth session.)
+    public static func managementPage() async -> Page {
+        guard let client = try? await AuthenticationService().restoreClient() else {
+            return .notSignedIn
+        }
+
+        do {
+            guard let address = try await client.accountUrl(action: .devicesList) else { return .none }
+            return .at(address)
+        } catch {
+            return .refused(String(describing: error))
         }
     }
 }

@@ -41,8 +41,27 @@ public struct IskraRootView: View {
     private enum Phase {
         case starting
         case signedOut
+        /// Signed in, and the session could not be brought up because the network is not there.
+        ///
+        /// A state of its own, because the two ways a launch can fail to produce a session are not
+        /// the same thing and must not look the same. See `restore()`.
+        case offline
+        /// Signed in, and not yet let into the conversations: this account's encryption is being
+        /// settled first. See `RecoverySetupView`.
+        ///
+        /// Reached from a *sign-in*, and deliberately never from a restore. Somebody signing in on a
+        /// new phone has a question waiting for them — can this device read your history, and if not,
+        /// how — and it has to be answered before they are handed a list of conversations that will
+        /// not open. Somebody who merely reopened the app answered it long ago, and asking again
+        /// every morning would be the app forgetting rather than remembering.
+        case settingUp(UserSession)
         case signedIn(UserSession)
     }
+
+    /// Whether a recovery code was shown on the way in and skipped — which the room list turns into a
+    /// banner that stays until it is dealt with. `@AppStorage`, not `@State`: the skip happened once,
+    /// and the consequence has to outlive the launch it happened on.
+    @AppStorage(AppSettings.unsavedRecoveryCode) private var hasUnsavedRecoveryCode = false
 
     /// Set when the session was ended somewhere else and the app took itself back to sign-in on
     /// its own. It has to be *said*: a person who left the app on a chat and comes back to a
@@ -63,9 +82,23 @@ public struct IskraRootView: View {
 
             case .signedOut:
                 SignInView { session in
-                    phase = .signedIn(session)
-                    Task { try? await session.start() }
+                    phase = .settingUp(session)
                 }
+
+            case .offline:
+                offlineStart
+
+            case let .settingUp(session):
+                // The session is started *here*, before the screen, and not after it. The whole
+                // screen is a question about what this device can decrypt, and there is nothing to
+                // ask until the sync loop is up and the SDK has talked to the server — so the
+                // sign-in seam handing over a session it had not started would have made the first
+                // thing the user sees a spinner over an account nobody was syncing.
+                RecoverySetupView(session: session) { didSkip in
+                    hasUnsavedRecoveryCode = didSkip
+                    phase = .signedIn(session)
+                }
+                .task { try? await session.start() }
 
             case let .signedIn(session):
                 conversations(session)
@@ -186,6 +219,25 @@ public struct IskraRootView: View {
         }
     }
 
+    /// The launch that could not reach the server.
+    ///
+    /// Deliberately not a sign-in screen and deliberately not an error: nothing has gone wrong with
+    /// the account, and saying so is the entire job of this view. "Try again" goes back to
+    /// `.starting`, which runs `restore()` again — the same road `restart()` takes, and for the same
+    /// reason: the session is still in the Keychain, waiting.
+    private var offlineStart: some View {
+        ContentUnavailableView {
+            Label(Strings.Session.offlineTitle, systemImage: "wifi.slash")
+        } description: {
+            Text(Strings.Session.offlineMessage)
+        } actions: {
+            Button(String(app: Strings.Session.tryAgain)) {
+                phase = .starting
+            }
+            .buttonStyle(.borderedProminent)
+        }
+    }
+
     /// Builds the app a new client, without signing anybody out.
     ///
     /// This is what emptying the cache costs. `Client.clearCaches` says so itself — "the Client
@@ -255,6 +307,10 @@ public struct IskraRootView: View {
                 }
             }
         }
+        // Said once, here, and read by both columns. The room list and the room are in different
+        // branches of the tree and both have to know, and the session is the only thing that is
+        // above both of them. See `OfflineBanner`.
+        .environment(\.isOffline, session.roomList.isOffline)
     }
 
     /// Brings back the signed-in user, if there is one, before showing anything.
@@ -280,6 +336,14 @@ public struct IskraRootView: View {
                 try? await session.start()
                 return
             }
+        } catch AuthenticationError.networkUnavailable {
+            // Never the sign-in screen for this. The account is fine — the tokens are in the
+            // Keychain, the conversations are in the store, and the only thing missing is the
+            // network. Sending somebody to "Sign in" here tells them their account is gone, which
+            // is untrue and frightening, and it is what the app used to do to anybody who opened it
+            // in a tunnel: an empty `catch` treated a lost network and a dead session as one fact.
+            phase = .offline
+            return
         } catch {
             // A session we cannot restore is a session the user must create again.
             // Falling through to sign-in is the honest outcome.

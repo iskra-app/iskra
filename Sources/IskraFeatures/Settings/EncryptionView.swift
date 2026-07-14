@@ -17,7 +17,13 @@ import IskraDesign
 /// and it is the correct one: a recovery key the user swiped away is a recovery key they do
 /// not have, and they find that out months later, from a screen that cannot help them.
 struct EncryptionView: View {
-    @State private var recovery: RecoveryStore
+    /// The session's, not this screen's — a plain `let`, exactly like `verification` below.
+    ///
+    /// It used to be built by this screen and torn down with it, which was fine while this screen was
+    /// the only thing that asked. It is not: the room list carries a banner about a recovery code
+    /// that was never saved, and a banner cannot ask a question that only settings knows the answer
+    /// to. State that everything needs cannot belong to one screen.
+    let recovery: RecoveryStore
 
     /// The one true thing this screen can say about sessions — see the footer, and
     /// `ROADMAP.md`, stage 6. Optional because a client with no device ID is a thing to say
@@ -37,7 +43,7 @@ struct EncryptionView: View {
     @State private var isVerifying = false
 
     init(recovery: RecoveryStore, verification: VerificationStore, deviceID: String?) {
-        _recovery = State(initialValue: recovery)
+        self.recovery = recovery
         self.verification = verification
         self.deviceID = deviceID
     }
@@ -64,12 +70,10 @@ struct EncryptionView: View {
         .formStyle(.grouped)
         .navigationTitle(Text(Strings.Encryption.title))
         .toolbarTitleDisplayMode(.inline)
-        .onAppear { recovery.load() }
-        // The recovery store is this screen's and goes down with it. The verification store is the
-        // session's and does not — stopping it here would unhook the delegate that answers devices
-        // asking to be trusted, and they would go unanswered for the rest of the sign-in, which is
-        // exactly the bug this whole flow exists to fix.
-        .onDisappear { recovery.stop() }
+        // Neither store is stopped here any more, and neither is started here. Both belong to the
+        // session and outlive this screen — `load()` is called once, when the session starts. Tearing
+        // either down on the way out would unhook a listener the rest of the app is reading: the
+        // banner in the room list watches the same recovery state this screen does.
         .sheet(isPresented: $isVerifying) {
             VerificationSheet(verification: verification) {
                 isVerifying = false
@@ -85,9 +89,14 @@ struct EncryptionView: View {
         // state, so there is nothing to keep in step and nothing to unwrap twice.
         .sheet(item: Binding(get: { recovery.freshKey },
                              set: { if $0 == nil { recovery.forgetFreshKey() } })) { key in
-            KeySheet(key: key.value, onDone: recovery.forgetFreshKey)
+            // No "skip" here, unlike the setup flow: nobody arrives on this sheet by accident. They
+            // pressed a button that says "make me a new code", and there is nothing to nag them
+            // about afterwards that they have not just done on purpose.
+            RecoveryCodeView(code: key.value, onSaved: recovery.forgetFreshKey)
         }
-        .failureAlert($recovery.failure)
+        // `Bindable`, not `$recovery` — the store is the session's now and is held as a plain `let`,
+        // so there is no `@State` projection to reach through. Same as the room list does with its own.
+        .failureAlert(Bindable(recovery).failure)
     }
 
     /// Where things stand, and the one button that changes it. Exactly one of these four is
@@ -223,71 +232,5 @@ struct EncryptionView: View {
                 ProgressView()
             }
         }
-    }
-}
-
-/// The recovery key, the once.
-///
-/// No swipe-to-dismiss and no close button: the only way out is the button that says the
-/// key has been saved, because every other way out is a way to lose it by accident. The
-/// sheet is not asking the user to agree to anything — it is making them look.
-private struct KeySheet: View {
-    let key: String
-    var onDone: () -> Void
-
-    /// Local, because nobody outside this sheet reads it. SwiftUI rebuilds the sheet's
-    /// content on each presentation, so it starts out false without anybody resetting it.
-    @State private var hasCopied = false
-
-    var body: some View {
-        VStack(spacing: Theme.Spacing.roomy) {
-            Image(systemName: "key.horizontal.fill")
-                .font(.largeTitle)
-                .foregroundStyle(.orange)
-
-            Text(Strings.Encryption.saveKey)
-                .font(.title2.weight(.semibold))
-
-            Text(Strings.Encryption.saveKeyHelp)
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-
-            // Monospaced and selectable: this is a string somebody is going to compare
-            // character by character one day, in a bad mood.
-            Text(key)
-                .font(.body.monospaced())
-                .textSelection(.enabled)
-                .multilineTextAlignment(.center)
-                .padding(Theme.Spacing.roomy)
-                .frame(maxWidth: .infinity)
-                .background(.fill.tertiary, in: .rect(cornerRadius: Theme.Radius.card, style: .continuous))
-
-            Button {
-                copy()
-            } label: {
-                Label(String(app: hasCopied ? Strings.Encryption.keyCopied : Strings.Encryption.copyKey),
-                      systemImage: hasCopied ? "checkmark" : "doc.on.doc")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.bordered)
-
-            Button(action: onDone) {
-                Text(Strings.Encryption.saved)
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-        }
-        .padding(Theme.Spacing.generous)
-        .frame(maxWidth: Theme.Size.keySheet)
-        .interactiveDismissDisabled()
-    }
-
-    private func copy() {
-        // The *secret* path, not the ordinary one. See `Clipboard.copySecret`: this string is the
-        // password to every message the account has ever received, and the general pasteboard
-        // syncs to every other device on the Apple ID and keeps what it is given indefinitely.
-        Clipboard.copySecret(key)
-        hasCopied = true
     }
 }

@@ -21,7 +21,11 @@ enum DeviceProbe {
         SDKLogging.start()
 
         Task {
-            switch await DeviceListProbe.run() {
+            // Question one, and the answer is no. Kept because a negative that has been *checked* is
+            // worth more than a negative that has been reasoned about.
+            print("\n  can this app fetch the device list itself?")
+
+            switch await DeviceListProbe.listEndpoint() {
             case .notSignedIn:
                 print("  ❌ nobody is signed in on this device. Sign in first, then run this.")
                 exit(1)
@@ -31,11 +35,32 @@ enum DeviceProbe {
                 // console — and if the list *does* come back, that fact is the finding.
                 print("  ✅ answered: \(body.prefix(400))")
                 print("     getUrl carries the access token → a sessions screen is possible.")
-                exit(0)
 
             case .unauthenticated:
                 print("  ❌ 401 M_MISSING_TOKEN — getUrl goes out on the SDK's bare HTTP client.")
-                print("     The device list cannot be reached through the FFI at all.")
+                print("     Expected. And on a server running MAS the delete endpoint is 404 anyway.")
+
+            case let .refused(reason):
+                print("  ❌ refused: \(reason)")
+            }
+
+            // Question two, and this is the one the settings row hangs on.
+            print("\n  can this app send the user somewhere that can?")
+
+            switch await DeviceListProbe.managementPage() {
+            case .notSignedIn:
+                print("  ❌ nobody is signed in on this device.")
+                exit(1)
+
+            case let .at(address):
+                print("  ✅ \(address)")
+                print("     → the “My devices” row appears in settings and opens this.")
+                exit(0)
+
+            case .none:
+                print("  ⚠️  accountUrl returned nothing: this session did not come through OAuth,")
+                print("     so the server has no account page to point at. The row is not drawn —")
+                print("     which is correct, and is not the same thing as a bug.")
                 exit(1)
 
             case let .refused(reason):

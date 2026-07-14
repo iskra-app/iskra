@@ -223,6 +223,33 @@ enum TimelineMapper {
 
     // MARK: - Replies
 
+    /// The replies whose originals the SDK is holding nothing for — the messages that would
+    /// otherwise be drawn as "Message unavailable".
+    ///
+    /// `.unavailable` is not the SDK saying it looked and could not find the message. It is the
+    /// SDK saying **nobody has asked it to look**: the details of a replied-to event are fetched
+    /// on demand, by `Timeline.fetchDetailsForEvent`, and nothing in this app was calling it. So
+    /// every reply to a message that was not already on screen — which is every reply to anything
+    /// old — came up as a quote of nothing, and stayed that way even once the original had been
+    /// paginated back in, because the item was never rebuilt. See `TimelineStore.fetchReplyDetails`.
+    ///
+    /// The ID wanted is the *reply's* own, not the one it is answering: the SDK is being asked to
+    /// finish an item it already holds.
+    static func repliesMissingTheirOriginal(in items: [TimelineItem]) -> [String] {
+        items.compactMap { item -> String? in
+            guard let event = item.asEvent(),
+                  case let .eventId(eventID) = event.eventOrTransactionId,
+                  case let .msgLike(msgLike) = event.content,
+                  let details = msgLike.inReplyTo else { return nil }
+
+            // `.pending` is the SDK already fetching it. Asking again would be asking twice.
+            switch details.event() {
+            case .unavailable: return eventID
+            case .ready, .pending, .error: return nil
+            }
+        }
+    }
+
     /// The message being answered, as the SDK resolved it.
     ///
     /// It does the resolving, and that matters: the original may be a thousand events up the

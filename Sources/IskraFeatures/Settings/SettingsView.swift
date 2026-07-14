@@ -48,6 +48,11 @@ struct SettingsView: View {
     /// every screen, and the dismiss state of one screen's alert has no business in it.
     @State private var failure: AccountActionFailure?
 
+    /// Where this account's devices are managed — on the server's own page, because there is nowhere
+    /// in this app they could be. Resolved once, on appearance; `nil` means the session did not come
+    /// through OAuth and there is no such page, and then the row is not drawn at all.
+    @State private var devicesURL: URL?
+
     /// The one place this screen can go that is worth building lazily — see the
     /// `navigationDestination` below.
     private enum Destination: Hashable {
@@ -105,6 +110,40 @@ struct SettingsView: View {
                 Text(Strings.Settings.moreSoon)
             }
 
+            // The devices, which live somewhere else — and the row is only here when there is
+            // somewhere else for it to lead to.
+            //
+            // There is no native list and there is not going to be one. The Rust SDK has `devices()`
+            // and `delete_devices()`; the FFI deliberately exports neither, and on a homeserver
+            // running the authentication service the endpoint that deletes a device answers 404 —
+            // it is gone, not guarded. What the SDK *does* hand over is the address of the page that
+            // can do it, opened with the session the user already has, which is Element X's answer
+            // to the same wall.
+            //
+            // `deviceManagementURL()` is nil when the session was not obtained through OAuth, and
+            // then this section simply is not drawn. A row that led nowhere would be worse than no
+            // row: it would be the app claiming it could do something it cannot.
+            if let devicesURL {
+                Section {
+                    // Opened in the app's own browser rather than thrown to Safari, and that is what
+                    // carries the sign-in across: the same `ASWebAuthenticationSession` that signed
+                    // the user in shares its cookies, so the server's page recognises them and does
+                    // not ask them to sign in again to see their own devices.
+                    Button {
+                        Task { await WebAuthentication.approve(url: devicesURL) }
+                    } label: {
+                        LabeledContent {
+                            Image(systemName: "arrow.up.forward.app")
+                                .foregroundStyle(.secondary)
+                        } label: {
+                            Label(Strings.Settings.devices, systemImage: "laptopcomputer.and.iphone")
+                        }
+                    }
+                } footer: {
+                    Text(Strings.Settings.devicesHelp)
+                }
+            }
+
             Section {
                 Button(role: .destructive) {
                     onSignOut()
@@ -121,13 +160,13 @@ struct SettingsView: View {
         .toolbarTitleDisplayMode(.inline)
         // Value-based, because a `NavigationLink` with a destination *closure* builds that
         // destination eagerly, on every pass of this `body` — and this body re-runs on every
-        // keystroke in the name field. `session.recovery()` allocates an SDK `Encryption`
-        // object and a store, so the link-with-a-closure version minted and threw away one
-        // of each per character typed. This closure runs when the row is actually pushed.
+        // keystroke in the name field. `session.storage()` allocates a store and takes the room
+        // list with it, so the link-with-a-closure version minted and threw away one per character
+        // typed. This closure runs when the row is actually pushed.
         .navigationDestination(for: Destination.self) { destination in
             switch destination {
             case .encryption:
-                EncryptionView(recovery: session.recovery(),
+                EncryptionView(recovery: session.recovery,
                                verification: session.verification,
                                deviceID: session.deviceID)
             case .storage:
@@ -137,6 +176,9 @@ struct SettingsView: View {
                 StorageView(storage: session.storage(), onCleared: onClearedCache)
             }
         }
+        // Cheap: the SDK builds this out of OAuth metadata it has already cached, without going to
+        // the network. It is still async, so it cannot be read straight out of `body`.
+        .task { devicesURL = await session.deviceManagementURL() }
         // The field follows the session while it is not being typed in — the name can
         // change under us, from another device — and stops following it the moment it has
         // focus, or a sync landing mid-word would rewrite what is being typed.

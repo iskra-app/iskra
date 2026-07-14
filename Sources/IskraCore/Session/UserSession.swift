@@ -24,6 +24,16 @@ public final class UserSession {
     /// land on nobody at all.
     public let verification: VerificationStore
 
+    /// Whether this account's history survives this device — see `RecoveryStore`.
+    ///
+    /// Owned here, like `verification` and for the same reason, though it took a second look to see
+    /// it. It used to be `recovery()`, a factory, and the store lived exactly as long as the
+    /// encryption screen that built it — which was fine while that screen was the only thing that
+    /// cared. It is not any more: the room list carries a banner for a recovery code that was never
+    /// saved, and a banner cannot ask a question that only settings knows the answer to. State that
+    /// is needed everywhere cannot belong to one screen.
+    public let recovery: RecoveryStore
+
     /// What the user calls themselves, for the toolbar avatar and the settings screen.
     ///
     /// Starts as the local part of the Matrix ID — "@boris:matrix.org" reads as
@@ -60,6 +70,7 @@ public final class UserSession {
         self.roomList = RoomListStore(client: client)
         self.search = SearchStore(client: client)
         self.verification = VerificationStore(client: client, ownUserID: userID)
+        self.recovery = RecoveryStore(encryption: client.encryption())
     }
 
     /// The server has stopped accepting this session, and nobody on this device asked it to.
@@ -121,6 +132,11 @@ public final class UserSession {
         // for something *other people's devices* do. Everything else here is started so that this
         // device can ask a question; this is started so that it can be asked one.
         await verification.listen()
+
+        // Not awaited on the server's behalf — `load()` reads what the SDK already knows and
+        // subscribes for the rest. What it knows *now* may well be `.unknown`; the screen that
+        // actually has to branch on the answer calls `waitForSetup()` and waits properly.
+        recovery.load()
 
         try await roomList.start()
     }
@@ -207,9 +223,34 @@ public final class UserSession {
         MediaLoader(client: client)
     }
 
-    /// This account's encryption, built when the screen that shows it is opened.
-    public func recovery() -> RecoveryStore {
-        RecoveryStore(encryption: client.encryption())
+    /// Where the user manages the devices they are signed in on — on the server's own web page.
+    ///
+    /// There is no native list, and there is not going to be one. The Rust SDK has `devices()` and
+    /// `delete_devices()`; the FFI deliberately does not export either, and on a homeserver running
+    /// the authentication service `DELETE /_matrix/client/v3/devices/{id}` answers 404 — the endpoint
+    /// is gone, not merely guarded. Writing our own HTTP client over the access token, which is the
+    /// workaround this looks like it wants, would reach a door that is bricked up.
+    ///
+    /// What the FFI *does* hand over is the address of the page that can do it, with the session the
+    /// user already has. `.devicesList` rather than `.profile`: if the SDK will point us at the exact
+    /// page, arriving one click away from it would be a small, pointless discourtesy.
+    ///
+    /// `nil` when the session was not obtained through OAuth — the metadata this is built from simply
+    /// does not exist then — and the screen above answers that by not offering the row at all.
+    public func deviceManagementURL() async -> URL? {
+        do {
+            guard let address = try await client.accountUrl(action: .devicesList) else {
+                // Not an error: an account signed in the old way has no such page, and the row simply
+                // is not offered. Logged all the same, because "the row is missing" and "the row is
+                // missing *and nobody knows why*" are different bugs to be holding.
+                Log.session.info("this server has no page for managing devices")
+                return nil
+            }
+            return URL(string: address)
+        } catch {
+            Log.session.error("could not find where devices are managed: \(Log.describe(error), privacy: .public)")
+            return nil
+        }
     }
 
     /// Telling the homeserver where to send a push. See `PushRegistration` — and note that the
@@ -319,6 +360,7 @@ public final class UserSession {
     /// column does not know that.
     private func stopEverything() async {
         verification.stop()
+        recovery.stop()
 
         for box in openTimelines.values {
             box.value?.stop()

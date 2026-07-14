@@ -246,6 +246,8 @@ public struct RoomView: View {
         ScrollViewReader { scroll in
             ScrollView {
                 LazyVStack(spacing: 0) {
+                    loadEarlier
+
                     ForEach(placedRows) { placed in
                         view(for: placed.row, followsEvent: placed.followsEvent, in: scroll)
                             .id(placed.id)
@@ -609,6 +611,10 @@ public struct RoomView: View {
             }
         }
         .animation(.smooth, value: timeline.pinnedEventIDs)
+        // Above the pinned strip, because it is about the whole app rather than about this room —
+        // and because somebody reading a conversation should not have to go back to the list to find
+        // out why nothing new is arriving in it. See `OfflineBanner`.
+        .offlineBanner()
         // Opened the first time the room reports anything pinned, and kept afterwards. A room
         // with nothing pinned never opens a second timeline at all.
         .onChange(of: timeline.pinnedEventIDs.isEmpty, initial: true) { _, isEmpty in
@@ -1151,6 +1157,54 @@ public struct RoomView: View {
             .contentShape(.capsule)
         }
         .buttonStyle(.plain)
+    }
+
+    /// The way to the rest of a conversation the reader cannot scroll to.
+    ///
+    /// Everywhere else, older messages are asked for by scrolling to the top, and that is the right
+    /// gesture: it is the one people already make. But it is a gesture only a scrollable room can
+    /// receive — and a room that came up holding two messages is shorter than the screen it is on.
+    /// There is nothing to pull, the geometry never changes, so nothing ever asks for history
+    /// again and the room stays two messages long for as long as it is open. The store knows when
+    /// it is in that state (`needsMoreHistory`); this is what it offers when it is.
+    ///
+    /// A real row at the head of the list, not an overlay like the spinner. The spinner is a thing
+    /// that comes and goes twice a page and must not shove the conversation about; this appears
+    /// once, in a room with nothing above the first message anyway, and stays until it is pressed
+    /// or until it has done its job. It *is* the top of the conversation, so that is where it goes.
+    @ViewBuilder
+    private var loadEarlier: some View {
+        if timeline.needsMoreHistory {
+            Button {
+                Task { await timeline.loadMoreHistory() }
+            } label: {
+                Text(Strings.Room.loadEarlier)
+                    .font(.subheadline.weight(.medium))
+                    .padding(.horizontal, Theme.Spacing.normal)
+                    .padding(.vertical, Theme.Spacing.close)
+                    .navigationGlass(in: .capsule)
+                    .contentShape(.capsule)
+            }
+            .buttonStyle(.plain)
+            .padding(.vertical, Theme.Spacing.normal)
+        } else if timeline.historyIsStranded {
+            // The same place, and deliberately not the same thing. There is more of this
+            // conversation and we could not fetch it — so what goes here is the reason, not an
+            // offer we cannot keep. Pressing it is still allowed, because a network can come back
+            // between one glance at the screen and the next.
+            Button {
+                Task { await timeline.loadMoreHistory() }
+            } label: {
+                Text(Strings.Room.earlierUnavailable)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, Theme.Spacing.normal)
+                    .padding(.vertical, Theme.Spacing.close)
+            }
+            .buttonStyle(.plain)
+            .padding(.vertical, Theme.Spacing.normal)
+        }
     }
 
     /// The end of the conversation, asked of the screen rather than worked out from it.

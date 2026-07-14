@@ -1,6 +1,5 @@
 import Foundation
 import Observation
-import AuthenticationServices
 import IskraCore
 
 /// Drives the sign-in screen.
@@ -29,7 +28,6 @@ public final class SignInModel {
 
     private let authentication: AuthenticationService
     private let onSignedIn: @MainActor (UserSession) -> Void
-    private var webAuthSession: ASWebAuthenticationSession?
 
     public init(authentication: AuthenticationService = AuthenticationService(),
                 onSignedIn: @escaping @MainActor (UserSession) -> Void) {
@@ -67,12 +65,28 @@ public final class SignInModel {
 
     /// Opens the browser for single sign-on and waits for it to come back.
     public func continueWithSingleSignOn() async {
+        await inBrowser { try await self.authentication.singleSignOnURL() }
+    }
+
+    /// Opens the browser to *make* an account rather than sign in to one.
+    ///
+    /// The same trip, and the same way home: the server redirects to the same callback, and
+    /// `completeSingleSignOn` finishes it without caring which of the two happened. Past this point
+    /// a brand-new account and a ten-year-old one are the same thing, which is why there is no
+    /// second completion path.
+    public func createAccount() async {
+        await inBrowser { try await self.authentication.registrationURL() }
+    }
+
+    /// The browser round-trip that signing in and registering have in common.
+    private func inBrowser(_ address: @escaping () async throws -> URL) async {
         isBusy = true
         problem = nil
 
         do {
-            let url = try await authentication.singleSignOnURL()
-            let callback = try await presentWebAuthentication(url: url)
+            let url = try await address()
+            let scheme = URL(string: AppEnvironment.default.oauthRedirectURI)?.scheme
+            let callback = try await WebAuthentication.run(url: url, callbackScheme: scheme)
             let session = try await authentication.completeSingleSignOn(callbackURL: callback)
             await finish(with: session)
         } catch is CancellationError {
@@ -119,52 +133,4 @@ public final class SignInModel {
         onSignedIn(session)
     }
 
-    /// Bridges `ASWebAuthenticationSession`'s callback API into async/await.
-    ///
-    /// The callback URL carries the authorization code, so it is a secret: it is
-    /// passed straight to the SDK and never logged.
-    private func presentWebAuthentication(url: URL) async throws -> URL {
-        let scheme = URL(string: AppEnvironment.default.oauthRedirectURI)?.scheme
-
-        return try await withCheckedThrowingContinuation { continuation in
-            let session = ASWebAuthenticationSession(url: url, callbackURLScheme: scheme) { callbackURL, error in
-                if let callbackURL {
-                    continuation.resume(returning: callbackURL)
-                } else if let error = error as? ASWebAuthenticationSessionError,
-                          error.code == .canceledLogin {
-                    continuation.resume(throwing: CancellationError())
-                } else {
-                    continuation.resume(throwing: error ?? AuthenticationError.invalidCallbackURL)
-                }
-            }
-
-            session.presentationContextProvider = WebAuthenticationAnchor.shared
-            // The user may already be signed in to their provider in Safari; letting
-            // that session be reused is the difference between one tap and a password.
-            session.prefersEphemeralWebBrowserSession = false
-
-            self.webAuthSession = session
-            session.start()
-        }
-    }
 }
-
-/// `ASWebAuthenticationSession` needs somewhere to put its browser.
-private final class WebAuthenticationAnchor: NSObject, ASWebAuthenticationPresentationContextProviding {
-    static let shared = WebAuthenticationAnchor()
-
-    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
-        #if os(macOS)
-        NSApplication.shared.keyWindow ?? ASPresentationAnchor()
-        #else
-        let scene = UIApplication.shared.connectedScenes.first { $0.activationState == .foregroundActive }
-        return (scene as? UIWindowScene)?.keyWindow ?? ASPresentationAnchor()
-        #endif
-    }
-}
-
-#if os(macOS)
-import AppKit
-#else
-import UIKit
-#endif

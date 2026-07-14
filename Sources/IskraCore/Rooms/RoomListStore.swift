@@ -30,6 +30,15 @@ public final class RoomListStore {
     /// friendlier than showing an empty list.
     public private(set) var isLoadingInitialRooms = true
 
+    /// The app cannot reach the homeserver, and everything on the screen is what was on the device
+    /// already. Written by `syncStateChanged`, which is where the app finds this out.
+    ///
+    /// It has to be *said* on screen. The conversations are all still there when the network goes,
+    /// and a list that looks exactly as it did a minute ago while quietly receiving nothing is the
+    /// most confusing thing the app can do: the messages people are waiting for simply never arrive,
+    /// and nothing anywhere explains why.
+    public private(set) var isOffline = false
+
     /// An invitation that would not be accepted or declined. Reported the same way `RoomDetailsStore`
     /// reports a refusal — as a field the screen puts in an alert — rather than thrown, because the
     /// press that caused it happened in a *row of a list*, and there is no call stack there to catch
@@ -109,7 +118,15 @@ public final class RoomListStore {
         guard syncService == nil else { return }
         hasStopped = false
 
-        let service = try await client.syncService().finish()
+        // Offline mode is the SDK's own answer to a network that has gone away, and without it the
+        // sync loop treats one as a failure: it reports `.error`, stops, and waits to be restarted.
+        // The rooms are all still there in the encrypted store — the app simply had no way to keep
+        // serving them while it was busy calling the absence of a network an error.
+        //
+        // With it, sync reports `.offline` instead and stays up, reading from the store until the
+        // network comes back. `syncStateChanged` below already treats `.offline` as a state to sit
+        // in rather than restart out of, which is exactly right: there is nothing to restart into.
+        let service = try await client.syncService().withOfflineMode().finish()
         syncService = service
 
         let list = try await service.roomListService().allRooms()
@@ -192,6 +209,22 @@ public final class RoomListStore {
     /// not a backoff — a fixed wait is enough to turn a hot loop into a slow one, and the SDK does
     /// its own retrying underneath.
     private func syncStateChanged(to state: SyncServiceState) async {
+        // The one place in the app that learns anything about the network at all, which is why the
+        // screens read the fact from here rather than from a reachability monitor of their own. It is
+        // also the *better* fact: `NWPathMonitor` reports on the interface, and an interface is up
+        // behind a captive portal, on a VPN with no route, and in front of a homeserver that is
+        // simply down. This reports on whether we are reaching the server, which is the thing the
+        // user actually cares about.
+        isOffline = state == .offline
+
+        // Everything the send queue could not get rid of while the network was gone. The SDK stops a
+        // room's queue on failure and does not start it again by itself, so without this the messages
+        // written offline sit there after the network is back, and the only cure is to press retry on
+        // each one — which reads as an app that lost them.
+        if state == .running {
+            await client.enableAllSendQueues(enable: true)
+        }
+
         switch state {
         case .error, .terminated:
             break

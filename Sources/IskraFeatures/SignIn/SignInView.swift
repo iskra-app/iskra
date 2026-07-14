@@ -165,6 +165,25 @@ public struct SignInView: View {
                 .disabled(model.isBusy)
             }
 
+            // Making an account, where the server says it can make one. Plain glass, not tinted:
+            // most people arriving here already have an account and are here to sign in, and the
+            // tinted button is spent on the thing the screen is actually about.
+            //
+            // Absent on servers that do not speak OIDC — not disabled, absent. There is no way to
+            // register through this app on such a server at all, and a greyed-out button would be
+            // the app implying otherwise.
+            if options.supportsRegistration {
+                Button {
+                    Task { await model.createAccount() }
+                } label: {
+                    busyLabel(Strings.SignIn.createAccount)
+                }
+                .buttonStyle(.glass)
+                .controlSize(.large)
+                .frame(maxWidth: .infinity)
+                .disabled(model.isBusy)
+            }
+
             if options.canUseSingleSignOn && options.supportsPassword {
                 Text(Strings.SignIn.or)
                     .font(.footnote)
