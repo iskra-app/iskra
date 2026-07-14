@@ -160,6 +160,13 @@ public final class UserSession {
         VerificationStore(client: client)
     }
 
+    /// Telling the homeserver where to send a push. See `PushRegistration` — and note that the
+    /// gateway it needs does not exist yet, which is the one piece of this app that is genuinely
+    /// waiting on something outside Xcode.
+    public func pushes() -> PushRegistration {
+        PushRegistration(client: client)
+    }
+
     /// What this account is keeping on the device, built when the screen that shows it is opened.
     ///
     /// It takes the room list with it, and not for the rooms: clearing the cache means taking the
