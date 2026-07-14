@@ -130,12 +130,12 @@
 "storage.cache.explained" = "Downloaded messages, photos, voice notes and files. These can go — they download again when you need them.";
 
 "storage.search" = "Search index";
-"storage.search.explained" = "A copy of your messages for search to read. It is why search runs on the device and your query never reaches the server.";
+"storage.search.explained" = "A copy of your messages for search to read: search runs on the device, and your query never reaches the server. Cleared along with the cache.";
 
 "storage.clear" = "Clear cache";
 "storage.clearing" = "Clearing…";
 "storage.confirm.title" = "Clear the cache?";
-"storage.confirm.body" = "The app will reload, and messages, photos and files will download again when you open them. You stay signed in: your keys and your unsent messages are untouched.";
+"storage.confirm.body" = "The app will reload. Messages, photos and files will download again when you open them, and for a while search will not find everything. You stay signed in.";
 "storage.confirm.action" = "Clear";
 "storage.cancel" = "Cancel";
 "storage.failed" = "The cache could not be cleared. Try again.";
