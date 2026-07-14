@@ -23,6 +23,7 @@ enum AppSettings {
     /// nothing fails, nothing is logged, and the new user simply inherits it.
     private static let keys = [
         AccentTheme.storageKey,
+        AccentTheme.tintsChromeKey,
         AppearanceMode.storageKey,
         QuickReaction.storageKey,
         unsavedRecoveryCode,

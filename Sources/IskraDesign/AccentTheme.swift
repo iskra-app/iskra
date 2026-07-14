@@ -21,6 +21,22 @@ public enum AccentTheme: String, CaseIterable, Identifiable, Sendable {
     /// appearance screen; `@AppStorage` on both ends keeps them in step.
     public static let storageKey = "appearance.accent"
 
+    /// Whether the accent is also spent on the *chrome*: the back chevrons, the sidebar's
+    /// selection, the switches on the settings screen, the unread badges — everything
+    /// `.tint(_:)` reaches and `\.accent` does not.
+    ///
+    /// It is a second key and not a ninth colour, because it is a second question. The accent
+    /// answers "what colour is this app"; this answers "how loudly", and the two are chosen
+    /// independently — the same green can be a green send button on monochrome chrome or a green
+    /// app throughout, and neither is a different colour.
+    ///
+    /// **Off by default, and that is an opinion, not an oversight.** A colour that is everywhere
+    /// says nothing anywhere: tinted chrome means the back arrow, the row you are standing on and
+    /// the badge counting your unread messages are all painted the same as the message you just
+    /// sent, and none of them is emphasis any more. So the app stays monochrome unless somebody
+    /// asks for this, and spends the accent only where it means something. See `IskraRootView`.
+    public static let tintsChromeKey = "appearance.tintsChrome"
+
     public var id: String { rawValue }
 
     /// The system's own colours, not seven of ours. They already carry a light and a dark
