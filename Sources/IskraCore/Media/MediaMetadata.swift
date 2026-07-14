@@ -99,9 +99,9 @@ enum MediaMetadata {
             duration = CMTimeGetSeconds(cmDuration)
         }
 
-        // The first frame serves twice: as the picture a receiver sees before the video
-        // downloads, and as the image the blurhash is taken from.
-        let frame = await firstFrame(of: asset)
+        // The still serves twice: as the picture a receiver sees before the video downloads,
+        // and as the image the blurhash is taken from.
+        let frame = await still(of: asset)
 
         let hasAudio = ((try? await asset.loadTracks(withMediaType: .audio)) ?? []).isEmpty == false
 
@@ -122,12 +122,12 @@ enum MediaMetadata {
                  thumbnailSource: nil)
     }
 
-    /// The first frame of a video already on disk, as a JPEG.
+    /// A still of a video already on disk, as a JPEG.
     ///
     /// For a clip whose sender attached no still of their own — including every video note
     /// this app sent before it learned to attach one. See `MediaLoader.thumbnail`.
-    static func firstFrame(at url: URL) async -> Data? {
-        guard let frame = await firstFrame(of: AVURLAsset(url: url)) else { return nil }
+    static func still(at url: URL) async -> Data? {
+        guard let frame = await still(of: AVURLAsset(url: url)) else { return nil }
         return jpeg(from: frame)
     }
 
@@ -138,13 +138,34 @@ enum MediaMetadata {
         return Thumbnail(data: data, width: UInt64(image.width), height: UInt64(image.height))
     }
 
-    private static func firstFrame(of asset: AVURLAsset) async -> CGImage? {
+    /// Half a second in, and deliberately not at the start.
+    ///
+    /// A phone camera does not open at the picture. It opens black, and spends a few tenths of
+    /// a second settling its exposure, and those frames go into the file like any other — so a
+    /// still taken at `.zero` was a black circle in the timeline, every time, for every video
+    /// note the app sent. The message was fine; the picture of it was a hole.
+    ///
+    /// Half a second is past that and still well inside the shortest clip anyone sends. For one
+    /// shorter than that — a hold that barely happened — the middle of it is the best there is.
+    private static func still(of asset: AVURLAsset) async -> CGImage? {
         let generator = AVAssetImageGenerator(asset: asset)
         generator.appliesPreferredTrackTransform = true
         generator.maximumSize = CGSize(width: 800, height: 800)
 
-        return try? await generator.image(at: .zero).image
+        // Snapped to the frame actually there. Left to its default tolerances the generator may
+        // answer with the nearest keyframe instead — which, in a clip this short, is the black
+        // one at zero that we are here to avoid.
+        generator.requestedTimeToleranceBefore = .zero
+        generator.requestedTimeToleranceAfter = .zero
+
+        let duration = (try? await asset.load(.duration).seconds) ?? 0
+        let seconds = min(wokenUp, duration / 2)
+
+        return try? await generator.image(at: CMTime(seconds: seconds, preferredTimescale: 600)).image
     }
+
+    /// How long the lens takes to become a picture.
+    private static let wokenUp: TimeInterval = 0.5
 
     private static func jpeg(from image: CGImage) -> Data? {
         let data = NSMutableData()

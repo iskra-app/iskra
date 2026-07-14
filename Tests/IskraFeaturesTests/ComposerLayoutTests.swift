@@ -35,14 +35,35 @@ struct ComposerLayoutTests {
         try render(draft: "", named: "composer-attaching", isAttaching: true)
     }
 
-    private func render(draft: String, named name: String, isAttaching: Bool = false) throws {
+    /// The lock pill, mid-climb and arrived.
+    ///
+    /// It hangs above the record button on exactly the arithmetic the attach menu hangs on — the
+    /// composer's own measured height, taken off the bottom edge — and that arithmetic has been
+    /// wrong before, in the way that draws a floating control straight over the field it is
+    /// supposed to float above. Same trap, same picture, so it is looked at the same way.
+    @Test("the lock pill hangs above the record button rather than over the composer")
+    func lockPillClearsTheComposer() throws {
+        try render(draft: "",
+                   named: "composer-locking",
+                   locking: LockGesture(reach: 0.5, isVisible: true))
+
+        try render(draft: "",
+                   named: "composer-locked",
+                   locking: LockGesture(reach: 1, isVisible: true, hasLocked: true))
+    }
+
+    private func render(draft: String,
+                        named name: String,
+                        isAttaching: Bool = false,
+                        locking: LockGesture = LockGesture()) throws {
         let view = MessageComposer(draft: .constant(draft),
                                    onSend: {},
                                    onChoosePhoto: {},
                                    onChooseFile: {},
-                                   isAttaching: isAttaching)
+                                   isAttaching: isAttaching,
+                                   locking: locking)
             .frame(width: 420)
-            .padding(.top, isAttaching ? 140 : 16)
+            .padding(.top, isAttaching || locking.isVisible ? 140 : 16)
             .padding([.horizontal, .bottom])
             .background(.background)
 

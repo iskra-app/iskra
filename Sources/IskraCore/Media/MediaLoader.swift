@@ -47,14 +47,14 @@ public struct MediaLoader: Sendable, Equatable {
 
         // A video note whose sender attached no still — including every one this app sent
         // before it learned to attach one, which is a good part of the user's own history.
-        // There is nowhere left to get a picture from but the video, so it is fetched and
-        // its first frame taken here, on the device. That is a whole clip downloaded for a
+        // There is nowhere left to get a picture from but the video, so it is fetched and a
+        // still taken from it here, on the device. That is a whole clip downloaded for a
         // thumbnail, and it is only ever done for a *note*: square and under a minute, so a
         // few hundred kilobytes. An ordinary video, which can be any size at all, is never
         // pulled down to draw a bubble.
         if attachment.isVideoNote {
             let file = try await file(for: attachment)
-            guard let frame = await MediaMetadata.firstFrame(at: file.url) else {
+            guard let frame = await MediaMetadata.still(at: file.url) else {
                 throw MediaError.noPicture
             }
             return frame

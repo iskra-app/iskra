@@ -81,6 +81,16 @@ public final class TimelineStore {
     /// Nil until `start()` has run.
     var liveTimeline: Timeline? { timeline }
     private var listenerHandle: TaskHandle?
+
+    /// The one ordered road from the Rust callback thread to this actor — see `open()`. The
+    /// continuation is what the listener yields into; the task is the only thing that reads it.
+    private var diffContinuation: AsyncStream<UnsafeTransfer<[TimelineDiff]>>.Continuation?
+    private var diffTask: Task<Void, Never>?
+
+    /// Whether the room is being read again after the diffs stopped making sense — see `desynced`.
+    /// It is a guard against a stampede: the batch that exposed the problem may hold twenty more
+    /// impossible indices behind it, and they are all the same one fault.
+    private var isResyncing = false
     private var sendQueueHandle: TaskHandle?
     private var roomInfoHandle: TaskHandle?
     private var items: [TimelineItem] = []
@@ -171,10 +181,38 @@ public final class TimelineStore {
         let timeline = try await room.timeline()
         self.timeline = timeline
 
-        let listener = ItemsListener { [weak self] diffs in
-            let transfer = UnsafeTransfer(value: diffs)
-            Task { @MainActor [weak self] in
-                self?.apply(diffs: transfer.value)
+        // The diffs cross to the main actor down a *queue*, and this is not a detail.
+        //
+        // Every diff the SDK sends is positional — `insert(at: 3)`, `set(at: 7)`, `remove(at: 2)` —
+        // so a batch means nothing except against the exact list the batch before it produced. The
+        // listener used to answer each callback with its own `Task { @MainActor }`, and Swift makes
+        // *no* ordering promise between separately created unstructured tasks on an actor: they are
+        // enqueued, and a later one may run first. When it did, every index in it addressed a list
+        // that did not exist yet, and `items` came apart from the timeline the SDK is holding.
+        //
+        // It came apart *silently*, which is why this survived. The index guards below swallow an
+        // out-of-range `set` or `remove` and clamp an out-of-range `insert`, so the first crooked
+        // batch neither crashed nor reset anything — it just landed a message in the wrong place
+        // and left the array permanently a little wrong, with every later index landing wrong in
+        // turn. Paginating is exactly what produces a burst of batches, which is why loading older
+        // messages was where the conversation came out shuffled.
+        //
+        // One stream, one consumer, in the order the SDK spoke. `AsyncStream` buffers without
+        // bound and hands its elements over in the order they were yielded, and the loop below is
+        // the only thing applying them.
+        let (diffs, continuation) = AsyncStream<UnsafeTransfer<[TimelineDiff]>>.makeStream()
+        diffContinuation = continuation
+
+        // No `self` in the callback: it runs on a Rust thread, and reaching a main-actor store from
+        // there is the very hop this exists to make orderly. The continuation is `Sendable` and is
+        // all it needs.
+        let listener = ItemsListener { batch in
+            continuation.yield(UnsafeTransfer(value: batch))
+        }
+
+        diffTask = Task { @MainActor [weak self] in
+            for await batch in diffs {
+                self?.apply(diffs: batch.value)
             }
         }
 
@@ -292,6 +330,14 @@ public final class TimelineStore {
         refillTask = nil
         listenerHandle?.cancel()
         listenerHandle = nil
+
+        // The queue the diffs came down, and the one task that was draining it. Finished before
+        // `items` is emptied below, so nothing can apply a diff from the timeline that is going
+        // to the list that replaces it.
+        diffContinuation?.finish()
+        diffContinuation = nil
+        diffTask?.cancel()
+        diffTask = nil
         sendQueueHandle?.cancel()
         sendQueueHandle = nil
         roomInfoHandle?.cancel()
@@ -886,17 +932,37 @@ public final class TimelineStore {
                 if !items.isEmpty { items.removeFirst() }
             case .popBack:
                 if !items.isEmpty { items.removeLast() }
+
+            // An index we do not have is not a small thing to be stepped over. It is the SDK
+            // addressing a list we are not holding — which means our copy has already come apart
+            // from its own, and every positional diff after this one lands in the wrong place too.
+            //
+            // These three used to clamp and swallow. `insert` put the item on the end instead of
+            // where it was asked to go, `set` and `remove` did nothing at all, and the array
+            // stayed quietly, permanently wrong — no crash, no log, nothing to find. That is how
+            // the reordering bug hid: a race applied two batches out of order, these guards
+            // absorbed the impossible indices that followed, and the conversation was left
+            // shuffled with no trace of why.
+            //
+            // So an impossible index now *means* something: it is the timeline saying it can no
+            // longer be trusted, and the answer to that is to go and read it again.
             case let .insert(index, value):
-                items.insert(value, at: min(Int(index), items.count))
+                let i = Int(index)
+                guard i <= items.count else { return desynced("insert at \(i) of \(items.count)") }
+                items.insert(value, at: i)
             case let .set(index, value):
                 let i = Int(index)
-                if items.indices.contains(i) { items[i] = value }
+                guard items.indices.contains(i) else { return desynced("set at \(i) of \(items.count)") }
+                items[i] = value
             case let .remove(index):
                 let i = Int(index)
-                if items.indices.contains(i) { items.remove(at: i) }
+                guard items.indices.contains(i) else { return desynced("remove at \(i) of \(items.count)") }
+                items.remove(at: i)
             case let .truncate(length):
                 let n = Int(length)
-                if n < items.count { items.removeSubrange(n...) }
+                guard n <= items.count else { return desynced("truncate to \(n) of \(items.count)") }
+                items.removeSubrange(n...)
+
             case let .reset(values):
                 items = values
             }
@@ -923,6 +989,39 @@ public final class TimelineStore {
         // conversation whose first page is still in flight. `open()` decides when the room
         // has loaded, because only it knows the page has landed.
         rebuildRows()
+    }
+
+    /// The timeline is no longer the timeline the SDK is talking about, so it is read again.
+    ///
+    /// Not `refill()`, and the difference matters. A refill answers the SDK *throwing the
+    /// conversation away* — the items we hold are right, there are simply none of them, and more
+    /// are fetched. This answers the items we hold being **wrong**, and no amount of fetching
+    /// fixes a list that is out of step: what fixes it is being told the list again. Stopping and
+    /// starting does exactly that, because a fresh listener opens with a `reset` — the SDK's own
+    /// account of what it is holding, which is the thing we have lost.
+    ///
+    /// The reader keeps their conversation throughout. `stop()` leaves `rows` alone and `open()`
+    /// holds them on screen while it fetches back to the depth they had — the reopening path,
+    /// already there for pushing a screen over a room and coming back to it.
+    ///
+    /// It is an `assertionFailure` in debug because it is a bug every time. Nothing in the
+    /// protocol makes an impossible index legitimate: if we are seeing one, either we applied
+    /// something out of order or we misunderstood a diff, and both are ours to fix. In release it
+    /// recovers rather than dies — a wrong sentence on the screen is worse than a slow one, but
+    /// a crash is worse than both.
+    private func desynced(_ what: String) {
+        guard !isResyncing else { return }
+        isResyncing = true
+
+        Log.rooms.error("Timeline out of step with the SDK: \(what, privacy: .public). Reading the room again.")
+        assertionFailure("Timeline desynchronised: \(what)")
+
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            stop()
+            try? await start()
+            isResyncing = false
+        }
     }
 
     /// The single place the SDK's items become rows, so that a reaction we know never sent is

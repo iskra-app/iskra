@@ -31,14 +31,7 @@ public struct SignInView: View {
                 }
 
                 if let problem = model.problem {
-                    Label { Text(problem) } icon: { Image(systemName: "exclamationmark.circle") }
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.leading)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        // Announced by VoiceOver the moment it appears, rather than
-                        // sitting silently until someone swipes onto it.
-                        .accessibilityAddTraits(.isStaticText)
+                    problemPanel(problem)
                 }
             }
             .padding(Theme.Spacing.generous)
@@ -48,6 +41,37 @@ public struct SignInView: View {
         .scrollBounceBehavior(.basedOnSize)
         .animation(.smooth, value: model.step)
         .animation(.smooth, value: model.problem)
+    }
+
+    /// What went wrong, said so that somebody sees it.
+    ///
+    /// It used to be a line of grey text with a small outline icon beside it — the same colour,
+    /// the same weight and very nearly the same size as the helper text under the field it was
+    /// about. On a screen whose entire job is to say either "you are in" or "that did not work",
+    /// the second answer was the quietest thing on it: people typed a wrong password, saw nothing
+    /// change, and typed it again.
+    ///
+    /// So it is red, it is filled, it stands on a panel of its own, and it arrives from above
+    /// rather than fading in — a thing that appears where nothing was is a thing the eye goes to.
+    /// It is *not* glass and not a banner over the form: it is content, it is about the field
+    /// directly above it, and it belongs in the layout beside it rather than floating over it.
+    private func problemPanel(_ problem: LocalizedStringResource) -> some View {
+        Label {
+            Text(problem)
+        } icon: {
+            Image(systemName: "exclamationmark.triangle.fill")
+        }
+        .font(.callout.weight(.medium))
+        .foregroundStyle(.red)
+        .multilineTextAlignment(.leading)
+        .padding(Theme.Spacing.normal)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.bubble, style: .continuous)
+            .fill(.red.opacity(Theme.Backdrop.wash)))
+        .transition(.move(edge: .top).combined(with: .opacity))
+        // Announced by VoiceOver the moment it appears, rather than sitting silently until
+        // someone swipes onto it.
+        .accessibilityAddTraits(.isStaticText)
     }
 
     private var header: some View {

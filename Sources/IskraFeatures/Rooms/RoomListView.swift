@@ -25,6 +25,7 @@ public struct RoomListView: View {
     /// Sign-out unwinds the whole app, not just this screen, so the decision belongs to
     /// whoever owns the session — here it is only reported.
     var onSignOut: () -> Void
+    var onClearedCache: () -> Void
 
     /// Whether this list is a column beside the conversation rather than the whole screen.
     ///
@@ -45,12 +46,14 @@ public struct RoomListView: View {
                 selectedRoomID: Binding<String?>,
                 selectedEventID: Binding<String?> = .constant(nil),
                 isSidebar: Bool,
-                onSignOut: @escaping () -> Void) {
+                onSignOut: @escaping () -> Void,
+                onClearedCache: @escaping () -> Void) {
         self.session = session
         _selectedRoomID = selectedRoomID
         _selectedEventID = selectedEventID
         self.isSidebar = isSidebar
         self.onSignOut = onSignOut
+        self.onClearedCache = onClearedCache
     }
 
     public var body: some View {
@@ -99,7 +102,10 @@ public struct RoomListView: View {
             // In a sidebar the system pushes without giving the pushed screen a way back,
             // so settings has to draw its own. On iPhone it must not — there is already
             // one in the corner.
-            SettingsView(session: session, onSignOut: onSignOut, showsBackButton: isSidebar)
+            SettingsView(session: session,
+                         onSignOut: onSignOut,
+                         onClearedCache: onClearedCache,
+                         showsBackButton: isSidebar)
         }
         // A sheet, not a push: creating a chat is a question with a Cancel, and the answer
         // to it replaces what is *behind* this column — so it is a thing you put down, not

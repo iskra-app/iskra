@@ -36,9 +36,31 @@ public final class RoomListStore {
     /// anything on.
     public var failure: RoomActionFailure?
 
+    /// How long the sync service gets to shut down before it is left to its own devices. Short:
+    /// nobody is waiting on the answer, they are waiting on the sign-out this is in the way of.
+    private static let stopTimeout: Duration = .seconds(5)
+
     private let client: Client
     private var syncService: SyncService?
     private var roomList: RoomList?
+
+    /// The one ordered road from the Rust callback thread to this actor — see `start()`.
+    private var entriesContinuation: AsyncStream<UnsafeTransfer<[RoomListEntriesUpdate]>>.Continuation?
+    private var entriesTask: Task<Void, Never>?
+
+    /// Whether the list is being asked for again after the diffs stopped making sense — see
+    /// `desynced`. One fault can arrive as a batch of twenty impossible indices; it is still one.
+    private var isResyncing = false
+
+    /// Every room you have not left. Named once, because it is set twice — when the list is built,
+    /// and again when it has to be asked for from scratch — and two spellings of the same filter
+    /// would be two lists that differ only when somebody forgets to change both.
+    private static let filter: RoomListEntriesDynamicFilterKind = .all(filters: [.nonLeft])
+
+    /// The sync service, for the one caller outside this store that has to have it: clearing the
+    /// cache takes the service down and brings it back up, and this is the only place one exists.
+    /// Internal, and read-only — the SDK object still does not leave `IskraCore`.
+    var currentSyncService: SyncService? { syncService }
     private var entriesResult: RoomListEntriesWithDynamicAdaptersResult?
 
     /// Keeps the previews honest about messages that have not left yet — see `start()`.
@@ -79,10 +101,23 @@ public final class RoomListStore {
         let list = try await service.roomListService().allRooms()
         roomList = list
 
-        let listener = EntriesListener { [weak self] diffs in
-            let transfer = UnsafeTransfer(value: diffs)
-            Task { @MainActor [weak self] in
-                self?.apply(diffs: transfer.value)
+        // One ordered queue, for the same reason as the timeline's — see `TimelineStore.open()`,
+        // where this bug was actually caught. A room-list diff is positional too (`insert(3, room)`,
+        // `remove(1)`), and a `Task { @MainActor }` per callback lets two batches from the SDK be
+        // applied in the order the executor felt like rather than the order they were sent. Nothing
+        // in this store was ever reported wrong, and that is not evidence: initial sync is a burst
+        // of batches, and a list that comes out with one conversation in the wrong place looks
+        // exactly like a list that is sorted by something you have misremembered.
+        let (diffs, continuation) = AsyncStream<UnsafeTransfer<[RoomListEntriesUpdate]>>.makeStream()
+        entriesContinuation = continuation
+
+        let listener = EntriesListener { batch in
+            continuation.yield(UnsafeTransfer(value: batch))
+        }
+
+        entriesTask = Task { @MainActor [weak self] in
+            for await batch in diffs {
+                self?.apply(diffs: batch.value)
             }
         }
 
@@ -96,7 +131,7 @@ public final class RoomListStore {
         // room in the store rather than every room you are *in*. `nonLeft` is the SDK's own name
         // for that distinction, and an invitation you have not answered yet is still not left,
         // so this hides nothing the user has still to decide about.
-        _ = result.controller().setFilter(kind: .all(filters: [.nonLeft]))
+        _ = result.controller().setFilter(kind: Self.filter)
 
         // The second source of truth, and the one the list used to be missing.
         //
@@ -147,10 +182,24 @@ public final class RoomListStore {
         entriesHandle?.cancel()
         entriesHandle = nil
 
+        // The queue the diffs came down, and the task draining it. `hasStopped` above still stands
+        // guard over anything already in flight — this only shuts the road.
+        entriesContinuation?.finish()
+        entriesContinuation = nil
+        entriesTask?.cancel()
+        entriesTask = nil
+
         sendQueueHandle?.cancel()
         sendQueueHandle = nil
 
-        await syncService?.stop()
+        // Bounded, and for the same reason `logout` is: this is on the path out of the account,
+        // and the way out of an account must not depend on the network being well. A sync service
+        // that will not stop used to hold the whole sign-out, which held the whole app.
+        if let syncService {
+            _ = try? await withTimeout(Self.stopTimeout) {
+                await syncService.stop()
+            }
+        }
 
         syncService = nil
         roomList = nil
@@ -179,24 +228,63 @@ public final class RoomListStore {
                 if !orderedRooms.isEmpty { orderedRooms.removeFirst() }
             case .popBack:
                 if !orderedRooms.isEmpty { orderedRooms.removeLast() }
+            // An index we do not have — the same fault, and the same refusal to paper over it, as
+            // in `TimelineStore.apply`. Our copy of the list is no longer the list the SDK is
+            // describing, and a clamped insert or a swallowed remove would leave it wrong forever
+            // while looking perfectly healthy: one conversation quietly in the wrong place, which
+            // reads as a list sorted by something you have misremembered rather than as a bug.
             case let .insert(index, value):
-                let i = min(Int(index), orderedRooms.count)
+                let i = Int(index)
+                guard i <= orderedRooms.count else {
+                    return desynced("insert at \(i) of \(orderedRooms.count)")
+                }
                 orderedRooms.insert(value, at: i)
             case let .set(index, value):
                 let i = Int(index)
-                if orderedRooms.indices.contains(i) { orderedRooms[i] = value }
+                guard orderedRooms.indices.contains(i) else {
+                    return desynced("set at \(i) of \(orderedRooms.count)")
+                }
+                orderedRooms[i] = value
             case let .remove(index):
                 let i = Int(index)
-                if orderedRooms.indices.contains(i) { orderedRooms.remove(at: i) }
+                guard orderedRooms.indices.contains(i) else {
+                    return desynced("remove at \(i) of \(orderedRooms.count)")
+                }
+                orderedRooms.remove(at: i)
             case let .truncate(length):
                 let n = Int(length)
-                if n < orderedRooms.count { orderedRooms.removeSubrange(n...) }
+                guard n <= orderedRooms.count else {
+                    return desynced("truncate to \(n) of \(orderedRooms.count)")
+                }
+                orderedRooms.removeSubrange(n...)
+
             case let .reset(values):
                 orderedRooms = values
             }
         }
 
         scheduleRebuild()
+    }
+
+    /// The list is no longer the list the SDK is describing, so it is asked for again.
+    ///
+    /// Cheaper than the timeline's answer to the same problem, and only because this store has
+    /// somewhere cheaper to go: setting the filter again makes the dynamic adapter re-emit its
+    /// entries as a `reset`, which is the SDK's own account of the list — the thing we have lost.
+    /// The sync service is not touched, no room handle is rebuilt, and the screen is not emptied:
+    /// `reset` replaces `orderedRooms` wholesale and the summaries are rebuilt from it.
+    ///
+    /// An `assertionFailure` in debug for the same reason as the timeline's: there is no index the
+    /// SDK is entitled to send us that we cannot hold, so if we cannot hold one, it is our bug.
+    private func desynced(_ what: String) {
+        guard !isResyncing, let entriesResult else { return }
+        isResyncing = true
+
+        Log.rooms.error("Room list out of step with the SDK: \(what, privacy: .public). Asking for it again.")
+        assertionFailure("Room list desynchronised: \(what)")
+
+        _ = entriesResult.controller().setFilter(kind: Self.filter)
+        isResyncing = false
     }
 
     /// Coalesces a burst of diffs into one rebuild — without ever letting the burst prevent one.

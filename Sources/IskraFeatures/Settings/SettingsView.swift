@@ -28,6 +28,10 @@ struct SettingsView: View {
     let session: UserSession
     var onSignOut: () -> Void
 
+    /// Emptying the cache leaves the SDK's client unusable, so the app has to build a new one —
+    /// see `StorageStore.clearCache`. Only the root of the app can, which is where this goes.
+    var onClearedCache: () -> Void
+
     /// What is in the name field, which is not the same thing as what the user is called.
     /// The name is sent when the field is *left*, not on every keystroke — the same
     /// arrangement as the room's name in `RoomInfoView`, and there is no Save button here
@@ -48,6 +52,7 @@ struct SettingsView: View {
     /// `navigationDestination` below.
     private enum Destination: Hashable {
         case encryption
+        case storage
     }
 
     /// Whether this screen has to draw its own way out.
@@ -91,6 +96,10 @@ struct SettingsView: View {
                     Label(Strings.Settings.encryption, systemImage: "lock")
                 }
 
+                NavigationLink(value: Destination.storage) {
+                    Label(Strings.Settings.storage, systemImage: "internaldrive")
+                }
+
                 unbuilt(Strings.Settings.notifications, systemImage: "bell")
             } footer: {
                 Text(Strings.Settings.moreSoon)
@@ -117,6 +126,11 @@ struct SettingsView: View {
             switch destination {
             case .encryption:
                 EncryptionView(recovery: session.recovery(), deviceID: session.deviceID)
+            case .storage:
+                // Built here, on the push, for the same reason as the encryption screen above:
+                // a `NavigationLink` with a destination closure builds it on every pass of this
+                // body, and this body re-runs on every keystroke in the name field.
+                StorageView(storage: session.storage(), onCleared: onClearedCache)
             }
         }
         // The field follows the session while it is not being typed in — the name can

@@ -79,6 +79,16 @@ struct MessageComposer: View {
     var onFinishVoice: () -> Void = {}
     var onCancelVoice: () -> Void = {}
 
+    /// The swipe up, reported outward on every movement of the finger and not merely when it
+    /// arrives.
+    ///
+    /// The composer draws its own `RecordLock` from this and would need no callback at all, but
+    /// for the camera: a video note puts a full-screen overlay over the composer, so the pill the
+    /// thumb is climbing towards is behind a blur, and the *screen* has to hand the same value to
+    /// `VideoNoteComposer` to be redrawn above the shutter. The gesture stays here, where the
+    /// finger is. Only its state of play travels.
+    var onLockGesture: (LockGesture) -> Void = { _ in }
+
     /// What is being recorded right now, if anything. The composer draws it — a voice message
     /// has no sheet and no camera to put on one, so the recording *is* the composer for as long
     /// as it lasts.
@@ -121,11 +131,13 @@ struct MessageComposer: View {
          onStartVoice: @escaping () -> Void = {},
          onFinishVoice: @escaping () -> Void = {},
          onCancelVoice: @escaping () -> Void = {},
+         onLockGesture: @escaping (LockGesture) -> Void = { _ in },
          voice: VoiceRecording? = nil,
          onChoosePhoto: @escaping () -> Void,
          onChooseFile: @escaping () -> Void,
          onChooseLocation: @escaping () -> Void = {},
-         isAttaching: Bool = false) {
+         isAttaching: Bool = false,
+         locking: LockGesture = LockGesture()) {
         _draft = draft
         self.context = context
         self.onCancelContext = onCancelContext
@@ -137,11 +149,13 @@ struct MessageComposer: View {
         self.onStartVoice = onStartVoice
         self.onFinishVoice = onFinishVoice
         self.onCancelVoice = onCancelVoice
+        self.onLockGesture = onLockGesture
         self.voice = voice
         self.onChoosePhoto = onChoosePhoto
         self.onChooseFile = onChooseFile
         self.onChooseLocation = onChooseLocation
         _isAttaching = State(initialValue: isAttaching)
+        _locking = State(initialValue: locking)
     }
 
     @FocusState private var isFocused: Bool
@@ -181,11 +195,18 @@ struct MessageComposer: View {
                     if let voice {
                         RecordingStrip(elapsed: voice.elapsed,
                                        waveform: voice.waveform,
-                                       isHolding: hold == .holding,
                                        onCancel: onCancelVoice)
-                            .transition(.opacity)
+                            // Out by shrinking as it fades, and that is not decoration: sending and
+                            // cancelling both simply *stop* the recorder, and the strip was
+                            // vanishing between one frame and the next — a minute of somebody's
+                            // voice disappearing with less ceremony than a keystroke, and no way
+                            // to tell the send from the cancel by looking. The animation that
+                            // drives this is on the stack below; the transition here is only what
+                            // it does with it.
+                            .transition(.scale(scale: 0.94).combined(with: .opacity))
                     } else {
                         TextField(String(app: Strings.Room.composerPlaceholder), text: $draft, axis: .vertical)
+                            .transition(.opacity)
                             .textFieldStyle(.plain)
                             .lineLimit(1...5)
                             .focused($isFocused)
@@ -222,6 +243,11 @@ struct MessageComposer: View {
                     }
                 }
             }
+            // A recording beginning and a recording ending are the two moments this bar changes
+            // shape, and both were instantaneous. Scoped to whether there *is* one — not to the
+            // recording itself, which changes ten times a second as the waveform grows, and
+            // animating the composer on each of those would set it breathing.
+            .animation(.smooth(duration: 0.25), value: voice == nil)
             .padding(.horizontal, Theme.Spacing.normal)
             .padding(.vertical, Theme.Spacing.close)
             // How tall the composer actually is right now — one line, or five. Measured,
@@ -259,11 +285,48 @@ struct MessageComposer: View {
                 }
             }
         }
+        // Above the record button, outside the `GlassEffectContainer` and deliberately so: the
+        // pill is glass, and glass placed *inside* that container is gathered into the container's
+        // one surface and drawn in the container's own pass — which is how the attach options
+        // learned to appear over the conversation when they were supposed to be invisible. The
+        // pill has nothing to morph into and nothing to morph out of. It wants no part of it.
+        //
+        // Lifted by the composer's own measured height, the same arithmetic the attach options
+        // use, and centred over the button by taking exactly that button's width off the trailing
+        // edge.
+        .overlay(alignment: .bottomTrailing) {
+            if locking.isVisible {
+                RecordLock(gesture: locking)
+                    .frame(width: Theme.Size.composerControl)
+                    .padding(.trailing, Theme.Spacing.normal)
+                    .offset(y: -(height + Theme.Spacing.close))
+                    .transition(.scale(scale: 0.4, anchor: .bottom).combined(with: .opacity))
+            }
+        }
         .animation(.smooth(duration: 0.2), value: isEmpty)
         .animation(.smooth(duration: 0.2), value: context)
+        .animation(.smooth(duration: 0.2), value: locking.isVisible)
+        // The phone answering the finger. There is nothing else that can: a hold that has taken
+        // begins a recording the user cannot see (a video note's camera takes a moment to wake,
+        // and a spoken message has no camera at all), so without this the first half-second of
+        // every recording is the user wondering whether they are recording.
+        //
+        // Three moments and three different taps, because they mean three different things — the
+        // recording began, the swipe caught, the recording was thrown away. Counters and not
+        // booleans: `sensoryFeedback` fires on a *change*, and a second recording started after a
+        // first would set an already-true flag to true and be felt by nobody.
+        //
+        // Heavy and at full intensity. A medium tap is what a button gives you, and the button is
+        // not what happened here — the hold took, and the phone started listening. It should land
+        // like the shutter of a camera, not like a keypress.
+        .sensoryFeedback(.impact(weight: .heavy, intensity: 1), trigger: beats.began)
+        .sensoryFeedback(.success, trigger: beats.locked)
+        .sensoryFeedback(.impact(flexibility: .rigid, intensity: 0.9), trigger: beats.cancelled)
         .onDisappear {
             arming?.cancel()
             arming = nil
+            unlatch?.cancel()
+            unlatch = nil
         }
         // Starting to type is an answer to "what do you want to attach?" — it is "nothing".
         .onChange(of: isFocused) { _, focused in
@@ -355,10 +418,34 @@ struct MessageComposer: View {
     /// besides the send button: a live microphone is the only thing here the user can forget is
     /// happening.
     private var recordButton: some View {
-        icon(glyph, isPrimary: voice != nil, tint: .red)
+        // The gesture is hung on a plain fixed-size shape, and the button is *drawn into* it —
+        // rather than the gesture being hung on the button, which is where it used to be and is
+        // the obvious place for it.
+        //
+        // It cannot live there. `icon` chooses between two branches — tinted glass while a
+        // recording runs, plain glass otherwise — and a SwiftUI `if` is a change of identity, not
+        // a change of appearance: when the recording starts and the button turns red, the old view
+        // is destroyed and a new one is built in its place. Any gesture attached to it is
+        // destroyed with it, mid-hold, with the finger still down. `onEnded` then never arrives
+        // for the touch that is currently happening, which is the touch that was going to send the
+        // message.
+        //
+        // This shape is the same shape in every state, so it survives everything drawn on top of
+        // it — and the hold survives with it.
+        Color.clear
+            .frame(width: Theme.Size.composerControl, height: Theme.Size.composerControl)
+            .overlay { icon(glyph, isPrimary: voice != nil, tint: .red) }
+            .contentShape(.circle)
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { value in
+                        // Kept on every movement, whatever the hold is doing with it — including
+                        // during `.pressing`, when the gesture has nothing to say about it yet.
+                        // That is the point: see the arming task below. Written through the box
+                        // rather than into `@State`, because a `@State` written here re-renders
+                        // the composer on every point of a held thumb's drift — see `Travel`.
+                        travel.translation = value.translation
+
                         switch hold {
                         case .none:
                             hold = .pressing
@@ -373,6 +460,21 @@ struct MessageComposer: View {
                                 guard !Task.isCancelled, hold == .pressing else { return }
                                 hold = .holding
                                 start()
+                                beats.began += 1
+                                publish(LockGesture(isVisible: true))
+
+                                // The finger has been moving for a quarter of a second while we
+                                // worked out whether it meant anything, and it does not wait for
+                                // us to catch up: a brisk hold-and-flick up arrives at the top of
+                                // its swipe *before* this task runs, and then stops. The gesture
+                                // is over as far as the thumb is concerned, `onChanged` will
+                                // never fire again — and the recording it started a moment ago is
+                                // not locked, so letting go sends it. Which is exactly what the
+                                // user was swiping up to prevent.
+                                //
+                                // So the swipe is read once more, now, against where the finger
+                                // actually is rather than where it was when it came down.
+                                steer(travel.translation)
                             }
 
                         case .pressing:
@@ -381,18 +483,7 @@ struct MessageComposer: View {
                             break
 
                         case .holding:
-                            // Left throws it away, up carries on without the finger. Left is
-                            // here rather than left to the strip's Cancel button, because that
-                            // button cannot be reached without lifting the finger — and lifting
-                            // the finger is what *sends*. A recording being held has to have a
-                            // way out that does not go through releasing it.
-                            if value.translation.width < -Theme.Size.gestureReach {
-                                hold = .over
-                                cancel()
-                            } else if value.translation.height < -Theme.Size.gestureReach {
-                                hold = .over
-                                lock()
-                            }
+                            steer(value.translation)
 
                         case .over:
                             // Already cancelled or locked. The finger is still on the glass and
@@ -403,8 +494,14 @@ struct MessageComposer: View {
                     .onEnded { _ in
                         let ending = hold
                         hold = .none
+                        travel.translation = .zero
                         arming?.cancel()
                         arming = nil
+
+                        // A hold that ended in a swipe has already put the pill where it belongs
+                        // — gone, if the swipe cancelled; showing its shut lock, if it caught —
+                        // and clearing it here would wipe out the one confirmation the user gets.
+                        if ending != .over { publish(LockGesture()) }
 
                         switch ending {
                         case .pressing:
@@ -491,6 +588,69 @@ struct MessageComposer: View {
         }
     }
 
+    /// Where the thumb is going, and whether it has got there.
+    ///
+    /// Called on every movement of a finger that is holding a live recording, and once more the
+    /// moment the recording begins — see the arming task. Left throws the recording away, up
+    /// carries it on without the finger, and everything short of either is the *reach*: how far
+    /// along one of those two roads the thumb has come, which is the number `RecordLock` draws.
+    ///
+    /// Left is handled here rather than left to the strip's Cancel button because that button
+    /// cannot be reached without lifting the finger — and lifting the finger is what *sends*. A
+    /// recording being held has to have a way out that does not go through releasing it.
+    private func steer(_ translation: CGSize) {
+        guard hold == .holding else { return }
+
+        let up = min(1, max(0, -translation.height) / Theme.Size.gestureReach)
+        let left = min(1, max(0, -translation.width) / Theme.Size.gestureReach)
+
+        // Cancel is asked first, and the reach follows whichever way the thumb is actually going,
+        // so that a swipe left along a slightly wonky line does not fill the lock pill on its way
+        // out. A thumb travelling left is leaving; it should not be shown as nearly arriving.
+        if left >= 1 {
+            hold = .over
+            publish(LockGesture())
+            beats.cancelled += 1
+            cancel()
+            return
+        }
+
+        if up >= 1 {
+            hold = .over
+            publish(LockGesture(reach: 1, isVisible: true, hasLocked: true))
+            beats.locked += 1
+            latch()
+            lock()
+            return
+        }
+
+        publish(LockGesture(reach: up > left ? up : 0, isVisible: true))
+    }
+
+    /// Kept here and reported out to the screen in the same breath — the composer draws its own
+    /// pill from it, and the camera overlay, which is covering that pill with a blur, needs the
+    /// same value to draw its own.
+    private func publish(_ gesture: LockGesture) {
+        guard locking != gesture else { return }
+        locking = gesture
+        onLockGesture(gesture)
+    }
+
+    /// Having locked, says so — for a second, and then it goes.
+    ///
+    /// The lock is otherwise entirely invisible: a locked recording and a held one look exactly
+    /// alike, and the user has just made a movement whose whole purpose was to change which of
+    /// the two they are in. So the pill stays behind with its lock shut. Long enough to be seen;
+    /// short enough to be gone before the thumb comes back down for the send button beneath it.
+    private func latch() {
+        unlatch?.cancel()
+        unlatch = Task {
+            try? await Task.sleep(for: .seconds(1))
+            guard !Task.isCancelled else { return }
+            publish(LockGesture())
+        }
+    }
+
     /// Swiped up: the recording carries on without the finger.
     ///
     /// Only the video note has anything to hear about it — see the callbacks above. A spoken
@@ -532,6 +692,53 @@ struct MessageComposer: View {
     /// still down — a task that outlives the composer would start a recording into a room the
     /// user has already left.
     @State private var arming: Task<Void, Never>?
+
+    /// Where the finger has got to, kept from one `onChanged` to the next. A `DragGesture` hands
+    /// its translation to whoever is listening at the time, and the arming task is not listening
+    /// at the time — it needs to know, a quarter of a second late, where the finger went while it
+    /// was making up its mind.
+    ///
+    /// A box, and not a `@State CGSize`, and the difference is the whole of a bug. A finger held
+    /// still on a button is never actually still: `onChanged` fires on every point of drift, so a
+    /// plain `@State` written from there re-renders the composer *continuously, throughout the
+    /// hold* — and a composer that re-renders under a live gesture is a composer that can take
+    /// that gesture away. The record button switches branch when the recording starts (see
+    /// `icon`), SwiftUI rebuilds it, the `DragGesture` goes with it, and `onEnded` never comes.
+    /// Nothing then ends the recording: it looked, precisely, like a voice message that had
+    /// locked itself the instant it began and could only be sent by tapping the button again.
+    ///
+    /// Nobody draws the finger's position. It has no business in the view's state, and the box is
+    /// what keeps it out: writing through a reference changes no `@State` value, so SwiftUI has
+    /// nothing to invalidate and the gesture is left alone to finish what it started.
+    @State private var travel = Travel()
+
+    @MainActor
+    final class Travel {
+        var translation: CGSize = .zero
+    }
+
+    /// The swipe up, as the pill draws it — and as the screen passes it to the camera. Written in
+    /// exactly one place, `publish`, so that the two copies can never disagree.
+    ///
+    /// Settable at birth for the same reason `isAttaching` is, and it is worth saying twice: the
+    /// app never builds a composer mid-swipe, and `ComposerLayoutTests` does — because the pill
+    /// hangs above the composer on the same arithmetic the attach menu uses, and that arithmetic
+    /// has been wrong before, in a way that drew a floating control straight over the field it
+    /// floats above.
+    @State private var locking: LockGesture
+
+    /// What takes the confirmation back down again a second after the lock caught. See `latch`.
+    @State private var unlatch: Task<Void, Never>?
+
+    /// The three things the phone taps back at, counted rather than flagged — see the feedback
+    /// modifiers on the body for why.
+    private struct Beats: Equatable {
+        var began = 0
+        var locked = 0
+        var cancelled = 0
+    }
+
+    @State private var beats = Beats()
 
     // MARK: - Attaching
 

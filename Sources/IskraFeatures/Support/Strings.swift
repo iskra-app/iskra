@@ -117,6 +117,10 @@ public enum Strings {
         /// be worse than either: the old behaviour at least told you a message had come.
         public static let jumpToNewest = LocalizedStringResource("room.jumpToNewest", bundle: bundle)
 
+        /// The round button in the corner that takes you to the bottom of a room you have read a
+        /// long way up. Read aloud only — the arrow in it is the whole of what it says on screen.
+        public static let scrollToBottom = LocalizedStringResource("room.scrollToBottom", bundle: bundle)
+
         /// Somebody is writing. In a one-to-one chat their name is already the title of the screen,
         /// so this does not repeat it.
         public static let typing = LocalizedStringResource("room.typing", bundle: bundle)
@@ -484,7 +488,34 @@ public enum Strings {
         public static let appearance = LocalizedStringResource("settings.appearance", bundle: bundle)
         /// Where the emoji a double tap sends is chosen — see `QuickReaction`.
         public static let reactions = LocalizedStringResource("settings.reactions", bundle: bundle)
+        public static let storage = LocalizedStringResource("settings.storage", bundle: bundle)
         public static let moreSoon = LocalizedStringResource("settings.moreSoon", bundle: bundle)
+    }
+
+    /// What the app is keeping on the device, and the one part of it the user can throw away.
+    ///
+    /// Each kind is a name *and* a sentence, because the names alone do not answer the question
+    /// somebody opens this screen with: which of these can I lose, and what does losing it cost?
+    /// A row that says "Cache — 412 MB" and nothing else invites the wrong press.
+    public enum Storage {
+        public static let title = LocalizedStringResource("storage.title", bundle: bundle)
+        public static let total = LocalizedStringResource("storage.total", bundle: bundle)
+        public static let measuring = LocalizedStringResource("storage.measuring", bundle: bundle)
+
+        public static let session = LocalizedStringResource("storage.session", bundle: bundle)
+        public static let sessionExplained = LocalizedStringResource("storage.session.explained", bundle: bundle)
+        public static let cache = LocalizedStringResource("storage.cache", bundle: bundle)
+        public static let cacheExplained = LocalizedStringResource("storage.cache.explained", bundle: bundle)
+        public static let search = LocalizedStringResource("storage.search", bundle: bundle)
+        public static let searchExplained = LocalizedStringResource("storage.search.explained", bundle: bundle)
+
+        public static let clear = LocalizedStringResource("storage.clear", bundle: bundle)
+        public static let clearing = LocalizedStringResource("storage.clearing", bundle: bundle)
+        public static let confirmTitle = LocalizedStringResource("storage.confirm.title", bundle: bundle)
+        public static let confirmBody = LocalizedStringResource("storage.confirm.body", bundle: bundle)
+        public static let confirmAction = LocalizedStringResource("storage.confirm.action", bundle: bundle)
+        public static let cancel = LocalizedStringResource("storage.cancel", bundle: bundle)
+        public static let failed = LocalizedStringResource("storage.failed", bundle: bundle)
     }
 
     /// Choosing what a double tap on a message leaves behind.
@@ -497,8 +528,32 @@ public enum Strings {
 
     /// Choosing what the app is painted in.
     public enum Appearance {
+        public static let theme = LocalizedStringResource("appearance.theme", bundle: bundle)
+        public static let themeHelp = LocalizedStringResource("appearance.themeHelp", bundle: bundle)
+
+        /// Light, dark, or the system's own. A `switch` with no `default`, for the same reason
+        /// the colours below have none: a fourth mode should stop the build, not ship unnamed.
+        public static func mode(_ mode: AppearanceMode) -> LocalizedStringResource {
+            switch mode {
+            case .system: LocalizedStringResource("appearance.mode.system", bundle: bundle)
+            case .light: LocalizedStringResource("appearance.mode.light", bundle: bundle)
+            case .dark: LocalizedStringResource("appearance.mode.dark", bundle: bundle)
+            }
+        }
+
         public static let accent = LocalizedStringResource("appearance.accent", bundle: bundle)
         public static let accentHelp = LocalizedStringResource("appearance.accentHelp", bundle: bundle)
+
+        /// Three lines of a conversation that never happened, so that a colour can be judged as
+        /// what it will actually be — the fill behind everything the user ever says — rather than
+        /// as a circle on a settings screen. The middle one is theirs, and is the one painted.
+        public static let previewAsk = LocalizedStringResource("appearance.previewAsk", bundle: bundle)
+        public static let previewAnswer = LocalizedStringResource("appearance.previewAnswer", bundle: bundle)
+        public static let previewReply = LocalizedStringResource("appearance.previewReply", bundle: bundle)
+
+        /// What the whole little exchange is called, for VoiceOver, which should hear one thing
+        /// and not be walked through an invented conversation on its way to the colours.
+        public static let previewLabel = LocalizedStringResource("appearance.previewLabel", bundle: bundle)
 
         /// The name of a colour, which is the only thing a swatch can be read out as: a
         /// circle of colour has nothing for VoiceOver to say, and "button" is not an answer.
