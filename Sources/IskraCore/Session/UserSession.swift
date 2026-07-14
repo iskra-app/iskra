@@ -300,6 +300,18 @@ public final class UserSession {
         await authentication.signOut(client: client)
     }
 
+    /// The app has gone into the user's pocket, or come back out of it.
+    ///
+    /// Only the sync loop is affected, and only on iOS — see `RoomListStore.pause()`, which explains
+    /// why the reason is the notification extension rather than the battery.
+    public func enteredBackground() async {
+        await roomList.pause()
+    }
+
+    public func enteredForeground() async {
+        await roomList.resume()
+    }
+
     /// Everything this session handed out that is still listening to the SDK.
     ///
     /// Called from both ways out — the user signing out, and the server having already signed them
