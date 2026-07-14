@@ -168,7 +168,8 @@ struct SettingsView: View {
             case .encryption:
                 EncryptionView(recovery: session.recovery,
                                verification: session.verification,
-                               deviceID: session.deviceID)
+                               deviceID: session.deviceID,
+                               hasDeviceManagement: devicesURL != nil)
             case .storage:
                 // Built here, on the push, for the same reason as the encryption screen above:
                 // a `NavigationLink` with a destination closure builds it on every pass of this

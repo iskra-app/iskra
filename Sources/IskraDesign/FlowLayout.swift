@@ -10,7 +10,9 @@ import SwiftUI
 ///
 /// `alignment` is which edge each row is pushed to — the trailing edge under your own
 /// messages, the leading edge under everyone else's, so the emoji line up with the bubble
-/// they belong to rather than floating off its corner.
+/// they belong to rather than floating off its corner. And `.center`, for the one place that
+/// belongs to no bubble at all: the emoji you compare against another device, which are the
+/// whole subject of their screen and have no margin to hang off.
 public struct FlowLayout: Layout {
     private let spacing: CGFloat
     private let alignment: HorizontalAlignment
@@ -37,9 +39,10 @@ public struct FlowLayout: Layout {
 
         for row in rows(of: subviews, within: bounds.width) {
             // The row's own leftover width is what alignment spends: nothing at the
-            // leading edge, all of it at the trailing edge.
+            // leading edge, all of it at the trailing edge, half of it either side in the middle.
             var x = switch alignment {
             case .trailing: bounds.maxX - row.width
+            case .center: bounds.minX + (bounds.width - row.width) / 2
             default: bounds.minX
             }
 

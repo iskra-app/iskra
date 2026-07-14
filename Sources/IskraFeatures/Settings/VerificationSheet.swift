@@ -193,12 +193,16 @@ struct VerificationSheet: View {
             // Wrapped rather than in one row: seven emoji at a size worth looking at do not fit
             // across a phone, and shrinking them to make them fit would be defeating the purpose of
             // the screen to preserve its layout.
-            FlowLayout(spacing: Theme.Spacing.roomy) {
+            // Centred, and on both rows when seven do not fit on one. They are the subject of the
+            // screen and belong to nothing on either side of them — left-aligned, a short second row
+            // hangs off the corner of the first and reads as a mistake rather than as a continuation.
+            FlowLayout(spacing: Theme.Spacing.roomy, alignment: .center) {
                 ForEach(Array(symbols.enumerated()), id: \.offset) { _, symbol in
                     Text(symbol)
                         .font(.system(size: Theme.Size.verificationEmoji))
                 }
             }
+            .frame(maxWidth: .infinity)
             .padding(.horizontal, Theme.Spacing.generous)
             // One element to VoiceOver, reading the seven in order: a screen reader user compares
             // them by hearing them, and seven separate stops with no context is not a comparison.
@@ -207,25 +211,38 @@ struct VerificationSheet: View {
 
             Spacer()
 
-            // Neither answer is the prominent one. See the note on the type.
+            // Neither answer is the prominent one — both are `.bordered`, and the note on the type
+            // still holds: the app does not get to make the trust-granting answer the easy one.
+            // Colour is not prominence here, it is meaning. Green agrees, red refuses, and they are
+            // the two colours everyone already reads that way without being told.
+            //
+            // Equal heights, and it takes saying so: "They don't match" is the longer sentence and
+            // wraps to two lines where "They match" does not, so left alone the two buttons came out
+            // different sizes — and a difference in size between two answers is the screen putting a
+            // thumb on the scale. `maxHeight: .infinity` on both labels makes each fill the row, and
+            // the row is as tall as the taller of them.
             HStack(spacing: Theme.Spacing.normal) {
                 Button {
                     Task { await verification.decline() }
                 } label: {
                     Text(Strings.Verification.noMatch)
-                        .frame(maxWidth: .infinity)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 .buttonStyle(.bordered)
+                .tint(.red)
 
                 Button {
                     Task { await verification.approve() }
                 } label: {
                     Text(Strings.Verification.match)
-                        .frame(maxWidth: .infinity)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 .buttonStyle(.bordered)
-                .tint(accent.color)
+                .tint(.green)
             }
+            // Pins the row to the height of its tallest button rather than letting the two unbounded
+            // labels stretch it into whatever space the `Spacer` above has left lying around.
+            .fixedSize(horizontal: false, vertical: true)
             .controlSize(.large)
             .disabled(verification.isWorking)
             .padding(.horizontal, Theme.Spacing.generous)

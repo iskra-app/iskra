@@ -105,6 +105,26 @@ struct LocalizationTests {
         // just signed in on, and "Not verified" in red made it read as a break-in.
         (Strings.Encryption.deviceUnverified, en: "New device", ru: "Новое устройство"),
         (Strings.Encryption.thisDevice, en: "This device", ru: "Это устройство"),
+
+        // The two footers under "this device", and the reason there are two. The app used to say
+        // "your other devices are under My devices" unconditionally — on a session signed in with a
+        // password there *is* no such row, because the server hands over no account page to link to,
+        // so settings was citing a section of itself that was not there. Whichever of these is shown,
+        // it has to be true.
+        (Strings.Encryption.otherDevicesHere,
+         en: "Your other devices are under “My devices”.",
+         ru: "Остальные ваши устройства — в разделе «Мои устройства»."),
+        (Strings.Encryption.otherDevices,
+         en: "Iskra can’t show your other devices. To end a session on another device, go to your server’s website.",
+         ru: "Другие ваши устройства Iskra не показывает. Завершить сеанс на чужом устройстве можно на сайте вашего сервера."),
+
+        // "Emoji", not "pictures". They are emoji, everybody calls them emoji, and inventing a
+        // gentler word for them only makes the reader wonder what they are being protected from.
+        (Strings.Verification.compare,
+         en: "Your other device is showing the same seven emoji. Check that they match — and that they are in the same order.",
+         ru: "На другом устройстве сейчас те же семь эмодзи. Проверьте, что они совпадают, — и в том же порядке."),
+        (Strings.Verification.match, en: "They match", ru: "Совпадают"),
+        (Strings.Verification.noMatch, en: "They don’t match", ru: "Не совпадают"),
         (Strings.RoomList.Invite.accept, en: "Join", ru: "Войти"),
         (Strings.RoomList.Invite.decline, en: "Decline", ru: "Отклонить"),
         (Strings.RoomList.Invite.unattributed, en: "You have been invited", ru: "Вас приглашают в чат"),

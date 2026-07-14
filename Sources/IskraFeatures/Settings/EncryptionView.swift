@@ -42,10 +42,17 @@ struct EncryptionView: View {
 
     @State private var isVerifying = false
 
-    init(recovery: RecoveryStore, verification: VerificationStore, deviceID: String?) {
+    /// Whether settings has a "My devices" row to send the reader to — see `otherDevices`.
+    let hasDeviceManagement: Bool
+
+    init(recovery: RecoveryStore,
+         verification: VerificationStore,
+         deviceID: String?,
+         hasDeviceManagement: Bool) {
         self.recovery = recovery
         self.verification = verification
         self.deviceID = deviceID
+        self.hasDeviceManagement = hasDeviceManagement
     }
 
     var body: some View {
@@ -214,9 +221,22 @@ struct EncryptionView: View {
                 .disabled(verification.isWorking)
             }
         } footer: {
-            Text(recovery.isDeviceVerified ? Strings.Encryption.otherDevices
-                                           : Strings.Verification.why)
+            Text(otherDevices)
         }
+    }
+
+    /// The sentence under this device, once it is trusted and there is nothing left to do about it.
+    ///
+    /// It has to be told whether the "My devices" row exists, because it used to simply assert that
+    /// it did — and on a session signed in with a password there is no such row, so the app was
+    /// citing a section of its own settings that was not there. The row only appears where the
+    /// server hands over an account page, which it only does for a session obtained through the
+    /// browser; everywhere else the honest answer is the older one, which is that the other devices
+    /// are the server's business and not ours.
+    private var otherDevices: LocalizedStringResource {
+        guard recovery.isDeviceVerified else { return Strings.Verification.why }
+        return hasDeviceManagement ? Strings.Encryption.otherDevicesHere
+                                   : Strings.Encryption.otherDevices
     }
 
     /// A button's label while the request behind it is in flight. Every act on this screen

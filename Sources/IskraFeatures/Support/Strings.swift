@@ -651,6 +651,12 @@ public enum Strings {
         public static let deviceUnverified = LocalizedStringResource("encryption.deviceUnverified", bundle: bundle)
         /// Why this screen lists one device and not all of them. The honest sentence — see
         /// `ROADMAP.md`, stage 6.
+        /// What to say about the *other* devices, and there are two answers because there are two
+        /// worlds. On a server that hands over an account page there is a "My devices" row to point
+        /// at; on one that does not, there is no such row — and a footer that cited it anyway would
+        /// send the reader hunting through settings for a section that is not there. Which is
+        /// precisely what it did, until somebody went looking.
+        public static let otherDevicesHere = LocalizedStringResource("encryption.otherDevicesHere", bundle: bundle)
         public static let otherDevices = LocalizedStringResource("encryption.otherDevices", bundle: bundle)
     }
 
