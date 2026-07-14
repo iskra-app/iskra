@@ -176,6 +176,12 @@ public final class RoomListStore {
     public func stop() async {
         hasStopped = true
 
+        // Anything already in flight belongs to the account we are leaving. Cancelling a task does
+        // not reach one that is awaiting inside the SDK, and the one that matters here is the
+        // rebuild — see `scheduleRebuild`, whose tail used to clear a registration it no longer
+        // owned.
+        generation += 1
+
         rebuildTask?.cancel()
         rebuildTask = nil
 
@@ -205,6 +211,15 @@ public final class RoomListStore {
         roomList = nil
         entriesResult = nil
         orderedRooms = []
+
+        // And the screen forgets the conversations. This store is only ever stopped on the way out
+        // of an account, and a list of somebody's chats — their names, their faces, the last thing
+        // each of them said — is not a thing to leave published on a signed-out app because the
+        // view tree happened to come down first. `isLoadingInitialRooms` goes back up with it: the
+        // next account starts by loading, not by showing an empty list it has not looked at yet.
+        rooms = []
+        isLoadingInitialRooms = true
+        needsRebuild = false
     }
 
     // MARK: - Diff handling
@@ -306,18 +321,41 @@ public final class RoomListStore {
         needsRebuild = true
         guard rebuildTask == nil else { return }
 
+        // Which run of the list this rebuild belongs to. `stop()` bumps it, and the tail below
+        // checks it — because the tail used to clear `rebuildTask` unconditionally, and that is
+        // one variable being cleared by somebody who no longer owns it.
+        //
+        // The way it goes wrong: `stop()` cancels the task and nils the field, but a task sitting
+        // in `await rebuildSummaries()` is not stopped by either. `start()` runs again, a diff
+        // arrives, a *new* rebuild is registered — and then the old one finally wakes up and sets
+        // `rebuildTask = nil`, erasing the registration of a task that is still running. The next
+        // diff sees nil, starts a third, and now two rebuilds are walking `orderedRooms` and
+        // writing `rooms`, with the slower one winning: the chat list settles on the older answer.
+        let generation = self.generation
+
         rebuildTask = Task { [weak self] in
             // Let the first burst settle before doing any of the async work.
-            try? await Task.sleep(for: .milliseconds(50))
+            try? await Task.sleep(for: Self.debounce)
 
-            while let self, self.needsRebuild, !Task.isCancelled {
+            while let self, self.needsRebuild, !Task.isCancelled, generation == self.generation {
                 self.needsRebuild = false
                 await self.rebuildSummaries()
             }
 
-            self?.rebuildTask = nil
+            guard let self, generation == self.generation else { return }
+            self.rebuildTask = nil
         }
     }
+
+    /// Which run of the list we are on. See `scheduleRebuild` and `stop()`.
+    private var generation = 0
+
+    /// How long a burst of diffs is allowed to settle before the summaries are rebuilt.
+    ///
+    /// Named because it is described by name in `CLAUDE.md` — "coalesces bursts of diffs with a
+    /// 50 ms debounce" — and a number that the documentation refers to and the code spells out by
+    /// hand is a number that drifts apart from its own description.
+    private static let debounce = Duration.milliseconds(50)
 
     /// A diff arrived while a rebuild was already running, so another one is owed. See
     /// `scheduleRebuild`.
