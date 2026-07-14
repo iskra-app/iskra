@@ -207,6 +207,8 @@ struct RoomInfoView: View {
     }
 
     /// The room, at the top: its picture, its name, and the one line that says what it is.
+    // MARK: - Who or what this room is
+
     private var identity: some View {
         VStack(spacing: Theme.Spacing.close) {
             picture
@@ -272,6 +274,8 @@ struct RoomInfoView: View {
     /// The topic: what the room is for, written by whoever runs it. A field for them, and a
     /// paragraph for everybody else — and nothing at all when it is empty and cannot be
     /// filled in, because an empty section is a heading over a blank.
+    // MARK: - What it is for, and what it does to your phone
+
     @ViewBuilder
     private var about: some View {
         let topic = details.topic ?? ""
@@ -338,6 +342,8 @@ struct RoomInfoView: View {
         .accessibilityElement(children: .combine)
     }
 
+    // MARK: - Who is in it
+
     @ViewBuilder
     private var members: some View {
         Section {
@@ -369,6 +375,8 @@ struct RoomInfoView: View {
             Text(Strings.Room.participants(details.memberCount))
         }
     }
+
+    // MARK: - Changing it
 
     private func setPicture(_ item: PhotosPickerItem) async {
         pickedPicture = nil
