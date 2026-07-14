@@ -89,9 +89,9 @@ struct StorageView: View {
                 Text(Strings.Storage.cacheExplained)
             }
 
-            // Its own section, and its own sentence, because it answers a different question. The
-            // button above is about space; this one is about a message somebody deleted whose words
-            // the index may still be holding — and nobody would guess that from "clear cache".
+            // Its own section, because it answers a different question. The button above is about
+            // space; this one is about a message somebody deleted whose words the index may still be
+            // holding — and nobody would guess that from "clear cache".
             Section {
                 Button(role: .destructive) {
                     isConfirmingSearchClear = true
@@ -107,8 +107,6 @@ struct StorageView: View {
                     }
                 }
                 .disabled(storage.isClearing || storage.searchIndexBytes == 0)
-            } footer: {
-                Text(Strings.Storage.clearSearchWhy)
             }
         }
         .formStyle(.grouped)

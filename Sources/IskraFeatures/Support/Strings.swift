@@ -811,19 +811,10 @@ public enum Strings {
         public static let cancel = LocalizedStringResource("storage.cancel", bundle: bundle)
         public static let failed = LocalizedStringResource("storage.failed", bundle: bundle)
 
-        /// The button that clears the index and nothing else.
-        ///
-        /// The footer used to open with the most alarming true sentence available — that a message
-        /// deleted long ago may have left its words behind in here. It is true, and it was the wrong
-        /// thing to lead with: it reads as a confession, it invites a person to wonder what *else*
-        /// the app has kept, and it does that on a settings screen where nothing is wrong and nobody
-        /// came looking for a fright. The overwhelmingly common reason to press this is disk space.
-        ///
-        /// So the footer now says what the button does — frees space, and the index rebuilds itself,
-        /// so search goes quiet on old messages for a while. Nothing here is a lie by omission: the
-        /// button still wipes the index, which is still the way to take those words back.
+        /// The button that clears the index and nothing else. It carries no footer: the row above
+        /// already says what the index is, and the confirmation dialog says what clearing it costs,
+        /// so a standing sentence under the button only repeated one of them.
         public static let clearSearch = LocalizedStringResource("storage.search.clear", bundle: bundle)
-        public static let clearSearchWhy = LocalizedStringResource("storage.search.clear.why", bundle: bundle)
         public static let clearSearchTitle = LocalizedStringResource("storage.search.confirm.title", bundle: bundle)
         public static let clearSearchBody = LocalizedStringResource("storage.search.confirm.body", bundle: bundle)
         public static let clearSearchFailed = LocalizedStringResource("storage.search.failed", bundle: bundle)
