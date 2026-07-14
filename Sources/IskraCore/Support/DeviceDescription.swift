@@ -13,26 +13,31 @@ import Foundation
 /// rename-this-device call anywhere in the FFI — the same wall the device *list* runs into. The
 /// User-Agent is not a nicety here, it is the whole of the mechanism.
 ///
-/// The shape is the conventional one for a native app — `Name/version (model; OS version)` — because
-/// that is what the parsers on the other end are written against. What the server makes of it is the
-/// server's business, and this cannot be verified from here: the name only appears once the session
-/// has been created, on a page the server draws.
+/// What the server makes of it is the server's business, and it cannot be verified from here: the
+/// name only appears once the session has been created, on a page the server draws.
 enum DeviceDescription {
-    /// e.g. `Iskra/1.0 (iPhone17,1; iOS 26.0)`, or `Iskra/1.0 (Mac15,7; macOS 26.1)`.
+    /// What the homeserver is told this device is.
+    ///
+    /// Two shapes, and which one comes out depends on whether `DeviceModels` recognises the hardware:
+    ///
+    ///   - **Known** — `Iskra/1.0 (iPhone 16 Pro; iOS 26.0)`. The conventional shape for a native app,
+    ///     which is what the parsers on the far side are written against.
+    ///   - **Unknown** — `iPhone19,3`, and nothing else. No app version, no OS version, no parentheses.
+    ///
+    /// The bare identifier is not a degraded version of the first, it is a different answer to a
+    /// different situation. A name we do not have is a name we must not invent, and dressing an
+    /// unrecognised identifier up in the full format invites the server to parse it into something
+    /// confidently wrong. On its own it can only be shown as what it is, and the owner of a phone too
+    /// new for this table would rather read `iPhone19,3` than "Unknown device".
     static var userAgent: String {
-        "Iskra/\(appVersion) (\(hardware); \(system))"
+        let model = hardware
+
+        guard let name = DeviceModels.name(for: model) else { return model }
+
+        return "Iskra/\(appVersion) (\(name); \(system))"
     }
 
-    /// The hardware, exactly as the hardware states it: `iPhone17,1`, `Mac15,7`, `iPad14,3`.
-    ///
-    /// The model *identifier*, not the marketing name — and that is a deliberate trade rather than a
-    /// shortcut. Turning `iPhone17,1` into "iPhone 16" needs a lookup table, and a lookup table is a
-    /// list of every phone Apple has released that is wrong the day they release another one: the new
-    /// device, the one whose owner most wants to recognise it in a list, is precisely the one that
-    /// falls through to "unknown". The identifier is ugly and it is never wrong.
-    ///
-    /// It also keeps the platform word in the string — `iPhone17,1` still begins with "iPhone" — which
-    /// is what the parsers on the server side look for to tell a phone from a laptop.
+    /// The hardware, exactly as the hardware states it: `iPhone17,1`, `Mac16,1`, `iPad14,3`.
     private static var hardware: String {
         // The simulator's `hw.machine` is the *host's* architecture — "arm64" — which would describe
         // the Mac this is being debugged on and not the iPhone on screen. It puts the truth here.
