@@ -45,8 +45,22 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
 
     override func didReceive(_ request: UNNotificationRequest,
                              withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
-        pending.withLock {
-            $0 = Delivery(handler: contentHandler, fallback: request.content)
+        // If iOS reuses this instance for a second push before the first has been delivered, the
+        // first handler must still be called — exactly once, which is this class's whole reason to
+        // exist. Overwriting the box would strand it: a notification that never appears, and a
+        // promise to the system that is never kept.
+        //
+        // So whatever was in there gets its fallback and is let go of, before the new one takes its
+        // place. Showing the server's own "New message" for the older push is the right answer:
+        // something did arrive, and we are out of time to say what.
+        let displaced = pending.withLock { pending -> Delivery? in
+            let previous = pending
+            pending = Delivery(handler: contentHandler, fallback: request.content)
+            return previous
+        }
+
+        if let displaced {
+            displaced.handler(displaced.fallback)
         }
 
         // Matrix's push payload. `room_id` and `event_id` are all a gateway forwards, and all

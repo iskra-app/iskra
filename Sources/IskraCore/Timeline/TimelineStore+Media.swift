@@ -51,7 +51,15 @@ public extension TimelineStore {
     /// `m.video`, and only its shape (square, under a minute) marks it as round. See
     /// `VideoNote` for why it is not tagged with a custom field.
     func send(video url: URL, replyingTo replyID: String? = nil) async {
-        guard let timeline = liveTimeline else { return }
+        guard let timeline = liveTimeline else {
+            // Not a silent return. The user pressed send; if nothing is going to happen, they are
+            // entitled to be told — a bare `return` here is the app appearing to swallow a message,
+            // which is the exact failure this whole codebase is written against. `send(photo:)` had
+            // this and the other four did not.
+            Log.media.error("nothing was sent: the room has no live timeline")
+            sendFailure = CoreStrings.Timeline.sendFailed
+            return
+        }
 
         let info = await MediaMetadata.video(at: url)
 
@@ -103,7 +111,15 @@ public extension TimelineStore {
 
     /// Sends any other file.
     func send(file url: URL, replyingTo replyID: String? = nil) async {
-        guard let timeline = liveTimeline else { return }
+        guard let timeline = liveTimeline else {
+            // Not a silent return. The user pressed send; if nothing is going to happen, they are
+            // entitled to be told — a bare `return` here is the app appearing to swallow a message,
+            // which is the exact failure this whole codebase is written against. `send(photo:)` had
+            // this and the other four did not.
+            Log.media.error("nothing was sent: the room has no live timeline")
+            sendFailure = CoreStrings.Timeline.sendFailed
+            return
+        }
 
         let parameters = UploadParameters(source: .file(filename: url.path(percentEncoded: false)),
                                           caption: nil,
@@ -122,7 +138,15 @@ public extension TimelineStore {
     /// travels with the event so both sides see the same picture rather than each
     /// guessing at one. Samples are 0...1 here and scaled to the wire's 0...1024.
     func send(voice url: URL, duration: TimeInterval, waveform: [Float], replyingTo replyID: String? = nil) async {
-        guard let timeline = liveTimeline else { return }
+        guard let timeline = liveTimeline else {
+            // Not a silent return. The user pressed send; if nothing is going to happen, they are
+            // entitled to be told — a bare `return` here is the app appearing to swallow a message,
+            // which is the exact failure this whole codebase is written against. `send(photo:)` had
+            // this and the other four did not.
+            Log.media.error("nothing was sent: the room has no live timeline")
+            sendFailure = CoreStrings.Timeline.sendFailed
+            return
+        }
 
         let parameters = UploadParameters(source: .file(filename: url.path(percentEncoded: false)),
                                           caption: nil,
@@ -158,7 +182,15 @@ public extension TimelineStore {
     /// pressed send on. If they want to say "I am here" they drop the pin on themselves, which
     /// is the same event without the claim.
     func send(location: Location, replyingTo replyID: String? = nil) async {
-        guard let timeline = liveTimeline else { return }
+        guard let timeline = liveTimeline else {
+            // Not a silent return. The user pressed send; if nothing is going to happen, they are
+            // entitled to be told — a bare `return` here is the app appearing to swallow a message,
+            // which is the exact failure this whole codebase is written against. `send(photo:)` had
+            // this and the other four did not.
+            Log.media.error("nothing was sent: the room has no live timeline")
+            sendFailure = CoreStrings.Timeline.sendFailed
+            return
+        }
 
         let body = String(core: CoreStrings.Timeline.locationBody(location.latitude, location.longitude))
 

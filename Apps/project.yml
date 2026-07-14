@@ -104,11 +104,19 @@ targets:
         # Written in the first person, because that is who is being asked.
         NSCameraUsageDescription: Iskra uses the camera so you can record video messages and take photos to send.
         NSMicrophoneUsageDescription: Iskra uses the microphone so you can record voice messages.
-        NSPhotoLibraryUsageDescription: Iskra needs access to your photos so you can send them in a chat.
-        # Saving a photo out of a conversation. A *separate* permission from the one above, and
-        # much the narrower of the two: "add only" lets the app put a picture in the library and
-        # gives it no way to look at what is already there. Asking for full access to write one
-        # file would be exactly the over-reach a permission prompt exists to make visible.
+        # There is deliberately no NSPhotoLibraryUsageDescription, and its absence is the point.
+        #
+        # That key asks for read access to the *entire* photo library, and this app has never needed
+        # it: pictures are chosen through `PhotosPicker`, which runs out of process and hands back
+        # only what the user picked. It requires no permission at all — that is the whole reason it
+        # exists. Declaring the key anyway bought nothing and licensed everything, and iOS is
+        # entitled to show the prompt for it: a messenger asking to see all your photographs, in
+        # order to do something it can already do without asking.
+        #
+        # What remains is add-only, below, which is a different and much narrower thing.
+        #
+        # Saving a photo out of a conversation. "Add only" lets the app put a picture in the library
+        # and gives it no way to look at what is already there.
         NSPhotoLibraryAddUsageDescription: Iskra needs permission to save a photo or a video from a chat to your library.
         # Only ever asked when the "my location" button on the map is pressed — never on opening
         # the picker. Somebody sending a pin from a map of a city they are not in should not have
