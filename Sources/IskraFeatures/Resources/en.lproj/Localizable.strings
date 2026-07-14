@@ -557,7 +557,6 @@
 "recovery.creating.message" = "We’re putting your messages into a backup so you can read them from any device. This can take a minute.";
 
 /* The button under the code. Skipping is allowed — but the strip in the chat list won’t let you forget. */
-"recovery.skip" = "Skip";
 
 /* Flow 2. Two buttons of equal weight. Neither is "the main one": somebody who picks the
    picture check should not feel they picked the fallback. */
@@ -599,7 +598,9 @@
 /* The strip in the chat list. It stays until the reason is gone: the code is shown once, and
    somebody who didn’t save it finds out six months later — unless they’re reminded. */
 "recovery.banner.locked" = "Your old messages are locked";
-"recovery.banner.unsaved" = "Your recovery code isn’t saved";
+"recovery.save.warning" = "If this code is lost and you have no other device, nobody can bring your old messages back — not us, not the server. They stay encrypted for good.";
+"recovery.save.confirm" = "I’ve written the code down somewhere safe";
+"recovery.lost.noAccess" = "I can’t get to that device";
 "recovery.banner.hint" = "Opens recovery setup";
 "recovery.close" = "Close";
 

@@ -72,6 +72,13 @@ public final class RoomListStore {
     var currentSyncService: SyncService? { syncService }
     private var entriesResult: RoomListEntriesWithDynamicAdaptersResult?
 
+    /// Told when the network comes or goes, so that the rooms that are *open* can hear about it.
+    ///
+    /// Internal, and a closure rather than a delegate, because it has exactly one subscriber:
+    /// `UserSession`, which knows which timelines are on screen. This store does not — and should
+    /// not — know that timelines exist.
+    var onConnectivityChange: ((Bool) async -> Void)?
+
     /// Keeps the previews honest about messages that have not left yet — see `start()`.
     private var sendQueueHandle: TaskHandle?
 
@@ -215,6 +222,7 @@ public final class RoomListStore {
         // behind a captive portal, on a VPN with no route, and in front of a homeserver that is
         // simply down. This reports on whether we are reaching the server, which is the thing the
         // user actually cares about.
+        let wasOffline = isOffline
         isOffline = state == .offline
 
         // Everything the send queue could not get rid of while the network was gone. The SDK stops a
@@ -223,6 +231,14 @@ public final class RoomListStore {
         // each one — which reads as an app that lost them.
         if state == .running {
             await client.enableAllSendQueues(enable: true)
+        }
+
+        // And whoever else has to know. The room the reader is *in* stopped asking for history the
+        // first time a page failed — it had to, or it would have asked once per frame of every scroll
+        // — and nothing in that room can tell that the network is back. Only this can. See
+        // `TimelineStore.connectivityChanged` and `UserSession`, which is what carries it there.
+        if wasOffline != isOffline {
+            await onConnectivityChange?(isOffline)
         }
 
         switch state {

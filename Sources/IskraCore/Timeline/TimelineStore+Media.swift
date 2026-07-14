@@ -42,7 +42,7 @@ public extension TimelineStore {
                                   blurhash: info.blurhash,
                                   isAnimated: false)
 
-        await upload {
+        upload {
             try timeline.sendImage(params: parameters, thumbnailSource: nil, imageInfo: imageInfo)
         }
     }
@@ -104,7 +104,7 @@ public extension TimelineStore {
                                   thumbnailSource: nil,
                                   blurhash: info.blurhash)
 
-        await upload {
+        upload {
             try timeline.sendVideo(params: parameters, thumbnailSource: thumbnail, videoInfo: videoInfo)
         }
     }
@@ -127,7 +127,7 @@ public extension TimelineStore {
                                           mentions: nil,
                                           inReplyTo: replyID.flatMap { eventID(for: $0) })
 
-        await upload {
+        upload {
             try timeline.sendFile(params: parameters, fileInfo: MediaMetadata.file(at: url))
         }
     }
@@ -159,7 +159,7 @@ public extension TimelineStore {
                                   size: MediaMetadata.fileSize(of: url),
                                   mimetype: MediaMetadata.mimeType(of: url) ?? "audio/ogg")
 
-        await upload {
+        upload {
             try timeline.sendVoiceMessage(params: parameters,
                                           audioInfo: audioInfo,
                                           waveform: waveform.map { $0 * Float(TimelineMapper.waveformScale) })
@@ -213,20 +213,31 @@ public extension TimelineStore {
 
     // MARK: - Private
 
-    /// Every send goes through here so that one failure message serves them all, and
-    /// so the upload is awaited rather than abandoned when the view goes away.
+    /// Every send goes through here, and what it does *not* do is the whole of it: it does not wait
+    /// for the attachment to reach the server.
     ///
-    /// The user is told one sentence; the log is told which of the many things behind that
-    /// sentence actually happened. Without this the only witness to a refused upload was a
-    /// phone saying "the server would not take it" — which is where the sentence ends and
-    /// the debugging has to begin, with nothing to begin from.
+    /// `sendImage` and its four siblings are not `async`. They put the attachment in the room's send
+    /// queue — the same encrypted, on-disk queue a typed message goes into — and hand back a handle.
+    /// `join()` on that handle means "wait until it has actually been sent", and waiting on it is
+    /// what this used to do. That turned an offline photograph into a *failure*: the queue had taken
+    /// it and would have sent it the moment the network came back, but we stood over the queue until
+    /// it gave up, and then told the user their picture had not gone.
+    ///
+    /// So the two things are told apart now, because they were never the same thing:
+    ///
+    /// - `start()` throwing is the SDK **refusing** the attachment — a file it cannot read, an image
+    ///   with no blurhash, something too large. Nothing is queued, nothing will happen later, and the
+    ///   user has to be told. That is still a failure.
+    /// - Everything after that belongs to the queue, and the queue reports on itself. A send that
+    ///   fails arrives at `handle(sendQueueUpdate:)` and the message wears the "Not sent" badge, with
+    ///   "Send again" and "Delete" on it. A send that is merely *waiting for a network* is not a
+    ///   failure at all, and no longer pretends to be one.
     ///
     /// What is logged is the *error*, never the attachment: a `RoomError` says "the file was
     /// too large" or "the server said no", and none of it is the picture.
-    private func upload(_ start: () throws -> SendAttachmentJoinHandle) async {
+    private func upload(_ start: () throws -> SendAttachmentJoinHandle) {
         do {
-            let handle = try start()
-            try await handle.join()
+            _ = try start()
         } catch {
             Log.media.error("attachment refused: \(Log.describe(error), privacy: .public)")
             failure = .send
