@@ -69,7 +69,11 @@ final class VideoPlayback {
 
             self.file = file
 
-            PlaybackAudio.prepare()
+            await AudioSession.prepare(for: .playback)
+
+            // Awaited, so — as above — a second circle may have been pressed while the session was
+            // waking, and it has the speakers now.
+            guard Self.current === self else { return }
 
             let player = AVPlayer(url: file.url)
             if stopsAtEnd {

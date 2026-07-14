@@ -105,7 +105,15 @@ public final class VoiceRecorder {
         // holding this any more, and there is nothing on screen that would show it if we recorded.
         guard generation == self.generation, state == .idle else { return }
 
-        prepareToRecord()
+        await AudioSession.prepare(for: .recording)
+
+        // And again on the other side of it. Waking the session is a round-trip to another process
+        // (see `AudioSession`), and a thumb can be lifted while it is in flight — recording then
+        // would leave a microphone running that nothing on screen admits to.
+        guard generation == self.generation, state == .idle else {
+            AudioSession.release()
+            return
+        }
 
         let url = URL.temporaryDirectory.appending(component: "\(UUID().uuidString).m4a")
         let settings: [String: Any] = [
@@ -203,9 +211,9 @@ public final class VoiceRecorder {
         url = nil
         state = .idle
 
-        // And the microphone is handed back. See `deactivate()` — without it, whatever was playing
-        // before the recording never comes back.
-        deactivate()
+        // And the microphone is handed back. See `AudioSession.release()` — without it, whatever
+        // was playing before the recording never comes back.
+        AudioSession.release()
     }
 
     private func startSampling() {
@@ -278,47 +286,6 @@ public final class VoiceRecorder {
             let slice = waveform[start..<end]
             return slice.reduce(0, +) / Float(slice.count)
         }
-    }
-
-    /// The session has to be told a microphone is about to be used, or it hands back silence.
-    ///
-    /// `playAndRecord` rather than `record`, because the app plays as well — and a session left
-    /// in `record` makes the next voice message the user *listens* to come out of nowhere. What
-    /// puts the sound back on the speaker afterwards is `PlaybackAudio.prepare()`, which every
-    /// player calls.
-    private func prepareToRecord() {
-        #if os(iOS)
-        do {
-            let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playAndRecord, mode: .spokenAudio, options: [.defaultToSpeaker])
-            try session.setActive(true)
-        } catch {
-            Log.media.error("the audio session refused the microphone: \(String(describing: error), privacy: .public)")
-        }
-        #endif
-    }
-
-    /// Gives the microphone back, and tells whoever was using the speaker that they may have it.
-    ///
-    /// This was missing entirely, and what it cost was somebody else's music. Recording activates
-    /// the session in `playAndRecord` and nothing ever deactivated it — not `finish()`, not
-    /// `cancel()` — so a podcast that was paused to let the user record a voice message stayed
-    /// paused. Not for a moment: **until the app was killed**. Every other app on the phone was
-    /// waiting for a microphone Iskra had stopped using and never let go of.
-    ///
-    /// `notifyOthersOnDeactivation` is the half that actually resumes them. Deactivating without it
-    /// releases the session and tells nobody, and a paused podcast has no way to know it may start
-    /// again.
-    private func deactivate() {
-        #if os(iOS)
-        do {
-            try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-        } catch {
-            // Worth a line and not worth a sentence to the user: the recording itself is fine, and
-            // this only decides whether their music comes back on its own.
-            Log.media.error("the audio session would not stand down: \(String(describing: error), privacy: .public)")
-        }
-        #endif
     }
 
     private func isPermitted() async -> Bool {
