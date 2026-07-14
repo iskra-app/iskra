@@ -140,6 +140,12 @@
 "storage.cancel" = "Cancel";
 "storage.failed" = "The cache could not be cleared. Try again.";
 
+"storage.search.clear" = "Clear search index";
+"storage.search.clear.why" = "If you deleted messages a long time ago, their words may still be in the index. This wipes them.";
+"storage.search.confirm.title" = "Clear search index?";
+"storage.search.confirm.body" = "The app will reload. For a while search will not find everything — the index fills again as you read. Your messages and photos stay where they are.";
+"storage.search.failed" = "The index could not be cleared. Try again.";
+
 /* Explains why the settings above it are greyed out. Says what will happen, not what is missing. */
 "settings.moreSoon" = "More settings are on the way.";
 
