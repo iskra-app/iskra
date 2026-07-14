@@ -106,9 +106,18 @@ public final class RecoverySetupModel {
     private var recovery: RecoveryStore { session.recovery }
     public var verification: VerificationStore { session.verification }
 
-    /// The code just minted, for as long as it is on screen. It lives in the store, not here — the
-    /// store is what will not write it anywhere.
-    public var code: String? { recovery.freshKey?.value }
+    /// The code just minted, for exactly as long as it is on screen, and held *here* — by the thing
+    /// that is showing it — rather than on the session's store where it used to live.
+    ///
+    /// That is the difference between a secret shown once and a secret shown whenever a screen
+    /// happens to be built. The store is the session's and outlives every screen; a code parked on
+    /// it sat in memory for the rest of the sign-in and could be picked up and presented a second
+    /// time by an entirely different view. This model dies with the flow, and the code dies with it.
+    ///
+    /// Never written anywhere — not to the Keychain, which is on the device this code exists to
+    /// survive the loss of, and not to disk in any other form. The only durable copy is the one the
+    /// person makes.
+    public private(set) var code: RecoveryKey?
 
     public var isWorking: Bool { recovery.isWorking }
 
@@ -172,9 +181,7 @@ public final class RecoverySetupModel {
     /// your phone falling in a river" that a person answers *no* to on purpose, and asking it at the
     /// one moment they are trying to get into the app is how it gets answered no by accident.
     private func create() async {
-        await recovery.protectHistory()
-
-        guard recovery.freshKey != nil else {
+        guard let minted = await recovery.protectHistory() else {
             // It did not work, and there is nothing here for the user to do about it. They are let
             // into the app; the banner will keep asking, and the settings screen can try again.
             failure = recovery.failure
@@ -182,6 +189,7 @@ public final class RecoverySetupModel {
             return
         }
 
+        code = minted
         step = .code
     }
 
@@ -189,8 +197,7 @@ public final class RecoverySetupModel {
     /// it against, and a fake "confirm the code" step would only teach people to copy and paste.
     public func savedCode() {
         didSkipSavingCode = false
-        recovery.forgetFreshKey()
-        step = .done
+        forget()
     }
 
     /// The user has skipped it. Allowed — the design note allows it — and remembered, because a code
@@ -198,7 +205,13 @@ public final class RecoverySetupModel {
     /// screen that cannot help them. The banner is what stands between them and that.
     public func skippedCode() {
         didSkipSavingCode = true
-        recovery.forgetFreshKey()
+        forget()
+    }
+
+    /// The code leaves memory the moment it leaves the screen, whichever of the two buttons took it
+    /// there. From here on the only copy is wherever the person put it, which is the arrangement.
+    private func forget() {
+        code = nil
         step = .done
     }
 
@@ -249,14 +262,14 @@ public final class RecoverySetupModel {
     /// part of this system can produce it again. Not the app, not the server, not the SDK. Making a
     /// new one is not the convenient option; it is the only one there is.
     private func mintNewCode() async {
-        await recovery.makeNewKey()
-
-        if recovery.freshKey != nil {
-            step = .code
-        } else {
+        guard let minted = await recovery.makeNewKey() else {
             failure = recovery.failure
             step = .done
+            return
         }
+
+        code = minted
+        step = .code
     }
 
     // MARK: - Flow 3 — the code is gone

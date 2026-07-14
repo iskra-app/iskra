@@ -35,10 +35,15 @@ enum SignInProbe {
 
         Task {
             let elapsed = { Int(Date().timeIntervalSince(started)) }
+
+            // The same service throughout: the OAuth step below needs the client the lookup left
+            // behind, and a second `AuthenticationService` would have no sign-in in progress.
+            let authentication = AuthenticationService()
+
+            let options: SignInOptions
             do {
-                let options = try await AuthenticationService().startSignIn(homeserverAddress: address)
+                options = try await authentication.startSignIn(homeserverAddress: address)
                 print("  ✅ resolved in \(elapsed())s: \(options)")
-                exit(0)
             } catch let AuthenticationError.storageUnavailable(cause) {
                 print("  ❌ storage is unavailable — this is the App Group or the Keychain group,")
                 print("     not the address. Run --verify-storage, which says which: \(cause)")
@@ -48,6 +53,38 @@ enum SignInProbe {
                 exit(1)
             } catch {
                 print("  ❌ failed in \(elapsed())s: \(error)")
+                exit(1)
+            }
+
+            // And the step the lookup used to stop short of, which is the step that was actually
+            // broken. Everything up to here is the app asking the server how it lets people in;
+            // this is the app asking for the address to send them to — and it registers an OAuth
+            // client with the server on the way, which is a thing that can be *refused*. It was.
+            //
+            // No credentials are needed for this, which is why the probe can do it: nobody is signed
+            // in or out by asking where the browser should go.
+            guard options.canUseSingleSignOn else {
+                print("  ⓘ this server has no OAuth, so there is no browser step to probe.")
+                exit(0)
+            }
+
+            do {
+                let url = try await authentication.singleSignOnURL()
+                // The host and path only. The query carries the client ID, the PKCE challenge and
+                // the state — none of which is a secret exactly, and all of which is noise.
+                let shown = "\(url.scheme ?? "?")://\(url.host() ?? "?")\(url.path())"
+                print("  ✅ the browser would open: \(shown)")
+                print("     OAuth is working end to end, up to the point a human takes over.")
+                exit(0)
+            } catch {
+                print("  ❌ could not get the OAuth URL in \(elapsed())s.")
+                print("     \(error)")
+                print()
+                print("     This is where the sign-in dies before the browser ever opens. The usual")
+                print("     cause is the redirect URI: an authentication service will refuse a")
+                print("     private-use scheme that is not the reverse-DNS of the client's own")
+                print("     domain — client_uri https://iskra.app permits app.iskra:, and nothing")
+                print("     else. See AppEnvironment.oauthRedirectURI.")
                 exit(1)
             }
         }
