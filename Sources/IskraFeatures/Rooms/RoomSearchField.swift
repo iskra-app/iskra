@@ -36,6 +36,14 @@ struct RoomSearchField: View {
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(.secondary)
+                        // The glyph is the size it looks; the *target* is the size a thumb is.
+                        // Apple asks for 44pt and this was about seventeen — a cross drawn at the
+                        // end of a field, which is exactly the control people jab at without
+                        // looking. Growing the picture would make the field look cluttered, so the
+                        // hit region grows instead and the picture stays where it was.
+                        .frame(width: Theme.Size.minimumTapTarget,
+                               height: Theme.Size.minimumTapTarget)
+                        .contentShape(.circle)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(Text(Strings.RoomList.clearSearch))

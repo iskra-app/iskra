@@ -69,9 +69,21 @@ public struct SignInView: View {
         .background(RoundedRectangle(cornerRadius: Theme.Radius.bubble, style: .continuous)
             .fill(.red.opacity(Theme.Backdrop.wash)))
         .transition(.move(edge: .top).combined(with: .opacity))
-        // Announced by VoiceOver the moment it appears, rather than sitting silently until
-        // someone swipes onto it.
         .accessibilityAddTraits(.isStaticText)
+        // And *said*, rather than merely present.
+        //
+        // This carried a comment claiming `.isStaticText` announced it "the moment it appears".
+        // It does not: a trait describes what an element is, and it makes VoiceOver say nothing at
+        // all. So the panel arrived in silence, and a blind user got exactly the failure the long
+        // comment above worries about for everybody else — type the password, nothing appears to
+        // happen, type it again.
+        //
+        // An announcement is the one thing that does speak without being swiped onto, and this is
+        // the moment it is for: something has gone wrong, the screen has not changed shape, and
+        // the user is waiting to be told.
+        .onAppear {
+            AccessibilityNotification.Announcement(String(localized: problem)).post()
+        }
     }
 
     private var header: some View {

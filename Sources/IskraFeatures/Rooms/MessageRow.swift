@@ -1043,6 +1043,13 @@ private struct VoiceMessageView: View {
                     }
                 }
                 .frame(width: Theme.Size.voiceButton, height: Theme.Size.voiceButton)
+                // Drawn at 28pt and *pressed* at 44. The glyph is small because a play button in a
+                // bubble should be small; the target is 44 because that is what Apple asks for and
+                // what a thumb actually is. `Theme.swift` defended the 28 by saying the whole
+                // bubble is already a tap target — but the bubble's tap is a context menu and a
+                // double-tap reaction, and this button is the only way to *hear the message*.
+                .contentShape(.circle)
+                .frame(width: Theme.Size.minimumTapTarget, height: Theme.Size.minimumTapTarget)
                 .contentShape(.circle)
             }
             .buttonStyle(.plain)
