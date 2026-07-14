@@ -464,3 +464,22 @@
 "message.media.video" = "Video";
 "message.media.videoNote" = "Video message";
 "message.media.openFullScreen" = "Open";
+
+/* Verifying this device by comparing seven pictures with one the account already trusts. Not a
+   word about cross-signing or keys: the user is asked to look at two screens and say whether they
+   show the same thing, which is the whole of it, and is explicable without a single term. */
+"verification.verify" = "Verify this device";
+"verification.title" = "Verification";
+"verification.why" = "Until this device is verified, your account has no way to know it is really you — and your older conversations will not come through to it. You can verify it from a phone or computer where you are already signed in.";
+"verification.waiting.title" = "Look at your other device";
+"verification.waiting.message" = "Open Iskra where you are already signed in and agree to verify this device. If you have no other device, your recovery key is the way back into your older conversations.";
+"verification.compare" = "Your other device is showing the same seven pictures. Check that they match — and that they are in the same order.";
+"verification.match" = "They match";
+"verification.noMatch" = "They don't match";
+"verification.done.title" = "This device is verified";
+"verification.done.message" = "Your account trusts this device now. Your older conversations will appear here on their own.";
+"verification.declined.title" = "Verification stopped";
+"verification.declined.message" = "If the pictures really did not match, do not trust this connection, and try again. It may also be that you simply started the verification twice.";
+"verification.failed.title" = "That didn't work";
+"verification.failed.message" = "The verification did not finish. Try again.";
+"verification.close" = "Close";

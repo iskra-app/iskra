@@ -125,7 +125,9 @@ struct SettingsView: View {
         .navigationDestination(for: Destination.self) { destination in
             switch destination {
             case .encryption:
-                EncryptionView(recovery: session.recovery(), deviceID: session.deviceID)
+                EncryptionView(recovery: session.recovery(),
+                               verification: session.verification(),
+                               deviceID: session.deviceID)
             case .storage:
                 // Built here, on the push, for the same reason as the encryption screen above:
                 // a `NavigationLink` with a destination closure builds it on every pass of this

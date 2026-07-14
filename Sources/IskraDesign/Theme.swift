@@ -303,6 +303,14 @@ public enum Theme {
         /// the composer, and for the same reason — it sits where the thumb already is.
         public static let searchField: CGFloat = 44
 
+        /// The pictures the user compares to verify a device.
+        ///
+        /// Large, and deliberately so: the entire security of the exercise is that somebody
+        /// actually *looks* at them and at the seven on the other screen. An emoji at body size is
+        /// something the eye skims past, and skimming is exactly the failure this screen exists to
+        /// prevent.
+        public static let verificationEmoji: CGFloat = 40
+
         /// How far a thumb has to travel, mid-hold, for the movement to mean something.
         ///
         /// The one escape from a recording that does not need the finger lifted — up, to carry
