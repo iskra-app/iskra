@@ -78,6 +78,20 @@ public final class RoomListStore {
     /// down, and it must not be acted on — see `stop()`.
     private var hasStopped = false
 
+    /// The sync service saying how it is getting on. Kept because dropping it unsubscribes.
+    private var syncStateHandle: TaskHandle?
+
+    /// True while a restart is being waited out, so that a burst of `.error` states — which is what
+    /// losing the network actually looks like — schedules one restart rather than twenty.
+    private var isRestartingSync = false
+
+    /// Whether the app has put sync down on purpose. Distinct from `hasStopped`, and the difference
+    /// is the whole reason both exist: `hasStopped` means this store is finished and must never act
+    /// again, and this means it is asleep and will be woken. Without it, pausing for the background
+    /// would look exactly like a sync failure to the observer below, which would dutifully restart
+    /// the thing that had just been deliberately stopped.
+    private var isPaused = false
+
     /// The room handles, in the order the SDK says they should appear.
     private var orderedRooms: [Room] = []
 
@@ -154,7 +168,79 @@ public final class RoomListStore {
         }
         sendQueueHandle = try await client.subscribeToSendQueueUpdates(listener: sendQueueListener)
 
+        // Nobody was listening to this, and the sync loop is the one thing in the app that *cannot*
+        // be allowed to fail quietly. It stops on a network error like any other network client —
+        // and then simply stays stopped. No diff ever arrives again, the room list freezes on
+        // whatever it last held, and there is nothing on the screen to say so: the conversations are
+        // all there, they are just from some minutes ago and will never be from any later. The only
+        // cure was to kill the app and open it again, and the only way to know that was the cure was
+        // to have written the app.
+        syncStateHandle = service.state(listener: SyncStateObserver { [weak self] state in
+            Task { @MainActor [weak self] in
+                await self?.syncStateChanged(to: state)
+            }
+        })
+
+        isPaused = false
         await service.start()
+    }
+
+    /// The sync loop has stopped and nobody asked it to. Start it again.
+    ///
+    /// After a pause, because the ordinary cause is a network that has gone away, and a restart into
+    /// the same absent network is an error that produces a restart that produces an error. This is
+    /// not a backoff — a fixed wait is enough to turn a hot loop into a slow one, and the SDK does
+    /// its own retrying underneath.
+    private func syncStateChanged(to state: SyncServiceState) async {
+        switch state {
+        case .error, .terminated:
+            break
+        case .idle, .running, .offline:
+            return
+        }
+
+        guard !hasStopped, !isPaused, !isRestartingSync else { return }
+
+        isRestartingSync = true
+        defer { isRestartingSync = false }
+
+        Log.session.error("the sync loop stopped by itself; starting it again")
+
+        try? await Task.sleep(for: Self.syncRestartDelay)
+
+        // Everything may have changed while we waited: the user may have signed out, or put the app
+        // in their pocket. Both of those took sync down on purpose, and neither wants it back.
+        guard !hasStopped, !isPaused else { return }
+
+        await syncService?.start()
+    }
+
+    private static let syncRestartDelay: Duration = .seconds(2)
+
+    /// The app has gone into the user's pocket.
+    ///
+    /// Sync is stopped rather than left running, and the reason is not battery. A push arriving is
+    /// precisely the moment iOS wakes the *notification extension*, which is a second process that
+    /// opens the same SQLite store — so a backgrounded app holding a live sync loop is holding that
+    /// store open exactly when something else needs it. Suspended by the system mid-write, it holds
+    /// it open for as long as the system feels like.
+    ///
+    /// Not called on the Mac. A Mac app that is not in front is still an app the user expects to be
+    /// receiving messages, and there is no extension racing it for the file.
+    public func pause() async {
+        guard !hasStopped, let syncService else { return }
+
+        isPaused = true
+        await syncService.stop()
+    }
+
+    /// And back out of it. `start()` on the service, not on this store: the listeners, the streams
+    /// and the room handles were never taken down, only the loop that feeds them.
+    public func resume() async {
+        guard !hasStopped, isPaused, let syncService else { return }
+
+        isPaused = false
+        await syncService.start()
     }
 
     /// Shuts the list down, and means it.
@@ -197,6 +283,12 @@ public final class RoomListStore {
 
         sendQueueHandle?.cancel()
         sendQueueHandle = nil
+
+        // Before the service is stopped, not after: stopping it is going to move it to a state the
+        // observer is watching for, and an observer still listening at that moment would take a
+        // deliberate shutdown for a failure and start the whole thing up again on the way out.
+        syncStateHandle?.cancel()
+        syncStateHandle = nil
 
         // Bounded, and for the same reason `logout` is: this is on the path out of the account,
         // and the way out of an account must not depend on the network being well. A sync service
@@ -496,6 +588,20 @@ private final class EntriesListener: RoomListEntriesListener {
 /// thought it was. `rebuildSummaries` then asks the rooms themselves, which is the answer
 /// we would have had to go and fetch anyway. Nothing about the message travels across this
 /// hop, which also means nothing non-`Sendable` does.
+/// The sync loop reporting on itself. `SyncServiceState` is a plain enum and already `Sendable`, so
+/// it crosses to the main actor as it is — no `UnsafeTransfer` needed, unlike the diffs.
+private final class SyncStateObserver: SyncServiceStateObserver {
+    private let onState: @Sendable (SyncServiceState) -> Void
+
+    init(onState: @escaping @Sendable (SyncServiceState) -> Void) {
+        self.onState = onState
+    }
+
+    func onUpdate(state: SyncServiceState) {
+        onState(state)
+    }
+}
+
 private final class SendQueueListener: SendQueueRoomUpdateListener {
     private let onUpdate: @Sendable () -> Void
 

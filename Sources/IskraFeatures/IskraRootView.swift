@@ -34,6 +34,10 @@ public struct IskraRootView: View {
     /// `.compact` on a full-screen iPad. See `RoomListView.isSidebar`.
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
+    /// Whether the app is in front. Read here rather than in a screen, because the sync loop belongs
+    /// to the session and not to any one of them — see the `.onChange` below.
+    @Environment(\.scenePhase) private var scenePhase
+
     private enum Phase {
         case starting
         case signedOut
@@ -106,6 +110,25 @@ public struct IskraRootView: View {
                             session.verification.reset()
                         }
                     }
+                    // The sync loop goes down with the app, on the phone. Not to save battery — iOS
+                    // suspends the process anyway — but because the moment the app is in a pocket is
+                    // the moment a push arrives, and a push wakes the notification extension, which
+                    // is a *second process* opening the same SQLite store. An app suspended
+                    // mid-write holds that store for as long as the system feels like.
+                    //
+                    // Not on the Mac: an app that is merely not in front is still one the user
+                    // expects to be receiving messages, and no extension is racing it for the file.
+                    #if os(iOS)
+                    .onChange(of: scenePhase) { _, phase in
+                        Task {
+                            switch phase {
+                            case .background: await session.enteredBackground()
+                            case .active: await session.enteredForeground()
+                            default: break
+                            }
+                        }
+                    }
+                    #endif
             }
         }
         .animation(.smooth, value: isSignedIn)
@@ -243,6 +266,13 @@ public struct IskraRootView: View {
         #if os(macOS)
         FileOpener.sweep()
         #endif
+
+        // And whatever the last run left in the *container*: encrypted stores belonging to sign-ins
+        // that never finished and sessions that have been replaced. They are readable — the
+        // passphrase is stable — so they are not litter, they are a copy of the conversations with
+        // nothing pointing at it. This is the one moment it is safe to say so; see
+        // `sweepOrphanedStores`.
+        await authentication.sweepOrphanedStores()
 
         do {
             if let client = try await authentication.restorePreviousSession() {

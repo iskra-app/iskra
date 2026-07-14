@@ -309,6 +309,41 @@ public actor AuthenticationService {
         return urls.compactMapValues { $0 }
     }
 
+    /// Every encrypted store on the disk that no longer belongs to anybody.
+    ///
+    /// They accumulate, and they accumulate *silently*. A sign-in that fails halfway has already
+    /// minted a session ID and three directories to go with it. A restore that throws — a timeout,
+    /// a server that will not answer — leaves the app on the sign-in screen, and if the user then
+    /// signs in again they get a new session ID and three new directories, while the old three stay
+    /// where they are. Nobody deletes them, ever, and `storePassphrase()` is stable, so what is left
+    /// behind is not inert: it is a *readable* copy of the conversations, sitting in the container
+    /// with nothing pointing at it.
+    ///
+    /// The rule is the narrowest one that is still true: anything that is not the session in the
+    /// Keychain is not a session at all. And it is only safe to say that at one moment — launch,
+    /// before anybody has started signing in — because a sign-in *in progress* has directories on
+    /// disk and no Keychain entry yet, and sweeping then would delete the attempt out from under
+    /// itself. So this is called from `restore()` and nowhere else.
+    ///
+    /// Failures are ignored on purpose. This is housekeeping; a file that will not delete is not a
+    /// reason to refuse to start.
+    public func sweepOrphanedStores() {
+        let current = (try? sessionStore.loadSession())?.sessionID
+
+        guard let container = try? environment.containerURL() else { return }
+
+        for kind in ["Sessions", "Caches", "Search"] {
+            let parent = container.appending(component: kind)
+
+            let contents = (try? FileManager.default.contentsOfDirectory(at: parent,
+                                                                         includingPropertiesForKeys: nil)) ?? []
+
+            for url in contents where url.lastPathComponent != current {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+    }
+
     private func discardStore(forSessionID id: String) {
         let urls = [try? environment.sessionDataURL(forSessionID: id),
                     try? environment.sessionCachesURL(forSessionID: id),
@@ -418,6 +453,19 @@ public actor AuthenticationService {
             // ask for one.
             .autoEnableBackups(autoEnableBackups: true)
             .autoEnableCrossSigning(autoEnableCrossSigning: true)
+            // Two processes, one store. The notification extension opens the same SQLite file the
+            // app has open — that is the whole design of it — and `notificationClient` was already
+            // asking for `.multipleProcesses`, which locks the *crypto* store. It does not lock the
+            // tokens.
+            //
+            // And the tokens are the thing both processes race for. A push arrives while the app is
+            // running; the access token has expired; both go to refresh it; a refresh token is
+            // single-use, so the second one to arrive presents a token the server has already
+            // spent and is told the session is gone. What the user sees is an app that signed
+            // itself out in the night. See also `SessionDelegate`, which is what makes the winner's
+            // new token reach the disk at all.
+            .crossProcessLockConfig(crossProcessLockConfig:
+                .multiProcess(holderName: AppEnvironment.processName))
             // The search index is a second copy of every message we can read, so it
             // gets the same treatment rather than being left in the clear.
             .withSearchIndexStore(path: searchURL.path(percentEncoded: false),

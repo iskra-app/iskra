@@ -93,6 +93,21 @@ public struct AppEnvironment: Sendable {
     /// taken out of the picture while debugging something else.
     public static var `default`: AppEnvironment { shared }
 
+    /// Who this process is, when two of them are holding the same store.
+    ///
+    /// The app and the notification extension are separate processes over one SQLite file, and iOS
+    /// will happily run both at once — a push arrives while the app is open, which is the ordinary
+    /// case, not the corner one. The SDK takes a cross-process lock for that, and the lock needs a
+    /// name to say *who is holding it*, so the two must not answer the same thing.
+    ///
+    /// `Bundle.main` is the natural answer and is already the right one, because inside an extension
+    /// `Bundle.main` is the *extension's* bundle. The app says `moscow.swag.iskra`; the extension
+    /// says `moscow.swag.iskra.NotificationService`. (This is the same fact that makes
+    /// `AppIdentifierPrefix` load-bearing in the extension's own Info.plist — see `CLAUDE.md`.)
+    public static var processName: String {
+        Bundle.main.bundleIdentifier ?? "moscow.swag.iskra"
+    }
+
     /// The Keychain access group, or nil to use the app's own keychain.
     public var keychainAccessGroup: String? {
         switch storage {
