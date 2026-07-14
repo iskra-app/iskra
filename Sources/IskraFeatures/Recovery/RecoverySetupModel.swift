@@ -29,6 +29,21 @@ public final class RecoverySetupModel {
         /// Asking the SDK what this device knows. Brief, and never skipped: the answer is not
         /// available the instant a sign-in lands.
         case preparing
+        /// About to throw the current code away and mint a replacement — and asking first.
+        ///
+        /// **Every act that destroys a recovery code passes through a question, and this is the
+        /// question inside the flow.** The other one is the confirmation dialog on the encryption
+        /// screen. There is no third way to reach `resetRecoveryKey()`, and there must not be: a code
+        /// is destroyed the instant a new one is minted, silently, with no undo and no way to show
+        /// the old one ever again. It has already cost one person their history.
+        ///
+        /// Note what is *not* guarded, and why it is not an omission. `enableRecovery` — the mint in
+        /// `create()` — runs only where `protection == .off`, which means the account has no secret
+        /// storage key at all, and after `resetIdentity()`, which has just thrown the old one away.
+        /// In both places there is no previous code to break, so "your old code will stop working"
+        /// would be a false sentence. Warning people about things that are not true is how they learn
+        /// to click through warnings that are.
+        case confirmNew
         /// Making the backup and minting the first code. Slow, and honestly so.
         case creating
         /// The code is on screen, for the only time it ever will be.
@@ -43,6 +58,9 @@ public final class RecoverySetupModel {
         case startingOver
         /// The server wants the account password before it will allow that.
         case password
+        /// The server wants the user to approve the reset on its own page, and they have been sent
+        /// there. See `startOver` — this step exists because the browser cannot tell us how it went.
+        case approving
         /// Out of the way — the conversations are next.
         case done
     }
@@ -215,11 +233,30 @@ public final class RecoverySetupModel {
             step = .done
 
         case .mintNewCode:
-            // They got in, but the code they lost is still lost — and it cannot be shown again, ever.
-            // A new one has to take its place before they are let go, or the next new device lands
-            // them right back here with nothing.
-            await mintNewCode()
+            // They got in — and the code they could not find is still not found. A new one is offered,
+            // and it is *offered*, not performed: this used to mint on the spot, the moment the emoji
+            // matched, with no question at all.
+            //
+            // Which was wrong, and wrong in a way that is easy to miss. The comparison hands this
+            // device the account's secrets; it does not touch the secret storage, and the old code
+            // still opens it. So the code is not lost, it is *mislaid* — and minting a new one is what
+            // would actually destroy it. Somebody who finds the old one in their password manager
+            // tomorrow would find it dead, killed by the app, at the moment it was helping them.
+            step = .confirmNew
         }
+    }
+
+    /// The user has been told what a new code costs, and has said yes.
+    public func confirmNewCode() async {
+        await mintNewCode()
+    }
+
+    /// …or has decided to go and look for the old one first, which still works.
+    ///
+    /// Safe to allow, and only here: they have just proved this device against another, so the
+    /// history is open and the account is in order. Nothing is left half-done by walking away.
+    public func keepOldCode() {
+        step = .done
     }
 
     /// Throws the old code away and makes one to replace it.
@@ -288,8 +325,20 @@ public final class RecoverySetupModel {
                 await finishStartOver()
 
             case let .browser(url):
+                // And then we *ask*, because we cannot know.
+                //
+                // `ASWebAuthenticationSession` is opened with no callback scheme — the server's
+                // approval page redirects nowhere we are listening — so the only signal it can ever
+                // give us is that the browser was closed. Closing it after approving and closing it
+                // instead of approving are the same event, and there is no third thing to look at.
+                //
+                // This used to go straight on to `finishStartOver()` regardless. So somebody who
+                // opened the page, thought better of throwing away every message they had, and shut
+                // the browser got an attempted reset and an error alert, rather than the quiet nothing
+                // they had just asked for. The handle was dropped without `cancel()` and the SDK was
+                // left holding a flow nobody was going to finish.
+                step = .approving
                 await WebAuthentication.approve(url: url)
-                await finishStartOver()
 
             case .password:
                 step = .password
@@ -298,6 +347,22 @@ public final class RecoverySetupModel {
             failure = error as? AccountActionFailure ?? .startOver
             step = .lost
         }
+    }
+
+    /// The user says they approved the reset on the server's page. Now it can be finished.
+    public func approved() async {
+        step = .startingOver
+        await finishStartOver()
+    }
+
+    /// The user closed the browser without approving — or opened it, read what a reset costs, and
+    /// changed their mind. Nothing has been destroyed and nothing will be.
+    ///
+    /// This is the one caller of `cancelStartOver`, which until now had none: the SDK was told to
+    /// begin a reset and then never told the outcome, on every path where the user backed out.
+    public func abandonStartOver() async {
+        await recovery.cancelStartOver()
+        step = .lost
     }
 
     /// The server asked for the password, and it has been typed.

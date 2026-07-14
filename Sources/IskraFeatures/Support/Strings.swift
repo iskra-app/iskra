@@ -615,8 +615,29 @@ public enum Strings {
         public static let saveWarning = LocalizedStringResource("recovery.save.warning", bundle: bundle)
         public static let saveConfirm = LocalizedStringResource("recovery.save.confirm", bundle: bundle)
 
-        /// The question asked before a new code replaces the old one — in settings, where minting one
-        /// is a thing somebody goes out of their way to do. See `EncryptionView`.
+        /// The question in front of every code this app destroys, and it is asked in exactly two
+        /// places because there are exactly two ways to reach `resetRecoveryKey()`: the confirmation
+        /// dialog in settings, and `Step.confirmNew` in the flow. There must never be a third.
+        ///
+        /// `keepOldCode` is the answer that used not to exist. After proving this device against
+        /// another one, the app minted a replacement on the spot — but the comparison does not touch
+        /// the secret storage, so the old code was never dead until the app killed it. A person who
+        /// finds it in their password manager tonight can still use it, and now they are allowed to
+        /// go and look.
+        public static let keepOldCode = LocalizedStringResource("recovery.new.keepOld", bundle: bundle)
+
+        /// The question the browser cannot answer.
+        ///
+        /// The server's approval page redirects nowhere the app is listening, so
+        /// `ASWebAuthenticationSession` reports the same thing whether the user approved and closed
+        /// it or closed it instead of approving. The app used to guess "approved", and guessed wrong
+        /// for everybody who read what a reset costs and backed out — they got an error alert instead
+        /// of the quiet nothing they had asked for. So it asks.
+        public static let approveTitle = LocalizedStringResource("recovery.approve.title", bundle: bundle)
+        public static let approveMessage = LocalizedStringResource("recovery.approve.message", bundle: bundle)
+        public static let approveConfirm = LocalizedStringResource("recovery.approve.confirm", bundle: bundle)
+        public static let approveCancel = LocalizedStringResource("recovery.approve.cancel", bundle: bundle)
+
         public static let newTitle = LocalizedStringResource("recovery.new.title", bundle: bundle)
         public static let newMessage = LocalizedStringResource("recovery.new.message", bundle: bundle)
         public static let newConfirm = LocalizedStringResource("recovery.new.confirm", bundle: bundle)
