@@ -70,9 +70,25 @@ public final class PinnedStore {
         hasLoaded = true
     }
 
+    /// Puts the pinned timeline down, and — unlike the version this replaces — leaves it in a state
+    /// it can be picked up from again.
+    ///
+    /// It used to cancel the listener and stop there, leaving `timeline` set. `start()` opens with
+    /// `guard timeline == nil else { return }`, so a store that had been stopped could never be
+    /// started: no listener, a timeline it would not replace, `messages` frozen at whatever was in
+    /// them, and no way back. That is the identical dead end `TimelineStore.stop()` carries a long
+    /// comment about having fixed, and it sat here untouched — undetected only because *nothing
+    /// ever called this*. It was a mine waiting for the first person to tidy up after themselves.
     public func stop() {
         listenerHandle?.cancel()
         listenerHandle = nil
+
+        timeline = nil
+        // The SDK's items belonged to the timeline that has just gone. A fresh listener opens with
+        // an empty reset and repopulates from scratch, and leaving these here would have the next
+        // `apply` computing diffs against a timeline that no longer exists.
+        items = []
+        hasLoaded = false
     }
 
     /// Takes a message off the pinned list. The only thing this screen can *do*, and the reason

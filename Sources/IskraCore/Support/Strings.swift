@@ -74,6 +74,10 @@ public enum CoreStrings {
         /// gone quiet, and it has not.
         public static let alertsFailed = LocalizedStringResource("roomAction.alertsFailed", bundle: bundle)
 
+        /// The room would not open at all, so there is nothing on the screen to have refused
+        /// anything. The only failure here that is not about an act the user performed.
+        public static let loadFailed = LocalizedStringResource("roomAction.loadFailed", bundle: bundle)
+
         /// The invitation would not be taken up. Names the likeliest reason, because it is one the
         /// user can do nothing about but *ought to know*: an invitation can be withdrawn, and a
         /// room can be gone by the time you answer it.

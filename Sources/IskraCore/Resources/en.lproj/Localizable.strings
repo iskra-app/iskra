@@ -129,3 +129,7 @@
 /* Room invitations. */
 "roomAction.acceptInviteFailed" = "You couldn’t join the chat. The invitation may have been withdrawn.";
 "roomAction.declineInviteFailed" = "The invitation wasn’t declined. It is still there — try again.";
+
+/* The room would not open at all — the one refusal here that is not about something the user did:
+   they pressed nothing and were refused nothing. The room simply could not be read. */
+"roomAction.loadFailed" = "This chat wouldn't open. Try again.";

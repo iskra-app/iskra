@@ -95,6 +95,11 @@ public enum RoomActionFailure: String, CaseIterable, ActionFailure {
     case leave
     case alerts
 
+    /// The room itself would not open, so there is nothing on the screen to change. Its own case
+    /// because it is the only one that is not about an act the user performed: they pressed nothing
+    /// and nothing was refused — the room simply could not be read.
+    case load
+
     /// An invitation that would not be taken up. Its own sentence rather than `leave`'s or
     /// `invite`'s: the user pressed "Join" and is looking at a room they are still not in.
     case acceptInvite
@@ -106,6 +111,7 @@ public enum RoomActionFailure: String, CaseIterable, ActionFailure {
 
     public var explanation: LocalizedStringResource {
         switch self {
+        case .load: CoreStrings.RoomAction.loadFailed
         case .alerts: CoreStrings.RoomAction.alertsFailed
         case .rename: CoreStrings.RoomAction.renameFailed
         case .topic: CoreStrings.RoomAction.topicFailed
@@ -216,7 +222,20 @@ public final class RoomDetailsStore {
     /// screen is populated immediately and then quietly corrects itself, rather than
     /// holding a spinner in front of an answer we already had.
     public func load() async {
-        await loadInfo()
+        // Whether the room itself could be read at all. Everything below is a detail *of* the room,
+        // and asking for details of a room we could not open produces a screen that is not empty
+        // but *wrong*: a blank name, "not protected" where the room is encrypted, no members, and
+        // a notification rule looked up with the wrong defaults because `privacy` never arrived.
+        //
+        // Five `try?` in a row used to make all of that indistinguishable from a room that is
+        // genuinely quiet, with no failure recorded anywhere — while the field for exactly that
+        // (`failure`) and the alert that shows it both already existed, three lines up.
+        guard await loadInfo() else {
+            isLoadingMembers = false
+            didFailToLoad = true
+            failure = .load
+            return
+        }
 
         if let cached = try? await room.membersNoSync() {
             apply(Self.summaries(from: cached))
@@ -231,6 +250,10 @@ public final class RoomDetailsStore {
         await loadPermissions()
         await loadAlerts()
     }
+
+    /// The room could not be read. Distinct from a room with nothing in it, and the only one of the
+    /// two the user can do anything about.
+    public private(set) var didFailToLoad = false
 
     /// What the room does to this device — the rule it has been given, or, if it has none,
     /// the one it inherits.
@@ -264,7 +287,7 @@ public final class RoomDetailsStore {
             try await notificationSettings().setRoomNotificationMode(roomId: room.id(), mode: choice.mode)
         } catch {
             Log.rooms.error("the notification rule would not stick: \(String(describing: error), privacy: .public)")
-            alerts = previous
+            rollBack(\.alerts, to: previous, ifStillEqualTo: choice)
             failure = .alerts
         }
     }
@@ -279,8 +302,14 @@ public final class RoomDetailsStore {
         return settings
     }
 
-    private func loadInfo() async {
-        guard let info = try? await room.roomInfo() else { return }
+    /// Reads the room. False when it could not be read, which is a thing the caller has to know:
+    /// everything else on this screen is a detail of a room that may not have opened.
+    @discardableResult
+    private func loadInfo() async -> Bool {
+        guard let info = try? await room.roomInfo() else {
+            Log.rooms.error("the room would not open")
+            return false
+        }
 
         name = info.displayName ?? info.heroes.first?.displayName ?? String(core: CoreStrings.Room.untitled)
         topic = info.topic
@@ -290,6 +319,8 @@ public final class RoomDetailsStore {
         isPublic = info.isPublic ?? false
         memberCount = Int(info.joinedMembersCount)
         counterpartID = info.isDm ? info.heroes.first(where: { $0.userId != ownUserID })?.userId : nil
+
+        return true
     }
 
     /// What the room lets this account do — asked of the room, not inferred from the badge
@@ -365,6 +396,24 @@ public final class RoomDetailsStore {
 
     // MARK: - Changing the room
 
+    /// Puts a value back — but only if it is still the value we put there.
+    ///
+    /// Every optimistic edit in this file has the same skeleton: show the new value at once, send
+    /// it, and put the old one back if the server says no. The rollback was unconditional, and that
+    /// is a race with a plain outcome: rename to A, rename to B before A has answered, A fails —
+    /// and the name goes back to what it was *before A*, discarding B, which succeeded. The user's
+    /// most recent decision is the one that gets thrown away.
+    ///
+    /// So a rollback is a compare-and-set: undo the edit only if nothing has happened since. If
+    /// something has, that something is newer and is the truth, and the failed edit has nothing
+    /// left to say.
+    private func rollBack<T: Equatable>(_ keyPath: ReferenceWritableKeyPath<RoomDetailsStore, T>,
+                                        to previous: T,
+                                        ifStillEqualTo attempted: T) {
+        guard self[keyPath: keyPath] == attempted else { return }
+        self[keyPath: keyPath] = previous
+    }
+
     public func rename(to newName: String) async {
         let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, trimmed != name else { return }
@@ -375,8 +424,8 @@ public final class RoomDetailsStore {
         do {
             try await room.setName(name: trimmed)
         } catch {
-            Log.rooms.error("rename refused: \(error)")
-            name = previous
+            Log.rooms.error("rename refused: \(String(describing: error), privacy: .public)")
+            rollBack(\.name, to: previous, ifStillEqualTo: trimmed)
             failure = .rename
         }
     }
@@ -390,13 +439,14 @@ public final class RoomDetailsStore {
         guard trimmed != (topic ?? "") else { return }
 
         let previous = topic
-        topic = trimmed.isEmpty ? nil : trimmed
+        let attempted: String? = trimmed.isEmpty ? nil : trimmed
+        topic = attempted
 
         do {
             try await room.setTopic(topic: trimmed)
         } catch {
-            Log.rooms.error("topic refused: \(error)")
-            topic = previous
+            Log.rooms.error("topic refused: \(String(describing: error), privacy: .public)")
+            rollBack(\.topic, to: previous, ifStillEqualTo: attempted)
             failure = .topic
         }
     }
@@ -423,8 +473,8 @@ public final class RoomDetailsStore {
         do {
             try await room.removeAvatar()
         } catch {
-            Log.rooms.error("room picture would not clear: \(error)")
-            avatarURL = previous
+            Log.rooms.error("room picture would not clear: \(String(describing: error), privacy: .public)")
+            rollBack(\.avatarURL, to: previous, ifStillEqualTo: nil)
             failure = .picture
         }
     }
@@ -444,8 +494,8 @@ public final class RoomDetailsStore {
         do {
             try await room.updateJoinRules(newRule: shouldBePublic ? .public : .invite)
         } catch {
-            Log.rooms.error("join rule refused: \(error)")
-            isPublic = previous
+            Log.rooms.error("join rule refused: \(String(describing: error), privacy: .public)")
+            rollBack(\.isPublic, to: previous, ifStillEqualTo: shouldBePublic)
             failure = .visibility
         }
     }
