@@ -29,6 +29,33 @@ public actor PushDecoder {
     /// gets no notification at all. So every way this can fail is a `PushOutcome` instead,
     /// and the caller has to look at it to find out what happened.
     public func notification(roomID: String, eventID: String) async -> PushOutcome {
+        // The whole thing is bounded, not just the last step of it.
+        //
+        // The budget used to start counting at `getNotification` — which is to say, *after*
+        // restoring the session and building a notification client, both of which reach the network
+        // and neither of which was bounded at all. So the twenty seconds promised out of the thirty
+        // iOS allows were twenty seconds of whatever was left, and if what was left was nothing, the
+        // process was killed mid-decrypt with no fallback written and the user got the server's
+        // "New message" — the exact outcome the budget exists to prevent.
+        do {
+            return try await withTimeout(Self.budget) {
+                try await self.decrypt(roomID: roomID, eventID: eventID)
+            }
+        } catch is TimeoutError {
+            // Bounded for a harder reason than the rest of the app. Everywhere else a stalled call
+            // means a spinner; here it means iOS runs out of patience, kills the process
+            // mid-decrypt, and shows the fallback push — so we give up first, with time left to put
+            // something honest on the screen ourselves.
+            Log.push.error("the push did not decrypt inside \(Self.budget)")
+            return .failed("timed out after \(Self.budget)")
+        } catch {
+            Log.push.error("the push would not decrypt: \(String(describing: error), privacy: .public)")
+            return .failed(String(describing: error))
+        }
+    }
+
+    /// The work itself, so that one deadline can be drawn around all of it.
+    private func decrypt(roomID: String, eventID: String) async throws -> PushOutcome {
         let client: Client
         do {
             guard let restored = try await AuthenticationService(environment: environment)
@@ -41,33 +68,19 @@ public actor PushDecoder {
             // extension has a different bundle ID from the app, so it needs the App Group
             // and the Keychain group granted to it *separately*, and a profile that forgot
             // one of them fails here and nowhere else.
-            Log.push.error("the session would not open in this process: \(error)")
+            Log.push.error("the session would not open in this process: \(String(describing: error), privacy: .public)")
             return .failed(String(describing: error))
         }
 
-        do {
-            // `.multipleProcesses` is the reason the store lives in an App Group at all. It
-            // tells the SDK that the app may be awake and holding the same SQLite file right
-            // now, so the two take a cross-process lock instead of writing over each other.
-            // `.singleProcess` here would be a database corrupted by a push that arrived
-            // while the user happened to have the app open — rare, silent, and fatal.
-            let notifications = try await client.notificationClient(processSetup: .multipleProcesses)
+        // `.multipleProcesses` is the reason the store lives in an App Group at all. It tells the
+        // SDK that the app may be awake and holding the same SQLite file right now, so the two take
+        // a cross-process lock instead of writing over each other. `.singleProcess` here would be a
+        // database corrupted by a push that arrived while the user happened to have the app open —
+        // rare, silent, and fatal.
+        let notifications = try await client.notificationClient(processSetup: .multipleProcesses)
+        let status = try await notifications.getNotification(roomId: roomID, eventId: eventID)
 
-            let status = try await withTimeout(Self.budget) {
-                try await notifications.getNotification(roomId: roomID, eventId: eventID)
-            }
-            return PushMapper.outcome(for: status, roomID: roomID, eventID: eventID)
-        } catch is TimeoutError {
-            // Bounded for a harder reason than the rest of the app. Everywhere else a stalled
-            // call means a spinner; here it means iOS runs out of patience, kills the process
-            // mid-decrypt, and shows the fallback push — so we give up first, with time left
-            // to put something honest on the screen ourselves.
-            Log.push.error("the event did not arrive inside \(Self.budget)")
-            return .failed("timed out after \(Self.budget)")
-        } catch {
-            Log.push.error("the event would not decrypt: \(error)")
-            return .failed(String(describing: error))
-        }
+        return PushMapper.outcome(for: status, roomID: roomID, eventID: eventID)
     }
 
     /// A real room and a real message to try this on, for `Iskra --probe-notification` when it

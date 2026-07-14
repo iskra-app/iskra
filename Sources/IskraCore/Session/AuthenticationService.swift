@@ -74,6 +74,16 @@ public actor AuthenticationService {
     // MARK: - Restoring
 
     /// Brings back the previously signed-in user, if there is one.
+    ///
+    /// Bounded, like everything else the user waits on — and it was the one call that was not.
+    /// This is what runs while the launch screen shows a spinner, and `restoreSession` reaches the
+    /// network: a homeserver that accepts the connection and then says nothing left the app on that
+    /// spinner **forever**, with no way out but killing it. The rule in `CLAUDE.md` — "every SDK
+    /// call the user waits on is bounded" — had a hole in it exactly where the user waits longest.
+    ///
+    /// The same deadline covers the notification extension, which restores a session too and has
+    /// thirty seconds to live before iOS takes the process away. See `PushDecoder`, whose budget
+    /// used to start counting only after this had already returned.
     public func restorePreviousSession() async throws -> Client? {
         guard let stored = try sessionStore.loadSession() else { return nil }
 
@@ -84,13 +94,19 @@ public actor AuthenticationService {
             throw AuthenticationError.storageUnavailable(error)
         }
 
-        let client = try await builder
-            .homeserverUrl(url: stored.homeserverURL)
-            .build()
+        return try await withTimeout(Self.restoreTimeout) {
+            let client = try await builder
+                .homeserverUrl(url: stored.homeserverURL)
+                .build()
 
-        try await client.restoreSession(session: stored.rustSession)
-        return client
+            try await client.restoreSession(session: stored.rustSession)
+            return client
+        }
     }
+
+    /// Long enough for a slow network and a large store, short enough that a server which is never
+    /// going to answer does not hold the app on its launch screen indefinitely.
+    private static let restoreTimeout: Duration = .seconds(20)
 
     // MARK: - Signing in
 
@@ -102,9 +118,21 @@ public actor AuthenticationService {
         // Whatever the last attempt made for itself, it is not going to use. Typing a homeserver,
         // getting it wrong, and typing another is the ordinary way this screen is used, and each
         // pass through here mints a session ID and three directories to go with it.
+        //
+        // The *whole* attempt goes, not just its directories. Deleting the store while leaving
+        // `pendingClient` and `pendingSessionID` pointing at it is worse than leaving both: the
+        // client goes on holding files in a directory that is not there any more, and if the new
+        // lookup then fails, the screen keeps the *old* options — so pressing "sign in" completes
+        // the previous attempt and `persist()` writes a session to the Keychain whose encrypted
+        // store was deleted a moment ago. An account that is signed in and has nowhere to keep
+        // anything.
         if let abandoned = pendingSessionID {
             discardStore(forSessionID: abandoned)
         }
+        pendingClient = nil
+        pendingSessionID = nil
+        pendingOAuth = nil
+        pendingSSO = nil
 
         let sessionID = UUID().uuidString
 
