@@ -461,7 +461,7 @@ public final class RoomDetailsStore {
             try await room.uploadAvatar(mimeType: info.mimeType, data: data, mediaInfo: nil)
             await loadInfo()
         } catch {
-            Log.rooms.error("room picture refused: \(error)")
+            Log.rooms.error("room picture refused: \(String(describing: error), privacy: .public)")
             failure = .picture
         }
     }
@@ -516,7 +516,7 @@ public final class RoomDetailsStore {
         do {
             try await room.inviteUserById(userId: userID)
         } catch {
-            Log.rooms.error("invitation refused: \(error)")
+            Log.rooms.error("invitation refused: \(String(describing: error), privacy: .public)")
             failure = .invite
         }
     }
@@ -528,7 +528,7 @@ public final class RoomDetailsStore {
             try await room.kickUser(userId: member.id, reason: nil)
             await refreshMembers()
         } catch {
-            Log.rooms.error("removal refused: \(error)")
+            Log.rooms.error("removal refused: \(String(describing: error), privacy: .public)")
             failure = .remove
         }
     }
@@ -543,7 +543,7 @@ public final class RoomDetailsStore {
             try await room.banUser(userId: member.id, reason: nil)
             await refreshMembers()
         } catch {
-            Log.rooms.error("ban refused: \(error)")
+            Log.rooms.error("ban refused: \(String(describing: error), privacy: .public)")
             failure = .ban
         }
     }
@@ -573,7 +573,7 @@ public final class RoomDetailsStore {
                                                                                     powerLevel: level)])
             await refreshMembers()
         } catch {
-            Log.rooms.error("role change refused: \(error)")
+            Log.rooms.error("role change refused: \(String(describing: error), privacy: .public)")
             failure = .role
         }
     }
@@ -584,7 +584,7 @@ public final class RoomDetailsStore {
             try await room.leave()
             hasLeft = true
         } catch {
-            Log.rooms.error("leaving refused: \(error)")
+            Log.rooms.error("leaving refused: \(String(describing: error), privacy: .public)")
             failure = .leave
         }
     }
