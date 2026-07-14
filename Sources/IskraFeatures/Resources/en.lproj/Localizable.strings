@@ -459,7 +459,13 @@
 "encryption.thisDevice" = "This device";
 "encryption.deviceVerified" = "Verified";
 "encryption.deviceUnverified" = "New device";
-"encryption.otherDevices" = "Your other devices are under “My devices”.";
+/* Two footers under "this device", and which one is true is the server's to decide.
+   The first is for when the "My devices" row exists. The second is for when it does not,
+   because the session was not obtained through a browser and the server has no account page
+   we can reach. Sending somebody to a section they will not find is worse than sending them
+   nowhere at all. */
+"encryption.otherDevicesHere" = "Your other devices are under “My devices”.";
+"encryption.otherDevices" = "Iskra can’t show your other devices. To end a session on another device, go to your server’s website.";
 
 /* The pill at the foot of a room when a message arrives while you are reading further up. */
 "room.jumpToNewest" = "New messages";
@@ -499,7 +505,7 @@
 "message.media.videoNote" = "Video message";
 "message.media.openFullScreen" = "Open";
 
-/* Verifying this device by comparing seven pictures with one the account already trusts. Not a
+/* Verifying this device by comparing seven emoji with a device the account already trusts. Not a
    word about cross-signing or keys: the user is asked to look at two screens and say whether they
    show the same thing, which is the whole of it, and is explicable without a single term. */
 "verification.verify" = "Verify this device";
@@ -507,19 +513,19 @@
 "verification.why" = "Until this device is verified, your account has no way to know it is really you — and your older conversations will not come through to it. You can verify it from a phone or computer where you are already signed in.";
 "verification.waiting.title" = "Look at your other device";
 "verification.waiting.message" = "Open Iskra where you are already signed in and agree to verify this device. If you have no other device, your recovery code is the way back into your older conversations.";
-"verification.asked.message" = "This device has just signed in to your account and is asking you to verify it. If that was you, agree — and then compare the pictures. If it wasn't, refuse: somebody else knows your password.";
+"verification.asked.message" = "This device has just signed in to your account and is asking you to verify it. If that was you, agree — and then compare the emoji. If it wasn't, refuse: somebody else knows your password.";
 "verification.unnamedDevice" = "An unnamed device";
 "verification.mine" = "It's me";
 "verification.notMine" = "It isn't me";
 "verification.negotiating.title" = "One moment";
-"verification.negotiating.message" = "The two devices are working it out between them. The pictures are about to appear on both screens.";
-"verification.compare" = "Your other device is showing the same seven pictures. Check that they match — and that they are in the same order.";
+"verification.negotiating.message" = "The two devices are working it out between them. The emoji are about to appear on both screens.";
+"verification.compare" = "Your other device is showing the same seven emoji. Check that they match — and that they are in the same order.";
 "verification.match" = "They match";
-"verification.noMatch" = "They don't match";
+"verification.noMatch" = "They don’t match";
 "verification.done.title" = "This device is verified";
 "verification.done.message" = "Your account trusts this device now. Your older conversations will appear here on their own.";
 "verification.declined.title" = "Verification stopped";
-"verification.declined.message" = "If the pictures really did not match, do not trust this connection, and try again. It may also be that you simply started the verification twice.";
+"verification.declined.message" = "If the emoji really did not match, do not trust this connection, and try again. It may also be that you simply started the verification twice.";
 "verification.refused.title" = "You said no";
 "verification.refused.message" = "That device was given no access to your conversations. But if the sign-in wasn't yours, then somebody else knows your password — and it needs changing right now.";
 "verification.failed.title" = "That didn't work";
