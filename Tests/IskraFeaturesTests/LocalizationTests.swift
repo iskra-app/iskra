@@ -194,9 +194,22 @@ struct LocalizationTests {
             }
         }
 
+        // And the footer does not frighten anybody.
+        //
+        // This used to pin the opposite: the sentence *had* to say that words from messages deleted
+        // long ago may still be sitting in the index. That is true, and leading with it was still
+        // wrong. It reads as a confession; it invites a person to wonder what else the app has kept;
+        // and it does so on a settings screen where nothing is the matter and nobody came looking to
+        // be alarmed. The reason people actually press this button is disk space.
+        //
+        // So the test guards the new intent, and guards it from the most likely way it will be
+        // undone — somebody restoring the old sentence because it was more thorough.
         var why = Strings.Storage.clearSearchWhy
         why.locale = Locale(identifier: "ru")
-        #expect(String(localized: why).contains("остаться в индексе"))
+        let russian = String(localized: why)
+
+        #expect(russian.contains("Освободит место"), "the footer should lead with what the button is for")
+        #expect(!russian.contains("удал"), "the footer must not raise deleted messages: \(russian)")
     }
 
     /// Every reason a message can be stuck has to be a sentence in both languages. A

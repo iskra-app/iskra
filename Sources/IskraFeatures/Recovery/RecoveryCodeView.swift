@@ -53,6 +53,11 @@ struct RecoveryCodeView: View {
                 .frame(maxWidth: .infinity)
                 .background(.fill.tertiary, in: .rect(cornerRadius: Theme.Radius.card, style: .continuous))
 
+            // The same two glasses as the sign-in screen, and for the same reason `CLAUDE.md` gives:
+            // this is the navigation layer — getting into the app — and the tinted one is spent on
+            // the single action the screen is about. It was `.bordered` over `.primaryAction`, which
+            // is the *content* pairing, so the last screen of the way in was drawn in the manners of
+            // a settings row.
             Button {
                 copy()
             } label: {
@@ -60,20 +65,25 @@ struct RecoveryCodeView: View {
                       systemImage: hasCopied ? "checkmark" : "doc.on.doc")
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.glass)
+            .controlSize(.large)
 
             Button(action: onSaved) {
                 Text(Strings.Encryption.saved)
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.primaryAction)
+            .buttonStyle(.glassAction)
+            .controlSize(.large)
+            .frame(maxWidth: .infinity)
 
             if let onSkip {
                 Button(action: onSkip) {
                     Text(Strings.Recovery.skip)
-                        // A `.plain` button is exactly as tall as its words — about 20pt for a line
-                        // of `.body`, against the 44 Apple asks for. It is a quiet button on purpose;
-                        // quiet is not the same as hard to hit.
+                        // `.footnote`, which is what every quiet way-out in this flow and on the
+                        // sign-in screen is set in. And still 44pt tall: a `.plain` button is exactly
+                        // as tall as its words, about 20pt, against the 44 Apple asks for. Quiet is a
+                        // matter of size and colour, not of being hard to hit.
+                        .font(.footnote)
                         .frame(maxWidth: .infinity, minHeight: Theme.Size.minimumTapTarget)
                         .contentShape(.rect)
                 }

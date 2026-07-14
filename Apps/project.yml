@@ -189,8 +189,11 @@ targets:
         # ASWebAuthenticationSession intercepts the sign-in callback itself, but the
         # scheme is registered so the OAuth provider can hand it back to us.
         CFBundleURLTypes:
-          - CFBundleURLName: app.iskra.oauth
-            CFBundleURLSchemes: [app.iskra]
+          # Reverse-DNS of the client's domain (iskra.swag.moscow), which is the only scheme a
+          # homeserver running the authentication service will accept — and the same string as
+          # AppEnvironment.oauthRedirectURI, which it has to be.
+          - CFBundleURLName: moscow.swag.iskra.oauth
+            CFBundleURLSchemes: [moscow.swag.iskra]
         UIBackgroundModes: [remote-notification]
 
   # The process that decrypts a push. iOS wakes it when one arrives, gives it ~30 seconds,
@@ -282,8 +285,11 @@ targets:
         NSMicrophoneUsageDescription: Iskra uses the microphone so you can record voice messages.
         NSLocationWhenInUseUsageDescription: Iskra uses your location only when you ask it to, to put a map on the place you are.
         CFBundleURLTypes:
-          - CFBundleURLName: app.iskra.oauth
-            CFBundleURLSchemes: [app.iskra]
+          # Reverse-DNS of the client's domain (iskra.swag.moscow), which is the only scheme a
+          # homeserver running the authentication service will accept — and the same string as
+          # AppEnvironment.oauthRedirectURI, which it has to be.
+          - CFBundleURLName: moscow.swag.iskra.oauth
+            CFBundleURLSchemes: [moscow.swag.iskra]
     entitlements:
       path: macOS/Iskra.entitlements
       properties:

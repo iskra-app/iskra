@@ -321,7 +321,19 @@ public enum Theme {
         /// and the recovery screen that follows it. Named once and shared, because the two are one
         /// continuous act to the person performing it, and a column that changed width halfway
         /// through would be the seam showing.
+        ///
+        /// It was named once and then *not* shared: the sign-in screen went on saying `420` in its
+        /// own hand, which is exactly the drift the paragraph above was written to prevent, and it
+        /// meant this constant could have been changed with no effect on the screen it is named for.
         public static let signInColumn: CGFloat = 420
+
+        /// The symbol over the sign-in screen — the first thing anyone sees of this app, and the
+        /// only mark it has.
+        ///
+        /// Bigger than any `Font.TextStyle` goes, which is why it is a size and not a style: it is
+        /// not text, it is a picture, and it is the one place in the app where something is drawn
+        /// large simply to be looked at.
+        public static let signInMark: CGFloat = 56
 
         /// The red badge beside a message that failed to send. Bigger than the delivery
         /// ticks on purpose: those report progress and may be ignored, this one is the

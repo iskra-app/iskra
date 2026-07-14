@@ -42,7 +42,7 @@ public struct SignInView: View {
                 }
             }
             .padding(Theme.Spacing.generous)
-            .frame(maxWidth: 420)
+            .frame(maxWidth: Theme.Size.signInColumn)
             .frame(maxWidth: .infinity)
         }
         .scrollBounceBehavior(.basedOnSize)
@@ -96,7 +96,7 @@ public struct SignInView: View {
     private var header: some View {
         VStack(spacing: Theme.Spacing.normal) {
             Image(systemName: "bubble.left.and.bubble.right.fill")
-                .font(.system(size: 56))
+                .font(.system(size: Theme.Size.signInMark))
                 .foregroundStyle(.tint)
                 .accessibilityHidden(true)
 
@@ -122,7 +122,6 @@ public struct SignInView: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             TextField(String(app: Strings.SignIn.addressPlaceholder), text: $model.address)
-                .textFieldStyle(.plain)
                 .textContentType(.URL)
                 #if !os(macOS)
                 .textInputAutocapitalization(.never)
@@ -130,9 +129,7 @@ public struct SignInView: View {
                 #endif
                 .autocorrectionDisabled()
                 .focused($focus, equals: .address)
-                .padding(Theme.Spacing.normal)
-                .frame(minHeight: Theme.Size.minimumTapTarget)
-                .background(.quaternary, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
+                .entryField()
                 .onSubmit { Task { await model.findServer() } }
                 .accessibilityLabel(Text(Strings.SignIn.addressLabel))
 
@@ -256,9 +253,7 @@ public struct SignInView: View {
                 .focused($focus, equals: .password)
                 .onSubmit { Task { await model.signInWithPassword() } }
         }
-        .textFieldStyle(.plain)
-        .padding(Theme.Spacing.normal)
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
+        .entryField()
     }
 
     /// Tinted only where it is the whole of the screen. Behind the browser button it is the fallback

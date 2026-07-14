@@ -45,8 +45,12 @@ public struct AppEnvironment: Sendable {
     /// A homeserver running the authentication service will only accept a private-use URI scheme
     /// that is the *reverse-DNS of the client's own domain* — that is the rule for native apps, and
     /// it exists so that a scheme cannot be claimed by an app that does not own the domain behind
-    /// it. `clientUri` is `https://iskra.app`, so the one scheme permitted is `app.iskra`. A bare
-    /// `iskra:` belongs to nobody and is refused.
+    /// it. A bare `iskra:` belongs to nobody and is refused.
+    ///
+    /// **So this string is not free to choose: it is `clientUri` spelled backwards.** The domain is
+    /// `iskra.swag.moscow`, so the one scheme permitted is `moscow.swag.iskra` — which is also, and
+    /// not by accident, the bundle identifier. Change the domain in `oauthConfiguration()` and this
+    /// has to change with it, or the client cannot be registered at all.
     ///
     /// The failure is worth recognising on sight, because it happens *before the browser opens* and
     /// therefore looks nothing like a redirect problem: no browser appears, nothing comes back, and
@@ -54,15 +58,18 @@ public struct AppEnvironment: Sendable {
     /// one line.
     ///
     /// The scheme is declared in `Apps/project.yml` (`CFBundleURLSchemes`), and the two must agree
-    /// or the browser comes back to an app that is not listening.
+    /// or the browser comes back to an app that is not listening. That is a *third* place the same
+    /// fact is written down, and all three have to say it.
     public let oauthRedirectURI: String
 
-    /// Shown to the user on the homeserver's consent screen, so keep it human.
+    /// What the account is told it is letting in — the name on the homeserver's consent screen, and
+    /// the name in the user's own list of signed-in sessions afterwards. So it is the app's name as
+    /// a person would say it, and not an identifier.
     public let clientName: String
 
     public init(storage: StorageMode,
-                oauthRedirectURI: String = "app.iskra:/oauth-callback",
-                clientName: String = "Iskra") {
+                oauthRedirectURI: String = "moscow.swag.iskra:/oauth-callback",
+                clientName: String = "Iskra App") {
         self.storage = storage
         self.oauthRedirectURI = oauthRedirectURI
         self.clientName = clientName
