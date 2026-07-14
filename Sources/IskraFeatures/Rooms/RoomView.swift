@@ -175,6 +175,16 @@ public struct RoomView: View {
     /// turns on. See `RoomListView.isSidebar` for the case where this reasoning goes wrong.
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
+    /// Whether the app is still the thing the user is looking at.
+    ///
+    /// Nothing in this app read this, and a recording is precisely the state that cannot survive
+    /// not being watched. The camera is the dangerous one: iOS interrupts the capture session when
+    /// the app goes away, and the frames that arrive when it comes *back* carry timestamps a minute
+    /// later than the ones before them — which `VideoNoteWriter` reads, correctly, as sixty seconds
+    /// having elapsed, and it does what it is told to do at sixty seconds. It ends the take and
+    /// sends it. A video message the user never finished, sent because they took a phone call.
+    @Environment(\.scenePhase) private var scenePhase
+
     /// The room-info store, made on demand rather than passed in ready — it is a screenful
     /// of requests, and most conversations are read without ever opening it. It comes from
     /// the session, because it needs the `Client` as well as the room: a room's
@@ -729,6 +739,25 @@ public struct RoomView: View {
             guard isAtNewest else { return }
             Task { await timeline.markAsRead() }
         }
+        // Put the app away mid-recording, and the recording does not survive it — the question is
+        // only whether the app admits that.
+        //
+        // The camera is thrown away outright, and that is the safe direction: iOS interrupts the
+        // capture session, and the frames arriving when the app comes back are stamped a minute
+        // later than the ones before them. `VideoNoteWriter` reads that, quite correctly, as sixty
+        // seconds having passed — and does what it is told to do at sixty seconds, which is end the
+        // take and send it. A video message of somebody's face, finished and sent while they were
+        // taking a phone call. A clip nobody chose to send is worse than a clip nobody sent.
+        //
+        // The microphone is not thrown away, and the difference is not an inconsistency. iOS has
+        // already stopped it — the recorder notices within the tick and settles into `.stopped` —
+        // so what is on the disk is exactly the words the user spoke before they were interrupted,
+        // ending where the interruption did. That is a message they may well still want; the strip
+        // stays up, with a clock that has stopped, and they can send it or throw it away.
+        .onChange(of: scenePhase) { _, phase in
+            guard phase != .active, isRecordingVideoNote else { return }
+            cancelVideoNote()
+        }
         // The camera goes with the room, and it has to be said here rather than left to the
         // overlay: the overlay used to be a sheet, and a sheet took its own `onDisappear` with
         // it. Nothing else turns the capture session off — leave the room mid-recording and the
@@ -935,8 +964,13 @@ public struct RoomView: View {
     // MARK: - Recording a voice message
 
     /// What the composer draws while somebody is speaking, and nil the rest of the time.
+    ///
+    /// `.stopped` counts, and has to: it is a recording iOS ended without asking — the cap, a phone
+    /// call, the app being put away — and what was said is still there and still worth sending. The
+    /// strip stays up so there is something to press send on, and the clock it shows has stopped,
+    /// which is the truth.
     private var voiceRecording: VoiceRecording? {
-        guard voice.state == .recording else { return nil }
+        guard voice.state == .recording || voice.state == .stopped else { return nil }
         return VoiceRecording(elapsed: voice.elapsed, waveform: voice.waveform)
     }
 
