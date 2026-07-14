@@ -465,7 +465,16 @@ public final class TimelineStore {
     /// a decoration.
     public func send(text: String, replyingTo replyID: String? = nil) async {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, let timeline else { return }
+        // An empty box is nothing to send and nothing to report. A room with no timeline is a
+        // *failure* to send, and the user pressed the button — see `TimelineStore+Media`, where the
+        // same silent return swallowed photographs.
+        guard !trimmed.isEmpty else { return }
+
+        guard let timeline else {
+            Log.media.error("nothing was sent: the room has no live timeline")
+            sendFailure = CoreStrings.Timeline.sendFailed
+            return
+        }
 
         // Sending is the end of writing. Waiting for the four-second lull to notice would leave
         // the other person watching "typing…" for four seconds *after* the message had landed in
