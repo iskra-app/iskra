@@ -134,6 +134,12 @@
 "roomAction.acceptInviteFailed" = "You couldn’t join the chat. The invitation may have been withdrawn.";
 "roomAction.declineInviteFailed" = "The invitation wasn’t declined. It is still there — try again.";
 
+/* Organising the list: pin, archive, mark read, report. */
+"roomAction.pinFailed" = "The chat wasn’t pinned. It slid back — try again.";
+"roomAction.archiveFailed" = "The chat wasn’t archived. It is still in the list — try again.";
+"roomAction.readFailed" = "The read state wouldn’t change.";
+"roomAction.reportFailed" = "The report didn’t go through. Try again.";
+
 /* The room would not open at all — the one refusal here that is not about something the user did:
    they pressed nothing and were refused nothing. The room simply could not be read. */
 "roomAction.loadFailed" = "This chat wouldn't open. Try again.";

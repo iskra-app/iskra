@@ -23,8 +23,19 @@ struct UnsafeTransfer<T>: @unchecked Sendable {
 @MainActor
 @Observable
 public final class RoomListStore {
-    /// What the UI renders. Ordered by recency, as the server sorts it.
+    /// What the UI renders. Ordered by recency (pinned rooms first), as the server sorts it.
+    /// Archived rooms are held back — they live in `archivedRooms` and on the archive screen.
     public private(set) var rooms: [RoomSummary] = []
+
+    /// The archived rooms — the ones the user has swept out of the main list. This is the Matrix
+    /// `m.lowpriority` tag; the rooms are still fully joined, with their history intact, they are
+    /// just kept off the main list until the user goes looking for them.
+    ///
+    /// Filtered out here in the projection rather than at the SDK filter, on purpose: filtering
+    /// `.lowPriority` out of the room list would drop these rooms from the diff stream altogether,
+    /// and then there would be nothing left to *show* on the archive screen. One stream, split in
+    /// two at the end, keeps both lists reading from the same source of truth.
+    public private(set) var archivedRooms: [RoomSummary] = []
 
     /// True until the first batch of rooms arrives, so the UI can say something
     /// friendlier than showing an empty list.
@@ -533,7 +544,17 @@ public final class RoomListStore {
         }
 
         guard !Task.isCancelled else { return }
-        rooms = Self.byRecency(summaries)
+        // One list in, two lists out: the archive is everything the user swept aside, the main list
+        // is the rest. Both keep the same recency-and-pins order.
+        let (archived, active) = summaries.reduce(into: ([RoomSummary](), [RoomSummary]())) { acc, summary in
+            if summary.isArchived {
+                acc.0.append(summary)
+            } else {
+                acc.1.append(summary)
+            }
+        }
+        rooms = Self.byRecency(active)
+        archivedRooms = Self.byRecency(archived)
         isLoadingInitialRooms = false
     }
 
@@ -574,6 +595,68 @@ public final class RoomListStore {
         }
     }
 
+    // MARK: - Organising the list
+
+    /// Pins a room to the top, or unpins it. This is the Matrix `m.favourite` tag, so the pin syncs
+    /// across the user's devices rather than living on this one.
+    ///
+    /// The list is not touched here, for the same reason `accept` does not touch it: the tag change
+    /// reaches the server, the server tells the sync loop, a diff comes back, and the row re-sorts
+    /// itself through `byRecency`. `tagOrder` is left to the SDK — explicit hand-ordering of pins is
+    /// layered on top by whoever drags one.
+    public func setPinned(roomID: String, _ pinned: Bool) async {
+        await act(roomID, .pin) { try await $0.setIsFavourite(isFavourite: pinned, tagOrder: nil) }
+    }
+
+    /// Archives a room, or lifts it back out. This is the Matrix `m.lowpriority` tag — the nearest
+    /// thing the protocol has to an archive. The room's history is untouched; it is filtered out of
+    /// the main list (see `Self.filter`) and shown on the archive screen instead.
+    public func setArchived(roomID: String, _ archived: Bool) async {
+        await act(roomID, .archive) { try await $0.setIsLowPriority(isLowPriority: archived, tagOrder: nil) }
+    }
+
+    /// Marks a room read — clears its unread count and drops any hand-set unread flag.
+    public func markRead(roomID: String) async {
+        await act(roomID, .read) { try await $0.markAsRead(receiptType: .read) }
+    }
+
+    /// Flags a read room unread by hand. Distinct from having unread messages: the badge comes back
+    /// even though there is nothing new to read, because the user asked to be reminded.
+    public func markUnread(roomID: String) async {
+        await act(roomID, .read) { try await $0.setUnreadFlag(newValue: true) }
+    }
+
+    /// Leaves a room. This is the same call `decline` makes, but named for what a joined room's
+    /// swipe means — "delete this chat" — rather than for an invitation. Matrix has no delete; you
+    /// leave, the room fails the `.nonLeft` filter, and the row drops out on its own.
+    public func leave(roomID: String) async {
+        await act(roomID, .leave) { try await $0.leave() }
+    }
+
+    /// Reports a whole room to its moderators / the homeserver. Content-level reports (one message)
+    /// go through the timeline; this is the room itself.
+    public func reportRoom(roomID: String, reason: String) async {
+        await act(roomID, .report) { try await $0.reportRoom(reason: reason) }
+    }
+
+    /// The shape every room-list action shares: resolve the handle, run the SDK call, and on failure
+    /// log without leaking content and surface a sentence the user can act on. Kept in one place so
+    /// a new action is one line, not a repeated do/catch that quietly drifts.
+    private func act(_ roomID: String,
+                     _ failureKind: RoomActionFailure,
+                     _ body: (Room) async throws -> Void) async {
+        guard let room = room(withID: roomID) else {
+            failure = failureKind
+            return
+        }
+        do {
+            try await body(room)
+        } catch {
+            Log.rooms.error("room action \(failureKind.rawValue, privacy: .public) failed: \(Log.describe(error), privacy: .public)")
+            failure = failureKind
+        }
+    }
+
     /// Newest conversation first — sorted here rather than taken from the SDK's order.
     ///
     /// The two nearly always agree, and where they part company the SDK is answering a
@@ -599,6 +682,15 @@ public final class RoomListStore {
                 // last one they ever saw.
                 if left.element.isInvitation != right.element.isInvitation {
                     return left.element.isInvitation
+                }
+
+                // Pinned rooms sit above the rest — beneath invitations, which are still the one
+                // thing asking for an answer. This is the `m.favourite` tag, so the pin travels
+                // with the account, not the device. Within the pinned group the ordinary recency
+                // rule below still decides; explicit hand-reordering (the favourite tag's order)
+                // is layered on top where the user drags a pin, not here.
+                if left.element.isPinned != right.element.isPinned {
+                    return left.element.isPinned
                 }
 
                 return switch (left.element.lastActivity, right.element.lastActivity) {

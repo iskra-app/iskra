@@ -81,6 +81,25 @@ public struct RoomSummary: Sendable, Identifiable, Equatable {
     public let lastMessage: String?
     public let lastActivity: Date?
 
+    /// A space, not a chat. Matrix models a "space" as a room of a particular type, and the SDK
+    /// hands that back as a plain flag on `RoomInfo`. The list shows it as an ordinary row — a
+    /// square-cornered avatar and a tap that opens the space's rooms rather than a conversation —
+    /// so the one bit that tells the two apart has to travel on the summary.
+    public let isSpace: Bool
+
+    /// Pinned to the top of the list. This is the Matrix `m.favourite` tag, so it syncs across the
+    /// user's devices; the list sorts favourites above everything else.
+    public let isFavourite: Bool
+
+    /// Archived. This is the Matrix `m.lowpriority` tag — the nearest thing the protocol has to an
+    /// archive. A low-priority room is filtered out of the main list and shown only on the archive
+    /// screen; its history is untouched (it is not left).
+    public let isLowPriority: Bool
+
+    /// The user marked this read conversation unread by hand. Distinct from `unreadCount`, which
+    /// counts actual unread messages — a room can have zero unread messages and still be flagged.
+    public let isMarkedUnread: Bool
+
     /// Joined, or invited and waiting for an answer.
     public let membership: RoomMembership
 
@@ -92,9 +111,14 @@ public struct RoomSummary: Sendable, Identifiable, Equatable {
     /// can be missing when the invite event itself is not in the store.
     public let invitedBy: String?
 
-    public var hasUnread: Bool { unreadCount > 0 }
+    public var hasUnread: Bool { unreadCount > 0 || isMarkedUnread }
     public var isMentioned: Bool { mentionCount > 0 }
     public var isInvitation: Bool { membership == .invited }
+    /// Pinned to the top. A friendlier name than "favourite" for the one place the rest of the app
+    /// reasons about it — the row is pinned, the tag underneath happens to be `m.favourite`.
+    public var isPinned: Bool { isFavourite }
+    /// Archived away from the main list. The tag underneath is `m.lowpriority`.
+    public var isArchived: Bool { isLowPriority }
 
     /// Built by hand — for tests, and for anything that wants a row without an SDK behind it.
     ///
@@ -110,6 +134,10 @@ public struct RoomSummary: Sendable, Identifiable, Equatable {
                 mentionCount: Int = 0,
                 lastMessage: String? = nil,
                 lastActivity: Date? = nil,
+                isSpace: Bool = false,
+                isFavourite: Bool = false,
+                isLowPriority: Bool = false,
+                isMarkedUnread: Bool = false,
                 membership: RoomMembership = .joined,
                 invitedBy: String? = nil) {
         self.id = id
@@ -121,6 +149,10 @@ public struct RoomSummary: Sendable, Identifiable, Equatable {
         self.mentionCount = mentionCount
         self.lastMessage = lastMessage
         self.lastActivity = lastActivity
+        self.isSpace = isSpace
+        self.isFavourite = isFavourite
+        self.isLowPriority = isLowPriority
+        self.isMarkedUnread = isMarkedUnread
         self.membership = membership
         self.invitedBy = invitedBy
     }
@@ -143,6 +175,10 @@ public struct RoomSummary: Sendable, Identifiable, Equatable {
         self.mentionCount = Int(info.highlightCount)
         self.lastMessage = lastMessage
         self.lastActivity = lastActivity
+        self.isSpace = info.isSpace
+        self.isFavourite = info.isFavourite
+        self.isLowPriority = info.isLowPriority
+        self.isMarkedUnread = info.isMarkedUnread
         self.invitedBy = info.inviter.map { $0.displayName ?? $0.userId }
     }
 }
