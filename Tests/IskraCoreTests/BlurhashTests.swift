@@ -5,6 +5,10 @@ import ImageIO
 import UniformTypeIdentifiers
 @testable import IskraCore
 
+// A test builds a known-good `CGContext` and reads its image back. A nil there is a broken test,
+// not a runtime path the app can hit — the force-unwraps are the readable thing to write.
+// swiftlint:disable force_unwrapping
+
 /// The blurhash is the field whose absence killed every picture this app tried to send: the
 /// SDK requires it, and refuses the whole attachment — before any network call — with an
 /// error that mentions neither blurhashes nor images. So these tests are not about how pretty
@@ -121,3 +125,5 @@ struct BlurhashTests {
         return data as Data
     }
 }
+
+// swiftlint:enable force_unwrapping

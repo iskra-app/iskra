@@ -149,5 +149,8 @@ private struct LockSurface: ViewModifier {
         RecordLock(gesture: LockGesture(reach: 0.5, isVisible: true))
         RecordLock(gesture: LockGesture(reach: 1, isVisible: true, hasLocked: true))
     }
+    // Room around the previewed control in the canvas — scaffolding that never ships, so it does
+    // not answer to the Theme rule the way a real view does.
+    // swiftlint:disable:next hardcoded_layout_metric
     .padding(40)
 }

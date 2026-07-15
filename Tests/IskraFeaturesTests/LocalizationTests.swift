@@ -5,6 +5,11 @@ import MatrixRustSDK
 @testable import IskraFeatures
 import IskraDesign
 
+// The table below is deliberately a three-column row — the resource, and its two translations —
+// read straight across. Splitting it into a struct to satisfy the tuple-arity rule would make the
+// one thing this file is about harder to read, not easier.
+// swiftlint:disable large_tuple
+
 /// Guards the two ways localization fails silently.
 ///
 /// The first is a missing `bundle:` — inside a Swift package, `LocalizedStringResource`
@@ -537,3 +542,5 @@ struct LocalizationTests {
         #expect(!message(isOwn: true, delivery: .failed(.server)).canReact)
     }
 }
+
+// swiftlint:enable large_tuple

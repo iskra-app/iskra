@@ -415,6 +415,8 @@ struct MessageRow: View {
         }
     }
 
+    // MARK: - Reactions
+
     /// The emoji under the bubble — aligned to the side the message is on, indented past
     /// the avatar so they sit under the *bubble* rather than under the face beside it, and
     /// tucked up over the bubble's bottom edge so they read as part of it.
@@ -423,8 +425,6 @@ struct MessageRow: View {
     /// would move the pills without telling the layout, leaving a bubble-shaped hole of
     /// empty space behind them and the next message pushed down past it. A negative padding
     /// moves them *and* closes the gap they came from.
-    // MARK: - Reactions
-
     private var reactions: some View {
         FlowLayout(spacing: Theme.Spacing.tight,
                    alignment: message.isOwn ? .trailing : .leading) {
@@ -1100,7 +1100,8 @@ private struct VoiceMessageView: View {
             HStack(spacing: 2) {
                 ForEach(Array(bars.enumerated()), id: \.offset) { index, sample in
                     Capsule()
-                        .frame(width: 2, height: max(3, CGFloat(sample) * Theme.Size.waveform))
+                        .frame(width: Theme.Size.waveformBar,
+                               height: max(Theme.Size.waveformBarMinimum, CGFloat(sample) * Theme.Size.waveform))
                         // Played or not. Bars are drawn in the bubble's own ink either way —
                         // faint ahead of the playhead, solid behind it — so this works on a
                         // coloured bubble and a grey one without knowing which it is in.

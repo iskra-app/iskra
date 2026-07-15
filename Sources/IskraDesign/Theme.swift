@@ -4,7 +4,8 @@ import SwiftUI
 ///
 /// Spacings and sizes are multiples of 4 and all corners are `.continuous`, which is what gives
 /// Apple's own apps their soft, un-fussy geometry. Sizes are *not* hard-coded anywhere else: a
-/// bubble that says `.padding(12)` is a bug waiting to drift out of line with the one next to it.
+/// bubble that pads itself by a bare twelve points is a bug waiting to drift out of line with the
+/// one next to it.
 ///
 /// Two things in here are **not** multiples of 4, and the rule used to claim otherwise about them —
 /// which is a small lie of the kind that eventually gets one of them "corrected". `Spacing.withinRun`
@@ -265,6 +266,11 @@ public enum Theme {
         /// waveform out of the bubble rather than making anything easier to hit.
         public static let voiceButton: CGFloat = 28
         public static let waveform: CGFloat = 24
+
+        /// One bar of that waveform: how wide it is drawn, and the shortest it may be so that a
+        /// silent stretch is still a mark on the line rather than a gap in it.
+        public static let waveformBar: CGFloat = 2
+        public static let waveformBarMinimum: CGFloat = 3
 
         /// The red dot that says the microphone is live.
         public static let recordingDot: CGFloat = 10
