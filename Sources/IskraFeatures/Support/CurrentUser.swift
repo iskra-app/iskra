@@ -6,6 +6,10 @@ public extension EnvironmentValues {
     /// wired to the session. Nil until a session is up.
     @Entry var blockStore: BlockStore?
 
+    /// The app lock, so the settings screen can switch it on and choose its timeout. Nil in previews
+    /// and anywhere the root has not put one up.
+    @Entry var appLock: AppLock?
+
     /// The signed-in user's Matrix ID, handed down so a message bubble can tell when a mention is of
     /// *you* without being given the whole session. Empty until a session is up.
     @Entry var currentUserID: String = ""

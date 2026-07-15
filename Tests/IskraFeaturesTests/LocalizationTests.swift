@@ -172,7 +172,14 @@ struct LocalizationTests {
         (Strings.Message.Menu.block, en: "Block", ru: "Заблокировать"),
         (Strings.Message.Menu.blockConfirm("Аня"), en: "Block Аня?", ru: "Заблокировать Аня?"),
         (Strings.Settings.blocked, en: "Blocked", ru: "Заблокированные"),
-        (Strings.Settings.unblock, en: "Unblock", ru: "Разблокировать")
+        (Strings.Settings.unblock, en: "Unblock", ru: "Разблокировать"),
+
+        // The app lock.
+        (Strings.Lock.title, en: "Iskra is locked", ru: "Iskra заблокирована"),
+        (Strings.Lock.unlock, en: "Unlock", ru: "Разблокировать"),
+        (Strings.Settings.lock, en: "App Lock", ru: "Код-пароль"),
+        (Strings.Settings.lockTimeoutLabel(.immediately), en: "Immediately", ru: "Сразу"),
+        (Strings.Settings.lockTimeoutLabel(.afterFiveMinutes), en: "After 5 minutes", ru: "Через 5 минут")
     ]
 
     @Test("app strings resolve in English and in Russian")

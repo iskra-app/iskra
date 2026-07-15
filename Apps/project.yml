@@ -186,6 +186,11 @@ targets:
         # to say where they are to do it. Nothing here tracks anybody: one coordinate, once, to
         # point a map at.
         NSLocationWhenInUseUsageDescription: Iskra uses your location only when you ask it to, to put a map on the place you are.
+        # Face ID, for the app lock. Load-bearing: LocalAuthentication traps the moment it evaluates a
+        # Face ID policy without this key present, so the crash lands on the first unlock rather than
+        # anywhere near the setting that turned the lock on. Touch ID and the passcode do not need it;
+        # Face ID does, and the same `.deviceOwnerAuthentication` call can reach for either.
+        NSFaceIDUsageDescription: Iskra uses Face ID to unlock the app.
         # ASWebAuthenticationSession intercepts the sign-in callback itself, but the
         # scheme is registered so the OAuth provider can hand it back to us.
         CFBundleURLTypes:

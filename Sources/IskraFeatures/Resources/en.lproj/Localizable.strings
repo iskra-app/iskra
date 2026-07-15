@@ -115,6 +115,22 @@
 "settings.reactions" = "Reactions";
 
 "settings.storage" = "Storage";
+
+/* App lock by Face ID / device passcode. */
+"settings.lock" = "App Lock";
+"settings.lockEnable" = "Require Face ID or passcode";
+"settings.lockTimeout" = "Ask";
+"settings.lockExplanation" = "The app will ask for Face ID, Touch ID, or your device passcode when you come back.";
+"settings.lockUnavailable" = "Set a device passcode first.";
+"settings.lockTimeout.immediately" = "Immediately";
+"settings.lockTimeout.afterMinute" = "After 1 minute";
+"settings.lockTimeout.afterFiveMinutes" = "After 5 minutes";
+
+/* The lock screen — the shield over the app. */
+"lock.title" = "Iskra is locked";
+"lock.unlock" = "Unlock";
+"lock.reason" = "Unlock Iskra";
+
 "settings.blocked" = "Blocked";
 "settings.blockedEmptyTitle" = "Nobody is blocked";
 "settings.blockedEmptyMessage" = "People you block show up here. You won’t see their messages.";
