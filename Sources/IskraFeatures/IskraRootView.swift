@@ -10,6 +10,12 @@ import IskraDesign
 /// rather than building one — it already knows things we would spend months learning.
 public struct IskraRootView: View {
     @State private var phase: Phase = .starting
+
+    /// The lock over the whole app. Made once, here, from the App-Group settings so the choice is
+    /// one the notification extension could also read. Off by default, so it changes nothing until
+    /// the user turns it on in settings.
+    @State private var appLock = AppLock(defaults: UserDefaults(suiteName: AppEnvironment.appGroupIdentifier))
+
     @State private var selectedRoomID: String?
 
     /// The *message* the room is being opened on, when it is being opened on one — searching finds
@@ -218,6 +224,29 @@ public struct IskraRootView: View {
             }
         }
         .animation(.smooth(duration: Theme.Timing.reaction), value: tintsInterface)
+        .environment(\.appLock, appLock)
+        // The shield, above everything — the tint, a sheet, a media viewer — because a lock that any
+        // screen could sit on top of is not a lock. It is here, at the very root, for the same reason
+        // the colour scheme is.
+        .overlay {
+            if appLock.isLocked {
+                LockScreen(appLock: appLock)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.smooth(duration: Theme.Timing.chrome), value: appLock.isLocked)
+        // Driving the lock is separate from the sync teardown below: the lock cares about every trip
+        // away, signed in or not, and on the Mac as well as the phone.
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            // Only a true trip to the background records a leaving-time — `.inactive` is the app
+            // switcher and the notification pull-down, and locking on those would close the shield
+            // every time the user glanced at a banner.
+            case .background: appLock.enteredBackground()
+            case .active: appLock.enteredForeground()
+            default: break
+            }
+        }
         .environment(\.accent, accent)
         // And light or dark, if the user asked for either. Applied at the root, above everything,
         // because a colour scheme is not a property of a screen — a sheet or a media viewer left

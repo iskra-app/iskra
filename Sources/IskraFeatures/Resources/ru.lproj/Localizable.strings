@@ -115,6 +115,22 @@
 "settings.reactions" = "Реакции";
 
 "settings.storage" = "Хранилище";
+
+/* Блокировка приложения по Face ID / коду устройства. */
+"settings.lock" = "Код-пароль";
+"settings.lockEnable" = "Запрашивать Face ID или код";
+"settings.lockTimeout" = "Запрашивать";
+"settings.lockExplanation" = "Приложение попросит Face ID, Touch ID или код устройства при возвращении.";
+"settings.lockUnavailable" = "Сначала настройте код-пароль на устройстве.";
+"settings.lockTimeout.immediately" = "Сразу";
+"settings.lockTimeout.afterMinute" = "Через минуту";
+"settings.lockTimeout.afterFiveMinutes" = "Через 5 минут";
+
+/* Экран блокировки — щит поверх приложения. */
+"lock.title" = "Iskra заблокирована";
+"lock.unlock" = "Разблокировать";
+"lock.reason" = "Разблокировать Iskra";
+
 "settings.blocked" = "Заблокированные";
 "settings.blockedEmptyTitle" = "Никто не заблокирован";
 "settings.blockedEmptyMessage" = "Заблокированные люди появятся здесь. Их сообщения вы не увидите.";

@@ -18,6 +18,15 @@ public enum Strings {
     static let resourceBundle = Bundle.module
     static let bundle = LocalizedStringResource.BundleDescription.atURL(Bundle.module.bundleURL)
 
+    /// The lock screen — the shield over the app when it is locked.
+    public enum Lock {
+        public static let title = LocalizedStringResource("lock.title", bundle: bundle)
+        public static let unlock = LocalizedStringResource("lock.unlock", bundle: bundle)
+        /// Shown by the system in the Face ID / passcode prompt, so it must read as a reason, not a
+        /// label: "Unlock Iskra".
+        public static let reason = LocalizedStringResource("lock.reason", bundle: bundle)
+    }
+
     public enum SignIn {
         public static let title = LocalizedStringResource("signIn.title", bundle: bundle)
         public static let tagline = LocalizedStringResource("signIn.tagline", bundle: bundle)
@@ -841,6 +850,21 @@ public enum Strings {
         public static let blockedEmptyTitle = LocalizedStringResource("settings.blockedEmptyTitle", bundle: bundle)
         public static let blockedEmptyMessage = LocalizedStringResource("settings.blockedEmptyMessage", bundle: bundle)
         public static let unblock = LocalizedStringResource("settings.unblock", bundle: bundle)
+
+        /// The app-lock settings: the switch, the grace-period picker, and a note when the device
+        /// has no lock of its own to lean on.
+        public static let lock = LocalizedStringResource("settings.lock", bundle: bundle)
+        public static let lockEnable = LocalizedStringResource("settings.lockEnable", bundle: bundle)
+        public static let lockTimeout = LocalizedStringResource("settings.lockTimeout", bundle: bundle)
+        public static let lockExplanation = LocalizedStringResource("settings.lockExplanation", bundle: bundle)
+        public static let lockUnavailable = LocalizedStringResource("settings.lockUnavailable", bundle: bundle)
+        public static func lockTimeoutLabel(_ timeout: AppLockTimeout) -> LocalizedStringResource {
+            switch timeout {
+            case .immediately: LocalizedStringResource("settings.lockTimeout.immediately", bundle: bundle)
+            case .afterMinute: LocalizedStringResource("settings.lockTimeout.afterMinute", bundle: bundle)
+            case .afterFiveMinutes: LocalizedStringResource("settings.lockTimeout.afterFiveMinutes", bundle: bundle)
+            }
+        }
 
         /// The app's own name, at the foot of the screen. Not the bundle's display name and
         /// not translated: it is what the app is called, in both languages, and it is here so

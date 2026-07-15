@@ -27,6 +27,9 @@ struct SettingsView: View {
     /// through a plain `let` just as well.
     let session: UserSession
 
+    /// The app lock, put up by the root. Nil only where the root has not — never in the real app.
+    @Environment(\.appLock) private var appLock
+
     /// `async`, because signing out is not instant and this screen has to be able to say so — it
     /// ends the session on the server and deletes the encrypted store. As a plain closure it
     /// returned immediately, the screen sat there looking untouched, and the button got pressed
@@ -122,6 +125,10 @@ struct SettingsView: View {
                 unbuilt(Strings.Settings.notifications, systemImage: "bell")
             } footer: {
                 Text(Strings.Settings.moreSoon)
+            }
+
+            if let appLock {
+                lockSection(appLock)
             }
 
             // The devices, which live somewhere else — and the row is only here when there is
@@ -329,6 +336,35 @@ struct SettingsView: View {
     private func unbuilt(_ title: LocalizedStringResource, systemImage: String) -> some View {
         Label(title, systemImage: systemImage)
             .foregroundStyle(.secondary)
+    }
+
+    /// The app-lock controls: a switch, and — once it is on — how long a trip away is forgiven. The
+    /// switch is `@Bindable` on the lock itself, so flipping it writes straight through to the store
+    /// that persists it. When the device has no passcode of its own there is nothing to lean on, so
+    /// the switch is disabled and says why.
+    @ViewBuilder
+    private func lockSection(_ appLock: AppLock) -> some View {
+        @Bindable var appLock = appLock
+        Section {
+            Toggle(isOn: $appLock.isEnabled) {
+                Label(Strings.Settings.lockEnable, systemImage: "faceid")
+            }
+            .disabled(!appLock.canAuthenticate)
+
+            if appLock.isEnabled {
+                Picker(selection: $appLock.timeout) {
+                    ForEach(AppLockTimeout.allCases) { option in
+                        Text(Strings.Settings.lockTimeoutLabel(option)).tag(option)
+                    }
+                } label: {
+                    Label(Strings.Settings.lockTimeout, systemImage: "clock")
+                }
+            }
+        } header: {
+            Text(Strings.Settings.lock)
+        } footer: {
+            Text(appLock.canAuthenticate ? Strings.Settings.lockExplanation : Strings.Settings.lockUnavailable)
+        }
     }
 
     /// The three changes this screen can make, each turning the session's typed refusal
