@@ -188,6 +188,18 @@ public struct IskraRootView: View {
                         }
                     }
                     #endif
+                    // Keep the App-Intents chat directory in step, so Siri and Shortcuts can list the
+                    // conversations without waking a client — see `ChatDirectory`.
+                    .onChange(of: session.roomList.rooms) { _, rooms in
+                        writeChatDirectory(rooms)
+                    }
+                    // Act on what an intent asked for: open the chat it launched us for, and send any
+                    // messages it left in the outbox. Once on appear (a cold launch by an intent), and
+                    // again whenever we come back to the front.
+                    .task { await handleIntents(session) }
+                    .onChange(of: scenePhase) { _, phase in
+                        if phase == .active { Task { await handleIntents(session) } }
+                    }
             }
         }
         .animation(.smooth, value: isSignedIn)
@@ -258,6 +270,27 @@ public struct IskraRootView: View {
     private var isSignedIn: Bool {
         if case .signedIn = phase { return true }
         return false
+    }
+
+    /// Writes the joined conversations (not spaces, not invitations) into the shared directory the
+    /// App Intents read. Names only — nothing an intent needs to fetch.
+    private func writeChatDirectory(_ rooms: [RoomSummary]) {
+        let entries = rooms
+            .filter { !$0.isInvitation && !$0.isSpace }
+            .map { ChatDirectoryEntry(id: $0.id, name: $0.name) }
+        ChatDirectory.writeDirectory(entries)
+    }
+
+    /// Acts on what a Shortcuts intent left behind: opens the chat it asked for, and sends the
+    /// messages it queued. Draining is one-shot — the reads clear the shared slots — so this is safe
+    /// to call on every foreground.
+    private func handleIntents(_ session: UserSession) async {
+        if let roomID = ChatDirectory.takePendingOpen() {
+            selectedRoomID = roomID
+        }
+        for item in ChatDirectory.drainOutbox() {
+            await session.sendText(item.text, toRoomID: item.roomID)
+        }
     }
 
     /// Signing out unwinds everything: the session, the selected room, and — because the

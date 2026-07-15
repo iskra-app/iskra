@@ -271,6 +271,22 @@ public final class UserSession {
         return true
     }
 
+    /// Sends a plain-text message into a room by ID — for flushing the App-Intents outbox when the
+    /// app comes up. Opens the destination timeline just long enough to send (`start()` is
+    /// idempotent, the message goes into the persistent send queue). Returns whether it dispatched.
+    @discardableResult
+    public func sendText(_ text: String, toRoomID roomID: String) async -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, let target = timeline(forRoomID: roomID) else { return false }
+        do {
+            try await target.start()
+        } catch {
+            return false
+        }
+        await target.send(text: trimmed)
+        return true
+    }
+
     /// Fetches media bytes (a photo, a voice message) on demand.
     public func media() -> MediaLoader {
         MediaLoader(client: client)
