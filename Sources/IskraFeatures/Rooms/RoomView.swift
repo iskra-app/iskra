@@ -473,6 +473,18 @@ public struct RoomView: View {
                     self.openAt = nil
                 }
             }
+            // A search hit in a room that is *already* open. On iPhone this never arises: going back
+            // clears the selection, so tapping a result rebuilds the view and the first-open path
+            // above carries the target. But on iPad and Mac the room stays put in the detail column
+            // beside the list — only `openAt` changes, the view is not rebuilt, `isReady` does not
+            // move, and the handler above never runs again. Without this, tapping a result in the
+            // conversation you are already looking at does nothing at all. So a target that lands
+            // after the room has anchored is taken to the same `jumpTarget` machinery.
+            .onChange(of: openAt) { _, target in
+                guard hasAnchored, let target else { return }
+                jumpTarget = target
+                openAt = nil
+            }
             // Somebody asked to be taken to a message — see `jumpTarget`.
             //
             // A pinned message is very often *not loaded*: it was pinned because it matters, and
@@ -1398,6 +1410,12 @@ public struct RoomView: View {
     private func send() {
         let text = draft
         let context = composerContext
+
+        // An empty edit is the one thing the send button refuses — it disables itself, because a
+        // blank edit is not an edit and the core drops it anyway. A keyboard Return reaches here
+        // past that disabled button (on macOS, where Return submits), so it is refused in the same
+        // breath: the composer is left exactly as it was, still holding the edit.
+        if case .editing = context, text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return }
 
         draft = ""
         composerContext = nil
