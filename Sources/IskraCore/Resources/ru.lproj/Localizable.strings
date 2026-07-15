@@ -83,6 +83,7 @@
 
 /* Shown when pinning or unpinning was refused. */
 "timeline.pinFailed" = "Не получилось изменить закреплённые сообщения. Возможно, у вас нет на это прав.";
+"timeline.reportFailed" = "Жалоба не ушла. Попробуйте ещё раз.";
 
 /* The grey lines across a conversation: people coming and going, the room changing.
    Written so they are true of anybody: Matrix does not know anyone's gender, so

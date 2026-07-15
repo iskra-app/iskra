@@ -353,6 +353,14 @@
 "message.link.open" = "Открыть";
 "message.link.cancel" = "Отмена";
 
+/* Меню и форма жалобы. */
+"message.menu.report" = "Пожаловаться";
+"message.report.title" = "Пожаловаться на сообщение";
+"message.report.explanation" = "Жалоба уйдёт модераторам сервера. Можно коротко описать, что не так — а можно и без этого.";
+"message.report.reasonPrompt" = "Что случилось? (необязательно)";
+"message.report.submit" = "Отправить";
+"message.report.cancel" = "Отмена";
+
 "message.media.close" = "Закрыть";
 
 /* Видео не скачалось. Не тревога и не окно с кнопкой — просто надпись на самом сообщении:

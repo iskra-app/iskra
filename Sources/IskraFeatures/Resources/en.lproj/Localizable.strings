@@ -353,6 +353,14 @@
 "message.link.open" = "Open";
 "message.link.cancel" = "Cancel";
 
+/* The report menu item and form. */
+"message.menu.report" = "Report";
+"message.report.title" = "Report message";
+"message.report.explanation" = "The report goes to the server’s moderators. You can say briefly what’s wrong, or send it without.";
+"message.report.reasonPrompt" = "What’s wrong? (optional)";
+"message.report.submit" = "Send";
+"message.report.cancel" = "Cancel";
+
 "message.media.close" = "Close";
 
 /* The video would not download. Not an alarm and not a dialog — a line on the message

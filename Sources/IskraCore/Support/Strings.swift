@@ -180,6 +180,8 @@ public enum CoreStrings {
         /// somebody whose power level does not allow it. The menu hides the item where we know
         /// that in advance; this is for the times we do not.
         public static let pinFailed = LocalizedStringResource("timeline.pinFailed", bundle: bundle)
+        /// A report that did not reach the moderators.
+        public static let reportFailed = LocalizedStringResource("timeline.reportFailed", bundle: bundle)
 
         /// What a client that cannot draw a map shows instead of one. Coordinates, spelled out,
         /// because they are the one thing about a place that anybody can do something with —

@@ -954,6 +954,26 @@ public final class TimelineStore {
         }
     }
 
+    // MARK: - Reporting
+
+    /// Reports a message to the room's moderators and the homeserver. The reason is the user's own
+    /// words — Matrix carries a free-text reason on a report, and unlike a redaction (which we send
+    /// without one, so as not to put words in anyone's mouth) a report is *addressed to a human*, and
+    /// the sentence is what they act on.
+    ///
+    /// Only a message that has actually reached the server can be reported — a report points at an
+    /// event ID, and one still in the send queue has none. `eventID(for:)` returns nil for those, and
+    /// the guard drops the attempt rather than reporting the wrong thing.
+    public func report(messageID: String, reason: String) async {
+        guard let eventID = eventID(for: messageID) else { return }
+
+        do {
+            try await room.reportContent(eventId: eventID, reason: reason.isEmpty ? nil : reason)
+        } catch {
+            failure = .report
+        }
+    }
+
     /// Everything the room has pinned, as its own conversation — for the "Pinned" screen, and
     /// for the strip above the room that shows the latest of them.
     ///

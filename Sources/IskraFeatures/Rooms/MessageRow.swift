@@ -46,6 +46,10 @@ struct MessageRow: View {
     /// `RoomView` can actually scroll the conversation, so it is reported upward.
     var onOpenReply: (String) -> Void = { _ in }
 
+    /// Reports this message to the moderators, carrying the user's reason. Only `RoomView` holds the
+    /// store that can send it, so the reason is handed upward.
+    var onReport: (String) -> Void = { _ in }
+
     /// Whether the conversation has just jumped *to* this message, and it is briefly lit so that
     /// the eye can find it.
     ///
@@ -65,6 +69,9 @@ struct MessageRow: View {
     /// message can say one thing and link to another — "our shared album" pointing at a phishing
     /// page — so the address is shown in full, and nothing opens until they say so.
     @State private var linkToConfirm: URL?
+
+    /// Whether the report form is up for this message.
+    @State private var isReporting = false
 
     /// The real opener, captured before the message text overrides `openURL` to intercept taps.
     /// The confirmation's "Open" hands the URL back to this.
@@ -321,6 +328,9 @@ struct MessageRow: View {
                     linkToConfirm = nil
                 }
             }
+            .sheet(isPresented: $isReporting) {
+                ReportSheet(onReport: onReport)
+            }
     }
 
     /// A message's words, with the links in them live but held, and the mentions in them painted.
@@ -428,6 +438,17 @@ struct MessageRow: View {
                 isConfirmingDelete = true
             } label: {
                 Label(Strings.Message.Menu.delete, systemImage: "trash")
+            }
+        }
+
+        // Reporting is for somebody else's message — you do not flag your own — and only one the
+        // server has, since a report points at an event ID. A deleted message has nothing left to
+        // report. Offline there is no moderator to reach.
+        if !message.isOwn && !message.isDeleted && !isOffline {
+            Button(role: .destructive) {
+                isReporting = true
+            } label: {
+                Label(Strings.Message.Menu.report, systemImage: "exclamationmark.bubble")
             }
         }
 

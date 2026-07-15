@@ -31,6 +31,10 @@ public enum TimelineActionFailure: String, CaseIterable, ActionFailure {
     /// A message that would not be pinned, or would not be unpinned.
     case pin
 
+    /// A report that did not reach the moderators. The user flagged something abusive and needs to
+    /// know it did not go through, or they will assume it is being dealt with.
+    case report
+
     public var id: String { rawValue }
 
     public var explanation: LocalizedStringResource {
@@ -40,6 +44,7 @@ public enum TimelineActionFailure: String, CaseIterable, ActionFailure {
         case .reaction: CoreStrings.Timeline.reactionFailed
         case .delete: CoreStrings.Timeline.deleteFailed
         case .pin: CoreStrings.Timeline.pinFailed
+        case .report: CoreStrings.Timeline.reportFailed
         }
     }
 }
