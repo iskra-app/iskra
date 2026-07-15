@@ -1049,7 +1049,7 @@ public final class TimelineStore {
     public func draft() async -> String? {
         // Two ways to have no draft, and they flatten to the same answer: the call threw, or the
         // room simply has none.
-        guard let draft = (try? await room.loadComposerDraft(threadRoot: nil)) ?? nil else {
+        guard let draft = (try? await room.loadComposerDraft(threadRoot: nil)) else {
             return nil
         }
         return draft.plainText
@@ -1091,7 +1091,7 @@ public final class TimelineStore {
         for userID in userIDs where userID != ownUserID {
             // The name they are known by *in this room*, which is not always the name they are
             // known by elsewhere. The Matrix ID is what is left when they have chosen none.
-            let name = (try? await room.memberDisplayName(userId: userID)) ?? nil
+            let name = (try? await room.memberDisplayName(userId: userID))
             names.append(name ?? userID)
         }
 

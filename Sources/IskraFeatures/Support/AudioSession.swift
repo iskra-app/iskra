@@ -91,7 +91,7 @@ enum AudioSession {
 
     /// The result is logged rather than swallowed. A `try?` here is worth nothing: if this call
     /// fails the only symptom is silence, which is the very thing being debugged.
-    private nonisolated static func apply(_ use: Use) {
+    nonisolated private static func apply(_ use: Use) {
         #if os(iOS)
         do {
             let session = AVAudioSession.sharedInstance()
@@ -108,7 +108,7 @@ enum AudioSession {
         #endif
     }
 
-    private nonisolated static func relinquish() {
+    nonisolated private static func relinquish() {
         #if os(iOS)
         do {
             // `notifyOthersOnDeactivation` is the half that actually resumes them. Deactivating

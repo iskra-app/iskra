@@ -49,7 +49,6 @@ struct EncryptionView: View {
     /// Whether the "are you sure" for a new code is up. See the button.
     @State private var isMintingNewCode = false
 
-
     /// Whether settings has a "My devices" row to send the reader to — see `otherDevices`.
     let hasDeviceManagement: Bool
 
