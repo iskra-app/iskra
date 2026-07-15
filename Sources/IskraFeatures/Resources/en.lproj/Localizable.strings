@@ -417,6 +417,12 @@
 "room.searchPrompt" = "Search this chat";
 "room.searchClose" = "Close";
 "room.searchEmptyTitle" = "Nothing found";
+
+/* The room's media: a grid of photos and videos, a list of files. */
+"room.sharedMedia" = "Media & files";
+"room.sharedMediaEmptyTitle" = "No media yet";
+"room.sharedMediaEmptyMessage" = "Photos, videos, and files from this chat will show up here.";
+"room.galleryLoadEarlier" = "Show earlier";
 "room.unpin" = "Unpin";
 
 /* The opened photo or video: what you can do with it besides look at it. */

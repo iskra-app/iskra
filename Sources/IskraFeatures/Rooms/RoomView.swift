@@ -733,7 +733,7 @@ public struct RoomView: View {
                 // was skipped: the draft unsaved, the listeners running, "typing…" left standing in
                 // a room the user had just walked out of, and a locked voice recording still
                 // listening. So it is done here, explicitly, before the room goes.
-                RoomInfoView(details: details, onLeave: {
+                RoomInfoView(details: details, timeline: timeline, onLeave: {
                     tearDown()
                     onLeave()
                 })

@@ -61,8 +61,13 @@ struct RoomInfoView: View {
         case topic
     }
 
-    init(details: RoomDetailsStore, onLeave: @escaping () -> Void) {
+    /// The open conversation, for the shared-media screen — its media lives in the loaded timeline.
+    /// Optional so the info screen still stands on its own where there is no timeline behind it.
+    private let timeline: TimelineStore?
+
+    init(details: RoomDetailsStore, timeline: TimelineStore? = nil, onLeave: @escaping () -> Void) {
         _details = State(initialValue: details)
+        self.timeline = timeline
         self.onLeave = onLeave
     }
 
@@ -80,6 +85,16 @@ struct RoomInfoView: View {
 
             about
                 .disabled(isOffline)
+
+            if let timeline {
+                Section {
+                    NavigationLink {
+                        RoomGalleryView(timeline: timeline)
+                    } label: {
+                        Label(Strings.Room.sharedMedia, systemImage: "photo.on.rectangle")
+                    }
+                }
+            }
 
             Section {
                 privacy
