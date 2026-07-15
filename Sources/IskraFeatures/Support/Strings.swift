@@ -125,6 +125,35 @@ public enum Strings {
         public static func mentions(_ count: Int) -> LocalizedStringResource {
             LocalizedStringResource("roomList.mentions", defaultValue: "\(count) mentioning you", bundle: bundle)
         }
+
+        /// The swipe actions on a chat row, and their VoiceOver twins. Each verb has both
+        /// directions where it toggles, so the label always says what the *next* press does.
+        public enum Swipe {
+            public static let markRead = LocalizedStringResource("roomList.swipe.markRead", bundle: bundle)
+            public static let markUnread = LocalizedStringResource("roomList.swipe.markUnread", bundle: bundle)
+            public static let pin = LocalizedStringResource("roomList.swipe.pin", bundle: bundle)
+            public static let unpin = LocalizedStringResource("roomList.swipe.unpin", bundle: bundle)
+            public static let archive = LocalizedStringResource("roomList.swipe.archive", bundle: bundle)
+            public static let unarchive = LocalizedStringResource("roomList.swipe.unarchive", bundle: bundle)
+            /// "Delete" to the user, `room.leave()` to Matrix — you cannot delete a shared room, only
+            /// take yourself out of it. The confirmation says as much, because leaving is not undoable.
+            public static let delete = LocalizedStringResource("roomList.swipe.delete", bundle: bundle)
+            public static let leaveConfirmTitle = LocalizedStringResource("roomList.swipe.leaveConfirmTitle", bundle: bundle)
+            public static let leaveConfirmMessage = LocalizedStringResource("roomList.swipe.leaveConfirmMessage", bundle: bundle)
+            public static let leaveConfirm = LocalizedStringResource("roomList.swipe.leaveConfirm", bundle: bundle)
+            public static let cancel = LocalizedStringResource("roomList.swipe.cancel", bundle: bundle)
+        }
+
+        /// The archive: the shelf where swept-aside chats wait, and the way back to them.
+        public enum Archive {
+            public static let title = LocalizedStringResource("roomList.archive.title", bundle: bundle)
+            /// The row at the top of the list that opens the archive, with a count of what is in it.
+            public static func entry(_ count: Int) -> LocalizedStringResource {
+                LocalizedStringResource("roomList.archive.entry", defaultValue: "Archive (\(count))", bundle: bundle)
+            }
+            public static let emptyTitle = LocalizedStringResource("roomList.archive.emptyTitle", bundle: bundle)
+            public static let emptyMessage = LocalizedStringResource("roomList.archive.emptyMessage", bundle: bundle)
+        }
     }
 
     public enum Room {

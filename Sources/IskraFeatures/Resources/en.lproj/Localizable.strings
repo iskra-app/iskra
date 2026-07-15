@@ -440,6 +440,25 @@
 "roomList.new.start" = "Start";
 "roomList.new.openMeansUnencrypted" = "Anyone who joins an open room can read it, so it isn’t encrypted. A private one is.";
 
+/* Swipe actions on a chat row, and their VoiceOver twins. */
+"roomList.swipe.markRead" = "Read";
+"roomList.swipe.markUnread" = "Unread";
+"roomList.swipe.pin" = "Pin";
+"roomList.swipe.unpin" = "Unpin";
+"roomList.swipe.archive" = "Archive";
+"roomList.swipe.unarchive" = "Unarchive";
+"roomList.swipe.delete" = "Delete";
+"roomList.swipe.leaveConfirmTitle" = "Leave this chat?";
+"roomList.swipe.leaveConfirmMessage" = "You’ll leave the room and stop receiving its messages. Matrix has no way to delete a shared chat — you can only leave it yourself.";
+"roomList.swipe.leaveConfirm" = "Leave";
+"roomList.swipe.cancel" = "Cancel";
+
+/* The archive: the shelf for set-aside chats and the way back to them. */
+"roomList.archive.title" = "Archive";
+"roomList.archive.entry" = "Archive (%lld)";
+"roomList.archive.emptyTitle" = "Nothing archived";
+"roomList.archive.emptyMessage" = "Swipe a chat left and archive it — it stays out of the main list without going anywhere.";
+
 /* How loudly a room may interrupt you. */
 "room.manage.alerts" = "Notifications";
 "room.manage.alertsAll" = "Every message";

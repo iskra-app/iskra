@@ -145,7 +145,18 @@ struct LocalizationTests {
         (Strings.Verification.notMine, en: "It isn't me", ru: "Это не я"),
         // The switch that washes the accent across the whole interface. Pinned because it is a
         // setting whose label is the only thing explaining what it will do to the whole app.
-        (Strings.Appearance.tintInterface, en: "Tint the interface", ru: "Тонировать интерфейс")
+        (Strings.Appearance.tintInterface, en: "Tint the interface", ru: "Тонировать интерфейс"),
+
+        // The chat-list swipes and the archive they lead to — new verbs, both languages.
+        (Strings.RoomList.Swipe.markRead, en: "Read", ru: "Прочитано"),
+        (Strings.RoomList.Swipe.markUnread, en: "Unread", ru: "Непрочитано"),
+        (Strings.RoomList.Swipe.pin, en: "Pin", ru: "Закрепить"),
+        (Strings.RoomList.Swipe.unpin, en: "Unpin", ru: "Открепить"),
+        (Strings.RoomList.Swipe.archive, en: "Archive", ru: "В архив"),
+        (Strings.RoomList.Swipe.delete, en: "Delete", ru: "Удалить"),
+        (Strings.RoomList.Swipe.leaveConfirm, en: "Leave", ru: "Выйти"),
+        (Strings.RoomList.Archive.title, en: "Archive", ru: "Архив"),
+        (Strings.RoomList.Archive.entry(3), en: "Archive (3)", ru: "Архив (3)")
     ]
 
     @Test("app strings resolve in English and in Russian")
