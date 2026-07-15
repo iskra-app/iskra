@@ -183,7 +183,11 @@ struct LocalizationTests {
 
         // The room's shared-media gallery.
         (Strings.Room.sharedMedia, en: "Media & files", ru: "Медиа и файлы"),
-        (Strings.Room.sharedMediaEmptyTitle, en: "No media yet", ru: "Здесь пока нет медиа")
+        (Strings.Room.sharedMediaEmptyTitle, en: "No media yet", ru: "Здесь пока нет медиа"),
+
+        // Forwarding.
+        (Strings.Message.Menu.forward, en: "Forward", ru: "Переслать"),
+        (Strings.Message.Forward.title, en: "Forward to…", ru: "Переслать в…")
     ]
 
     @Test("app strings resolve in English and in Russian")

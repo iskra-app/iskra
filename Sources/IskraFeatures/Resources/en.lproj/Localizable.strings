@@ -375,6 +375,10 @@
 
 /* The report menu item and form. */
 "message.menu.report" = "Report";
+"message.menu.forward" = "Forward";
+"message.forward.title" = "Forward to…";
+"message.forward.prompt" = "Search chats";
+"message.forward.cancel" = "Cancel";
 "message.menu.block" = "Block";
 "message.menu.blockConfirm" = "Block %@?";
 "message.menu.blockConfirmMessage" = "You’ll stop receiving this person’s messages. You can unblock them in settings.";

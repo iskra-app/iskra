@@ -278,6 +278,20 @@ public struct Message: Sendable, Identifiable, Equatable {
         return delivery == .sent || delivery == .read
     }
 
+    /// Whether this message can be forwarded into another room.
+    ///
+    /// Anyone's, not only your own — forwarding is quoting, not editing. The kinds are the ones a
+    /// forward can faithfully rebuild: words, and the three attachments whose bytes can be fetched
+    /// and re-sent through the encrypting path. A voice note, a video note, a location or a sticker
+    /// would each need its own metadata re-derived, and nobody forwards those — so they cannot.
+    public var canForward: Bool {
+        guard !isDeleted else { return false }
+        switch kind {
+        case .text, .notice, .emote, .image, .video, .file: return true
+        default: return false
+        }
+    }
+
     /// Whether the user is allowed to take this message back.
     ///
     /// Only their own, and only one that actually reached the server: a message still

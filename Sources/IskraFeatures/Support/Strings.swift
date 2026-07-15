@@ -373,6 +373,9 @@ public enum Strings {
             /// Flagging somebody else's message to the moderators.
             public static let report = LocalizedStringResource("message.menu.report", bundle: bundle)
 
+            /// Sending this message on into another room.
+            public static let forward = LocalizedStringResource("message.menu.forward", bundle: bundle)
+
             /// Blocking the person who sent it — Matrix's ignore. Reversible from settings, so it
             /// asks once by name rather than twice.
             public static let block = LocalizedStringResource("message.menu.block", bundle: bundle)
@@ -403,6 +406,13 @@ public enum Strings {
         }
 
         /// Watching what somebody sent.
+        /// Choosing where a forwarded message goes.
+        public enum Forward {
+            public static let title = LocalizedStringResource("message.forward.title", bundle: bundle)
+            public static let prompt = LocalizedStringResource("message.forward.prompt", bundle: bundle)
+            public static let cancel = LocalizedStringResource("message.forward.cancel", bundle: bundle)
+        }
+
         /// A link in a message, and the question asked before it opens. The address itself is the
         /// dialog's title — the part that cannot be dressed up — so these are only the two answers.
         public enum Link {

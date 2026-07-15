@@ -375,6 +375,10 @@
 
 /* Меню и форма жалобы. */
 "message.menu.report" = "Пожаловаться";
+"message.menu.forward" = "Переслать";
+"message.forward.title" = "Переслать в…";
+"message.forward.prompt" = "Поиск чата";
+"message.forward.cancel" = "Отмена";
 "message.menu.block" = "Заблокировать";
 "message.menu.blockConfirm" = "Заблокировать %@?";
 "message.menu.blockConfirmMessage" = "Вы перестанете получать сообщения этого человека. Разблокировать можно в настройках.";
