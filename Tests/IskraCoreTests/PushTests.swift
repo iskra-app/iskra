@@ -242,4 +242,39 @@ struct PushTests {
         #expect(noisiness(true) == true)
         #expect(noisiness(false) == false)
     }
+
+    // MARK: - Hiding contents while the app is locked
+
+    private func shown(title: String = "Кухня", body: String = "привет") -> PushOutcome {
+        .show(PushNotification(roomID: "!r", eventID: "$e",
+                               title: title, sender: "Аня", body: body, isNoisy: true))
+    }
+
+    @Test("unlocked, a push keeps its words")
+    func unlockedShowsContent() {
+        let outcome = PushMapper.redactIfLocked(shown(), locked: false)
+        guard case let .show(notification) = outcome else { Issue.record("expected .show"); return }
+        #expect(notification.body == "привет")
+        #expect(notification.sender == "Аня")
+    }
+
+    @Test("locked, a push is stripped to a contentless New message")
+    func lockedHidesContent() {
+        let outcome = PushMapper.redactIfLocked(shown(), locked: true)
+        guard case let .show(notification) = outcome else { Issue.record("expected .show"); return }
+        #expect(notification.sender == nil)
+        #expect(!notification.body.contains("привет"))
+        #expect(notification.title == "Iskra")
+        // The routing survives, so the tap still opens the right room after unlocking.
+        #expect(notification.roomID == "!r")
+        #expect(notification.eventID == "$e")
+        // And the sound is not leaked away — a locked phone still buzzes for a noisy message.
+        #expect(notification.isNoisy)
+    }
+
+    @Test("locked, a silence is still a silence — there is nothing shown to hide")
+    func lockedLeavesSilenceAlone() {
+        let outcome = PushMapper.redactIfLocked(.silence(.redacted), locked: true)
+        #expect(outcome == .silence(.redacted))
+    }
 }

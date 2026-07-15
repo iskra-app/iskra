@@ -80,7 +80,14 @@ public actor PushDecoder {
         let notifications = try await client.notificationClient(processSetup: .multipleProcesses)
         let status = try await notifications.getNotification(roomId: roomID, eventId: eventID)
 
-        return PushMapper.outcome(for: status, roomID: roomID, eventID: eventID)
+        let outcome = PushMapper.outcome(for: status, roomID: roomID, eventID: eventID)
+
+        // If the app lock is on and the app is locked, the message decrypts but its words never reach
+        // the screen: the extension reads the same lock facts the app wrote to the shared defaults
+        // and strips the notification down to "New message". The decryption still happened — tapping
+        // the banner opens the right room, once the user is past the lock.
+        let locked = AppLock.isLockedNow(defaults: UserDefaults(suiteName: AppEnvironment.appGroupIdentifier))
+        return PushMapper.redactIfLocked(outcome, locked: locked)
     }
 
     /// A real room and a real message to try this on, for `Iskra --probe-notification` when it

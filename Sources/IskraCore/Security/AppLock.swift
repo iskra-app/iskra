@@ -60,6 +60,10 @@ public final class AppLock {
     private enum Keys {
         static let enabled = "appLock.enabled"
         static let timeout = "appLock.timeout"
+        /// When the app last went to the background, written to the shared defaults so the
+        /// notification extension — a separate process — can decide whether the app is locked and
+        /// therefore whether a push may show its contents. See `isLockedNow`.
+        static let lastActive = "appLock.lastActive"
     }
 
     /// - Parameter defaults: where the settings live. The app hands in the App-Group suite so the
@@ -75,9 +79,12 @@ public final class AppLock {
         self.isLocked = enabled
     }
 
-    /// The app went to the background. Remember when, so `enteredForeground` can measure the trip.
+    /// The app went to the background. Remember when — in memory, and in the shared defaults so the
+    /// notification extension can read it — so `enteredForeground` and `isLockedNow` can both measure
+    /// the trip.
     public func enteredBackground(now: Date = .now) {
         lastActive = now
+        defaults?.set(now.timeIntervalSinceReferenceDate, forKey: Keys.lastActive)
     }
 
     /// The app came back. Lock if it was away long enough — see `shouldLock`.
@@ -97,6 +104,22 @@ public final class AppLock {
         guard enabled else { return false }
         guard let lastActive else { return true }
         return now.timeIntervalSince(lastActive) >= timeout.interval
+    }
+
+    /// Whether the app is locked *from another process's point of view* — the notification
+    /// extension's. It has no `AppLock` instance and no runtime `isLocked`; all it has is the shared
+    /// defaults, so it reads the same three facts the app wrote there and runs the same `shouldLock`
+    /// rule. A push arriving while this is true must not show its contents.
+    ///
+    /// Conservative when the settings are missing or unreadable: if the lock is on but there is no
+    /// record of when the app was last active, it treats the app as locked — the honest default when
+    /// nothing can vouch for who is holding the phone.
+    nonisolated public static func isLockedNow(defaults: UserDefaults?, now: Date = .now) -> Bool {
+        guard let defaults, defaults.bool(forKey: Keys.enabled) else { return false }
+        let timeout = AppLockTimeout(rawValue: defaults.string(forKey: Keys.timeout) ?? "") ?? .immediately
+        let stamp = defaults.object(forKey: Keys.lastActive) as? Double
+        let lastActive = stamp.map { Date(timeIntervalSinceReferenceDate: $0) }
+        return shouldLock(enabled: true, lastActive: lastActive, now: now, timeout: timeout)
     }
 
     /// Asks the system to prove it is the owner. On success the shield comes down. A failure or a
