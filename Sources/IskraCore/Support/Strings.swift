@@ -87,6 +87,14 @@ public enum CoreStrings {
         public static let acceptInviteFailed = LocalizedStringResource("roomAction.acceptInviteFailed", bundle: bundle)
         /// And one that would not be declined. The user believes they are rid of it; they are not.
         public static let declineInviteFailed = LocalizedStringResource("roomAction.declineInviteFailed", bundle: bundle)
+        /// A pin (`m.favourite`) that slid back to where it was.
+        public static let pinFailed = LocalizedStringResource("roomAction.pinFailed", bundle: bundle)
+        /// An archive (`m.lowpriority`) that did not take; the room is still in the list.
+        public static let archiveFailed = LocalizedStringResource("roomAction.archiveFailed", bundle: bundle)
+        /// A read/unread flag that would not change — both directions share the sentence.
+        public static let readFailed = LocalizedStringResource("roomAction.readFailed", bundle: bundle)
+        /// A report that did not reach the moderators.
+        public static let reportFailed = LocalizedStringResource("roomAction.reportFailed", bundle: bundle)
     }
 
     /// The strip above a message that is answering another one.

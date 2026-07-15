@@ -107,6 +107,19 @@ public enum RoomActionFailure: String, CaseIterable, ActionFailure {
     /// believes they are rid of it and it is still there.
     case declineInvite
 
+    /// A pin (the `m.favourite` tag) that would not take. The user dragged a chat to the top and it
+    /// slid back — worth saying, because a pin is a small promise that a room stays where you put it.
+    case pin
+    /// An archive (the `m.lowpriority` tag) that would not take. The user swept a room away and it
+    /// is still sitting in the list.
+    case archive
+    /// A read/unread flag that would not change. One case for both directions: the act is the same
+    /// shape either way, and the sentence — "the read state would not change" — fits both.
+    case read
+    /// A report that did not reach the moderators. The user flagged something abusive and needs to
+    /// know it did not go through, or they will assume it is handled.
+    case report
+
     public var id: String { rawValue }
 
     public var explanation: LocalizedStringResource {
@@ -124,6 +137,10 @@ public enum RoomActionFailure: String, CaseIterable, ActionFailure {
         case .leave: CoreStrings.RoomAction.leaveFailed
         case .acceptInvite: CoreStrings.RoomAction.acceptInviteFailed
         case .declineInvite: CoreStrings.RoomAction.declineInviteFailed
+        case .pin: CoreStrings.RoomAction.pinFailed
+        case .archive: CoreStrings.RoomAction.archiveFailed
+        case .read: CoreStrings.RoomAction.readFailed
+        case .report: CoreStrings.RoomAction.reportFailed
         }
     }
 }
