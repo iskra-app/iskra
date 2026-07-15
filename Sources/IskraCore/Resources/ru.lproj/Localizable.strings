@@ -137,6 +137,12 @@
 "push.hiddenTitle" = "Iskra";
 "push.hiddenBody" = "Новое сообщение";
 
+/* Расширение «Поделиться». */
+"share.title" = "Отправить в…";
+"share.cancel" = "Отмена";
+"share.empty" = "Сначала откройте Iskra и войдите — тогда здесь появятся чаты.";
+"share.willSendOnOpen" = "Отправится, когда вы откроете Iskra.";
+
 /* Приглашения в комнату. */
 "roomAction.acceptInviteFailed" = "Не получилось войти в чат. Возможно, приглашение отозвали.";
 "roomAction.declineInviteFailed" = "Не получилось отклонить приглашение. Оно всё ещё висит — попробуйте ещё раз.";
