@@ -370,6 +370,13 @@ public enum Strings {
         }
 
         /// Watching what somebody sent.
+        /// A link in a message, and the question asked before it opens. The address itself is the
+        /// dialog's title — the part that cannot be dressed up — so these are only the two answers.
+        public enum Link {
+            public static let open = LocalizedStringResource("message.link.open", bundle: bundle)
+            public static let cancel = LocalizedStringResource("message.link.cancel", bundle: bundle)
+        }
+
         public enum Media {
             public static let close = LocalizedStringResource("message.media.close", bundle: bundle)
             public static let share = LocalizedStringResource("message.media.share", bundle: bundle)

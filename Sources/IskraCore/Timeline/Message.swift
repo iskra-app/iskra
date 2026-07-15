@@ -222,6 +222,10 @@ public struct Message: Sendable, Identifiable, Equatable {
     /// is still there — and nil, too, for a redaction the homeserver did not date: see
     /// `TimelineMapper.redaction`.
     public let deletedAt: Date?
+    /// The Matrix IDs this message says it mentions — the event's `m.mentions` set. Used to light
+    /// up a name in the text (and to know when that name is *yours*), which is why it travels as
+    /// plain IDs rather than as pre-rendered markup: the bubble does the painting, from this.
+    public let mentionedUserIDs: [String]
     /// Grouped under one avatar with the message above it, iMessage-style.
     public var isContinuation: Bool = false
 
@@ -237,6 +241,7 @@ public struct Message: Sendable, Identifiable, Equatable {
                 replyTo: ReplyPreview? = nil,
                 reactions: [MessageReaction],
                 deletedAt: Date? = nil,
+                mentionedUserIDs: [String] = [],
                 isContinuation: Bool = false) {
         self.id = id
         self.kind = kind
@@ -250,6 +255,7 @@ public struct Message: Sendable, Identifiable, Equatable {
         self.replyTo = replyTo
         self.reactions = reactions
         self.deletedAt = deletedAt
+        self.mentionedUserIDs = mentionedUserIDs
         self.isContinuation = isContinuation
     }
 

@@ -349,6 +349,10 @@
    sent, so blaming the server would be a lie. Usually it is still in iCloud, not on the phone. */
 "room.attachmentUnreadable" = "This photo could not be read. That happens when it is still in iCloud — open it in Photos and try again.";
 
+/* A link in a message: ask before opening. The dialog's title is the address itself. */
+"message.link.open" = "Open";
+"message.link.cancel" = "Cancel";
+
 "message.media.close" = "Close";
 
 /* The video would not download. Not an alarm and not a dialog — a line on the message
