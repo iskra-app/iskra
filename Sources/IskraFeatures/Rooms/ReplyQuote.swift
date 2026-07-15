@@ -60,6 +60,10 @@ struct ReplyQuote: View {
         .contentShape(.rect)
         .onTapGesture { onOpen?() }
         .accessibilityElement(children: .combine)
+        // Not a literal the linter should catch: every word here is already localised — the label
+        // is `String(app:)` and the quoted line is the message's own text. What is between them is
+        // punctuation, not a sentence to translate.
+        // swiftlint:disable:next literal_string_in_view
         .accessibilityLabel(Text("\(String(app: Strings.Room.replyingTo)): \(reply.text)"))
     }
 }

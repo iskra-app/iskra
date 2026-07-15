@@ -159,8 +159,13 @@ extension VideoSurface: UIViewRepresentable {
 }
 
 final class PlayerHostView: UIView {
+    // `layerClass` overrides UIView's and so must be `class`, not `static`; and because it is
+    // `AVPlayerLayer`, `layer` is always one — the cast cannot fail. SwiftLint's blanket bans on
+    // `class` members and `as!` know neither fact, so they are turned off for these two lines.
+    // swiftlint:disable:next static_over_final_class
     override class var layerClass: AnyClass { AVPlayerLayer.self }
 
+    // swiftlint:disable:next force_cast
     var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
 
     init(player: AVPlayer) {
