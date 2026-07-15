@@ -444,6 +444,22 @@ public enum Theme {
         /// nothing is answering "what is on this device" with a lie. It is rounded *up* to a
         /// mark you can see, which costs the largest band a couple of points it will not miss.
         public static let storageBarLeast: CGFloat = 4
+
+        /// The room-list column, on the platforms that show it beside a conversation — a Mac
+        /// window, and an iPad wide enough to keep the split view open.
+        ///
+        /// Given as an explicit min/ideal/max, and that is load-bearing rather than cosmetic. Left
+        /// to itself a `NavigationSplitView` *derives* the sidebar's width from its content's ideal
+        /// width — and settings is pushed onto this same column, a `Form` onto a `Form`, so the
+        /// content's ideal width changes the instant a settings row is opened. On macOS 26 the
+        /// derivation and the push chase each other: the column re-measures, which re-lays-out the
+        /// pushed `Form`, which changes the ideal width, which re-measures — a layout loop that pins
+        /// the main thread at 100% and hangs the app the moment you tap into any settings row. Fixing
+        /// the width takes the column *out* of that computation: there is nothing left to derive, so
+        /// nothing left to oscillate.
+        public static let sidebarMinimum: CGFloat = 280
+        public static let sidebarIdeal: CGFloat = 320
+        public static let sidebarMaximum: CGFloat = 400
     }
 
     /// The colours of the storage bar, which are the one place in the app that colour carries
