@@ -7,10 +7,11 @@ import Testing
 /// clear, or an intent's request would be acted on again on every foreground.
 @Suite("ChatDirectory")
 struct ChatDirectoryTests {
-    /// A throwaway defaults, so the tests do not touch the real App Group. A fixed suite name is
-    /// cleared at the start of each test.
-    private func freshDefaults() -> UserDefaults {
-        let suite = "iskra.tests.chatDirectory"
+    /// A throwaway defaults, so the tests do not touch the real App Group. The suite name is unique
+    /// per test — these run in parallel, and a shared suite would let one test's write race another's
+    /// read (which it did, once).
+    private func freshDefaults(_ name: String) -> UserDefaults {
+        let suite = "iskra.tests.chatDirectory.\(name)"
         let defaults = UserDefaults(suiteName: suite)!
         defaults.removePersistentDomain(forName: suite)
         return defaults
@@ -18,7 +19,7 @@ struct ChatDirectoryTests {
 
     @Test("the directory round-trips")
     func directoryRoundTrips() {
-        let defaults = freshDefaults()
+        let defaults = freshDefaults("roundTrip")
         let entries = [ChatDirectoryEntry(id: "!a", name: "Кухня"),
                        ChatDirectoryEntry(id: "!b", name: "Работа")]
         ChatDirectory.writeDirectory(entries, to: defaults)
@@ -27,12 +28,12 @@ struct ChatDirectoryTests {
 
     @Test("an empty directory reads as empty, not nil")
     func emptyDirectory() {
-        #expect(ChatDirectory.directory(from: freshDefaults()).isEmpty)
+        #expect(ChatDirectory.directory(from: freshDefaults("empty")).isEmpty)
     }
 
     @Test("a pending open is read once, then gone")
     func pendingOpenIsOneShot() {
-        let defaults = freshDefaults()
+        let defaults = freshDefaults("pendingOpen")
         ChatDirectory.requestOpen(roomID: "!room", in: defaults)
         #expect(ChatDirectory.takePendingOpen(from: defaults) == "!room")
         #expect(ChatDirectory.takePendingOpen(from: defaults) == nil)
@@ -40,7 +41,7 @@ struct ChatDirectoryTests {
 
     @Test("the outbox accumulates and then drains empty")
     func outboxDrains() {
-        let defaults = freshDefaults()
+        let defaults = freshDefaults("outbox")
         ChatDirectory.enqueue(.init(roomID: "!a", text: "one"), in: defaults)
         ChatDirectory.enqueue(.init(roomID: "!b", text: "two"), in: defaults)
 
