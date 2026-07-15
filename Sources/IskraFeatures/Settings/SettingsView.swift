@@ -113,6 +113,12 @@ struct SettingsView: View {
                     Label(Strings.Settings.storage, systemImage: "internaldrive")
                 }
 
+                NavigationLink {
+                    BlockedUsersView(store: session.blocked)
+                } label: {
+                    Label(Strings.Settings.blocked, systemImage: "hand.raised")
+                }
+
                 unbuilt(Strings.Settings.notifications, systemImage: "bell")
             } footer: {
                 Text(Strings.Settings.moreSoon)

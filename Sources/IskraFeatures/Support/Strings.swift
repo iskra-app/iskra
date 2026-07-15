@@ -358,6 +358,14 @@ public enum Strings {
             /// Flagging somebody else's message to the moderators.
             public static let report = LocalizedStringResource("message.menu.report", bundle: bundle)
 
+            /// Blocking the person who sent it — Matrix's ignore. Reversible from settings, so it
+            /// asks once by name rather than twice.
+            public static let block = LocalizedStringResource("message.menu.block", bundle: bundle)
+            public static func blockConfirm(_ name: String) -> LocalizedStringResource {
+                LocalizedStringResource("message.menu.blockConfirm", defaultValue: "Block \(name)?", bundle: bundle)
+            }
+            public static let blockConfirmMessage = LocalizedStringResource("message.menu.blockConfirmMessage", bundle: bundle)
+
             /// What VoiceOver calls the pill itself: the emoji, and how many people left
             /// it. Pluralised, so Russian declines the people rather than the emoji.
             public static func reaction(_ key: String, _ count: Int) -> LocalizedStringResource {
@@ -827,6 +835,12 @@ public enum Strings {
         public static let reactions = LocalizedStringResource("settings.reactions", bundle: bundle)
         public static let storage = LocalizedStringResource("settings.storage", bundle: bundle)
         public static let moreSoon = LocalizedStringResource("settings.moreSoon", bundle: bundle)
+
+        /// The blocked-people screen, reached from settings.
+        public static let blocked = LocalizedStringResource("settings.blocked", bundle: bundle)
+        public static let blockedEmptyTitle = LocalizedStringResource("settings.blockedEmptyTitle", bundle: bundle)
+        public static let blockedEmptyMessage = LocalizedStringResource("settings.blockedEmptyMessage", bundle: bundle)
+        public static let unblock = LocalizedStringResource("settings.unblock", bundle: bundle)
 
         /// The app's own name, at the foot of the screen. Not the bundle's display name and
         /// not translated: it is what the app is called, in both languages, and it is here so

@@ -53,6 +53,9 @@ public enum CoreStrings {
         /// A code that is genuine and no longer opens anything. See `AccountActionFailure.staleCode`.
         public static let staleCodeFailed = LocalizedStringResource("account.staleCodeFailed", bundle: bundle)
         public static let startOverFailed = LocalizedStringResource("account.startOverFailed", bundle: bundle)
+        /// A block (Matrix's ignore) that would not take, or would not lift.
+        public static let blockFailed = LocalizedStringResource("account.blockFailed", bundle: bundle)
+        public static let unblockFailed = LocalizedStringResource("account.unblockFailed", bundle: bundle)
     }
 
     /// A change to the room that the homeserver would not make. One sentence per act — see

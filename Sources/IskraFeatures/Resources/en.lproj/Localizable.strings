@@ -115,6 +115,10 @@
 "settings.reactions" = "Reactions";
 
 "settings.storage" = "Storage";
+"settings.blocked" = "Blocked";
+"settings.blockedEmptyTitle" = "Nobody is blocked";
+"settings.blockedEmptyMessage" = "People you block show up here. You won’t see their messages.";
+"settings.unblock" = "Unblock";
 
 /* The storage screen: how much room the app is taking, what is taking it, and which part of it
    can be thrown away. Each kind gets a sentence as well as a name — a row reading "Cache, 412 MB"
@@ -355,6 +359,9 @@
 
 /* The report menu item and form. */
 "message.menu.report" = "Report";
+"message.menu.block" = "Block";
+"message.menu.blockConfirm" = "Block %@?";
+"message.menu.blockConfirmMessage" = "You’ll stop receiving this person’s messages. You can unblock them in settings.";
 "message.report.title" = "Report message";
 "message.report.explanation" = "The report goes to the server’s moderators. You can say briefly what’s wrong, or send it without.";
 "message.report.reasonPrompt" = "What’s wrong? (optional)";

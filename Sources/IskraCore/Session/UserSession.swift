@@ -13,6 +13,11 @@ public final class UserSession {
     public let roomList: RoomListStore
     public let search: SearchStore
 
+    /// Who the user has blocked. Owned by the session, not made on demand, because the block list is
+    /// account-wide: a settings screen manages it, a member row adds to it, and a live subscription
+    /// keeps it in step — none of which can wait for one screen to be open. See `BlockStore`.
+    public let blocked: BlockStore
+
     /// Proving devices are yours, in both directions — see `VerificationStore`.
     ///
     /// Owned by the session and not made on demand like the stores below it, and the difference is
@@ -69,6 +74,7 @@ public final class UserSession {
         self.displayName = Self.localPart(of: userID)
         self.roomList = RoomListStore(client: client)
         self.search = SearchStore(client: client)
+        self.blocked = BlockStore(client: client)
         self.verification = VerificationStore(client: client, ownUserID: userID)
         self.recovery = RecoveryStore(encryption: client.encryption())
     }

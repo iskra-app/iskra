@@ -19,6 +19,12 @@ public enum AccountActionFailure: String, CaseIterable, ActionFailure, Error {
     case staleCode
     case startOver
 
+    /// A block (Matrix's ignore) that would not take, or a block that would not lift. One sentence
+    /// each: the user believes they are rid of someone, or believes they have let them back, and in
+    /// both cases the truth is the opposite.
+    case block
+    case unblock
+
     public var id: String { rawValue }
 
     public var explanation: LocalizedStringResource {
@@ -30,6 +36,8 @@ public enum AccountActionFailure: String, CaseIterable, ActionFailure, Error {
         case .restore: CoreStrings.Account.restoreFailed
         case .staleCode: CoreStrings.Account.staleCodeFailed
         case .startOver: CoreStrings.Account.startOverFailed
+        case .block: CoreStrings.Account.blockFailed
+        case .unblock: CoreStrings.Account.unblockFailed
         }
     }
 }
