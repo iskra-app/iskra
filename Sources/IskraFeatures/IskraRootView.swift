@@ -112,6 +112,10 @@ public struct IskraRootView: View {
             case let .signedIn(session):
                 conversations(session)
                     .environment(\.mediaLoader, session.media())
+                    // Handed down so a bubble can tell a mention of *you* from a mention of anyone
+                    // else, without being given the session to do it.
+                    .environment(\.currentUserID, session.userID)
+                    .environment(\.currentUserName, session.displayName)
                     // Notifications are asked for *here*, and the timing is the whole of the
                     // decision. On the sign-in screen the question is about nothing — no account,
                     // no chats, nothing that could notify anybody — and it gets the answer a

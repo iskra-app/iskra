@@ -158,7 +158,17 @@ enum TimelineMapper {
                        replyTo: replyPreview(from: event.content),
                        reactions: unsent.applied(to: reactions(from: event.content, ownUserID: ownUserID),
                                                  messageID: id),
-                       deletedAt: kind == .deleted ? redaction(of: event) : nil)
+                       deletedAt: kind == .deleted ? redaction(of: event) : nil,
+                       mentionedUserIDs: mentionedUserIDs(from: event.content))
+    }
+
+    /// The IDs an event says it mentions — its `m.mentions` set. Only message events carry them;
+    /// everything else has nobody to mention.
+    private static func mentionedUserIDs(from content: TimelineItemContent) -> [String] {
+        guard case let .msgLike(msgLike) = content,
+              case let .message(message) = msgLike.kind
+        else { return [] }
+        return message.mentions?.userIds ?? []
     }
 
     // MARK: - Room events
