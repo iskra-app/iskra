@@ -162,7 +162,11 @@ struct LocalizationTests {
         (Strings.Message.Link.open, en: "Open", ru: "Открыть"),
         (Strings.Message.Menu.report, en: "Report", ru: "Пожаловаться"),
         (Strings.Message.Report.title, en: "Report message", ru: "Пожаловаться на сообщение"),
-        (Strings.Message.Report.submit, en: "Send", ru: "Отправить")
+        (Strings.Message.Report.submit, en: "Send", ru: "Отправить"),
+
+        // Searching inside one conversation.
+        (Strings.Room.searchInChat, en: "Search in chat", ru: "Поиск в чате"),
+        (Strings.Room.searchEmptyTitle, en: "Nothing found", ru: "Ничего не нашлось")
     ]
 
     @Test("app strings resolve in English and in Russian")

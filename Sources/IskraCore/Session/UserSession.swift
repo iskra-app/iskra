@@ -234,6 +234,16 @@ public final class UserSession {
         return RoomDetailsStore(room: room, ownUserID: userID, client: client)
     }
 
+    /// Searching within one conversation, made when its search is opened. Separate from the global
+    /// `search` store: this one runs the room-scoped `Room.searchMessages`, so it needs the room
+    /// handle the same way a timeline does.
+    public func roomSearch(forRoomID roomID: String) -> RoomSearchStore? {
+        guard let room = roomList.room(withID: roomID) ?? (try? client.getRoom(roomId: roomID)) else {
+            return nil
+        }
+        return RoomSearchStore(room: room)
+    }
+
     /// Fetches media bytes (a photo, a voice message) on demand.
     public func media() -> MediaLoader {
         MediaLoader(client: client)

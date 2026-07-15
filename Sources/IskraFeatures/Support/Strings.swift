@@ -231,6 +231,13 @@ public enum Strings {
         public static let pinnedEmpty = LocalizedStringResource("room.pinnedEmpty", bundle: bundle)
         public static let unpin = LocalizedStringResource("room.unpin", bundle: bundle)
 
+        /// Searching inside this one conversation, as opposed to the room list's search across all
+        /// of them. The button, the field, and what an empty result says.
+        public static let searchInChat = LocalizedStringResource("room.searchInChat", bundle: bundle)
+        public static let searchPrompt = LocalizedStringResource("room.searchPrompt", bundle: bundle)
+        public static let searchClose = LocalizedStringResource("room.searchClose", bundle: bundle)
+        public static let searchEmptyTitle = LocalizedStringResource("room.searchEmptyTitle", bundle: bundle)
+
         /// The header above a conversation, and the screen behind it.
         public static let openDetails = LocalizedStringResource("room.openDetails", bundle: bundle)
         public static let detailsTitle = LocalizedStringResource("room.detailsTitle", bundle: bundle)
