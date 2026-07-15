@@ -231,6 +231,12 @@ public enum CoreStrings {
                                     defaultValue: "\(person) invites you to the chat",
                                     bundle: bundle)
         }
+
+        /// What a push says while the app is locked: that something arrived, and nothing else — no
+        /// sender, no words, no room. The title is the app's own name so the banner still reads as
+        /// Iskra's; the body is a neutral "New message".
+        public static let hiddenTitle = LocalizedStringResource("push.hiddenTitle", bundle: bundle)
+        public static let hiddenBody = LocalizedStringResource("push.hiddenBody", bundle: bundle)
     }
 
     /// Shown in the user's list of signed-in devices, so it is a name, not a model

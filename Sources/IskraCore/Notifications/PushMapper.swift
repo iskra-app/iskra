@@ -72,6 +72,23 @@ enum PushMapper {
         }
     }
 
+    /// Strips a notification down to "New message" when the app is locked, keeping only what it
+    /// needs to open the right room once the user is past the lock. Pure, so the rule — content shows
+    /// only when unlocked — is pinned in a test rather than trusted to a device.
+    ///
+    /// An invitation is redacted too: "Аня invites you" names a person, which is exactly what a
+    /// locked phone should not put on its screen. Silences and failures pass through untouched —
+    /// there is nothing shown to hide.
+    static func redactIfLocked(_ outcome: PushOutcome, locked: Bool) -> PushOutcome {
+        guard locked, case let .show(notification) = outcome else { return outcome }
+        return .show(PushNotification(roomID: notification.roomID,
+                                      eventID: notification.eventID,
+                                      title: String(core: CoreStrings.Push.hiddenTitle),
+                                      sender: nil,
+                                      body: String(core: CoreStrings.Push.hiddenBody),
+                                      isNoisy: notification.isNoisy))
+    }
+
     /// Who the notification is *from* — which is not quite the same question as who sent it.
     ///
     /// In a group the two lines are a room and a person, and both are needed: "Кухня" tells
