@@ -73,6 +73,14 @@ struct MessageRow: View {
     /// Whether the report form is up for this message.
     @State private var isReporting = false
 
+    /// How far the bubble has been dragged toward the centre in a swipe-to-reply, and whether that
+    /// drag has passed the point where letting go fires the reply. The offset springs back either
+    /// way — the swipe is a shortcut that quotes the message, not a thing that flies off the screen.
+    @State private var replyDragOffset: CGFloat = 0
+    @State private var replyArmed = false
+    /// Bumped when the drag crosses the threshold, so the knock lands exactly once per swipe.
+    @State private var replyHaptic = 0
+
     /// The real opener, captured before the message text overrides `openURL` to intercept taps.
     /// The confirmation's "Open" hands the URL back to this.
     @Environment(\.openURL) private var openURL
@@ -132,7 +140,7 @@ struct MessageRow: View {
         // Zero spacing, because the emoji do not sit *below* the bubble — they climb back
         // onto it. See `reactions`.
         VStack(alignment: message.isOwn ? .trailing : .leading, spacing: 0) {
-            bubbleRow
+            swipeableBubbleRow
 
             if !message.reactions.isEmpty {
                 reactions
@@ -196,6 +204,71 @@ struct MessageRow: View {
     }
 
     // MARK: - The bubble, and what can be done to it
+
+    /// The bubble, wrapped so it can be dragged toward the centre to reply.
+    ///
+    /// The direction is always "toward the middle of the screen", never a side the user has to
+    /// remember: your own messages sit on the right and swipe left; everyone else's sit on the left
+    /// and swipe right. It is a short, springy drag, not a full swipe — cross the threshold and a
+    /// haptic fires and the reply is armed; let go and it quotes the message and springs back. The
+    /// same "Reply" is in the long-press menu, so the swipe is the fast way, not the only way.
+    ///
+    /// `minimumDistance` keeps it out of the way of scrolling, and the bubble is inset from the
+    /// screen edge (avatar, margins) so the incoming-message swipe does not start where the system's
+    /// back-edge gesture lives — a thing to confirm on a device, where that gesture actually exists.
+    @ViewBuilder
+    private var swipeableBubbleRow: some View {
+        if message.canReply {
+            bubbleRow
+                .offset(x: replyDragOffset)
+                .background(alignment: message.isOwn ? .trailing : .leading) { replyHint }
+                .gesture(replyGesture)
+                .sensoryFeedback(.impact(weight: .light), trigger: replyHaptic)
+                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: replyDragOffset)
+        } else {
+            bubbleRow
+        }
+    }
+
+    /// The arrow that fades in behind the bubble as it is dragged, on the edge it is coming away
+    /// from — the visual promise that letting go now will reply.
+    private var replyHint: some View {
+        Image(systemName: "arrowshape.turn.up.left.fill")
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, Theme.Spacing.normal)
+            .opacity(min(1, Double(abs(replyDragOffset)) / Self.replyThreshold))
+            .scaleEffect(replyArmed ? 1.1 : 0.9)
+    }
+
+    /// The distance past which letting go replies.
+    private static let replyThreshold: CGFloat = 56
+
+    private var replyGesture: some Gesture {
+        DragGesture(minimumDistance: 18)
+            .onChanged { value in
+                // Only a mostly-horizontal drag toward the centre. A drag that is more vertical
+                // than horizontal belongs to the scroll view, and one heading for the edge is not
+                // a reply.
+                guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                let directed = message.isOwn ? min(0, value.translation.width)
+                                             : max(0, value.translation.width)
+                // Rubber-band: it gives, then resists, so it never flies to the edge.
+                let capped = max(-Self.replyThreshold * 1.6, min(Self.replyThreshold * 1.6, directed))
+                replyDragOffset = capped * 0.7
+
+                let passed = abs(replyDragOffset) >= Self.replyThreshold
+                if passed != replyArmed {
+                    replyArmed = passed
+                    if passed { replyHaptic += 1 }
+                }
+            }
+            .onEnded { _ in
+                if replyArmed { onReply() }
+                replyArmed = false
+                replyDragOffset = 0
+            }
+    }
 
     @ViewBuilder
     private var bubbleRow: some View {
