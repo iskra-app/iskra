@@ -135,6 +135,12 @@
 "push.hiddenTitle" = "Iskra";
 "push.hiddenBody" = "New message";
 
+/* The Share extension. */
+"share.title" = "Send to…";
+"share.cancel" = "Cancel";
+"share.empty" = "Open Iskra and sign in first — then your chats will show up here.";
+"share.willSendOnOpen" = "It’ll send when you next open Iskra.";
+
 /* Room invitations. */
 "roomAction.acceptInviteFailed" = "You couldn’t join the chat. The invitation may have been withdrawn.";
 "roomAction.declineInviteFailed" = "The invitation wasn’t declined. It is still there — try again.";

@@ -109,6 +109,9 @@ targets:
       # separate download and has no life of its own: iOS launches it, on its own, when a
       # push arrives — see Apps/NotificationService.
       - target: IskraNotificationService
+      # And the share extension, embedded the same way: it is what puts Iskra in the system Share
+      # sheet, and like any extension it ships inside its host.
+      - target: IskraShareExtension
     settings:
       base:
         PRODUCT_NAME: Iskra
@@ -255,6 +258,53 @@ targets:
         # these separately. It opens the app's encrypted SQLite store and reads the app's
         # session out of the app's Keychain group — and if either grant is missing, that is
         # where it fails. `Iskra --probe-notification` is what says so out loud.
+        com.apple.security.application-groups: [group.moscow.swag.iskra]
+        keychain-access-groups: [$(AppIdentifierPrefix)moscow.swag.iskra.shared]
+
+  # The Share sheet target: what lets another app hand text or a link to a specific Iskra chat.
+  #
+  # Unlike the notification extension it *does* have a screen — a room picker — so it links SwiftUI,
+  # but still only IskraCore, never IskraFeatures: it needs the shared chat directory and the App
+  # Group, not the whole app. It writes the shared thing to the App-Group outbox and Iskra sends it
+  # the next time it comes up — the same outbox the App Intents use. iOS only, where the Share sheet
+  # and the App Group entitlement live.
+  IskraShareExtension:
+    type: app-extension
+    platform: iOS
+    templates: [Stamped]
+    sources:
+      - path: ShareExtension
+    dependencies:
+      - package: Iskra
+        product: IskraCore
+    settings:
+      base:
+        PRODUCT_NAME: IskraShareExtension
+        PRODUCT_BUNDLE_IDENTIFIER: moscow.swag.iskra.share
+    info:
+      path: ShareExtension/Info.plist
+      properties:
+        CFBundleDisplayName: Iskra
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [en, ru]
+        # Load-bearing for the same reason as in the notification extension: `Bundle.main` here is
+        # this extension's bundle, and `AppEnvironment.keychainAccessGroup` reads the prefix out of it.
+        AppIdentifierPrefix: $(AppIdentifierPrefix)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+          # Offered for text and links — the two things this extension can carry today. It is not
+          # offered for photos or files: sharing those would need the bytes handed across and a typed
+          # send on the far side, which is the next step, not this one.
+          NSExtensionAttributes:
+            NSExtensionActivationRule:
+              NSExtensionActivationSupportsText: true
+              NSExtensionActivationSupportsWebURLWithMaxCount: 1
+    entitlements:
+      path: ShareExtension/Iskra.entitlements
+      properties:
         com.apple.security.application-groups: [group.moscow.swag.iskra]
         keychain-access-groups: [$(AppIdentifierPrefix)moscow.swag.iskra.shared]
 

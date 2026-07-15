@@ -191,7 +191,11 @@ struct LocalizationTests {
 
         // Spaces — «пространства».
         (Strings.Room.spaceLabel, en: "Space", ru: "Пространство"),
-        (Strings.Room.spaceEmptyTitle, en: "This space is empty", ru: "В пространстве пусто")
+        (Strings.Room.spaceEmptyTitle, en: "This space is empty", ru: "В пространстве пусто"),
+
+        // The share extension's words (Core strings, since the extension links IskraCore).
+        (CoreStrings.Share.title, en: "Send to…", ru: "Отправить в…"),
+        (CoreStrings.Share.cancel, en: "Cancel", ru: "Отмена")
     ]
 
     @Test("app strings resolve in English and in Russian")

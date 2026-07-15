@@ -239,6 +239,16 @@ public enum CoreStrings {
         public static let hiddenBody = LocalizedStringResource("push.hiddenBody", bundle: bundle)
     }
 
+    /// The share extension's own few words. In `CoreStrings`, not the app's, because the extension
+    /// links `IskraCore` and not `IskraFeatures` — so this is the bundle it can reach.
+    public enum Share {
+        public static let title = LocalizedStringResource("share.title", bundle: bundle)
+        public static let cancel = LocalizedStringResource("share.cancel", bundle: bundle)
+        public static let empty = LocalizedStringResource("share.empty", bundle: bundle)
+        /// Reassurance that the message is not lost when Iskra is not open: it goes when it opens.
+        public static let willSendOnOpen = LocalizedStringResource("share.willSendOnOpen", bundle: bundle)
+    }
+
     /// Shown in the user's list of signed-in devices, so it is a name, not a model
     /// identifier.
     public enum Device {
