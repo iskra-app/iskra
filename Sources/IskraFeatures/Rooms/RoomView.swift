@@ -253,6 +253,15 @@ public struct RoomView: View {
                             .id(placed.id)
                     }
 
+                    // Someone writing, shown as an unfinished incoming message at the foot of the
+                    // conversation — the header says who, this is the animation of it. It rides the
+                    // bottom animation scope below, so it slides in and out rather than popping.
+                    if !timeline.typing.isEmpty {
+                        TypingBubble()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.top, Theme.Spacing.withinRun)
+                    }
+
                     endMarker
                 }
                 // A message leaving the conversation is the one change here worth animating.
@@ -280,6 +289,9 @@ public struct RoomView: View {
                 // watch.
                 .animation(.smooth(duration: Theme.Timing.deletion),
                            value: timeline.rows.suffix(Self.animatedTail).map(\.id))
+                // The typing bubble sliding in and out is its own change, not a change to the rows,
+                // so it needs its own scope — see `TypingBubble`, which carries the transition.
+                .animation(.smooth(duration: Theme.Timing.chrome), value: timeline.typing.isEmpty)
                 .padding(.horizontal, Theme.Spacing.normal)
                 // The composer floats over the timeline on glass, so the last message
                 // must be able to scroll clear of it — but only just. The composer already
