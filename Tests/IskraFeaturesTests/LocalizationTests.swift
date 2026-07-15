@@ -187,7 +187,11 @@ struct LocalizationTests {
 
         // Forwarding.
         (Strings.Message.Menu.forward, en: "Forward", ru: "Переслать"),
-        (Strings.Message.Forward.title, en: "Forward to…", ru: "Переслать в…")
+        (Strings.Message.Forward.title, en: "Forward to…", ru: "Переслать в…"),
+
+        // Spaces — «пространства».
+        (Strings.Room.spaceLabel, en: "Space", ru: "Пространство"),
+        (Strings.Room.spaceEmptyTitle, en: "This space is empty", ru: "В пространстве пусто")
     ]
 
     @Test("app strings resolve in English and in Russian")

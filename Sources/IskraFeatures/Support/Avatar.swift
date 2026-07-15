@@ -10,12 +10,21 @@ import IskraDesign
 /// fallback is drawn immediately, as though it were the answer, and the photograph replaces
 /// it when it lands. Nothing about the row moves when that happens: the circle is the same
 /// size either way.
+/// The two silhouettes an avatar can wear. A round one is a person or an ordinary chat; a
+/// square-cornered one is a space — so a space is told apart from a conversation at a glance, before
+/// a single word is read.
+enum AvatarShape {
+    case circle
+    case roundedSquare
+}
+
 struct Avatar: View {
     let name: String
     /// The `mxc://` URL the homeserver gives out beside the name. Nil for the very many
     /// people who never set one.
     let url: String?
     let size: CGFloat
+    var shape: AvatarShape = .circle
 
     @Environment(\.mediaLoader) private var loader
 
@@ -30,8 +39,18 @@ struct Avatar: View {
     /// What is actually drawn, as opposed to what the caller asked for.
     private var diameter: CGFloat { size * textScale }
 
+    /// The outline, as a type-erased `Shape` so the fill and the clip agree without branching twice.
+    /// A space's corners are rounded at a fixed fraction of its size, so the square scales with the
+    /// face and never turns into a sharp-cornered tile at the large accessibility sizes.
+    private var outline: AnyShape {
+        switch shape {
+        case .circle: AnyShape(Circle())
+        case .roundedSquare: AnyShape(RoundedRectangle(cornerRadius: diameter * 0.28, style: .continuous))
+        }
+    }
+
     var body: some View {
-        Circle()
+        outline
             .fill(.quaternary)
             .frame(width: diameter, height: diameter)
             .overlay {
@@ -39,7 +58,7 @@ struct Avatar: View {
                     image
                         .resizable()
                         .scaledToFill()
-                        .clipShape(.circle)
+                        .clipShape(outline)
                 } else {
                     Text(initials)
                         .font(.system(size: diameter * 0.4, weight: .medium))

@@ -427,6 +427,11 @@
 "room.sharedMediaEmptyTitle" = "No media yet";
 "room.sharedMediaEmptyMessage" = "Photos, videos, and files from this chat will show up here.";
 "room.galleryLoadEarlier" = "Show earlier";
+
+/* Spaces and what is inside them. */
+"room.spaceLabel" = "Space";
+"room.spaceEmptyTitle" = "This space is empty";
+"room.spaceEmptyMessage" = "The rooms in this space will show up here.";
 "room.unpin" = "Unpin";
 
 /* The opened photo or video: what you can do with it besides look at it. */

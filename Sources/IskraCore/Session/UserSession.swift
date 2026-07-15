@@ -240,6 +240,12 @@ public final class UserSession {
         return RoomDetailsStore(room: room, ownUserID: userID, client: client)
     }
 
+    /// The rooms inside a space, made when its screen is opened. A space is reached by its own room
+    /// ID, and the store pages the SDK's space service for what is in it — see `SpaceStore`.
+    public func space(forRoomID roomID: String) -> SpaceStore {
+        SpaceStore(client: client, spaceID: roomID)
+    }
+
     /// Searching within one conversation, made when its search is opened. Separate from the global
     /// `search` store: this one runs the room-scoped `Room.searchMessages`, so it needs the room
     /// handle the same way a timeline does.

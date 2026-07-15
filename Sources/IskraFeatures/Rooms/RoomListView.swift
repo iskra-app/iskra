@@ -40,6 +40,9 @@ public struct RoomListView: View {
     @State private var isShowingSettings = false
     @State private var isShowingArchive = false
 
+    /// The space whose rooms are being shown, when one has been tapped.
+    @State private var openedSpace: RoomSummary?
+
     /// The room a "Delete" swipe is asking about. Leaving is not undoable — Matrix has no delete,
     /// only `leave()` — so the swipe arms a confirmation rather than firing straight away.
     @State private var roomToLeave: RoomSummary?
@@ -153,6 +156,14 @@ public struct RoomListView: View {
             }
         } message: { _ in
             Text(Strings.RoomList.Swipe.leaveConfirmMessage)
+        }
+        .navigationDestination(item: $openedSpace) { space in
+            SpaceRoomsView(space: space, session: session) { roomID in
+                // Opening a room from inside a space selects it in the detail column and closes the
+                // space screen — you came here to find a room, and you found it.
+                selectedRoomID = roomID
+                openedSpace = nil
+            }
         }
         .navigationDestination(isPresented: $isShowingArchive) {
             ArchiveView(session: session) { roomID in
@@ -272,6 +283,19 @@ public struct RoomListView: View {
                     InviteRow(room: room,
                               onAccept: { Task { await session.roomList.accept(roomID: room.id) } },
                               onDecline: { Task { await session.roomList.decline(roomID: room.id) } })
+                } else if room.isSpace {
+                    // A space is not a chat, so it does not select one: tapping it opens the list of
+                    // rooms *inside* it. Not `.tag`-selectable for the same reason an invitation is
+                    // not — there is no conversation here to open.
+                    Button {
+                        openedSpace = room
+                    } label: {
+                        RoomRow(room: room)
+                    }
+                    .buttonStyle(.plain)
+                    .roomListSwipeActions(room: room,
+                                          roomList: session.roomList,
+                                          onLeave: { roomToLeave = room })
                 } else {
                     RoomRow(room: room)
                         .tag(room.id)
@@ -370,7 +394,10 @@ struct RoomRow: View {
 
     var body: some View {
         HStack(spacing: Theme.Spacing.normal) {
-            Avatar(name: room.name, url: room.avatarURL, size: Theme.Size.roomAvatar)
+            // A space wears a square-cornered face so it reads as a space, not a chat, before its
+            // name is even read — see `AvatarShape`.
+            Avatar(name: room.name, url: room.avatarURL, size: Theme.Size.roomAvatar,
+                   shape: room.isSpace ? .roundedSquare : .circle)
 
             VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
                 HStack(spacing: Theme.Spacing.tight) {
@@ -497,7 +524,10 @@ private struct InviteRow: View {
 
     var body: some View {
         HStack(spacing: Theme.Spacing.normal) {
-            Avatar(name: room.name, url: room.avatarURL, size: Theme.Size.roomAvatar)
+            // A space wears a square-cornered face so it reads as a space, not a chat, before its
+            // name is even read — see `AvatarShape`.
+            Avatar(name: room.name, url: room.avatarURL, size: Theme.Size.roomAvatar,
+                   shape: room.isSpace ? .roundedSquare : .circle)
 
             VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
                 HStack(spacing: Theme.Spacing.tight) {
