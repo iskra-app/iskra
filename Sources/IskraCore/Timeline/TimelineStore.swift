@@ -974,6 +974,15 @@ public final class TimelineStore {
         }
     }
 
+    // MARK: - Searching within the room
+
+    /// A store for searching just this conversation, built from the room this timeline already
+    /// holds — so the search screen does not have to go back to the session for a handle it is
+    /// standing next to. See `RoomSearchStore`.
+    public func makeSearch() -> RoomSearchStore {
+        RoomSearchStore(room: room)
+    }
+
     /// Everything the room has pinned, as its own conversation — for the "Pinned" screen, and
     /// for the strip above the room that shows the latest of them.
     ///

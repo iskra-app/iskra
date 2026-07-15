@@ -388,6 +388,12 @@
 "room.pinned" = "Закреплённое";
 "room.pinnedTitle" = "Закреплённые";
 "room.pinnedEmpty" = "Здесь пока ничего не закреплено";
+
+/* Поиск внутри одного чата. */
+"room.searchInChat" = "Поиск в чате";
+"room.searchPrompt" = "Поиск по этому чату";
+"room.searchClose" = "Закрыть";
+"room.searchEmptyTitle" = "Ничего не нашлось";
 "room.unpin" = "Открепить";
 
 /* The opened photo or video: what you can do with it besides look at it. */

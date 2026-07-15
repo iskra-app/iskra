@@ -388,6 +388,12 @@
 "room.pinned" = "Pinned";
 "room.pinnedTitle" = "Pinned messages";
 "room.pinnedEmpty" = "Nothing is pinned here yet";
+
+/* Searching within one chat. */
+"room.searchInChat" = "Search in chat";
+"room.searchPrompt" = "Search this chat";
+"room.searchClose" = "Close";
+"room.searchEmptyTitle" = "Nothing found";
 "room.unpin" = "Unpin";
 
 /* The opened photo or video: what you can do with it besides look at it. */

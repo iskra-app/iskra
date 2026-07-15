@@ -104,6 +104,12 @@ public struct RoomView: View {
     /// `onChange` beside the scroll geometry.
     @State private var jumpTarget: String?
 
+    /// Searching within this conversation. The store is made when the search opens and let go when
+    /// it closes — see `openRoomSearch`. Its results jump through the same `jumpTarget` road a reply
+    /// or a global-search hit takes.
+    @State private var isSearchingRoom = false
+    @State private var roomSearch: RoomSearchStore?
+
     /// Whether the reader is standing at the newest message, which is what decides if an
     /// arriving message is allowed to move the conversation.
     ///
@@ -240,6 +246,11 @@ public struct RoomView: View {
     private func openDetails() {
         if details == nil { details = makeDetails() }
         isShowingDetails = true
+    }
+
+    private func openRoomSearch() {
+        if roomSearch == nil { roomSearch = timeline.makeSearch() }
+        isSearchingRoom = true
     }
 
     public var body: some View {
@@ -652,6 +663,17 @@ public struct RoomView: View {
         .navigationBarTitleDisplayMode(.inline)
         #endif
         .toolbar {
+            // Searching this one conversation. Its own button rather than a mode the room slides
+            // into, so it is discoverable and so closing it is a single obvious tap.
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    openRoomSearch()
+                } label: {
+                    Image(systemName: "magnifyingglass")
+                }
+                .accessibilityLabel(Text(Strings.Room.searchInChat))
+            }
+
             if isCompact {
                 // iPhone. The name goes where a phone puts a title — the middle — and the
                 // picture goes to the trailing edge, near the thumb. Two controls, one
@@ -690,6 +712,16 @@ public struct RoomView: View {
                                onOpenDetails: openDetails)
                 }
                 .sharedBackgroundVisibility(.hidden)
+            }
+        }
+        .sheet(isPresented: $isSearchingRoom) {
+            if let roomSearch {
+                RoomSearchView(store: roomSearch) { eventID in
+                    isSearchingRoom = false
+                    // The same road a reply takes: paginate back until the message is loaded, then
+                    // scroll to it and light it.
+                    jumpTarget = eventID
+                }
             }
         }
         .navigationDestination(isPresented: $isShowingDetails) {
