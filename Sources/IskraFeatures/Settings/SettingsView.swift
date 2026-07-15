@@ -86,10 +86,16 @@ struct SettingsView: View {
     /// of coloured symbols is the point rather than noise.
     @Environment(\.accent) private var accent
 
+    // TEMP DIAGNOSTIC — locating the macOS settings layout hang. Remove once found.
+    // Launch with e.g. `ISKRA_NOSELECT=1 .../Iskra.app/Contents/MacOS/Iskra` to disable one suspect.
+    private static func dbgOff(_ key: String) -> Bool {
+        ProcessInfo.processInfo.environment["ISKRA_" + key] == "1"
+    }
+
     var body: some View {
         Form {
             Section {
-                profile
+                if Self.dbgOff("NOPROFILE") { Text(verbatim: "profile") } else { profile }
             }
 
             Section {
@@ -179,7 +185,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .tint(accent.color)
+        .tint(Self.dbgOff("NOTINT") ? Color.primary : accent.color)
         .navigationTitle(Text(Strings.Settings.title))
         .toolbarTitleDisplayMode(.inline)
         // Value-based, because a `NavigationLink` with a destination *closure* builds that
@@ -232,7 +238,7 @@ struct SettingsView: View {
         }
         .failureAlert($failure)
         .toolbar {
-            if showsBackButton {
+            if showsBackButton && !Self.dbgOff("NOBACK") {
                 ToolbarItem(placement: .navigation) {
                     Button {
                         dismiss()
@@ -269,7 +275,7 @@ struct SettingsView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
-                    .textSelection(.enabled)
+                    .dbgTextSelection(!Self.dbgOff("NOSELECT"))
             }
         }
         .padding(.vertical, Theme.Spacing.close)
@@ -358,5 +364,12 @@ struct SettingsView: View {
         } catch {
             failure = error
         }
+    }
+}
+
+// TEMP DIAGNOSTIC helper — conditional text selection for the settings-hang bisection.
+private extension View {
+    @ViewBuilder func dbgTextSelection(_ enabled: Bool) -> some View {
+        if enabled { self.textSelection(.enabled) } else { self.textSelection(.disabled) }
     }
 }
