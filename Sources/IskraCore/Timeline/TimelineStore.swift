@@ -983,6 +983,45 @@ public final class TimelineStore {
         RoomSearchStore(room: room)
     }
 
+    // MARK: - Forwarding
+
+    /// Sends a message from another room into *this* one. Matrix has no native forward, so a forward
+    /// is a new message that happens to carry the same thing — which for media means re-sending it
+    /// through the encrypting attachment path, never copying the source URL: `uploadMedia` does not
+    /// encrypt, and copying a `MediaSource` across rooms would hand the destination room's members an
+    /// attachment their keys cannot open (or, worse, one uploaded in the clear). The bytes are fetched
+    /// with `loader` and sent again, so the destination room's own encryption applies.
+    ///
+    /// Text-shaped messages carry their words; pictures, videos and files carry their bytes. A voice
+    /// note, a video note, a location or a sticker is not forwarded — each would need re-deriving its
+    /// own metadata, and forwarding one is not a thing anyone asks for. Those return without sending.
+    public func forward(_ message: Message, loader: MediaLoader) async {
+        switch message.kind {
+        case let .text(body), let .notice(body), let .emote(body):
+            await send(text: body)
+
+        case let .image(attachment):
+            guard let data = try? await loader.data(for: attachment) else { failure = .send; return }
+            await send(photo: data, filename: attachment.filename)
+
+        case let .video(attachment):
+            // The `MediaFile` is held across the send: let go of it and the SDK deletes the decrypted
+            // bytes from disk, which the upload is still reading.
+            guard let file = try? await loader.file(for: attachment) else { failure = .send; return }
+            await send(video: file.url)
+            withExtendedLifetime(file) {}
+
+        case let .file(attachment):
+            guard let file = try? await loader.file(for: attachment) else { failure = .send; return }
+            await send(file: file.url)
+            withExtendedLifetime(file) {}
+
+        default:
+            // Voice, video note, location, sticker, and anything gone or unsendable. Nothing sent.
+            break
+        }
+    }
+
     /// Everything the room has pinned, as its own conversation — for the "Pinned" screen, and
     /// for the strip above the room that shows the latest of them.
     ///

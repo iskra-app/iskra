@@ -76,6 +76,9 @@ struct MessageRow: View {
     /// Whether the "block this sender?" confirmation is up.
     @State private var isConfirmingBlock = false
 
+    /// Whether the room picker for forwarding is up.
+    @State private var isForwarding = false
+
     /// How far the bubble has been dragged toward the centre in a swipe-to-reply, and whether that
     /// drag has passed the point where letting go fires the reply. The offset springs back either
     /// way — the swipe is a shortcut that quotes the message, not a thing that flies off the screen.
@@ -94,6 +97,9 @@ struct MessageRow: View {
 
     /// The account's block list, for blocking a message's sender from the menu.
     @Environment(\.blockStore) private var blockStore
+
+    /// The forward capability, for sending this message into another room.
+    @Environment(\.forwarding) private var forwarding
 
     /// The emoji a double tap leaves. The user's, chosen once in settings and read by every
     /// row in every conversation — see `QuickReaction`.
@@ -410,6 +416,11 @@ struct MessageRow: View {
             .sheet(isPresented: $isReporting) {
                 ReportSheet(onReport: onReport)
             }
+            .sheet(isPresented: $isForwarding) {
+                if let forwarding {
+                    ForwardPicker(message: message, forwarding: forwarding)
+                }
+            }
             .confirmationDialog(Text(Strings.Message.Menu.blockConfirm(message.senderName)),
                                 isPresented: $isConfirmingBlock,
                                 titleVisibility: .visible) {
@@ -507,6 +518,16 @@ struct MessageRow: View {
                 Clipboard.copy(text)
             } label: {
                 Label(Strings.Message.Menu.copy, systemImage: "doc.on.doc")
+            }
+        }
+
+        // Forwarding reaches another room, so it needs the network — offline there is nowhere for it
+        // to go — and only the kinds a forward can faithfully rebuild are offered.
+        if message.canForward, forwarding != nil, !isOffline {
+            Button {
+                isForwarding = true
+            } label: {
+                Label(Strings.Message.Menu.forward, systemImage: "arrowshape.turn.up.right")
             }
         }
 

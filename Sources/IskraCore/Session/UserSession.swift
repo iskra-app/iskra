@@ -250,6 +250,21 @@ public final class UserSession {
         return RoomSearchStore(room: room)
     }
 
+    /// Forwards a message into another room. Opens (or reuses) the destination's timeline just long
+    /// enough to send — `start()` is idempotent, and the message goes into the SDK's own persistent
+    /// send queue, so it leaves even if the timeline is let go the moment after. Returns whether the
+    /// send was dispatched; `false` only when the destination room could not be reached at all.
+    public func forward(_ message: Message, toRoomID roomID: String) async -> Bool {
+        guard let target = timeline(forRoomID: roomID) else { return false }
+        do {
+            try await target.start()
+        } catch {
+            return false
+        }
+        await target.forward(message, loader: media())
+        return true
+    }
+
     /// Fetches media bytes (a photo, a voice message) on demand.
     public func media() -> MediaLoader {
         MediaLoader(client: client)
