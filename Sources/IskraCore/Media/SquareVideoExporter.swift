@@ -66,7 +66,11 @@ public enum SquareVideoExporter {
         // infinite scale goes into a `CGAffineTransform` without complaint and comes out the other
         // end as an export that produces a file nobody can play. Refusing it here means the send
         // fails with a reason, which is what the caller already knows how to say.
-        guard edge.isFinite, edge > 0 else {
+        // Both dimensions, not only their minimum. `min` returns the finite operand when the other
+        // is NaN, so a track that reports one good side and one NaN side slips past a guard that
+        // checks `edge` alone — and then `width`/`height` carry the NaN straight into `centring`
+        // below, producing the very NaN transform this guard exists to refuse.
+        guard width.isFinite, height.isFinite, edge > 0 else {
             throw Failure.noVideoTrack
         }
 
@@ -103,6 +107,10 @@ public enum SquareVideoExporter {
         do {
             try await session.export(to: destination, as: .mp4)
         } catch {
+            // A failed export can still have written part of a file — the user's face, in the
+            // clear, in the temp directory. The caller's `defer` that sweeps the finished square
+            // is only armed once this returns a URL, so on the throw nobody else deletes it.
+            try? FileManager.default.removeItem(at: destination)
             throw Failure.exportFailed(error)
         }
 
