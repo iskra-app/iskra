@@ -230,6 +230,11 @@ public final class TimelineStore {
         // And the pinned strip back up with the room, if this room ever had one. `stop()` is a
         // pause for both of them, and a pause only one of them woke from would leave the strip at
         // the top of the screen frozen on whatever was pinned when the reader last left.
+        //
+        // Guarded on the generation like everything else that spans the open: a `stop()` while
+        // `open()` was in flight leaves `open()` to bail on its own checks and return normally, and
+        // without this the pinned store would then be started for a room nobody is looking at.
+        guard generation == self.generation else { return }
         await pinnedStore?.start()
     }
 
