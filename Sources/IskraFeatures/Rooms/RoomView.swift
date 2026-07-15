@@ -1134,6 +1134,7 @@ public struct RoomView: View {
                        withAnimation(.smooth) { scroll.scrollTo(eventID, anchor: .center) }
                        light(eventID)
                    },
+                   onReport: { reason in Task { await timeline.report(messageID: message.id, reason: reason) } },
                    isHighlighted: highlighted == message.id)
     }
 

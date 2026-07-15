@@ -348,6 +348,9 @@ public enum Strings {
             public static let addReaction = LocalizedStringResource("message.menu.addReaction", bundle: bundle)
             public static let removeReaction = LocalizedStringResource("message.menu.removeReaction", bundle: bundle)
 
+            /// Flagging somebody else's message to the moderators.
+            public static let report = LocalizedStringResource("message.menu.report", bundle: bundle)
+
             /// What VoiceOver calls the pill itself: the emoji, and how many people left
             /// it. Pluralised, so Russian declines the people rather than the emoji.
             public static func reaction(_ key: String, _ count: Int) -> LocalizedStringResource {
@@ -375,6 +378,17 @@ public enum Strings {
         public enum Link {
             public static let open = LocalizedStringResource("message.link.open", bundle: bundle)
             public static let cancel = LocalizedStringResource("message.link.cancel", bundle: bundle)
+        }
+
+        /// The report form: what it is for, and how to send it. The reason is optional — a report
+        /// with no words is still a report — and the copy says the moderators are who receives it,
+        /// not us.
+        public enum Report {
+            public static let title = LocalizedStringResource("message.report.title", bundle: bundle)
+            public static let explanation = LocalizedStringResource("message.report.explanation", bundle: bundle)
+            public static let reasonPrompt = LocalizedStringResource("message.report.reasonPrompt", bundle: bundle)
+            public static let submit = LocalizedStringResource("message.report.submit", bundle: bundle)
+            public static let cancel = LocalizedStringResource("message.report.cancel", bundle: bundle)
         }
 
         public enum Media {
