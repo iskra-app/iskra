@@ -179,7 +179,11 @@ struct LocalizationTests {
         (Strings.Lock.unlock, en: "Unlock", ru: "Разблокировать"),
         (Strings.Settings.lock, en: "App Lock", ru: "Код-пароль"),
         (Strings.Settings.lockTimeoutLabel(.immediately), en: "Immediately", ru: "Сразу"),
-        (Strings.Settings.lockTimeoutLabel(.afterFiveMinutes), en: "After 5 minutes", ru: "Через 5 минут")
+        (Strings.Settings.lockTimeoutLabel(.afterFiveMinutes), en: "After 5 minutes", ru: "Через 5 минут"),
+
+        // The room's shared-media gallery.
+        (Strings.Room.sharedMedia, en: "Media & files", ru: "Медиа и файлы"),
+        (Strings.Room.sharedMediaEmptyTitle, en: "No media yet", ru: "Здесь пока нет медиа")
     ]
 
     @Test("app strings resolve in English and in Russian")

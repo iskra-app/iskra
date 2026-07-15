@@ -247,6 +247,12 @@ public enum Strings {
         public static let searchClose = LocalizedStringResource("room.searchClose", bundle: bundle)
         public static let searchEmptyTitle = LocalizedStringResource("room.searchEmptyTitle", bundle: bundle)
 
+        /// The room's shared media: a grid of pictures and videos, a list of files.
+        public static let sharedMedia = LocalizedStringResource("room.sharedMedia", bundle: bundle)
+        public static let sharedMediaEmptyTitle = LocalizedStringResource("room.sharedMediaEmptyTitle", bundle: bundle)
+        public static let sharedMediaEmptyMessage = LocalizedStringResource("room.sharedMediaEmptyMessage", bundle: bundle)
+        public static let galleryLoadEarlier = LocalizedStringResource("room.galleryLoadEarlier", bundle: bundle)
+
         /// The header above a conversation, and the screen behind it.
         public static let openDetails = LocalizedStringResource("room.openDetails", bundle: bundle)
         public static let detailsTitle = LocalizedStringResource("room.detailsTitle", bundle: bundle)

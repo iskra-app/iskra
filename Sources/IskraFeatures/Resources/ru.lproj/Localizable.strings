@@ -417,6 +417,12 @@
 "room.searchPrompt" = "Поиск по этому чату";
 "room.searchClose" = "Закрыть";
 "room.searchEmptyTitle" = "Ничего не нашлось";
+
+/* Медиа комнаты: сетка фото и видео, список файлов. */
+"room.sharedMedia" = "Медиа и файлы";
+"room.sharedMediaEmptyTitle" = "Здесь пока нет медиа";
+"room.sharedMediaEmptyMessage" = "Фото, видео и файлы из этого чата появятся здесь.";
+"room.galleryLoadEarlier" = "Показать более раннее";
 "room.unpin" = "Открепить";
 
 /* The opened photo or video: what you can do with it besides look at it. */
