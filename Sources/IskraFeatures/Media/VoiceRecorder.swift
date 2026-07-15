@@ -133,6 +133,10 @@ public final class VoiceRecorder {
 
             guard recorder.record(forDuration: Self.maximumDuration) else {
                 Log.media.error("the microphone would not start")
+                // The session was activated just above and is now ours for nothing — hand it back,
+                // or whatever was playing before the recording never comes back. The two guards
+                // higher up already do this; the recorder-failed paths used to walk past it.
+                AudioSession.release()
                 state = .unavailable
                 return
             }
@@ -146,6 +150,7 @@ public final class VoiceRecorder {
             startSampling()
         } catch {
             Log.media.error("the recorder would not open: \(Log.describe(error), privacy: .public)")
+            AudioSession.release()
             state = .unavailable
         }
     }
