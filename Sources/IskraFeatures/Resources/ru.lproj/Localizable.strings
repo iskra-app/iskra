@@ -441,6 +441,25 @@
 "roomList.new.start" = "Начать";
 "roomList.new.openMeansUnencrypted" = "Открытую комнату читает каждый, кто в неё зашёл, поэтому шифрования в ней нет. В закрытой — есть.";
 
+/* Свайпы по строке чата, и их дублёры для VoiceOver. */
+"roomList.swipe.markRead" = "Прочитано";
+"roomList.swipe.markUnread" = "Непрочитано";
+"roomList.swipe.pin" = "Закрепить";
+"roomList.swipe.unpin" = "Открепить";
+"roomList.swipe.archive" = "В архив";
+"roomList.swipe.unarchive" = "Из архива";
+"roomList.swipe.delete" = "Удалить";
+"roomList.swipe.leaveConfirmTitle" = "Выйти из чата?";
+"roomList.swipe.leaveConfirmMessage" = "Вы выйдете из комнаты и больше не будете получать сообщения. Удалить чат целиком в Matrix нельзя — можно только выйти самому.";
+"roomList.swipe.leaveConfirm" = "Выйти";
+"roomList.swipe.cancel" = "Отмена";
+
+/* Архив: полка для отложенных чатов и дорога обратно к ним. */
+"roomList.archive.title" = "Архив";
+"roomList.archive.entry" = "Архив (%lld)";
+"roomList.archive.emptyTitle" = "В архиве пусто";
+"roomList.archive.emptyMessage" = "Смахните чат влево и уберите его в архив — он не будет мешать в общем списке, но и никуда не денется.";
+
 /* Насколько громко комната может вас перебивать. */
 "room.manage.alerts" = "Уведомления";
 "room.manage.alertsAll" = "Все сообщения";

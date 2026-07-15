@@ -38,6 +38,11 @@ public struct RoomListView: View {
 
     @State private var searchText = ""
     @State private var isShowingSettings = false
+    @State private var isShowingArchive = false
+
+    /// The room a "Delete" swipe is asking about. Leaving is not undoable — Matrix has no delete,
+    /// only `leave()` — so the swipe arms a confirmation rather than firing straight away.
+    @State private var roomToLeave: RoomSummary?
 
     /// Offline, the app is a *reader*. Everything that would have to ask the server — making a room,
     /// answering an invitation — is turned off rather than left to fail on the last press. Reading
@@ -72,6 +77,7 @@ public struct RoomListView: View {
             if isSearching {
                 searchResults
             } else {
+                archiveEntry
                 rooms
             }
         }
@@ -131,6 +137,32 @@ public struct RoomListView: View {
         // hand-rolled transition. That is what buys the stock push, the back button and
         // the swipe back — none of which is worth reimplementing, and all of which is
         // noticeably wrong when you do.
+        // Leaving is the one swipe that cannot be taken back, so it asks first — and says the true
+        // thing, that "delete" here means leaving a room you cannot delete.
+        .confirmationDialog(Text(Strings.RoomList.Swipe.leaveConfirmTitle),
+                            isPresented: Binding(get: { roomToLeave != nil },
+                                                 set: { if !$0 { roomToLeave = nil } }),
+                            titleVisibility: .visible,
+                            presenting: roomToLeave) { room in
+            Button(String(app: Strings.RoomList.Swipe.leaveConfirm), role: .destructive) {
+                Task { await session.roomList.leave(roomID: room.id) }
+                roomToLeave = nil
+            }
+            Button(String(app: Strings.RoomList.Swipe.cancel), role: .cancel) {
+                roomToLeave = nil
+            }
+        } message: { _ in
+            Text(Strings.RoomList.Swipe.leaveConfirmMessage)
+        }
+        .navigationDestination(isPresented: $isShowingArchive) {
+            ArchiveView(session: session) { roomID in
+                // Opening a chat from the archive drops back to the main column and selects it —
+                // the detail follows the selection, and the archive is a place you came from, not
+                // one you stay in to read.
+                selectedRoomID = roomID
+                isShowingArchive = false
+            }
+        }
         .navigationDestination(isPresented: $isShowingSettings) {
             // In a sidebar the system pushes without giving the pushed screen a way back,
             // so settings has to draw its own. On iPhone it must not — there is already
@@ -243,9 +275,31 @@ public struct RoomListView: View {
                 } else {
                     RoomRow(room: room)
                         .tag(room.id)
+                        .roomListSwipeActions(room: room,
+                                              roomList: session.roomList,
+                                              onLeave: { roomToLeave = room })
                 }
             }
             .separatorsBetweenRowsOnly(isFirst: index == 0, isLast: index == rooms.count - 1)
+        }
+    }
+
+    /// The way into the archive, shown only when there is something in it. A quiet row at the top of
+    /// the list — the same place Telegram keeps it — rather than a permanent piece of chrome for a
+    /// shelf that is usually empty.
+    @ViewBuilder
+    private var archiveEntry: some View {
+        let archived = session.roomList.archivedRooms
+        if !archived.isEmpty {
+            Button {
+                isShowingArchive = true
+            } label: {
+                Label(String(app: Strings.RoomList.Archive.entry(archived.count)),
+                      systemImage: "archivebox")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
         }
     }
 
@@ -309,8 +363,9 @@ private extension View {
     }
 }
 
-/// One conversation in the list.
-private struct RoomRow: View {
+/// One conversation in the list. Internal, not private, so the archive screen renders its rows the
+/// same way the main list does — an archived chat should look like exactly what it is.
+struct RoomRow: View {
     let room: RoomSummary
 
     var body: some View {

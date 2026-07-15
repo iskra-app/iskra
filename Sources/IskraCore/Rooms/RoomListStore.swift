@@ -546,16 +546,26 @@ public final class RoomListStore {
         guard !Task.isCancelled else { return }
         // One list in, two lists out: the archive is everything the user swept aside, the main list
         // is the rest. Both keep the same recency-and-pins order.
-        let (archived, active) = summaries.reduce(into: ([RoomSummary](), [RoomSummary]())) { acc, summary in
-            if summary.isArchived {
-                acc.0.append(summary)
-            } else {
-                acc.1.append(summary)
-            }
-        }
+        let (active, archived) = Self.partitionArchived(summaries)
         rooms = Self.byRecency(active)
         archivedRooms = Self.byRecency(archived)
         isLoadingInitialRooms = false
+    }
+
+    /// Splits the summaries into the ones the main list shows and the ones the archive holds. Pulled
+    /// out and `static` so the split is testable without a homeserver behind it — it is the whole of
+    /// what tells the archive apart from the list.
+    static func partitionArchived(_ summaries: [RoomSummary]) -> (active: [RoomSummary], archived: [RoomSummary]) {
+        var active: [RoomSummary] = []
+        var archived: [RoomSummary] = []
+        for summary in summaries {
+            if summary.isArchived {
+                archived.append(summary)
+            } else {
+                active.append(summary)
+            }
+        }
+        return (active, archived)
     }
 
     // MARK: - Invitations
