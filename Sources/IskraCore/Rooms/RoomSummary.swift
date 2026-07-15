@@ -13,7 +13,7 @@ import MatrixRustSDK
 ///
 /// Only the two states the list can be in. `.left` and `.banned` are filtered out before they get
 /// here, and `.knocked` is a door this app does not knock on.
-public enum RoomMembership: Sendable, Equatable {
+public enum RoomMembership: Sendable, Equatable, Hashable {
     case joined
     case invited
 
@@ -33,7 +33,7 @@ public enum RoomMembership: Sendable, Equatable {
 /// The UI never shows the words "E2EE", "Megolm" or "encryption state". It shows a
 /// lock and a sentence. This enum is the seam between the protocol's vocabulary and
 /// the user's.
-public enum PrivacyStatus: Sendable, Equatable {
+public enum PrivacyStatus: Sendable, Equatable, Hashable {
     /// Only the people in the conversation can read it.
     case protected
     /// The server can read it. True for public rooms and legacy unencrypted ones.
@@ -68,7 +68,7 @@ public enum PrivacyStatus: Sendable, Equatable {
 }
 
 /// A row in the conversation list. A snapshot: cheap to diff, safe to hand to SwiftUI.
-public struct RoomSummary: Sendable, Identifiable, Equatable {
+public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
     public let id: String
     public let name: String
     public let avatarURL: String?

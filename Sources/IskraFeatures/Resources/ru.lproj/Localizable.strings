@@ -427,6 +427,11 @@
 "room.sharedMediaEmptyTitle" = "Здесь пока нет медиа";
 "room.sharedMediaEmptyMessage" = "Фото, видео и файлы из этого чата появятся здесь.";
 "room.galleryLoadEarlier" = "Показать более раннее";
+
+/* Пространства и их содержимое. */
+"room.spaceLabel" = "Пространство";
+"room.spaceEmptyTitle" = "В пространстве пусто";
+"room.spaceEmptyMessage" = "Комнаты этого пространства появятся здесь.";
 "room.unpin" = "Открепить";
 
 /* The opened photo or video: what you can do with it besides look at it. */
