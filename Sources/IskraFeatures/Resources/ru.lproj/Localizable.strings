@@ -115,6 +115,10 @@
 "settings.reactions" = "Реакции";
 
 "settings.storage" = "Хранилище";
+"settings.blocked" = "Заблокированные";
+"settings.blockedEmptyTitle" = "Никто не заблокирован";
+"settings.blockedEmptyMessage" = "Заблокированные люди появятся здесь. Их сообщения вы не увидите.";
+"settings.unblock" = "Разблокировать";
 
 /* Explains why the settings above it are greyed out. Says what will happen, not what is missing. */
 "settings.moreSoon" = "Остальные настройки скоро появятся.";
@@ -355,6 +359,9 @@
 
 /* Меню и форма жалобы. */
 "message.menu.report" = "Пожаловаться";
+"message.menu.block" = "Заблокировать";
+"message.menu.blockConfirm" = "Заблокировать %@?";
+"message.menu.blockConfirmMessage" = "Вы перестанете получать сообщения этого человека. Разблокировать можно в настройках.";
 "message.report.title" = "Пожаловаться на сообщение";
 "message.report.explanation" = "Жалоба уйдёт модераторам сервера. Можно коротко описать, что не так — а можно и без этого.";
 "message.report.reasonPrompt" = "Что случилось? (необязательно)";

@@ -73,6 +73,9 @@ struct MessageRow: View {
     /// Whether the report form is up for this message.
     @State private var isReporting = false
 
+    /// Whether the "block this sender?" confirmation is up.
+    @State private var isConfirmingBlock = false
+
     /// How far the bubble has been dragged toward the centre in a swipe-to-reply, and whether that
     /// drag has passed the point where letting go fires the reply. The offset springs back either
     /// way — the swipe is a shortcut that quotes the message, not a thing that flies off the screen.
@@ -88,6 +91,9 @@ struct MessageRow: View {
     /// Who *you* are, for telling a mention of you from a mention of anyone else — see `paintedBody`.
     @Environment(\.currentUserID) private var currentUserID
     @Environment(\.currentUserName) private var currentUserName
+
+    /// The account's block list, for blocking a message's sender from the menu.
+    @Environment(\.blockStore) private var blockStore
 
     /// The emoji a double tap leaves. The user's, chosen once in settings and read by every
     /// row in every conversation — see `QuickReaction`.
@@ -404,6 +410,16 @@ struct MessageRow: View {
             .sheet(isPresented: $isReporting) {
                 ReportSheet(onReport: onReport)
             }
+            .confirmationDialog(Text(Strings.Message.Menu.blockConfirm(message.senderName)),
+                                isPresented: $isConfirmingBlock,
+                                titleVisibility: .visible) {
+                Button(String(app: Strings.Message.Menu.block), role: .destructive) {
+                    let sender = message.senderID
+                    Task { await blockStore?.block(userID: sender) }
+                }
+            } message: {
+                Text(Strings.Message.Menu.blockConfirmMessage)
+            }
     }
 
     /// A message's words, with the links in them live but held, and the mentions in them painted.
@@ -522,6 +538,15 @@ struct MessageRow: View {
                 isReporting = true
             } label: {
                 Label(Strings.Message.Menu.report, systemImage: "exclamationmark.bubble")
+            }
+        }
+
+        // Block the sender — someone else, and only when there is a block list to add them to.
+        if !message.isOwn && blockStore != nil {
+            Button(role: .destructive) {
+                isConfirmingBlock = true
+            } label: {
+                Label(Strings.Message.Menu.block, systemImage: "hand.raised")
             }
         }
 

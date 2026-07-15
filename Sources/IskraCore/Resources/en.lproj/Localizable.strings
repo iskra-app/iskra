@@ -127,6 +127,8 @@
 
 /* The reset failed — the rare case where failure is the good news: nothing was lost. */
 "account.startOverFailed" = "Couldn’t start again. Try again — for now, everything is as it was.";
+"account.blockFailed" = "Couldn’t block them. Try again.";
+"account.unblockFailed" = "Couldn’t unblock them. Try again.";
 
 /* Pushes. A message speaks for itself — there is nothing to translate but the invitation. */
 "push.invite" = "%@ invites you to the chat";

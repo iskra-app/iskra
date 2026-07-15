@@ -116,6 +116,7 @@ public struct IskraRootView: View {
                     // else, without being given the session to do it.
                     .environment(\.currentUserID, session.userID)
                     .environment(\.currentUserName, session.displayName)
+                    .environment(\.blockStore, session.blocked)
                     // Notifications are asked for *here*, and the timing is the whole of the
                     // decision. On the sign-in screen the question is about nothing — no account,
                     // no chats, nothing that could notify anybody — and it gets the answer a
