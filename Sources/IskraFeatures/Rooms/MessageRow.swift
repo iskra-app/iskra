@@ -11,44 +11,13 @@ struct MessageRow: View {
     /// several people they are the only way to know who said what, so they stay.
     let isDirectChat: Bool
 
-    /// Starts the room's send queue again, for the one message shape that can ask for it:
-    /// a failure the SDK called recoverable. A row cannot do this itself — only the store
-    /// owns the room — so, like sign-out, it is reported upward rather than done here.
-    var onRetry: () -> Void = {}
-
-    /// Adds an emoji, or takes it back if it is already ours. One callback for both,
-    /// because a reaction is a toggle — see `TimelineStore.toggleReaction`.
-    var onToggleReaction: (String) -> Void = { _ in }
-
-    /// Takes the message back for everyone. Only ever offered where `Message.canDelete`.
-    var onDelete: () -> Void = {}
-
-    /// Throws away a message that never left the device. A different act from `onDelete`,
-    /// which redacts an event the room has already seen — see `TimelineStore.discard`.
-    var onDiscard: () -> Void = {}
-
-    /// Starts an answer to this message. The composer, not the row, is where the answer is
-    /// actually written — so this only says which message the user chose.
-    var onReply: () -> Void = {}
-
-    /// Goes back and changes what was written. Only the user's own words — see `Message.canEdit`.
-    var onEdit: () -> Void = {}
-
-    /// Pins the message to the top of the room, or takes it off again. One callback, because
-    /// the user is pressing one item whose word depends on where the message already is.
-    var onTogglePin: () -> Void = {}
+    /// Everything the row can ask the conversation to do — see `MessageHandlers`, which is
+    /// where each one is explained.
+    var handlers = MessageHandlers()
 
     /// Whether this message is currently pinned, which is the whole of what the menu item
     /// needs to know to say the right word.
     var isPinned: Bool = false
-
-    /// Goes to the message this one is answering. Pressed on the quote inside the bubble; only
-    /// `RoomView` can actually scroll the conversation, so it is reported upward.
-    var onOpenReply: (String) -> Void = { _ in }
-
-    /// Reports this message to the moderators, carrying the user's reason. Only `RoomView` holds the
-    /// store that can send it, so the reason is handed upward.
-    var onReport: (String) -> Void = { _ in }
 
     /// Whether the conversation has just jumped *to* this message, and it is briefly lit so that
     /// the eye can find it.
@@ -276,7 +245,7 @@ struct MessageRow: View {
                 }
             }
             .onEnded { _ in
-                if replyArmed { onReply() }
+                if replyArmed { handlers.onReply() }
                 replyArmed = false
                 replyDragOffset = 0
             }
@@ -331,7 +300,9 @@ struct MessageRow: View {
                     // `HStack` is what buys that: the row around it stays bottom-aligned,
                     // so the clock is exactly where it was.
                     HStack(alignment: .center, spacing: Theme.Spacing.close) {
-                        SendFailureBadge(failure: failure, onRetry: onRetry, onDiscard: onDiscard)
+                        SendFailureBadge(failure: failure,
+                                         onRetry: handlers.onRetry,
+                                         onDiscard: handlers.onDiscard)
                         actionableContent
                     }
                 } else {
@@ -384,7 +355,7 @@ struct MessageRow: View {
                 // again, harder, and go on tapping. See `isOffline`.
                 guard message.canReact, !isOffline else { return }
                 quickTaps += 1
-                onToggleReaction(quickReaction.key)
+                handlers.onToggleReaction(quickReaction.key)
             })
             // The knock that says the reaction went. Without it a double tap on a message
             // whose pill appears a beat later feels like nothing happened.
@@ -393,7 +364,7 @@ struct MessageRow: View {
             .confirmationDialog(Text(Strings.Message.Menu.deleteConfirmTitle),
                                 isPresented: $isConfirmingDelete,
                                 titleVisibility: .visible) {
-                Button(String(app: Strings.Message.Menu.delete), role: .destructive, action: onDelete)
+                Button(String(app: Strings.Message.Menu.delete), role: .destructive, action: handlers.onDelete)
             } message: {
                 Text(Strings.Message.Menu.deleteConfirmMessage)
             }
@@ -414,7 +385,7 @@ struct MessageRow: View {
                 }
             }
             .sheet(isPresented: $isReporting) {
-                ReportSheet(onReport: onReport)
+                ReportSheet(onReport: handlers.onReport)
             }
             .sheet(isPresented: $isForwarding) {
                 if let forwarding {
@@ -492,7 +463,7 @@ struct MessageRow: View {
             ControlGroup {
                 ForEach(QuickReaction.allCases) { reaction in
                     Button {
-                        onToggleReaction(reaction.key)
+                        handlers.onToggleReaction(reaction.key)
                     } label: {
                         Text(reaction.key)
                     }
@@ -502,13 +473,13 @@ struct MessageRow: View {
         }
 
         if message.canReply {
-            Button(action: onReply) {
+            Button(action: handlers.onReply) {
                 Label(Strings.Message.Menu.reply, systemImage: "arrowshape.turn.up.left")
             }
         }
 
         if message.canEdit && !isOffline {
-            Button(action: onEdit) {
+            Button(action: handlers.onEdit) {
                 Label(Strings.Message.Menu.edit, systemImage: "pencil")
             }
         }
@@ -537,7 +508,7 @@ struct MessageRow: View {
         // rather than predicted here, because a menu item that quietly disappears teaches the
         // user nothing about why.
         if message.canReply && !isOffline {
-            Button(action: onTogglePin) {
+            Button(action: handlers.onTogglePin) {
                 Label(isPinned ? Strings.Message.Menu.unpin : Strings.Message.Menu.pin,
                       systemImage: isPinned ? "pin.slash" : "pin")
             }
@@ -637,7 +608,7 @@ struct MessageRow: View {
                    alignment: message.isOwn ? .trailing : .leading) {
             ForEach(message.reactions) { reaction in
                 ReactionPill(reaction: reaction) {
-                    onToggleReaction(reaction.key)
+                    handlers.onToggleReaction(reaction.key)
                 }
                 // Each pill grows from nothing rather than fading in on the spot, so an
                 // emoji someone else just left reads as arriving.
@@ -866,7 +837,7 @@ struct MessageRow: View {
     private var quote: some View {
         if let reply = message.replyTo {
             ReplyQuote(reply: reply, isOwn: message.isOwn) {
-                onOpenReply(reply.eventID)
+                handlers.onOpenReply(reply.eventID)
             }
         }
     }
