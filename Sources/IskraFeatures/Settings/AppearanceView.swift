@@ -118,7 +118,7 @@ struct AppearanceView: View {
     private func bubble(_ line: LocalizedStringResource, isOwn: Bool) -> some View {
         Text(line)
             .font(.callout)
-            .messageBubble(isOwn: isOwn)
+            .messageBubble(isOwn ? .own : .incoming)
             .frame(maxWidth: .infinity, alignment: isOwn ? .trailing : .leading)
     }
 

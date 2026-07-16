@@ -149,7 +149,10 @@ struct FilePreview: UIViewControllerRepresentable {
 struct FileBubble: View {
     let attachment: Attachment
     let systemImage: String
-    let isOwn: Bool
+
+    /// The fill behind the icon and the name — or, on `.plain`, none: the icon is what says
+    /// this is a file rather than a sentence, and it says it without a slab behind it.
+    let style: BubbleStyle
 
     @Environment(\.mediaLoader) private var loader
 
@@ -177,7 +180,7 @@ struct FileBubble: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
-        .messageBubble(isOwn: isOwn)
+        .messageBubble(style)
         .accessibilityLabel(Text(attachment.filename))
         .accessibilityHint(Text(Strings.Message.Media.openFile))
         #if !os(macOS)

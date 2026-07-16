@@ -29,33 +29,75 @@ public struct BubbleShape: Shape, InsettableShape {
     }
 }
 
+/// What a message is dressed in.
+///
+/// Not *whose it is*. That is what this used to be — a `Bool` called `isOwn` — and the two are
+/// the same question only for as long as there is exactly one way to draw a conversation. The
+/// compact timeline dresses every message in nothing, the reader's own included, and a `Bool`
+/// has no third answer to give.
+///
+/// The distinction earns its keep in `.plain`: because a bubble that draws no fill and spends
+/// no padding is the *identity*, the fourteen kinds of message can be drawn by one `switch`
+/// that never asks which timeline it is in. The wrapper learned a third answer so that
+/// everything inside it could stay exactly as it was. See `MessageContent`.
+public enum BubbleStyle: Sendable, Hashable {
+    /// The reader's own: the accent they picked, and whatever stays readable on it.
+    case own
+
+    /// Somebody else's: the neutral grey.
+    case incoming
+
+    /// Nothing at all — no fill, no padding, the ordinary ink.
+    case plain
+}
+
 /// The fill and the padding of a bubble.
 ///
 /// A modifier rather than a plain `View` extension, because the colour of your own bubble
 /// is the accent the user picked and that is read from the environment — which a free
 /// function on `View` has no access to.
 struct MessageBubble: ViewModifier {
-    let isOwn: Bool
+    let style: BubbleStyle
 
     @Environment(\.accent) private var accent
+
+    /// Wider than the padding above and below, so the words sit in the middle of the
+    /// bubble rather than pressed against its rounded sides — the corners eat into
+    /// the left and right edges in a way they do not eat into the top and bottom.
+    /// Both come off the same scale of fours, so the gap between them holds when
+    /// either one moves.
+    private var horizontal: CGFloat { style == .plain ? 0 : Theme.Spacing.roomy }
+    private var vertical: CGFloat { style == .plain ? 0 : Theme.Spacing.normal }
+
+    private var fill: AnyShapeStyle {
+        switch style {
+        case .own: accent.bubble
+        case .incoming: AnyShapeStyle(Color.incomingBubble)
+        case .plain: AnyShapeStyle(.clear)
+        }
+    }
 
     func body(content: Content) -> some View {
         let shape = BubbleShape()
 
-        // Wider than the padding above and below, so the words sit in the middle of the
-        // bubble rather than pressed against its rounded sides — the corners eat into
-        // the left and right edges in a way they do not eat into the top and bottom.
-        // Both come off the same scale of fours, so the gap between them holds when
-        // either one moves.
         return content
-            .padding(.horizontal, Theme.Spacing.roomy)
-            .padding(.vertical, Theme.Spacing.normal)
-            .foregroundStyle(isOwn ? accent.onBubble : AnyShapeStyle(.primary))
-            .background(isOwn ? accent.bubble : AnyShapeStyle(Color.incomingBubble),
-                        in: shape)
+            .padding(.horizontal, horizontal)
+            .padding(.vertical, vertical)
+            .foregroundStyle(style == .own ? accent.onBubble : AnyShapeStyle(.primary))
+            .background(fill, in: shape)
             // Lets a long-press menu and drag preview take the bubble's shape rather
             // than a rectangle around it.
+            //
+            // Plain spends no padding, and the hit area would collapse onto the glyphs with
+            // it — so it is padded out, shaped, and padded back in. The gesture that needs
+            // this is the double tap: settings promises it on every message, and on a plain
+            // "Да" the promise would come down to landing a finger inside two letters. The
+            // same trick, and the same reason, as `SendFailureBadge.touchInset`.
+            .padding(.horizontal, style == .plain ? Theme.Spacing.roomy : 0)
+            .padding(.vertical, style == .plain ? Theme.Spacing.normal : 0)
             .contentShape(shape)
+            .padding(.horizontal, style == .plain ? -Theme.Spacing.roomy : 0)
+            .padding(.vertical, style == .plain ? -Theme.Spacing.normal : 0)
     }
 }
 
@@ -67,7 +109,7 @@ struct MessageBubble: ViewModifier {
 /// side, the neutral grey on the other, so a photo still reads as belonging to the same
 /// side of the conversation as the words around it.
 struct PictureBorder: ViewModifier {
-    let isOwn: Bool
+    let style: BubbleStyle
 
     @Environment(\.accent) private var accent
 
@@ -76,26 +118,37 @@ struct PictureBorder: ViewModifier {
             // `strokeBorder`, not `stroke`: the picture is clipped to this same shape, and
             // a line straddling that edge would have its outer half cut away and come out
             // half as thick as asked for — see `BubbleShape.inset`.
+            //
+            // Plain draws no edge at all. The outline stands in for the bubble a picture
+            // replaced, and where there are no bubbles there is nothing for it to stand in
+            // for — see `BubbleStyle`.
             BubbleShape()
-                .strokeBorder(isOwn ? accent.bubble : AnyShapeStyle(Color.incomingBubble),
-                              lineWidth: Theme.Border.hairline)
+                .strokeBorder(border, lineWidth: Theme.Border.hairline)
+        }
+    }
+
+    private var border: AnyShapeStyle {
+        switch style {
+        case .own: accent.bubble
+        case .incoming: AnyShapeStyle(Color.incomingBubble)
+        case .plain: AnyShapeStyle(.clear)
         }
     }
 }
 
 public extension View {
     /// Draws the edge of the bubble a picture stands in for. See `PictureBorder`.
-    func pictureBorder(isOwn: Bool) -> some View {
-        modifier(PictureBorder(isOwn: isOwn))
+    func pictureBorder(_ style: BubbleStyle) -> some View {
+        modifier(PictureBorder(style: style))
     }
 
-    /// Dresses a message in its bubble.
+    /// Dresses a message in its bubble — or, on `.plain`, in nothing at all.
     ///
     /// Note what this does *not* do: apply glass. Bubbles are content, and the HIG
     /// reserves Liquid Glass for the navigation layer. A glass bubble would also be
     /// unreadable over a photo, which is exactly where bubbles end up.
-    func messageBubble(isOwn: Bool) -> some View {
-        modifier(MessageBubble(isOwn: isOwn))
+    func messageBubble(_ style: BubbleStyle) -> some View {
+        modifier(MessageBubble(style: style))
     }
 
     /// The bubble a message leaves behind once it has been taken back.
