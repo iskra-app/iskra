@@ -112,26 +112,70 @@ struct MessageRowLayoutTests {
         #endif
     }
 
-    private func render(isDirectChat: Bool, named name: String) throws {
-        let view = VStack(spacing: 0) {
-            ForEach(conversation) { message in
-                MessageRow(message: message, isDirectChat: isDirectChat)
-            }
+    /// The same conversation, drawn as the plain column instead — see `CompactMessageRow`.
+    ///
+    /// The fixture earns its keep unchanged: the second message is a continuation, so the run
+    /// header has to appear exactly once and the line under it has to indent to the same column;
+    /// the deleted one exercises the tombstone with no bubble around it to sit in; the failed
+    /// one puts the badge at the end of a line rather than in front of it.
+    @Test("the plain column draws one header per run, and lines under it")
+    func compactRoom() throws {
+        try render(named: "messages-compact") { message in
+            CompactMessageRow(message: message)
         }
-        .frame(width: 390)
-        // What `RoomView` measures and hands down in the app. Without it the rows are drawn
-        // with no idea how wide the conversation is, and the one thing that depends on that —
-        // how far a bubble may run before the far edge pushes back — would be tested at a
-        // width the app never uses. See `MessageRow.emptyColumn`.
-        .environment(\.timelineWidth, 390)
-        .padding()
-        .background(.background)
+    }
 
-        let renderer = ImageRenderer(content: view)
-        renderer.scale = 2
+    #if os(macOS)
+    /// Your own message and somebody else's come out the same height, because both carry a name.
+    ///
+    /// This is the decision that has no analogue in the bubbles, and the one most likely to be
+    /// "tidied" away by somebody who notices the app never named your own messages before. It
+    /// cannot be checked by handing the row an `isDirectChat` — it has none, deliberately — so
+    /// what is checked is the consequence: nothing in the plain column may depend on whose
+    /// message it is, and a header dropped from your own would show up here as two different
+    /// heights.
+    @Test("the plain column names you as readily as anybody else")
+    func compactNamesEverySender() throws {
+        let mine = try #require(rendered([message("Yes", isOwn: true, at: 0)]) {
+            CompactMessageRow(message: $0)
+        })
+        let theirs = try #require(rendered([message("Yes", isOwn: false, at: 0)]) {
+            CompactMessageRow(message: $0)
+        })
 
+        #expect(mine.size.height == theirs.size.height,
+                "your own line came out \(mine.size.height)pt against \(theirs.size.height)pt — one of them is missing its name")
+    }
+
+    /// The reason anybody chooses this: a run of one person talking is *shorter* without the
+    /// bubbles. A conversation that alternates would prove nothing — the plain column pays a
+    /// header per speaker, and the bubbles pay a name — so the fixture here is one long run.
+    @Test("a run of one person talking is shorter without the bubbles")
+    func aRunIsShorterWithoutBubbles() throws {
+        let run = (0..<5).map {
+            message("Same person, still talking, line \($0)",
+                    isOwn: false, at: $0, isContinuation: $0 > 0)
+        }
+
+        let bubbles = try #require(rendered(run) { MessageRow(message: $0, isDirectChat: false) })
+        let compact = try #require(rendered(run) { CompactMessageRow(message: $0) })
+
+        #expect(compact.size.height < bubbles.size.height,
+                "the plain column came out \(compact.size.height)pt against the bubbles' \(bubbles.size.height)pt — it is not saving anything")
+    }
+    #endif
+
+    private func render(isDirectChat: Bool, named name: String) throws {
+        try render(named: name) { message in
+            MessageRow(message: message, isDirectChat: isDirectChat)
+        }
+    }
+
+    private func render(named name: String,
+                        @ViewBuilder row: @escaping (Message) -> some View) throws {
         #if os(macOS)
-        let image = try #require(renderer.nsImage, "the conversation failed to render at all")
+        let image = try #require(rendered(conversation, row: row),
+                                 "the conversation failed to render at all")
 
         // A conversation that renders as a sliver is broken, whatever the picture shows.
         #expect(image.size.width > 380)
@@ -145,4 +189,29 @@ struct MessageRowLayoutTests {
         try png.write(to: directory.appending(component: "\(name).png"))
         #endif
     }
+
+    #if os(macOS)
+    /// One conversation, drawn by whichever row was asked for.
+    ///
+    /// `timelineWidth` is what `RoomView` measures and hands down in the app. Without it the rows
+    /// are drawn with no idea how wide the conversation is, and the one thing that depends on
+    /// that — how far a bubble may run before the far edge pushes back — would be tested at a
+    /// width the app never uses. See `MessageRow.emptyColumn`.
+    private func rendered(_ messages: [Message],
+                       @ViewBuilder row: @escaping (Message) -> some View) -> NSImage? {
+        let view = VStack(spacing: 0) {
+            ForEach(messages) { message in
+                row(message)
+            }
+        }
+        .frame(width: 390)
+        .environment(\.timelineWidth, 390)
+        .padding()
+        .background(.background)
+
+        let renderer = ImageRenderer(content: view)
+        renderer.scale = 2
+        return renderer.nsImage
+    }
+    #endif
 }

@@ -258,32 +258,10 @@ struct MessageRow: View {
     /// bubble has to fight the last line of text for room, and loses that fight badly
     /// when the last line is long.
     private var timestamp: some View {
-        HStack(spacing: Theme.Spacing.tight) {
-            // "изменено" goes here rather than inside the bubble, and that is not where other
-            // messengers put it — they have the clock in the bubble's corner to sit it beside.
-            // Ours is outside, in this quiet grey column of facts about the message, and
-            // "changed after it was sent" is exactly such a fact. Inside the bubble it would
-            // have to fight the last line of text for room, or force a line of its own under a
-            // one-word message.
-            if message.isEdited {
-                Text(Strings.Message.edited)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-
-            Text(message.timestamp, format: .dateTime.hour().minute())
-                .font(.caption2.monospacedDigit())
-                .foregroundStyle(.secondary)
-
-            // A failure is not a delivery state among others, and it does not belong in
-            // this quiet grey row: it gets the badge beside the bubble instead.
-            if message.isOwn, let delivery = message.delivery, !delivery.hasFailed {
-                DeliveryTick(status: delivery)
-            }
-        }
-        // The clock must never squeeze the message it belongs to.
-        .fixedSize()
-        .padding(.bottom, Theme.Spacing.tight)
+        // Dropped onto the bubble's baseline, so a column of times lines up with the last line
+        // of each message rather than floating beside the middle of it.
+        MessageMarks(message: message)
+            .padding(.bottom, Theme.Spacing.tight)
     }
 
     /// The gap a message must leave on the far side of the conversation, so that a long one is
@@ -350,7 +328,7 @@ struct MessageRow: View {
 ///
 /// No glass. A reaction is content, it sits on content, and the HIG keeps Liquid Glass in
 /// the navigation layer — see `IskraDesign/Glass.swift`.
-private struct ReactionPill: View {
+struct ReactionPill: View {
     let reaction: MessageReaction
     let onToggle: () -> Void
 
@@ -395,7 +373,7 @@ private struct ReactionPill: View {
 }
 
 /// Sending, sent, read. Shown only on your own messages, and never as a raw word.
-private struct DeliveryTick: View {
+struct DeliveryTick: View {
     let status: DeliveryStatus
 
     var body: some View {
@@ -434,7 +412,7 @@ private struct DeliveryTick: View {
 /// can press and that answers nothing is worse than no mark at all, because it teaches the
 /// user that the app knows something it will not tell them. Pressing it now says what is
 /// wrong and what to do — and on the Mac hovering says it too, without a click.
-private struct SendFailureBadge: View {
+struct SendFailureBadge: View {
     let failure: SendFailure
 
     /// Sends this one message again. Only ever offered where that can work — see
