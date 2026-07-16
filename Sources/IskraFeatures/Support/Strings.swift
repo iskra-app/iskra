@@ -960,22 +960,65 @@ public enum Strings {
             }
         }
 
+        public static let layout = LocalizedStringResource("appearance.layout", bundle: bundle)
+        public static let layoutHelp = LocalizedStringResource("appearance.layoutHelp", bundle: bundle)
+
+        /// Bubbles, or the plain column. No `default` here either — a third layout should stop
+        /// the build rather than ship as the word "appearance.layout.timeline".
+        public static func layout(_ layout: MessageLayout) -> LocalizedStringResource {
+            switch layout {
+            case .bubbles: LocalizedStringResource("appearance.layout.bubbles", bundle: bundle)
+            case .compact: LocalizedStringResource("appearance.layout.compact", bundle: bundle)
+            }
+        }
+
         public static let accent = LocalizedStringResource("appearance.accent", bundle: bundle)
-        public static let accentHelp = LocalizedStringResource("appearance.accentHelp", bundle: bundle)
+
+        /// What the accent paints, which depends on how the conversation is drawn — and that is
+        /// not a nicety. The accent's whole reason for existing is the fill behind everything the
+        /// reader will ever say, and in the compact column there is no fill. A footer that went
+        /// on promising "your messages" there would be the settings screen describing a thing the
+        /// app no longer does. Same shape as `tintInterfaceMono`: the honest sentence for the
+        /// case the plain one does not cover.
+        public static func accentHelp(_ layout: MessageLayout) -> LocalizedStringResource {
+            switch layout {
+            case .bubbles: LocalizedStringResource("appearance.accentHelp", bundle: bundle)
+            case .compact: LocalizedStringResource("appearance.accentHelpCompact", bundle: bundle)
+            }
+        }
 
         /// The switch that washes the accent across the whole interface — see
         /// `AccentTheme.tintsInterfaceKey`. `tintInterfaceMono` is the footer it gets when the accent
         /// is the mono one and there is no colour to spread.
         public static let tintInterface = LocalizedStringResource("appearance.tintInterface", bundle: bundle)
-        public static let tintInterfaceHelp = LocalizedStringResource("appearance.tintInterfaceHelp", bundle: bundle)
         public static let tintInterfaceMono = LocalizedStringResource("appearance.tintInterfaceMono", bundle: bundle)
 
-        /// Three lines of a conversation that never happened, so that a colour can be judged as
+        /// "Normally the colour goes no further than…" — and what "normally" covers is one item
+        /// shorter in the compact column, where the messages were never in the list.
+        public static func tintInterfaceHelp(_ layout: MessageLayout) -> LocalizedStringResource {
+            switch layout {
+            case .bubbles: LocalizedStringResource("appearance.tintInterfaceHelp", bundle: bundle)
+            case .compact: LocalizedStringResource("appearance.tintInterfaceHelpCompact", bundle: bundle)
+            }
+        }
+
+        /// Four lines of a conversation that never happened, so that a colour can be judged as
         /// what it will actually be — the fill behind everything the user ever says — rather than
-        /// as a circle on a settings screen. The middle one is theirs, and is the one painted.
+        /// as a circle on a settings screen. The second one is theirs, and is the one painted.
         public static let previewAsk = LocalizedStringResource("appearance.previewAsk", bundle: bundle)
         public static let previewAnswer = LocalizedStringResource("appearance.previewAnswer", bundle: bundle)
         public static let previewReply = LocalizedStringResource("appearance.previewReply", bundle: bundle)
+
+        /// A second line from the same person, so that the preview contains a *run*. Without one
+        /// there is nothing for the compact layout's header to sit over, and the preview would
+        /// fail to show the one thing that layout does.
+        public static let previewFollowUp = LocalizedStringResource("appearance.previewFollowUp", bundle: bundle)
+
+        /// Who the other person in the invented conversation is. The bubbles never say — the side
+        /// of the screen does — and the compact column has nothing else to say it with. The
+        /// reader's own line borrows `Message.Spoken.you` rather than a second word meaning the
+        /// same thing.
+        public static let previewSender = LocalizedStringResource("appearance.previewSender", bundle: bundle)
 
         /// What the whole little exchange is called, for VoiceOver, which should hear one thing
         /// and not be walked through an invented conversation on its way to the colours.
