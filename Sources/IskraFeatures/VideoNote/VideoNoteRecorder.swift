@@ -62,20 +62,20 @@ public final class VideoNoteRecorder: NSObject {
 
     /// Where the frames arrive, and where every part of writing them down happens. A serial queue,
     /// so a `finish` dispatched onto it cannot land in the middle of a frame being appended.
-    private nonisolated let frames = DispatchQueue(label: "moscow.swag.iskra.videonote.frames")
+    nonisolated private let frames = DispatchQueue(label: "moscow.swag.iskra.videonote.frames")
 
     /// The two outputs the frames come down. `nonisolated(unsafe)` because the delegate callback
     /// has to tell them apart — it is handed *an* output and must know which — and that callback
     /// arrives on the capture queue. All it does there is compare identities, which is a read of a
     /// `let`; everything that configures them (`prepare`, `aim`) happens on the main actor.
-    private nonisolated(unsafe) let videoOutput = AVCaptureVideoDataOutput()
-    private nonisolated(unsafe) let audioOutput = AVCaptureAudioDataOutput()
+    nonisolated(unsafe) private let videoOutput = AVCaptureVideoDataOutput()
+    nonisolated(unsafe) private let audioOutput = AVCaptureAudioDataOutput()
 
     /// The take being written, if there is one. Held in a box rather than a property because it is
     /// read from the capture queue — by the sample buffer callbacks, which are the only things
     /// fast enough to care — and written from the main actor, which is where starting and stopping
     /// are decided.
-    private nonisolated let take = Take()
+    nonisolated private let take = Take()
 
     private var recordingStarted: Date?
     private var ticker: Task<Void, Never>?
@@ -105,7 +105,7 @@ public final class VideoNoteRecorder: NSObject {
     /// anything — the state, the session, or the closure that sends.
     private var generation = 0
 
-    public override init() {
+    override public init() {
         super.init()
     }
 
@@ -449,7 +449,7 @@ public final class VideoNoteRecorder: NSObject {
     ///
     /// On `frames`, and that is the point of dispatching at all: it is the queue the buffers
     /// arrive on, so a file closed there cannot be closed halfway through appending to it.
-    private nonisolated func close() async -> URL? {
+    nonisolated private func close() async -> URL? {
         await withCheckedContinuation { continuation in
             frames.async { [take] in
                 guard let writing = take.claim() else {
@@ -481,7 +481,7 @@ public final class VideoNoteRecorder: NSObject {
     /// so asking for the far side of it is a question with no answer. Papering over that with
     /// the default camera would give the Mac a "turn the camera round" button that turns
     /// nothing round.
-    private nonisolated static func lens(facing position: AVCaptureDevice.Position) -> AVCaptureDevice? {
+    nonisolated private static func lens(facing position: AVCaptureDevice.Position) -> AVCaptureDevice? {
         AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInWideAngleCamera],
                                          mediaType: .video,
                                          position: position).devices.first
@@ -534,7 +534,7 @@ final class Take: @unchecked Sendable {
 
 extension VideoNoteRecorder: AVCaptureVideoDataOutputSampleBufferDelegate,
                              AVCaptureAudioDataOutputSampleBufferDelegate {
-    public nonisolated func captureOutput(_ output: AVCaptureOutput,
+    nonisolated public func captureOutput(_ output: AVCaptureOutput,
                                           didOutput sampleBuffer: CMSampleBuffer,
                                           from connection: AVCaptureConnection) {
         guard let writing = take.current() else { return }

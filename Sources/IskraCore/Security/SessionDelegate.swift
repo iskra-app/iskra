@@ -78,7 +78,7 @@ final class SessionDelegate: ClientSessionDelegate {
         // already on disk. If there is neither, this is a refresh for a session we have no record
         // of, and inventing an ID for it would create a second set of directories for a store
         // that already exists somewhere else.
-        let existing = (try? sessionStore.loadSession()) ?? nil
+        let existing = (try? sessionStore.loadSession())
         guard let id = sessionID.withLock({ $0 }) ?? existing?.sessionID else {
             Log.session.error("a token was refreshed for a session with no ID; not saving it")
             return

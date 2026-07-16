@@ -50,7 +50,7 @@ public actor PushDecoder {
             return .failed("timed out after \(Self.budget)")
         } catch {
             Log.push.error("the push would not decrypt: \(Log.describe(error), privacy: .public)")
-            return .failed(String(describing: error))
+            return .failed(Log.describe(error))
         }
     }
 
@@ -69,7 +69,7 @@ public actor PushDecoder {
             // and the Keychain group granted to it *separately*, and a profile that forgot
             // one of them fails here and nowhere else.
             Log.push.error("the session would not open in this process: \(Log.describe(error), privacy: .public)")
-            return .failed(String(describing: error))
+            return .failed(Log.describe(error))
         }
 
         // `.multipleProcesses` is the reason the store lives in an App Group at all. It tells the

@@ -230,6 +230,11 @@ public final class TimelineStore {
         // And the pinned strip back up with the room, if this room ever had one. `stop()` is a
         // pause for both of them, and a pause only one of them woke from would leave the strip at
         // the top of the screen frozen on whatever was pinned when the reader last left.
+        //
+        // Guarded on the generation like everything else that spans the open: a `stop()` while
+        // `open()` was in flight leaves `open()` to bail on its own checks and return normally, and
+        // without this the pinned store would then be started for a room nobody is looking at.
+        guard generation == self.generation else { return }
         await pinnedStore?.start()
     }
 
@@ -1112,7 +1117,7 @@ public final class TimelineStore {
     public func draft() async -> String? {
         // Two ways to have no draft, and they flatten to the same answer: the call threw, or the
         // room simply has none.
-        guard let draft = (try? await room.loadComposerDraft(threadRoot: nil)) ?? nil else {
+        guard let draft = (try? await room.loadComposerDraft(threadRoot: nil)) else {
             return nil
         }
         return draft.plainText
@@ -1154,7 +1159,7 @@ public final class TimelineStore {
         for userID in userIDs where userID != ownUserID {
             // The name they are known by *in this room*, which is not always the name they are
             // known by elsewhere. The Matrix ID is what is left when they have chosen none.
-            let name = (try? await room.memberDisplayName(userId: userID)) ?? nil
+            let name = (try? await room.memberDisplayName(userId: userID))
             names.append(name ?? userID)
         }
 
