@@ -28,20 +28,8 @@ struct MessageRow: View {
     /// fact about the conversation — only one message in it is lit — and not about the row.
     var isHighlighted: Bool = false
 
+    /// The wash that lights a message the conversation has just jumped to.
     @Environment(\.accent) private var accent
-
-    /// A link the user tapped, held while they are asked whether they really mean to open it. A
-    /// message can say one thing and link to another — "our shared album" pointing at a phishing
-    /// page — so the address is shown in full, and nothing opens until they say so.
-    @State private var linkToConfirm: URL?
-
-    /// The real opener, captured before the message text overrides `openURL` to intercept taps.
-    /// The confirmation's "Open" hands the URL back to this.
-    @Environment(\.openURL) private var openURL
-
-    /// Who *you* are, for telling a mention of you from a mention of anyone else — see `paintedBody`.
-    @Environment(\.currentUserID) private var currentUserID
-    @Environment(\.currentUserName) private var currentUserName
 
     /// How wide the conversation is, measured by `RoomView` and handed down. A playing video
     /// note grows to fill it.
@@ -129,26 +117,6 @@ struct MessageRow: View {
                                 removal: .scale(scale: 0.85).combined(with: .opacity)))
     }
 
-    /// Whether the bubble has something inside it that has to be *pressed* — a play button, a
-    /// photograph that opens, a file that opens.
-    ///
-    /// It decides how the row is presented to VoiceOver, and the decision matters more than it
-    /// looks. `.combine` flattens a row into one element with one sentence, which is exactly right
-    /// for a message made of words: "Аня: привет, 14:32" is one thought, and making somebody swipe
-    /// through three fragments to hear it would be worse. But flattening a row also flattens the
-    /// button inside it — and for a voice message, a video note, a photograph or a file, that
-    /// button is the *entire message*. It was possible to hear that Аня had sent a voice message
-    /// and impossible to play it.
-    ///
-    /// So a row whose content can be pressed is a container to be entered rather than a sentence
-    /// to be read. Everything else stays one sentence.
-    private var hasPressableContent: Bool {
-        switch message.kind {
-        case .voice, .audio, .image, .video, .videoNote, .file: true
-        default: false
-        }
-    }
-
     // MARK: - The bubble, and what can be done to it
 
     /// The bubble, wrapped so it can be dragged toward the centre to reply — see `SwipeToReply`.
@@ -163,16 +131,18 @@ struct MessageRow: View {
                           onReply: handlers.onReply)
     }
 
+    /// One sentence for VoiceOver, unless there is a button inside the message that flattening
+    /// would swallow — see `Message.hasPressableContent`.
     @ViewBuilder
     private var bubbleRow: some View {
         let row = bubbleRowContent
 
-        if hasPressableContent {
+        if message.hasPressableContent {
             row.accessibilityElement(children: .contain)
         } else {
             row
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel(accessibilityLabel)
+                .accessibilityLabel(message.spokenLabel)
         }
     }
 
@@ -230,65 +200,16 @@ struct MessageRow: View {
     }
 
     /// The bubble, with everything you can do to it hanging off it — see `MessageActions`, which
-    /// is where the menu, the double tap and the confirmations now live.
+    /// is where the menu, the double tap and the confirmations live, and `MessageContent`, which
+    /// is what is actually in it.
     private var actionableContent: some View {
-        content
+        MessageContent(message: message,
+                       style: style,
+                       playingDiameter: playingDiameter,
+                       onOpenReply: handlers.onOpenReply)
             .messageActions(message, isPinned: isPinned, handlers: handlers)
-            // Where a tapped link really goes, shown in full before anything opens. The title carries
-            // the address itself — the one thing the message text can lie about — so the choice is
-            // made against the destination, not the words dressed over it.
-            .confirmationDialog(Text(verbatim: linkToConfirm?.absoluteString ?? ""),
-                                isPresented: Binding(get: { linkToConfirm != nil },
-                                                     set: { if !$0 { linkToConfirm = nil } }),
-                                titleVisibility: .visible,
-                                presenting: linkToConfirm) { url in
-                Button(String(app: Strings.Message.Link.open)) {
-                    openURL(url)
-                    linkToConfirm = nil
-                }
-                Button(String(app: Strings.Message.Link.cancel), role: .cancel) {
-                    linkToConfirm = nil
-                }
-            }
     }
 
-    /// A message's words, with the links in them live but held, and the mentions in them painted.
-    /// `RichText` (in Core) marks where the links and mentions are; the colour goes on here, because
-    /// colour is a thing the design layer owns and the model layer cannot see. A mention of you is
-    /// drawn louder than a mention of someone else — it is the one that means *you* were called.
-    /// Overriding `openURL` is what turns a tapped link into a question instead of a jump.
-    private func messageText(_ body: String) -> some View {
-        Text(paintedBody(body))
-            .tint(accent.color)
-            .environment(\.openURL, OpenURLAction { url in
-                linkToConfirm = url
-                return .handled
-            })
-    }
-
-    private func paintedBody(_ body: String) -> AttributedString {
-        var attributed = RichText.attributed(body: body,
-                                             mentionedUserIDs: Set(message.mentionedUserIDs),
-                                             displayNames: currentUserID.isEmpty ? [:] : [currentUserID: currentUserName],
-                                             ownUserID: currentUserID.isEmpty ? nil : currentUserID)
-
-        // Collect first, then paint: mutating the attributed string invalidates the run indices you
-        // are iterating.
-        let mentionRuns = attributed.runs.compactMap { run -> (Range<AttributedString.Index>, Bool)? in
-            guard run.iskra.mentionUserID != nil else { return nil }
-            return (run.range, run.iskra.mentionIsSelf ?? false)
-        }
-        for (range, isSelf) in mentionRuns {
-            attributed[range].foregroundColor = accent.color
-            if isSelf {
-                // Your own name gets weight and a wash behind it — the "you were mentioned" that the
-                // red badge in the list is the far-off twin of.
-                attributed[range].font = .body.weight(.semibold)
-                attributed[range].backgroundColor = accent.color.opacity(0.16)
-            }
-        }
-        return attributed
-    }
 
     /// The emoji under the bubble — aligned to the side the message is on, indented past
     /// the avatar so they sit under the *bubble* rather than under the face beside it, and
@@ -365,102 +286,6 @@ struct MessageRow: View {
         .padding(.bottom, Theme.Spacing.tight)
     }
 
-    // MARK: - What is actually in the message
-
-    @ViewBuilder
-    private var content: some View {
-        switch message.kind {
-        case let .text(body):
-            bubble { messageText(body) }
-
-        case let .notice(body):
-            bubble { messageText(body).italic() }
-
-        case let .emote(body):
-            quoted {
-                messageText(body)
-                    .font(.callout.italic())
-                    .foregroundStyle(.secondary)
-            }
-
-        case let .videoNote(attachment):
-            // The signature shape: a circle, not a bubble. No bubble background, so
-            // no rounded-rectangle peeking out behind the mask.
-            //
-            // How big it may grow is worked out here rather than inside the circle, because
-            // it is a fact about the row: the whole width, less the clock beside the bubble
-            // and — in a group, on somebody else's message — the avatar in front of it. Take
-            // the *whole* width and the circle would push one of the two off the screen.
-            quoted {
-                VideoNoteView(attachment: attachment, playingDiameter: playingDiameter)
-            }
-
-        case let .voice(attachment, waveform):
-            bubble { VoiceMessageView(attachment: attachment, waveform: waveform) }
-
-        case let .image(attachment):
-            quoted {
-                PictureBubble(attachment: attachment, style: style, isPlayable: false,
-                              sender: senderTitle, timestamp: message.timestamp)
-            }
-
-        case let .sticker(attachment):
-            // No bubble, and nothing to open. A sticker is already the shape its sender drew,
-            // and the transparency around it is most of what makes it one — put it on a fill
-            // and it becomes a small photograph of a sticker.
-            quoted {
-                StickerView(attachment: attachment)
-            }
-
-        case let .video(attachment):
-            quoted {
-                PictureBubble(attachment: attachment, style: style, isPlayable: true,
-                              sender: senderTitle, timestamp: message.timestamp)
-            }
-
-        // `quoted`, like every other kind that draws its own bubble rather than sitting in
-        // one. These two were bare, and the quote above an answer to a file or a piece of
-        // music was silently dropped — the only two kinds in the timeline where replying
-        // lost the thing being replied to.
-        case let .audio(attachment):
-            quoted {
-                FileBubble(attachment: attachment, systemImage: "waveform", style: style)
-            }
-
-        case let .file(attachment):
-            quoted {
-                FileBubble(attachment: attachment, systemImage: "doc", style: style)
-            }
-
-        case let .location(location):
-            quoted {
-                LocationBubble(location: location, style: style)
-            }
-
-        case .unreadable:
-            // Not an error the user caused, and not one they can fix. Say what
-            // happened without the word "decrypt".
-            bubble {
-                Label { Text(Strings.Message.unreadable) } icon: { Image(systemName: "lock.slash") }
-                    .font(.footnote)
-            }
-
-        case .deleted:
-            // Not `bubble`: a message that is gone is drawn as an outline with nothing in
-            // it — see `deletedBubble`.
-            Text(Strings.Message.deleted)
-                .font(.footnote.italic())
-                .deletedBubble()
-
-        case .unsupported:
-            bubble {
-                Text(Strings.Message.unsupported)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-
     /// The gap a message must leave on the far side of the conversation, so that a long one is
     /// visibly *from* somebody rather than a paragraph spanning the screen.
     ///
@@ -507,93 +332,6 @@ struct MessageRow: View {
             : min(available, Theme.Size.videoNote * Theme.Size.videoNoteGrowth)
 
         return max(Theme.Size.videoNote, wanted)
-    }
-
-    /// A bubble, with the message it is answering quoted at the top of it.
-    ///
-    /// Inside the bubble, not above it. A quote is part of what the message *says* — read on
-    /// its own, "yes, and it's at six" is not a sentence — so it travels with the words rather
-    /// than floating over them. The bubble grows to hold it, which is exactly right: an answer
-    /// carrying its question is a bigger thing than a bare line of text.
-    private func bubble(@ViewBuilder _ inner: () -> some View) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.close) {
-            quote
-
-            inner()
-                .font(.body)
-        }
-        .messageBubble(style)
-    }
-
-    /// The same quote for the messages that have no bubble to put it in — a photo, a circle, an
-    /// emote. It gets a small bubble of its own and sits above them.
-    private func quoted(@ViewBuilder _ inner: () -> some View) -> some View {
-        VStack(alignment: message.isOwn ? .trailing : .leading, spacing: Theme.Spacing.tight) {
-            if message.replyTo != nil {
-                quote
-                    .messageBubble(style)
-            }
-
-            inner()
-        }
-    }
-
-    @ViewBuilder
-    private var quote: some View {
-        if let reply = message.replyTo {
-            ReplyQuote(reply: reply, style: style) {
-                handlers.onOpenReply(reply.eventID)
-            }
-        }
-    }
-
-    /// Who sent it, in the one form that works when the message is looked at away from the
-    /// side of the screen it was on: a name, and "you" where the name would be your own.
-    ///
-    /// The word is `Spoken.you` — the one VoiceOver reads out — and it is deliberately not a
-    /// second string with the same two letters in it. A translation duplicated is a translation
-    /// that drifts, and there is no sentence in which the app would want to call the user one
-    /// thing aloud and another on screen.
-    private var senderTitle: String {
-        message.isOwn ? String(app: Strings.Message.Spoken.you) : message.senderName
-    }
-
-    // MARK: - What VoiceOver reads
-
-    private var accessibilityLabel: String {
-        let who = senderTitle
-
-        // A message body is the sender's own words, so it is read back as written.
-        // Everything else is a description of what they did, and is translated.
-        let what: String = switch message.kind {
-        case let .text(body): body
-        case let .notice(body): body
-        case let .emote(body): body
-        case .image: String(app: Strings.Message.Spoken.sentPhoto)
-        case let .sticker(attachment):
-            if let description = attachment.caption {
-                String(app: Strings.Message.Spoken.sentStickerNamed(description))
-            } else {
-                String(app: Strings.Message.Spoken.sentSticker)
-            }
-        case .video: String(app: Strings.Message.Spoken.sentVideo)
-        case .videoNote: String(app: Strings.Message.Spoken.sentVideoNote)
-        case .voice: String(app: Strings.Message.Spoken.sentVoice)
-        case .audio: String(app: Strings.Message.Spoken.sentAudio)
-        case .file: String(app: Strings.Message.Spoken.sentFile)
-        case .location: String(app: Strings.Message.Spoken.sentLocation)
-        case .unreadable: String(app: Strings.Message.Spoken.sentUnreadable)
-        case .deleted: String(app: Strings.Message.Spoken.deletedMessage)
-        case .unsupported: String(app: Strings.Message.Spoken.sentUnsupported)
-        }
-
-        // The row is one combined element, so the badge's own button is flattened into it
-        // and VoiceOver never lands on it. The reason therefore has to be said here, or a
-        // blind user would be the only one who cannot find out why nothing was delivered.
-        if case let .failed(failure)? = message.delivery {
-            return "\(who): \(what). \(String(app: Strings.Message.Delivery.failed)). \(String(localized: failure.explanation))"
-        }
-        return "\(who): \(what)"
     }
 }
 
@@ -818,7 +556,7 @@ struct SendFailureReason: View {
 /// It plays *in place* rather than opening anything: a circle is a glance, and a full-screen
 /// player with a scrubber for four seconds of somebody's face is a ceremony nobody asked for.
 /// Press it and it plays; press it again, or let it reach the end, and it is a still again.
-private struct VideoNoteView: View {
+struct VideoNoteView: View {
     let attachment: Attachment
 
     /// How big it goes while it plays — the width of the conversation, worked out by the row
@@ -934,7 +672,7 @@ private struct VideoNoteView: View {
 /// the ones behind it are solid, which is a scrubber that takes no extra room and needs no
 /// label. There is deliberately no draggable handle: this is a message, not a track, and the
 /// thing people do with a voice message is listen to it from the start.
-private struct VoiceMessageView: View {
+struct VoiceMessageView: View {
     let attachment: Attachment
     let waveform: [Float]
 
@@ -1020,7 +758,7 @@ private struct VoiceMessageView: View {
 /// An animated sticker shows its first frame: `UIImage(data:)` does not animate APNG or WebP,
 /// and teaching it to is a job of its own. A still sticker is still a sticker; an empty square
 /// is not.
-private struct StickerView: View {
+struct StickerView: View {
     let attachment: Attachment
 
     @Environment(\.mediaLoader) private var loader
@@ -1075,7 +813,7 @@ private struct StickerView: View {
 /// The aspect ratio comes from the event, not from the downloaded bytes, so the bubble
 /// is the right shape *before* the picture arrives and the timeline does not jump
 /// around as things load.
-private struct PictureBubble: View {
+struct PictureBubble: View {
     let attachment: Attachment
 
     /// The edge drawn around the picture — the bubble it stands in for, or nothing at all.
