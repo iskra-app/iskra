@@ -71,6 +71,12 @@ struct MessageRow: View {
         !message.isOwn && !isDirectChat
     }
 
+    /// What this message is dressed in — see `BubbleStyle`. In this timeline the answer is
+    /// always one of the two bubbles; it is `CompactMessageRow` that has a third.
+    private var style: BubbleStyle {
+        message.isOwn ? .own : .incoming
+    }
+
     var body: some View {
         // The message and its emoji are two elements stacked, not one: VoiceOver flattens
         // the message into a single label it can read, and the reaction pills have to stay
@@ -390,11 +396,11 @@ struct MessageRow: View {
             }
 
         case let .voice(attachment, waveform):
-            bubble { VoiceMessageView(attachment: attachment, waveform: waveform, isOwn: message.isOwn) }
+            bubble { VoiceMessageView(attachment: attachment, waveform: waveform) }
 
         case let .image(attachment):
             quoted {
-                PictureBubble(attachment: attachment, isOwn: message.isOwn, isPlayable: false,
+                PictureBubble(attachment: attachment, style: style, isPlayable: false,
                               sender: senderTitle, timestamp: message.timestamp)
             }
 
@@ -408,19 +414,27 @@ struct MessageRow: View {
 
         case let .video(attachment):
             quoted {
-                PictureBubble(attachment: attachment, isOwn: message.isOwn, isPlayable: true,
+                PictureBubble(attachment: attachment, style: style, isPlayable: true,
                               sender: senderTitle, timestamp: message.timestamp)
             }
 
+        // `quoted`, like every other kind that draws its own bubble rather than sitting in
+        // one. These two were bare, and the quote above an answer to a file or a piece of
+        // music was silently dropped — the only two kinds in the timeline where replying
+        // lost the thing being replied to.
         case let .audio(attachment):
-            FileBubble(attachment: attachment, systemImage: "waveform", isOwn: message.isOwn)
+            quoted {
+                FileBubble(attachment: attachment, systemImage: "waveform", style: style)
+            }
 
         case let .file(attachment):
-            FileBubble(attachment: attachment, systemImage: "doc", isOwn: message.isOwn)
+            quoted {
+                FileBubble(attachment: attachment, systemImage: "doc", style: style)
+            }
 
         case let .location(location):
             quoted {
-                LocationBubble(location: location, isOwn: message.isOwn)
+                LocationBubble(location: location, style: style)
             }
 
         case .unreadable:
@@ -508,7 +522,7 @@ struct MessageRow: View {
             inner()
                 .font(.body)
         }
-        .messageBubble(isOwn: message.isOwn)
+        .messageBubble(style)
     }
 
     /// The same quote for the messages that have no bubble to put it in — a photo, a circle, an
@@ -517,7 +531,7 @@ struct MessageRow: View {
         VStack(alignment: message.isOwn ? .trailing : .leading, spacing: Theme.Spacing.tight) {
             if message.replyTo != nil {
                 quote
-                    .messageBubble(isOwn: message.isOwn)
+                    .messageBubble(style)
             }
 
             inner()
@@ -527,7 +541,7 @@ struct MessageRow: View {
     @ViewBuilder
     private var quote: some View {
         if let reply = message.replyTo {
-            ReplyQuote(reply: reply, isOwn: message.isOwn) {
+            ReplyQuote(reply: reply, style: style) {
                 handlers.onOpenReply(reply.eventID)
             }
         }
@@ -923,7 +937,6 @@ private struct VideoNoteView: View {
 private struct VoiceMessageView: View {
     let attachment: Attachment
     let waveform: [Float]
-    let isOwn: Bool
 
     @Environment(\.mediaLoader) private var loader
 
@@ -1064,7 +1077,10 @@ private struct StickerView: View {
 /// around as things load.
 private struct PictureBubble: View {
     let attachment: Attachment
-    let isOwn: Bool
+
+    /// The edge drawn around the picture — the bubble it stands in for, or nothing at all.
+    let style: BubbleStyle
+
     let isPlayable: Bool
 
     /// Who sent it and when — carried through the bubble to the viewer, which puts them at the
@@ -1108,7 +1124,7 @@ private struct PictureBubble: View {
         .padding(Theme.Spacing.tight)
         .background { backdrop }
         .clipShape(BubbleShape())
-        .pictureBorder(isOwn: isOwn)
+        .pictureBorder(style)
         // The bubble, and not the rectangle around it: this is the shape a long press lifts
         // off the conversation, and it now takes in the blurred frame and the caption as well
         // as the photograph — which is the point of their being one bubble at all.

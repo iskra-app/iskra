@@ -17,11 +17,16 @@ import IskraDesign
 struct ReplyQuote: View {
     let reply: ReplyPreview
 
-    /// Whose bubble it is sitting in, which decides only one thing: how hard the accent bar
-    /// down the side is allowed to shout. On a coloured bubble it is drawn out of the bubble's
-    /// own ink; on a grey one it is the app's accent, which is the only splash of colour a
-    /// quote gets and the thing that makes it read as a quote at a glance.
-    var isOwn: Bool = false
+    /// What the bubble it is sitting in is dressed in, which decides only one thing: how hard
+    /// the accent bar down the side is allowed to shout. On a coloured bubble it is drawn out of
+    /// the bubble's own ink; on a grey one — and on no bubble at all — it is the app's accent,
+    /// which is the only splash of colour a quote gets and the thing that makes it read as a
+    /// quote at a glance.
+    ///
+    /// `.plain` falls on the same side as `.incoming` by construction, and that is right rather
+    /// than lucky: the ink there is the ordinary one, so the bar has to bring its own colour.
+    /// In the compact timeline this is very nearly the only work the accent has left.
+    var style: BubbleStyle = .incoming
 
     /// Goes to the message being quoted. Nil where there is nowhere to go — the composer's
     /// strip quotes a message that is already on the screen behind it.
@@ -34,7 +39,8 @@ struct ReplyQuote: View {
             // The bar is what says "this is somebody else's words, quoted" — the oldest
             // typographic convention there is, and it survives being three points wide.
             Capsule()
-                .fill(isOwn ? AnyShapeStyle(.foreground.opacity(0.5)) : AnyShapeStyle(accent.color))
+                .fill(style == .own ? AnyShapeStyle(.foreground.opacity(0.5))
+                                    : AnyShapeStyle(accent.color))
                 .frame(width: Theme.Size.quoteBar)
 
             VStack(alignment: .leading, spacing: 0) {

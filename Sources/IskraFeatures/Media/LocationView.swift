@@ -16,7 +16,9 @@ import IskraDesign
 /// somebody sent them: put it next to where they are and see how far it is.
 struct LocationBubble: View {
     let location: Location
-    let isOwn: Bool
+
+    /// What the map's edge is drawn in — the bubble this picture stands in for, or nothing.
+    let style: BubbleStyle
 
     private var coordinate: CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: location.latitude, longitude: location.longitude)
@@ -33,7 +35,7 @@ struct LocationBubble: View {
             }
             .frame(width: Theme.Size.picture, height: Theme.Size.map)
             .clipShape(BubbleShape())
-            .pictureBorder(isOwn: isOwn)
+            .pictureBorder(style)
             .contentShape(BubbleShape())
             .onTapGesture { openInMaps() }
             .accessibilityLabel(Text(Strings.Location.title))
