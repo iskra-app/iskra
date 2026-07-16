@@ -2,6 +2,10 @@ import Testing
 import Foundation
 @testable import IskraFeatures
 
+// Fixtures build dates from hardcoded, valid `DateComponents`. A nil there is a broken test with a
+// name pointing straight at it, not a runtime path — the force-unwrap is the right thing to write.
+// swiftlint:disable force_unwrapping
+
 /// The time beside a room in the chat list.
 @MainActor
 struct RoomTimestampTests {
@@ -95,3 +99,5 @@ struct RoomTimestampTests {
         #expect(label.contains("23"))
     }
 }
+
+// swiftlint:enable force_unwrapping

@@ -128,9 +128,8 @@ public struct RoomListView: View {
             // curious person must be allowed to leave. The banner does not go anywhere — it will ask
             // again tomorrow, which is its whole job.
             RecoverySetupView(session: session,
-                              onCancel: { isFixingRecovery = false }) {
-                isFixingRecovery = false
-            }
+                              onCancel: { isFixingRecovery = false },
+                              onDone: { isFixingRecovery = false })
         }
         // And the same again at the top when the network is gone — see `OfflineBanner`, which is an
         // inset for exactly the reason the search field is one.

@@ -12,7 +12,7 @@ import IskraDesign
 /// the point of holding it at all.
 @MainActor
 @Observable
-final class VideoPlayback {
+final class VideoPlayback: SpeakerClaimant {
     private(set) var player: AVPlayer?
     private(set) var isLoading = false
     private(set) var failed = false
@@ -23,20 +23,6 @@ final class VideoPlayback {
 
     /// The end of the clip, which `AVPlayer` announces and does not act on.
     private var endOfClip: (any NSObjectProtocol)?
-
-    /// Whoever is playing, out of every video note in every open conversation. One at a
-    /// time: two circles talking over each other is noise, and the second one is never the
-    /// one being listened to.
-    ///
-    /// Weak, and it has to be — a strong reference here would keep the *decrypted file* of
-    /// every note the user ever pressed alive for as long as the app runs, since that is
-    /// what a `VideoPlayback` is holding. Anything that stops holding its player has stopped
-    /// playing by definition, so there is nothing to remember about it.
-    ///
-    /// Static rather than an environment object, because this is a fact about the device —
-    /// it has one pair of speakers — and not about any view hierarchy.
-    @MainActor
-    private static weak var current: VideoPlayback?
 
     var isPlaying: Bool { player != nil }
 
@@ -53,27 +39,26 @@ final class VideoPlayback {
         failed = false
         defer { isLoading = false }
 
-        // Whatever was playing gives way, and it does so now rather than when the download
-        // finishes: pressing a second circle should quieten the first one immediately, not
-        // after however long the network takes.
-        Self.current?.stop()
-        Self.current = self
+        // Whatever was playing gives way — another circle, or a voice message: they share the one
+        // pair of speakers. It does so now rather than when the download finishes: pressing a second
+        // circle should quieten the first immediately, not after however long the network takes.
+        Speaker.claim(self)
 
         do {
             let file = try await loader.file(for: attachment)
 
-            // A second circle may have been pressed while this one was downloading, and it
-            // has already taken the speakers. Coming up now would put two of them on screen
-            // at once, one of them talking over the other — the thing this is here to prevent.
-            guard Self.current === self else { return }
+            // A second circle — or a voice message — may have been pressed while this one was
+            // downloading, and it has already taken the speakers. Coming up now would put two of
+            // them on at once, one talking over the other — the thing this is here to prevent.
+            guard Speaker.holds(self) else { return }
 
             self.file = file
 
             await AudioSession.prepare(for: .playback)
 
-            // Awaited, so — as above — a second circle may have been pressed while the session was
+            // Awaited, so — as above — a second press may have landed while the session was
             // waking, and it has the speakers now.
-            guard Self.current === self else { return }
+            guard Speaker.holds(self) else { return }
 
             let player = AVPlayer(url: file.url)
             if stopsAtEnd {
@@ -124,12 +109,9 @@ final class VideoPlayback {
         }
 
         // Only if we are still the one holding the floor. Stopping is also what the *previous*
-        // note does when a new one starts, and by then `current` is already the new one —
-        // clearing it there would leave the note that is actually playing unaccounted for, and
-        // the one after that would not know to silence it.
-        if Self.current === self {
-            Self.current = nil
-        }
+        // holder does when a new one starts, and by then the floor is already the new one —
+        // releasing it there would leave the playback that is actually sounding unaccounted for.
+        Speaker.release(self)
     }
 }
 
@@ -177,8 +159,13 @@ extension VideoSurface: UIViewRepresentable {
 }
 
 final class PlayerHostView: UIView {
+    // `layerClass` overrides UIView's and so must be `class`, not `static`; and because it is
+    // `AVPlayerLayer`, `layer` is always one — the cast cannot fail. SwiftLint's blanket bans on
+    // `class` members and `as!` know neither fact, so they are turned off for these two lines.
+    // swiftlint:disable:next static_over_final_class
     override class var layerClass: AnyClass { AVPlayerLayer.self }
 
+    // swiftlint:disable:next force_cast
     var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
 
     init(player: AVPlayer) {

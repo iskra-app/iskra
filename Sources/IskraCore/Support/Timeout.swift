@@ -88,8 +88,7 @@ public func withTimeout<T: Sendable>(
             }
 
             let work = Task {
-                do { settle(.success(try await operation())) }
-                catch { settle(.failure(error)) }
+                do { settle(.success(try await operation())) } catch { settle(.failure(error)) }
             }
             state.withLock { $0.work = work }
 

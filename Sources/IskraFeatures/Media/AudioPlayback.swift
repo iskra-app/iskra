@@ -16,7 +16,7 @@ import IskraCore
 /// listened to.
 @MainActor
 @Observable
-final class AudioPlayback {
+final class AudioPlayback: SpeakerClaimant {
     private(set) var isPlaying = false
     private(set) var isLoading = false
     private(set) var failed = false
@@ -34,9 +34,6 @@ final class AudioPlayback {
     /// `nonisolated(unsafe)` so that `deinit` — which is not on the main actor — can reach it.
     /// Every other access is on the main actor, and the deinit's is a hop back to it.
     nonisolated(unsafe) private var ticker: Timer?
-
-    @MainActor
-    private static weak var current: AudioPlayback?
 
     /// The end of the message. `AVAudioPlayer` has a delegate for this and a delegate is an
     /// object, so it is one: a closure box, kept alive by the player it belongs to.
@@ -77,17 +74,12 @@ final class AudioPlayback {
     private func resume() {
         guard let player else { return }
 
-        // Somebody else may have started talking while this one was paused, and the speakers
-        // are one pair — so they give way, exactly as they do in `play`.
-        //
-        // `!== self` is load-bearing and not defensive noise. A paused message is still the
-        // *current* one, so an unguarded `Self.current?.stop()` here would stop **us**: nil the
-        // player, drop the file, rewind to zero — and resuming would silently do nothing at all,
-        // which is precisely the bug this method exists to fix, reintroduced one line further in.
-        if Self.current !== self {
-            Self.current?.stop()
-        }
-        Self.current = self
+        // Somebody else may have started talking while this one was paused — a voice message or a
+        // video note, they share the one pair of speakers — so they give way, exactly as they do in
+        // `play`. `Speaker.claim` will not stop us for resuming, which matters: a paused message is
+        // still the holder, and stopping it would nil the player and rewind, so resuming would
+        // silently do nothing — the very bug this method exists to fix.
+        Speaker.claim(self)
 
         player.play()
         isPlaying = true
@@ -102,22 +94,21 @@ final class AudioPlayback {
         defer { isLoading = false }
 
         // Whoever was talking gives way immediately, rather than when this download finishes.
-        Self.current?.stop()
-        Self.current = self
+        Speaker.claim(self)
 
         do {
             let file = try await loader.file(for: attachment)
 
             // Somebody pressed a different message while this one was coming down, and it has
             // the speakers now. Coming up at this point would put two voices on at once.
-            guard Self.current === self else { return }
+            guard Speaker.holds(self) else { return }
 
             self.file = file
 
             await AudioSession.prepare(for: .playback)
 
             // Awaited, so a second press may have landed in the meantime and taken the speakers.
-            guard Self.current === self else { return }
+            guard Speaker.holds(self) else { return }
 
             let player = try AVAudioPlayer(contentsOf: file.url)
             let finish = FinishListener { [weak self] in self?.stop() }
@@ -151,9 +142,7 @@ final class AudioPlayback {
         isPlaying = false
         progress = 0
 
-        if Self.current === self {
-            Self.current = nil
-        }
+        Speaker.release(self)
     }
 
     private func startTicking() {

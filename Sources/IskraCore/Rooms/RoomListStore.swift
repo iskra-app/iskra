@@ -704,7 +704,8 @@ public final class RoomListStore {
                 }
 
                 return switch (left.element.lastActivity, right.element.lastActivity) {
-                case let (l?, r?) where l != r: l > r
+                case let (leftActivity?, rightActivity?) where leftActivity != rightActivity:
+                    leftActivity > rightActivity
                 case (nil, .some): false
                 case (.some, nil): true
                 default: left.offset < right.offset
