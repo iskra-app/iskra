@@ -147,14 +147,12 @@ struct MessageContent: View {
             }
 
         case .deleted:
-            // Not `bubble`: a message that is gone is drawn as an outline with nothing in
-            // it — see `deletedBubble`. It keeps its outline in both timelines, and that is
-            // right: the dashes are not a bubble, they are the shape of a thing that is
-            // missing, and a plain line saying "message deleted" would read as somebody
-            // having typed those words.
+            // Not `bubble`: a message that is gone is drawn as an outline with nothing in it,
+            // and in the plain column as nothing but its words — see `deletedBubble`, which is
+            // where the difference is argued.
             Text(Strings.Message.deleted)
                 .font(.footnote.italic())
-                .deletedBubble()
+                .deletedBubble(style)
 
         case .unsupported:
             bubble {
