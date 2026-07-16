@@ -163,20 +163,37 @@ public extension View {
     /// the same weight in the conversation as everything still in it. An empty outline says
     /// what happened without taking up a voice, and the dashes are the oldest way there is of
     /// drawing a thing that is missing rather than a thing that is quiet.
-    func deletedBubble() -> some View {
+    ///
+    /// All of which is an argument about *bubbles*, and it stops where they do. The dashes read
+    /// as the ghost of a bubble only in a timeline that has bubbles to be the ghost of; dropped
+    /// into the plain column they are simply the one outlined thing on the screen, which makes
+    /// the deleted message the loudest item in a conversation it should be the quietest item in.
+    /// So `.plain` says it the way that column says everything else: in words, and in the grey
+    /// the column keeps for things that are not somebody talking.
+    func deletedBubble(_ style: BubbleStyle) -> some View {
         let shape = BubbleShape()
+        let isPlain = style == .plain
 
-        return padding(.horizontal, Theme.Spacing.roomy)
-            .padding(.vertical, Theme.Spacing.normal)
+        return padding(.horizontal, isPlain ? 0 : Theme.Spacing.roomy)
+            .padding(.vertical, isPlain ? 0 : Theme.Spacing.normal)
             .foregroundStyle(.secondary)
             .overlay {
-                shape.strokeBorder(.secondary,
-                                   style: StrokeStyle(lineWidth: Theme.Border.hairline,
-                                                      dash: Theme.Border.dash))
-                    // Quieter than the words inside it: the outline is the frame around the
-                    // sentence, not a second thing competing with it to be read.
-                    .opacity(0.5)
+                if !isPlain {
+                    shape.strokeBorder(.secondary,
+                                       style: StrokeStyle(lineWidth: Theme.Border.hairline,
+                                                          dash: Theme.Border.dash))
+                        // Quieter than the words inside it: the outline is the frame around the
+                        // sentence, not a second thing competing with it to be read.
+                        .opacity(0.5)
+                }
             }
+            // A tombstone keeps its menu — the two dates are the only thing it still knows — so
+            // it keeps a target big enough to press, padding out and back in the way a plain
+            // bubble does. See `MessageBubble.body`.
+            .padding(.horizontal, isPlain ? Theme.Spacing.roomy : 0)
+            .padding(.vertical, isPlain ? Theme.Spacing.normal : 0)
             .contentShape(shape)
+            .padding(.horizontal, isPlain ? -Theme.Spacing.roomy : 0)
+            .padding(.vertical, isPlain ? -Theme.Spacing.normal : 0)
     }
 }
