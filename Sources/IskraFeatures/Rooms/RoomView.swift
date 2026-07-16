@@ -1161,25 +1161,35 @@ public struct RoomView: View {
     private func messageRow(_ message: Message, in scroll: ScrollViewProxy) -> some View {
         MessageRow(message: message,
                    isDirectChat: timeline.isDirectChat,
-                   onRetry: { Task { await timeline.retrySending(messageID: message.id) } },
-                   onToggleReaction: { emoji in
-                       Task { await timeline.toggleReaction(messageID: message.id, key: emoji) }
-                   },
-                   onDelete: { Task { await timeline.delete(messageID: message.id) } },
-                   onDiscard: { Task { await timeline.discard(messageID: message.id) } },
-                   onReply: { startReplying(to: message) },
-                   onEdit: { startEditing(message) },
-                   onTogglePin: { Task { await togglePin(message) } },
+                   handlers: handlers(for: message, in: scroll),
                    isPinned: timeline.isPinned(messageID: message.id),
-                   onOpenReply: { eventID in
-                       // The quoted message may be far above, and it may not be loaded at all —
-                       // `scrollTo` on an ID the list does not hold is a no-op, which is the
-                       // right failure: nothing moves, and the user is where they were.
-                       withAnimation(.smooth) { scroll.scrollTo(eventID, anchor: .center) }
-                       light(eventID)
-                   },
-                   onReport: { reason in Task { await timeline.report(messageID: message.id, reason: reason) } },
                    isHighlighted: highlighted == message.id)
+    }
+
+    /// What the row is allowed to ask of the room — see `MessageHandlers`.
+    ///
+    /// Built in a function of its own, and the comment above `view(for:followsEvent:in:)` says
+    /// why: written inline, these closures are what the type checker gives up on.
+    private func handlers(for message: Message, in scroll: ScrollViewProxy) -> MessageHandlers {
+        MessageHandlers(
+            onRetry: { Task { await timeline.retrySending(messageID: message.id) } },
+            onToggleReaction: { emoji in
+                Task { await timeline.toggleReaction(messageID: message.id, key: emoji) }
+            },
+            onDelete: { Task { await timeline.delete(messageID: message.id) } },
+            onDiscard: { Task { await timeline.discard(messageID: message.id) } },
+            onReply: { startReplying(to: message) },
+            onEdit: { startEditing(message) },
+            onTogglePin: { Task { await togglePin(message) } },
+            onOpenReply: { eventID in
+                // The quoted message may be far above, and it may not be loaded at all —
+                // `scrollTo` on an ID the list does not hold is a no-op, which is the
+                // right failure: nothing moves, and the user is where they were.
+                withAnimation(.smooth) { scroll.scrollTo(eventID, anchor: .center) }
+                light(eventID)
+            },
+            onReport: { reason in Task { await timeline.report(messageID: message.id, reason: reason) } }
+        )
     }
 
     /// The pill that says something was said while you were reading further up, and takes you to
