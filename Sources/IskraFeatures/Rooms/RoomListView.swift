@@ -412,6 +412,15 @@ struct RoomRow: View {
                             .accessibilityLabel(Text(Strings.RoomList.privateChat))
                     }
 
+                    // Pinned chats wear a small pin beside the name, the same shape the swipe
+                    // action uses — so the row says "stays at the top" without needing words.
+                    if room.isPinned {
+                        Image(systemName: "pin.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .accessibilityLabel(Text(Strings.RoomList.pinned))
+                    }
+
                     Spacer(minLength: 0)
 
                     if let date = room.lastActivity {
@@ -485,6 +494,9 @@ struct RoomRow: View {
         var parts = [room.name]
         if room.privacy == .protected {
             parts.append(String(app: Strings.RoomList.privateChat))
+        }
+        if room.isPinned {
+            parts.append(String(app: Strings.RoomList.pinned))
         }
         if let message = room.lastMessage { parts.append(message) }
 

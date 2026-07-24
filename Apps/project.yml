@@ -94,6 +94,7 @@ targets:
     type: application
     platform: iOS
     templates: [Stamped]
+    scheme: {}
     sources:
       - path: Shared
       # `type: file` matters: an .icon is a directory on disk, and without this XcodeGen

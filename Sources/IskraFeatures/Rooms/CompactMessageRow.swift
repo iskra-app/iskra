@@ -93,15 +93,11 @@ struct CompactMessageRow: View {
                                 removal: .scale(scale: 0.85).combined(with: .opacity)))
     }
 
-    /// The face, or the space where it was. Only the first message in a run carries one; the
-    /// rest are indented to line up under it.
+    /// The face on every line. In the compact column the sender is the only thing that says who
+    /// spoke, so the avatar is not hidden in a run — and not hidden in a direct chat either.
     @ViewBuilder
     private var avatarColumn: some View {
-        if message.isContinuation {
-            Color.clear.frame(width: avatarSize)
-        } else {
-            Avatar(name: message.senderName, url: message.senderAvatarURL, size: Theme.Size.avatarSmall)
-        }
+        Avatar(name: message.senderName, url: message.senderAvatarURL, size: Theme.Size.avatarSmall)
     }
 
     /// The message itself, and the grey facts at the end of it.

@@ -20,6 +20,14 @@ struct AppearanceView: View {
     /// conversation is drawn, the same way the two above travel.
     @AppStorage(MessageLayout.storageKey) private var layout: MessageLayout = .default
 
+    /// A checkbox view of the same storage: the plain column is either on or it is not.
+    private var isCompact: Binding<Bool> {
+        Binding(
+            get: { layout == .compact },
+            set: { newValue in layout = newValue ? .compact : .bubbles }
+        )
+    }
+
     /// Whether the colour is let out of the messages and onto the chrome as well. Written here and
     /// read at the root — see `AccentTheme.tintsInterfaceKey`.
     @AppStorage(AccentTheme.tintsInterfaceKey) private var tintsInterface = false
@@ -41,14 +49,9 @@ struct AppearanceView: View {
             // redraws the three lines above into the shape it names, which is the whole argument
             // the footer would otherwise have to make in words.
             Section {
-                Picker(selection: $layout.animation(.smooth(duration: Theme.Timing.reaction))) {
-                    ForEach(MessageLayout.allCases) { layout in
-                        Text(Strings.Appearance.layout(layout)).tag(layout)
-                    }
-                } label: {
-                    Text(Strings.Appearance.layout)
+                Toggle(isOn: isCompact.animation(.smooth(duration: Theme.Timing.reaction))) {
+                    Text(Strings.Appearance.compact)
                 }
-                .pickerStyle(.segmented)
             } footer: {
                 Text(Strings.Appearance.layoutHelp)
             }

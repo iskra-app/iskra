@@ -78,6 +78,11 @@ public final class TimelineStore {
     /// thing people actually ask each other for.
     public private(set) var directCounterpartID: String?
 
+    /// Whether this account may add to the conversation. Starts true: until the room's
+    /// power levels arrive, the safe assumption is the one that keeps the composer on
+    /// screen. It flips only when the room definitively says no.
+    public private(set) var canPost: Bool = true
+
     /// Who is typing, by the name they are known by in this room. Never includes you.
     ///
     /// Names rather than Matrix IDs, resolved here rather than in the view, because the view is
@@ -420,6 +425,15 @@ public final class TimelineStore {
         // has no counterpart, and claiming one would put your own address in the
         // header of your own chat.
         directCounterpartID = info.isDm ? info.heroes.first(where: { $0.userId != ownUserID })?.userId : nil
+
+        // Sending is governed by the room's power levels. If the levels are not in the
+        // info we just received, leave the previous answer alone: it may have arrived in an
+        // earlier update, or it may still be the default. Flipping to "no" only on a clear
+        // statement from the room avoids the composer vanishing while the room is still
+        // opening.
+        if let levels = info.powerLevels {
+            canPost = levels.canOwnUserSendMessage(message: .roomMessage)
+        }
     }
 
     /// Asks for history until there is enough of it to scroll.
