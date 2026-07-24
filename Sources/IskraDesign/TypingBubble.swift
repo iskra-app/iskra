@@ -44,7 +44,7 @@ public struct TypingBubble: View {
         }
         .padding(.horizontal, Theme.Spacing.normal)
         .padding(.vertical, Theme.Spacing.normal)
-        .messageBubble(isOwn: false)
+        .messageBubble(.incoming)
         .onAppear { pulsing = true }
         // Decorative: VoiceOver hears "typing" from the room's header subtitle, which names *who*.
         // Two announcements of the same fact — one of them wordless dots — is one too many.
