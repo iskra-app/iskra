@@ -52,6 +52,10 @@ struct AppearanceView: View {
                 Toggle(isOn: isCompact.animation(.smooth(duration: Theme.Timing.reaction))) {
                     Text(Strings.Appearance.compact)
                 }
+                // The root tint is `.primary` when interface tinting is off, so a switch would
+                // turn white-on-white. The accent is the colour the user came here to pick, and
+                // it should colour the switch itself regardless of whether it washes the rest.
+                .tint(accent.color)
             } footer: {
                 Text(Strings.Appearance.layoutHelp)
             }
@@ -96,6 +100,10 @@ struct AppearanceView: View {
                 Toggle(isOn: $tintsInterface.animation(.smooth(duration: Theme.Timing.reaction))) {
                     Text(Strings.Appearance.tintInterface)
                 }
+                // The root tint is `.primary` when interface tinting is off, so a switch would
+                // turn white-on-white. The accent is the colour the user came here to pick, and
+                // it should colour the switch itself regardless of whether it washes the rest.
+                .tint(accent.color)
                 // The mono theme's colour *is* the foreground colour, so a wash of it would grey the
                 // app down rather than tint it: the switch would move and the app would only dim. It
                 // says so instead of pretending.
