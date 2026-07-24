@@ -64,6 +64,9 @@
 
 "room.composerPlaceholder" = "Сообщение";
 
+/* Плашка вместо поля ввода, когда в чат нельзя писать. */
+"room.readOnly" = "В этот чат нельзя отправлять сообщения";
+
 "room.noRoomSelectedMessage" = "Выберите разговор, чтобы начать читать.";
 
 "room.noRoomSelectedTitle" = "Выберите чат";
@@ -83,6 +86,9 @@
 
 /* Accessibility label for the lock icon. The only place encryption is named, and it is named as privacy. */
 "roomList.privateChat" = "Защищённый чат";
+
+/* Accessibility label for the pin icon on a pinned chat. */
+"roomList.pinned" = "Закреплённый чат";
 
 "roomList.searchPrompt" = "Поиск по сообщениям";
 
@@ -328,11 +334,8 @@
 /* Под переключателем. Объясняет, что выбор здесь ни на что, кроме Искры, не влияет. */
 "appearance.themeHelp" = "Только для Искры. Всё остальное на устройстве останется как было.";
 
-/* Экран «Внешний вид»: пузыри на две стороны или плотная лента строками. Пузыри — обычный
-   случай и значение по умолчанию. */
-"appearance.layout" = "Вид сообщений";
-"appearance.layout.bubbles" = "Пузыри";
-"appearance.layout.compact" = "Компактный";
+/* Переключатель, который включает или выключает плотную ленту строками. */
+"appearance.compact" = "Компактный вид";
 
 /* Под переключателем. Вторая фраза — самая важная: человек, который выберет компактный вид
    и потом не найдёт среди чужих реплик своих, должен узнать об этом заранее, а не на ощупь. */

@@ -83,6 +83,7 @@ public enum Strings {
         public static let emptyTitle = LocalizedStringResource("roomList.emptyTitle", bundle: bundle)
         public static let emptyMessage = LocalizedStringResource("roomList.emptyMessage", bundle: bundle)
         public static let privateChat = LocalizedStringResource("roomList.privateChat", bundle: bundle)
+        public static let pinned = LocalizedStringResource("roomList.pinned", bundle: bundle)
 
         /// A room somebody has asked you into, and the two answers to it.
         ///
@@ -206,6 +207,9 @@ public enum Strings {
         public static let composerPlaceholder = LocalizedStringResource("room.composerPlaceholder", bundle: bundle)
         public static let send = LocalizedStringResource("room.send", bundle: bundle)
         public static let attach = LocalizedStringResource("room.attach", bundle: bundle)
+
+        /// Shown in place of the composer when the room's power levels do not allow posting.
+        public static let readOnly = LocalizedStringResource("room.readOnly", bundle: bundle)
         public static let attachPhoto = LocalizedStringResource("room.attachPhoto", bundle: bundle)
         public static let attachFile = LocalizedStringResource("room.attachFile", bundle: bundle)
         public static let sendFailedTitle = LocalizedStringResource("room.sendFailedTitle", bundle: bundle)
@@ -960,17 +964,9 @@ public enum Strings {
             }
         }
 
-        public static let layout = LocalizedStringResource("appearance.layout", bundle: bundle)
+        /// The switch that turns the plain column on or off — see `MessageLayout.compact`.
+        public static let compact = LocalizedStringResource("appearance.compact", bundle: bundle)
         public static let layoutHelp = LocalizedStringResource("appearance.layoutHelp", bundle: bundle)
-
-        /// Bubbles, or the plain column. No `default` here either — a third layout should stop
-        /// the build rather than ship as the word "appearance.layout.timeline".
-        public static func layout(_ layout: MessageLayout) -> LocalizedStringResource {
-            switch layout {
-            case .bubbles: LocalizedStringResource("appearance.layout.bubbles", bundle: bundle)
-            case .compact: LocalizedStringResource("appearance.layout.compact", bundle: bundle)
-            }
-        }
 
         public static let accent = LocalizedStringResource("appearance.accent", bundle: bundle)
 

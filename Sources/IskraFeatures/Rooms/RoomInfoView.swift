@@ -25,6 +25,9 @@ struct RoomInfoView: View {
     /// selection can do that — the same shape as sign-out in `RoomListView`.
     var onLeave: () -> Void
 
+    /// Opening the in-chat search from the info screen.
+    var onSearch: () -> Void
+
     @Environment(\.dismiss) private var dismiss
 
     /// Offline, this screen is a *description* of the room rather than a way to change it. Every
@@ -65,10 +68,11 @@ struct RoomInfoView: View {
     /// Optional so the info screen still stands on its own where there is no timeline behind it.
     private let timeline: TimelineStore?
 
-    init(details: RoomDetailsStore, timeline: TimelineStore? = nil, onLeave: @escaping () -> Void) {
+    init(details: RoomDetailsStore, timeline: TimelineStore? = nil, onLeave: @escaping () -> Void, onSearch: @escaping () -> Void) {
         _details = State(initialValue: details)
         self.timeline = timeline
         self.onLeave = onLeave
+        self.onSearch = onSearch
     }
 
     /// A one-to-one chat has no name, no description and no picture of its own — all three
@@ -93,6 +97,14 @@ struct RoomInfoView: View {
                     } label: {
                         Label(Strings.Room.sharedMedia, systemImage: "photo.on.rectangle")
                     }
+                }
+            }
+
+            Section {
+                Button {
+                    onSearch()
+                } label: {
+                    Label(Strings.Room.searchInChat, systemImage: "magnifyingglass")
                 }
             }
 

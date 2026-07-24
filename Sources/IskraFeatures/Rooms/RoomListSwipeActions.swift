@@ -66,6 +66,10 @@ private struct RoomListSwipeActions: ViewModifier {
                 Button(role: .destructive, action: onLeave) {
                     Label(String(app: Strings.RoomList.Swipe.delete), systemImage: "trash")
                 }
+                // The root view tints the whole interface `.primary` by default, and on iOS 26
+                // that washes out the destructive swipe-action colour. `.tint(.red)` restores it
+                // without touching the row's own accent elsewhere.
+                .tint(.red)
             }
     }
 }

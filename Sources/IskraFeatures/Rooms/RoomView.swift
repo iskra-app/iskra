@@ -455,8 +455,14 @@ public struct RoomView: View {
                 // once, in the middle of that, lands on a conversation that is still growing —
                 // which is precisely the room that opened a few messages short of the end. So the
                 // end is *held* until the reader disagrees by scrolling.
+                //
+                // Deferred: calling `scrollTo` synchronously inside `onScrollGeometryChange`
+                // changes the scroll position, which fires the callback again — a re-entrant
+                // loop that produced "tried to update multiple times per frame" and hung the
+                // app. A `Task` breaks the cycle: the current callback finishes, and the scroll
+                // lands on the next pass through the run loop.
                 if isOpening {
-                    scrollPosition.scrollTo(edge: .bottom)
+                    Task { scrollPosition.scrollTo(edge: .bottom) }
                     return
                 }
 
@@ -629,7 +635,14 @@ public struct RoomView: View {
             .animation(.smooth(duration: Theme.Timing.chrome), value: isAtNewest)
         }
         .safeAreaInset(edge: .bottom) {
-            composer
+            Group {
+                if timeline.canPost {
+                    composer
+                } else {
+                    readOnlyBanner
+                }
+            }
+            .animation(.smooth, value: timeline.canPost)
         }
         // Over everything, composer included: while the camera is up, the room is the thing
         // being answered rather than the thing being used.
@@ -680,17 +693,6 @@ public struct RoomView: View {
         .navigationBarTitleDisplayMode(.inline)
         #endif
         .toolbar {
-            // Searching this one conversation. Its own button rather than a mode the room slides
-            // into, so it is discoverable and so closing it is a single obvious tap.
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    openRoomSearch()
-                } label: {
-                    Image(systemName: "magnifyingglass")
-                }
-                .accessibilityLabel(Text(Strings.Room.searchInChat))
-            }
-
             if isCompact {
                 // iPhone. The name goes where a phone puts a title — the middle — and the
                 // picture goes to the trailing edge, near the thumb. Two controls, one
@@ -753,6 +755,9 @@ public struct RoomView: View {
                 RoomInfoView(details: details, timeline: timeline, onLeave: {
                     tearDown()
                     onLeave()
+                }, onSearch: {
+                    isShowingDetails = false
+                    openRoomSearch()
                 })
             }
         }
@@ -842,6 +847,14 @@ public struct RoomView: View {
         .onChange(of: scenePhase) { _, phase in
             guard phase != .active, isRecordingVideoNote else { return }
             cancelVideoNote()
+        }
+        // If the room stops allowing posts while the microphone or camera is running, the
+        // composer is replaced by a banner — but the recorders live on this screen, not on the
+        // composer, so they keep running unless they are cancelled here.
+        .onChange(of: timeline.canPost) { _, canPost in
+            guard !canPost else { return }
+            cancelVideoNote()
+            cancelVoice()
         }
         // The camera goes with the room, and it has to be said here rather than left to the
         // overlay: the overlay used to be a sheet, and a sheet took its own `onDisappear` with
@@ -1014,6 +1027,10 @@ public struct RoomView: View {
                         onChoosePhoto: { isChoosingPhoto = true },
                         onChooseFile: { isChoosingFile = true },
                         onChooseLocation: { isChoosingLocation = true })
+    }
+
+    private var readOnlyBanner: some View {
+        ReadOnlyBanner()
     }
 
     /// The camera, over the conversation rather than instead of it.

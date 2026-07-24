@@ -28,6 +28,7 @@ struct LocalizationTests {
         (Strings.SignIn.whereIsAccount, en: "Where’s your account?", ru: "Где ваш аккаунт?"),
         (Strings.SignIn.continue, en: "Continue", ru: "Продолжить"),
         (Strings.RoomList.title, en: "Chats", ru: "Чаты"),
+        (Strings.RoomList.pinned, en: "Pinned chat", ru: "Закреплённый чат"),
         // The offline sentences. They are the ones a person reads at the worst moment — no network,
         // and a screen that has to convince them their conversations are not gone — so a fallback to
         // the wrong language here would be felt more than most.
@@ -151,6 +152,8 @@ struct LocalizationTests {
         // The switch that washes the accent across the whole interface. Pinned because it is a
         // setting whose label is the only thing explaining what it will do to the whole app.
         (Strings.Appearance.tintInterface, en: "Tint the interface", ru: "Тонировать интерфейс"),
+        // The switch that turns the compact message column on or off.
+        (Strings.Appearance.compact, en: "Compact view", ru: "Компактный вид"),
 
         // The chat-list swipes and the archive they lead to — new verbs, both languages.
         (Strings.RoomList.Swipe.markRead, en: "Read", ru: "Прочитано"),
@@ -342,21 +345,17 @@ struct LocalizationTests {
         #expect(String(localized: mono) == "Чёрно-белый")
     }
 
-    /// Every way of drawing the conversation has a name in both languages, and both footers that
-    /// depend on it have a sentence.
+    /// Every way of drawing the conversation has a sentence in both languages for both footers
+    /// that depend on it.
     ///
-    /// Driven from `allCases`, exactly as the colours above are: a third layout added without
-    /// words for it should fail here rather than ship as a segment reading
-    /// "appearance.layout.timeline". The two footers are in the loop because they are the reason
-    /// this is a function and not a constant — the accent paints messages under one layout and
-    /// not the other, and a case added without deciding what the accent does there would leave
-    /// the settings screen describing the wrong app.
+    /// Driven from `allCases`: a third layout added without deciding what the accent does there
+    /// would leave the settings screen describing the wrong app. The toggle label itself is
+    /// checked in `appStringsAreTranslated`.
     @Test("every message layout, and what the accent does under it, is named in both languages")
     func messageLayoutsAreNamed() {
         for layout in MessageLayout.allCases {
             for language in ["en", "ru"] {
-                for resource in [Strings.Appearance.layout(layout),
-                                 Strings.Appearance.accentHelp(layout),
+                for resource in [Strings.Appearance.accentHelp(layout),
                                  Strings.Appearance.tintInterfaceHelp(layout)] {
                     var localized = resource
                     localized.locale = Locale(identifier: language)

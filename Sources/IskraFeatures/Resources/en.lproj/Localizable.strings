@@ -64,6 +64,9 @@
 
 "room.composerPlaceholder" = "Message";
 
+/* The banner shown in place of the composer when posting is not allowed. */
+"room.readOnly" = "You can’t send messages in this chat";
+
 "room.noRoomSelectedMessage" = "Choose a conversation to start reading.";
 
 "room.noRoomSelectedTitle" = "Pick a chat";
@@ -83,6 +86,9 @@
 
 /* Accessibility label for the lock icon. The only place encryption is named, and it is named as privacy. */
 "roomList.privateChat" = "Private chat";
+
+/* Accessibility label for the pin icon on a pinned chat. */
+"roomList.pinned" = "Pinned chat";
 
 "roomList.searchPrompt" = "Search messages";
 
@@ -328,11 +334,8 @@
 /* Under the switch. Says that the choice reaches no further than this app. */
 "appearance.themeHelp" = "Iskra only. Everything else on the device stays as it was.";
 
-/* The appearance screen: bubbles on two sides, or a plain column of lines. Bubbles are the
-   common case and the default. */
-"appearance.layout" = "Message layout";
-"appearance.layout.bubbles" = "Bubbles";
-"appearance.layout.compact" = "Compact";
+/* The switch that turns the plain column on or off. */
+"appearance.compact" = "Compact view";
 
 /* Under the picker. The second sentence is the one that matters: somebody who picks compact and
    then cannot find their own messages among everyone else's should have been told first. */
