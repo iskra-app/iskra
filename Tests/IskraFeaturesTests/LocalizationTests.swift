@@ -342,6 +342,32 @@ struct LocalizationTests {
         #expect(String(localized: mono) == "Чёрно-белый")
     }
 
+    /// Every way of drawing the conversation has a name in both languages, and both footers that
+    /// depend on it have a sentence.
+    ///
+    /// Driven from `allCases`, exactly as the colours above are: a third layout added without
+    /// words for it should fail here rather than ship as a segment reading
+    /// "appearance.layout.timeline". The two footers are in the loop because they are the reason
+    /// this is a function and not a constant — the accent paints messages under one layout and
+    /// not the other, and a case added without deciding what the accent does there would leave
+    /// the settings screen describing the wrong app.
+    @Test("every message layout, and what the accent does under it, is named in both languages")
+    func messageLayoutsAreNamed() {
+        for layout in MessageLayout.allCases {
+            for language in ["en", "ru"] {
+                for resource in [Strings.Appearance.layout(layout),
+                                 Strings.Appearance.accentHelp(layout),
+                                 Strings.Appearance.tintInterfaceHelp(layout)] {
+                    var localized = resource
+                    localized.locale = Locale(identifier: language)
+                    let word = String(localized: localized)
+
+                    #expect(!word.hasPrefix("appearance."), "\(word) is a key, not a sentence")
+                }
+            }
+        }
+    }
+
     /// The button is offered exactly where pressing it can achieve something. A lost file
     /// and a rejected file type never come back, so a retry there would spin and fail on
     /// the same thing — and the SDK's `isRecoverable` cannot be used to decide this: it

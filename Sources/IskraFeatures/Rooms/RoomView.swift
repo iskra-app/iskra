@@ -158,6 +158,11 @@ public struct RoomView: View {
     /// The width the messages have to live in. See `EnvironmentValues.timelineWidth`.
     @State private var timelineWidth: CGFloat = 0
 
+    /// How the conversation is drawn: bubbles on two sides, or one plain column. Chosen once in
+    /// settings and read here, which is the only place in the app that acts on it — see
+    /// `MessageLayout` and `messageRow(_:in:)`.
+    @AppStorage(MessageLayout.storageKey) private var messageLayout: MessageLayout = .default
+
     /// How tall the conversation is and how far into it the reader has come.
     private struct ScrollMetrics: Equatable {
         let contentHeight: CGFloat
@@ -1170,28 +1175,56 @@ public struct RoomView: View {
         }
     }
 
+    /// Bubbles on two sides, or the plain column — see `MessageLayout`. The one place in the app
+    /// the choice is acted on: everything below here is one row or the other, and neither of them
+    /// asks which it is.
+    @ViewBuilder
     private func messageRow(_ message: Message, in scroll: ScrollViewProxy) -> some View {
-        MessageRow(message: message,
-                   isDirectChat: timeline.isDirectChat,
-                   onRetry: { Task { await timeline.retrySending(messageID: message.id) } },
-                   onToggleReaction: { emoji in
-                       Task { await timeline.toggleReaction(messageID: message.id, key: emoji) }
-                   },
-                   onDelete: { Task { await timeline.delete(messageID: message.id) } },
-                   onDiscard: { Task { await timeline.discard(messageID: message.id) } },
-                   onReply: { startReplying(to: message) },
-                   onEdit: { startEditing(message) },
-                   onTogglePin: { Task { await togglePin(message) } },
-                   isPinned: timeline.isPinned(messageID: message.id),
-                   onOpenReply: { eventID in
-                       // The quoted message may be far above, and it may not be loaded at all —
-                       // `scrollTo` on an ID the list does not hold is a no-op, which is the
-                       // right failure: nothing moves, and the user is where they were.
-                       withAnimation(.smooth) { scroll.scrollTo(eventID, anchor: .center) }
-                       light(eventID)
-                   },
-                   onReport: { reason in Task { await timeline.report(messageID: message.id, reason: reason) } },
-                   isHighlighted: highlighted == message.id)
+        let handlers = handlers(for: message, in: scroll)
+        let isPinned = timeline.isPinned(messageID: message.id)
+        let isHighlighted = highlighted == message.id
+
+        switch messageLayout {
+        case .bubbles:
+            MessageRow(message: message,
+                       isDirectChat: timeline.isDirectChat,
+                       handlers: handlers,
+                       isPinned: isPinned,
+                       isHighlighted: isHighlighted)
+        case .compact:
+            // No `isDirectChat`: the plain column says who spoke in every conversation, because
+            // nothing else there does. See `CompactMessageRow`.
+            CompactMessageRow(message: message,
+                              handlers: handlers,
+                              isPinned: isPinned,
+                              isHighlighted: isHighlighted)
+        }
+    }
+
+    /// What the row is allowed to ask of the room — see `MessageHandlers`.
+    ///
+    /// Built in a function of its own, and the comment above `view(for:followsEvent:in:)` says
+    /// why: written inline, these closures are what the type checker gives up on.
+    private func handlers(for message: Message, in scroll: ScrollViewProxy) -> MessageHandlers {
+        MessageHandlers(
+            onRetry: { Task { await timeline.retrySending(messageID: message.id) } },
+            onToggleReaction: { emoji in
+                Task { await timeline.toggleReaction(messageID: message.id, key: emoji) }
+            },
+            onDelete: { Task { await timeline.delete(messageID: message.id) } },
+            onDiscard: { Task { await timeline.discard(messageID: message.id) } },
+            onReply: { startReplying(to: message) },
+            onEdit: { startEditing(message) },
+            onTogglePin: { Task { await togglePin(message) } },
+            onOpenReply: { eventID in
+                // The quoted message may be far above, and it may not be loaded at all —
+                // `scrollTo` on an ID the list does not hold is a no-op, which is the
+                // right failure: nothing moves, and the user is where they were.
+                withAnimation(.smooth) { scroll.scrollTo(eventID, anchor: .center) }
+                light(eventID)
+            },
+            onReport: { reason in Task { await timeline.report(messageID: message.id, reason: reason) } }
+        )
     }
 
     /// The pill that says something was said while you were reading further up, and takes you to
