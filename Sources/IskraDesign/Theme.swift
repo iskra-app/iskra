@@ -125,11 +125,12 @@ public enum Theme {
         /// threshold the user feels, and a number the app has an opinion about. Long enough that
         /// a decisive tap never records; short enough that a hold does not feel ignored.
         ///
-        /// It was a quarter of a second, and a quarter of a second is long enough to notice: the
-        /// finger is down, the button has not answered, and the thumb starts wondering whether it
-        /// missed. A deliberate tap is under a tenth of a second, so this still clears one twice
-        /// over — the gap is where the tap-to-flip lives, not a delay anybody asked for.
-        public static let holdBegins: Duration = .milliseconds(180)
+        /// It was briefly shortened to 180 ms, to cure a hold that seemed to do nothing for about
+        /// a second. It was not the culprit: the second was the microphone being opened behind an
+        /// unchanged screen, and it is cured where it was caused — see `VoiceRecorder.State.starting`.
+        /// So this is a quarter of a second again, which is the number that keeps the widest margin
+        /// between a hold and the tap that flips the button between voice and video.
+        public static let holdBegins: Duration = .milliseconds(250)
     }
 
     /// The lines the app draws *around* things rather than under them. There are very few:
