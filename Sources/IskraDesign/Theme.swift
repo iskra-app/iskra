@@ -124,7 +124,12 @@ public enum Theme {
         /// The twin of `Size.gestureReach`, and it lives here for the same reason: it is a
         /// threshold the user feels, and a number the app has an opinion about. Long enough that
         /// a decisive tap never records; short enough that a hold does not feel ignored.
-        public static let holdBegins: Duration = .milliseconds(250)
+        ///
+        /// It was a quarter of a second, and a quarter of a second is long enough to notice: the
+        /// finger is down, the button has not answered, and the thumb starts wondering whether it
+        /// missed. A deliberate tap is under a tenth of a second, so this still clears one twice
+        /// over — the gap is where the tap-to-flip lives, not a delay anybody asked for.
+        public static let holdBegins: Duration = .milliseconds(180)
     }
 
     /// The lines the app draws *around* things rather than under them. There are very few:
