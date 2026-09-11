@@ -19,6 +19,15 @@ struct MessageRow: View {
     /// needs to know to say the right word.
     var isPinned: Bool = false
 
+    /// Whether a date sits directly above this message, having already given it its air.
+    ///
+    /// Every row here pays for the gap above itself, which is the only arrangement that lets a
+    /// run of one person's messages close up. A date is a row like any other, so the first
+    /// message of a day was charged twice — the divider's own space and then its own — and the
+    /// date ended up nearer the day it closes than the day it opens, whatever the divider asked
+    /// for. See `DayDividerView`, which now owns both sides of that gap.
+    var opensDay: Bool = false
+
     /// Whether the conversation has just jumped *to* this message, and it is briefly lit so that
     /// the eye can find it.
     ///
@@ -80,7 +89,9 @@ struct MessageRow: View {
                 reactions
             }
         }
-        .padding(.top, message.isContinuation ? Theme.Spacing.withinRun : Theme.Spacing.betweenSenders)
+        .padding(.top, opensDay ? 0
+                                : message.isContinuation ? Theme.Spacing.withinRun
+                                                         : Theme.Spacing.betweenSenders)
         // Lit, when the conversation has just been sent here. The wash runs the full width of the
         // row and out into the margins the timeline keeps on either side — it is the *row* that
         // has been found, and a glow that stopped at the bubble's edge would be one more shape in

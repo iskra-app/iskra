@@ -35,6 +35,10 @@ struct CompactMessageRow: View {
     /// needs to know to say the right word.
     var isPinned: Bool = false
 
+    /// Whether a date sits directly above this message and has already paid for the gap —
+    /// see `MessageRow.opensDay`, which explains why the row stops charging for it.
+    var opensDay: Bool = false
+
     /// Whether the conversation has just jumped *to* this message, and it is briefly lit so
     /// that the eye can find it. Owned by `RoomView` — see `MessageRow.isHighlighted`.
     var isHighlighted: Bool = false
@@ -76,8 +80,11 @@ struct CompactMessageRow: View {
 
             Spacer(minLength: 0)
         }
-        // A run closes up and a new speaker gets air, exactly as in the bubbles.
-        .padding(.top, message.isContinuation ? Theme.Spacing.withinRun : Theme.Spacing.betweenSenders)
+        // A run closes up and a new speaker gets air, exactly as in the bubbles — and the first
+        // message under a date takes none, because the date has already given it. See `MessageRow`.
+        .padding(.top, opensDay ? 0
+                                : message.isContinuation ? Theme.Spacing.withinRun
+                                                         : Theme.Spacing.betweenSenders)
         // Lit, when the conversation has just been sent here — see `MessageRow`, which lights
         // it the same way and for the same reason.
         .background {
