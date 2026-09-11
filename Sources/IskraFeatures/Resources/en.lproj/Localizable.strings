@@ -331,43 +331,17 @@
 "appearance.mode.light" = "Light";
 "appearance.mode.dark" = "Dark";
 
-/* Under the switch. Says that the choice reaches no further than this app. */
-"appearance.themeHelp" = "Iskra only. Everything else on the device stays as it was.";
-
 /* The switch that turns the plain column on or off. */
 "appearance.compact" = "Compact view";
-
-/* Under the picker. The second sentence is the one that matters: somebody who picks compact and
-   then cannot find their own messages among everyone else's should have been told first. */
-"appearance.layoutHelp" = "A name above each run of messages, and the messages as plain lines under it. Much more of the conversation fits, but your own messages stop standing out: no right-hand side, no colour.";
 
 /* The Appearance screen: the colour the app is painted in. The seven colours of the
    rainbow, and a mono theme with no colour at all. */
 "appearance.accent" = "App colour";
 
-/* Under the row of swatches. Says what actually changes, rather than that it is a "theme". */
-"appearance.accentHelp" = "It paints your messages, buttons and badges — everywhere in the app.";
-
-/* The same footer when the compact layout is chosen: messages take no colour there, and
-   promising otherwise would be a lie. The colour has less work left, but it has some, so this
-   says which. */
-"appearance.accentHelpCompact" = "It paints mentions, links, buttons and badges. Messages in the compact layout take no colour.";
-
 /* The switch under the swatches. Washes the chosen colour across the whole interface — every
    screen's background, the text, the messages themselves. Off by default: a colour that is
    everywhere emphasises nothing. */
 "appearance.tintInterface" = "Tint the interface";
-
-/* Under the switch. Says what actually changes, rather than that it is an "accent". */
-"appearance.tintInterfaceHelp" = "Normally the colour goes no further than your messages and the send button. Turn this on and a gentle wash of it settles over the background, the text and the whole app.";
-
-/* The same footer under the compact layout, where the first sentence above is simply untrue:
-   the messages get no colour at all. */
-"appearance.tintInterfaceHelpCompact" = "Normally the colour goes no further than the send button. Turn this on and a gentle wash of it settles over the background, the text and the whole app.";
-
-/* The same footer when the black-and-white theme is chosen: there is nothing to tint with, and
-   the switch is disabled. Not "unavailable" but why — and what to do about it. */
-"appearance.tintInterfaceMono" = "The black-and-white theme has no colour to tint with. Pick one above.";
 
 /* The names of the colours. They are never seen: a circle of colour has nothing to read
    out, and VoiceOver names it by its colour. */

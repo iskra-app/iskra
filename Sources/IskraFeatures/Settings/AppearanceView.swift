@@ -44,10 +44,6 @@ struct AppearanceView: View {
                 conversation
             }
 
-            // Directly under the preview, because it is a question *about* the preview — the same
-            // placement, and the same reasoning, as the tint switch further down. Flipping it
-            // redraws the three lines above into the shape it names, which is the whole argument
-            // the footer would otherwise have to make in words.
             Section {
                 Toggle(isOn: isCompact.animation(.smooth(duration: Theme.Timing.reaction))) {
                     Text(Strings.Appearance.compact)
@@ -56,24 +52,19 @@ struct AppearanceView: View {
                 // turn white-on-white. The accent is the colour the user came here to pick, and
                 // it should colour the switch itself regardless of whether it washes the rest.
                 .tint(accent.color)
-            } footer: {
-                Text(Strings.Appearance.layoutHelp)
             }
 
-            // A segmented picker and not a grid: these three have names and *only* names — there
-            // is nothing to look at, and "System" cannot be drawn as a swatch. The preview above
-            // is the one thing that shows what was chosen, and it repaints with the screen.
             Section {
                 Picker(selection: $appearance) {
                     ForEach(AppearanceMode.allCases) { mode in
                         Text(Strings.Appearance.mode(mode)).tag(mode)
                     }
                 } label: {
-                    Text(Strings.Appearance.theme)
+                    EmptyView()
                 }
                 .pickerStyle(.segmented)
-            } footer: {
-                Text(Strings.Appearance.themeHelp)
+            } header: {
+                Text(Strings.Appearance.theme)
             }
 
             Section {
@@ -83,20 +74,7 @@ struct AppearanceView: View {
                     }
                 }
                 .padding(.vertical, Theme.Spacing.close)
-            } header: {
-                Text(Strings.Appearance.accent)
-            } footer: {
-                Text(Strings.Appearance.accentHelp(layout))
-            }
 
-            // Below the colours, because it is a question about the colour above it and makes no
-            // sense before one has been picked. Its own section, so that the footer explaining it
-            // is not a second footer under the swatches.
-            //
-            // Flipping it bathes the screen it is standing on — this very Form, its background, the
-            // words on it — in the accent, which is the demonstration, and the reason this does not
-            // need a preview of its own the way the accent does.
-            Section {
                 Toggle(isOn: $tintsInterface.animation(.smooth(duration: Theme.Timing.reaction))) {
                     Text(Strings.Appearance.tintInterface)
                 }
@@ -105,12 +83,10 @@ struct AppearanceView: View {
                 // it should colour the switch itself regardless of whether it washes the rest.
                 .tint(accent.color)
                 // The mono theme's colour *is* the foreground colour, so a wash of it would grey the
-                // app down rather than tint it: the switch would move and the app would only dim. It
-                // says so instead of pretending.
+                // app down rather than tint it: the switch would move and the app would only dim.
                 .disabled(accent == .mono)
-            } footer: {
-                Text(accent == .mono ? Strings.Appearance.tintInterfaceMono
-                                     : Strings.Appearance.tintInterfaceHelp(layout))
+            } header: {
+                Text(Strings.Appearance.accent)
             }
         }
         .formStyle(.grouped)

@@ -952,7 +952,6 @@ public enum Strings {
     /// Choosing what the app is painted in.
     public enum Appearance {
         public static let theme = LocalizedStringResource("appearance.theme", bundle: bundle)
-        public static let themeHelp = LocalizedStringResource("appearance.themeHelp", bundle: bundle)
 
         /// Light, dark, or the system's own. A `switch` with no `default`, for the same reason
         /// the colours below have none: a fourth mode should stop the build, not ship unnamed.
@@ -966,37 +965,12 @@ public enum Strings {
 
         /// The switch that turns the plain column on or off — see `MessageLayout.compact`.
         public static let compact = LocalizedStringResource("appearance.compact", bundle: bundle)
-        public static let layoutHelp = LocalizedStringResource("appearance.layoutHelp", bundle: bundle)
 
         public static let accent = LocalizedStringResource("appearance.accent", bundle: bundle)
 
-        /// What the accent paints, which depends on how the conversation is drawn — and that is
-        /// not a nicety. The accent's whole reason for existing is the fill behind everything the
-        /// reader will ever say, and in the compact column there is no fill. A footer that went
-        /// on promising "your messages" there would be the settings screen describing a thing the
-        /// app no longer does. Same shape as `tintInterfaceMono`: the honest sentence for the
-        /// case the plain one does not cover.
-        public static func accentHelp(_ layout: MessageLayout) -> LocalizedStringResource {
-            switch layout {
-            case .bubbles: LocalizedStringResource("appearance.accentHelp", bundle: bundle)
-            case .compact: LocalizedStringResource("appearance.accentHelpCompact", bundle: bundle)
-            }
-        }
-
         /// The switch that washes the accent across the whole interface — see
-        /// `AccentTheme.tintsInterfaceKey`. `tintInterfaceMono` is the footer it gets when the accent
-        /// is the mono one and there is no colour to spread.
+        /// `AccentTheme.tintsInterfaceKey`.
         public static let tintInterface = LocalizedStringResource("appearance.tintInterface", bundle: bundle)
-        public static let tintInterfaceMono = LocalizedStringResource("appearance.tintInterfaceMono", bundle: bundle)
-
-        /// "Normally the colour goes no further than…" — and what "normally" covers is one item
-        /// shorter in the compact column, where the messages were never in the list.
-        public static func tintInterfaceHelp(_ layout: MessageLayout) -> LocalizedStringResource {
-            switch layout {
-            case .bubbles: LocalizedStringResource("appearance.tintInterfaceHelp", bundle: bundle)
-            case .compact: LocalizedStringResource("appearance.tintInterfaceHelpCompact", bundle: bundle)
-            }
-        }
 
         /// Four lines of a conversation that never happened, so that a colour can be judged as
         /// what it will actually be — the fill behind everything the user ever says — rather than
