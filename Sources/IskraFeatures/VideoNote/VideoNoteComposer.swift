@@ -209,11 +209,14 @@ struct VideoNoteComposer: View {
         .accessibilityLabel(Text(Strings.VideoNote.title))
     }
 
-    /// The two things that can be wrong, and the one thing worth saying while it works.
+    /// The two things that can be wrong, and the one word said while the clip is on its way.
     ///
-    /// No "hold to record" here any more: by the time this is on the screen the hold has already
-    /// happened. What is left to say is how to get out of it hands-free, and only while there is
-    /// still a hand on it.
+    /// Nothing is said while the camera simply runs. There used to be a line here naming the three
+    /// ways out of a hold, and it was the wrong moment for instructions: the user is looking at
+    /// their own face, deciding what to say, and a sentence under the circle is something to read
+    /// instead. The swipes are still there and still work; they are just not announced over the
+    /// top of the thing being recorded.
+    ///
     /// It is never *removed*, only faded out, and the line it leaves behind is left holding its
     /// own height. Taking it away instead is what made the whole overlay jump the moment a hold
     /// became a locked recording — the circle and the controls, which have nothing to do with what
@@ -224,7 +227,7 @@ struct VideoNoteComposer: View {
             .font(.callout)
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
-            // Kept off the edges of the phone — "hold to send" is a short line, but "the camera
+            // Kept off the edges of the phone — "sending" is a short line, but "the camera
             // is not allowed" is two, and a sentence that runs into the bezel reads as broken.
             .frame(maxWidth: Theme.Size.videoNoteHint)
             .opacity(hint == nil ? 0 : 1)
@@ -232,14 +235,13 @@ struct VideoNoteComposer: View {
             .accessibilityHidden(hint == nil)
     }
 
-    /// The two things that can be wrong, and the one thing worth saying while it works — or
-    /// nothing, which is a state the line above still occupies.
+    /// The two things that can be wrong, and the one word said while the clip is on its way — or
+    /// nothing, which is what a recording that is going fine now says.
     private var hint: LocalizedStringResource? {
         switch recorder.state {
         case .denied: Strings.VideoNote.needsCamera
         case .unavailable: Strings.VideoNote.noCamera
         case .finishing: Strings.VideoNote.sending
-        case .recording where isHolding: Strings.VideoNote.releaseToSend
         default: nil
         }
     }
