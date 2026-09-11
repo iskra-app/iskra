@@ -20,6 +20,22 @@ import IskraCore
 public final class VoiceRecorder {
     public enum State: Equatable {
         case idle
+        /// The hold has taken and the microphone is being opened, which is not instant.
+        ///
+        /// Between this and `.recording` sits a round-trip to `mediaserverd` — `setCategory` and
+        /// `setActive`, queued behind whatever else was asked of the audio session, so listening to
+        /// a voice message and then recording one pays for the deactivation of the first before the
+        /// second is even looked at — and then `AVAudioRecorder` opening a file. On a Mac that is
+        /// nothing. On a phone it is most of a second, and it used to be a second of *nothing*: the
+        /// composer showed a recording only from `.recording`, so the hold took, the phone tapped
+        /// the hand, and then the screen sat still long enough for the user to conclude the app had
+        /// not noticed and press again.
+        ///
+        /// So the state exists to be *shown*. The strip goes up the moment the hold commits, with
+        /// the clock at zero, and the microphone arrives underneath it. What is not faked is the
+        /// recording itself: `finish()` still hands back nothing from here, because there is
+        /// nothing in the file yet.
+        case starting
         case recording
         /// The microphone stopped without being asked to, and what was said up to that point is
         /// still worth sending.
@@ -105,12 +121,18 @@ public final class VoiceRecorder {
         // holding this any more, and there is nothing on screen that would show it if we recorded.
         guard generation == self.generation, state == .idle else { return }
 
+        // Said before the slow part rather than after it, and this is the whole of the fix for a
+        // hold that appeared to do nothing for a second: everything below is the microphone being
+        // opened, and none of it is worth making the user watch an unchanged screen through. See
+        // `State.starting`.
+        state = .starting
+
         await AudioSession.prepare(for: .recording)
 
         // And again on the other side of it. Waking the session is a round-trip to another process
         // (see `AudioSession`), and a thumb can be lifted while it is in flight — recording then
         // would leave a microphone running that nothing on screen admits to.
-        guard generation == self.generation, state == .idle else {
+        guard generation == self.generation, state == .starting else {
             AudioSession.release()
             return
         }
