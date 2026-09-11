@@ -265,7 +265,10 @@ public struct RoomView: View {
                     loadEarlier
 
                     ForEach(placedRows) { placed in
-                        view(for: placed.row, followsEvent: placed.followsEvent, in: scroll)
+                        view(for: placed.row,
+                             followsEvent: placed.followsEvent,
+                             opensDay: placed.opensDay,
+                             in: scroll)
                             .id(placed.id)
                     }
 
@@ -1162,32 +1165,41 @@ public struct RoomView: View {
     /// gives up on the whole body — "unable to type-check this expression in reasonable time" —
     /// because every closure it has to infer multiplies through the view tree around it.
     @ViewBuilder
-    private func view(for row: TimelineRow, followsEvent: Bool, in scroll: ScrollViewProxy) -> some View {
+    private func view(for row: TimelineRow,
+                      followsEvent: Bool,
+                      opensDay: Bool,
+                      in scroll: ScrollViewProxy) -> some View {
         switch row {
         case let .dayDivider(divider):
             DayDividerView(date: divider.date)
         case let .event(event):
-            RoomEventRow(event: event, followsEvent: followsEvent)
+            RoomEventRow(event: event, followsEvent: followsEvent, opensDay: opensDay)
         case let .message(message):
-            messageRow(message, in: scroll)
+            messageRow(message, opensDay: opensDay, in: scroll)
         }
     }
 
-    /// A row, and the one fact about its neighbours it needs: whether the row above it was
-    /// another service note. Only `RoomEventRow` uses it — to close the gap inside a run of
-    /// notes — but the row cannot work it out alone, and asking for it row by row inside the
+    /// A row, and the two facts about its neighbours it needs: whether the row above it was
+    /// another service note, and whether it was a date. The first closes the gap inside a run of
+    /// notes; the second stops the first row of a day paying for air the date has already given
+    /// it. Neither can be worked out by the row alone, and asking for them row by row inside the
     /// `ForEach` would walk the timeline once per row.
     private struct PlacedRow: Identifiable {
         let row: TimelineRow
         let followsEvent: Bool
+        let opensDay: Bool
         var id: String { row.id }
     }
 
     private var placedRows: [PlacedRow] {
         var previousWasEvent = false
+        var previousWasDivider = false
         return timeline.rows.map { row in
-            let placed = PlacedRow(row: row, followsEvent: previousWasEvent)
+            let placed = PlacedRow(row: row,
+                                   followsEvent: previousWasEvent,
+                                   opensDay: previousWasDivider)
             if case .event = row { previousWasEvent = true } else { previousWasEvent = false }
+            if case .dayDivider = row { previousWasDivider = true } else { previousWasDivider = false }
             return placed
         }
     }
@@ -1196,7 +1208,9 @@ public struct RoomView: View {
     /// the choice is acted on: everything below here is one row or the other, and neither of them
     /// asks which it is.
     @ViewBuilder
-    private func messageRow(_ message: Message, in scroll: ScrollViewProxy) -> some View {
+    private func messageRow(_ message: Message,
+                            opensDay: Bool,
+                            in scroll: ScrollViewProxy) -> some View {
         let handlers = handlers(for: message, in: scroll)
         let isPinned = timeline.isPinned(messageID: message.id)
         let isHighlighted = highlighted == message.id
@@ -1207,6 +1221,7 @@ public struct RoomView: View {
                        isDirectChat: timeline.isDirectChat,
                        handlers: handlers,
                        isPinned: isPinned,
+                       opensDay: opensDay,
                        isHighlighted: isHighlighted)
         case .compact:
             // No `isDirectChat`: the plain column says who spoke in every conversation, because
@@ -1214,6 +1229,7 @@ public struct RoomView: View {
             CompactMessageRow(message: message,
                               handlers: handlers,
                               isPinned: isPinned,
+                              opensDay: opensDay,
                               isHighlighted: isHighlighted)
         }
     }

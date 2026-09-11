@@ -25,6 +25,10 @@ struct RoomEventRow: View {
     /// the run begins.
     var followsEvent: Bool = false
 
+    /// Whether a date sits directly above this note and has already given it its air —
+    /// see `MessageRow.opensDay`.
+    var opensDay: Bool = false
+
     var body: some View {
         Text(event.text)
             .font(.caption)
@@ -33,6 +37,6 @@ struct RoomEventRow: View {
             .padding(.horizontal, Theme.Spacing.normal)
             .padding(.vertical, Theme.Spacing.tight)
             .frame(maxWidth: .infinity)
-            .padding(.top, followsEvent ? 0 : Theme.Spacing.betweenSenders)
+            .padding(.top, followsEvent || opensDay ? 0 : Theme.Spacing.betweenSenders)
     }
 }
