@@ -1545,10 +1545,15 @@ struct DayDividerView: View {
         Text(Self.label(for: date))
             .font(.caption.weight(.medium))
             .foregroundStyle(.secondary)
-            // Enough air to read as a break in the conversation, and no more. At `roomy` the date
-            // was holding a band of empty screen the height of a message either side of it, so a
-            // day with two lines in it looked like a day with a hole in it.
-            .padding(.vertical, Theme.Spacing.normal)
+            // Enough air to read as a break in the conversation, and no more. At `roomy` on both
+            // sides the date was holding a band of empty screen the height of a message either
+            // side of it, so a day with two lines in it looked like a day with a hole in it.
+            //
+            // The air is uneven on purpose: the gap belongs above the date, because the date
+            // closes the day before it and *opens* the one under it. Sitting equidistant, it
+            // floated between two days and belonged to neither.
+            .padding(.top, Theme.Spacing.roomy)
+            .padding(.bottom, Theme.Spacing.close)
             .frame(maxWidth: .infinity)
     }
 
