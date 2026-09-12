@@ -182,10 +182,20 @@ struct VideoNoteComposer: View {
     @ViewBuilder
     private var circle: some View {
         ZStack {
-            if let session = recorder.session {
+            // The camera goes dark the moment the take is over. Closing the file, cropping it
+            // square and handing it to the upload takes a second or two, and for the whole of
+            // that second the lens is still on — so the last thing the user saw of a message
+            // they had already sent was their own face, live, going on without them. What is
+            // being sent is not what is in front of the camera any more, and the screen should
+            // stop saying that it is.
+            if let session = recorder.session, !isFinishing {
                 CameraPreview(session: session)
             } else {
-                Circle().fill(.quaternary)
+                Circle()
+                    .fill(.quaternary)
+                    // Something is still happening, and with the picture gone the circle would
+                    // otherwise be a grey disc that gives no sign of it.
+                    .overlay { if isFinishing { ProgressView().tint(.white) } }
             }
         }
         // Square by aspect rather than by a fixed width, so the circle grows to whatever the
@@ -376,6 +386,9 @@ struct VideoNoteComposer: View {
     @State private var started = 0
 
     private var isRecording: Bool { recorder.isRecording }
+
+    /// The take is over and the clip is on its way — see `circle`, which turns the lens off here.
+    private var isFinishing: Bool { recorder.state == .finishing }
 
     private var canRecord: Bool {
         recorder.state == .ready || isRecording
