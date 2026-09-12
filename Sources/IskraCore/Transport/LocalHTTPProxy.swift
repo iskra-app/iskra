@@ -99,7 +99,13 @@ public actor LocalHTTPProxy {
                     response = ProxiedResponse(status: 502)
                 }
                 if let localBase {
-                    response = Self.keepDiscoveryHome(request, response, localBase: localBase)
+                    let (rewritten, discovered) = Self.keepDiscoveryHome(
+                        request, response, localBase: localBase
+                    )
+                    response = rewritten
+                    if let discovered {
+                        await upstream.discovered(homeserver: discovered)
+                    }
                 }
                 guard await channel.write(response) else { break }
             }
@@ -120,26 +126,31 @@ public actor LocalHTTPProxy {
     /// So the discovered base URL is rewritten to us, and the bridge resolves the real one.
     /// `m.identity_server` is deliberately left alone — it names a different host and is not
     /// something this bridge fronts, so pointing it here would break it rather than tunnel it.
+    /// - Returns: the answer to hand back, and the homeserver discovery named, if it named one.
+    ///   The caller passes that second value to the upstream so later requests go to the host the
+    ///   API actually lives on.
     static func keepDiscoveryHome(
         _ request: ProxiedRequest,
         _ response: ProxiedResponse,
         localBase: String
-    ) -> ProxiedResponse {
+    ) -> (ProxiedResponse, URL?) {
         guard request.target.hasPrefix("/.well-known/matrix/client"),
               response.status == 200,
               var document = try? JSONSerialization.jsonObject(with: response.body) as? [String: Any],
               var homeserver = document["m.homeserver"] as? [String: Any]
-        else { return response }
+        else { return (response, nil) }
+
+        let discovered = (homeserver["base_url"] as? String).flatMap(URL.init(string:))
 
         homeserver["base_url"] = localBase
         document["m.homeserver"] = homeserver
 
         guard let rewritten = try? JSONSerialization.data(withJSONObject: document) else {
-            return response
+            return (response, discovered)
         }
         var response = response
         response.body = rewritten
-        return response
+        return (response, discovered)
     }
 
     private func record(_ request: ProxiedRequest) {

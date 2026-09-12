@@ -73,6 +73,28 @@ public enum Strings {
     /// The state of the connection, said out loud. See `OfflineBanner`.
     public enum Connection {
         public static let offline = LocalizedStringResource("connection.offline", bundle: bundle)
+
+        // The screen where traffic is routed through a bridge rather than straight at the
+        // homeserver. Two of these strings are the screen's whole reason for existing.
+        // `unfinishedBody` says that the switch does not yet get anyone past a block — a person
+        // who believes otherwise, in a place where it matters, is worse off than one who was told
+        // plainly. `seesBody` says what a bridge can read: the token, the rooms, the text of
+        // unencrypted messages. That is the bargain being offered, and offering it without naming
+        // it is not consent.
+        public static let title = LocalizedStringResource("connection.title", bundle: bundle)
+        public static let bridge = LocalizedStringResource("connection.bridge", bundle: bundle)
+        public static let bridgeFooter = LocalizedStringResource("connection.bridgeFooter", bundle: bundle)
+
+        public static let status = LocalizedStringResource("connection.status", bundle: bundle)
+        public static let statusDirect = LocalizedStringResource("connection.statusDirect", bundle: bundle)
+        public static let statusLocal = LocalizedStringResource("connection.statusLocal", bundle: bundle)
+        public static let statusFailed = LocalizedStringResource("connection.statusFailed", bundle: bundle)
+
+        public static let unfinished = LocalizedStringResource("connection.unfinished", bundle: bundle)
+        public static let unfinishedBody = LocalizedStringResource("connection.unfinishedBody", bundle: bundle)
+
+        public static let sees = LocalizedStringResource("connection.sees", bundle: bundle)
+        public static let seesBody = LocalizedStringResource("connection.seesBody", bundle: bundle)
     }
 
     public enum RoomList {
@@ -874,6 +896,8 @@ public enum Strings {
         /// Where the emoji a double tap sends is chosen — see `QuickReaction`.
         public static let reactions = LocalizedStringResource("settings.reactions", bundle: bundle)
         public static let storage = LocalizedStringResource("settings.storage", bundle: bundle)
+        /// Where the bridge is switched on — see `Strings.Connection`.
+        public static let connection = LocalizedStringResource("settings.connection", bundle: bundle)
         public static let moreSoon = LocalizedStringResource("settings.moreSoon", bundle: bundle)
 
         /// The blocked-people screen, reached from settings.
