@@ -7,6 +7,7 @@ use std::num::NonZeroU32;
 use std::sync::Arc;
 use std::time::Duration;
 
+use iskra_bridge::upstream::Upstreams;
 use iskra_bridge::{Bridge, Config};
 use iskra_tunnel_probe::TunnelClient;
 use nostr_relay_builder::builder::RateLimit;
@@ -45,7 +46,14 @@ impl Harness {
         let bridge_keys = Keys::generate();
 
         let config = tweak(Config {
-            homeserver: Url::parse(&homeserver.uri()).expect("homeserver url"),
+            // Listed rather than open, which also means the wiremock server's loopback address is
+            // allowed: an operator naming a homeserver has vouched for it, and only an open bridge
+            // has to refuse private addresses.
+            upstreams: Upstreams::new(
+                Some(Url::parse(&homeserver.uri()).expect("homeserver url")),
+                None,
+            )
+            .expect("upstreams"),
             keys: bridge_keys.clone(),
             relays: vec![relay_url.clone()],
             client_relays: vec![relay_url.clone()],

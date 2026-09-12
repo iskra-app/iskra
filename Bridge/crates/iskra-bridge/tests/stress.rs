@@ -79,6 +79,7 @@ async fn sustained_concurrent_load_answers_every_request() {
                     .request(
                         "GET",
                         "/_matrix/client/versions",
+                        None,
                         BTreeMap::new(),
                         Vec::new(),
                         TIMEOUT,
@@ -132,6 +133,7 @@ async fn many_distinct_clients_are_all_served() {
                     .request(
                         "GET",
                         "/_matrix/client/versions",
+                        None,
                         BTreeMap::new(),
                         Vec::new(),
                         TIMEOUT,
@@ -176,6 +178,7 @@ async fn a_flood_from_one_key_is_cut_off_without_taking_the_bridge_down() {
                     .request(
                         "GET",
                         "/_matrix/client/versions",
+                        None,
                         BTreeMap::new(),
                         Vec::new(),
                         Duration::from_secs(2),
@@ -206,6 +209,7 @@ async fn a_flood_from_one_key_is_cut_off_without_taking_the_bridge_down() {
         .request(
             "GET",
             "/_matrix/client/versions",
+            None,
             BTreeMap::new(),
             Vec::new(),
             TIMEOUT,
@@ -225,14 +229,21 @@ async fn a_flood_from_one_key_is_cut_off_without_taking_the_bridge_down() {
 async fn a_response_too_large_for_one_envelope_still_answers() {
     let harness = Harness::start_with(unlimited).await;
     Mock::given(method("GET"))
-        .and(path("/big"))
+        .and(path("/_matrix/client/big"))
         .respond_with(ResponseTemplate::new(200).set_body_string("x".repeat(200_000)))
         .mount(&harness.homeserver)
         .await;
 
     let client = harness.client().await;
     let response = client
-        .request("GET", "/big", BTreeMap::new(), Vec::new(), TIMEOUT)
+        .request(
+            "GET",
+            "/_matrix/client/big",
+            None,
+            BTreeMap::new(),
+            Vec::new(),
+            TIMEOUT,
+        )
         .await
         .expect("an answer, even a refusal — never silence");
 
@@ -246,7 +257,7 @@ async fn bodies_near_the_chunk_boundary_round_trip() {
     let harness = Harness::start_with(unlimited).await;
     for size in [0usize, 1, 1024, 16 * 1024, 24 * 1024] {
         Mock::given(method("GET"))
-            .and(path(format!("/size/{size}")))
+            .and(path(format!("/_matrix/client/size/{size}")))
             .respond_with(ResponseTemplate::new(200).set_body_string("y".repeat(size)))
             .mount(&harness.homeserver)
             .await;
@@ -257,7 +268,8 @@ async fn bodies_near_the_chunk_boundary_round_trip() {
         let response = client
             .request(
                 "GET",
-                &format!("/size/{size}"),
+                &format!("/_matrix/client/size/{size}"),
+                None,
                 BTreeMap::new(),
                 Vec::new(),
                 TIMEOUT,
@@ -301,6 +313,7 @@ async fn soak() {
             .request(
                 "GET",
                 "/_matrix/client/versions",
+                None,
                 BTreeMap::new(),
                 Vec::new(),
                 TIMEOUT,

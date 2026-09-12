@@ -27,29 +27,30 @@ const HOP_BY_HOP: &[&str] = &[
 
 pub struct Forwarder {
     http: reqwest::Client,
-    homeserver: Url,
 }
 
 impl Forwarder {
-    pub fn new(homeserver: Url, timeout: Duration) -> Result<Self> {
+    pub fn new(timeout: Duration) -> Result<Self> {
         let http = reqwest::Client::builder()
             .timeout(timeout)
             // The bridge is the only thing in this design that talks TLS to the homeserver, so its
             // certificate checking stays on. There is no flag here to turn it off.
             .build()?;
-        Ok(Self { http, homeserver })
+        Ok(Self { http })
     }
 
-    pub async fn forward(&self, request: HttpRequest) -> Result<HttpResponse> {
+    /// - `upstream` is the homeserver `Upstreams::resolve` settled on. The forwarder does not
+    ///   choose it and cannot be talked into another one: whatever the path says, the request goes
+    ///   to this origin or nowhere.
+    pub async fn forward(&self, request: HttpRequest, upstream: &Url) -> Result<HttpResponse> {
         let method = Method::from_bytes(request.method.as_bytes())
             .map_err(|_| anyhow!("unusable method"))?;
-        let url = self
-            .homeserver
+        let url = upstream
             .join(&request.path)
             .map_err(|_| anyhow!("unusable path"))?;
 
         // A tunnelled path must not be able to redirect the bridge at some other host.
-        if url.origin() != self.homeserver.origin() {
+        if url.origin() != upstream.origin() {
             return Err(anyhow!("path escapes the homeserver origin"));
         }
 

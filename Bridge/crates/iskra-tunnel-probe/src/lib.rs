@@ -78,15 +78,20 @@ impl TunnelClient {
     }
 
     /// Send one request through the tunnel and wait for its answer.
+    ///
+    /// - `upstream` names the homeserver it is for, as an origin. `None` leaves the choice to the
+    ///   bridge's configured default, which is all a bridge fronting one homeserver ever needed.
     pub async fn request(
         &self,
         method: &str,
         path: &str,
+        upstream: Option<&str>,
         headers: BTreeMap<String, String>,
         body: Vec<u8>,
         timeout: Duration,
     ) -> Result<HttpResponse> {
         let mut request = HttpRequest::new(method, path);
+        request.upstream = upstream.map(str::to_string);
         request.headers = headers;
         request.body = body;
         let id = request.id.clone();
