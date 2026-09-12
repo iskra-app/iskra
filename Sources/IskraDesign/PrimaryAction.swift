@@ -76,6 +76,65 @@ public struct GlassActionStyle: ButtonStyle {
     }
 }
 
+/// The two answers to a question the app is asking: yes in green, no in red.
+///
+/// The one place in this app where a button's colour is *not* the accent, and it is allowed to
+/// be for the same reason a traffic light is allowed to be: green and red here are not decoration
+/// and not branding, they are the two answers themselves. An invitation is the only screen that
+/// asks a question with two equally real answers side by side — everywhere else there is one
+/// action and a way back — and a pair of identical grey capsules makes the reader stop and read
+/// both before answering something they had already decided about.
+///
+/// The two are drawn by one style with a colour passed in, so they cannot drift apart: same
+/// height, same padding, same weight, same corner. Equal *width* is the call site's to give —
+/// `.frame(maxWidth: .infinity)` on both — because only the call site knows what they are
+/// sharing.
+///
+/// White on both, in both appearances, rather than `AccentTheme.foreground`: these fills are
+/// fixed colours and not the accent, and white is readable on both of them light and dark.
+public struct AnswerStyle: ButtonStyle {
+    public enum Answer {
+        case accepting
+        case declining
+
+        var color: Color {
+            switch self {
+            case .accepting: .green
+            case .declining: .red
+            }
+        }
+    }
+
+    let answer: Answer
+
+    public func makeBody(configuration: Configuration) -> some View {
+        Face(answer: answer, configuration: configuration)
+    }
+
+    private struct Face: View {
+        let answer: Answer
+        let configuration: Configuration
+        @ScaledSize(Theme.Size.minimumTapTarget) private var height
+
+        var body: some View {
+            configuration.label
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .padding(.horizontal, Theme.Spacing.normal)
+                .padding(.vertical, Theme.Spacing.close)
+                .frame(minHeight: height)
+                .background(answer.color, in: .capsule)
+                .pressed(configuration.isPressed)
+        }
+    }
+}
+
+public extension ButtonStyle where Self == AnswerStyle {
+    /// Yes or no, in the two colours everybody already reads as yes and no — see `AnswerStyle`.
+    static func answer(_ answer: AnswerStyle.Answer) -> AnswerStyle { AnswerStyle(answer: answer) }
+}
+
 private extension View {
     /// The press. Small, and on the whole button rather than on its label: a filled shape that
     /// dips is how the system's own prominent buttons answer a finger, and a label that moved
