@@ -46,18 +46,55 @@ async fn main() -> Result<()> {
     eprintln!("probe pubkey: {}", keys.public_key());
 
     let client = TunnelClient::connect(keys, bridge, &relays).await?;
-    let response = client
-        .request(
-            &method,
-            &path,
-            BTreeMap::new(),
-            Vec::new(),
-            Duration::from_secs(30),
-        )
-        .await?;
+
+    // `PROBE_REPEAT` exists because the first request is not the interesting one: it pays for
+    // process start, three TLS handshakes and the websocket upgrades, and quoting that number as
+    // "the latency of the tunnel" would be off by most of itself. What matters is the steady-state
+    // round trip on a connection that is already open.
+    let repeat: usize = std::env::var("PROBE_REPEAT")
+        .ok()
+        .and_then(|raw| raw.parse().ok())
+        .unwrap_or(1);
+
+    let mut last = None;
+    let mut timings = Vec::with_capacity(repeat);
+    for attempt in 1..=repeat {
+        let started = std::time::Instant::now();
+        let response = client
+            .request(
+                &method,
+                &path,
+                BTreeMap::new(),
+                Vec::new(),
+                Duration::from_secs(30),
+            )
+            .await?;
+        let elapsed = started.elapsed();
+        timings.push(elapsed);
+        eprintln!(
+            "#{attempt} HTTP {} — {} bytes in {:?}",
+            response.status,
+            response.body.len(),
+            elapsed
+        );
+        last = Some(response);
+    }
     client.shutdown().await;
 
-    eprintln!("HTTP {}", response.status);
-    println!("{}", String::from_utf8_lossy(&response.body));
+    if timings.len() > 1 {
+        timings.sort();
+        let total: Duration = timings.iter().sum();
+        eprintln!(
+            "min {:?} · median {:?} · max {:?} · mean {:?}",
+            timings[0],
+            timings[timings.len() / 2],
+            timings[timings.len() - 1],
+            total / timings.len() as u32
+        );
+    }
+
+    if let Some(response) = last {
+        println!("{}", String::from_utf8_lossy(&response.body));
+    }
     Ok(())
 }
