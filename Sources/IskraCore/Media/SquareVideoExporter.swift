@@ -93,11 +93,23 @@ public enum SquareVideoExporter {
 
         let composition = AVMutableVideoComposition()
         composition.renderSize = output
-        composition.frameDuration = CMTime(value: 1, timescale: 30)
+        composition.frameDuration = CMTime(value: 1, timescale: CMTimeScale(VideoNote.frameRate))
         composition.instructions = [instruction]
         composition.animationTool = corners(over: output)
 
-        guard let session = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetHighestQuality) else {
+        // Medium and not highest, which is not a shrug at quality — it is the one dial an
+        // export session has. There is no bit-rate setting on it at all, so the choice is between
+        // the preset that encodes a 480-point circle of somebody's face as though it were going
+        // to be projected and the one that encodes it as though it were going to be watched on a
+        // phone. The frames arriving here have already been written at the rate this app
+        // considers right (see `VideoNote.bitsPerPixel`), and "highest" would spend several times
+        // that putting them back together.
+        //
+        // The render size is the composition's, not the preset's: a preset only resizes an export
+        // that has no video composition to say otherwise, and `SquareVideoExporterTests` pins the
+        // output at exactly 480 x 480 precisely so that this line cannot quietly change the shape
+        // of a video note — which is the one property the whole feature is recognised by.
+        guard let session = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetMediumQuality) else {
             throw Failure.exportFailed(nil)
         }
         session.videoComposition = composition

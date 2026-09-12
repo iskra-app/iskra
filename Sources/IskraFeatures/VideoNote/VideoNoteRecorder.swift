@@ -166,7 +166,14 @@ public final class VideoNoteRecorder: NSObject {
 
         guard let built = await Task.detached(priority: .userInitiated) { () -> Camera? in
             let session = AVCaptureSession()
-            session.sessionPreset = .high
+            // 720p rather than the camera's best, and asked for rather than assumed — a machine
+            // that will not give it keeps whatever `.high` means there.
+            //
+            // What comes out of this is a circle 480 points across. A 1080p sensor feeds that
+            // five times the pixels it can use, and every one of them is encoded, written, read
+            // back and scaled away again — battery and heat spent on detail that is thrown out
+            // before the message is sent. 720p is still comfortably more than the crop needs.
+            session.sessionPreset = session.canSetSessionPreset(.hd1280x720) ? .hd1280x720 : .high
 
             // The camera we want, or whatever this machine has if it has no notion of sides.
             guard let lens = Self.lens(facing: wanted) ?? AVCaptureDevice.default(for: .video),

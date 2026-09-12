@@ -146,6 +146,34 @@ struct SquareVideoExporterTests {
         #expect(try brightness(of: frame, x: 240, y: 6) > 64)
     }
 
+    /// A minute of video is the largest thing this app sends without being asked to, and until
+    /// somebody put a number on it nobody was watching the number. The export is the last hand
+    /// the file passes through, and it is the one place where "quality" was set to the preset
+    /// that spends the most — on a 480-point circle of a face, over somebody's mobile data.
+    ///
+    /// The clip here is *noise*, which is the point: a flat grey test video compresses to nearly
+    /// nothing whatever the preset says, so it would pass this check while proving no part of
+    /// it. Random pixels are the worst input an encoder can be given, so what this measures is
+    /// the ceiling rather than the average — and the ceiling is what a bit rate *is*.
+    ///
+    /// Three times the nominal rate, because the preset is not a bit-rate setting and cannot be
+    /// held to one exactly (see `SquareVideoExporter`). It is wide enough that ordinary video
+    /// never comes near it and narrow enough to fail if this ever goes back to
+    /// `AVAssetExportPresetHighestQuality`, which measures about twice this on the same clip.
+    @Test("a video note is compressed on its way out")
+    func compressesWhatItSends() async throws {
+        let source = try await makeVideo(width: 1080, height: 1920, seconds: 2, noisy: true)
+        defer { try? FileManager.default.removeItem(at: source) }
+
+        let square = try await SquareVideoExporter.square(source, side: 480)
+        defer { try? FileManager.default.removeItem(at: square) }
+
+        let track = try #require(try await AVURLAsset(url: square).loadTracks(withMediaType: .video).first)
+        let rate = try await track.load(.estimatedDataRate)
+
+        #expect(rate <= Float(VideoNote.bitRate(width: 480, height: 480) * 3))
+    }
+
     // MARK: - Making a real video to crop
 
     private func firstFrame(of url: URL) async throws -> CGImage {
@@ -181,7 +209,7 @@ struct SquareVideoExporterTests {
     /// Writes a short clip of solid colour at the requested size, with — when asked — an
     /// audio track of silence on it. Silence is enough: what is being tested is whether the
     /// track is still *there*, not what is on it.
-    private func makeVideo(width: Int, height: Int, seconds: Int, withSound: Bool = false) async throws -> URL {
+    private func makeVideo(width: Int, height: Int, seconds: Int, withSound: Bool = false, noisy: Bool = false) async throws -> URL {
         let url = URL.temporaryDirectory.appending(component: "\(UUID().uuidString).mp4")
 
         let writer = try AVAssetWriter(outputURL: url, fileType: .mp4)
@@ -221,7 +249,14 @@ struct SquareVideoExporterTests {
 
             CVPixelBufferLockBaseAddress(pixelBuffer, [])
             if let base = CVPixelBufferGetBaseAddress(pixelBuffer) {
-                memset(base, 128, CVPixelBufferGetBytesPerRow(pixelBuffer) * height)
+                let bytes = CVPixelBufferGetBytesPerRow(pixelBuffer) * height
+                if noisy {
+                    // Every byte different from the last, and different again in the next frame:
+                    // the encoder is given nothing to predict and nothing to repeat.
+                    arc4random_buf(base, bytes)
+                } else {
+                    memset(base, 128, bytes)
+                }
             }
             CVPixelBufferUnlockBaseAddress(pixelBuffer, [])
 
