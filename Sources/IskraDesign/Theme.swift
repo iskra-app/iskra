@@ -88,10 +88,14 @@ public enum Theme {
         /// loud: it went away when the hand-drawn menu did, and it is back because the menu is
         /// ours again — see `MessageMenu`. The number is the argument. The system's own
         /// `.contextMenu` waits about half a second and will not be talked down, and on a message
-        /// you have already decided to answer that wait reads as the app deliberating. A shade
-        /// under three tenths is short enough to feel like an answer and long enough that a
-        /// decisive tap on a photograph still opens the photograph.
-        public static let menuLift: TimeInterval = 0.28
+        /// you have already decided to answer that wait reads as the app deliberating.
+        ///
+        /// It was a shade under three tenths, and that was still long enough to feel like being
+        /// made to wait. A sixth of a second is past the point where a press reads as a tap —
+        /// the system's own double-tap interval is more than twice it, and a decisive tap on a
+        /// photograph is over well inside it, so the photograph still opens — and it is short
+        /// enough that the menu feels like the answer to the press rather than to the holding.
+        public static let menuLift: TimeInterval = 0.17
 
         /// The menu arriving: the bubble rising off the page, the bar and the list opening
         /// around it. A spring, because the lift is the one moment in a conversation where the
@@ -531,6 +535,18 @@ public enum Theme {
         /// four rows at once — fewer and it reads as a scrap of a keyboard rather than a
         /// keyboard — and short enough to leave the message it belongs to on screen.
         public static let emojiPanel: CGFloat = 268
+
+        /// And how wide it is — half again as wide as the menu of verbs beside it.
+        ///
+        /// The only part of the menu that is not a column of words. It is a *grid*, and a grid
+        /// is measured in cells: at the menu's own 240 points it fits five emoji to a row, so a
+        /// category of a hundred characters arrives as a ribbon twenty rows long that has to be
+        /// scrolled past to reach the next one. At 360 it fits seven, which is most of a
+        /// category in a screenful and close to the row the system's own picker gives.
+        ///
+        /// It is capped against the screen where it is used, so on the narrowest phone it is
+        /// simply as wide as there is room for — see `MessageMenuLayout.emojiWidth`.
+        public static let emojiPanelWidth: CGFloat = menuWidth * 1.5
     }
 
     /// The colours of the storage bar, which are the one place in the app that colour carries

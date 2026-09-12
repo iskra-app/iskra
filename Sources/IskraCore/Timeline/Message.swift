@@ -212,6 +212,18 @@ public struct Message: Sendable, Identifiable, Equatable {
     public let isOwn: Bool
     public let timestamp: Date
     public let delivery: DeliveryStatus?
+    /// When somebody else first read it, for one of your own that has been read.
+    ///
+    /// The earliest read receipt on the event, and "earliest" is the decision: in a room of
+    /// twenty people the receipts go on arriving for hours, and the question anybody presses a
+    /// message to ask is when it *was read*, not when the last person got round to it.
+    ///
+    /// Nil far more often than `delivery == .read` is false, and that is not a bug to be tidied
+    /// away: a receipt is allowed to arrive without a timestamp on it — the SDK says so — and a
+    /// homeserver that sends one is telling us the message was read and not when. So the menu
+    /// shows the line when there is a moment to show and says nothing when there is not, rather
+    /// than inventing one from the clock.
+    public let readAt: Date?
     public let isEdited: Bool
     /// What this message is an answer to, for one that is.
     public let replyTo: ReplyPreview?
@@ -237,6 +249,7 @@ public struct Message: Sendable, Identifiable, Equatable {
                 isOwn: Bool,
                 timestamp: Date,
                 delivery: DeliveryStatus?,
+                readAt: Date? = nil,
                 isEdited: Bool,
                 replyTo: ReplyPreview? = nil,
                 reactions: [MessageReaction],
@@ -251,6 +264,7 @@ public struct Message: Sendable, Identifiable, Equatable {
         self.isOwn = isOwn
         self.timestamp = timestamp
         self.delivery = delivery
+        self.readAt = readAt
         self.isEdited = isEdited
         self.replyTo = replyTo
         self.reactions = reactions

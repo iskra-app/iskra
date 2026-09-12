@@ -431,6 +431,16 @@ public enum Strings {
                 LocalizedStringResource("message.menu.sentAt", defaultValue: "Sent \(date)", bundle: bundle)
             }
 
+            /// And when somebody read it, on one of your own that has been read.
+            ///
+            /// Only sometimes there. A read receipt is allowed to arrive without a moment
+            /// attached to it — see `Message.readAt` — and this line is not written from the
+            /// clock when it does: "read" with a time on it that nobody measured is worse than
+            /// the two ticks beside the bubble, which at least only claim what they know.
+            public static func readAt(_ date: String) -> LocalizedStringResource {
+                LocalizedStringResource("message.menu.readAt", defaultValue: "Read \(date)", bundle: bundle)
+            }
+
             /// And on a message that is gone, the other moment worth knowing.
             public static func deletedAt(_ date: String) -> LocalizedStringResource {
                 LocalizedStringResource("message.menu.deletedAt", defaultValue: "Deleted \(date)", bundle: bundle)

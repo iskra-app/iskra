@@ -335,6 +335,10 @@
    for the hour and nothing else; this is the whole date, formatted by the system. */
 "message.menu.sentAt" = "Sent %@";
 
+/* And when it was read, when the server said when. A receipt can arrive with no moment
+   on it at all, and then this line is simply not there. */
+"message.menu.readAt" = "Read %@";
+
 /* And, on a message that is gone, when it went. */
 "message.menu.deletedAt" = "Deleted %@";
 
