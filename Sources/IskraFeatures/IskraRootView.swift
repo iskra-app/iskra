@@ -87,7 +87,11 @@ public struct IskraRootView: View {
 
     private let authentication = AuthenticationService()
 
-    public init() {}
+    public init() {
+        // Every scroll view in the app hands touches on immediately, so the press that lifts a
+        // message is the length it says it is — see `ScrollTouches`.
+        ScrollTouches.stopDelaying()
+    }
 
     public var body: some View {
         Group {
