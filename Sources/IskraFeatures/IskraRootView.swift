@@ -117,6 +117,21 @@ public struct IskraRootView: View {
 
             case let .signedIn(session):
                 conversations(session)
+                    // The message menu, above every screen the signed-in app has — see
+                    // `MessageMenu`. It lifts a message out of the conversation and darkens
+                    // everything else, and "everything else" is the toolbar above the timeline
+                    // and the composer below it as much as the messages between them. Inside the
+                    // navigation stack it would stop at both, leaving a dimmed conversation
+                    // between a bright title bar and a bright text field.
+                    //
+                    // *Before* the environment below it and not after, which is the one thing
+                    // about this line that is easy to get wrong and impossible to see. The menu
+                    // draws a second copy of the message over the darkened room, and an overlay
+                    // inherits the environment of the view it is attached to — not of that view's
+                    // contents. Put on last, the lifted copy would be the only bubble in the app
+                    // with no media loader: a photograph would lift off the page as an empty
+                    // rectangle, and only ever in the menu.
+                    .messageMenuLayer()
                     .environment(\.mediaLoader, session.media())
                     // Handed down so a bubble can tell a mention of *you* from a mention of anyone
                     // else, without being given the session to do it.

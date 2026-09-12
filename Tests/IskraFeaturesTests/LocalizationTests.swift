@@ -55,6 +55,14 @@ struct LocalizationTests {
         (Strings.Message.Spoken.sentStickerNamed("😄"), en: "a sticker, 😄", ru: "стикер «😄»"),
         (Strings.Settings.reactions, en: "Reactions", ru: "Реакции"),
         (Strings.Reactions.quick, en: "Quick reaction", ru: "Быстрая реакция"),
+        // The menu a long press opens is this app's own — see `MessageMenu` — so every word in
+        // it is this app's to translate, including the ones only VoiceOver ever says.
+        (Strings.Message.Menu.close, en: "Close the menu", ru: "Закрыть меню"),
+        (Strings.Reactions.more, en: "More emoji", ru: "Больше эмодзи"),
+        (Strings.Reactions.recent, en: "Recent", ru: "Недавние"),
+        (Strings.Reactions.smileys, en: "Smileys", ru: "Улыбки"),
+        (Strings.Reactions.hearts, en: "Hearts", ru: "Сердца"),
+        (Strings.Reactions.symbols, en: "Symbols", ru: "Символы"),
         (Strings.Reactions.quickHelp,
          en: "Double-tap a message to leave it.",
          ru: "Двойное касание сообщения ставит эту реакцию."),
