@@ -610,7 +610,15 @@ struct MessageComposer: View {
     private func start() {
         switch mode {
         case .voice: onStartVoice()
-        case .video: onStartVideoNote()
+        case .video:
+            // The keyboard goes down first. The camera comes up as an overlay over the whole
+            // room, and a keyboard left standing underneath it holds the bottom half of the
+            // screen: the circle is squeezed into what is left, the shutter sits above a bar of
+            // letters nobody can see, and the first thing that happens when the message is sent
+            // is the room jumping as the keyboard finally leaves. Nothing being recorded is
+            // typed, so nothing here needs it.
+            isFocused = false
+            onStartVideoNote()
         }
     }
 
