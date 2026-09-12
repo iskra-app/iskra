@@ -437,10 +437,6 @@
 "message.media.pause" = "Pause";
 "message.media.openFile" = "Open file";
 
-/* While a finger is holding the record button down. Nothing about swiping left any more: cancel
-   became a button, and the hint was promising a gesture that no longer exists. */
-"videoNote.releaseToSend" = "Let go to send. Swipe up to carry on recording without holding";
-
 /* The one button in the composer that records: tap to choose voice or video, hold to record. */
 "recording.hint" = "Tap to choose voice or video. Hold to record, and swipe up to keep recording hands-free.";
 "recording.switchToVoice" = "Switch to a voice message";

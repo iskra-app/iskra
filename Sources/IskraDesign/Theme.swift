@@ -144,6 +144,12 @@ public enum Theme {
         /// The twin of `Size.gestureReach`, and it lives here for the same reason: it is a
         /// threshold the user feels, and a number the app has an opinion about. Long enough that
         /// a decisive tap never records; short enough that a hold does not feel ignored.
+        ///
+        /// It was briefly shortened to 180 ms, to cure a hold that seemed to do nothing for about
+        /// a second. It was not the culprit: the second was the microphone being opened behind an
+        /// unchanged screen, and it is cured where it was caused — see `VoiceRecorder.State.starting`.
+        /// So this is a quarter of a second again, which is the number that keeps the widest margin
+        /// between a hold and the tap that flips the button between voice and video.
         public static let holdBegins: Duration = .milliseconds(250)
     }
 

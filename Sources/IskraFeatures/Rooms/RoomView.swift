@@ -1099,11 +1099,19 @@ public struct RoomView: View {
     /// call, the app being put away — and what was said is still there and still worth sending. The
     /// strip stays up so there is something to press send on, and the clock it shows has stopped,
     /// which is the truth.
+    ///
+    /// `.starting` counts too, and for the opposite reason: there the microphone is not open *yet*.
+    /// It is the few hundred milliseconds the phone spends waking the audio session, and the strip
+    /// belongs on the screen for all of them — the hold has taken, the phone has said so with a tap
+    /// on the hand, and the one thing that must not happen next is nothing. The clock reads 0:00 and
+    /// the waveform is empty, because that is exactly what has been recorded so far.
     private var voiceRecording: VoiceRecording? {
-        guard voice.state == .recording || voice.state == .stopped else { return nil }
+        guard voice.state == .starting || voice.state == .recording || voice.state == .stopped else {
+            return nil
+        }
         return VoiceRecording(elapsed: voice.elapsed,
                               waveform: voice.waveform,
-                              isLive: voice.state == .recording)
+                              isLive: voice.state != .stopped)
     }
 
     private func startVoice() async {
