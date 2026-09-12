@@ -21,6 +21,10 @@ public actor LocalHTTPProxy {
     }
 
     private let upstream: HTTPUpstream
+    /// Told where the homeserver really lives, once `.well-known` says so. The upstream is told
+    /// too, but it is not the only one who needs to know: the address that gets written into the
+    /// Keychain has to be the real one, not this listener's.
+    private let onDiscovery: (@Sendable (URL) -> Void)?
     private var listener: NWListener?
     private var boundPort: UInt16?
 
@@ -28,8 +32,9 @@ public actor LocalHTTPProxy {
     /// through here rather than reaching the homeserver some other way.
     private var seen: [ProxiedRequest] = []
 
-    public init(upstream: HTTPUpstream) {
+    public init(upstream: HTTPUpstream, onDiscovery: (@Sendable (URL) -> Void)? = nil) {
         self.upstream = upstream
+        self.onDiscovery = onDiscovery
     }
 
     public var port: UInt16? { boundPort }
@@ -85,6 +90,7 @@ public actor LocalHTTPProxy {
     private func accept(_ connection: NWConnection) {
         let upstream = self.upstream
         let localBase = homeserverURL
+        let onDiscovery = self.onDiscovery
         Task.detached(priority: .userInitiated) { [weak self] in
             let channel = HTTPChannel(connection: connection)
             await channel.start()
@@ -105,6 +111,7 @@ public actor LocalHTTPProxy {
                     response = rewritten
                     if let discovered {
                         await upstream.discovered(homeserver: discovered)
+                        onDiscovery?(discovered)
                     }
                 }
                 guard await channel.write(response) else { break }
