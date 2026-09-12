@@ -35,6 +35,15 @@ public enum Theme {
         public static let picture: CGFloat = 20
         public static let card: CGFloat = 16
         public static let control: CGFloat = 12
+
+        /// The menu a long press opens, and the panel of emoji beside it — see `MessageMenu`.
+        ///
+        /// Rounder than a card and rounder than this app's own instinct, because it is the one
+        /// surface here that has to pass for a system one. Apple's floating panels on 26 are
+        /// drawn at something close to this, the capsule of emoji above the menu is drawn at
+        /// half its own height, and a 16-point corner between the two reads as a dialog box
+        /// that wandered in from an older release.
+        public static let menu: CGFloat = 28
         /// Avatars and video notes.
         public static let circle: CGFloat = .infinity
     }
@@ -73,10 +82,21 @@ public enum Theme {
     /// shadowing it inside `Theme` would make every `Duration.seconds(…)` in the package
     /// mean something subtly different.
     public enum Timing {
-        // There was a `longPress` here, and it is gone with the menu it opened: a message
-        // wears the system's own `.contextMenu` now, and how long the system waits before
-        // lifting the bubble is the system's business — see `MessageRow.actionableContent`.
-        // The impatient path is the double tap, which does not wait at all.
+        /// How long a finger stays on a message before the menu lifts it.
+        ///
+        /// This constant has now been deleted once and written twice, which is worth saying out
+        /// loud: it went away when the hand-drawn menu did, and it is back because the menu is
+        /// ours again — see `MessageMenu`. The number is the argument. The system's own
+        /// `.contextMenu` waits about half a second and will not be talked down, and on a message
+        /// you have already decided to answer that wait reads as the app deliberating. A shade
+        /// under three tenths is short enough to feel like an answer and long enough that a
+        /// decisive tap on a photograph still opens the photograph.
+        public static let menuLift: TimeInterval = 0.28
+
+        /// The menu arriving: the bubble rising off the page, the bar and the list opening
+        /// around it. A spring, because the lift is the one moment in a conversation where the
+        /// app is *picking something up*, and things that are picked up have weight.
+        public static let menuOpens: Animation = .spring(response: 0.34, dampingFraction: 0.78)
 
         /// Reactions arriving and leaving.
         public static let reaction: TimeInterval = 0.25
@@ -466,6 +486,45 @@ public enum Theme {
         public static let sidebarMinimum: CGFloat = 280
         public static let sidebarIdeal: CGFloat = 320
         public static let sidebarMaximum: CGFloat = 400
+
+        /// The list of things you can do to a message — see `MessageMenu`.
+        ///
+        /// Narrow on purpose, and narrower than the screen by a long way: it is a column of
+        /// short verbs, and a menu that runs the full width of an iPhone stops reading as a
+        /// menu and starts reading as a page. The verbs are one word each — the widest of them
+        /// is "Переслать" — so the width is set by the shape a menu should be and not by the
+        /// text, which has room to spare at this size in both languages.
+        public static let menuWidth: CGFloat = 240
+
+        /// One line of that list.
+        ///
+        /// The same 44 the rest of the app uses for anything a finger has to find. It was 48
+        /// for a day, on the argument that a floating panel wants more air than a settings
+        /// screen — and what the four extra points actually bought was distance between verbs
+        /// that belong together. The air a menu needs is *around* the list, at its top and its
+        /// bottom and its sides, and that is where it is now spent.
+        public static let menuRow: CGFloat = 44
+
+        /// The icon column down the leading edge of the menu. Wide enough that a pin, a trash
+        /// can and a bent arrow all sit on the same vertical line — they are drawn at different
+        /// widths, and left to themselves the words beside them would not line up.
+        public static let menuIcon: CGFloat = 26
+
+        /// The bar of emoji above the lifted message.
+        ///
+        /// A fixed number rather than a measured one, and that is load-bearing: the menu works
+        /// out where to put the message *before* anything is drawn, and it can only do that if
+        /// it already knows how tall the bar above it will be.
+        public static let reactionBar: CGFloat = 52
+
+        /// One emoji in that bar, and one cell in the grid the "+" opens. A round tap target
+        /// of the usual size, which is also what makes the grid come out square.
+        public static let reactionCell: CGFloat = 44
+
+        /// The panel of every emoji, when six is not the one you wanted. Tall enough to show
+        /// four rows at once — fewer and it reads as a scrap of a keyboard rather than a
+        /// keyboard — and short enough to leave the message it belongs to on screen.
+        public static let emojiPanel: CGFloat = 268
     }
 
     /// The colours of the storage bar, which are the one place in the app that colour carries

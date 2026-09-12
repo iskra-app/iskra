@@ -705,3 +705,22 @@
 
 /* The button appears only where the server itself says it can make accounts. */
 "signIn.createAccount" = "Create an account";
+
+/* The message menu is ours rather than the system's — see MessageMenu. The darkened room behind
+   a lifted message is a way out of it, and VoiceOver has no other way of being told. */
+"message.menu.close" = "Close the menu";
+
+/* The plus at the end of the six: everything else is behind it. */
+"reactions.more" = "More emoji";
+
+/* The groups in the emoji panel. Short — they are headings over a grid, not chapter titles. */
+"reactions.recent" = "Recent";
+"reactions.smileys" = "Smileys";
+"reactions.gestures" = "Gestures";
+"reactions.hearts" = "Hearts";
+"reactions.animals" = "Animals & nature";
+"reactions.food" = "Food";
+"reactions.activity" = "Activity";
+"reactions.places" = "Places";
+"reactions.objects" = "Objects";
+"reactions.symbols" = "Symbols";

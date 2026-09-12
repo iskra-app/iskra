@@ -413,6 +413,11 @@ public enum Strings {
             public static func deletedAt(_ date: String) -> LocalizedStringResource {
                 LocalizedStringResource("message.menu.deletedAt", defaultValue: "Deleted \(date)", bundle: bundle)
             }
+
+            /// What the darkened conversation behind an open menu *is*, for anybody who cannot
+            /// see that it is a way out. Tapping it closes the menu; VoiceOver has no other way
+            /// of being told so.
+            public static let close = LocalizedStringResource("message.menu.close", bundle: bundle)
         }
 
         /// Watching what somebody sent.
@@ -947,6 +952,23 @@ public enum Strings {
         /// Names the *gesture*, not the setting: an emoji nobody knows how to send is a
         /// preference about nothing.
         public static let quickHelp = LocalizedStringResource("reactions.quickHelp", bundle: bundle)
+
+        /// The "+" at the end of the bar of six, which opens all the rest. Said out loud only —
+        /// on screen it is a plus sign, because a word there would be as wide as three emoji.
+        public static let more = LocalizedStringResource("reactions.more", bundle: bundle)
+
+        /// The groups the panel of every emoji is divided into — see `EmojiCatalog`. Each is a
+        /// heading in the grid and the name VoiceOver gives the tab that jumps to it.
+        public static let recent = LocalizedStringResource("reactions.recent", bundle: bundle)
+        public static let smileys = LocalizedStringResource("reactions.smileys", bundle: bundle)
+        public static let gestures = LocalizedStringResource("reactions.gestures", bundle: bundle)
+        public static let hearts = LocalizedStringResource("reactions.hearts", bundle: bundle)
+        public static let animals = LocalizedStringResource("reactions.animals", bundle: bundle)
+        public static let food = LocalizedStringResource("reactions.food", bundle: bundle)
+        public static let activity = LocalizedStringResource("reactions.activity", bundle: bundle)
+        public static let places = LocalizedStringResource("reactions.places", bundle: bundle)
+        public static let objects = LocalizedStringResource("reactions.objects", bundle: bundle)
+        public static let symbols = LocalizedStringResource("reactions.symbols", bundle: bundle)
     }
 
     /// Choosing what the app is painted in.

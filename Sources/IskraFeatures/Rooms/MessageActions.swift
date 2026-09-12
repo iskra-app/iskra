@@ -18,7 +18,13 @@ import IskraDesign
 /// row would lift the avatar, the clock and the width of the screen along with the message.
 /// The one gesture that does belong to the whole row is the swipe, which is why it is a
 /// separate modifier — see `SwipeToReply`.
-struct MessageActions: ViewModifier {
+///
+/// It is a view that *wraps* the content rather than a modifier applied to it, and that is not
+/// a matter of taste. The menu lifts a copy of the message out of the scroll view and draws it
+/// over the darkened room — so it needs the message as something it can build a second time,
+/// in a different place. A `ViewModifier` is handed an opaque `Content` it may only place
+/// where it stands; a closure can be called twice. See `MessageMenu`.
+struct MessageActions<Content: View>: View {
     let message: Message
 
     /// Whether this message is currently pinned, which is the whole of what the menu item
@@ -26,6 +32,31 @@ struct MessageActions: ViewModifier {
     let isPinned: Bool
 
     let handlers: MessageHandlers
+
+    @ViewBuilder let content: () -> Content
+
+    /// Where the message is on screen, in the app-wide coordinate space the menu measures
+    /// everything in — see `MessageMenu.space`. Kept up to date rather than read on the press,
+    /// because by the time the press has happened there is no geometry left to ask.
+    ///
+    /// A box holding a rectangle, and not `@State` holding one, which is the difference between
+    /// a conversation that scrolls and a conversation that crawls. This is measured on every
+    /// message on screen, and the value changes on every frame of every scroll — as `@State`
+    /// that is a body re-run per message per frame, each of which rebuilds a bubble in order to
+    /// arrive at a number nothing on screen is drawn from. The box is a reference SwiftUI is not
+    /// watching: written freely, read once, when a finger has actually been held down.
+    @State private var anchor = Anchor()
+
+    /// See `anchor`. A class, so that writing to it is not a change to this view.
+    @MainActor
+    private final class Anchor {
+        var rect: CGRect = .zero
+    }
+
+    /// Whether a finger is currently down on the message, which the bubble answers by giving
+    /// very slightly under it. The whole of the feedback that the press is being *counted* —
+    /// without it the quarter-second before the lift is a quarter-second of nothing.
+    @State private var isPressing = false
 
     /// Guarding a redaction behind a confirmation, because it cannot be undone and every
     /// other item in that menu can.
@@ -56,24 +87,33 @@ struct MessageActions: ViewModifier {
     /// The forward capability, for sending this message into another room.
     @Environment(\.forwarding) private var forwarding
 
+    /// The menu itself, which lives above the whole app — see `messageMenuLayer()`.
+    @Environment(\.messageMenu) private var menu
+
     /// The emoji a double tap leaves. The user's, chosen once in settings and read by every
     /// row in every conversation — see `QuickReaction`.
     @AppStorage(QuickReaction.storageKey) private var quickReaction: QuickReaction = .default
 
-    /// The system's own context menu, on both platforms: the right-click a Mac user expects,
-    /// and on the phone the long press that lifts the bubble off a conversation the system
-    /// darkens behind it.
+    /// The press that opens the menu, and the double tap that does not wait for it.
     ///
-    /// This was hand-drawn once — a quarter-second press of our own opening a popover —
-    /// because `.contextMenu` waits about half a second and the system will not shorten it,
-    /// and on a message you have already decided to react to that wait is the app thinking
-    /// about whether to let you. What the popover cost was everything around it: no lift, no
-    /// dim, none of the system's animation, and a menu that was ours to keep in step with a
-    /// platform that moves. The wait is answered instead by the double tap below, which is
-    /// instant and sends the reaction that was usually the reason for opening the menu at
-    /// all — so the menu is free to be the real one.
-    func body(content: Content) -> some View {
-        content
+    /// The menu is drawn by this app rather than by the system, and `MessageMenu` is where the
+    /// reasons are — the short of it is that on iOS 27 a system context menu grows items nobody
+    /// here put in it, one of which offers to send a message in an encrypted room somewhere
+    /// else. What was bought back by going to `.contextMenu` the first time round — the lift,
+    /// the dim, the system's own animation — is drawn here instead rather than given up.
+    ///
+    /// A shade under three tenths of a second, which the system's half-second cannot be talked
+    /// down to. On a message you have already decided to answer, half a second reads as the app
+    /// deliberating about whether to let you.
+    var body: some View {
+        content()
+            // The anchor. Measured continuously as the conversation scrolls, so the menu can
+            // put its copy of the message exactly where the original is standing.
+            .onGeometryChange(for: CGRect.self) { proxy in
+                proxy.frame(in: .named(MessageMenu.space))
+            } action: { anchor.rect = $0 }
+            .scaleEffect(isPressing ? 0.97 : 1)
+            .animation(.smooth(duration: Theme.Timing.chrome), value: isPressing)
             // A double tap is the quick reaction, and `highPriorityGesture` is what makes that
             // true of *every* message rather than only the ones with nothing else to tap.
             //
@@ -101,7 +141,17 @@ struct MessageActions: ViewModifier {
             // The knock that says the reaction went. Without it a double tap on a message
             // whose pill appears a beat later feels like nothing happened.
             .sensoryFeedback(.impact(weight: .medium), trigger: quickTaps)
-            .contextMenu { menu }
+            .onLongPressGesture(minimumDuration: Theme.Timing.menuLift) {
+                open()
+            } onPressingChanged: { pressing in
+                isPressing = pressing
+            }
+            // And on a Mac, the click a Mac user will try first. It is a separate gesture and
+            // not a variant of the press because it is a different *act*: a right-click is
+            // instant and has never had to be held.
+            #if os(macOS)
+            .overlay { RightClickCatcher(perform: open) }
+            #endif
             .confirmationDialog(Text(Strings.Message.Menu.deleteConfirmTitle),
                                 isPresented: $isConfirmingDelete,
                                 titleVisibility: .visible) {
@@ -129,64 +179,75 @@ struct MessageActions: ViewModifier {
             }
     }
 
-    /// What a long press — or a right-click — offers.
+    /// Hands the message, and everything that can be done to it, to the menu above the app.
     ///
-    /// A message that has been taken back keeps its menu, and that is a change: it used to
-    /// have none, on the grounds that every *action* in it was about content that is no
-    /// longer there. That reasoning was sound and the conclusion was wrong. The menu is not
-    /// only actions: the one thing a tombstone still knows is *when* — when it was sent, and
-    /// when it went — and those are exactly the two questions somebody presses a deleted
-    /// message to ask. So the actions go and the facts stay.
+    /// The *content* goes with it — `content()` called a second time — so what lifts off the
+    /// page is the real bubble rather than a picture of one: a video note goes on playing while
+    /// the menu is open, and a photograph is still a photograph.
+    private func open() {
+        let rect = anchor.rect
+        guard let menu, rect != .zero else { return }
+        menu.present(MessageMenuPresentation(
+            id: message.id,
+            anchor: rect,
+            isOwn: message.isOwn,
+            canReact: message.canReact && !isOffline,
+            mine: Set(message.reactions.filter(\.isMine).map(\.key)),
+            content: AnyView(content()),
+            sections: sections,
+            onReaction: handlers.onToggleReaction))
+    }
+
+    // MARK: - What the menu offers
+
+    /// The verbs, in three groups: the things you do to a message, the things you do about
+    /// one, and the two dates that are not things at all.
+    ///
+    /// A message that has been taken back keeps its menu, and that is a change from a version
+    /// of this app that gave it none, on the grounds that every *action* in it was about
+    /// content that is no longer there. That reasoning was sound and the conclusion was wrong.
+    /// The menu is not only actions: the one thing a tombstone still knows is *when* — when it
+    /// was sent, and when it went — and those are exactly the two questions somebody presses a
+    /// deleted message to ask. So the actions go and the facts stay.
     ///
     /// Reactions are gone from it entirely, and not merely hidden. Matrix would accept an
     /// emoji on a redacted event quite happily, and the whole room would then be looking at a
     /// 👍 hanging under the words "message deleted" — see `Message.canReact`, which the store
     /// enforces as well.
-    @ViewBuilder
-    private var menu: some View {
-        if message.canReact && !isOffline {
-            // A `ControlGroup` is what makes a menu lay its buttons out side by side instead
-            // of stacking six near-identical emoji into six lines.
-            ControlGroup {
-                ForEach(QuickReaction.allCases) { reaction in
-                    Button {
-                        handlers.onToggleReaction(reaction.key)
-                    } label: {
-                        Text(reaction.key)
-                    }
-                }
-            }
-            .controlGroupStyle(.compactMenu)
-        }
+    private var sections: [MessageMenuSection] {
+        [MessageMenuSection(actions: doing),
+         MessageMenuSection(actions: reporting),
+         MessageMenuSection(actions: facts)]
+            .filter { !$0.actions.isEmpty }
+    }
+
+    private var doing: [MessageMenuAction] {
+        var actions: [MessageMenuAction] = []
 
         if message.canReply {
-            Button(action: handlers.onReply) {
-                Label(Strings.Message.Menu.reply, systemImage: "arrowshape.turn.up.left")
-            }
+            actions.append(MessageMenuAction(title: Strings.Message.Menu.reply,
+                                             systemImage: "arrowshape.turn.up.left",
+                                             perform: handlers.onReply))
         }
 
         if message.canEdit && !isOffline {
-            Button(action: handlers.onEdit) {
-                Label(Strings.Message.Menu.edit, systemImage: "pencil")
-            }
+            actions.append(MessageMenuAction(title: Strings.Message.Menu.edit,
+                                             systemImage: "pencil",
+                                             perform: handlers.onEdit))
         }
 
         if let text = copyableText {
-            Button {
-                Clipboard.copy(text)
-            } label: {
-                Label(Strings.Message.Menu.copy, systemImage: "doc.on.doc")
-            }
+            actions.append(MessageMenuAction(title: Strings.Message.Menu.copy,
+                                             systemImage: "doc.on.doc",
+                                             perform: { Clipboard.copy(text) }))
         }
 
         // Forwarding reaches another room, so it needs the network — offline there is nowhere for it
         // to go — and only the kinds a forward can faithfully rebuild are offered.
         if message.canForward, forwarding != nil, !isOffline {
-            Button {
-                isForwarding = true
-            } label: {
-                Label(Strings.Message.Menu.forward, systemImage: "arrowshape.turn.up.right")
-            }
+            actions.append(MessageMenuAction(title: Strings.Message.Menu.forward,
+                                             systemImage: "arrowshape.turn.up.right",
+                                             perform: { isForwarding = true }))
         }
 
         // Pinning names an event, so it is offered on the same messages a reply is: one the
@@ -195,66 +256,65 @@ struct MessageActions: ViewModifier {
         // rather than predicted here, because a menu item that quietly disappears teaches the
         // user nothing about why.
         if message.canReply && !isOffline {
-            Button(action: handlers.onTogglePin) {
-                Label(isPinned ? Strings.Message.Menu.unpin : Strings.Message.Menu.pin,
-                      systemImage: isPinned ? "pin.slash" : "pin")
-            }
+            actions.append(MessageMenuAction(title: isPinned ? Strings.Message.Menu.unpin : Strings.Message.Menu.pin,
+                                             systemImage: isPinned ? "pin.slash" : "pin",
+                                             perform: handlers.onTogglePin))
         }
 
+        return actions
+    }
+
+    /// The red ones, kept together at the foot of the menu so that nothing irreversible sits
+    /// next to something that is not.
+    private var reporting: [MessageMenuAction] {
+        var actions: [MessageMenuAction] = []
+
         if message.canDelete && !isOffline {
-            Button(role: .destructive) {
-                isConfirmingDelete = true
-            } label: {
-                Label(Strings.Message.Menu.delete, systemImage: "trash")
-            }
+            actions.append(MessageMenuAction(title: Strings.Message.Menu.delete,
+                                             systemImage: "trash",
+                                             manner: .destructive,
+                                             perform: { isConfirmingDelete = true }))
         }
 
         // Reporting is for somebody else's message — you do not flag your own — and only one the
         // server has, since a report points at an event ID. A deleted message has nothing left to
         // report. Offline there is no moderator to reach.
         if !message.isOwn && !message.isDeleted && !isOffline {
-            Button(role: .destructive) {
-                isReporting = true
-            } label: {
-                Label(Strings.Message.Menu.report, systemImage: "exclamationmark.bubble")
-            }
+            actions.append(MessageMenuAction(title: Strings.Message.Menu.report,
+                                             systemImage: "exclamationmark.bubble",
+                                             manner: .destructive,
+                                             perform: { isReporting = true }))
         }
 
         // Block the sender — someone else, and only when there is a block list to add them to.
         if !message.isOwn && blockStore != nil {
-            Button(role: .destructive) {
-                isConfirmingBlock = true
-            } label: {
-                Label(Strings.Message.Menu.block, systemImage: "hand.raised")
-            }
+            actions.append(MessageMenuAction(title: Strings.Message.Menu.block,
+                                             systemImage: "hand.raised",
+                                             manner: .destructive,
+                                             perform: { isConfirmingBlock = true }))
         }
 
-        // When it was sent, and — if it is gone — when it went. The clock beside the bubble
-        // gives the hour and nothing else, which is all it has room for and all anybody needs
-        // until the day they need the rest; this is where the rest is.
-        //
-        // Its own section, so the system rules a line above it and the facts do not read as
-        // two more things to press.
-        Section {
-            fact(Strings.Message.Menu.sentAt(Self.exactly(message.timestamp)), systemImage: "clock")
-
-            if let deletedAt = message.deletedAt {
-                fact(Strings.Message.Menu.deletedAt(Self.exactly(deletedAt)), systemImage: "trash")
-            }
-        }
+        return actions
     }
 
-    /// A line in the menu that says something rather than doing something.
+    /// When it was sent, and — if it is gone — when it went. The clock beside the bubble
+    /// gives the hour and nothing else, which is all it has room for and all anybody needs
+    /// until the day they need the rest; this is where the rest is.
     ///
-    /// A disabled button, which is a peculiar way to write a label and the only one a menu
-    /// understands: a bare `Text` among menu items is dropped on the floor. Disabled is also
-    /// how it comes out looking right — greyed, secondary, and not pressable, which it should
-    /// not be, because there is nothing here to press.
-    private func fact(_ title: LocalizedStringResource, systemImage: String) -> some View {
-        Button {} label: {
-            Label(title, systemImage: systemImage)
+    /// Its own section, so there is a rule above it and the facts do not read as two more
+    /// things to press.
+    private var facts: [MessageMenuAction] {
+        var actions = [MessageMenuAction(title: Strings.Message.Menu.sentAt(Self.exactly(message.timestamp)),
+                                         systemImage: "clock",
+                                         manner: .fact)]
+
+        if let deletedAt = message.deletedAt {
+            actions.append(MessageMenuAction(title: Strings.Message.Menu.deletedAt(Self.exactly(deletedAt)),
+                                             systemImage: "trash",
+                                             manner: .fact))
         }
-        .disabled(true)
+
+        return actions
     }
 
     /// The full moment, spelled out: "12 Jul 2026 at 14:03:07".
@@ -280,6 +340,45 @@ struct MessageActions: ViewModifier {
         }
     }
 }
+
+#if os(macOS)
+/// The right-click, which SwiftUI has no gesture for.
+///
+/// `.contextMenu` is the only thing in SwiftUI that answers to a secondary click, and a
+/// secondary click is the whole way a Mac user opens a menu — so the one place this app still
+/// has to reach into AppKit is here. It is a transparent view laid over the message that
+/// refuses every event it is offered *except* a right-click: `hitTest` returning nil is what
+/// lets a left click, a drag, a scroll and a double tap pass straight through to the message
+/// underneath as though this were not here at all.
+private struct RightClickCatcher: NSViewRepresentable {
+    let perform: () -> Void
+
+    func makeNSView(context: Context) -> Catcher {
+        let view = Catcher()
+        view.perform = perform
+        return view
+    }
+
+    func updateNSView(_ view: Catcher, context: Context) {
+        view.perform = perform
+    }
+
+    final class Catcher: NSView {
+        var perform: () -> Void = {}
+
+        override func hitTest(_ point: NSPoint) -> NSView? {
+            switch NSApp.currentEvent?.type {
+            case .rightMouseDown, .rightMouseUp, .rightMouseDragged: super.hitTest(point)
+            default: nil
+            }
+        }
+
+        override func rightMouseDown(with event: NSEvent) {
+            perform()
+        }
+    }
+}
+#endif
 
 /// Dragging a message toward the middle of the screen to answer it.
 ///
@@ -373,10 +472,14 @@ struct SwipeToReply: ViewModifier {
 extension View {
     /// Hangs everything a message can be asked to do off the shape it is drawn in — see
     /// `MessageActions`. Goes on the content, not the row.
+    ///
+    /// Still spelled as a modifier at the call site, even though what it builds is a view that
+    /// wraps this one: a bubble should read as a bubble with a menu on it, and the two rows that
+    /// use it should not have to care which of the two SwiftUI spellings is underneath.
     func messageActions(_ message: Message,
                         isPinned: Bool,
                         handlers: MessageHandlers) -> some View {
-        modifier(MessageActions(message: message, isPinned: isPinned, handlers: handlers))
+        MessageActions(message: message, isPinned: isPinned, handlers: handlers) { self }
     }
 
     /// Lets the row be dragged toward the middle of the screen to answer it — see `SwipeToReply`.
