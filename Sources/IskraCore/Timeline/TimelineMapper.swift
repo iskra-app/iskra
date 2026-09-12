@@ -154,6 +154,7 @@ enum TimelineMapper {
                        isOwn: event.isOwn,
                        timestamp: MessagePreview.date(from: event.timestamp),
                        delivery: event.isOwn ? delivery(for: event) : nil,
+                       readAt: event.isOwn ? readAt(of: event) : nil,
                        isEdited: isEdited(event.content),
                        replyTo: replyPreview(from: event.content),
                        reactions: unsent.applied(to: reactions(from: event.content, ownUserID: ownUserID),
@@ -481,6 +482,18 @@ enum TimelineMapper {
             // the SDK does not include our own receipt here.
             return event.readReceipts.isEmpty ? .sent : .read
         }
+    }
+
+    /// When the message was first read by somebody else — see `Message.readAt`.
+    ///
+    /// Our own receipt is not in here: the SDK leaves it out, which is exactly what makes the
+    /// set usable as an answer to "has anybody read this". The earliest of them is the moment
+    /// the message stopped being unread, and a receipt without a timestamp contributes nothing
+    /// rather than being counted as "now".
+    private static func readAt(of event: EventTimelineItem) -> Date? {
+        let stamps = event.readReceipts.values.compactMap(\.timestamp)
+        guard let first = stamps.min() else { return nil }
+        return MessagePreview.date(from: first)
     }
 
     /// The SDK's reason, turned into one the user can act on.

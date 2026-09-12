@@ -161,6 +161,20 @@ struct MessageMenuLayout: Equatable {
     /// How wide the arrangement is: the list's width, or the message's if the message is wider.
     var width: CGFloat
 
+    /// How wide the grid of every emoji is, when the "+" has opened it. Wider than the rest of
+    /// the menu — it is a grid and not a column of words, see `Theme.Size.emojiPanelWidth` — and
+    /// never wider than the screen has room for.
+    var emojiWidth: CGFloat
+
+    /// And how far it has to slide to stay on screen at that width.
+    ///
+    /// The panel hangs from the same edge as everything else in the menu — the message's right
+    /// if the message is yours, its left if it is not — so a panel half again as wide as the
+    /// column grows away from that edge, and on a message near the far side of the screen it
+    /// grows straight off it. This is the correction, measured from where the panel would
+    /// naturally sit, and it is zero for every message that is not near an edge.
+    var emojiOffset: CGFloat
+
     /// How much the lifted message is shrunk to make room. 1 unless it is a very long message
     /// on a very short screen.
     var contentScale: CGFloat
@@ -221,8 +235,18 @@ struct MessageMenuLayout: Equatable {
         let furthestX = max(margin, container.width - margin - width)
         let x = min(max(wantedX, margin), furthestX)
 
+        // The emoji grid, which is the one part of the menu that is wider than the rest. Same
+        // anchored edge, same margins — only the width differs, so the sum is the same sum.
+        let emojiWidth = min(max(Theme.Size.emojiPanelWidth, width),
+                             max(0, container.width - margin * 2))
+        let wantedEmojiX = isOwn ? x + width - emojiWidth : x
+        let furthestEmojiX = max(margin, container.width - margin - emojiWidth)
+        let emojiX = min(max(wantedEmojiX, margin), furthestEmojiX)
+
         return MessageMenuLayout(origin: CGPoint(x: x, y: y),
                                  width: width,
+                                 emojiWidth: emojiWidth,
+                                 emojiOffset: emojiX - wantedEmojiX,
                                  contentScale: contentScale,
                                  listMaxHeight: listMaxHeight)
     }

@@ -146,6 +146,55 @@ struct MessageMenuLayoutTests {
 
         #expect(layout.width == 420)
     }
+
+    // MARK: - The grid of every emoji, which is wider than the rest
+
+    /// The panel behind the "+" is a grid and not a column of words, so it is half again as
+    /// wide as the menu — and it still hangs from the edge the message hangs from. See
+    /// `Theme.Size.emojiPanelWidth`.
+    @Test func theEmojiPanelIsWiderThanTheMenuAndHangsFromTheSameEdge() {
+        let anchor = CGRect(x: 16, y: 300, width: 200, height: 44)
+        let layout = resolve(anchor: anchor)
+
+        #expect(layout.emojiWidth == Theme.Size.emojiPanelWidth)
+        #expect(layout.emojiWidth > layout.width)
+        // Nothing to correct: the message is nowhere near an edge.
+        #expect(layout.emojiOffset == 0)
+    }
+
+    /// And on your own message, which hangs from the right, it grows to the left.
+    @Test func theEmojiPanelOnYourOwnMessageGrowsInwards() {
+        let anchor = CGRect(x: 150, y: 300, width: 200, height: 44)
+        let layout = resolve(anchor: anchor, isOwn: true)
+
+        // Its trailing edge is the menu's trailing edge, and it is still on the screen.
+        #expect(layout.origin.x + layout.width - layout.emojiWidth + layout.emojiOffset >= MessageMenu.margin)
+    }
+
+    /// The case the extra width invents, and the reason the offset exists at all: a message on
+    /// the left of a narrow screen, whose panel would otherwise grow straight off the right.
+    ///
+    /// Without the correction this is a grid of emoji with its last two columns past the edge of
+    /// the phone — the sort of thing that is obvious on one screen size and invisible on the one
+    /// it was built on.
+    @Test func theEmojiPanelIsSlidBackOntoTheScreen() {
+        let narrow = CGRect(x: 0, y: 59, width: 320, height: 700)
+        let layout = resolve(anchor: CGRect(x: 60, y: 300, width: 200, height: 44), region: narrow)
+
+        let leading = layout.origin.x + layout.emojiOffset
+        #expect(leading >= MessageMenu.margin)
+        #expect(leading + layout.emojiWidth <= narrow.width - MessageMenu.margin)
+    }
+
+    /// On a screen narrower than the panel wants to be, it is simply as wide as there is room
+    /// for. A panel that insisted on 360 points would be a grid nobody could reach the last
+    /// column of.
+    @Test func theEmojiPanelNeverOutgrowsTheScreen() {
+        let narrow = CGRect(x: 0, y: 59, width: 320, height: 700)
+        let layout = resolve(anchor: CGRect(x: 16, y: 300, width: 200, height: 44), region: narrow)
+
+        #expect(layout.emojiWidth == narrow.width - MessageMenu.margin * 2)
+    }
 }
 
 /// The short list of emoji behind the "+" — see `RecentEmoji`.

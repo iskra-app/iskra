@@ -55,7 +55,7 @@ struct MessageActions<Content: View>: View {
 
     /// Whether a finger is currently down on the message, which the bubble answers by giving
     /// very slightly under it. The whole of the feedback that the press is being *counted* —
-    /// without it the quarter-second before the lift is a quarter-second of nothing.
+    /// without it the moment before the lift is a moment of nothing.
     @State private var isPressing = false
 
     /// Guarding a redaction behind a confirmation, because it cannot be undone and every
@@ -102,9 +102,9 @@ struct MessageActions<Content: View>: View {
     /// else. What was bought back by going to `.contextMenu` the first time round — the lift,
     /// the dim, the system's own animation — is drawn here instead rather than given up.
     ///
-    /// A shade under three tenths of a second, which the system's half-second cannot be talked
-    /// down to. On a message you have already decided to answer, half a second reads as the app
-    /// deliberating about whether to let you.
+    /// A sixth of a second, which the system's half-second cannot be talked down to. On a
+    /// message you have already decided to answer, half a second reads as the app deliberating
+    /// about whether to let you — see `Theme.Timing.menuLift`, which is where the number is.
     var body: some View {
         content()
             // The anchor. Measured continuously as the conversation scrolls, so the menu can
@@ -297,9 +297,9 @@ struct MessageActions<Content: View>: View {
         return actions
     }
 
-    /// When it was sent, and — if it is gone — when it went. The clock beside the bubble
-    /// gives the hour and nothing else, which is all it has room for and all anybody needs
-    /// until the day they need the rest; this is where the rest is.
+    /// When it was sent, when somebody read it, and — if it is gone — when it went. The clock
+    /// beside the bubble gives the hour and nothing else, which is all it has room for and all
+    /// anybody needs until the day they need the rest; this is where the rest is.
     ///
     /// Its own section, so there is a rule above it and the facts do not read as two more
     /// things to press.
@@ -307,6 +307,15 @@ struct MessageActions<Content: View>: View {
         var actions = [MessageMenuAction(title: Strings.Message.Menu.sentAt(Self.exactly(message.timestamp)),
                                          systemImage: "clock",
                                          manner: .fact)]
+
+        // Only on your own, and only when a receipt actually carried a moment — see
+        // `Message.readAt`. The ticks beside the bubble already say *that* it was read, and
+        // this is the one thing they have no room to say: when.
+        if let readAt = message.readAt {
+            actions.append(MessageMenuAction(title: Strings.Message.Menu.readAt(Self.exactly(readAt)),
+                                             systemImage: "checkmark.circle",
+                                             manner: .fact))
+        }
 
         if let deletedAt = message.deletedAt {
             actions.append(MessageMenuAction(title: Strings.Message.Menu.deletedAt(Self.exactly(deletedAt)),

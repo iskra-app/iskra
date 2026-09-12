@@ -121,10 +121,16 @@ struct MessageMenuOverlay: View {
             VStack(alignment: alignment, spacing: MessageMenu.gap) {
                 if presentation.canReact {
                     if isPickingEmoji {
-                        EmojiPanel(width: layout.width,
+                        // Wider than the column it hangs off, and slid back onto the screen when
+                        // the message it belongs to is near an edge — see
+                        // `MessageMenuLayout.emojiWidth`. The `VStack`'s alignment puts the
+                        // panel's anchored edge where the menu's is, whatever its width, so the
+                        // offset is only ever the correction.
+                        EmojiPanel(width: layout.emojiWidth,
                                    mine: presentation.mine,
                                    recent: RecentEmoji.list(from: recent),
                                    onPick: { react($0, in: presentation) })
+                            .offset(x: layout.emojiOffset)
                             .transition(.scale(scale: 0.9, anchor: .bottom).combined(with: .opacity))
                     } else {
                         ReactionBar(width: layout.width,
