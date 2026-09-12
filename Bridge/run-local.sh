@@ -8,6 +8,8 @@
 #
 #   ./run-local.sh
 #   HOMESERVER_URL=https://matrix.example.org ./run-local.sh
+#   ALLOWED_UPSTREAMS='matrix.org,matrix-client.matrix.org,example.org' ./run-local.sh
+#   ALLOWED_UPSTREAMS='*' ./run-local.sh    # любой публичный хоумсервер
 #   RELEASE=1 ./run-local.sh          # медленнее собирается, быстрее работает
 #
 set -euo pipefail
@@ -15,7 +17,12 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 KEY_FILE="${BRIDGE_KEY_FILE:-.bridge-key}"
-HOMESERVER_URL="${HOMESERVER_URL:-https://matrix-client.matrix.org}"
+# Куда мосту разрешено ходить. По умолчанию — matrix.org целиком: и имя, которому задают
+# .well-known, и адрес, где реально живёт API. Это не перестраховка: discovery спрашивают у
+# matrix.org, а всё после него принадлежит matrix-client.matrix.org, так что мост на одном адресе
+# не обслужит толком и одного аккаунта. Свой список пишут через запятую; `*` — любой публичный
+# хоумсервер, и тогда мост стоит закрыть по ALLOWED_PUBKEYS.
+ALLOWED_UPSTREAMS="${ALLOWED_UPSTREAMS:-matrix.org,matrix-client.matrix.org}"
 # damus по умолчанию не включён: он регулярно отвечает 503 на само подключение. Список из
 # нескольких relay — не запас на будущее, а рабочая отказоустойчивость: событие уходит на все сразу,
 # ответ приходит с того, который оказался быстрее.
@@ -44,7 +51,11 @@ if [ "${RELEASE:-}" = "1" ]; then
   CARGO_ARGS=(run -q --release -p iskra-bridge)
 fi
 
-echo "homeserver : $HOMESERVER_URL"
+if [ "$ALLOWED_UPSTREAMS" = "*" ]; then
+  echo "серверы    : любой публичный (открытый мост)"
+else
+  echo "серверы    : $ALLOWED_UPSTREAMS"
+fi
 echo "relay      : $RELAY_LIST"
 echo "лимит      : $RATE_LIMIT_PER_MIN запросов в минуту на клиента"
 if [ -n "${ALLOWED_PUBKEYS:-}" ]; then
@@ -56,7 +67,8 @@ echo "pubkey бриджа будет напечатан ниже — его и �
 echo
 
 exec env \
-  HOMESERVER_URL="$HOMESERVER_URL" \
+  ALLOWED_UPSTREAMS="$ALLOWED_UPSTREAMS" \
+  ${HOMESERVER_URL:+HOMESERVER_URL="$HOMESERVER_URL"} \
   BRIDGE_NOSTR_PRIVKEY="$BRIDGE_NOSTR_PRIVKEY" \
   RELAY_LIST="$RELAY_LIST" \
   RATE_LIMIT_PER_MIN="$RATE_LIMIT_PER_MIN" \

@@ -31,6 +31,18 @@ pub struct Envelope {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status: Option<u16>,
 
+    /// Which homeserver this request is for, as an origin: `https://matrix-client.matrix.org`.
+    ///
+    /// Requests only, head chunk only. A bridge pinned to one homeserver at deploy time can only
+    /// ever serve the people who use that homeserver, and it cannot even serve them properly:
+    /// discovery is asked of `matrix.org` while the API lives at `matrix-client.matrix.org`, so a
+    /// single pinned address is wrong for one half of the conversation whichever half you pin. The
+    /// target belongs to the request; what the bridge decides is which targets it will accept.
+    ///
+    /// Optional so a bridge with a configured default still answers a client that names nothing.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub upstream: Option<String>,
+
     /// Base64 of this chunk's slice of the body. Empty string for an empty body.
     pub body_chunk: String,
 }
@@ -54,7 +66,10 @@ impl Envelope {
             return Err(ProtoError::Malformed("id is empty"));
         }
         let is_head = self.seq == 0;
-        let carries_head = self.method.is_some() || self.path.is_some() || self.status.is_some();
+        let carries_head = self.method.is_some()
+            || self.path.is_some()
+            || self.status.is_some()
+            || self.upstream.is_some();
         if carries_head && !is_head {
             return Err(ProtoError::Malformed("head fields on a non-first chunk"));
         }
@@ -78,6 +93,9 @@ pub struct HttpRequest {
     pub path: String,
     pub headers: BTreeMap<String, String>,
     pub body: Vec<u8>,
+    /// Where this request is going, as an origin. `None` leaves the choice to the bridge's
+    /// configured default — which is the only thing an older client can do.
+    pub upstream: Option<String>,
 }
 
 impl HttpRequest {
@@ -88,7 +106,14 @@ impl HttpRequest {
             path: path.into(),
             headers: BTreeMap::new(),
             body: Vec::new(),
+            upstream: None,
         }
+    }
+
+    /// Name the homeserver this request is for.
+    pub fn to(mut self, upstream: impl Into<String>) -> Self {
+        self.upstream = Some(upstream.into());
+        self
     }
 
     /// Stage 1 only: the whole request in one envelope, no chunking.
@@ -105,6 +130,7 @@ impl HttpRequest {
             path: Some(self.path),
             headers: Some(self.headers),
             status: None,
+            upstream: self.upstream,
             body_chunk: BASE64_STANDARD.encode(&self.body),
         }
     }
@@ -126,6 +152,7 @@ impl HttpRequest {
             path,
             headers: envelope.headers.clone().unwrap_or_default(),
             body,
+            upstream: envelope.upstream.clone(),
         })
     }
 }
@@ -150,6 +177,7 @@ impl HttpResponse {
             path: None,
             headers: Some(self.headers),
             status: Some(self.status),
+            upstream: None,
             body_chunk: BASE64_STANDARD.encode(&self.body),
         }
     }
