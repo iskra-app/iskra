@@ -65,6 +65,14 @@ public final class UserSession {
     let client: Client
     private let authentication: AuthenticationService
 
+    /// What the connection is doing right now: direct, or through the local listener.
+    ///
+    /// Forwarded rather than exposing the service itself — the settings screen needs this one
+    /// answer, not the ability to sign anybody in.
+    public func tunnelStatus() async -> TunnelStatus {
+        await authentication.tunnelStatus()
+    }
+
     public init(client: Client, authentication: AuthenticationService) {
         self.client = client
         self.authentication = authentication

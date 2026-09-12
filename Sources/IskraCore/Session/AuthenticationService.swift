@@ -67,6 +67,11 @@ public actor AuthenticationService {
     private let environment: AppEnvironment
     private let sessionStore: SessionStore
 
+    /// The local listener the SDK is pointed at while the bridge switch is on. Owned here because
+    /// it has to outlive `build()` by the whole life of the session: it *is* the connection.
+    private var tunnel: LocalHTTPProxy?
+    private var tunnelState: TunnelStatus = .off
+
     /// The client we are mid-sign-in with. Discarded if the flow is abandoned.
     private var pendingClient: Client?
     private var pendingSessionID: String?
@@ -129,6 +134,8 @@ public actor AuthenticationService {
             throw AuthenticationError.storageUnavailable(error)
         }
 
+        let homeserver = await route(to: stored.homeserverURL)
+
         do {
             return try await withTimeout(Self.restoreTimeout) {
                 // Neither of these two should now reach the network. `homeserverUrl` takes the URL
@@ -137,7 +144,7 @@ public actor AuthenticationService {
                 // rooms out of the local store. The bound stays anyway — a call that *should* not
                 // reach the network is not a call that may hold the launch screen forever if it does.
                 let client = try await builder
-                    .homeserverUrl(url: stored.homeserverURL)
+                    .homeserverUrl(url: homeserver)
                     .build()
 
                 try await client.restoreSession(session: stored.rustSession)
@@ -230,11 +237,13 @@ public actor AuthenticationService {
         // that accepts the connection and then says nothing — otherwise leaves the
         // "Continue" button spinning with no way out and nothing on screen to explain
         // it. A wrong answer the user can act on beats a spinner that never stops.
+        let entryPoint = await route(to: address)
+
         let client: Client
         do {
             client = try await withTimeout(Self.lookupTimeout) {
                 try await builder
-                    .serverNameOrHomeserverUrl(serverNameOrUrl: address)
+                    .serverNameOrHomeserverUrl(serverNameOrUrl: entryPoint)
                     .build()
             }
         } catch is TimeoutError {
@@ -507,6 +516,54 @@ public actor AuthenticationService {
         pendingSSO = nil
 
         return await UserSession(client: client, authentication: self)
+    }
+
+    // MARK: - Bridge
+
+    /// What the transport is doing, for the settings screen to show.
+    public func tunnelStatus() -> TunnelStatus { tunnelState }
+
+    /// The address to hand the SDK, given the bridge switch.
+    ///
+    /// With the switch off this is the homeserver, unchanged. With it on, the local listener is
+    /// raised and its loopback address is returned instead, so every call the SDK makes arrives
+    /// there first; the homeserver the user actually wants becomes the listener's upstream.
+    ///
+    /// A listener that will not start falls back to a direct connection rather than to nothing.
+    /// That is the right trade **only because there is no circumvention in this build yet** — the
+    /// direct route is exactly what the user would have had anyway. The day a real bridge is on the
+    /// far side, this has to become a refusal: silently going direct would tell someone they were
+    /// protected while they were not, and that is the one failure this feature must never have.
+    private func route(to address: String) async -> String {
+        guard TunnelSettings.isEnabled() else {
+            await stopTunnel()
+            return address
+        }
+        guard let upstreamURL = TunnelSettings.upstreamURL(from: address) else {
+            tunnelState = .failed("bad address")
+            return address
+        }
+
+        await stopTunnel()
+        do {
+            let proxy = LocalHTTPProxy(upstream: DirectUpstream(homeserver: upstreamURL))
+            let port = try await proxy.start()
+            tunnel = proxy
+            tunnelState = .routingLocally(port: port)
+            return "http://127.0.0.1:\(port)"
+        } catch {
+            tunnel = nil
+            tunnelState = .failed(String(describing: error))
+            return address
+        }
+    }
+
+    private func stopTunnel() async {
+        if let tunnel {
+            await tunnel.stop()
+        }
+        tunnel = nil
+        tunnelState = .off
     }
 
     /// The one place a `ClientBuilder` is configured, so the security-relevant

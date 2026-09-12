@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 /// One HTTP request, as it arrived at the local listener.
 public struct ProxiedRequest: Sendable, Equatable {
@@ -37,6 +38,18 @@ public struct ProxiedResponse: Sendable, Equatable {
 /// in the nostr transport later changes this one conformance and nothing else.
 public protocol HTTPUpstream: Sendable {
     func send(_ request: ProxiedRequest) async throws -> ProxiedResponse
+
+    /// Told when `.well-known` discovery has revealed where the homeserver really lives.
+    ///
+    /// Not decoration: discovery is asked of the *delegation* host (`matrix.org`) and answers with
+    /// a different one (`matrix-client.matrix.org`), and every request after it belongs to the
+    /// second. A transport pinned to the address the user typed would send the whole API to a host
+    /// that only ever served one file.
+    func discovered(homeserver: URL) async
+}
+
+public extension HTTPUpstream {
+    func discovered(homeserver: URL) async {}
 }
 
 public enum UpstreamError: Error, Sendable {
@@ -45,17 +58,24 @@ public enum UpstreamError: Error, Sendable {
 }
 
 /// Straight to the real homeserver over TLS. No tunnel, no nostr.
-public struct DirectUpstream: HTTPUpstream {
-    private let base: URL
+public final class DirectUpstream: HTTPUpstream {
+    private let base: Mutex<URL>
     private let session: URLSession
 
     public init(homeserver: URL, session: URLSession = .shared) {
-        self.base = homeserver
+        self.base = Mutex(homeserver)
         self.session = session
     }
 
+    /// Where requests are going right now.
+    public var homeserver: URL { base.withLock { $0 } }
+
+    public func discovered(homeserver: URL) async {
+        base.withLock { $0 = homeserver }
+    }
+
     public func send(_ request: ProxiedRequest) async throws -> ProxiedResponse {
-        guard let url = URL(string: request.target, relativeTo: base) else {
+        guard let url = URL(string: request.target, relativeTo: homeserver) else {
             throw UpstreamError.badTarget(request.target)
         }
 

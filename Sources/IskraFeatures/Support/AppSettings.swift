@@ -1,4 +1,5 @@
 import Foundation
+import IskraCore
 import IskraDesign
 
 /// Everything the app remembers about *how it looks and behaves* rather than about who is using
@@ -27,6 +28,7 @@ enum AppSettings {
         AppearanceMode.storageKey,
         MessageLayout.storageKey,
         QuickReaction.storageKey,
+        TunnelSettings.enabledKey,
     ]
 
     static func forget() {

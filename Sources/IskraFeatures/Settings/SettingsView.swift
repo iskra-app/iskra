@@ -123,6 +123,15 @@ struct SettingsView: View {
                 }
 
                 NavigationLink {
+                    ConnectionView(session: session)
+                } label: {
+                    Label(
+                        Strings.Settings.connection,
+                        systemImage: "point.3.filled.connected.trianglepath.dotted"
+                    )
+                }
+
+                NavigationLink {
                     BlockedUsersView(store: session.blocked)
                 } label: {
                     Label(Strings.Settings.blocked, systemImage: "hand.raised")
