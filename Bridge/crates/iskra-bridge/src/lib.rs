@@ -14,6 +14,7 @@ pub mod config;
 pub mod forwarder;
 pub mod listener;
 pub mod ratelimit;
+pub mod upstream;
 
 pub use config::Config;
 pub use listener::Bridge;

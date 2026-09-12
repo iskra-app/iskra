@@ -23,6 +23,10 @@ async fn main() -> Result<()> {
         .next()
         .unwrap_or_else(|| "/_matrix/client/versions".into());
 
+    // Which homeserver to ask for. Optional: a bridge with a default serves a probe that names
+    // nothing, which is how this was used before one bridge could front several homeservers.
+    let upstream = std::env::var("PROBE_UPSTREAM").ok().filter(|s| !s.trim().is_empty());
+
     let bridge = std::env::var("BRIDGE_PUBKEY")
         .map_err(|_| anyhow!("BRIDGE_PUBKEY is required"))?;
     let bridge = PublicKey::parse(&bridge).map_err(|_| anyhow!("BRIDGE_PUBKEY is not a key"))?;
@@ -64,6 +68,7 @@ async fn main() -> Result<()> {
             .request(
                 &method,
                 &path,
+                upstream.as_deref(),
                 BTreeMap::new(),
                 Vec::new(),
                 Duration::from_secs(30),

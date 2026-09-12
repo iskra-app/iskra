@@ -39,7 +39,7 @@ impl Bridge {
     /// Connecting is not the same as being *reachable*. nostr-sdk retries in the background, so
     /// `Ok` here means the relays were accepted, not that any of them answered.
     pub async fn start(config: Config) -> Result<Self> {
-        let forwarder = Forwarder::new(config.homeserver.clone(), config.request_timeout)?;
+        let forwarder = Forwarder::new(config.request_timeout)?;
         let limit = RateLimit::per_minute(config.rate_limit_per_min);
         let client = Client::new(config.keys.clone());
 
@@ -58,6 +58,18 @@ impl Bridge {
             // ago.
             .since(Timestamp::now());
         client.subscribe(filter, None).await?;
+
+        // An open bridge is a decision, and one whose consequences land on the operator's bandwidth
+        // and reputation, so it is said out loud at every startup rather than left in a config file
+        // somebody set up once.
+        if config.upstreams.is_open() {
+            tracing::warn!(
+                "ALLOWED_UPSTREAMS=* — this bridge will carry traffic to any public homeserver; \
+                 set ALLOWED_PUBKEYS or a list of homeservers to narrow it"
+            );
+        } else {
+            tracing::info!(homeservers = ?config.upstreams.listed(), "serving");
+        }
 
         tracing::info!(
             pubkey = %config.keys.public_key(),
@@ -173,10 +185,43 @@ async fn serve(
     let route = log_path(&request.path);
     let request_bytes = request.body.len();
 
-    let response = match forwarder.forward(request).await {
+    // Where this one is going, and whether the bridge will take it there. The target comes from
+    // the client — one bridge has to serve several homeservers, if only because discovery and the
+    // API live at different names on the same account — so it is checked like anything else that
+    // arrives from a stranger.
+    let upstream = match config
+        .upstreams
+        .resolve(request.upstream.as_deref(), &request.path)
+        .await
+    {
+        Ok(upstream) => upstream,
+        Err(refusal) => {
+            // The host is logged because an operator needs to know which homeserver to add; the
+            // path is not, for the usual reason — it carries room and event ids.
+            tracing::info!(
+                client = %sender,
+                %method,
+                route,
+                reason = refusal.as_str(),
+                "refused"
+            );
+            let refusal = HttpResponse {
+                id: request_id,
+                status: 403,
+                headers: Default::default(),
+                body: Vec::new(),
+            }
+            .into_single_envelope();
+            let content = seal(secret, &sender, &refusal)?;
+            return publish(config, client, &sender, content).await;
+        }
+    };
+    let host = upstream.host_str().unwrap_or("?").to_string();
+
+    let response = match forwarder.forward(request, &upstream).await {
         Ok(response) => response,
         Err(error) => {
-            tracing::warn!(client = %sender, %method, route, %error, "upstream failed");
+            tracing::warn!(client = %sender, %method, host, route, %error, "upstream failed");
             // 502 is the honest answer, and it has to reach the client: a silent drop leaves the
             // SDK waiting out its own timeout with nothing to explain it.
             HttpResponse {
@@ -191,6 +236,7 @@ async fn serve(
     tracing::info!(
         client = %sender,
         %method,
+        host,
         route,
         status = response.status,
         request_bytes,
@@ -224,10 +270,23 @@ async fn serve(
         }
         Err(error) => return Err(error.into()),
     };
+    publish(config, client, &sender, content).await
+}
+
+/// Send one sealed reply back to the client that asked.
+///
+/// Extracted because a refusal is as owed an answer as a success is: silence would leave the SDK
+/// waiting out its own timeout with no way to tell "this bridge will not serve that homeserver"
+/// from "this bridge is dead".
+async fn publish(
+    config: &Config,
+    client: &Client,
+    to: &PublicKey,
+    content: String,
+) -> Result<()> {
     let out = EventBuilder::new(Kind::Custom(KIND_RESPONSE), content)
-        .tag(Tag::public_key(sender))
+        .tag(Tag::public_key(*to))
         .sign_with_keys(&config.keys)?;
     client.send_event(&out).await?;
-
     Ok(())
 }

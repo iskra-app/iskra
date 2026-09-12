@@ -3,7 +3,7 @@
 //! Validated *once*, at startup, is the point: a bridge that discovers its homeserver URL is
 //! nonsense on the first tunnelled request has already accepted traffic it cannot serve.
 
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 use std::num::NonZeroU32;
 use std::time::Duration;
 
@@ -12,10 +12,12 @@ use iskra_tunnel_proto::DEFAULT_MAX_BODY_CHUNK;
 use nostr_sdk::prelude::{Keys, PublicKey};
 use url::Url;
 
+use crate::upstream::{parse_origin, Allowed, Upstreams};
+
 #[derive(Debug, Clone)]
 pub struct Config {
-    /// The one homeserver this bridge fronts.
-    pub homeserver: Url,
+    /// Which homeservers this bridge will go to, and which one it falls back on.
+    pub upstreams: Upstreams,
     /// The bridge's own nostr identity. Clients address it by this public key.
     pub keys: Keys,
     /// Relays the bridge listens on.
@@ -32,12 +34,42 @@ pub struct Config {
 
 impl Config {
     pub fn from_env() -> Result<Self> {
-        let homeserver = required("HOMESERVER_URL")?;
-        let homeserver = Url::parse(&homeserver)
-            .with_context(|| "HOMESERVER_URL is not a URL".to_string())?;
-        if !matches!(homeserver.scheme(), "http" | "https") {
-            return Err(anyhow!("HOMESERVER_URL must be http or https"));
-        }
+        // Both optional, and at least one required — `Upstreams::new` is what insists on that.
+        // `HOMESERVER_URL` alone keeps an existing deployment behaving exactly as it did: one
+        // homeserver, no client may name another.
+        let homeserver = match optional("HOMESERVER_URL") {
+            None => None,
+            Some(raw) => {
+                let url = Url::parse(&raw)
+                    .with_context(|| "HOMESERVER_URL is not a URL".to_string())?;
+                if !matches!(url.scheme(), "http" | "https") {
+                    return Err(anyhow!("HOMESERVER_URL must be http or https"));
+                }
+                Some(url)
+            }
+        };
+
+        let allowed = match optional("ALLOWED_UPSTREAMS") {
+            None => None,
+            // `*` is deliberately ugly to write and impossible to arrive at by accident: it turns
+            // the bridge into one anybody on any homeserver can use, which is a decision, not a
+            // default.
+            Some(raw) if raw.trim() == "*" => Some(Allowed::Anywhere),
+            Some(raw) => {
+                let mut set = BTreeSet::new();
+                for item in raw.split(',').map(str::trim).filter(|s| !s.is_empty()) {
+                    set.insert(parse_origin(item).with_context(|| {
+                        format!("ALLOWED_UPSTREAMS contains a bad entry: {item}")
+                    })?);
+                }
+                if set.is_empty() {
+                    return Err(anyhow!("ALLOWED_UPSTREAMS is empty; remove it or fill it in"));
+                }
+                Some(Allowed::These(set))
+            }
+        };
+
+        let upstreams = Upstreams::new(homeserver, allowed)?;
 
         let secret = required("BRIDGE_NOSTR_PRIVKEY")?;
         let keys = Keys::parse(&secret)
@@ -74,7 +106,7 @@ impl Config {
         let request_timeout = Duration::from_secs(parse_or("REQUEST_TIMEOUT_SECS", 60u64)?);
 
         Ok(Self {
-            homeserver,
+            upstreams,
             keys,
             relays,
             client_relays,
@@ -91,6 +123,17 @@ impl Config {
             None => true,
             Some(allowed) => allowed.contains(client),
         }
+    }
+}
+
+/// An unset or blank variable is the same as absent. A deployment that writes `ALLOWED_UPSTREAMS=`
+/// in a compose file means "I did not set this", and reading it as an empty allowlist would be a
+/// bridge that refuses everything for a reason nobody can see.
+fn optional(name: &str) -> Option<String> {
+    match std::env::var(name) {
+        Err(_) => None,
+        Ok(raw) if raw.trim().is_empty() => None,
+        Ok(raw) => Some(raw),
     }
 }
 
