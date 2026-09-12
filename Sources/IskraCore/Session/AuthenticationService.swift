@@ -134,20 +134,38 @@ public actor AuthenticationService {
             throw AuthenticationError.storageUnavailable(error)
         }
 
-        let homeserver = await route(to: stored.homeserverURL)
+        // A record written before `StoredSession` learned to refuse one can name *this app's own
+        // listener* — `http://127.0.0.1:<port>`, from a launch that has since ended — instead of a
+        // homeserver. There is nothing at that port any more, so the app comes up saying it has no
+        // network while pointing at itself. The user ID still carries the server name, so the
+        // record is recoverable; it is recovered by looking the server up again, exactly as
+        // signing in does, and then written back correctly so this happens once.
+        let poisoned = TunnelSettings.isLoopback(stored.homeserverURL)
+        if poisoned {
+            Log.session.error("the stored homeserver is a dead local port; looking the server up again")
+        }
+        guard let entry = poisoned ? stored.serverName : stored.homeserverURL else {
+            throw AuthenticationError.homeserverNotFound
+        }
+        let homeserver = await route(to: entry)
 
+        let client: Client
         do {
-            return try await withTimeout(Self.restoreTimeout) {
-                // Neither of these two should now reach the network. `homeserverUrl` takes the URL
-                // we already resolved and stored, rather than looking one up the way
+            client = try await withTimeout(Self.restoreTimeout) {
+                // Neither of these two should normally reach the network. `homeserverUrl` takes the
+                // URL we already resolved and stored, rather than looking one up the way
                 // `serverNameOrHomeserverUrl` does on the sign-in path; `restoreSession` loads the
                 // rooms out of the local store. The bound stays anyway — a call that *should* not
-                // reach the network is not a call that may hold the launch screen forever if it does.
-                let client = try await builder
-                    .homeserverUrl(url: homeserver)
-                    .build()
+                // reach the network is not a call that may hold the launch screen forever if it
+                // does. The repair above is the one case that deliberately does look one up.
+                let configured = poisoned
+                    ? builder.serverNameOrHomeserverUrl(serverNameOrUrl: homeserver)
+                    : builder.homeserverUrl(url: homeserver)
+                let client = try await configured.build()
 
-                try await client.restoreSession(session: stored.rustSession)
+                // Whatever the builder settled on, tokens and all. Handing `restoreSession` the
+                // address out of a poisoned record would put the dead port straight back.
+                try await client.restoreSession(session: stored.with(homeserverURL: client.homeserver()).rustSession)
                 return client
             }
         } catch {
@@ -162,6 +180,20 @@ public actor AuthenticationService {
             // reason to ask somebody to sign in again.
             throw Self.isNetworkFailure(error) ? AuthenticationError.networkUnavailable : error
         }
+
+        // Write the corrected address back, so a launch with the switch in either position finds a
+        // homeserver rather than a closed port. Best-effort on purpose: a Keychain that will not
+        // take it is not a reason to refuse the user their session, and the next refresh writes
+        // the same thing again.
+        if let refreshed = try? client.session() {
+            let corrected = StoredSession(sessionID: stored.sessionID, session: refreshed)
+            if corrected.homeserverURL != stored.homeserverURL,
+               !TunnelSettings.isLoopback(corrected.homeserverURL) {
+                try? sessionStore.save(corrected)
+            }
+        }
+
+        return client
     }
 
     /// Whether this is the network's fault rather than the session's.
@@ -546,10 +578,15 @@ public actor AuthenticationService {
 
         await stopTunnel()
         do {
-            let proxy = LocalHTTPProxy(upstream: DirectUpstream(homeserver: upstreamURL))
+            let proxy = LocalHTTPProxy(upstream: DirectUpstream(homeserver: upstreamURL),
+                                       onDiscovery: { TunnelSettings.listenerStandsIn(for: $0) })
             let port = try await proxy.start()
             tunnel = proxy
             tunnelState = .routingLocally(port: port)
+            // Said before a single request goes through, and said again by `onDiscovery` once
+            // `.well-known` names the real host. Nothing may write a loopback address into the
+            // Keychain, and this is what it gets written down as instead.
+            TunnelSettings.listenerStandsIn(for: upstreamURL)
             return "http://127.0.0.1:\(port)"
         } catch {
             tunnel = nil
@@ -564,6 +601,7 @@ public actor AuthenticationService {
         }
         tunnel = nil
         tunnelState = .off
+        TunnelSettings.listenerStoppedStandingIn()
     }
 
     /// The one place a `ClientBuilder` is configured, so the security-relevant

@@ -17,14 +17,58 @@ public struct StoredSession: Codable, Sendable, Equatable {
     /// Opaque OAuth state the SDK hands back; needed to refresh tokens later.
     public let oauthData: String?
 
+    /// - Note: `homeserverURL` is deliberately **not** taken from the session as-is. With the
+    ///   bridge switch on, the SDK's idea of its homeserver is `http://127.0.0.1:<port>` — this
+    ///   launch's listener, on a port the system handed out for this launch only. Writing that
+    ///   down is writing down an address that stops existing when the app quits, and the next
+    ///   launch dials it and reports no network. `TunnelSettings.persistableHomeserver` swaps it
+    ///   back for the homeserver the listener stands in for.
     init(sessionID: String, session: Session) {
+        self.init(sessionID: sessionID,
+                  userID: session.userId,
+                  deviceID: session.deviceId,
+                  homeserverURL: TunnelSettings.persistableHomeserver(session.homeserverUrl),
+                  accessToken: session.accessToken,
+                  refreshToken: session.refreshToken,
+                  oauthData: session.oauthData)
+    }
+
+    init(sessionID: String,
+         userID: String,
+         deviceID: String,
+         homeserverURL: String,
+         accessToken: String,
+         refreshToken: String?,
+         oauthData: String?) {
         self.sessionID = sessionID
-        self.userID = session.userId
-        self.deviceID = session.deviceId
-        self.homeserverURL = session.homeserverUrl
-        self.accessToken = session.accessToken
-        self.refreshToken = session.refreshToken
-        self.oauthData = session.oauthData
+        self.userID = userID
+        self.deviceID = deviceID
+        self.homeserverURL = homeserverURL
+        self.accessToken = accessToken
+        self.refreshToken = refreshToken
+        self.oauthData = oauthData
+    }
+
+    /// The same session, pointed somewhere else. Used to repair a record that was written before
+    /// the rule above existed, and to tell the SDK where it is restoring from.
+    func with(homeserverURL: String) -> StoredSession {
+        StoredSession(sessionID: sessionID,
+                      userID: userID,
+                      deviceID: deviceID,
+                      homeserverURL: homeserverURL,
+                      accessToken: accessToken,
+                      refreshToken: refreshToken,
+                      oauthData: oauthData)
+    }
+
+    /// The server name out of the user ID: `@ann:matrix.org` -> `matrix.org`.
+    ///
+    /// The last resort when the stored address is unusable. A Matrix user ID always carries the
+    /// server it belongs to, which is why a poisoned record is recoverable at all.
+    var serverName: String? {
+        guard let colon = userID.firstIndex(of: ":") else { return nil }
+        let name = String(userID[userID.index(after: colon)...])
+        return name.isEmpty ? nil : name
     }
 
     /// Back into the shape the Rust SDK wants.
