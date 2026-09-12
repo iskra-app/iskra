@@ -523,8 +523,9 @@ struct RoomRow: View {
 /// message it carries who invited you, and instead of being openable it carries the two buttons
 /// that are the only things you can do with it.
 ///
-/// The buttons are `.borderless`, which matters inside a `List`: a plain `Button` in a list row
-/// gives its whole row the tap, so pressing anywhere would fire whichever button SwiftUI picked.
+/// The buttons carry a style of their own, which matters inside a `List`: a `Button` left to the
+/// list's own styling gives its whole row the tap, so pressing anywhere would fire whichever
+/// button SwiftUI picked.
 private struct InviteRow: View {
     let room: RoomSummary
     let onAccept: () -> Void
@@ -561,17 +562,26 @@ private struct InviteRow: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
 
+                // Green and red, and exactly the same size as each other — see `AnswerStyle`.
+                // The two used to be a filled "Join" beside a bordered "Decline", which is the
+                // shape of a screen with one action and a way out of it. This is not that: both
+                // are real answers, and the row was quietly nudging towards one of them while
+                // making the other look like the smaller, safer thing to press.
+                //
+                // `maxWidth: .infinity` on both is what makes them equal, and it is here rather
+                // than in the style because only the row knows what they are dividing between
+                // them. There is no `Spacer` after them for the same reason: a spacer would take
+                // a share of the row and the two buttons would be equal to each other and
+                // ragged against everything else in the list.
                 HStack(spacing: Theme.Spacing.close) {
                     Button(String(app: Strings.RoomList.Invite.accept), action: onAccept)
-                        .buttonStyle(.primaryAction)
+                        .buttonStyle(.answer(.accepting))
+                        .frame(maxWidth: .infinity)
 
                     Button(String(app: Strings.RoomList.Invite.decline), action: onDecline)
-                        .buttonStyle(.bordered)
-
-                    Spacer(minLength: 0)
+                        .buttonStyle(.answer(.declining))
+                        .frame(maxWidth: .infinity)
                 }
-                .controlSize(.small)
-                .buttonBorderShape(.capsule)
                 .padding(.top, Theme.Spacing.tight)
                 // Joining is `client.joinRoomById` and declining is `room.leave()` — both go straight
                 // to the server, and neither is queued. The invitation keeps until the network is
