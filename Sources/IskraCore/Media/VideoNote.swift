@@ -33,6 +33,32 @@ public enum VideoNote {
     /// cropping surprises.
     public static let captureDimension = 480
 
+    /// How much a video note is compressed, expressed the only way that survives a change of
+    /// resolution: bits per pixel of frame, per second.
+    ///
+    /// A minute of camera is the largest thing this app sends without being asked to, and until
+    /// this existed nobody was asking how large. The take went to disk at whatever the encoder
+    /// felt like for a 1080p frame — a good ten megabits a second — and was then re-encoded at
+    /// "highest quality" down to a circle 480 points across, which is a lot of work to arrive at
+    /// a file several times bigger than the picture in it deserves. On a phone that is the
+    /// user's own data going up, and on the far side somebody's data coming down, for a clip of
+    /// a face in a small round window.
+    ///
+    /// A tenth of a bit per pixel is the usual working figure for H.264 at ordinary frame rates
+    /// — visibly clean on a talking head, which is the only thing this ever points at. At the
+    /// 480-point square that is about 700 kbit/s, so a full sixty seconds arrives at around five
+    /// megabytes instead of thirty.
+    public static let bitsPerPixel: Double = 0.1
+
+    /// The frame rate everything here is written and exported at. The composition says so too —
+    /// see `SquareVideoExporter` — and the bit rate below is worked out against it.
+    public static let frameRate = 30
+
+    /// What a frame of this size is worth, in bits per second.
+    public static func bitRate(width: Int, height: Int) -> Int {
+        Int(Double(width * height) * bitsPerPixel * Double(frameRate))
+    }
+
     static func isVideoNote(_ content: VideoMessageContent) -> Bool {
         guard let info = content.info,
               let width = info.width,

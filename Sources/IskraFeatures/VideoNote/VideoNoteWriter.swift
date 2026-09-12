@@ -120,11 +120,26 @@ final class VideoNoteWriter: @unchecked Sendable {
         // the input fixed dimensions and it will fit anything it is handed into them, cropping
         // from the middle rather than letterboxing — and the middle is the only part of a round
         // video message that survives the crop anyway.
+        // Written down to the size the circle will actually be, rather than at whatever the
+        // sensor hands over. The take is cropped to a 480-point square before it is sent, so
+        // every pixel outside that square is encoded, written to disk, decoded and thrown away —
+        // and the ones inside it are scaled down anyway. Scaling here keeps the aspect ratio the
+        // camera gave us, so `resizeAspectFill` still has nothing to crop and a lens swapped
+        // in mid-take is still fitted into the take that is already running.
+        let (width, height) = Self.fitted(size)
+
         let input = AVAssetWriterInput(mediaType: .video, outputSettings: [
             AVVideoCodecKey: AVVideoCodecType.h264,
-            AVVideoWidthKey: Int(size.width),
-            AVVideoHeightKey: Int(size.height),
+            AVVideoWidthKey: width,
+            AVVideoHeightKey: height,
             AVVideoScalingModeKey: AVVideoScalingModeResizeAspectFill,
+            // And compressed at a rate worked out from that size — see `VideoNote.bitsPerPixel`.
+            // Left to itself the encoder writes a talking head in a small circle at the same
+            // rate it would write a football match.
+            AVVideoCompressionPropertiesKey: [
+                AVVideoAverageBitRateKey: VideoNote.bitRate(width: width, height: height),
+                AVVideoExpectedSourceFrameRateKey: VideoNote.frameRate,
+            ],
         ])
         input.expectsMediaDataInRealTime = true
 
@@ -144,6 +159,30 @@ final class VideoNoteWriter: @unchecked Sendable {
         video = input
         return true
     }
+
+    /// The size a frame off the camera is written at: shrunk until its *shorter* side is the
+    /// square the note will be cropped to, and never enlarged.
+    ///
+    /// The shorter side and not the longer one, because that is the side the crop keeps whole —
+    /// `SquareVideoExporter` takes `min(width, height)` out of the middle. Fitting the longer
+    /// side instead would arrive at a square that has to be scaled back up, which is a blurred
+    /// video message with a smaller file as its only consolation.
+    ///
+    /// Both come back even. H.264 cannot encode an odd dimension in 4:2:0, and an encoder handed
+    /// one either rounds it silently or refuses the whole input.
+    static func fitted(_ size: CMVideoDimensions) -> (width: Int, height: Int) {
+        let width = Int(size.width)
+        let height = Int(size.height)
+        let shorter = min(width, height)
+
+        guard shorter > VideoNote.captureDimension else { return (even(width), even(height)) }
+
+        let scale = Double(VideoNote.captureDimension) / Double(shorter)
+        return (even(Int((Double(width) * scale).rounded())),
+                even(Int((Double(height) * scale).rounded())))
+    }
+
+    private static func even(_ value: Int) -> Int { max(2, value - value % 2) }
 
     // MARK: - Ending it
 
