@@ -14,7 +14,7 @@ import IskraDesign
 ///
 /// Two things follow from it, and both are forced rather than chosen:
 ///
-/// **The name is not optional, and there is no `isDirectChat` here.** The bubble timeline drops
+/// **The name is not optional, and there is no `isOneToOne` here.** The bubble timeline drops
 /// the avatar and the name in a conversation with one other person, because the side of the
 /// screen is already saying who spoke and a name would be repeating it. Here nothing else says
 /// it. A direct chat without names would be an anonymous column of sentences — two people

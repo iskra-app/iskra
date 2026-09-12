@@ -766,7 +766,7 @@ public struct RoomView: View {
         }
         .navigationDestination(isPresented: $isShowingPinned) {
             if let pinned {
-                PinnedMessagesView(pinned: pinned, isDirectChat: timeline.isDirectChat)
+                PinnedMessagesView(pinned: pinned, isOneToOne: timeline.isOneToOne)
             }
         }
         .photosPicker(isPresented: $isChoosingPhoto,
@@ -993,7 +993,7 @@ public struct RoomView: View {
         if let typing = typingSubtitle {
             return typing
         }
-        if timeline.isDirectChat {
+        if timeline.isOneToOne {
             return timeline.directCounterpartID
         }
         guard timeline.memberCount > 0 else { return nil }
@@ -1004,7 +1004,7 @@ public struct RoomView: View {
         let names = timeline.typing
         guard !names.isEmpty else { return nil }
 
-        if timeline.isDirectChat {
+        if timeline.isOneToOne {
             return String(app: Strings.Room.typing)
         }
         return String(app: Strings.Room.typingBy(names.formatted(.list(type: .and))))
@@ -1218,13 +1218,13 @@ public struct RoomView: View {
         switch messageLayout {
         case .bubbles:
             MessageRow(message: message,
-                       isDirectChat: timeline.isDirectChat,
+                       isOneToOne: timeline.isOneToOne,
                        handlers: handlers,
                        isPinned: isPinned,
                        opensDay: opensDay,
                        isHighlighted: isHighlighted)
         case .compact:
-            // No `isDirectChat`: the plain column says who spoke in every conversation, because
+            // No `isOneToOne`: the plain column says who spoke in every conversation, because
             // nothing else there does. See `CompactMessageRow`.
             CompactMessageRow(message: message,
                               handlers: handlers,

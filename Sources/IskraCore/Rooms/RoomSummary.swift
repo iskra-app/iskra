@@ -72,7 +72,9 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
     public let id: String
     public let name: String
     public let avatarURL: String?
-    public let isDirectMessage: Bool
+    /// A chat with one person, a chat with several, or a space. See `RoomKind` — and note that
+    /// this says how the room was *made*, not how many people are in it today.
+    public let kind: RoomKind
     public let privacy: PrivacyStatus
     /// Unread messages. Drives the badge.
     public let unreadCount: Int
@@ -81,11 +83,15 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
     public let lastMessage: String?
     public let lastActivity: Date?
 
-    /// A space, not a chat. Matrix models a "space" as a room of a particular type, and the SDK
-    /// hands that back as a plain flag on `RoomInfo`. The list shows it as an ordinary row — a
-    /// square-cornered avatar and a tap that opens the space's rooms rather than a conversation —
-    /// so the one bit that tells the two apart has to travel on the summary.
-    public let isSpace: Bool
+    /// A space, not a chat. The list shows it as an ordinary row — a square-cornered avatar and
+    /// a tap that opens the space's rooms rather than a conversation — so what tells the two
+    /// apart has to travel on the summary. It travels as `kind`; this is the short way to ask.
+    public var isSpace: Bool { kind == .space }
+
+    /// A conversation with one person, as opposed to a group. Says how the room was made — a
+    /// group with two people in it is still a group, and a personal chat stays one when a third
+    /// person is invited.
+    public var isDirectMessage: Bool { kind == .direct }
 
     /// Pinned to the top of the list. This is the Matrix `m.favourite` tag, so it syncs across the
     /// user's devices; the list sorts favourites above everything else.
@@ -128,13 +134,12 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
     public init(id: String,
                 name: String,
                 avatarURL: String? = nil,
-                isDirectMessage: Bool = false,
+                kind: RoomKind = .group,
                 privacy: PrivacyStatus = .protected,
                 unreadCount: Int = 0,
                 mentionCount: Int = 0,
                 lastMessage: String? = nil,
                 lastActivity: Date? = nil,
-                isSpace: Bool = false,
                 isFavourite: Bool = false,
                 isLowPriority: Bool = false,
                 isMarkedUnread: Bool = false,
@@ -143,13 +148,12 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
         self.id = id
         self.name = name
         self.avatarURL = avatarURL
-        self.isDirectMessage = isDirectMessage
+        self.kind = kind
         self.privacy = privacy
         self.unreadCount = unreadCount
         self.mentionCount = mentionCount
         self.lastMessage = lastMessage
         self.lastActivity = lastActivity
-        self.isSpace = isSpace
         self.isFavourite = isFavourite
         self.isLowPriority = isLowPriority
         self.isMarkedUnread = isMarkedUnread
@@ -157,7 +161,7 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
         self.invitedBy = invitedBy
     }
 
-    init?(info: RoomInfo, lastMessage: String?, lastActivity: Date?) {
+    init?(info: RoomInfo, ownUserID: String, lastMessage: String?, lastActivity: Date?) {
         // A room that is neither joined nor invited is not a row. Failing here rather than
         // defaulting to `.joined` is the point: a left or banned room rendered as an ordinary chat
         // is exactly the class of bug this type is being introduced to end.
@@ -165,17 +169,18 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
         self.membership = membership
 
         self.id = info.id
-        // A room with no name is normal in Matrix (most DMs have none); fall back to
-        // whoever is in it rather than showing a raw room ID to a human.
-        self.name = info.displayName ?? info.heroes.first?.displayName ?? String(core: CoreStrings.Room.untitled)
-        self.avatarURL = info.avatarUrl
-        self.isDirectMessage = info.isDm
+        // Both the name and the picture fall back to the other person in a personal chat, and
+        // they fall back together — see `RoomInfo.title` and `RoomInfo.pictureURL`. They used to
+        // disagree: the name knew about the heroes and the picture did not, so a chat with
+        // somebody who has a photograph showed their name beside a circle of initials.
+        self.name = info.title(besides: ownUserID)
+        self.avatarURL = info.pictureURL(besides: ownUserID)
+        self.kind = info.kind
         self.privacy = PrivacyStatus(info.encryptionState)
         self.unreadCount = Int(info.notificationCount)
         self.mentionCount = Int(info.highlightCount)
         self.lastMessage = lastMessage
         self.lastActivity = lastActivity
-        self.isSpace = info.isSpace
         self.isFavourite = info.isFavourite
         self.isLowPriority = info.isLowPriority
         self.isMarkedUnread = info.isMarkedUnread

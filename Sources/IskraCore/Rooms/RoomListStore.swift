@@ -61,6 +61,8 @@ public final class RoomListStore {
     private static let stopTimeout: Duration = .seconds(5)
 
     private let client: Client
+    /// Who we are, for the rows that describe a room by whoever else is in it. See `init`.
+    private let ownUserID: String
     private var syncService: SyncService?
     private var roomList: RoomList?
 
@@ -129,6 +131,10 @@ public final class RoomListStore {
 
     public init(client: Client) {
         self.client = client
+        // Fixed for the life of the client, and needed on every row: a personal chat takes its
+        // name and its face from the *other* person, and telling them apart takes knowing which
+        // one is us. Resolved once here rather than asked of the SDK per room per rebuild.
+        self.ownUserID = (try? client.userId()) ?? ""
     }
 
     /// Starts syncing and streaming room updates. Safe to call again after `stop()`.
@@ -537,7 +543,10 @@ public final class RoomListStore {
                 break
             }
 
-            guard let summary = RoomSummary(info: info, lastMessage: preview, lastActivity: activity) else {
+            guard let summary = RoomSummary(info: info,
+                                            ownUserID: ownUserID,
+                                            lastMessage: preview,
+                                            lastActivity: activity) else {
                 continue
             }
             summaries.append(summary)

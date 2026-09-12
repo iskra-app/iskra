@@ -9,7 +9,7 @@ struct MessageRow: View {
     /// In a conversation with one other person there is no one to tell apart, so the
     /// avatar and the name above every incoming message are noise. In a room with
     /// several people they are the only way to know who said what, so they stay.
-    let isDirectChat: Bool
+    let isOneToOne: Bool
 
     /// Everything the row can ask the conversation to do — see `MessageHandlers`, which is
     /// where each one is explained.
@@ -65,7 +65,7 @@ struct MessageRow: View {
     /// Who sent it is said by the side of the screen and, in a room, by the name above
     /// the bubble. Nothing else needs to repeat it.
     private var showsSender: Bool {
-        !message.isOwn && !isDirectChat
+        !message.isOwn && !isOneToOne
     }
 
     /// What this message is dressed in — see `BubbleStyle`. In this timeline the answer is

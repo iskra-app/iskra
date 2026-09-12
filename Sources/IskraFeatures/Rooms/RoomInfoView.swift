@@ -78,7 +78,11 @@ struct RoomInfoView: View {
     /// A one-to-one chat has no name, no description and no picture of its own — all three
     /// belong to the person you are talking to. Offering to rename them would be offering
     /// something Matrix will happily do and nobody wants.
-    private var isRoom: Bool { !details.isDirectChat }
+    ///
+    /// Asked of what the room *is*, not of how many people are in it today: invite somebody
+    /// into a personal chat and the name, the description and the picture still belong to the
+    /// person it was started with, so the screen goes on leaving them alone.
+    private var isRoom: Bool { details.kind != .direct }
 
     var body: some View {
         Form {
@@ -366,7 +370,7 @@ struct RoomInfoView: View {
     /// conversation would be a confident lie about where somebody is — see
     /// `TimelineStore.directCounterpartID`.
     private var subtitle: String? {
-        if details.isDirectChat {
+        if details.isOneToOne {
             return details.counterpartID
         }
         guard details.memberCount > 0 else { return nil }

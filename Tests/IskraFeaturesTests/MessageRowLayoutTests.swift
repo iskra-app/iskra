@@ -74,12 +74,12 @@ struct MessageRowLayoutTests {
 
     @Test("a direct chat renders without avatars or names, with the time beside each bubble")
     func directChat() throws {
-        try render(isDirectChat: true, named: "messages-direct")
+        try render(isOneToOne: true, named: "messages-direct")
     }
 
     @Test("a room keeps the avatar and the sender's name")
     func room() throws {
-        try render(isDirectChat: false, named: "messages-room")
+        try render(isOneToOne: false, named: "messages-room")
     }
 
     /// The badge's popover, side by side in both shapes: with "Send again" where trying
@@ -130,7 +130,7 @@ struct MessageRowLayoutTests {
     ///
     /// This is the decision that has no analogue in the bubbles, and the one most likely to be
     /// "tidied" away by somebody who notices the app never named your own messages before. It
-    /// cannot be checked by handing the row an `isDirectChat` — it has none, deliberately — so
+    /// cannot be checked by handing the row an `isOneToOne` — it has none, deliberately — so
     /// what is checked is the consequence: nothing in the plain column may depend on whose
     /// message it is, and a header dropped from your own would show up here as two different
     /// heights.
@@ -157,7 +157,7 @@ struct MessageRowLayoutTests {
                     isOwn: false, at: $0, isContinuation: $0 > 0)
         }
 
-        let bubbles = try #require(rendered(run) { MessageRow(message: $0, isDirectChat: false) })
+        let bubbles = try #require(rendered(run) { MessageRow(message: $0, isOneToOne: false) })
         let compact = try #require(rendered(run) { CompactMessageRow(message: $0) })
 
         #expect(compact.size.height < bubbles.size.height,
@@ -165,9 +165,9 @@ struct MessageRowLayoutTests {
     }
     #endif
 
-    private func render(isDirectChat: Bool, named name: String) throws {
+    private func render(isOneToOne: Bool, named name: String) throws {
         try render(named: name) { message in
-            MessageRow(message: message, isDirectChat: isDirectChat)
+            MessageRow(message: message, isOneToOne: isOneToOne)
         }
     }
 
