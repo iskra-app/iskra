@@ -122,6 +122,26 @@
 
 "settings.storage" = "Storage";
 
+"settings.connection" = "Connection";
+
+/* The Connection screen: through a bridge, or straight to the server. */
+"connection.title" = "Connection";
+"connection.bridge" = "Through a bridge";
+"connection.bridgeFooter" = "Traffic reaches the server through a bridge instead of going there directly. This is for places where the server cannot be reached.";
+
+"connection.status" = "Status";
+"connection.statusDirect" = "Direct";
+"connection.statusLocal" = "Through the local layer";
+"connection.statusFailed" = "Could not be turned on";
+
+/* With no transport yet the switch gets you past nothing, and saying so plainly beats
+   letting someone decide they are protected. */
+"connection.unfinished" = "Not finished yet";
+"connection.unfinishedBody" = "The bridge itself works, but the app cannot talk to it yet. For now this switch routes traffic through the local layer, and from there it still goes straight to the server — so it does not get you past a block.";
+
+"connection.sees" = "What the bridge sees";
+"connection.seesBody" = "A bridge unpacks your requests to the server, so it sees your token, which rooms you are in, and the text of messages in unencrypted chats. It cannot read encrypted conversations. This is why the bridge should be your own rather than somebody else's.";
+
 /* App lock by Face ID / device passcode. */
 "settings.lock" = "App Lock";
 "settings.lockEnable" = "Require Face ID or passcode";
