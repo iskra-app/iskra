@@ -21,12 +21,25 @@ pub struct TunnelClient {
 }
 
 impl TunnelClient {
+    /// Connect and subscribe once, for the life of the connection.
+    ///
+    /// Once, not per request: a subscription per request leaves the Nth call with N live
+    /// subscriptions on every relay, each delivering its own copy of every answer, and relays are
+    /// entitled to start refusing them.
     pub async fn connect(keys: Keys, bridge: PublicKey, relays: &[String]) -> Result<Self> {
         let client = Client::new(keys.clone());
         for relay in relays {
             client.add_relay(relay).await?;
         }
         client.connect().await;
+
+        let filter = Filter::new()
+            .kind(Kind::Custom(KIND_RESPONSE))
+            .author(bridge)
+            .pubkey(keys.public_key())
+            .since(Timestamp::now());
+        client.subscribe(filter, None).await?;
+
         Ok(Self {
             keys,
             bridge,
@@ -40,8 +53,8 @@ impl TunnelClient {
 
     /// Send one request through the tunnel and wait for its answer.
     ///
-    /// The subscription is opened *before* the request goes out. Opening it afterwards is a race
-    /// the bridge wins often enough on a fast relay to make the bug look intermittent.
+    /// The notification receiver is taken *before* the request goes out. Taking it afterwards is a
+    /// race the bridge wins often enough on a fast relay to make the bug look intermittent.
     pub async fn request(
         &self,
         method: &str,
@@ -55,12 +68,6 @@ impl TunnelClient {
         request.body = body;
         let id = request.id.clone();
 
-        let filter = Filter::new()
-            .kind(Kind::Custom(KIND_RESPONSE))
-            .author(self.bridge)
-            .pubkey(self.public_key())
-            .since(Timestamp::now());
-        self.client.subscribe(filter, None).await?;
         let mut notifications = self.client.notifications();
 
         let envelope = request.into_single_envelope();
