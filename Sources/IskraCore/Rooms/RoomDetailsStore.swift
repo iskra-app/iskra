@@ -181,7 +181,14 @@ public final class RoomDetailsStore {
     public private(set) var topic: String?
     public private(set) var avatarURL: String?
     public private(set) var privacy: PrivacyStatus = .unknown
-    public private(set) var isDirectChat = false
+    /// What this room is — personal chat, group, or space. See `RoomKind`. This is what the
+    /// screen should ask when it decides whether to call the room a room: a personal chat with
+    /// a third person invited into it is still a personal chat.
+    public private(set) var kind: RoomKind = .group
+
+    /// Exactly one other person here right now. About the room's present membership, not about
+    /// what it is — the notification defaults are asked in these terms, and so is the header.
+    public private(set) var isOneToOne = false
 
     /// Whether anybody who finds the room may walk into it, or whether it takes an
     /// invitation. Read from the join rules, and `false` until they arrive — the safer of
@@ -308,7 +315,7 @@ public final class RoomDetailsStore {
         }
 
         alerts = RoomAlerts(await settings.getDefaultRoomNotificationMode(isEncrypted: privacy == .protected,
-                                                                          isOneToOne: isDirectChat))
+                                                                          isOneToOne: isOneToOne))
     }
 
     /// Writes the rule down. Always explicitly, even when the choice happens to be what the
@@ -376,14 +383,17 @@ public final class RoomDetailsStore {
     /// must produce the same fields from the same `RoomInfo`, or the screen would change its mind
     /// about what the room is called the moment somebody else changed something unrelated.
     private func adopt(_ info: RoomInfo) {
-        name = info.displayName ?? info.heroes.first?.displayName ?? String(core: CoreStrings.Room.untitled)
+        name = info.title(besides: ownUserID)
         topic = info.topic
-        avatarURL = info.avatarUrl
+        // The other person's picture in a personal chat, exactly as the name above it. See
+        // `RoomInfo.pictureURL` — a one-to-one room almost never has an avatar of its own.
+        avatarURL = info.pictureURL(besides: ownUserID)
         privacy = PrivacyStatus(info.encryptionState)
-        isDirectChat = info.isDm
+        kind = info.kind
+        isOneToOne = info.isOneToOne
         isPublic = info.isPublic ?? false
         memberCount = Int(info.joinedMembersCount)
-        counterpartID = info.isDm ? info.heroes.first(where: { $0.userId != ownUserID })?.userId : nil
+        counterpartID = isOneToOne ? info.counterpart(besides: ownUserID)?.userId : nil
     }
 
     /// Closing the screen. Kept alive by the handle, and dropping the handle is what unsubscribes —
@@ -426,7 +436,7 @@ public final class RoomDetailsStore {
 
         // The heroes are the server's summary of a room and can be missing; the member
         // list never is. So once it has arrived, it settles who the other person is.
-        if isDirectChat, counterpartID == nil {
+        if isOneToOne, counterpartID == nil {
             counterpartID = loaded.first { $0.id != ownUserID }?.id
         }
     }

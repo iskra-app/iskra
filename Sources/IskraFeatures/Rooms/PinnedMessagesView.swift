@@ -116,7 +116,7 @@ struct PinnedStrip: View {
 /// makes that the gesture people already know: swipe.
 struct PinnedMessagesView: View {
     let pinned: PinnedStore
-    let isDirectChat: Bool
+    let isOneToOne: Bool
 
     var body: some View {
         Group {
@@ -150,7 +150,7 @@ struct PinnedMessagesView: View {
         HStack(alignment: .top, spacing: Theme.Spacing.normal) {
             // In a chat with one other person there is nobody to tell apart, exactly as in the
             // conversation itself — so the face comes off and the line gets the width.
-            if !isDirectChat {
+            if !isOneToOne {
                 Avatar(name: message.senderName,
                        url: message.senderAvatarURL,
                        size: Theme.Size.avatarSmall)

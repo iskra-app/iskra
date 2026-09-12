@@ -60,7 +60,14 @@ public final class TimelineStore {
     /// True when there is exactly one other person here. A conversation with one other
     /// person does not need their name and face repeated above every message they send —
     /// you know who they are, and the messages are on their side of the screen.
-    public private(set) var isDirectChat = false
+    ///
+    /// A question about the room *right now*, not about what it is: invite a third person and
+    /// the names come back, whether or not the chat began as a personal one. For what the room
+    /// is, ask `kind`.
+    public private(set) var isOneToOne = false
+
+    /// What this room is — personal chat, group, or space. See `RoomKind`.
+    public private(set) var kind: RoomKind = .group
 
     /// What the header above the conversation needs, and nothing more. The room *info*
     /// screen asks for the rest — members, topic, notifications — through
@@ -414,9 +421,12 @@ public final class TimelineStore {
     /// Everything the header and the pinned strip read, taken from the room as it now is.
     private func adopt(_ info: RoomInfo) {
         privacy = PrivacyStatus(info.encryptionState)
-        roomName = info.displayName ?? info.heroes.first?.displayName ?? String(core: CoreStrings.Room.untitled)
-        isDirectChat = info.isDm
-        roomAvatarURL = info.avatarUrl
+        roomName = info.title(besides: ownUserID)
+        kind = info.kind
+        isOneToOne = info.isOneToOne
+        // The picture falls back to the other person's in a personal chat, exactly as the name
+        // above it does — see `RoomInfo.pictureURL`.
+        roomAvatarURL = info.pictureURL(besides: ownUserID)
         memberCount = Int(info.joinedMembersCount)
         pinnedEventIDs = info.pinnedEventIds
         // The heroes are the people the server names to describe a room that has no
@@ -424,7 +434,7 @@ public final class TimelineStore {
         // back to nothing (rather than to our own ID) is right: a note-to-self room
         // has no counterpart, and claiming one would put your own address in the
         // header of your own chat.
-        directCounterpartID = info.isDm ? info.heroes.first(where: { $0.userId != ownUserID })?.userId : nil
+        directCounterpartID = isOneToOne ? info.counterpart(besides: ownUserID)?.userId : nil
 
         // Sending is governed by the room's power levels. If the levels are not in the
         // info we just received, leave the previous answer alone: it may have arrived in an
