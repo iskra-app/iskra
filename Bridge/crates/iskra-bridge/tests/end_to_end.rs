@@ -6,79 +6,18 @@
 //! as the homeserver's own bytes.
 
 use std::collections::BTreeMap;
-use std::num::NonZeroU32;
-use std::sync::Arc;
 use std::time::Duration;
 
-use iskra_bridge::{Bridge, Config};
 use iskra_tunnel_probe::TunnelClient;
-use nostr_relay_builder::MockRelay;
 use nostr_sdk::prelude::Keys;
 use url::Url;
 use wiremock::matchers::{body_string, header, method, path};
-use wiremock::{Mock, MockServer, ResponseTemplate};
+use wiremock::{Mock, ResponseTemplate};
+
+mod common;
+use common::Harness;
 
 const TIMEOUT: Duration = Duration::from_secs(20);
-
-struct Harness {
-    _relay: MockRelay,
-    homeserver: MockServer,
-    bridge: Arc<Bridge>,
-    bridge_keys: Keys,
-    relay_url: String,
-}
-
-impl Harness {
-    async fn start() -> Self {
-        Self::start_with(|config| config).await
-    }
-
-    async fn start_with(tweak: impl FnOnce(Config) -> Config) -> Self {
-        let relay = MockRelay::run().await.expect("relay");
-        let relay_url = relay.url().await.to_string();
-        let homeserver = MockServer::start().await;
-        let bridge_keys = Keys::generate();
-
-        let config = tweak(Config {
-            homeserver: Url::parse(&homeserver.uri()).expect("homeserver url"),
-            keys: bridge_keys.clone(),
-            relays: vec![relay_url.clone()],
-            client_relays: vec![relay_url.clone()],
-            rate_limit_per_min: NonZeroU32::new(120).unwrap(),
-            allowed_pubkeys: None,
-            max_body_chunk: iskra_tunnel_proto::DEFAULT_MAX_BODY_CHUNK,
-            request_timeout: Duration::from_secs(10),
-        });
-
-        let bridge = Arc::new(Bridge::start(config).await.expect("bridge starts"));
-        let serving = Arc::clone(&bridge);
-        tokio::spawn(async move {
-            let _ = serving.run().await;
-        });
-
-        Self {
-            _relay: relay,
-            homeserver,
-            bridge,
-            bridge_keys,
-            relay_url,
-        }
-    }
-
-    async fn client(&self) -> TunnelClient {
-        self.client_with(Keys::generate()).await
-    }
-
-    async fn client_with(&self, keys: Keys) -> TunnelClient {
-        TunnelClient::connect(
-            keys,
-            self.bridge.public_key(),
-            std::slice::from_ref(&self.relay_url),
-        )
-        .await
-        .expect("client connects")
-    }
-}
 
 #[tokio::test]
 async fn a_get_comes_back_with_the_homeservers_own_bytes() {

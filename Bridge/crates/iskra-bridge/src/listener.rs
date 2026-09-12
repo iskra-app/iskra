@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use iskra_tunnel_proto::{
-    log_path, open, seal, HttpRequest, HttpResponse, KIND_REQUEST, KIND_RESPONSE,
+    log_path, open, seal, HttpRequest, HttpResponse, ProtoError, KIND_REQUEST, KIND_RESPONSE,
 };
 use nostr_sdk::prelude::*;
 use tokio::sync::{broadcast, Mutex};
@@ -87,7 +87,21 @@ impl Bridge {
             .take()
             .ok_or_else(|| anyhow::anyhow!("run was called twice"))?;
 
-        while let Ok(notification) = notifications.recv().await {
+        loop {
+            let notification = match notifications.recv().await {
+                Ok(notification) => notification,
+                // Lagging is not the end of the bridge, and treating it as one is a trap worth
+                // naming: notifications arrive on a bounded broadcast channel, and the obvious
+                // `while let Ok(..) = recv().await` exits the loop when the channel overflows. The
+                // bridge would then go silent **permanently** after one burst of traffic, while
+                // still connected, still subscribed, and still looking healthy in the logs. The
+                // stress suite found exactly that.
+                Err(broadcast::error::RecvError::Lagged(missed)) => {
+                    tracing::warn!(missed, "fell behind the relay stream; requests were dropped");
+                    continue;
+                }
+                Err(broadcast::error::RecvError::Closed) => break,
+            };
             let RelayPoolNotification::Event { event, .. } = notification else {
                 continue;
             };
@@ -185,7 +199,31 @@ async fn serve(
     );
 
     let reply = response.into_single_envelope();
-    let content = seal(secret, &sender, &reply)?;
+    let content = match seal(secret, &sender, &reply) {
+        Ok(content) => content,
+        // Too big for one NIP-44 payload. Until chunking lands the honest answer is a 502: the
+        // alternative is returning an error here and sending nothing, and silence is the one thing
+        // the bridge may never do — the client would sit out its own timeout with no way to tell a
+        // huge response from a dead bridge.
+        Err(ProtoError::TooLarge(bytes)) => {
+            tracing::warn!(
+                client = %sender,
+                %method,
+                route,
+                bytes,
+                "response does not fit one envelope; answering 502 until chunking lands"
+            );
+            let refusal = HttpResponse {
+                id: reply.id.clone(),
+                status: 502,
+                headers: Default::default(),
+                body: Vec::new(),
+            }
+            .into_single_envelope();
+            seal(secret, &sender, &refusal)?
+        }
+        Err(error) => return Err(error.into()),
+    };
     let out = EventBuilder::new(Kind::Custom(KIND_RESPONSE), content)
         .tag(Tag::public_key(sender))
         .sign_with_keys(&config.keys)?;
