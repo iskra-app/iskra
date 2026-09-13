@@ -58,6 +58,12 @@ struct RoomInfoView: View {
     @State private var isInviting = false
     @State private var invitee = ""
 
+    /// The nickname being typed for a personal chat, and whether the field has the keyboard.
+    /// Committed when the field is left, exactly as the room's own name is on `RoomEditView` —
+    /// a "Save" button for one line of text is a button too many.
+    @State private var draftLocalName = ""
+    @FocusState private var isNamingContact: Bool
+
     /// The person a block has been asked for and not yet confirmed. Blocking is the one
     /// act on this screen with no way back through it.
     @State private var blocking: RoomMemberSummary?
@@ -91,6 +97,8 @@ struct RoomInfoView: View {
             }
 
             about
+
+            contactName
 
             // What the padlock means, directly under the name. It used to sit five sections down,
             // between the room's visibility and its notifications, which is filing the one fact on
@@ -190,8 +198,24 @@ struct RoomInfoView: View {
         // handed to it, and a store that stopped listening the moment it was pushed would show
         // a name that no longer followed the room it is renaming.
         .onDisappear {
+            // Leaving the screen is leaving the field: the nickname commits on focus loss, and
+            // SwiftUI makes no promise that focus resigns before a view is torn down. Same
+            // arrangement, and the same reason, as `RoomEditView`.
+            if isNamingContact { details.renameLocally(to: draftLocalName) }
+
             guard !isEditing else { return }
             details.stop()
+        }
+        // The field follows the chat, except while somebody is typing in it.
+        .onChange(of: details.localName, initial: true) { _, local in
+            if !isNamingContact { draftLocalName = local ?? "" }
+        }
+        // And commits when they stop. A rename on every keystroke would be a rename: the name
+        // travels to the chat list and the header the moment it is written, and watching a
+        // friend's name assemble itself letter by letter in the list behind is not a feature.
+        .onChange(of: isNamingContact) { wasFocused, _ in
+            guard wasFocused else { return }
+            details.renameLocally(to: draftLocalName)
         }
         .alert(Text(Strings.Room.Manage.inviteTitle), isPresented: $isInviting) {
             TextField(String(app: Strings.Room.Manage.invitePlaceholder), text: $invitee)
@@ -353,6 +377,48 @@ struct RoomInfoView: View {
 
     // MARK: - What is in it
 
+    /// What to call the person at the other end of a personal chat — on this device, and nowhere
+    /// else.
+    ///
+    /// The one thing on this screen that changes something without telling the server, and the
+    /// reason it exists: a Matrix display name belongs to whoever set it, so a friend who calls
+    /// themselves `anna_1987` is `anna_1987` in the list, in the header and on the lock screen,
+    /// and Matrix's own answer — renaming the room — writes a state event that the other person
+    /// receives and can see. Nobody wants to announce what they have decided to call somebody.
+    ///
+    /// So the footer is not a disclaimer, it is the feature: this name is local, it does not
+    /// travel to the other person or to the user's other devices, and signing out forgets it.
+    /// Said in the place somebody is looking when they type the name, rather than in a help
+    /// screen nobody opens.
+    ///
+    /// Only in a personal chat. A group's name belongs to everybody in it — see `LocalNames`.
+    @ViewBuilder
+    private var contactName: some View {
+        if !isRoom {
+            Section {
+                // The placeholder is the name the server gives, so an empty field is not a blank:
+                // it says, in grey, exactly whose name is being replaced and what comes back if
+                // the field is emptied.
+                TextField(details.serverName, text: $draftLocalName)
+                    .focused($isNamingContact)
+                    .onSubmit { isNamingContact = false }
+
+                if details.localName != nil {
+                    Button {
+                        draftLocalName = ""
+                        details.renameLocally(to: nil)
+                    } label: {
+                        Text(Strings.Room.LocalName.reset)
+                    }
+                }
+            } header: {
+                Text(Strings.Room.LocalName.header)
+            } footer: {
+                Text(Strings.Room.LocalName.help)
+            }
+        }
+    }
+
     /// The room's own contents, behind a strip of tabs: the people, the pictures, the voice notes,
     /// the round videos, the files, the links.
     ///
@@ -370,21 +436,32 @@ struct RoomInfoView: View {
         let tabs = availableTabs
 
         if !tabs.isEmpty {
-            // The strip and what it switches are one block, because they are one thing: a control
-            // separated from its result by the gap between two cards reads as two unrelated lists,
-            // and the eye has to be told twice that the second belongs to the first.
+            // The switch is on the page, and what it switches is in a card under it.
+            //
+            // Not both in one section, which is how it was: a `Form` wraps every row in a plate,
+            // so the control came out standing on a white rectangle with a second white rectangle
+            // of its own on top of it. A segmented control is already a surface — it is the one
+            // piece of furniture on this screen that Apple draws in full — and the plate under it
+            // was the app putting a table under a table.
+            //
+            // Nothing is lost by separating them, because the card below now carries the name of
+            // the open tab as its heading: the two are joined by the word rather than by the
+            // plate, which is the stronger join anyway.
             //
             // The binding reads `openTab`, not `tab`. They differ exactly when the tab last pressed
             // is not available — a personal chat opening on `.members`, which it does not have —
-            // and binding the raw value there left every capsule unlit, with a list underneath that
-            // plainly belonged to one of them.
+            // and binding the raw value there left the control with nothing selected, over a list
+            // that plainly belonged to one of the segments.
             Section {
                 RoomContentPicker(tabs: tabs, selection: Binding(get: { openTab },
                                                                 set: { tab = $0 }))
-                    .listRowInsets(EdgeInsets())
-                    .listRowSeparator(.hidden)
+                    .profileHeaderRow()
+            }
 
+            Section {
                 tabContent
+            } header: {
+                Text(openTab.title)
             }
         }
     }
