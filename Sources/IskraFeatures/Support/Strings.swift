@@ -302,6 +302,13 @@ public enum Strings {
             /// of it — a room's name is one line of text, and a whole screen state to change
             /// one line of text is a screen too many.
             public static let namePlaceholder = LocalizedStringResource("room.manage.namePlaceholder", bundle: bundle)
+
+            /// The pencil above the chat's portrait, and the screen behind it. Shown only to
+            /// somebody the room lets change something — see `RoomInfoView.canEdit`.
+            public static let edit = LocalizedStringResource("room.manage.edit", bundle: bundle)
+            public static let editTitle = LocalizedStringResource("room.manage.editTitle", bundle: bundle)
+            /// Over the name field on that screen, where `room.about` already labels the one below it.
+            public static let nameHeader = LocalizedStringResource("room.manage.nameHeader", bundle: bundle)
             public static let topicPlaceholder = LocalizedStringResource("room.manage.topicPlaceholder", bundle: bundle)
 
             public static let changePicture = LocalizedStringResource("room.manage.changePicture", bundle: bundle)
@@ -710,6 +717,22 @@ public enum Strings {
         public static let namePlaceholder = LocalizedStringResource("account.namePlaceholder", bundle: bundle)
         public static let changePicture = LocalizedStringResource("account.changePicture", bundle: bundle)
         public static let removePicture = LocalizedStringResource("account.removePicture", bundle: bundle)
+
+        /// The pencil in the corner of settings, and the screen it opens.
+        ///
+        /// The button has no words on it — a pencil beside a title says "change this" in every app
+        /// on the phone — so `edit` is read aloud rather than drawn, and it is the whole label a
+        /// blind user gets. `editTitle` names the screen it leads to, and names it as a *place*
+        /// ("Your profile") rather than as an instruction: the back chevron beside it already says
+        /// what leaving does, and a title that repeats the button is a screen shouting its own name.
+        public static let edit = LocalizedStringResource("account.edit", bundle: bundle)
+        public static let editTitle = LocalizedStringResource("account.editTitle", bundle: bundle)
+        /// Over the one field on that screen. The placeholder below it invites, this one labels —
+        /// they are not the same words, because a field with the same sentence twice in it looks
+        /// like a mistake.
+        public static let nameHeader = LocalizedStringResource("account.nameHeader", bundle: bundle)
+        /// Why the field will not take anything at the moment.
+        public static let editOffline = LocalizedStringResource("account.editOffline", bundle: bundle)
     }
 
     /// Getting your messages back: the screen between signing in and the conversations, and the

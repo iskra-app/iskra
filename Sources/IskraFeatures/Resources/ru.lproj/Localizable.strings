@@ -537,6 +537,13 @@
 "account.namePlaceholder" = "Ваше имя";
 "account.changePicture" = "Изменить фото";
 "account.removePicture" = "Удалить фото";
+"account.edit" = "Изменить";
+"account.editTitle" = "Ваш профиль";
+"account.nameHeader" = "Имя";
+"account.editOffline" = "Без сети профиль не поменять — приложение просто не дозвонится до сервера.";
+"room.manage.edit" = "Изменить";
+"room.manage.editTitle" = "Изменить чат";
+"room.manage.nameHeader" = "Название";
 
 /* Шифрование: доступно ли будет прочитать переписку на новом устройстве. */
 "encryption.title" = "Шифрование";
