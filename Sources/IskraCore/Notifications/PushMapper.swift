@@ -62,7 +62,10 @@ enum PushMapper {
                 return .silence(.notWorthWaking)
             }
 
-            let who = attribution(roomName: roomName, senderName: senderName, isDirect: room.isDm)
+            let who = attribution(roomName: roomName,
+                                  senderName: senderName,
+                                  isDirect: room.isDm,
+                                  localName: LocalNames.name(for: roomID))
             return .show(PushNotification(roomID: roomID,
                                           eventID: eventID,
                                           title: who.title,
@@ -106,7 +109,14 @@ enum PushMapper {
     /// actually sees, and `isDm` is only one way of arriving at it.
     static func attribution(roomName: String,
                             senderName: String,
-                            isDirect: Bool) -> (title: String, sender: String?) {
+                            isDirect: Bool,
+                            localName: String? = nil) -> (title: String, sender: String?) {
+        // The name this device was told to use wins outright, and takes the second line with it.
+        // A nickname exists only in a personal chat, where the sender *is* the chat — so printing
+        // «Мама» over `anna_1987` would undo the rename on the one screen the user cannot open to
+        // fix it. See `LocalNames`.
+        if let localName, !localName.isEmpty { return (localName, nil) }
+
         // A nameless sender falls back to the room, because a blank second line and a
         // duplicated one are the two ways this goes wrong.
         guard !senderName.isEmpty else { return (roomName, nil) }

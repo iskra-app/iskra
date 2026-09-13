@@ -178,6 +178,12 @@ public struct RoomMemberSummary: Sendable, Identifiable, Equatable {
 @Observable
 public final class RoomDetailsStore {
     public private(set) var name = ""
+
+    /// What the *server* calls this chat: the other person's display name, or the room's own. Kept
+    /// beside `name` because the two come apart the moment somebody renames a personal chat on
+    /// this device — see `LocalNames`. The edit field shows this as its placeholder, which is how
+    /// a chat with a nickname still says who it is really with.
+    public private(set) var serverName = ""
     public private(set) var topic: String?
     public private(set) var avatarURL: String?
     public private(set) var privacy: PrivacyStatus = .unknown
@@ -240,7 +246,39 @@ public final class RoomDetailsStore {
         self.room = room
         self.ownUserID = ownUserID
         self.client = client
+        self.roomID = room.id()
+
+        // The screen that sets a nickname is this one, so it is also the one that has to notice.
+        // Nothing syncs and no `RoomInfo` arrives: this is the whole of how the portrait at the
+        // top changes when the field underneath it does.
+        localNameObserver = LocalNames.observe { [weak self] changed in
+            guard let self, changed == nil || changed == self.roomID else { return }
+            self.name = LocalNames.name(for: self.roomID) ?? self.serverName
+        }
     }
+
+    /// The room this is about. Public because the screen needs it to set a nickname, which is a
+    /// fact about a room ID and not about anything the server knows.
+    public let roomID: String
+
+    /// The name this device has been told to use for this chat, if any — the field's own value,
+    /// as opposed to `name`, which is whatever ends up on screen.
+    public var localName: String? { LocalNames.name(for: roomID) }
+
+    /// Renaming the person at the other end of a personal chat, on this device and nowhere else.
+    ///
+    /// Not `room.setName`, which is the protocol's answer and the wrong one: that writes an
+    /// `m.room.name` state event into a two-person room, where the other person receives it, sees
+    /// it, and can change it back. What somebody privately calls a friend is not an announcement
+    /// to that friend. See `LocalNames` for where it goes instead and what that costs.
+    ///
+    /// Given nil or blank, the real name comes back.
+    public func renameLocally(to name: String?) {
+        LocalNames.set(name, for: roomID)
+    }
+
+    /// The subscription to that happening. Held because dropping it unsubscribes.
+    private var localNameObserver: LocalNameSubscription?
 
     /// Loads the room, then the people in it.
     ///
@@ -384,6 +422,7 @@ public final class RoomDetailsStore {
     /// about what the room is called the moment somebody else changed something unrelated.
     private func adopt(_ info: RoomInfo) {
         name = info.title(besides: ownUserID)
+        serverName = info.serverTitle(besides: ownUserID)
         topic = info.topic
         // The other person's picture in a personal chat, exactly as the name above it. See
         // `RoomInfo.pictureURL` — a one-to-one room almost never has an avatar of its own.

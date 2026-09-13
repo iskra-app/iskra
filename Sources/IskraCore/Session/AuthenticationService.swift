@@ -516,6 +516,7 @@ public actor AuthenticationService {
         }
 
         try? sessionStore.clear(environment: environment)
+        LocalNames.forget()
     }
 
     /// Long enough for a server that is merely slow, short enough that a server which is never
@@ -534,6 +535,9 @@ public actor AuthenticationService {
     /// on the disk of a device that can no longer reach the account they belong to.
     public func forgetSession() {
         try? sessionStore.clear(environment: environment)
+        // The nicknames go too. They are one person's private notes about the people they talk
+        // to, kept in the clear, and the next account on this device is somebody else.
+        LocalNames.forget()
     }
 
     // MARK: - Private
