@@ -232,10 +232,10 @@ struct LocalizationTests {
         var protected = CoreStrings.Privacy.protected
 
         protected.locale = Locale(identifier: "en")
-        #expect(String(localized: protected).contains("Only people in this chat"))
+        #expect(String(localized: protected).contains("encrypted"))
 
         protected.locale = Locale(identifier: "ru")
-        #expect(String(localized: protected).contains("только участники чата"))
+        #expect(String(localized: protected).contains("зашифрована"))
     }
 
     /// The storage screen's second button, in both languages.

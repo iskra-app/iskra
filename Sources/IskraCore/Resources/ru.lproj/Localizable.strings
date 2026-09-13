@@ -44,14 +44,14 @@
 /* Summary line for a voice message. */
 "preview.voice" = "Голосовое сообщение";
 
-/* Explains an unencrypted room. No cryptography vocabulary allowed. */
-"privacy.notProtected" = "Здесь сообщения не защищены — сервер может их прочитать.";
+/* Says an unencrypted room is one, in three words. Read as a status, not as a warning. */
+"privacy.notProtected" = "Переписка не зашифрована";
 
-/* Explains an encrypted room. No cryptography vocabulary allowed. */
-"privacy.protected" = "Эти сообщения могут прочитать только участники чата. Даже мы не можем.";
+/* Says an encrypted room is one. Sits directly under the name, where it is read at a glance. */
+"privacy.protected" = "Переписка зашифрована";
 
 /* Shown before we have synced enough to know. Never claim protection we cannot see. */
-"privacy.unknown" = "Проверяем, защищён ли этот чат.";
+"privacy.unknown" = "Проверяем шифрование";
 
 /* Fallback name for a conversation that has none. Most Matrix DMs have no name. */
 "room.untitled" = "Чат";

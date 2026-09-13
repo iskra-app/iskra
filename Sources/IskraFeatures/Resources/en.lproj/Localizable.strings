@@ -488,6 +488,8 @@
 "room.manage.inviteHelp" = "A Matrix address looks like @name:server.";
 "room.manage.invitePlaceholder" = "@name:server";
 "room.manage.role" = "Role";
+"room.manage.roleHeader" = "What they can do";
+"room.manage.roleQuestion" = "What can %@ do?";
 "room.manage.member" = "Member";
 "room.manage.remove" = "Remove";
 "room.manage.block" = "Block";
@@ -544,6 +546,15 @@
 "room.manage.edit" = "Edit";
 "room.manage.editTitle" = "Edit chat";
 "room.manage.nameHeader" = "Name";
+"room.manage.deleteChat" = "Delete chat";
+"room.manage.deleteChatQuestion" = "Delete this chat?";
+"room.manage.deleteChatHelp" = "The conversation goes from this device. The other person isn’t told, and if they write again the chat comes back — empty.";
+"room.tabs.members" = "People";
+"room.tabs.media" = "Photos";
+"room.tabs.voice" = "Voice";
+"room.tabs.videoNotes" = "Video notes";
+"room.tabs.files" = "Files";
+"room.tabs.links" = "Links";
 
 /* Encryption: whether your messages will still be readable on your next device. */
 "encryption.title" = "Encryption";
