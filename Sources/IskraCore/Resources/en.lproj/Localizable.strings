@@ -44,14 +44,14 @@
 /* Summary line for a voice message. */
 "preview.voice" = "Voice message";
 
-/* Explains an unencrypted room. No cryptography vocabulary allowed. */
-"privacy.notProtected" = "Messages here aren’t private — the server can read them.";
+/* Says an unencrypted room is one, in three words. Read as a status, not as a warning. */
+"privacy.notProtected" = "This chat isn’t encrypted";
 
-/* Explains an encrypted room. No cryptography vocabulary allowed. */
-"privacy.protected" = "Only people in this chat can read these messages. Not even we can.";
+/* Says an encrypted room is one. Sits directly under the name, where it is read at a glance. */
+"privacy.protected" = "This chat is encrypted";
 
 /* Shown before we have synced enough to know. Never claim protection we cannot see. */
-"privacy.unknown" = "Still checking whether this chat is private.";
+"privacy.unknown" = "Checking encryption";
 
 /* Fallback name for a conversation that has none. Most Matrix DMs have no name. */
 "room.untitled" = "Chat";

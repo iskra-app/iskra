@@ -290,6 +290,22 @@ public enum Strings {
         public static let detailsTitle = LocalizedStringResource("room.detailsTitle", bundle: bundle)
         /// The room's topic — what the room is for, written by whoever runs it.
         public static let about = LocalizedStringResource("room.about", bundle: bundle)
+
+        /// The strip of tabs at the bottom of the info screen — what the room is made of, once you
+        /// stop reading it as a conversation.
+        ///
+        /// Six short words, and short is the requirement rather than the style: they sit in
+        /// capsules in a row, and a label that wraps turns the strip into two strips. "Кружки" is
+        /// deliberately the spoken word for a round video message rather than the technical one —
+        /// nobody has ever asked another person to send them a video note.
+        public enum Tabs {
+            public static let members = LocalizedStringResource("room.tabs.members", bundle: bundle)
+            public static let media = LocalizedStringResource("room.tabs.media", bundle: bundle)
+            public static let voice = LocalizedStringResource("room.tabs.voice", bundle: bundle)
+            public static let videoNotes = LocalizedStringResource("room.tabs.videoNotes", bundle: bundle)
+            public static let files = LocalizedStringResource("room.tabs.files", bundle: bundle)
+            public static let links = LocalizedStringResource("room.tabs.links", bundle: bundle)
+        }
         public static let administrator = LocalizedStringResource("room.administrator", bundle: bundle)
         public static let moderator = LocalizedStringResource("room.moderator", bundle: bundle)
 
@@ -309,6 +325,18 @@ public enum Strings {
             public static let editTitle = LocalizedStringResource("room.manage.editTitle", bundle: bundle)
             /// Over the name field on that screen, where `room.about` already labels the one below it.
             public static let nameHeader = LocalizedStringResource("room.manage.nameHeader", bundle: bundle)
+
+            /// Getting rid of a personal chat, which is the same call to the server as leaving a
+            /// room and a different thing to say about it.
+            ///
+            /// You do not "leave" a conversation with one person — there is no group to be outside
+            /// of, and nobody is told. What the button does is take the chat off this device: it
+            /// goes from the list, the history goes with it, and the other person, who is not
+            /// consulted, can bring an empty one back by writing again. The words have to carry
+            /// that last part or the act looks more final than it is.
+            public static let deleteChat = LocalizedStringResource("room.manage.deleteChat", bundle: bundle)
+            public static let deleteChatQuestion = LocalizedStringResource("room.manage.deleteChatQuestion", bundle: bundle)
+            public static let deleteChatHelp = LocalizedStringResource("room.manage.deleteChatHelp", bundle: bundle)
             public static let topicPlaceholder = LocalizedStringResource("room.manage.topicPlaceholder", bundle: bundle)
 
             public static let changePicture = LocalizedStringResource("room.manage.changePicture", bundle: bundle)
@@ -326,6 +354,14 @@ public enum Strings {
             public static let invitePlaceholder = LocalizedStringResource("room.manage.invitePlaceholder", bundle: bundle)
 
             public static let role = LocalizedStringResource("room.manage.role", bundle: bundle)
+
+            /// Over the rungs on somebody's own screen, and over the same list when a swipe asks
+            /// for it. The question names the person, because a swipe can land on the wrong row
+            /// and a dialog that says only "Role" gives no way to notice.
+            public static let roleHeader = LocalizedStringResource("room.manage.roleHeader", bundle: bundle)
+            public static func roleQuestion(_ name: String) -> LocalizedStringResource {
+                LocalizedStringResource("room.manage.roleQuestion", defaultValue: "\(name): what can they do?", bundle: bundle)
+            }
             /// The third rung has no badge in the list — everybody is a member — but it very
             /// much needs a word in the menu that *demotes* somebody back to being one.
             public static let member = LocalizedStringResource("room.manage.member", bundle: bundle)

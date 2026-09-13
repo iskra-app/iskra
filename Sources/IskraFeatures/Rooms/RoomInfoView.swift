@@ -10,8 +10,8 @@ import IskraDesign
 /// all three are noticeably wrong when you build them yourself.
 ///
 /// This is also where the lock finally speaks. The header shows a closed padlock and says
-/// nothing; anyone who wonders what it means presses the name, and the answer is here in
-/// a sentence with no cryptography in it.
+/// nothing; anyone who wonders what it means presses the name, and the answer is here, directly
+/// under the portrait — three words, read at a glance rather than studied.
 ///
 /// The top of it is a portrait: the picture large and centred, the name under it, and one
 /// quiet line saying who this is or how many people are here — the shape every messenger uses
@@ -51,6 +51,10 @@ struct RoomInfoView: View {
     /// this one's `onDisappear` is what cancels the room subscription.
     @State private var isEditing = false
 
+    /// Which of the room's contents is on show. Not persisted: the tab somebody left open in one
+    /// chat is no kind of prediction about the next one.
+    @State private var tab: RoomContentTab = .members
+
     @State private var isInviting = false
     @State private var invitee = ""
 
@@ -88,24 +92,10 @@ struct RoomInfoView: View {
 
             about
 
-            if let timeline {
-                Section {
-                    NavigationLink {
-                        RoomGalleryView(timeline: timeline)
-                    } label: {
-                        Label(Strings.Room.sharedMedia, systemImage: "photo.on.rectangle")
-                    }
-                }
-            }
-
-            Section {
-                Button {
-                    onSearch()
-                } label: {
-                    Label(Strings.Room.searchInChat, systemImage: "magnifyingglass")
-                }
-            }
-
+            // What the padlock means, directly under the name. It used to sit five sections down,
+            // between the room's visibility and its notifications, which is filing the one fact on
+            // this screen that is about *safety* under housekeeping. Whether a room is encrypted is
+            // the first thing worth knowing about it after what it is called.
             Section {
                 privacy
 
@@ -123,6 +113,10 @@ struct RoomInfoView: View {
                 }
             }
 
+            // Notifications and search in one block: both are about *your* relationship with this
+            // room rather than about the room — how loudly it reaches you, and how you find what
+            // was said in it — and two one-row sections in a column read as a list that has come
+            // apart rather than as two decisions.
             Section {
                 Picker(selection: Binding(get: { details.alerts },
                                           set: { choice in Task { await details.setAlerts(choice) } })) {
@@ -133,6 +127,12 @@ struct RoomInfoView: View {
                     Label(String(app: Strings.Room.Manage.alerts), systemImage: alertsIcon)
                 }
                 .disabled(isOffline)
+
+                Button {
+                    onSearch()
+                } label: {
+                    Label(Strings.Room.searchInChat, systemImage: "magnifyingglass")
+                }
             } footer: {
                 // Said once, at the top of everything this screen can no longer do, rather than as a
                 // grey control the reader is left to interpret. A disabled switch explains nothing on
@@ -143,13 +143,13 @@ struct RoomInfoView: View {
                 }
             }
 
-            members
+            contents
 
             Section {
                 Button(role: .destructive) {
                     isConfirmingLeave = true
                 } label: {
-                    Text(Strings.Room.Manage.leave)
+                    Text(isRoom ? Strings.Room.Manage.leave : Strings.Room.Manage.deleteChat)
                         .frame(maxWidth: .infinity, alignment: .center)
                 }
                 // Leaving is `room.leave()`, straight to the server. Offline it would fail, and it is
@@ -224,15 +224,23 @@ struct RoomInfoView: View {
         } message: {
             Text(Strings.Room.Manage.blockHelp)
         }
-        .confirmationDialog(Text(Strings.Room.Manage.leaveQuestion),
+        // Two questions, because there are two acts. Leaving a room is leaving a group of people,
+        // and it is reversible by anybody who invites you back. Deleting a personal chat is not
+        // leaving anybody — the other person is still there and can still write, and doing so
+        // brings the chat back empty, with everything said in it before now gone from this device.
+        // A dialog that said "leave" would be describing the group case and quietly mis-describing
+        // this one.
+        .confirmationDialog(Text(isRoom ? Strings.Room.Manage.leaveQuestion
+                                        : Strings.Room.Manage.deleteChatQuestion),
                             isPresented: $isConfirmingLeave,
                             titleVisibility: .visible) {
-            Button(String(app: Strings.Room.Manage.leave), role: .destructive) {
+            Button(String(app: isRoom ? Strings.Room.Manage.leave : Strings.Room.Manage.deleteChat),
+                   role: .destructive) {
                 Task { await details.leave() }
             }
             Button(String(app: Strings.Room.Manage.cancel), role: .cancel) {}
         } message: {
-            Text(Strings.Room.Manage.leaveHelp)
+            Text(isRoom ? Strings.Room.Manage.leaveHelp : Strings.Room.Manage.deleteChatHelp)
         }
         .failureAlert($details.failure)
         // The room is gone: the screen behind this one is about to be a conversation nobody
@@ -324,8 +332,13 @@ struct RoomInfoView: View {
         }
     }
 
-    /// What the padlock in the header means, spelled out. The sentence comes from
-    /// `IskraCore`, which is where the app's vocabulary for privacy lives.
+    /// What the padlock in the header means, said plainly. The words come from `IskraCore`, which
+    /// is where the app's vocabulary for privacy lives.
+    ///
+    /// Short on purpose. It used to be a full sentence explaining that nobody outside the chat can
+    /// read it, "not even us" — true, well meant, and a paragraph in the position on the screen
+    /// where the eye expects a status. A line like that gets read once and then becomes furniture.
+    /// The state is the point, so the state is what it says.
     private var privacy: some View {
         Label {
             Text(details.privacy.explanation)
@@ -338,49 +351,180 @@ struct RoomInfoView: View {
         .accessibilityElement(children: .combine)
     }
 
+    // MARK: - What is in it
+
+    /// The room's own contents, behind a strip of tabs: the people, the pictures, the voice notes,
+    /// the round videos, the files, the links.
+    ///
+    /// A tab is only offered when there is something behind it. Six headings over five blanks is a
+    /// screen advertising emptiness — and the answer to "are there any files in this chat" is then
+    /// given by the strip itself, before anything is pressed.
+    ///
+    /// What is in them is what the open timeline has loaded, so the strip grows as the history is
+    /// paged back. That is the honest arrangement rather than the ideal one: Matrix has no index of
+    /// a room's attachments to ask, so the only place the app can count photographs is in the
+    /// messages it already holds. "Load earlier" at the bottom of each tab is the same pagination
+    /// the conversation uses, and it fills these lists as it goes.
+    @ViewBuilder
+    private var contents: some View {
+        let tabs = availableTabs
+
+        if !tabs.isEmpty {
+            // The strip and what it switches are one block, because they are one thing: a control
+            // separated from its result by the gap between two cards reads as two unrelated lists,
+            // and the eye has to be told twice that the second belongs to the first.
+            //
+            // The binding reads `openTab`, not `tab`. They differ exactly when the tab last pressed
+            // is not available — a personal chat opening on `.members`, which it does not have —
+            // and binding the raw value there left every capsule unlit, with a list underneath that
+            // plainly belonged to one of them.
+            Section {
+                RoomContentPicker(tabs: tabs, selection: Binding(get: { openTab },
+                                                                set: { tab = $0 }))
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
+
+                tabContent
+            }
+        }
+    }
+
+    /// The tabs worth drawing, in a fixed order — the order they are declared in, so a chat that
+    /// gains its first file does not reshuffle the strip under somebody's finger.
+    private var availableTabs: [RoomContentTab] {
+        RoomContentTab.allCases.filter { tab in
+            switch tab {
+            // Hidden in a personal chat, where the "participants" are you and the person whose name
+            // is at the top of the screen. A list of two, one of them yourself, answers a question
+            // nobody asked and puts a "remove" menu on the only other person in the conversation.
+            case .members: isRoom
+            case .media: !photos.isEmpty
+            case .voice: !voices.isEmpty
+            case .videoNotes: !videoNotes.isEmpty
+            case .files: !files.isEmpty
+            case .links: !links.isEmpty
+            }
+        }
+    }
+
+    /// The tab actually on show. `tab` is what was last pressed, and what was last pressed can stop
+    /// existing — open the files tab, leave the screen, come back to a room whose history has been
+    /// reloaded and holds none yet. Falling back to the first tab is what keeps that from drawing a
+    /// section with nothing in it.
+    private var openTab: RoomContentTab {
+        availableTabs.contains(tab) ? tab : (availableTabs.first ?? .members)
+    }
+
+    @ViewBuilder
+    private var tabContent: some View {
+        switch openTab {
+        case .members:
+            members
+        case .media:
+            RoomMediaGrid(items: photos)
+                .profileHeaderRow()
+                .padding(.horizontal, Theme.Spacing.roomy)
+                .padding(.vertical, Theme.Spacing.close)
+            loadEarlier
+        case .voice:
+            RoomVoiceList(items: voices)
+            loadEarlier
+        case .videoNotes:
+            RoomVideoNoteList(items: videoNotes)
+            loadEarlier
+        case .files:
+            RoomFileList(items: files)
+            loadEarlier
+        case .links:
+            RoomLinkList(items: links)
+            loadEarlier
+        }
+    }
+
+    /// Reaching further back, from whichever tab is open. It is the conversation's own pagination,
+    /// so a page fetched here is a page the chat behind does not have to fetch again.
+    @ViewBuilder
+    private var loadEarlier: some View {
+        if let timeline, timeline.canLoadMore {
+            Button {
+                Task { await timeline.loadMore() }
+            } label: {
+                if timeline.isPaginating {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                } else {
+                    Text(Strings.Room.galleryLoadEarlier)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                }
+            }
+            .disabled(timeline.isPaginating)
+        }
+    }
+
+    // MARK: - The history, sorted into tabs
+
+    /// The messages the conversation has loaded, newest first — or none where this screen stands
+    /// on its own.
+    ///
+    /// The timeline holds them the way a conversation reads: oldest at the top, newest at the
+    /// bottom, which is right for the chat and backwards for every tab here. Nobody opens the
+    /// files tab to find the first file ever sent. Reversed once, at the source, so the six lists
+    /// cannot disagree about it — and so a link posted this morning is not eleven screens down.
+    private var messages: [Message] {
+        let rows = timeline?.rows ?? []
+        return rows.reversed().compactMap { row in
+            if case let .message(message) = row { message } else { nil }
+        }
+    }
+
+    private var mediaItems: [MediaItem] { MediaItem.items(from: messages) }
+    private var photos: [MediaItem] { mediaItems.filter { $0.kind == .photo || $0.kind == .video } }
+    private var voices: [MediaItem] { mediaItems.filter { $0.kind == .voice || $0.kind == .audio } }
+    private var videoNotes: [MediaItem] { mediaItems.filter { $0.kind == .videoNote } }
+    private var files: [MediaItem] { mediaItems.filter { $0.kind == .file } }
+    private var links: [LinkItem] { LinkItem.items(from: messages) }
+
     // MARK: - Who is in it
 
     @ViewBuilder
     private var members: some View {
-        Section {
-            if isRoom, details.permissions.canInvite {
-                Button {
-                    isInviting = true
-                } label: {
-                    Label(String(app: Strings.Room.Manage.invite), systemImage: "person.badge.plus")
-                }
-                .disabled(isOffline)
+        if isRoom, details.permissions.canInvite {
+            Button {
+                isInviting = true
+            } label: {
+                Label(String(app: Strings.Room.Manage.invite), systemImage: "person.badge.plus")
             }
+            .disabled(isOffline)
+        }
 
-            if details.isLoadingMembers && details.members.isEmpty {
-                // Not an empty list: a room always has at least us in it, so "no one is
-                // here" is never the truth — it only ever means we have not looked yet.
-                ProgressView()
-                    .frame(maxWidth: .infinity)
-            } else {
-                ForEach(details.members) { member in
-                    MemberRow(member: member,
-                              roles: details.assignableRoles(for: member),
-                              canRemove: details.permissions.canRemove && details.canManage(member),
-                              canBlock: details.permissions.canBan && details.canManage(member),
-                              setRole: { role in Task { await details.setRole(role, for: member) } },
-                              remove: { Task { await details.remove(member) } },
-                              block: { blocking = member })
-                }
+        if details.isLoadingMembers && details.members.isEmpty {
+            // Not an empty list: a room always has at least us in it, so "no one is here" is never
+            // the truth — it only ever means we have not looked yet.
+            ProgressView()
+                .frame(maxWidth: .infinity)
+        } else {
+            ForEach(details.members) { member in
+                MemberRow(member: member,
+                          roles: details.assignableRoles(for: member),
+                          canRemove: details.permissions.canRemove && details.canManage(member),
+                          canBlock: details.permissions.canBan && details.canManage(member),
+                          setRole: { role in Task { await details.setRole(role, for: member) } },
+                          remove: { Task { await details.remove(member) } },
+                          block: { blocking = member })
             }
-        } header: {
-            Text(Strings.Room.participants(details.memberCount))
         }
     }
-
 }
 
-/// One person in the room: their face, their name, and what they can do here — plus, on a
-/// long press, what *you* can do about them.
+/// One person in the room: their face, their name, and what they can do here.
 ///
-/// The menu is built from what the room allows rather than from what the protocol allows,
-/// so a member with no power over anybody has no menu at all. Nothing here is ever shown
-/// disabled: a greyed-out "Remove" is a promise the homeserver has already refused.
+/// The row leads to `MemberProfileView`, and the two acts a room allows against somebody — moving
+/// them to another rung, taking them out of it — are on a sideways swipe as well. Both, rather than
+/// one: a swipe is fast for whoever already knows it is there, and invisible to everybody else, so
+/// it is a shortcut to what the profile screen spells out rather than the only way to reach it.
+///
+/// Nothing is ever shown disabled. What the room refuses simply is not drawn: a greyed-out
+/// "Remove" is a promise the homeserver has already broken.
 private struct MemberRow: View {
     let member: RoomMemberSummary
     let roles: [RoomRole]
@@ -392,73 +536,81 @@ private struct MemberRow: View {
 
     @Environment(\.isOffline) private var isOffline
 
-    /// Nothing in this menu — a role, a removal, a block — is anything but a request to the server,
-    /// so offline the row is a row and not a control. The menu is withheld rather than shown greyed:
-    /// a context menu the reader has to open in order to find out that it is empty is worse than one
-    /// that does not appear.
-    private var hasMenu: Bool {
+    /// The role picker, asked for by the swipe. A dialog rather than a submenu, because a swipe
+    /// action that opened a menu would be a gesture inside a gesture.
+    @State private var isChangingRole = false
+
+    /// Every act here is a request to the server with no queue behind it, so offline the row is a
+    /// row and nothing else — the swipe is withheld rather than offered and then refused.
+    private var canAct: Bool {
         !isOffline && (!roles.isEmpty || canRemove || canBlock)
     }
 
     var body: some View {
-        HStack(spacing: Theme.Spacing.normal) {
-            Avatar(name: member.name, url: member.avatarURL, size: Theme.Size.avatar)
+        NavigationLink {
+            MemberProfileView(member: member,
+                              roles: roles,
+                              canRemove: canRemove,
+                              canBlock: canBlock,
+                              setRole: setRole,
+                              remove: remove,
+                              block: block)
+        } label: {
+            HStack(spacing: Theme.Spacing.normal) {
+                Avatar(name: member.name, url: member.avatarURL, size: Theme.Size.avatar)
 
-            VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-                Text(member.name)
-                    .font(.body)
-                    .lineLimit(1)
-
-                // Shown only when it settles something. Matrix display names are neither
-                // unique nor verified, so two people in a room can both call themselves
-                // "Boris" — the SDK notices, and the ID underneath is the part that
-                // cannot be copied.
-                if member.isNameAmbiguous, member.name != member.id {
-                    Text(member.id)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                    Text(member.name)
+                        .font(.body)
                         .lineLimit(1)
+
+                    // Shown only when it settles something. Matrix display names are neither
+                    // unique nor verified, so two people in a room can both call themselves
+                    // "Boris" — the SDK notices, and the ID underneath is the part that
+                    // cannot be copied.
+                    if member.isNameAmbiguous, member.name != member.id {
+                        Text(member.id)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+
+                Spacer(minLength: 0)
+
+                if let role = roleName {
+                    Text(role)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.secondary)
                 }
             }
-
-            Spacer(minLength: 0)
-
-            if let role = roleName {
-                Text(role)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
-            }
+            .padding(.vertical, Theme.Spacing.tight)
         }
-        .padding(.vertical, Theme.Spacing.tight)
-        .contentShape(.rect)
-        .accessibilityElement(children: .combine)
-        .contextMenu {
-            if hasMenu { menu }
-        }
-    }
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            if canAct {
+                if canRemove {
+                    Button(role: .destructive, action: remove) {
+                        Label(String(app: Strings.Room.Manage.remove), systemImage: "person.badge.minus")
+                    }
+                }
 
-    @ViewBuilder
-    private var menu: some View {
-        if !roles.isEmpty {
-            Picker(String(app: Strings.Room.Manage.role),
-                   selection: Binding(get: { member.role }, set: setRole)) {
-                ForEach(roles, id: \.self) { role in
-                    Text(name(of: role)).tag(role)
+                if !roles.isEmpty {
+                    Button {
+                        isChangingRole = true
+                    } label: {
+                        Label(String(app: Strings.Room.Manage.role), systemImage: "person.badge.key")
+                    }
+                    .tint(.indigo)
                 }
             }
-            .pickerStyle(.inline)
         }
-
-        if canRemove {
-            Button(role: .destructive, action: remove) {
-                Label(String(app: Strings.Room.Manage.remove), systemImage: "person.badge.minus")
+        .confirmationDialog(Text(Strings.Room.Manage.roleQuestion(member.name)),
+                            isPresented: $isChangingRole,
+                            titleVisibility: .visible) {
+            ForEach(roles, id: \.self) { role in
+                Button(String(localized: name(of: role))) { setRole(role) }
             }
-        }
-
-        if canBlock {
-            Button(role: .destructive, action: block) {
-                Label(String(app: Strings.Room.Manage.block), systemImage: "hand.raised")
-            }
+            Button(String(app: Strings.Room.Manage.cancel), role: .cancel) {}
         }
     }
 
@@ -472,8 +624,7 @@ private struct MemberRow: View {
         }
     }
 
-    /// The same three rungs, but in a menu that has to name all of them — including the one
-    /// the list leaves blank.
+    /// The same three rungs, but named in full — including the one the list leaves blank.
     private func name(of role: RoomRole) -> LocalizedStringResource {
         switch role {
         case .administrator: Strings.Room.administrator
