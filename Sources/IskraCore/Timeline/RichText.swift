@@ -47,6 +47,26 @@ public enum RichText {
     private static let linkDetector: NSDataDetector? =
         try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
 
+    /// Every address in a message, in the order they were written.
+    ///
+    /// The same detector the bubble paints with, asked a different question: not "where in this
+    /// sentence are the links" but "which links are in it". The room's list of links is built from
+    /// this, so a link is listed there if and only if it was tappable in the conversation — two
+    /// answers from one pass of the same matcher, rather than a second opinion that can drift.
+    ///
+    /// A repeated address is returned once. People paste the same link into a room three times and
+    /// a list that says so three times is a list nobody scrolls.
+    public static func links(in body: String) -> [URL] {
+        guard let linkDetector, !body.isEmpty else { return [] }
+        let full = NSRange(body.startIndex..., in: body)
+
+        var seen: Set<URL> = []
+        return linkDetector.matches(in: body, options: [], range: full).compactMap { match in
+            guard let url = match.url, seen.insert(url).inserted else { return nil }
+            return url
+        }
+    }
+
     static func applyLinks(to attributed: inout AttributedString, body: String) {
         guard let linkDetector, !body.isEmpty else { return }
         let full = NSRange(body.startIndex..., in: body)

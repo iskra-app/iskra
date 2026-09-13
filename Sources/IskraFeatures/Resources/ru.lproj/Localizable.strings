@@ -492,6 +492,8 @@
 "room.manage.inviteHelp" = "Адрес в Matrix выглядит как @имя:сервер.";
 "room.manage.invitePlaceholder" = "@имя:сервер";
 "room.manage.role" = "Роль";
+"room.manage.roleHeader" = "Что может в чате";
+"room.manage.roleQuestion" = "Что может %@?";
 "room.manage.member" = "Участник";
 "room.manage.remove" = "Исключить";
 "room.manage.block" = "Заблокировать";
@@ -541,6 +543,22 @@
 "account.namePlaceholder" = "Ваше имя";
 "account.changePicture" = "Изменить фото";
 "account.removePicture" = "Удалить фото";
+"account.edit" = "Изменить";
+"account.editTitle" = "Ваш профиль";
+"account.nameHeader" = "Имя";
+"account.editOffline" = "Без сети профиль не поменять — приложение просто не дозвонится до сервера.";
+"room.manage.edit" = "Изменить";
+"room.manage.editTitle" = "Изменить чат";
+"room.manage.nameHeader" = "Название";
+"room.manage.deleteChat" = "Удалить чат";
+"room.manage.deleteChatQuestion" = "Удалить чат?";
+"room.manage.deleteChatHelp" = "Переписка исчезнет с этого устройства. Собеседника об этом не предупредят, и если он напишет снова, чат вернётся — но уже пустым.";
+"room.tabs.members" = "Участники";
+"room.tabs.media" = "Фото и видео";
+"room.tabs.voice" = "Голосовые";
+"room.tabs.videoNotes" = "Кружки";
+"room.tabs.files" = "Файлы";
+"room.tabs.links" = "Ссылки";
 
 /* Шифрование: доступно ли будет прочитать переписку на новом устройстве. */
 "encryption.title" = "Шифрование";

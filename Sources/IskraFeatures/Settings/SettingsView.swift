@@ -1,5 +1,4 @@
 import SwiftUI
-import PhotosUI
 import IskraCore
 import IskraDesign
 
@@ -40,24 +39,8 @@ struct SettingsView: View {
     /// see `StorageStore.clearCache`. Only the root of the app can, which is where this goes.
     var onClearedCache: () -> Void
 
-    /// What is in the name field, which is not the same thing as what the user is called.
-    /// The name is sent when the field is *left*, not on every keystroke — the same
-    /// arrangement as the room's name in `RoomInfoView`, and there is no Save button here
-    /// either.
-    @State private var draftName = ""
-    @FocusState private var isNamingSelf: Bool
-
-    @State private var isChoosingPicture = false
-    @State private var pickedPicture: PhotosPickerItem?
-
     /// Set when the sign-out starts, and never cleared — see the button.
     @State private var isSigningOut = false
-
-    /// A change to the account the server would not make — including a picture the photo
-    /// library would not hand over, which never reached the server at all. It lives here,
-    /// with the alert that shows it, rather than on `UserSession`: the session outlives
-    /// every screen, and the dismiss state of one screen's alert has no business in it.
-    @State private var failure: AccountActionFailure?
 
     /// Where this account's devices are managed — on the server's own page, because there is nowhere
     /// in this app they could be. Resolved once, on appearance; `nil` means the session did not come
@@ -67,6 +50,7 @@ struct SettingsView: View {
     /// The one place this screen can go that is worth building lazily — see the
     /// `navigationDestination` below.
     private enum Destination: Hashable {
+        case profile
         case encryption
         case storage
     }
@@ -100,6 +84,7 @@ struct SettingsView: View {
             Section {
                 if Self.dbgOff("NOPROFILE") { Text(verbatim: "profile") } else { profile }
             }
+            .profileHeaderRow()
 
             Section {
                 NavigationLink {
@@ -208,15 +193,16 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .tint(Self.dbgOff("NOTINT") ? Color.primary : accent.color)
-        .navigationTitle(Text(Strings.Settings.title))
-        .toolbarTitleDisplayMode(.inline)
+        .profileScreen()
         // Value-based, because a `NavigationLink` with a destination *closure* builds that
-        // destination eagerly, on every pass of this `body` — and this body re-runs on every
-        // keystroke in the name field. `session.storage()` allocates a store and takes the room
-        // list with it, so the link-with-a-closure version minted and threw away one per character
-        // typed. This closure runs when the row is actually pushed.
+        // destination eagerly, on every pass of this `body`. `session.storage()` allocates a store
+        // and takes the room list with it, so the link-with-a-closure version minted and threw one
+        // away every time anything on this screen changed — and when the name was still a field up
+        // here, that was once per character typed. This closure runs when the row is pushed.
         .navigationDestination(for: Destination.self) { destination in
             switch destination {
+            case .profile:
+                ProfileEditView(session: session)
             case .encryption:
                 EncryptionView(recovery: session.recovery,
                                verification: session.verification,
@@ -225,41 +211,26 @@ struct SettingsView: View {
             case .storage:
                 // Built here, on the push, for the same reason as the encryption screen above:
                 // a `NavigationLink` with a destination closure builds it on every pass of this
-                // body, and this body re-runs on every keystroke in the name field.
+                // body, and this body re-runs whenever anything on the screen moves.
                 StorageView(storage: session.storage(), onCleared: onClearedCache)
             }
         }
         // Cheap: the SDK builds this out of OAuth metadata it has already cached, without going to
         // the network. It is still async, so it cannot be read straight out of `body`.
         .task { devicesURL = await session.deviceManagementURL() }
-        // The field follows the session while it is not being typed in — the name can
-        // change under us, from another device — and stops following it the moment it has
-        // focus, or a sync landing mid-word would rewrite what is being typed.
-        .onChange(of: session.displayName, initial: true) { _, name in
-            guard !isNamingSelf else { return }
-            draftName = name
-        }
-        .onChange(of: isNamingSelf) { wasNaming, _ in
-            guard wasNaming else { return }
-            Task { await rename() }
-        }
-        // And leaving the screen is leaving the field — the same reason as `RoomInfoView`. Focus
-        // loss is what commits the name, and SwiftUI does not guarantee focus resigns before the
-        // view is torn down, so closing settings with the keyboard still up lost the new name.
-        // `UserSession.rename` returns early when nothing changed, so this cannot double-send.
-        .onDisappear {
-            guard isNamingSelf else { return }
-            Task { await rename() }
-        }
-        // At the root of the screen, never inside the menu that asks for it: a
-        // `PhotosPicker` declared inside a `Menu` simply never appears.
-        .photosPicker(isPresented: $isChoosingPicture, selection: $pickedPicture, matching: .images)
-        .onChange(of: pickedPicture) { _, item in
-            guard let item else { return }
-            Task { await setPicture(item) }
-        }
-        .failureAlert($failure)
         .toolbar {
+            // The one thing on this screen that is *yours* rather than the app's, so it gets the
+            // corner. It is a pencil and not the word "Edit" because the corner opposite already
+            // holds a back chevron on Mac, and two words facing each other across a title bar read
+            // as a dialog rather than as a screen.
+            ToolbarItem(placement: .primaryAction) {
+                NavigationLink(value: Destination.profile) {
+                    Image(systemName: "pencil")
+                        .font(.body.weight(.medium))
+                }
+                .accessibilityLabel(Text(Strings.Account.edit))
+            }
+
             if showsBackButton && !Self.dbgOff("NOBACK") {
                 ToolbarItem(placement: .navigation) {
                     Button {
@@ -275,58 +246,21 @@ struct SettingsView: View {
         }
     }
 
-    /// Who you are — and, since both halves of it are yours to change, where you change
-    /// them. There is no Edit button and no pencil in the corner: the picture is the thing
-    /// you press to change the picture, and the name is a field.
+    /// Who you are: your picture, large and centred, your name under it, and the Matrix ID
+    /// under that.
     ///
-    /// The Matrix ID underneath is the one part that is not editable, ever, and it is shown
-    /// in full and selectable because it is the thing people ask each other for.
+    /// Nothing here can be typed into, and the pencil in the corner is where both halves are
+    /// changed — see `ProfileEditView`. It used to be a row with a text field in it, which meant
+    /// settings opened with the cursor one tap away from your own name; the screen you read and
+    /// the screen you edit are now two screens, and only one of them can lose anything.
+    ///
+    /// The Matrix ID is the one part that is not editable, ever, and it is shown in full and
+    /// selectable because it is the thing people ask each other for.
     private var profile: some View {
-        HStack(spacing: Theme.Spacing.roomy) {
-            picture
-
-            VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-                TextField(String(app: Strings.Account.namePlaceholder), text: $draftName)
-                    .font(.title3.weight(.semibold))
-                    .textFieldStyle(.plain)
-                    .lineLimit(1)
-                    .focused($isNamingSelf)
-                    .onSubmit { isNamingSelf = false }
-
-                Text(session.userID)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .dbgTextSelection(!Self.dbgOff("NOSELECT"))
-            }
-        }
-        .padding(.vertical, Theme.Spacing.close)
-    }
-
-    /// The face, and a menu on the face itself.
-    private var picture: some View {
-        Menu {
-            Button {
-                isChoosingPicture = true
-            } label: {
-                Label(String(app: Strings.Account.changePicture), systemImage: "photo")
-            }
-
-            if session.avatarURL != nil {
-                Button(role: .destructive) {
-                    Task { await removePicture() }
-                } label: {
-                    Label(String(app: Strings.Account.removePicture), systemImage: "trash")
-                }
-            }
-        } label: {
-            Avatar(name: session.displayName,
-                   url: session.avatarURL,
-                   size: Theme.Size.avatarLarge)
-        }
-        .menuIndicator(.hidden)
-        .buttonStyle(.plain)
-        .accessibilityLabel(Text(Strings.Account.changePicture))
+        ProfileHeader(name: session.displayName,
+                      avatarURL: session.avatarURL,
+                      subtitle: session.userID,
+                      isSubtitleSelectable: !Self.dbgOff("NOSELECT"))
     }
 
     /// The app saying what it is and which build of it this is.
@@ -382,45 +316,4 @@ struct SettingsView: View {
         }
     }
 
-    /// The three changes this screen can make, each turning the session's typed refusal
-    /// into the alert. They are methods rather than `do/catch` written inline in a `Task`,
-    /// because inside a `Task` closure Swift loses the thrown type and hands back a bare
-    /// `any Error` — which will not fit the failure the alert is driven by.
-    private func rename() async {
-        do {
-            try await session.rename(to: draftName)
-        } catch {
-            failure = error
-        }
-    }
-
-    private func removePicture() async {
-        do {
-            try await session.removePicture()
-        } catch {
-            failure = error
-        }
-    }
-
-    private func setPicture(_ item: PhotosPickerItem) async {
-        pickedPicture = nil
-
-        guard let data = await imageData(from: item) else {
-            failure = .picture
-            return
-        }
-
-        do {
-            try await session.setPicture(data, filename: "avatar.jpg")
-        } catch {
-            failure = error
-        }
-    }
-}
-
-// TEMP DIAGNOSTIC helper — conditional text selection for the settings-hang bisection.
-private extension View {
-    @ViewBuilder func dbgTextSelection(_ enabled: Bool) -> some View {
-        if enabled { self.textSelection(.enabled) } else { self.textSelection(.disabled) }
-    }
 }
