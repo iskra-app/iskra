@@ -143,6 +143,14 @@ public struct IskraRootView: View {
                     .environment(\.currentUserName, session.displayName)
                     .environment(\.blockStore, session.blocked)
                     .environment(\.forwarding, Forwarding(session: session))
+                    // Writing to somebody whose name was pressed in a room's member list, and the
+                    // one wire that lets a screen several pushes deep in the conversation column
+                    // change which conversation that column is showing. See `PersonalChats`.
+                    .environment(\.personalChats, PersonalChats(session: session))
+                    .environment(\.openRoom, { roomID in
+                        selectedRoomID = roomID
+                        selectedEventID = nil
+                    })
                     // Notifications are asked for *here*, and the timing is the whole of the
                     // decision. On the sign-in screen the question is about nothing — no account,
                     // no chats, nothing that could notify anybody — and it gets the answer a

@@ -306,10 +306,10 @@ public enum Strings {
             public static let files = LocalizedStringResource("room.tabs.files", bundle: bundle)
             public static let links = LocalizedStringResource("room.tabs.links", bundle: bundle)
 
-            /// What the switch itself is called. Never drawn — the segments are symbols and the
-            /// heading under them names the open one — but a `Picker` wants a label, and the one
-            /// place this is read out loud is VoiceOver, where "what's in here" is a better
-            /// introduction to six glyphs than silence.
+            /// What the switch itself is called. Never drawn — the strip is made of the six words
+            /// themselves and the heading under it names the open one — but VoiceOver reads a
+            /// container before its contents, and "what's in here" is a better introduction to six
+            /// capsules than silence.
             public static let label = LocalizedStringResource("room.tabs.label", bundle: bundle)
         }
 
@@ -382,6 +382,11 @@ public enum Strings {
             /// much needs a word in the menu that *demotes* somebody back to being one.
             public static let member = LocalizedStringResource("room.manage.member", bundle: bundle)
 
+            /// Starting a conversation with somebody met in a room, and — where that conversation
+            /// already exists — going to it instead. Two words for one button, because the button
+            /// does one thing and the reader is owed which of the two it will be.
+            public static let write = LocalizedStringResource("room.manage.write", bundle: bundle)
+            public static let goToChat = LocalizedStringResource("room.manage.goToChat", bundle: bundle)
             public static let remove = LocalizedStringResource("room.manage.remove", bundle: bundle)
             public static let block = LocalizedStringResource("room.manage.block", bundle: bundle)
             /// Blocking is the one act here with no way back in this interface, so it is
