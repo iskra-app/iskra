@@ -107,15 +107,16 @@ struct MessageActions<Content: View>: View {
     /// else. What was bought back by going to `.contextMenu` the first time round — the lift,
     /// the dim, the system's own animation — is drawn here instead rather than given up.
     ///
-    /// A tenth of a second, which the system's half-second cannot be talked down to. On a
-    /// message you have already decided to answer, half a second reads as the app deliberating
-    /// about whether to let you — see `Theme.Timing.menuLift`, which is where the number is,
-    /// and `ScrollTouches`, without which the scroll view adds 150 ms in front of it.
+    /// A quarter of a second, which is half the system's own wait and not a number the system can
+    /// be talked down to. On a message you have already decided to answer, half a second reads as
+    /// the app deliberating about whether to let you — see `Theme.Timing.menuLift`, which is where
+    /// the number is and why it is that one, and `ScrollTouches`, without which the scroll view
+    /// adds 150 ms in front of it.
     ///
-    /// And a tenth of a second is what it now *is*, which is the third time this wait has been
+    /// And a quarter of a second is what it now *is*, which is the third time this wait has been
     /// hunted and the first time the hunt ended where the time was actually going. The number was
-    /// right and the scroll view had been silenced, and a hold still took the better part of a
-    /// second to lift a message. The delay was the double tap.
+    /// never the problem — it had been cut to a tenth by then — and a hold still took the better
+    /// part of a second to lift a message. The delay was the double tap.
     ///
     /// The two gestures used to be separate: a `.highPriorityGesture` double tap over the content,
     /// and an `.onLongPressGesture` outside it. High priority means the tap is offered the touch
@@ -132,8 +133,14 @@ struct MessageActions<Content: View>: View {
             .onGeometryChange(for: CGRect.self) { proxy in
                 proxy.frame(in: .named(MessageMenu.space))
             } action: { anchor.rect = $0 }
-            .scaleEffect(isPressing ? 0.97 : 1)
-            .animation(.smooth(duration: Theme.Timing.chrome), value: isPressing)
+            // The wait, made visible. The bubble sinks over exactly the length of the press and
+            // arrives at the bottom as the menu takes over, so a held finger is watching something
+            // happen instead of waiting for it — and a press abandoned halfway springs back, which
+            // is how the app says "that wasn't long enough" without anything appearing to explain
+            // it. See `Theme.Scale.pressedMessage` and `Theme.Timing.menuReleases`.
+            .scaleEffect(isPressing ? Theme.Scale.pressedMessage : 1)
+            .animation(isPressing ? .easeOut(duration: Theme.Timing.menuLift) : Theme.Timing.menuReleases,
+                       value: isPressing)
             // The hold and the double tap, as one gesture — see `press`. The single tap still
             // lands underneath, so a photograph still opens and a round video still plays; the
             // cost is that a single tap on those waits out the double-tap interval, which is the
@@ -187,9 +194,9 @@ struct MessageActions<Content: View>: View {
     /// two recognisers waiting each other out; the note on `body` has the three quarters of a
     /// second that bought back. `exclusively(before:)` tries the press first and gives it the touch
     /// outright at `menuLift`; the double tap is offered the touch only once the press has failed,
-    /// which is exactly what a finger lifted before a tenth of a second has made it do. Nothing
-    /// waits on a timeout, and the tap is unharmed — taps are short, and the press it has to
-    /// outrun is the shortest press in the app.
+    /// which is exactly what a finger lifted before `menuLift` has made it do. Nothing waits on a
+    /// timeout, and the tap is unharmed: a tap is over in a fraction of the quarter second the
+    /// press needs.
     ///
     /// At high priority over the content, which is what makes both acts true of *every* message
     /// rather than only the ones with nothing else to tap. A photograph opens the viewer on one
