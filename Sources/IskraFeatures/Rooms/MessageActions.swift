@@ -102,9 +102,10 @@ struct MessageActions<Content: View>: View {
     /// else. What was bought back by going to `.contextMenu` the first time round — the lift,
     /// the dim, the system's own animation — is drawn here instead rather than given up.
     ///
-    /// A sixth of a second, which the system's half-second cannot be talked down to. On a
+    /// A tenth of a second, which the system's half-second cannot be talked down to. On a
     /// message you have already decided to answer, half a second reads as the app deliberating
-    /// about whether to let you — see `Theme.Timing.menuLift`, which is where the number is.
+    /// about whether to let you — see `Theme.Timing.menuLift`, which is where the number is,
+    /// and `ScrollTouches`, without which the scroll view adds 150 ms in front of it.
     var body: some View {
         content()
             // The anchor. Measured continuously as the conversation scrolls, so the menu can

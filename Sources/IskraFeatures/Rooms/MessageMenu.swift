@@ -152,18 +152,28 @@ public extension EnvironmentValues {
 /// at once: the message should stay as near as possible to where the finger left it, the whole
 /// column has to fit between the safe areas, a message taller than the screen has to give way
 /// rather than push the menu off the bottom, and the menu has to open under the edge the
-/// message is anchored to. Being a struct of numbers, it can be tested — see
+/// message is anchored to — at one width, which is deliberately not the pressed message's.
+/// Being a struct of numbers, it can be tested — see
 /// `MessageMenuLayoutTests`.
 struct MessageMenuLayout: Equatable {
     /// Top-left of the whole arrangement, in `MessageMenu.space`.
     var origin: CGPoint
 
-    /// How wide the arrangement is: the list's width, or the message's if the message is wider.
+    /// How wide the arrangement is. One number for every message in the app — see
+    /// `Theme.Size.menuWidth` — and only ever narrowed, on a screen too narrow to hold it.
+    ///
+    /// It used to grow to the width of the message, so that a menu under a long paragraph came
+    /// out wide and the same menu under "ок" came out narrow. The verbs in it are identical
+    /// either way, which is the argument: a menu whose width is set by the thing it was opened
+    /// on is a different shape every time it opens, and the eye has to find the same six words
+    /// in a new place on each press. Fixed, the list is somewhere the hand already knows — and
+    /// the lifted message above it is still free to be as wide as it is, because it is given
+    /// its own width and not this one (see `MessageMenuOverlay.lifted`).
     var width: CGFloat
 
     /// How wide the grid of every emoji is, when the "+" has opened it. Wider than the rest of
     /// the menu — it is a grid and not a column of words, see `Theme.Size.emojiPanelWidth` — and
-    /// never wider than the screen has room for.
+    /// never wider than the screen has room for. Fixed for the same reason `width` is.
     var emojiWidth: CGFloat
 
     /// And how far it has to slide to stay on screen at that width.
@@ -204,8 +214,8 @@ struct MessageMenuLayout: Equatable {
         let anchor = rect.offsetBy(dx: -region.minX, dy: -region.minY)
         let container = region.size
 
-        let width = min(max(Theme.Size.menuWidth, anchor.width),
-                        max(0, container.width - margin * 2))
+        // One width, whatever was pressed. Narrowed only where the screen cannot hold it.
+        let width = min(Theme.Size.menuWidth, max(0, container.width - margin * 2))
 
         let top = margin
         let bottom = container.height - margin
@@ -237,8 +247,7 @@ struct MessageMenuLayout: Equatable {
 
         // The emoji grid, which is the one part of the menu that is wider than the rest. Same
         // anchored edge, same margins — only the width differs, so the sum is the same sum.
-        let emojiWidth = min(max(Theme.Size.emojiPanelWidth, width),
-                             max(0, container.width - margin * 2))
+        let emojiWidth = min(Theme.Size.emojiPanelWidth, max(0, container.width - margin * 2))
         let wantedEmojiX = isOwn ? x + width - emojiWidth : x
         let furthestEmojiX = max(margin, container.width - margin - emojiWidth)
         let emojiX = min(max(wantedEmojiX, margin), furthestEmojiX)

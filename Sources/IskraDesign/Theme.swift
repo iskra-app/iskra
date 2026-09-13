@@ -90,12 +90,18 @@ public enum Theme {
         /// `.contextMenu` waits about half a second and will not be talked down, and on a message
         /// you have already decided to answer that wait reads as the app deliberating.
         ///
-        /// It was a shade under three tenths, and that was still long enough to feel like being
-        /// made to wait. A sixth of a second is past the point where a press reads as a tap —
-        /// the system's own double-tap interval is more than twice it, and a decisive tap on a
-        /// photograph is over well inside it, so the photograph still opens — and it is short
-        /// enough that the menu feels like the answer to the press rather than to the holding.
-        public static let menuLift: TimeInterval = 0.17
+        /// It was a shade under three tenths, then a sixth of a second, and it is now a tenth.
+        /// Each step down was asked for by the same complaint — that the press still feels like
+        /// being made to wait — and the step that mattered most was not in this number at all:
+        /// the scroll view was holding every touch back about 150 ms before the clock here even
+        /// started, which is why shortening this alone kept failing to move anything. See
+        /// `ScrollTouches`, which turned that off, so a tenth of a second is now a tenth of a
+        /// second as felt by a thumb.
+        ///
+        /// A tenth is the floor, not a way-point. Below it a press stops being a press: the
+        /// menu would start opening under a decisive tap on a photograph, and the tap that
+        /// opens the viewer and the hold that lifts the message would become the same gesture.
+        public static let menuLift: TimeInterval = 0.1
 
         /// The menu arriving: the bubble rising off the page, the bar and the list opening
         /// around it. A spring, because the lift is the one moment in a conversation where the
