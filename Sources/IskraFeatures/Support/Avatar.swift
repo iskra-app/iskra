@@ -98,8 +98,18 @@ struct Avatar: View {
     }
 
     private var initials: String {
-        let words = name.split(separator: " ").prefix(2)
-        return words.compactMap(\.first).map(String.init).joined().uppercased()
+        // Only words that start with a letter or a number count. Punctuation never did any work
+        // here, and now it can turn up: a chat renamed on this device is whatever the user typed,
+        // so «Тарас (работа)» was coming out as "Т(" — a bracket drawn at forty points, which
+        // reads as a bug rather than as a name.
+        let words = name.split(separator: " ")
+            .filter { $0.first?.isLetter == true || $0.first?.isNumber == true }
+            .prefix(2)
+
+        let letters = words.compactMap(\.first).map(String.init).joined().uppercased()
+        // A name made entirely of punctuation or emoji still has to draw something, and the first
+        // character of it is the best guess there is.
+        return letters.isEmpty ? String(name.prefix(1)).uppercased() : letters
     }
 }
 

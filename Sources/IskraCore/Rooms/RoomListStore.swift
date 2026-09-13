@@ -129,6 +129,10 @@ public final class RoomListStore {
     /// would mean a stampede of `roomInfo()` calls.
     private var rebuildTask: Task<Void, Never>?
 
+    /// The subscription to a chat being renamed on this device. Held because dropping it
+    /// unsubscribes, and released in `stop()` with everything else.
+    private var localNameObserver: LocalNameSubscription?
+
     public init(client: Client) {
         self.client = client
         // Fixed for the life of the client, and needed on every row: a personal chat takes its
@@ -141,6 +145,14 @@ public final class RoomListStore {
     public func start() async throws {
         guard syncService == nil else { return }
         hasStopped = false
+
+        // A chat renamed on this device: nothing syncs, so no diff will ever arrive to say the row
+        // has changed. The rebuild is the list's own ordinary way of recomputing every summary, and
+        // it is debounced, so asking for one here costs a rename exactly one pass over the rooms.
+        // See `LocalNames`.
+        localNameObserver = LocalNames.observe { [weak self] _ in
+            self?.scheduleRebuild()
+        }
 
         // Offline mode is the SDK's own answer to a network that has gone away, and without it the
         // sync loop treats one as a failure: it reports `.error`, stops, and waits to be restarted.
@@ -327,6 +339,7 @@ public final class RoomListStore {
     /// already crossed the FFI boundary and is waiting on a `Task { @MainActor }` hop.
     public func stop() async {
         hasStopped = true
+        localNameObserver = nil
 
         // Anything already in flight belongs to the account we are leaving. Cancelling a task does
         // not reach one that is awaiting inside the SDK, and the one that matters here is the
