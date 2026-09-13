@@ -11,8 +11,16 @@ import IskraDesign
 /// allowed to rename a room and not to replace its picture, and a greyed-out control would be the
 /// app promising something the homeserver has already refused.
 ///
-/// No Save button, for the same reason as everywhere else in this app: the name and the topic
-/// commit when the field is left, and leaving the screen counts as leaving the field.
+/// A personal chat has none of those three — the name, the description and the picture all belong
+/// to the person you are talking to — and it has one field of its own instead: what *you* call
+/// them, on this device. That used to sit as a text field on the info screen, permanently open, in
+/// the middle of a page that is otherwise read-only. It is here now, behind the same pencil, for
+/// the same reason the room's own name is: a screen you read should not also be a screen one
+/// careless tap edits. The warning that the nickname never leaves this device stays under the
+/// field, where somebody typing it is looking — it is not a disclaimer, it is the feature.
+///
+/// No Save button, for the same reason as everywhere else in this app: every field here commits
+/// when it is left, and leaving the screen counts as leaving the field.
 struct RoomEditView: View {
     let details: RoomDetailsStore
 
@@ -20,6 +28,11 @@ struct RoomEditView: View {
 
     @State private var draftName = ""
     @State private var draftTopic = ""
+
+    /// What to call the person at the other end of a personal chat. Kept apart from `draftName`,
+    /// which is the room's own name on the server — these are two different names with two
+    /// different audiences, and one of them is never sent anywhere.
+    @State private var draftLocalName = ""
 
     @State private var isChoosingPicture = false
     @State private var pickedPicture: PhotosPickerItem?
@@ -29,18 +42,27 @@ struct RoomEditView: View {
     private enum Field {
         case name
         case topic
+        case localName
     }
+
+    /// A room, as opposed to a conversation with one person. Asked of what the chat *is* rather
+    /// than of how many people are in it — see `RoomInfoView.isRoom`, which asks it the same way.
+    private var isRoom: Bool { details.kind != .direct }
 
     var body: some View {
         Form {
-            if details.permissions.canChangePicture {
+            if !isRoom {
+                contactName
+            }
+
+            if isRoom, details.permissions.canChangePicture {
                 Section {
                     picture
                         .profileHeaderRow()
                 }
             }
 
-            if details.permissions.canRename {
+            if isRoom, details.permissions.canRename {
                 Section {
                     TextField(String(app: Strings.Room.Manage.namePlaceholder), text: $draftName)
                         .focused($focus, equals: .name)
@@ -51,7 +73,7 @@ struct RoomEditView: View {
                 }
             }
 
-            if details.permissions.canChangeTopic {
+            if isRoom, details.permissions.canChangeTopic {
                 Section {
                     TextField(String(app: Strings.Room.Manage.topicPlaceholder),
                               text: $draftTopic,
@@ -78,10 +100,17 @@ struct RoomEditView: View {
         .onChange(of: details.topic, initial: true) { _, topic in
             if focus != .topic { draftTopic = topic ?? "" }
         }
+        // The nickname follows the chat too, except while it is being typed.
+        .onChange(of: details.localName, initial: true) { _, local in
+            if focus != .localName { draftLocalName = local ?? "" }
+        }
         .onChange(of: focus) { previous, _ in
             switch previous {
             case .name: Task { await details.rename(to: draftName) }
             case .topic: Task { await details.setTopic(draftTopic) }
+            // No `Task`, and no server: the nickname is written to this device and read back by
+            // the room list and the header at once. See `LocalNames`.
+            case .localName: details.renameLocally(to: draftLocalName)
             case nil: break
             }
         }
@@ -95,6 +124,7 @@ struct RoomEditView: View {
         .onDisappear {
             if focus == .name { Task { await details.rename(to: draftName) } }
             if focus == .topic { Task { await details.setTopic(draftTopic) } }
+            if focus == .localName { details.renameLocally(to: draftLocalName) }
         }
         .photosPicker(isPresented: $isChoosingPicture, selection: $pickedPicture, matching: .images)
         .onChange(of: pickedPicture) { _, item in
@@ -102,6 +132,45 @@ struct RoomEditView: View {
             Task { await setPicture(item) }
         }
         .failureAlert(Binding(get: { details.failure }, set: { details.failure = $0 }))
+    }
+
+    /// What to call the person at the other end of a personal chat — on this device, and nowhere
+    /// else.
+    ///
+    /// The one field in this app that changes something without telling the server, and the reason
+    /// it exists: a Matrix display name belongs to whoever set it, so a friend who calls themselves
+    /// `anna_1987` is `anna_1987` in the list, in the header and on the lock screen — and Matrix's
+    /// own answer, renaming the room, writes a state event the other person receives and can read.
+    /// Nobody wants to announce what they have decided to call somebody.
+    ///
+    /// So the footer says it plainly: this name stays on this device, it does not travel to the
+    /// other person or to the user's other phones, and signing out forgets it.
+    ///
+    /// Nothing here is disabled offline, alone on this screen, and that is the point of it: there
+    /// is no request to fail.
+    @ViewBuilder
+    private var contactName: some View {
+        Section {
+            // The placeholder is the name the server gives, so an empty field is not a blank: it
+            // says, in grey, exactly whose name is being replaced and what comes back if the field
+            // is emptied.
+            TextField(details.serverName, text: $draftLocalName)
+                .focused($focus, equals: .localName)
+                .onSubmit { focus = nil }
+
+            if details.localName != nil {
+                Button {
+                    draftLocalName = ""
+                    details.renameLocally(to: nil)
+                } label: {
+                    Text(Strings.Room.LocalName.reset)
+                }
+            }
+        } header: {
+            Text(Strings.Room.LocalName.header)
+        } footer: {
+            Text(Strings.Room.LocalName.help)
+        }
     }
 
     /// The picture, and the two things that can be done to it spelled out underneath rather

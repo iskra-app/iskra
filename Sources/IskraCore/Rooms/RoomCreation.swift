@@ -41,6 +41,39 @@ public extension UserSession {
                                                      invite: [userID]))
     }
 
+    /// The conversation this account already has with somebody, if it has one.
+    ///
+    /// Asked of the SDK rather than searched for in the room list, and the difference matters: a
+    /// personal chat is not a room that *looks* one-to-one, it is a room named in the account's
+    /// `m.direct` data, which is what every other Matrix client on this account agrees to call the
+    /// conversation with that person. Guessing from the room list — a direct room with exactly one
+    /// other member in it — would find the right room most of the time and, the rest of the time,
+    /// quietly reopen a chat the user had left, or pick one of two.
+    ///
+    /// Only a room still worth opening counts. `getDmRoom` answers with the room whether or not
+    /// this account is still in it, and a chat somebody left is not a chat to send them back into:
+    /// there is nothing to read in it and nothing sent to it arrives. Left, the answer is nothing
+    /// at all, and the caller starts a fresh conversation — which is what "write to them" means
+    /// once the old room is gone.
+    ///
+    /// Synchronous because it is a lookup in the local store, not a request: the screen that asks
+    /// is a button deciding what word to put on itself, and it has to decide while it is drawn.
+    func directChat(with userID: String) -> String? {
+        guard let room = try? client.getDmRoom(userId: userID) else { return nil }
+        guard room.membership() == .joined else { return nil }
+        return room.id()
+    }
+
+    /// Opens the conversation with somebody: the one that is already there, or a new one.
+    ///
+    /// The whole of what "write to them" means, in one call, so that no screen has to hold both
+    /// halves of the question — and so that the answer cannot differ between the button's label
+    /// and what the button does.
+    func openDirectChat(with userID: String) async throws(RoomCreationFailure) -> String {
+        if let existing = directChat(with: userID) { return existing }
+        return try await createDirectChat(with: userID)
+    }
+
     /// Creates a room.
     ///
     /// Whether it is encrypted follows from whether it is public, and it is not a switch of

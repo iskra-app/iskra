@@ -17,13 +17,19 @@ import IskraDesign
 /// - `RoomTitle` + `RoomAvatarButton` — the name centred where a phone expects its title,
 ///   the picture alone at the trailing edge, under the thumb. iPhone.
 ///
-/// The name wears a pill, and it has to. It used to be bare words over whatever the
-/// conversation happened to put under them, and a title bar has no floor of its own on 26 —
-/// so a pale message bubble, or a photograph with a bright top edge, scrolled up behind the
-/// name and took it away. A heading that is legible most of the time is a heading nobody can
-/// rely on. The pill is the same `navigationGlass` capsule the avatar button beside it wears,
-/// which is the point: both ends of the bar are then made of one material, and the name stays
-/// readable over anything that passes beneath it.
+/// The names are bare words. No pill, no plate, nothing under them.
+///
+/// They wore one briefly, on the reasoning that a title bar has no floor of its own on 26 and a
+/// pale bubble scrolling up behind the name would take it away. That is a real risk and this is
+/// not the cure: a capsule of glass around the heading of a screen makes it read as a stray
+/// control floating in the middle of the bar rather than as the name of what you are looking at,
+/// which is a cost paid on every single screenful to insure against the occasional one. Legibility
+/// over a bright bubble is the *material's* job — the toolbar dims what passes under it — and
+/// where it is not enough the answer is the bar, not a badge around the words.
+///
+/// The avatar button beside it keeps its glass, and the difference is the point: it is a control,
+/// and the back button facing it across the bar is a control on a glass circle of exactly the same
+/// kind. A title is not a control even when it happens to be tappable.
 ///
 /// The lock is a glyph, not a control. It used to be a button that explained itself in a
 /// popover, and it cannot stay one: a button inside a button is ambiguous to the eye and
@@ -55,20 +61,8 @@ struct RoomHeader: View {
             // A title bar is a crowded place and a long room name will happily eat the
             // buttons on either side of it. This keeps the header honest about how much
             // room it is allowed to take, and lets the name truncate instead.
-            //
-            // Before the pill, not after: glass takes the size of what it is given, so a
-            // capsule drawn first and squeezed second would be a capsule the width of the
-            // untruncated name with the bar's buttons underneath it.
             .frame(maxWidth: Theme.Size.roomHeader, alignment: .leading)
-            // Here the picture sits inside the pill rather than beside it: the two are one
-            // heading, and a capsule drawn round only the words would cut the row in half.
-            // Tight at the leading edge, where the avatar is already a round shape of its own,
-            // and a full step at the trailing one, where the pill has to clear the text.
-            .padding(.leading, Theme.Spacing.tight)
-            .padding(.trailing, Theme.Spacing.normal)
-            .padding(.vertical, Theme.Spacing.tight)
-            .navigationGlass()
-            .contentShape(.capsule)
+            .contentShape(.rect)
         }
         .buttonStyle(.plain)
         .roomHeaderAccessibility(name: name, privacy: privacy, subtitle: subtitle)
@@ -90,10 +84,7 @@ struct RoomTitle: View {
         Button(action: onOpenDetails) {
             RoomIdentity(name: name, privacy: privacy, subtitle: subtitle, alignment: .center)
                 .frame(maxWidth: Theme.Size.roomHeader)
-                .padding(.horizontal, Theme.Spacing.normal)
-                .padding(.vertical, Theme.Spacing.tight)
-                .navigationGlass()
-                .contentShape(.capsule)
+                .contentShape(.rect)
         }
         .buttonStyle(.plain)
         .roomHeaderAccessibility(name: name, privacy: privacy, subtitle: subtitle)
@@ -103,10 +94,10 @@ struct RoomTitle: View {
 /// The chat's picture, alone at the trailing end of an iPhone's title bar, and the second
 /// way into the same room-info screen the title opens.
 ///
-/// It sits on glass, as the name across the bar now does, and for a reason of its own on top of
-/// theirs: it is a control, and the back button facing it is a control on a glass circle of
-/// exactly the same kind. Left bare it read as a picture that had been dropped into the bar
-/// rather than as the button it is.
+/// This one *does* sit on glass, unlike the name across the bar from it, and the difference is the
+/// point: it is a control, and the back button facing it is a control on a glass circle of exactly
+/// the same kind. Left bare it read as a picture that had been dropped into the bar rather than as
+/// the button it is.
 ///
 /// The glass is *ours*, though, and that is the whole trick — the toolbar's own shared
 /// background is hidden at the item (see `RoomView`). A shared background sizes itself to the
