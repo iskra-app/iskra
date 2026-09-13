@@ -67,7 +67,27 @@ extension RoomInfo {
     ///
     /// A room with no name is normal in Matrix — most personal chats have none — so this falls
     /// back to whoever is in it rather than showing a raw room ID to a human.
+    ///
+    /// And above all of that sits the name this device was told to use, in a personal chat where
+    /// the user has given one: see `LocalNames`. It is applied *here*, at the single place a room
+    /// gets its name, rather than at each of the screens that show one — the list, the header, the
+    /// info screen and the forward picker would otherwise each have to remember, and the one that
+    /// forgot would be the screen where a friend's real name suddenly reappeared.
+    ///
+    /// Personal chats only. A group's name is shared with everybody in it, and showing one member
+    /// a private version of it is how two people end up unable to talk about the same room.
     func title(besides ownUserID: String?) -> String {
+        if kind == .direct, let local = LocalNames.name(for: id) { return local }
+        return serverTitle(besides: ownUserID)
+    }
+
+    /// The name the *server* would give it, with no nickname over the top.
+    ///
+    /// Kept apart from `title` for the screens that have to survive a rename happening while they
+    /// are open: a nickname is set on this device and no sync follows it, so nothing will hand
+    /// them a fresh `RoomInfo` to recompute from. They hold this instead, and put the nickname
+    /// back on it when one arrives. See `TimelineStore.adopt`.
+    func serverTitle(besides ownUserID: String?) -> String {
         displayName
             ?? counterpart(besides: ownUserID)?.displayName
             ?? heroes.first?.displayName

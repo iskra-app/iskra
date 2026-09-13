@@ -305,6 +305,22 @@ public enum Strings {
             public static let videoNotes = LocalizedStringResource("room.tabs.videoNotes", bundle: bundle)
             public static let files = LocalizedStringResource("room.tabs.files", bundle: bundle)
             public static let links = LocalizedStringResource("room.tabs.links", bundle: bundle)
+
+            /// What the switch itself is called. Never drawn — the segments are symbols and the
+            /// heading under them names the open one — but a `Picker` wants a label, and the one
+            /// place this is read out loud is VoiceOver, where "what's in here" is a better
+            /// introduction to six glyphs than silence.
+            public static let label = LocalizedStringResource("room.tabs.label", bundle: bundle)
+        }
+
+        /// What *you* call the person at the other end of a personal chat, as opposed to what
+        /// they call themselves. Kept on this device and never sent — which is the one thing the
+        /// screen has to say out loud, because a name that looks like a setting looks like a
+        /// setting that syncs. See `LocalNames`.
+        public enum LocalName {
+            public static let header = LocalizedStringResource("room.localName.header", bundle: bundle)
+            public static let help = LocalizedStringResource("room.localName.help", bundle: bundle)
+            public static let reset = LocalizedStringResource("room.localName.reset", bundle: bundle)
         }
         public static let administrator = LocalizedStringResource("room.administrator", bundle: bundle)
         public static let moderator = LocalizedStringResource("room.moderator", bundle: bundle)
