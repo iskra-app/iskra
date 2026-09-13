@@ -537,6 +537,13 @@
 "account.namePlaceholder" = "Your name";
 "account.changePicture" = "Change picture";
 "account.removePicture" = "Remove picture";
+"account.edit" = "Edit";
+"account.editTitle" = "Your profile";
+"account.nameHeader" = "Name";
+"account.editOffline" = "Your profile can’t be changed offline — there’s no server to tell.";
+"room.manage.edit" = "Edit";
+"room.manage.editTitle" = "Edit chat";
+"room.manage.nameHeader" = "Name";
 
 /* Encryption: whether your messages will still be readable on your next device. */
 "encryption.title" = "Encryption";

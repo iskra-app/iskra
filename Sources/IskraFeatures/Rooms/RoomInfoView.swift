@@ -1,5 +1,4 @@
 import SwiftUI
-import PhotosUI
 import IskraCore
 import IskraDesign
 
@@ -14,10 +13,16 @@ import IskraDesign
 /// nothing; anyone who wonders what it means presses the name, and the answer is here in
 /// a sentence with no cryptography in it.
 ///
-/// There is no "Edit" button, and that is deliberate. The name and the description are
-/// fields for anybody allowed to change them and plain text for everybody else, so the
-/// screen already shows each reader exactly what they can do — an edit *mode* on top of
-/// that would be a second state to enter for the sake of changing one line of text.
+/// The top of it is a portrait: the picture large and centred, the name under it, and one
+/// quiet line saying who this is or how many people are here — the shape every messenger uses
+/// for a card, and the shape somebody opening this screen is looking for.
+///
+/// Everything on that portrait is read-only, and the pencil in the corner is where it is changed.
+/// It used to be the other way round: the name was a text field and the picture opened a menu, so
+/// the screen you read was permanently half in edit mode — a room name one careless tap could
+/// empty, and a picture that offered to replace itself when you only wanted a closer look. The
+/// pencil appears only for somebody the room actually lets change something, so the screen still
+/// shows each reader exactly what they can do; it just no longer asks them to do it by accident.
 struct RoomInfoView: View {
     @State private var details: RoomDetailsStore
 
@@ -35,19 +40,16 @@ struct RoomInfoView: View {
     /// way out of it — is a call straight to the server with no queue behind it, so all of them are
     /// turned off rather than left to fail one at a time.
     ///
-    /// The name and topic fields matter most here, and not for the obvious reason. They commit when
-    /// they *lose focus* — so offline somebody could type a new name, watch it sit there looking
-    /// applied, walk away, and have it quietly thrown out by a server that was never asked. Disabled,
-    /// the field never takes the text in the first place.
+    /// The fields that change the room have moved to `RoomEditView`, which is disabled offline for
+    /// the same reason and one worth spelling out: they commit when they *lose focus*, so a name
+    /// typed with no network would sit there looking applied and then be quietly thrown out by a
+    /// server that was never asked. Disabled, the field never takes the text in the first place.
     @Environment(\.isOffline) private var isOffline
 
-    /// What is in the two fields, which is not the same thing as what the room is called.
-    /// The room is renamed when the field is *left*, not on every keystroke.
-    @State private var draftName = ""
-    @State private var draftTopic = ""
-
-    @State private var isChoosingPicture = false
-    @State private var pickedPicture: PhotosPickerItem?
+    /// Whether the editing screen is up. Held here rather than driven by a `NavigationLink`
+    /// because `onDisappear` needs to know: pushing a screen takes this one off the display, and
+    /// this one's `onDisappear` is what cancels the room subscription.
+    @State private var isEditing = false
 
     @State private var isInviting = false
     @State private var invitee = ""
@@ -56,13 +58,6 @@ struct RoomInfoView: View {
     /// act on this screen with no way back through it.
     @State private var blocking: RoomMemberSummary?
     @State private var isConfirmingLeave = false
-
-    @FocusState private var focus: Field?
-
-    private enum Field {
-        case name
-        case topic
-    }
 
     /// The open conversation, for the shared-media screen — its media lives in the loaded timeline.
     /// Optional so the info screen still stands on its own where there is no timeline behind it.
@@ -88,11 +83,10 @@ struct RoomInfoView: View {
         Form {
             Section {
                 identity
+                    .profileHeaderRow()
             }
-            .disabled(isOffline)
 
             about
-                .disabled(isOffline)
 
             if let timeline {
                 Section {
@@ -169,49 +163,36 @@ struct RoomInfoView: View {
         .navigationTitle(Text(Strings.Room.detailsTitle))
         .toolbarTitleDisplayMode(.inline)
         .task { await details.load() }
-        // The fields follow the room, except while somebody is typing in them — a name that
-        // arrives from a sync must not overwrite the one being written.
-        .onChange(of: details.name, initial: true) { _, name in
-            if focus != .name { draftName = name }
-        }
-        .onChange(of: details.topic, initial: true) { _, topic in
-            if focus != .topic { draftTopic = topic ?? "" }
-        }
-        // Leaving a field is what commits it. There is no "Save": a form with one button at
-        // the bottom would make renaming a room a two-step act, and the change is a single
-        // line of text.
-        .onChange(of: focus) { previous, _ in
-            switch previous {
-            case .name: Task { await details.rename(to: draftName) }
-            case .topic: Task { await details.setTopic(draftTopic) }
-            case nil: break
+        .toolbar {
+            if canEdit {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        isEditing = true
+                    } label: {
+                        Image(systemName: "pencil")
+                            .font(.body.weight(.medium))
+                    }
+                    .accessibilityLabel(Text(Strings.Room.Manage.edit))
+                    // Every field behind the pencil is a call straight to the server. Offline the
+                    // screen it opens could show nothing but disabled controls, so the door is shut
+                    // instead — the strip at the top of the screen has already said why.
+                    .disabled(isOffline)
+                }
             }
         }
-        // And leaving the *screen* is leaving the field.
-        //
-        // Focus loss is what commits an edit, and SwiftUI makes no promise that focus resigns
-        // before a view is torn down. So typing a new room name and tapping the back chevron with
-        // the keyboard still up dropped the rename on the floor: the field showed the new name
-        // right up until the moment you left, and the room was still called the old thing.
-        //
-        // Committing here as well as above cannot double-send: both `rename` and `setTopic` return
-        // early when the text has not actually changed.
-        .onDisappear {
-            if focus == .name { Task { await details.rename(to: draftName) } }
-            if focus == .topic { Task { await details.setTopic(draftTopic) } }
-
-            // And the subscription this screen took out on the room goes with it. It follows the
-            // room as it is renamed from other devices — see `RoomDetailsStore.load()` — and a
-            // listener nobody cancels is a listener that runs until the account is signed out.
-            details.stop()
+        .navigationDestination(isPresented: $isEditing) {
+            RoomEditView(details: details)
         }
-        // Presented from the root of the screen rather than from inside the menu that asks
-        // for it: a `PhotosPicker` declared inside a `Menu` never appears — see
-        // `MessageComposer`, where that cost an afternoon.
-        .photosPicker(isPresented: $isChoosingPicture, selection: $pickedPicture, matching: .images)
-        .onChange(of: pickedPicture) { _, item in
-            guard let item else { return }
-            Task { await setPicture(item) }
+        // The subscription this screen took out on the room goes with the screen. It follows the
+        // room as it is renamed from other devices — see `RoomDetailsStore.load()` — and a
+        // listener nobody cancels is a listener that runs until the account is signed out.
+        //
+        // Except when the editing screen is what took this one off the display: the store is
+        // handed to it, and a store that stopped listening the moment it was pushed would show
+        // a name that no longer followed the room it is renaming.
+        .onDisappear {
+            guard !isEditing else { return }
+            details.stop()
         }
         .alert(Text(Strings.Room.Manage.inviteTitle), isPresented: $isInviting) {
             TextField(String(app: Strings.Room.Manage.invitePlaceholder), text: $invitee)
@@ -267,89 +248,46 @@ struct RoomInfoView: View {
 
     // MARK: - Who or what this room is
 
-    /// The room, at the top: its picture, its name, and the one line that says what it is.
+    /// The room, at the top: its picture large and centred, its name, and the one line that
+    /// says what it is. `ProfileHeader` is shared with settings, so a room and a person are
+    /// introduced the same way.
     private var identity: some View {
-        VStack(spacing: Theme.Spacing.close) {
-            picture
-
-            if isRoom, details.permissions.canRename {
-                TextField(String(app: Strings.Room.Manage.namePlaceholder), text: $draftName)
-                    .font(.title2.weight(.semibold))
-                    .multilineTextAlignment(.center)
-                    .textFieldStyle(.plain)
-                    .focused($focus, equals: .name)
-                    .onSubmit { focus = nil }
-            } else {
-                Text(details.name)
-                    .font(.title2.weight(.semibold))
-                    .multilineTextAlignment(.center)
-            }
-
-            if let subtitle {
-                Text(subtitle)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    // In a one-to-one chat this is the other person's Matrix ID, which is
-                    // exactly the string someone opens this screen to copy.
-                    .textSelection(.enabled)
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, Theme.Spacing.close)
+        ProfileHeader(name: details.name,
+                      avatarURL: details.avatarURL,
+                      subtitle: subtitle,
+                      // A space keeps the square-cornered silhouette it has in the chat list. The
+                      // portrait is the largest this picture is ever drawn, and it would be an odd
+                      // place for it to change shape.
+                      shape: details.kind == .space ? .roundedSquare : .circle,
+                      // In a one-to-one chat the line underneath is the other person's Matrix ID,
+                      // which is exactly the string someone opens this screen to copy. A count of
+                      // participants is not.
+                      isSubtitleSelectable: details.isOneToOne)
     }
 
-    /// The picture — and, for whoever may change it, a menu on the picture itself. There is
-    /// no pencil in the corner: the thing you press is the thing that changes.
-    @ViewBuilder
-    private var picture: some View {
-        let avatar = Avatar(name: details.name, url: details.avatarURL, size: Theme.Size.avatarLarge)
-
-        if isRoom, details.permissions.canChangePicture {
-            Menu {
-                Button {
-                    isChoosingPicture = true
-                } label: {
-                    Label(String(app: Strings.Room.Manage.changePicture), systemImage: "photo")
-                }
-
-                if details.avatarURL != nil {
-                    Button(role: .destructive) {
-                        Task { await details.removePicture() }
-                    } label: {
-                        Label(String(app: Strings.Room.Manage.removePicture), systemImage: "trash")
-                    }
-                }
-            } label: {
-                avatar
-            }
-            .menuIndicator(.hidden)
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text(Strings.Room.Manage.changePicture))
-        } else {
-            avatar
-        }
+    /// Whether there is anything behind a pencil worth opening.
+    ///
+    /// A one-to-one chat has no name, no description and no picture of its own — all three belong
+    /// to the person you are talking to, and Matrix will happily let you rename them for yourself,
+    /// which is a thing nobody wants. And in a room the three powers are granted separately: the
+    /// pencil appears if the room allows any one of them, and the screen it opens shows only the
+    /// fields it allows.
+    private var canEdit: Bool {
+        isRoom && (details.permissions.canRename
+                   || details.permissions.canChangeTopic
+                   || details.permissions.canChangePicture)
     }
 
     // MARK: - What it is for, and what it does to your phone
 
-    /// The topic: what the room is for, written by whoever runs it. A field for them, and a
-    /// paragraph for everybody else — and nothing at all when it is empty and cannot be
-    /// filled in, because an empty section is a heading over a blank.
+    /// The topic: what the room is for, written by whoever runs it — and nothing at all when
+    /// there is none, because an empty section is a heading over a blank. Editing it lives behind
+    /// the pencil; this is the reading copy, and it is the same one for everybody.
     @ViewBuilder
     private var about: some View {
         let topic = details.topic ?? ""
 
-        if isRoom, details.permissions.canChangeTopic {
-            Section {
-                TextField(String(app: Strings.Room.Manage.topicPlaceholder),
-                          text: $draftTopic,
-                          axis: .vertical)
-                    .lineLimit(1...6)
-                    .focused($focus, equals: .topic)
-            } header: {
-                Text(Strings.Room.about)
-            }
-        } else if !topic.isEmpty {
+        if !topic.isEmpty {
             Section {
                 Text(topic)
                     .font(.callout)
@@ -436,17 +374,6 @@ struct RoomInfoView: View {
         }
     }
 
-    // MARK: - Changing it
-
-    private func setPicture(_ item: PhotosPickerItem) async {
-        pickedPicture = nil
-
-        guard let data = await imageData(from: item) else {
-            details.failure = .picture
-            return
-        }
-        await details.setPicture(data, filename: "avatar.jpg")
-    }
 }
 
 /// One person in the room: their face, their name, and what they can do here — plus, on a

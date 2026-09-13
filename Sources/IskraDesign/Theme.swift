@@ -249,6 +249,14 @@ public enum Theme {
         public static let avatarToolbar: CGFloat = 36
         /// The user's own picture, at the top of the settings screen.
         public static let avatarLarge: CGFloat = 64
+
+        /// The face at the top of a profile — yours in settings, the room's on the info screen.
+        ///
+        /// Much larger than `avatarLarge`, and that is the point of the header: the picture is not
+        /// an ornament beside a name, it is the first thing on the screen and the name sits under
+        /// it. At 64 the same layout reads as a list row that has been centred by mistake; at 96 it
+        /// reads as a portrait, which is what people are looking for when they open somebody's card.
+        public static let avatarProfile: CGFloat = 96
         /// Video notes are circles; this is their diameter in the timeline.
         public static let videoNote: CGFloat = 200
 
