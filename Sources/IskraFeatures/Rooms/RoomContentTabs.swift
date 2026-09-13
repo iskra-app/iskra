@@ -30,51 +30,67 @@ enum RoomContentTab: Hashable, CaseIterable, Identifiable {
         case .links: Strings.Room.Tabs.links
         }
     }
-
-    /// The glyph the switch is made of. A segmented control divides its width evenly between its
-    /// segments, and six Russian words do not fit in six sixths of a phone — «Видеосообщения»
-    /// arrives as «Виде…». Six symbols do, at any width and in any language, and they are the
-    /// same six symbols the rest of the app already uses for these things.
-    ///
-    /// The words are not lost: the heading over the list below the switch says which of them is
-    /// open, and VoiceOver reads each segment by its title rather than by its picture.
-    var icon: String {
-        switch self {
-        case .members: "person.2"
-        case .media: "photo"
-        case .voice: "waveform"
-        case .videoNotes: "video.circle"
-        case .files: "doc"
-        case .links: "link"
-        }
-    }
 }
 
-/// The switch above the room's contents — the system's own segmented control, and nothing of ours
-/// around it.
+/// The switch above the room's contents: the system's own segmented control, with the six words in
+/// it, on a strip that can be pushed sideways when the words do not fit.
 ///
-/// It used to be a strip of hand-drawn capsules on a sheet of glass, inside a `Form` section, which
-/// is two surfaces and a control: the grouped card drew a white plate, the glass drew a second one
-/// on top of it, and the pills drew a third. Three floors under six words, and on a light screen
-/// the glass had nothing to refract but the plate directly beneath it, so the material that is
-/// supposed to read as depth read as a slightly grey rectangle.
+/// It has been four things now, and the last two are the same idea with one thing fixed.
 ///
-/// So: the segmented control, sitting straight on the page. The selection moves the way the system
-/// moves it — the fill slides between segments instead of one capsule going out and another coming
-/// on — the sizing, the tint, the focus ring and the keyboard handling are Apple's, and it looks
-/// like a control on iOS 26 rather than like this app's idea of one.
+/// It was a row of hand-drawn capsules on a sheet of glass inside a `Form` section, which is two
+/// surfaces and a control — the grouped card drew a plate, the glass drew a second one on top of
+/// it, and the pills drew a third. Then it was this control, standing straight on the page, which
+/// fixed the floors and cost the words: a segmented control divides its width evenly between its
+/// segments, and six Russian words do not fit in six sixths of a phone, so it was six glyphs
+/// instead. Then it was the words again, as hand-drawn capsules — right about the words and wrong
+/// about everything else, because every pixel of a control this app draws itself is a pixel that
+/// will not match iOS 27.
 ///
-/// Symbols rather than words is the price, and it is paid deliberately: see `RoomContentTab.icon`.
+/// The missing idea was that the control does not have to be as wide as the screen; it has to be as
+/// wide as *itself*, inside something that scrolls. The obvious spelling of that — a
+/// `Picker(.segmented)` with `fixedSize` inside a SwiftUI `ScrollView` — compiles, looks right in a
+/// screenshot, and does not scroll at all: a `UIScrollView` will not take a drag away from a
+/// `UIControl`, so the finger never reaches it. There is nothing in the SwiftUI version of that
+/// arrangement to argue with. See `ScrollingSegments`, which is the same control in a scroll view
+/// that lets go — eighty lines of UIKit around a control that stays entirely Apple's.
+///
+/// A personal chat has three tabs, not six, and three words do fit: the control is then stretched to
+/// the width of the row and sits there exactly as an ordinary segmented control would, with nothing
+/// to scroll. Only when the words genuinely overflow does the strip become a strip.
+///
+/// One thing is given up and it is worth naming: nothing scrolls the chosen segment into view,
+/// because the segments belong to the control. Choosing a tab that is half off the edge leaves it
+/// half off the edge. That is a smaller price than a control that has stopped looking like the
+/// system's.
 struct RoomContentPicker: View {
     let tabs: [RoomContentTab]
     @Binding var selection: RoomContentTab
 
+    // Its own margins, because the row it lives in has none — it is laid on the page rather than in
+    // a card, so the inset that lines it up with the cards above and below is here.
+    #if os(iOS)
+    var body: some View {
+        ScrollingSegments(titles: titles,
+                          selection: index,
+                          label: String(app: Strings.Room.Tabs.label))
+            .padding(.horizontal, Theme.Spacing.roomy)
+            .padding(.vertical, Theme.Spacing.close)
+    }
+
+    /// The words, already resolved. Pulled out of `body` rather than mapped inline: this is a
+    /// `[String]` for UIKit, and building it inside a view builder is how a type-checker that has
+    /// to prove a `some View` ends up proving something about localisation instead.
+    private var titles: [String] {
+        tabs.map { String(app: $0.title) }
+    }
+    #else
+    // A Mac window is not a phone and the six words fit across it with room to spare, so the plain
+    // control is the whole answer there — and a strip somebody would have to swipe with a trackpad
+    // to read would be a worse one.
     var body: some View {
         Picker(selection: switching) {
             ForEach(tabs) { tab in
-                Image(systemName: tab.icon)
-                    .accessibilityLabel(Text(tab.title))
-                    .tag(tab)
+                Text(tab.title).tag(tab)
             }
         } label: {
             Text(Strings.Room.Tabs.label)
@@ -83,23 +99,46 @@ struct RoomContentPicker: View {
         // The control says what it is by what is in it, and the heading under it says which one is
         // open. A third label over the top would be the screen explaining its own furniture.
         .labelsHidden()
-        // Its own margins, because the row it lives in has none — it is laid on the page rather
-        // than in a card, so the inset that lines it up with the cards above and below is here.
         .padding(.horizontal, Theme.Spacing.roomy)
         .padding(.vertical, Theme.Spacing.close)
     }
+    #endif
 
-    /// The selection, with the change to the list underneath animated.
+    #if os(iOS)
+    /// The selection as the UIKit control counts it — by position, which is the only thing a
+    /// segmented control knows about its segments.
+    ///
+    /// Clamped rather than trusted on the way out. The tabs are rebuilt as a room gains its first
+    /// file, and a control mid-rebuild can report a segment that the new list does not have.
+    private var index: Binding<Int> {
+        Binding(get: { tabs.firstIndex(of: selection) ?? 0 },
+                set: { position in
+                    guard tabs.indices.contains(position) else { return }
+                    choose(tabs[position])
+                })
+    }
+
+    #else
+    /// The same, for the Mac's plain picker.
+    ///
+    /// The setter is written out as a closure rather than handed `choose` by name, and it has to
+    /// be: passing the method reference straight to `Binding(get:set:)` crashes the compiler —
+    /// `SmallVector unable to grow` out of IRGen, with no source line and no clue in it. The two
+    /// spellings mean exactly the same thing, so the tidier one will look like an obvious
+    /// simplification to whoever reads this next. It is not.
+    private var switching: Binding<RoomContentTab> {
+        Binding(get: { selection }, set: { choose($0) })
+    }
+    #endif
+
+    /// The change to the list underneath, animated.
     ///
     /// The control animates its own fill whatever this does; what needs saying is that the *list*
     /// should cross-fade rather than jump — six different kinds of content in one place, swapped
     /// with no transition, reads as the screen being rebuilt under the reader.
-    private var switching: Binding<RoomContentTab> {
-        Binding(get: { selection },
-                set: { tab in
-                    guard tab != selection else { return }
-                    withAnimation(.easeInOut(duration: Theme.Timing.chrome)) { selection = tab }
-                })
+    private func choose(_ tab: RoomContentTab) {
+        guard tab != selection else { return }
+        withAnimation(.easeInOut(duration: Theme.Timing.chrome)) { selection = tab }
     }
 }
 

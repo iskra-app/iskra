@@ -391,6 +391,9 @@ private extension View {
 struct RoomRow: View {
     let room: RoomSummary
 
+    /// For the pin, which is the one coloured thing on this row. See `body`.
+    @Environment(\.accent) private var accent
+
     var body: some View {
         HStack(spacing: Theme.Spacing.normal) {
             // A space wears a square-cornered face so it reads as a space, not a chat, before its
@@ -412,16 +415,23 @@ struct RoomRow: View {
                             .accessibilityLabel(Text(Strings.RoomList.privateChat))
                     }
 
-                    // Pinned chats wear a small pin beside the name, the same shape the swipe
-                    // action uses — so the row says "stays at the top" without needing words.
+                    Spacer(minLength: 0)
+
+                    // Pinned chats wear a pin, and it is at *this* end of the row rather than
+                    // tucked in beside the name, where it spent a while being missed entirely.
+                    // Two reasons it was invisible there: it sat immediately after a padlock, in
+                    // the same grey at the same caption-two size, so the eye read the pair as one
+                    // smudge of chrome; and a name long enough to truncate pushed it up against
+                    // the ellipsis, which is the least legible place on the line. Here it stands
+                    // beside the timestamp with nothing else around it, tinted rather than grey —
+                    // the row's one piece of *status*, which is what being pinned is. Same shape
+                    // the swipe action uses, so the gesture and its result say the same word.
                     if room.isPinned {
                         Image(systemName: "pin.fill")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .font(.caption)
+                            .foregroundStyle(accent.color)
                             .accessibilityLabel(Text(Strings.RoomList.pinned))
                     }
-
-                    Spacer(minLength: 0)
 
                     if let date = room.lastActivity {
                         // See `RoomTimestamp`: not `.relative`, which says "-3 мин" in Russian and

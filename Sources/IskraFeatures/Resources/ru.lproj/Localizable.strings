@@ -495,6 +495,8 @@
 "room.manage.roleHeader" = "Что может в чате";
 "room.manage.roleQuestion" = "Что может %@?";
 "room.manage.member" = "Участник";
+"room.manage.write" = "Написать";
+"room.manage.goToChat" = "Перейти в чат";
 "room.manage.remove" = "Исключить";
 "room.manage.block" = "Заблокировать";
 "room.manage.blockQuestion" = "Заблокировать %@?";

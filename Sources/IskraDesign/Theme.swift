@@ -90,18 +90,33 @@ public enum Theme {
         /// `.contextMenu` waits about half a second and will not be talked down, and on a message
         /// you have already decided to answer that wait reads as the app deliberating.
         ///
-        /// It was a shade under three tenths, then a sixth of a second, and it is now a tenth.
-        /// Each step down was asked for by the same complaint — that the press still feels like
-        /// being made to wait — and the step that mattered most was not in this number at all:
-        /// the scroll view was holding every touch back about 150 ms before the clock here even
-        /// started, which is why shortening this alone kept failing to move anything. See
-        /// `ScrollTouches`, which turned that off, so a tenth of a second is now a tenth of a
-        /// second as felt by a thumb.
+        /// It went three tenths, a sixth, a tenth — each step down asked for by the same
+        /// complaint, that the press still felt like being made to wait — and every one of those
+        /// steps was chasing a delay that was never in this number. Two other things were holding
+        /// the touch: the scroll view kept it back about 150 ms before the clock here even started
+        /// (`ScrollTouches`), and the double tap kept it back about three quarters of a second
+        /// after that, because a tap recogniser given first refusal does not fail while a finger
+        /// rests — it fails on its own timeout (`MessageActions.press`). With both gone, a tenth
+        /// of a second turned out to be a tenth of a second, and a tenth of a second is *too
+        /// short*: it lifts a message out from under a finger that was only resting there before a
+        /// scroll, and it makes the hold and the tap on a photograph very nearly the same gesture.
         ///
-        /// A tenth is the floor, not a way-point. Below it a press stops being a press: the
-        /// menu would start opening under a decisive tap on a photograph, and the tap that
-        /// opens the viewer and the hold that lifts the message would become the same gesture.
-        public static let menuLift: TimeInterval = 0.1
+        /// A quarter of a second is the number that is actually about the gesture rather than
+        /// about a bug behind it. Half the system's wait, so it still reads as quick; long enough
+        /// that holding is a decision. And now that the wait is real, it is *shown* — the bubble
+        /// sinks through exactly this long and arrives at the lift, so the quarter second is spent
+        /// watching something happen rather than waiting for it. See `Scale.pressedMessage`.
+        public static let menuLift: TimeInterval = 0.25
+
+        /// The bubble coming back up when a press is abandoned — the finger lifted early, or the
+        /// press turned into a scroll.
+        ///
+        /// A spring with some bounce in it, which is the one place in this app a bounce is right:
+        /// the message was pushed and let go, and a thing let go comes back past where it started.
+        /// The sink itself is not a spring — it is a plain ease-out lasting exactly `menuLift`,
+        /// because it is a progress bar wearing a better costume and a progress bar must not
+        /// overshoot the thing it is measuring.
+        public static let menuReleases: Animation = .spring(response: 0.3, dampingFraction: 0.55)
 
         /// The menu arriving: the bubble rising off the page, the bar and the list opening
         /// around it. A spring, because the lift is the one moment in a conversation where the
@@ -161,6 +176,21 @@ public enum Theme {
         /// So this is a quarter of a second again, which is the number that keeps the widest margin
         /// between a hold and the tap that flips the button between voice and video.
         public static let holdBegins: Duration = .milliseconds(250)
+    }
+
+    /// Things drawn smaller than they are, as feedback. There is exactly one so far, and it has a
+    /// name here for the same reason every spacing does: the next view to squeeze something under a
+    /// finger should squeeze it by the same amount.
+    public enum Scale {
+        /// How far a message gives under a finger on its way into the menu.
+        ///
+        /// Deeper than the 0.97 a button gives (`View.pressed(_:)`), and deliberately: a button's
+        /// squeeze says "heard you" about a press that is already over, while this one is a
+        /// *countdown* — it starts when the finger lands and finishes exactly as the menu lifts, so
+        /// the wait has something to look at. At 0.97 that journey is invisible; at 0.94 it reads
+        /// as the message being picked up, and it is still far from the cartoon squash that a
+        /// deeper number would give a wall of text.
+        public static let pressedMessage: CGFloat = 0.94
     }
 
     /// The lines the app draws *around* things rather than under them. There are very few:
