@@ -51,8 +51,7 @@ struct ProfileEditView: View {
             }
         }
         .formStyle(.grouped)
-        .navigationTitle(Text(Strings.Account.editTitle))
-        .toolbarTitleDisplayMode(.inline)
+        .profileScreen()
         .onChange(of: session.displayName, initial: true) { _, name in
             guard !isNaming else { return }
             draftName = name

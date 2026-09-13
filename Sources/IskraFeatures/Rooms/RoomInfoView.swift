@@ -160,8 +160,7 @@ struct RoomInfoView: View {
             }
         }
         .formStyle(.grouped)
-        .navigationTitle(Text(Strings.Room.detailsTitle))
-        .toolbarTitleDisplayMode(.inline)
+        .profileScreen()
         .task { await details.load() }
         .toolbar {
             if canEdit {

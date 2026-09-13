@@ -69,8 +69,7 @@ struct RoomEditView: View {
             }
         }
         .formStyle(.grouped)
-        .navigationTitle(Text(Strings.Room.Manage.editTitle))
-        .toolbarTitleDisplayMode(.inline)
+        .profileScreen()
         // The fields follow the room, except while somebody is typing in them — a name that
         // arrives from a sync must not overwrite the one being written.
         .onChange(of: details.name, initial: true) { _, name in

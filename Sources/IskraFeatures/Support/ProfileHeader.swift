@@ -32,8 +32,11 @@ struct ProfileHeader: View {
             Avatar(name: name, url: avatarURL, size: Theme.Size.avatarProfile, shape: shape)
 
             VStack(spacing: Theme.Spacing.tight) {
+                // A size up from the `.title2` a heading in a form would get, because this is not
+                // a heading over the screen — it is the name of whoever the screen is about, and
+                // the only words on it that have to be read from across a room.
                 Text(name)
-                    .font(.title2.weight(.semibold))
+                    .font(.title.weight(.semibold))
                     .multilineTextAlignment(.center)
 
                 if let subtitle {
@@ -54,7 +57,10 @@ struct ProfileHeader: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, Theme.Spacing.roomy)
+        // Nothing above it. The portrait is pulled up level with the back chevron and the pencil
+        // (see `profileScreen()`), and any padding here would push it back down again — the gap
+        // it would leave is exactly the gap the screen is trying not to have.
+        .padding(.bottom, Theme.Spacing.roomy)
         .accessibilityElement(children: .combine)
     }
 }
@@ -71,5 +77,75 @@ extension View {
         listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets())
             .listRowSeparator(.hidden)
+    }
+
+    /// A screen whose subject is the portrait at the top of it: no title, and the form pulled up
+    /// until the top of the picture is level with the top of the buttons either side of it.
+    ///
+    /// The title goes because it would be saying the name twice. "Settings" over a photograph of
+    /// you with your name under it is a label on a thing that has already introduced itself, and
+    /// it costs the portrait the one position on the screen that is worth having.
+    ///
+    /// What is left in the bar is two round buttons with nothing between them, and the picture
+    /// rising into that gap — which is the arrangement every messenger has settled on, because the
+    /// eye reads the face first and the chrome second.
+    ///
+    /// The lift is a negative inset rather than an ignored safe area on purpose: the form still
+    /// owns its safe areas, so the picture is laid out under the navigation bar instead of being
+    /// clipped by an edge the layout no longer knows about. On macOS none of this applies — the
+    /// title bar is the window's, not the screen's.
+    func profileScreen() -> some View {
+        modifier(ProfileScreen())
+    }
+}
+
+/// The chrome of a portrait screen, and the one piece of it that changes as the screen moves.
+///
+/// On 26 a scroll view draws a progressive blur along any edge that runs under glass, so that
+/// content passing beneath a toolbar softens instead of colliding with it. It is the right effect
+/// almost everywhere — and the wrong one at rest here, where the thing directly under the top edge
+/// is the portrait: it washed out the top third of the picture and left a horizontal seam across
+/// somebody's face, on a screen where nothing was scrolling and there was nothing to soften.
+///
+/// So the effect is not removed, it is *earned*. Above the fold there is nothing under the bar but
+/// the face, and the bar is bare glass buttons over the page. Once the picture has scrolled out of
+/// the way there is a list running under the bar, which is exactly what the effect is for, and it
+/// comes back — with the bar's own background, which is refused for the same stretch and for the
+/// same reason.
+///
+/// The threshold is the height of the picture, which is the distance it takes to leave: the screen
+/// is lifted so the top of the portrait starts level with the top of the bar, so after scrolling
+/// its own height it is gone. Not the height of the whole header — waiting for the name and the
+/// address to go too would leave the list sliding under naked glass for another eighty points,
+/// which is the effect arriving late rather than not arriving at all.
+private struct ProfileScreen: ViewModifier {
+    /// Whether the portrait has left. Animated, because the effect appearing is a change in the
+    /// weather at the top of the screen and a hard cut reads as a flicker.
+    @State private var isPastPortrait = false
+
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        content
+            .navigationTitle(Text(verbatim: ""))
+            .toolbarTitleDisplayMode(.inline)
+            .toolbarBackgroundVisibility(isPastPortrait ? .automatic : .hidden, for: .navigationBar)
+            .scrollEdgeEffectHidden(!isPastPortrait, for: .top)
+            // The grouped form's own opening gap, which sits between the bar and the first row
+            // and would put the portrait back below the buttons.
+            .contentMargins(.top, 0, for: .scrollContent)
+            .padding(.top, -Theme.Size.navigationBar)
+            // How far the content has actually travelled, rather than where it happens to sit:
+            // `contentOffset` alone counts the insets the form was given, and those change under
+            // a keyboard.
+            .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                geometry.contentOffset.y + geometry.contentInsets.top
+            } action: { _, travelled in
+                let past = travelled > Theme.Size.avatarProfile
+                guard past != isPastPortrait else { return }
+                withAnimation(.easeInOut(duration: Theme.Timing.chrome)) { isPastPortrait = past }
+            }
+        #else
+        content.navigationTitle(Text(verbatim: ""))
+        #endif
     }
 }
