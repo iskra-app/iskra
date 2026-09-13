@@ -58,12 +58,6 @@ struct RoomInfoView: View {
     @State private var isInviting = false
     @State private var invitee = ""
 
-    /// The nickname being typed for a personal chat, and whether the field has the keyboard.
-    /// Committed when the field is left, exactly as the room's own name is on `RoomEditView` —
-    /// a "Save" button for one line of text is a button too many.
-    @State private var draftLocalName = ""
-    @FocusState private var isNamingContact: Bool
-
     /// The person a block has been asked for and not yet confirmed. Blocking is the one
     /// act on this screen with no way back through it.
     @State private var blocking: RoomMemberSummary?
@@ -97,8 +91,6 @@ struct RoomInfoView: View {
             }
 
             about
-
-            contactName
 
             // What the padlock means, directly under the name. It used to sit five sections down,
             // between the room's visibility and its notifications, which is filing the one fact on
@@ -180,10 +172,8 @@ struct RoomInfoView: View {
                             .font(.body.weight(.medium))
                     }
                     .accessibilityLabel(Text(Strings.Room.Manage.edit))
-                    // Every field behind the pencil is a call straight to the server. Offline the
-                    // screen it opens could show nothing but disabled controls, so the door is shut
-                    // instead — the strip at the top of the screen has already said why.
-                    .disabled(isOffline)
+                    // See `editingNeedsNetwork`.
+                    .disabled(isOffline && editingNeedsNetwork)
                 }
             }
         }
@@ -198,24 +188,8 @@ struct RoomInfoView: View {
         // handed to it, and a store that stopped listening the moment it was pushed would show
         // a name that no longer followed the room it is renaming.
         .onDisappear {
-            // Leaving the screen is leaving the field: the nickname commits on focus loss, and
-            // SwiftUI makes no promise that focus resigns before a view is torn down. Same
-            // arrangement, and the same reason, as `RoomEditView`.
-            if isNamingContact { details.renameLocally(to: draftLocalName) }
-
             guard !isEditing else { return }
             details.stop()
-        }
-        // The field follows the chat, except while somebody is typing in it.
-        .onChange(of: details.localName, initial: true) { _, local in
-            if !isNamingContact { draftLocalName = local ?? "" }
-        }
-        // And commits when they stop. A rename on every keystroke would be a rename: the name
-        // travels to the chat list and the header the moment it is written, and watching a
-        // friend's name assemble itself letter by letter in the list behind is not a feature.
-        .onChange(of: isNamingContact) { wasFocused, _ in
-            guard wasFocused else { return }
-            details.renameLocally(to: draftLocalName)
         }
         .alert(Text(Strings.Room.Manage.inviteTitle), isPresented: $isInviting) {
             TextField(String(app: Strings.Room.Manage.invitePlaceholder), text: $invitee)
@@ -298,16 +272,27 @@ struct RoomInfoView: View {
 
     /// Whether there is anything behind a pencil worth opening.
     ///
-    /// A one-to-one chat has no name, no description and no picture of its own — all three belong
-    /// to the person you are talking to, and Matrix will happily let you rename them for yourself,
-    /// which is a thing nobody wants. And in a room the three powers are granted separately: the
-    /// pencil appears if the room allows any one of them, and the screen it opens shows only the
-    /// fields it allows.
+    /// In a room the three powers are granted separately: the pencil appears if the room allows any
+    /// one of them, and the screen it opens shows only the fields it allows.
+    ///
+    /// In a personal chat there is always exactly one thing, and it is never refused — what *you*
+    /// call the person, on this device. The room's own name, description and picture are not on
+    /// offer there and never were: all three belong to the person you are talking to, and Matrix
+    /// would happily let you rename them in a way they can read.
     private var canEdit: Bool {
-        isRoom && (details.permissions.canRename
-                   || details.permissions.canChangeTopic
-                   || details.permissions.canChangePicture)
+        guard isRoom else { return true }
+        return details.permissions.canRename
+            || details.permissions.canChangeTopic
+            || details.permissions.canChangePicture
     }
+
+    /// Whether the pencil needs the network to be worth pressing.
+    ///
+    /// Everything behind it in a room is a call straight to the server, so offline the door is shut
+    /// rather than opened onto a screen of disabled fields — the strip at the top has already said
+    /// why. A personal chat's nickname is written to this device and nowhere else, so there is
+    /// nothing for the network to refuse and the pencil stays live.
+    private var editingNeedsNetwork: Bool { isRoom }
 
     // MARK: - What it is for, and what it does to your phone
 
@@ -376,48 +361,6 @@ struct RoomInfoView: View {
     }
 
     // MARK: - What is in it
-
-    /// What to call the person at the other end of a personal chat — on this device, and nowhere
-    /// else.
-    ///
-    /// The one thing on this screen that changes something without telling the server, and the
-    /// reason it exists: a Matrix display name belongs to whoever set it, so a friend who calls
-    /// themselves `anna_1987` is `anna_1987` in the list, in the header and on the lock screen,
-    /// and Matrix's own answer — renaming the room — writes a state event that the other person
-    /// receives and can see. Nobody wants to announce what they have decided to call somebody.
-    ///
-    /// So the footer is not a disclaimer, it is the feature: this name is local, it does not
-    /// travel to the other person or to the user's other devices, and signing out forgets it.
-    /// Said in the place somebody is looking when they type the name, rather than in a help
-    /// screen nobody opens.
-    ///
-    /// Only in a personal chat. A group's name belongs to everybody in it — see `LocalNames`.
-    @ViewBuilder
-    private var contactName: some View {
-        if !isRoom {
-            Section {
-                // The placeholder is the name the server gives, so an empty field is not a blank:
-                // it says, in grey, exactly whose name is being replaced and what comes back if
-                // the field is emptied.
-                TextField(details.serverName, text: $draftLocalName)
-                    .focused($isNamingContact)
-                    .onSubmit { isNamingContact = false }
-
-                if details.localName != nil {
-                    Button {
-                        draftLocalName = ""
-                        details.renameLocally(to: nil)
-                    } label: {
-                        Text(Strings.Room.LocalName.reset)
-                    }
-                }
-            } header: {
-                Text(Strings.Room.LocalName.header)
-            } footer: {
-                Text(Strings.Room.LocalName.help)
-            }
-        }
-    }
 
     /// The room's own contents, behind a strip of tabs: the people, the pictures, the voice notes,
     /// the round videos, the files, the links.

@@ -30,76 +30,121 @@ enum RoomContentTab: Hashable, CaseIterable, Identifiable {
         case .links: Strings.Room.Tabs.links
         }
     }
-
-    /// The glyph the switch is made of. A segmented control divides its width evenly between its
-    /// segments, and six Russian words do not fit in six sixths of a phone — «Видеосообщения»
-    /// arrives as «Виде…». Six symbols do, at any width and in any language, and they are the
-    /// same six symbols the rest of the app already uses for these things.
-    ///
-    /// The words are not lost: the heading over the list below the switch says which of them is
-    /// open, and VoiceOver reads each segment by its title rather than by its picture.
-    var icon: String {
-        switch self {
-        case .members: "person.2"
-        case .media: "photo"
-        case .voice: "waveform"
-        case .videoNotes: "video.circle"
-        case .files: "doc"
-        case .links: "link"
-        }
-    }
 }
 
-/// The switch above the room's contents — the system's own segmented control, and nothing of ours
-/// around it.
+/// The switch above the room's contents: the six words, in a row you can push sideways.
 ///
-/// It used to be a strip of hand-drawn capsules on a sheet of glass, inside a `Form` section, which
-/// is two surfaces and a control: the grouped card drew a white plate, the glass drew a second one
-/// on top of it, and the pills drew a third. Three floors under six words, and on a light screen
-/// the glass had nothing to refract but the plate directly beneath it, so the material that is
-/// supposed to read as depth read as a slightly grey rectangle.
+/// It has been three things now, and each change was a lesson worth keeping.
 ///
-/// So: the segmented control, sitting straight on the page. The selection moves the way the system
-/// moves it — the fill slides between segments instead of one capsule going out and another coming
-/// on — the sizing, the tint, the focus ring and the keyboard handling are Apple's, and it looks
-/// like a control on iOS 26 rather than like this app's idea of one.
+/// It was a strip of hand-drawn capsules on a sheet of glass inside a `Form` section, which is two
+/// surfaces and a control — the grouped card drew a plate, the glass drew a second one on top of
+/// it, and the pills drew a third. Then it was the system's segmented control, standing straight on
+/// the page, which fixed the floors and cost the words: a segmented control divides its width
+/// evenly between its segments, and six Russian words do not fit in six sixths of a phone, so it
+/// was six symbols instead. A waveform and a circled camera are a guess the reader has to make,
+/// «Голосовые» and «Кружки» are not, and asking somebody to decode a row of glyphs to find a file
+/// is the wrong trade on a screen whose whole job is browsing.
 ///
-/// Symbols rather than words is the price, and it is paid deliberately: see `RoomContentTab.icon`.
+/// So: the words, in a scrolling row of capsules. Scrolling is what buys them — a strip is allowed
+/// to be wider than the screen, which a segmented control is not, so nothing has to be shortened to
+/// «Виде…» and nothing has to be drawn as a picture of itself. Six is few enough that most of them
+/// are visible at once and the rest are one push away, and the selected one is scrolled into view
+/// whenever it changes, so pressing the strip never leaves the answer off the edge.
+///
+/// The capsules are opaque fills, not glass: this is content, on a page, and Liquid Glass belongs
+/// to the navigation layer (`IskraDesign/Glass.swift`). The chosen one is the accent with the
+/// accent's own readable foreground on it — the `AccentTheme` pair, same as every other place in
+/// the app where something is filled with the accent and written on.
 struct RoomContentPicker: View {
     let tabs: [RoomContentTab]
     @Binding var selection: RoomContentTab
 
     var body: some View {
-        Picker(selection: switching) {
-            ForEach(tabs) { tab in
-                Image(systemName: tab.icon)
-                    .accessibilityLabel(Text(tab.title))
-                    .tag(tab)
+        ScrollViewReader { strip in
+            ScrollView(.horizontal) {
+                HStack(spacing: Theme.Spacing.close) {
+                    ForEach(tabs) { tab in
+                        Capsule(tab: tab, isChosen: tab == selection) { choose(tab) }
+                            .id(tab)
+                    }
+                }
+                // The strip's own margins, because the row it lives in has none — it is laid on the
+                // page rather than in a card, so the inset that lines it up with the cards above and
+                // below is here. On the scroll view's *content*, so a capsule at either end scrolls
+                // past the margin instead of being clipped by it.
+                .padding(.horizontal, Theme.Spacing.roomy)
+                .padding(.vertical, Theme.Spacing.close)
             }
-        } label: {
-            Text(Strings.Room.Tabs.label)
+            .scrollIndicators(.hidden)
+            // One container with six things in it, rather than six unrelated buttons floating
+            // above a list. "What's in here" is the introduction VoiceOver gives before reading
+            // them out, and it is the only place that name is ever spoken.
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(Text(Strings.Room.Tabs.label))
+            // A tab can also be chosen by something other than a press — a personal chat opens on
+            // whatever the first available tab is, and a room that loses its last file loses the
+            // segment somebody was standing on. Following the selection here rather than in
+            // `choose` covers both.
+            .onChange(of: selection) { _, tab in
+                withAnimation(.easeInOut(duration: Theme.Timing.chrome)) {
+                    strip.scrollTo(tab, anchor: .center)
+                }
+            }
         }
-        .pickerStyle(.segmented)
-        // The control says what it is by what is in it, and the heading under it says which one is
-        // open. A third label over the top would be the screen explaining its own furniture.
-        .labelsHidden()
-        // Its own margins, because the row it lives in has none — it is laid on the page rather
-        // than in a card, so the inset that lines it up with the cards above and below is here.
-        .padding(.horizontal, Theme.Spacing.roomy)
-        .padding(.vertical, Theme.Spacing.close)
     }
 
-    /// The selection, with the change to the list underneath animated.
+    /// One word, and whether it is the one you are looking at.
     ///
-    /// The control animates its own fill whatever this does; what needs saying is that the *list*
+    /// Its own view rather than three modifiers in the loop above, because the fill and the words
+    /// on it are each a choice between two styles and the type-checker cannot see through a stack
+    /// of those inside a `ForEach` inside a `ScrollView` — it gives up and says so. Pulled out, the
+    /// choice is made once in a property with a name.
+    private struct Capsule: View {
+        let tab: RoomContentTab
+        let isChosen: Bool
+        let choose: () -> Void
+
+        @Environment(\.accent) private var accent
+
+        var body: some View {
+            Button(action: choose) {
+                Text(tab.title)
+                    .font(.subheadline.weight(.medium))
+                    .lineLimit(1)
+                    .padding(.horizontal, Theme.Spacing.normal)
+                    .padding(.vertical, Theme.Spacing.close)
+                    .foregroundStyle(words)
+                    .background(fill, in: .capsule)
+                    .contentShape(.capsule)
+            }
+            .buttonStyle(.plain)
+            .accessibilityAddTraits(isChosen ? [.isButton, .isSelected] : .isButton)
+        }
+
+        /// The accent under the chosen one, and the faintest possible plate under the rest — enough
+        /// to read as a row of pressable things, not enough to compete with the one that is lit.
+        private var fill: AnyShapeStyle {
+            isChosen ? AnyShapeStyle(accent.color) : AnyShapeStyle(Color.primary.opacity(0.08))
+        }
+
+        /// Whatever stays readable on that fill — `AccentTheme.foreground`, which is white for six
+        /// of the seven colours, black on yellow, and the background colour on mono. The plain one
+        /// rather than `foreground(in:)`: that variant exists for labels drawn on *glass*, where
+        /// "the background" resolves to the glass itself. This capsule is an opaque fill on a page,
+        /// which is the case the contextual style was made for.
+        private var words: AnyShapeStyle {
+            isChosen ? accent.foreground : AnyShapeStyle(.secondary)
+        }
+    }
+
+    /// The change to the list underneath, animated.
+    ///
+    /// The capsule swaps its own fill whatever this does; what needs saying is that the *list*
     /// should cross-fade rather than jump — six different kinds of content in one place, swapped
     /// with no transition, reads as the screen being rebuilt under the reader.
-    private var switching: Binding<RoomContentTab> {
-        Binding(get: { selection },
-                set: { tab in
-                    guard tab != selection else { return }
-                    withAnimation(.easeInOut(duration: Theme.Timing.chrome)) { selection = tab }
-                })
+    private func choose(_ tab: RoomContentTab) {
+        guard tab != selection else { return }
+        withAnimation(.easeInOut(duration: Theme.Timing.chrome)) { selection = tab }
     }
 }
 
