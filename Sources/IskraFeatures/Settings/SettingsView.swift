@@ -193,8 +193,7 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .tint(Self.dbgOff("NOTINT") ? Color.primary : accent.color)
-        .navigationTitle(Text(Strings.Settings.title))
-        .toolbarTitleDisplayMode(.inline)
+        .profileScreen()
         // Value-based, because a `NavigationLink` with a destination *closure* builds that
         // destination eagerly, on every pass of this `body`. `session.storage()` allocates a store
         // and takes the room list with it, so the link-with-a-closure version minted and threw one

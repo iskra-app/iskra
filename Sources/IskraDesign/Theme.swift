@@ -254,9 +254,23 @@ public enum Theme {
         ///
         /// Much larger than `avatarLarge`, and that is the point of the header: the picture is not
         /// an ornament beside a name, it is the first thing on the screen and the name sits under
-        /// it. At 64 the same layout reads as a list row that has been centred by mistake; at 96 it
-        /// reads as a portrait, which is what people are looking for when they open somebody's card.
+        /// it. At 64 the same layout reads as a list row that has been centred by mistake; at this
+        /// size it reads as a portrait, which is what people are looking for when they open
+        /// somebody's card.
+        ///
+        /// It is also the distance the screen scrolls before the picture is gone, which is what
+        /// switches the scroll edge effect back on — see `profileScreen()`.
         public static let avatarProfile: CGFloat = 96
+        /// How tall a navigation bar is on iPhone, and the only number in here that describes
+        /// something the app did not draw.
+        ///
+        /// It is here because a profile screen is pulled up by exactly this much, so that the top
+        /// of the portrait lands level with the top of the buttons either side of it — see
+        /// `profileScreen()`. UIKit exposes no constant for it and SwiftUI exposes nothing at all;
+        /// 44 is what every iPhone has used since the notch, portrait and landscape alike, and a
+        /// screen that guessed it locally would be a magic number in three different files.
+        public static let navigationBar: CGFloat = 44
+
         /// Video notes are circles; this is their diameter in the timeline.
         public static let videoNote: CGFloat = 200
 
