@@ -648,8 +648,16 @@ public final class RoomListStore {
     }
 
     /// Marks a room read — clears its unread count and drops any hand-set unread flag.
+    ///
+    /// Both halves by hand, and the second is not belt and braces. `markAsRead` sends the receipt
+    /// and the SDK's own documentation is explicit that it *"does NOT unset the unread flag; it's
+    /// the caller's responsibility"* — so the sentence above used to be a description of what this
+    /// was meant to do rather than of what it did: mark unread, mark read, and the badge stayed.
     public func markRead(roomID: String) async {
-        await act(roomID, .read) { try await $0.markAsRead(receiptType: .read) }
+        await act(roomID, .read) {
+            try await $0.markAsRead(receiptType: .read)
+            try await $0.setUnreadFlag(newValue: false)
+        }
     }
 
     /// Flags a read room unread by hand. Distinct from having unread messages: the badge comes back
