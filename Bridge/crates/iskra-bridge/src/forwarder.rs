@@ -39,20 +39,18 @@ impl Forwarder {
         Ok(Self { http })
     }
 
-    /// - `upstream` is the homeserver `Upstreams::resolve` settled on. The forwarder does not
-    ///   choose it and cannot be talked into another one: whatever the path says, the request goes
-    ///   to this origin or nowhere.
-    pub async fn forward(&self, request: HttpRequest, upstream: &Url) -> Result<HttpResponse> {
+    /// - `url` is the whole thing to fetch, as `Upstreams::resolve` built and judged it — host,
+    ///   path and query, with any `..` already resolved.
+    ///
+    ///   The forwarder deliberately does no joining of its own. It used to take an origin and join
+    ///   the client's path to it here, which meant the URL that was checked and the URL that was
+    ///   fetched were built in two different places from two different pieces — and a path like
+    ///   `/_matrix/../admin` passed the check as a string and became something else as a URL.
+    ///   Whatever arrives here has already been resolved and judged as one object.
+    pub async fn forward(&self, request: HttpRequest, url: &Url) -> Result<HttpResponse> {
         let method = Method::from_bytes(request.method.as_bytes())
             .map_err(|_| anyhow!("unusable method"))?;
-        let url = upstream
-            .join(&request.path)
-            .map_err(|_| anyhow!("unusable path"))?;
-
-        // A tunnelled path must not be able to redirect the bridge at some other host.
-        if url.origin() != upstream.origin() {
-            return Err(anyhow!("path escapes the homeserver origin"));
-        }
+        let url = url.clone();
 
         let mut headers = HeaderMap::new();
         for (name, value) in &request.headers {
