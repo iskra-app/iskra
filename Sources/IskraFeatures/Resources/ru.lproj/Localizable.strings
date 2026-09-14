@@ -495,6 +495,8 @@
 "room.manage.roleHeader" = "Что может в чате";
 "room.manage.roleQuestion" = "Что может %@?";
 "room.manage.member" = "Участник";
+"room.manage.write" = "Написать";
+"room.manage.goToChat" = "Перейти в чат";
 "room.manage.remove" = "Исключить";
 "room.manage.block" = "Заблокировать";
 "room.manage.blockQuestion" = "Заблокировать %@?";
@@ -559,6 +561,10 @@
 "room.tabs.videoNotes" = "Кружки";
 "room.tabs.files" = "Файлы";
 "room.tabs.links" = "Ссылки";
+"room.tabs.label" = "Что внутри";
+"room.localName.header" = "Имя на этом устройстве";
+"room.localName.help" = "Это имя видите только вы и только на этом устройстве. Собеседник о нём не узнает, на других ваших устройствах имя останется прежним, а при выходе из аккаунта оно забудется.";
+"room.localName.reset" = "Вернуть настоящее имя";
 
 /* Шифрование: доступно ли будет прочитать переписку на новом устройстве. */
 "encryption.title" = "Шифрование";

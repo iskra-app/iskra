@@ -305,6 +305,22 @@ public enum Strings {
             public static let videoNotes = LocalizedStringResource("room.tabs.videoNotes", bundle: bundle)
             public static let files = LocalizedStringResource("room.tabs.files", bundle: bundle)
             public static let links = LocalizedStringResource("room.tabs.links", bundle: bundle)
+
+            /// What the switch itself is called. Never drawn — the strip is made of the six words
+            /// themselves and the heading under it names the open one — but VoiceOver reads a
+            /// container before its contents, and "what's in here" is a better introduction to six
+            /// capsules than silence.
+            public static let label = LocalizedStringResource("room.tabs.label", bundle: bundle)
+        }
+
+        /// What *you* call the person at the other end of a personal chat, as opposed to what
+        /// they call themselves. Kept on this device and never sent — which is the one thing the
+        /// screen has to say out loud, because a name that looks like a setting looks like a
+        /// setting that syncs. See `LocalNames`.
+        public enum LocalName {
+            public static let header = LocalizedStringResource("room.localName.header", bundle: bundle)
+            public static let help = LocalizedStringResource("room.localName.help", bundle: bundle)
+            public static let reset = LocalizedStringResource("room.localName.reset", bundle: bundle)
         }
         public static let administrator = LocalizedStringResource("room.administrator", bundle: bundle)
         public static let moderator = LocalizedStringResource("room.moderator", bundle: bundle)
@@ -366,6 +382,11 @@ public enum Strings {
             /// much needs a word in the menu that *demotes* somebody back to being one.
             public static let member = LocalizedStringResource("room.manage.member", bundle: bundle)
 
+            /// Starting a conversation with somebody met in a room, and — where that conversation
+            /// already exists — going to it instead. Two words for one button, because the button
+            /// does one thing and the reader is owed which of the two it will be.
+            public static let write = LocalizedStringResource("room.manage.write", bundle: bundle)
+            public static let goToChat = LocalizedStringResource("room.manage.goToChat", bundle: bundle)
             public static let remove = LocalizedStringResource("room.manage.remove", bundle: bundle)
             public static let block = LocalizedStringResource("room.manage.block", bundle: bundle)
             /// Blocking is the one act here with no way back in this interface, so it is

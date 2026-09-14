@@ -138,13 +138,22 @@ struct MessageMenuLayoutTests {
         #expect(layout.width == narrow.width - MessageMenu.margin * 2)
     }
 
-    /// A wide message — a picture on an iPad — widens the menu to match rather than opening a
-    /// narrow column under one corner of it.
-    @Test func aWideMessageWidensTheMenuToMatch() {
+    /// A wide message — a picture on an iPad — does *not* widen the menu. The menu is one
+    /// width everywhere, so the verbs are in the same place on every message; the picture is
+    /// still lifted at its own size, which is the part that has to be true of the message and
+    /// not of the list under it.
+    @Test func aWideMessageLeavesTheMenuAlone() {
         let pad = CGRect(x: 0, y: 24, width: 1024, height: 1366)
         let layout = resolve(anchor: CGRect(x: 40, y: 400, width: 420, height: 300), region: pad)
 
-        #expect(layout.width == 420)
+        #expect(layout.width == Theme.Size.menuWidth)
+    }
+
+    /// And a short one does not narrow it either — the two ends of the same rule.
+    @Test func aShortMessageLeavesTheMenuAlone() {
+        let layout = resolve(anchor: CGRect(x: 16, y: 400, width: 48, height: 36))
+
+        #expect(layout.width == Theme.Size.menuWidth)
     }
 
     // MARK: - The grid of every emoji, which is wider than the rest

@@ -56,7 +56,12 @@ struct MessageActions<Content: View>: View {
     /// Whether a finger is currently down on the message, which the bubble answers by giving
     /// very slightly under it. The whole of the feedback that the press is being *counted* —
     /// without it the moment before the lift is a moment of nothing.
-    @State private var isPressing = false
+    ///
+    /// `@GestureState` rather than `@State`, and that is not a style choice: gesture state resets
+    /// itself the instant the gesture ends, *including* when it ends by failing. A press released
+    /// early, or one that turns into a scroll, leaves nothing behind — where a plain flag would
+    /// need a callback that does not fire on failure, and a bubble could be left sitting at 97%.
+    @GestureState private var isPressing = false
 
     /// Guarding a redaction behind a confirmation, because it cannot be undone and every
     /// other item in that menu can.
@@ -102,9 +107,25 @@ struct MessageActions<Content: View>: View {
     /// else. What was bought back by going to `.contextMenu` the first time round — the lift,
     /// the dim, the system's own animation — is drawn here instead rather than given up.
     ///
-    /// A sixth of a second, which the system's half-second cannot be talked down to. On a
-    /// message you have already decided to answer, half a second reads as the app deliberating
-    /// about whether to let you — see `Theme.Timing.menuLift`, which is where the number is.
+    /// A quarter of a second, which is half the system's own wait and not a number the system can
+    /// be talked down to. On a message you have already decided to answer, half a second reads as
+    /// the app deliberating about whether to let you — see `Theme.Timing.menuLift`, which is where
+    /// the number is and why it is that one, and `ScrollTouches`, without which the scroll view
+    /// adds 150 ms in front of it.
+    ///
+    /// And a quarter of a second is what it now *is*, which is the third time this wait has been
+    /// hunted and the first time the hunt ended where the time was actually going. The number was
+    /// never the problem — it had been cut to a tenth by then — and a hold still took the better
+    /// part of a second to lift a message. The delay was the double tap.
+    ///
+    /// The two gestures used to be separate: a `.highPriorityGesture` double tap over the content,
+    /// and an `.onLongPressGesture` outside it. High priority means the tap is offered the touch
+    /// first, so the press could not be recognised until the tap had *failed* — and a tap
+    /// recogniser does not fail when a finger goes down and stays down. It fails on its own
+    /// timeout, which is around three quarters of a second. That was the wait, and it was
+    /// invisible because nothing in either gesture's own arithmetic mentions it.
+    ///
+    /// So they are one gesture now — see `press`.
     var body: some View {
         content()
             // The anchor. Measured continuously as the conversation scrolls, so the menu can
@@ -112,40 +133,22 @@ struct MessageActions<Content: View>: View {
             .onGeometryChange(for: CGRect.self) { proxy in
                 proxy.frame(in: .named(MessageMenu.space))
             } action: { anchor.rect = $0 }
-            .scaleEffect(isPressing ? 0.97 : 1)
-            .animation(.smooth(duration: Theme.Timing.chrome), value: isPressing)
-            // A double tap is the quick reaction, and `highPriorityGesture` is what makes that
-            // true of *every* message rather than only the ones with nothing else to tap.
-            //
-            // It used to be a plain `.onTapGesture(count: 2)`, on the reasoning that nothing else
-            // in a conversation answers to two taps. Several things do, and they are the ones
-            // people react to most: a photograph opens the viewer on one tap, a location opens
-            // Maps, a video note plays. SwiftUI gives the *innermost* gesture first refusal, so on
-            // exactly those three the quick reaction was unreachable — while the settings screen
-            // went on saying "double-tap a message to leave it". The promise was true of text and
-            // of nothing else.
-            //
-            // At high priority the double tap is offered first and the single tap still lands when
-            // it fails, so the photo still opens and the circle still plays. The cost is that a
-            // single tap on those waits out the double-tap interval, which is the price of the
-            // promise being kept.
-            .highPriorityGesture(TapGesture(count: 2).onEnded {
-                // Offline the gesture is not merely refused, it is *silent* — and that is the whole
-                // reason to guard it here as well as in the menu. A double tap that puts no pill on
-                // the message reads as an app that did not notice the tap, so somebody would tap
-                // again, harder, and go on tapping. See `isOffline`.
-                guard message.canReact, !isOffline else { return }
-                quickTaps += 1
-                handlers.onToggleReaction(quickReaction.key)
-            })
+            // The wait, made visible. The bubble sinks over exactly the length of the press and
+            // arrives at the bottom as the menu takes over, so a held finger is watching something
+            // happen instead of waiting for it — and a press abandoned halfway springs back, which
+            // is how the app says "that wasn't long enough" without anything appearing to explain
+            // it. See `Theme.Scale.pressedMessage` and `Theme.Timing.menuReleases`.
+            .scaleEffect(isPressing ? Theme.Scale.pressedMessage : 1)
+            .animation(isPressing ? .easeOut(duration: Theme.Timing.menuLift) : Theme.Timing.menuReleases,
+                       value: isPressing)
+            // The hold and the double tap, as one gesture — see `press`. The single tap still
+            // lands underneath, so a photograph still opens and a round video still plays; the
+            // cost is that a single tap on those waits out the double-tap interval, which is the
+            // price of the quick reaction being true of every message rather than only of text.
+            .highPriorityGesture(press)
             // The knock that says the reaction went. Without it a double tap on a message
             // whose pill appears a beat later feels like nothing happened.
             .sensoryFeedback(.impact(weight: .medium), trigger: quickTaps)
-            .onLongPressGesture(minimumDuration: Theme.Timing.menuLift) {
-                open()
-            } onPressingChanged: { pressing in
-                isPressing = pressing
-            }
             // And on a Mac, the click a Mac user will try first. It is a separate gesture and
             // not a variant of the press because it is a different *act*: a right-click is
             // instant and has never had to be held.
@@ -184,6 +187,40 @@ struct MessageActions<Content: View>: View {
     /// The *content* goes with it — `content()` called a second time — so what lifts off the
     /// page is the real bubble rather than a picture of one: a video note goes on playing while
     /// the menu is open, and a photograph is still a photograph.
+    /// The press that lifts the message, and — only if the press never happens — the double tap
+    /// that leaves a reaction.
+    ///
+    /// One gesture rather than two, so the choice between them is a single arbitration instead of
+    /// two recognisers waiting each other out; the note on `body` has the three quarters of a
+    /// second that bought back. `exclusively(before:)` tries the press first and gives it the touch
+    /// outright at `menuLift`; the double tap is offered the touch only once the press has failed,
+    /// which is exactly what a finger lifted before `menuLift` has made it do. Nothing waits on a
+    /// timeout, and the tap is unharmed: a tap is over in a fraction of the quarter second the
+    /// press needs.
+    ///
+    /// At high priority over the content, which is what makes both acts true of *every* message
+    /// rather than only the ones with nothing else to tap. A photograph opens the viewer on one
+    /// tap, a location opens Maps, a video note plays — and those are exactly the messages people
+    /// react to most. SwiftUI gives the innermost gesture first refusal, so without this the two
+    /// things this file exists for would be unreachable on precisely those three. A single tap
+    /// still lands underneath when neither of these claims the touch.
+    private var press: some Gesture {
+        LongPressGesture(minimumDuration: Theme.Timing.menuLift)
+            // `updating` rather than a callback: true while the finger is down, and cleared by the
+            // framework however the gesture ends. See `isPressing`.
+            .updating($isPressing) { _, pressing, _ in pressing = true }
+            .onEnded { _ in open() }
+            .exclusively(before: TapGesture(count: 2).onEnded {
+                // Offline the gesture is not merely refused, it is *silent* — and that is the whole
+                // reason to guard it here as well as in the menu. A double tap that puts no pill on
+                // the message reads as an app that did not notice the tap, so somebody would tap
+                // again, harder, and go on tapping. See `isOffline`.
+                guard message.canReact, !isOffline else { return }
+                quickTaps += 1
+                handlers.onToggleReaction(quickReaction.key)
+            })
+    }
+
     private func open() {
         let rect = anchor.rect
         guard let menu, rect != .zero else { return }

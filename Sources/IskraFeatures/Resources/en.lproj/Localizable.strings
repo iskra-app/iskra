@@ -495,6 +495,8 @@
 "room.manage.roleHeader" = "What they can do";
 "room.manage.roleQuestion" = "What can %@ do?";
 "room.manage.member" = "Member";
+"room.manage.write" = "Write to them";
+"room.manage.goToChat" = "Go to the chat";
 "room.manage.remove" = "Remove";
 "room.manage.block" = "Block";
 "room.manage.blockQuestion" = "Block %@?";
@@ -559,6 +561,10 @@
 "room.tabs.videoNotes" = "Video notes";
 "room.tabs.files" = "Files";
 "room.tabs.links" = "Links";
+"room.tabs.label" = "What's in here";
+"room.localName.header" = "Name on this device";
+"room.localName.help" = "Only you see this name, and only on this device. The other person is never told, your other devices keep the name they already had, and signing out forgets it.";
+"room.localName.reset" = "Use their real name again";
 
 /* Encryption: whether your messages will still be readable on your next device. */
 "encryption.title" = "Encryption";
