@@ -89,4 +89,62 @@ struct ReadReceiptTests {
         ])
         #expect(delivery(rows, "theirs") == nil)
     }
+
+    /// The second bug, and the one that was actually reported: you write, they answer. Their receipt sits
+    /// on *their* reply, not on anything of yours, so nothing in the list carries `.read` at all
+    /// and every message you sent kept one tick for good. `readUpTo` is how many rows the receipt
+    /// covers, counted where the events are still visible.
+    @Test("a receipt on somebody else's message reads your messages above it")
+    func receiptOnTheirMessageReachesBackwards() {
+        let rows = TimelineMapper.withReadPropagated([
+            message("mine1", delivery: .sent),
+            message("mine2", delivery: .sent),
+            message("theirs", own: false, delivery: nil),
+        ], readUpTo: 3)
+
+        #expect(delivery(rows, "mine1") == .read)
+        #expect(delivery(rows, "mine2") == .read)
+        #expect(delivery(rows, "theirs") == nil)
+    }
+
+    /// The watermark is a line, not a blanket: what came after it is not read.
+    @Test("messages below the foreign watermark stay sent")
+    func messagesBelowTheForeignWatermarkStaySent() {
+        let rows = TimelineMapper.withReadPropagated([
+            message("old", delivery: .sent),
+            message("theirs", own: false, delivery: nil),
+            message("new", delivery: .sent),
+        ], readUpTo: 2)
+
+        #expect(delivery(rows, "old") == .read)
+        #expect(delivery(rows, "new") == .sent)
+    }
+
+    /// A watermark covering nothing changes nothing — the state of a room where the other person
+    /// has not looked at it yet, which is the one case where one tick is the truth.
+    @Test("an empty watermark leaves every tick alone")
+    func emptyWatermarkChangesNothing() {
+        let rows = TimelineMapper.withReadPropagated([
+            message("m1", delivery: .sent),
+            message("m2", delivery: .sent),
+        ], readUpTo: 0)
+
+        #expect(delivery(rows, "m1") == .sent)
+        #expect(delivery(rows, "m2") == .sent)
+    }
+
+    /// The watermark does not promote what never left: a message still in flight under a receipt
+    /// that arrived for the messages around it is sending, not read.
+    @Test("the foreign watermark leaves unsent messages alone")
+    func foreignWatermarkSpareUnsent() {
+        let rows = TimelineMapper.withReadPropagated([
+            message("sending", delivery: .sending),
+            message("failed", delivery: .failed(.server)),
+            message("sent", delivery: .sent),
+        ], readUpTo: 3)
+
+        #expect(delivery(rows, "sending") == .sending)
+        #expect(delivery(rows, "failed") == .failed(.server))
+        #expect(delivery(rows, "sent") == .read)
+    }
 }

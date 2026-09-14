@@ -38,7 +38,19 @@ enum TimelineMapper {
 
         var previous: Message?
 
+        // How many rows are covered by somebody else's read receipt — see `withReadPropagated`.
+        // Counted here, over the SDK's items, because a receipt names one event and that event is
+        // very often not one of ours and sometimes not a row at all.
+        var readPrefix = 0
+
         for item in items {
+            // Whatever this item turns into — a row, a merged grey line, or nothing — everything
+            // above it has been read the moment it carries a receipt. Recorded after the item is
+            // handled, hence the `defer`, and counted in rows rather than in items so the number
+            // still means something after the events this app never shows are dropped.
+            let carriesReceipt = item.asEvent().map { hasForeignReceipt($0, ownUserID: ownUserID) } ?? false
+            defer { if carriesReceipt { readPrefix = rows.count } }
+
             if let virtual = item.asVirtual() {
                 if case let .dateDivider(timestamp) = virtual {
                     let date = MessagePreview.date(from: timestamp)
@@ -76,7 +88,7 @@ enum TimelineMapper {
             previous = message
         }
 
-        return withoutEmptyDays(withReadPropagated(rows))
+        return withoutEmptyDays(withReadPropagated(rows, readUpTo: readPrefix))
     }
 
     /// Marks your earlier messages read once a later one has been.
@@ -86,16 +98,26 @@ enum TimelineMapper {
     /// of "sent" ticks with one "read" at the bottom — which is what a receipt means, but not what
     /// it says, and the screen was reporting the protocol instead of the conversation.
     ///
-    /// Receipts are monotonic: reading event N is reading everything before it. So the last of
-    /// your messages carrying a receipt is a watermark, and every one of yours above it is read
-    /// too. `readAt` is deliberately *not* carried down with it — the later receipt's moment is
-    /// when the reader caught up, not when they read the message four above, and `Message.readAt`
-    /// promises a moment somebody actually reported. An inferred read has no moment, which is a
-    /// case the menu already handles (see `Message.readAt`).
+    /// Receipts are monotonic: reading event N is reading everything before it. So the last event
+    /// carrying a receipt is a watermark, and everything of yours above it is read too. `readAt`
+    /// is deliberately *not* carried down with it — the later receipt's moment is when the reader
+    /// caught up, not when they read the message four above, and `Message.readAt` promises a
+    /// moment somebody actually reported. An inferred read has no moment, which is a case the menu
+    /// already handles (see `Message.readAt`).
+    ///
+    /// The watermark comes in two forms, and the second is the whole reason this takes a parameter.
+    /// `.read` on one of your own messages is the easy case: the receipt landed on something you
+    /// said. But the event somebody last read is far more often *not* yours — they read up to their
+    /// own reply — and it may not be a row at all, because this app drops most of what the SDK
+    /// holds. Such a receipt used to vanish along with the event carrying it, and every message
+    /// above it then sat on one tick for good: the exact complaint, "they have plainly read it and
+    /// it still says sent". `readUpTo` is that watermark, counted in rows by `rows(from:)`, which
+    /// is the only place that can still see those events before they are thrown away.
     ///
     /// Not private: `ReadReceiptTests` drives it directly, which is the only way to test it —
-    /// a real `EventTimelineItem` cannot be built outside the SDK.
-    static func withReadPropagated(_ rows: [TimelineRow]) -> [TimelineRow] {
+    /// a real `EventTimelineItem` cannot be built outside the SDK. Hence the default: a test about
+    /// the own-message watermark is saying nothing about the other one.
+    static func withReadPropagated(_ rows: [TimelineRow], readUpTo readPrefix: Int = 0) -> [TimelineRow] {
         var rows = rows
         var seenRead = false
 
@@ -105,7 +127,7 @@ enum TimelineMapper {
 
             if message.delivery == .read {
                 seenRead = true
-            } else if seenRead, message.delivery == .sent {
+            } else if message.delivery == .sent, seenRead || index < readPrefix {
                 message.delivery = .read
                 rows[index] = .message(message)
             }
@@ -188,8 +210,8 @@ enum TimelineMapper {
                        senderAvatarURL: avatar,
                        isOwn: event.isOwn,
                        timestamp: MessagePreview.date(from: event.timestamp),
-                       delivery: event.isOwn ? delivery(for: event) : nil,
-                       readAt: event.isOwn ? readAt(of: event) : nil,
+                       delivery: event.isOwn ? delivery(for: event, ownUserID: ownUserID) : nil,
+                       readAt: event.isOwn ? readAt(of: event, ownUserID: ownUserID) : nil,
                        isEdited: isEdited(event.content),
                        replyTo: replyPreview(from: event.content),
                        reactions: unsent.applied(to: reactions(from: event.content, ownUserID: ownUserID),
@@ -504,7 +526,17 @@ enum TimelineMapper {
         return (userID, nil)
     }
 
-    private static func delivery(for event: EventTimelineItem) -> DeliveryStatus {
+    /// Whether anybody *else* has reported reading this event.
+    ///
+    /// The SDK is believed to leave our own receipt out of this map, and every reading of it here
+    /// rests on that: our own receipt sits on the newest event we have looked at, so counting it
+    /// would mark the whole conversation read the moment we opened the room. The belief costs one
+    /// comparison to stop resting on, so it is not rested on.
+    private static func hasForeignReceipt(_ event: EventTimelineItem, ownUserID: String) -> Bool {
+        event.readReceipts.keys.contains { $0 != ownUserID }
+    }
+
+    private static func delivery(for event: EventTimelineItem, ownUserID: String) -> DeliveryStatus {
         switch event.localSendState {
         case .notSentYet:
             return .sending
@@ -513,20 +545,22 @@ enum TimelineMapper {
             // did, not whether the user can get the message moving. See `SendFailure.canRetry`.
             return .failed(reason(for: error))
         case .sent, .none:
-            // Sent, and possibly read. A receipt from anyone but us means read;
-            // the SDK does not include our own receipt here.
-            return event.readReceipts.isEmpty ? .sent : .read
+            // Sent, and possibly read. A receipt from anyone but us means read.
+            return hasForeignReceipt(event, ownUserID: ownUserID) ? .read : .sent
         }
     }
 
     /// When the message was first read by somebody else — see `Message.readAt`.
     ///
-    /// Our own receipt is not in here: the SDK leaves it out, which is exactly what makes the
-    /// set usable as an answer to "has anybody read this". The earliest of them is the moment
-    /// the message stopped being unread, and a receipt without a timestamp contributes nothing
-    /// rather than being counted as "now".
-    private static func readAt(of event: EventTimelineItem) -> Date? {
-        let stamps = event.readReceipts.values.compactMap(\.timestamp)
+    /// Our own receipt is dropped — see `hasForeignReceipt` — which is what makes the set usable
+    /// as an answer to "has anybody read this". The earliest of them is the moment the message
+    /// stopped being unread, and a receipt without a timestamp contributes nothing rather than
+    /// being counted as "now".
+    private static func readAt(of event: EventTimelineItem, ownUserID: String) -> Date? {
+        let stamps = event.readReceipts
+            .filter { $0.key != ownUserID }
+            .values
+            .compactMap(\.timestamp)
         guard let first = stamps.min() else { return nil }
         return MessagePreview.date(from: first)
     }

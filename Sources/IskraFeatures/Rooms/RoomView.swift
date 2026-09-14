@@ -567,9 +567,19 @@ public struct RoomView: View {
             } action: { _, isNear in
                 isNearBottom = isNear
             }
-            // Arriving at the end is having seen it. The pill has nothing left to offer.
+            // Arriving at the end is having seen it. The pill has nothing left to offer — and the
+            // sender has something to be told.
+            //
+            // The receipt is the half that was missing. It went out on opening the room and again
+            // whenever a message arrived *while* the reader stood at the end, which leaves out the
+            // most ordinary way of reading a chat there is: scroll up through what came in, scroll
+            // back down, read every word of it, and the server never hears. The badge sat there,
+            // and on the other side of the conversation the messages kept one tick.
             .onChange(of: isAtNewest) { _, atNewest in
-                guard atNewest, hasUnseenBelow else { return }
+                guard atNewest else { return }
+                Task { await timeline.markAsRead() }
+
+                guard hasUnseenBelow else { return }
                 withAnimation(.smooth) { hasUnseenBelow = false }
             }
             // And afterwards, a message arriving brings the conversation with it — but *only*

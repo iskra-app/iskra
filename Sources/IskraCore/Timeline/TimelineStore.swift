@@ -1140,8 +1140,15 @@ public final class TimelineStore {
 
     /// Tells the server the user has seen the conversation, which is what clears the
     /// badge here and shows a read tick on the sender's side.
+    ///
+    /// Two calls, because the SDK's `markAsRead` says so in as many words: it attaches a receipt
+    /// to the latest event and *"does NOT unset the unread flag; it's the caller's
+    /// responsibility"*. The flag is the one a person sets by hand from the room list, and it
+    /// outlives being read — so a room marked unread on purpose, then opened and read to the
+    /// bottom, went on wearing its badge with nothing in it left to read.
     public func markAsRead() async {
         try? await room.markAsRead(receiptType: .read)
+        try? await room.setUnreadFlag(newValue: false)
     }
 
     // MARK: - Drafts
