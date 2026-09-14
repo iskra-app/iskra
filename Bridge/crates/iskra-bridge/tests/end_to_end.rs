@@ -378,3 +378,42 @@ async fn the_bridge_will_not_fetch_something_that_is_not_matrix() {
 
     assert_eq!(response.status, 403);
 }
+
+/// The traversal, end to end: the homeserver must never see the request at all.
+///
+/// The unit tests pin the policy; this pins that nothing downstream quietly re-joins the path and
+/// undoes it. `/_matrix/../admin/secrets` reads as a Matrix path as a string and is
+/// `/admin/secrets` as a URL, and the bridge used to check the first and fetch the second.
+#[tokio::test]
+async fn a_path_that_climbs_out_never_reaches_the_homeserver() {
+    let harness = Harness::start().await;
+    Mock::given(method("GET"))
+        .and(path("/admin/secrets"))
+        .respond_with(ResponseTemplate::new(200).set_body_string("should never be reached"))
+        .mount(&harness.homeserver)
+        .await;
+
+    let client = harness.client().await;
+    for target in [
+        "/_matrix/../admin/secrets",
+        "/_matrix/client/../../admin/secrets",
+        "/_matrix/%2e%2e/admin/secrets",
+    ] {
+        let response = client
+            .request("GET", target, None, BTreeMap::new(), Vec::new(), TIMEOUT)
+            .await
+            .expect("a refusal is still an answer");
+        assert_eq!(response.status, 403, "{target}");
+    }
+
+    let seen = harness
+        .homeserver
+        .received_requests()
+        .await
+        .unwrap_or_default();
+    assert!(
+        seen.is_empty(),
+        "the homeserver saw {} request(s) it should never have been asked for",
+        seen.len()
+    );
+}
