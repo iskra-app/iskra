@@ -134,38 +134,56 @@ impl Upstreams {
         }
     }
 
-    /// The base URL to forward to, or the reason not to.
+    /// The exact URL to fetch, or the reason not to.
     ///
     /// The path is checked here rather than in the forwarder because the two decisions are one
     /// decision: what this bridge is for. Splitting them would let a later refactor keep the host
     /// rule and lose the path rule without anything looking wrong.
+    ///
+    /// **The whole URL is built first and judged afterwards, and that order is the security
+    /// property.** Judging the path as the client wrote it looks equivalent and is not: `..` is
+    /// only a directory segment once a URL exists to resolve it against, so
+    /// `/_matrix/../admin/secrets` passes a `starts_with("/_matrix/")` test and then resolves to
+    /// `/admin/secrets` the moment anything joins it to a base. The bridge would have checked one
+    /// string and fetched another. Building the URL first means the thing checked and the thing
+    /// fetched are the same object — dot segments, percent-encoded dot segments (`%2e%2e`, which
+    /// the URL spec treats identically) and protocol-relative `//elsewhere/…` all resolved before
+    /// anybody asks whether they are allowed.
     pub async fn resolve(&self, requested: Option<&str>, path: &str) -> Result<Url, Refusal> {
-        if !is_matrix_path(path) {
-            return Err(Refusal::NotMatrix);
-        }
-
-        let target = match requested {
-            None => return self.default.clone().ok_or(Refusal::NoTarget),
+        let base = match requested {
+            None => self.default.clone().ok_or(Refusal::NoTarget)?,
             Some(raw) => Url::parse(raw).map_err(|_| Refusal::NotAUrl)?,
         };
 
-        if !matches!(target.scheme(), "http" | "https") || target.host().is_none() {
+        if !matches!(base.scheme(), "http" | "https") || base.host().is_none() {
             return Err(Refusal::BadOrigin);
+        }
+
+        let url = base.join(path).map_err(|_| Refusal::NotAUrl)?;
+
+        // `//elsewhere/_matrix/…` is a protocol-relative URL, not a path: joined to the base it
+        // names a different host entirely. It is refused as an origin the operator never allowed,
+        // which is exactly what it is.
+        if url.origin() != base.origin() {
+            return Err(Refusal::NotAllowed);
+        }
+        if !is_matrix_path(url.path()) {
+            return Err(Refusal::NotMatrix);
         }
 
         match &self.allowed {
             Allowed::These(list) => {
-                if !list.contains(&origin_of(&target)) {
+                if !list.contains(&origin_of(&base)) {
                     return Err(Refusal::NotAllowed);
                 }
             }
             // Only an open bridge needs the address check: an operator who listed their
             // homeservers has already vouched for them, and one of them may legitimately be on the
             // same private network as the bridge.
-            Allowed::Anywhere => is_public(&target).await?,
+            Allowed::Anywhere => is_public(&base).await?,
         }
 
-        Ok(target)
+        Ok(url)
     }
 }
 
@@ -359,7 +377,6 @@ mod tests {
             "/",
             "/admin",
             "/evil?next=/_matrix/client/versions",
-            "//elsewhere/_matrix/client/versions",
             "/_matrixevil/",
         ] {
             assert_eq!(
@@ -371,6 +388,83 @@ mod tests {
                 "{path} should not be forwarded"
             );
         }
+    }
+
+    /// A path that starts under `/_matrix/` and does not stay there.
+    ///
+    /// This is the bug the prefix check had while it looked at the string the client sent: `..` is
+    /// not a directory segment until there is a URL to resolve it against, so
+    /// `/_matrix/../admin/secrets` reads as a Matrix path right up until something joins it to a
+    /// homeserver, at which point it is `/admin/secrets`. The check and the fetch were looking at
+    /// two different things. `%2e%2e` is the same trick spelled differently — the URL spec treats
+    /// it as a dot segment too, so a check that only looked for literal dots would have missed it.
+    #[tokio::test]
+    async fn a_path_may_not_climb_out_of_the_matrix_api() {
+        let upstreams = Upstreams::new(None, Some(Allowed::Anywhere)).unwrap();
+        for path in [
+            "/_matrix/../admin/secrets",
+            "/_matrix/client/../../admin",
+            "/_matrix/%2e%2e/admin",
+            "/_matrix/%2E%2E/admin",
+            "/_matrix/./../admin",
+            "/.well-known/matrix/../../admin",
+        ] {
+            assert_eq!(
+                upstreams
+                    .resolve(Some("https://example.org"), path)
+                    .await
+                    .unwrap_err(),
+                Refusal::NotMatrix,
+                "{path} climbs out and must be refused"
+            );
+        }
+    }
+
+    /// `//elsewhere/…` is not a path at all: joined to a base it names another host. It is refused
+    /// as an origin nobody allowed, which is what it is.
+    #[tokio::test]
+    async fn a_protocol_relative_path_may_not_change_the_host() {
+        let upstreams = Upstreams::new(None, Some(Allowed::Anywhere)).unwrap();
+        assert_eq!(
+            upstreams
+                .resolve(
+                    Some("https://example.org"),
+                    "//elsewhere.example/_matrix/client/versions"
+                )
+                .await
+                .unwrap_err(),
+            Refusal::NotAllowed
+        );
+    }
+
+    /// Dots inside a segment are not dot segments. Room aliases and event ids carry all sorts of
+    /// punctuation, and a fix that refused every `..` anywhere in the path would break them.
+    #[tokio::test]
+    async fn dots_inside_a_segment_are_left_alone() {
+        let upstreams = Upstreams::new(None, Some(only(&["example.org"]))).unwrap();
+        let resolved = upstreams
+            .resolve(
+                Some("https://example.org"),
+                "/_matrix/client/v3/rooms/%23foo..bar:example.org/state",
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            resolved.path(),
+            "/_matrix/client/v3/rooms/%23foo..bar:example.org/state"
+        );
+    }
+
+    /// What comes back is the whole request, query and all — the forwarder does no joining of its
+    /// own any more, so anything lost here is lost for good.
+    #[tokio::test]
+    async fn the_query_string_survives() {
+        let upstreams = Upstreams::new(None, Some(only(&["example.org"]))).unwrap();
+        let resolved = upstreams
+            .resolve(Some("https://example.org"), "/_matrix/client/v3/sync?timeout=0")
+            .await
+            .unwrap();
+        assert_eq!(resolved.as_str(), "https://example.org/_matrix/client/v3/sync?timeout=0");
     }
 
     #[tokio::test]
