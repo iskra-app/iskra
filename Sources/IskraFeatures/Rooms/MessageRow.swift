@@ -395,7 +395,10 @@ struct DeliveryTick: View {
             case .sent:
                 Image(systemName: "checkmark")
             case .read:
-                Image(systemName: "checkmark.circle.fill")
+                // A glance, not a second tick: "sent" and "read" as one checkmark and two, or a
+                // checkmark and a ringed checkmark, are the same small mark twice and the eye is
+                // the difference read at a distance.
+                Image(systemName: "eye.fill")
             case .failed:
                 // Never drawn: `MessageRow` sends failures to `SendFailureBadge`. Progress
                 // is worth a whisper; a message that never left is not.

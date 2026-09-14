@@ -313,7 +313,7 @@ struct MessageActions<Content: View>: View {
         // this is the one thing they have no room to say: when.
         if let readAt = message.readAt {
             actions.append(MessageMenuAction(title: Strings.Message.Menu.readAt(Self.exactly(readAt)),
-                                             systemImage: "checkmark.circle",
+                                             systemImage: "eye",
                                              manner: .fact))
         }
 

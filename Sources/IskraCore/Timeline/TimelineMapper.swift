@@ -76,7 +76,42 @@ enum TimelineMapper {
             previous = message
         }
 
-        return withoutEmptyDays(rows)
+        return withoutEmptyDays(withReadPropagated(rows))
+    }
+
+    /// Marks your earlier messages read once a later one has been.
+    ///
+    /// A Matrix read receipt names a single event: the last one the reader got to. The SDK hands
+    /// that receipt to that event and to no other, so mapping each event on its own gave a galley
+    /// of "sent" ticks with one "read" at the bottom — which is what a receipt means, but not what
+    /// it says, and the screen was reporting the protocol instead of the conversation.
+    ///
+    /// Receipts are monotonic: reading event N is reading everything before it. So the last of
+    /// your messages carrying a receipt is a watermark, and every one of yours above it is read
+    /// too. `readAt` is deliberately *not* carried down with it — the later receipt's moment is
+    /// when the reader caught up, not when they read the message four above, and `Message.readAt`
+    /// promises a moment somebody actually reported. An inferred read has no moment, which is a
+    /// case the menu already handles (see `Message.readAt`).
+    ///
+    /// Not private: `ReadReceiptTests` drives it directly, which is the only way to test it —
+    /// a real `EventTimelineItem` cannot be built outside the SDK.
+    static func withReadPropagated(_ rows: [TimelineRow]) -> [TimelineRow] {
+        var rows = rows
+        var seenRead = false
+
+        // Downwards from the newest, because the watermark is below the messages it settles.
+        for index in rows.indices.reversed() {
+            guard case var .message(message) = rows[index], message.isOwn else { continue }
+
+            if message.delivery == .read {
+                seenRead = true
+            } else if seenRead, message.delivery == .sent {
+                message.delivery = .read
+                rows[index] = .message(message)
+            }
+        }
+
+        return rows
     }
 
     /// Drops the date headers that have nothing under them.

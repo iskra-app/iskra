@@ -211,7 +211,9 @@ public struct Message: Sendable, Identifiable, Equatable {
     public let senderAvatarURL: String?
     public let isOwn: Bool
     public let timestamp: Date
-    public let delivery: DeliveryStatus?
+    /// Not `let`: a read receipt points at one event, and `TimelineMapper.withReadPropagated`
+    /// carries "read" back down the messages under it.
+    public var delivery: DeliveryStatus?
     /// When somebody else first read it, for one of your own that has been read.
     ///
     /// The earliest read receipt on the event, and "earliest" is the decision: in a room of
