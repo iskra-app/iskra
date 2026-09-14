@@ -54,6 +54,14 @@ public final class TimelineStore {
     public var failure: TimelineActionFailure?
 
     public let roomID: String
+
+    /// What the room is called with no nickname over the top, kept so a rename made on this
+    /// device can be undone without waiting for a sync that is never coming — see
+    /// `LocalNames` and the observer in `start()`.
+    private var serverRoomName = ""
+
+    /// The subscription to nicknames changing. Held because dropping it unsubscribes.
+    private var localNameObserver: LocalNameSubscription?
     public private(set) var privacy: PrivacyStatus = .unknown
     public private(set) var roomName: String = ""
 
@@ -155,6 +163,16 @@ public final class TimelineStore {
         self.room = room
         self.ownUserID = ownUserID
         self.roomID = room.id()
+
+        // A nickname is set on this device and travels nowhere, so no sync will ever arrive to
+        // tell the header about it. This is how the name above the conversation changes the moment
+        // somebody gives the person at the other end of it a different one — and how it changes
+        // back. Subscribed in `init` rather than in `start()` because the header is drawn before
+        // the timeline opens, and a room renamed from its own info screen is exactly the case.
+        localNameObserver = LocalNames.observe { [weak self] changed in
+            guard let self, changed == nil || changed == self.roomID else { return }
+            self.roomName = LocalNames.name(for: self.roomID) ?? self.serverRoomName
+        }
     }
 
     /// Which opening of this room we are on.
@@ -421,6 +439,7 @@ public final class TimelineStore {
     /// Everything the header and the pinned strip read, taken from the room as it now is.
     private func adopt(_ info: RoomInfo) {
         privacy = PrivacyStatus(info.encryptionState)
+        serverRoomName = info.serverTitle(besides: ownUserID)
         roomName = info.title(besides: ownUserID)
         kind = info.kind
         isOneToOne = info.isOneToOne

@@ -31,6 +31,31 @@ struct MemberProfileView: View {
     @Environment(\.isOffline) private var isOffline
     @Environment(\.dismiss) private var dismiss
 
+    /// Writing to this person — see `PersonalChats`.
+    @Environment(\.personalChats) private var personalChats
+
+    /// And putting that conversation on the screen once there is one.
+    @Environment(\.openRoom) private var openRoom
+
+    /// So the screen does not offer to start a conversation with yourself.
+    @Environment(\.currentUserID) private var currentUserID
+
+    /// The conversation with this person, if there is already one, which decides both what the
+    /// button says and whether pressing it needs the network.
+    ///
+    /// Held in state and looked up once when the screen appears rather than read in `body`: it is a
+    /// question for the SDK, and `body` runs whenever anything on this screen moves.
+    @State private var existingChat: String?
+
+    /// True while a new chat is being made. Creating one is a round trip to the server and then a
+    /// wait for the room to exist locally — several seconds on a slow homeserver — and a button
+    /// that looks unpressed for that long gets pressed again, which makes a second room.
+    @State private var isOpening = false
+
+    /// The server would not make the room. Said out loud, because the alternative is a button that
+    /// visibly does nothing.
+    @State private var failure: RoomCreationFailure?
+
     var body: some View {
         Form {
             Section {
@@ -41,6 +66,8 @@ struct MemberProfileView: View {
                               isSubtitleSelectable: true)
                     .profileHeaderRow()
             }
+
+            writeTo
 
             Section {
                 LabeledContent {
@@ -96,6 +123,66 @@ struct MemberProfileView: View {
         }
         .formStyle(.grouped)
         .profileScreen()
+        .failureAlert($failure)
+        // Once, on the way in. The answer cannot change while this screen is up — nothing here
+        // starts a chat except the button below, which sets it itself.
+        .task { existingChat = personalChats?.existing(with: member.id) }
+    }
+
+    /// The way from a name in a list to a conversation with the person behind it.
+    ///
+    /// One button with two labels, because it is one act with two histories: if there is already a
+    /// chat this goes to it, and if there is not this starts one. Saying "write" over a chat that
+    /// exists would promise a blank page and deliver three years of history; saying "go to the
+    /// chat" where there is none would name a place that is not there. The word follows the fact.
+    ///
+    /// Not shown for yourself — you are in the member list of every room you are in, and a
+    /// conversation with yourself is a thing Matrix will happily create and nobody wants. Not shown
+    /// either where nothing could act on it: with no `openRoom` there is no room list behind this
+    /// screen to put a conversation into.
+    @ViewBuilder
+    private var writeTo: some View {
+        if personalChats != nil, openRoom != nil, member.id != currentUserID {
+            Section {
+                Button {
+                    Task { await write() }
+                } label: {
+                    HStack {
+                        Label(String(app: existingChat == nil ? Strings.Room.Manage.write
+                                                              : Strings.Room.Manage.goToChat),
+                              systemImage: existingChat == nil ? "square.and.pencil" : "bubble.left.and.text.bubble.right")
+
+                        if isOpening {
+                            Spacer()
+                            ProgressView()
+                        }
+                    }
+                }
+                // Opening a chat that exists is a local act and works with no network at all.
+                // Making one is not: it is `createRoom` on the homeserver, so offline the button
+                // is withheld rather than offered and then refused.
+                .disabled(isOpening || (isOffline && existingChat == nil))
+            }
+        }
+    }
+
+    private func write() async {
+        guard let personalChats, !isOpening else { return }
+        isOpening = true
+        defer { isOpening = false }
+
+        guard let roomID = await personalChats.open(with: member.id) else {
+            failure = .refused
+            return
+        }
+
+        existingChat = roomID
+        // The room replaces what this screen is standing on, so this screen goes with it. Both,
+        // rather than either: the selection changing rebuilds the conversation column, and the
+        // dismiss is what takes the profile off the screen on a phone, where this screen *is* the
+        // column it is being asked to leave.
+        openRoom?(roomID)
+        dismiss()
     }
 
     /// All three rungs named, including the one the list leaves blank: on a screen about one

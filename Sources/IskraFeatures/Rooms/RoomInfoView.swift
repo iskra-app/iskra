@@ -172,10 +172,8 @@ struct RoomInfoView: View {
                             .font(.body.weight(.medium))
                     }
                     .accessibilityLabel(Text(Strings.Room.Manage.edit))
-                    // Every field behind the pencil is a call straight to the server. Offline the
-                    // screen it opens could show nothing but disabled controls, so the door is shut
-                    // instead — the strip at the top of the screen has already said why.
-                    .disabled(isOffline)
+                    // See `editingNeedsNetwork`.
+                    .disabled(isOffline && editingNeedsNetwork)
                 }
             }
         }
@@ -274,16 +272,27 @@ struct RoomInfoView: View {
 
     /// Whether there is anything behind a pencil worth opening.
     ///
-    /// A one-to-one chat has no name, no description and no picture of its own — all three belong
-    /// to the person you are talking to, and Matrix will happily let you rename them for yourself,
-    /// which is a thing nobody wants. And in a room the three powers are granted separately: the
-    /// pencil appears if the room allows any one of them, and the screen it opens shows only the
-    /// fields it allows.
+    /// In a room the three powers are granted separately: the pencil appears if the room allows any
+    /// one of them, and the screen it opens shows only the fields it allows.
+    ///
+    /// In a personal chat there is always exactly one thing, and it is never refused — what *you*
+    /// call the person, on this device. The room's own name, description and picture are not on
+    /// offer there and never were: all three belong to the person you are talking to, and Matrix
+    /// would happily let you rename them in a way they can read.
     private var canEdit: Bool {
-        isRoom && (details.permissions.canRename
-                   || details.permissions.canChangeTopic
-                   || details.permissions.canChangePicture)
+        guard isRoom else { return true }
+        return details.permissions.canRename
+            || details.permissions.canChangeTopic
+            || details.permissions.canChangePicture
     }
+
+    /// Whether the pencil needs the network to be worth pressing.
+    ///
+    /// Everything behind it in a room is a call straight to the server, so offline the door is shut
+    /// rather than opened onto a screen of disabled fields — the strip at the top has already said
+    /// why. A personal chat's nickname is written to this device and nowhere else, so there is
+    /// nothing for the network to refuse and the pencil stays live.
+    private var editingNeedsNetwork: Bool { isRoom }
 
     // MARK: - What it is for, and what it does to your phone
 
@@ -370,21 +379,32 @@ struct RoomInfoView: View {
         let tabs = availableTabs
 
         if !tabs.isEmpty {
-            // The strip and what it switches are one block, because they are one thing: a control
-            // separated from its result by the gap between two cards reads as two unrelated lists,
-            // and the eye has to be told twice that the second belongs to the first.
+            // The switch is on the page, and what it switches is in a card under it.
+            //
+            // Not both in one section, which is how it was: a `Form` wraps every row in a plate,
+            // so the control came out standing on a white rectangle with a second white rectangle
+            // of its own on top of it. A segmented control is already a surface — it is the one
+            // piece of furniture on this screen that Apple draws in full — and the plate under it
+            // was the app putting a table under a table.
+            //
+            // Nothing is lost by separating them, because the card below now carries the name of
+            // the open tab as its heading: the two are joined by the word rather than by the
+            // plate, which is the stronger join anyway.
             //
             // The binding reads `openTab`, not `tab`. They differ exactly when the tab last pressed
             // is not available — a personal chat opening on `.members`, which it does not have —
-            // and binding the raw value there left every capsule unlit, with a list underneath that
-            // plainly belonged to one of them.
+            // and binding the raw value there left the control with nothing selected, over a list
+            // that plainly belonged to one of the segments.
             Section {
                 RoomContentPicker(tabs: tabs, selection: Binding(get: { openTab },
                                                                 set: { tab = $0 }))
-                    .listRowInsets(EdgeInsets())
-                    .listRowSeparator(.hidden)
+                    .profileHeaderRow()
+            }
 
+            Section {
                 tabContent
+            } header: {
+                Text(openTab.title)
             }
         }
     }

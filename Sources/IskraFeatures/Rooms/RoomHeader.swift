@@ -17,10 +17,19 @@ import IskraDesign
 /// - `RoomTitle` + `RoomAvatarButton` — the name centred where a phone expects its title,
 ///   the picture alone at the trailing edge, under the thumb. iPhone.
 ///
-/// The names do not wear glass; the avatar button does. A plate under a *title* would be a
-/// second surface inside a bar that is already one, and it makes the heading of the screen
-/// read as a stray control floating in the middle of it. A plate under a *button* is simply
-/// what a button in this toolbar looks like — the back button facing it wears the same one.
+/// The names are bare words. No pill, no plate, nothing under them.
+///
+/// They wore one briefly, on the reasoning that a title bar has no floor of its own on 26 and a
+/// pale bubble scrolling up behind the name would take it away. That is a real risk and this is
+/// not the cure: a capsule of glass around the heading of a screen makes it read as a stray
+/// control floating in the middle of the bar rather than as the name of what you are looking at,
+/// which is a cost paid on every single screenful to insure against the occasional one. Legibility
+/// over a bright bubble is the *material's* job — the toolbar dims what passes under it — and
+/// where it is not enough the answer is the bar, not a badge around the words.
+///
+/// The avatar button beside it keeps its glass, and the difference is the point: it is a control,
+/// and the back button facing it across the bar is a control on a glass circle of exactly the same
+/// kind. A title is not a control even when it happens to be tappable.
 ///
 /// The lock is a glyph, not a control. It used to be a button that explained itself in a
 /// popover, and it cannot stay one: a button inside a button is ambiguous to the eye and
@@ -85,10 +94,10 @@ struct RoomTitle: View {
 /// The chat's picture, alone at the trailing end of an iPhone's title bar, and the second
 /// way into the same room-info screen the title opens.
 ///
-/// This one *does* sit on glass, unlike the title beside it, and the difference is the point:
-/// it is a control, and the back button facing it across the bar is a control on a glass circle
-/// of exactly the same kind. Left bare it read as a picture that had been dropped into the bar
-/// rather than as the button it is.
+/// This one *does* sit on glass, unlike the name across the bar from it, and the difference is the
+/// point: it is a control, and the back button facing it is a control on a glass circle of exactly
+/// the same kind. Left bare it read as a picture that had been dropped into the bar rather than as
+/// the button it is.
 ///
 /// The glass is *ours*, though, and that is the whole trick — the toolbar's own shared
 /// background is hidden at the item (see `RoomView`). A shared background sizes itself to the
