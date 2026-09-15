@@ -105,24 +105,44 @@ final class PushDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCen
 
     /// Somebody tapped the banner. The room id is the one thing the extension put in `userInfo`,
     /// and it is the whole of what is needed: see `PushRouter`.
-    // `nonisolated` because the delegate protocol is main-actor isolated and neither a
-    // `UNNotification` nor the centre itself is `Sendable` — so an implementation that inherited
-    // that isolation could not be handed its own arguments. The room id is a `String`; it crosses
-    // to the main actor on its own.
+    ///
+    /// ## Why the completion-handler form, and not `async`
+    ///
+    /// These two were written as `nonisolated … async`, which compiles and is wrong. The delegate
+    /// requirement is not main-actor isolated, so an `async` implementation of it is free to be
+    /// resumed on the generic executor — and what it carries there is a `UNNotificationResponse`,
+    /// a UserNotifications object that is not `Sendable` and whose whole graph belongs to the main
+    /// thread. Reading it from another one is a data race, and a data race on the path that runs
+    /// *while the app is launching from a tap* is a crash on exactly the tap that started the app.
+    ///
+    /// In this form nothing crosses a thread but a `String`: `userInfo` is read synchronously, on
+    /// the thread the system called us on, and only the room id goes to the main actor.
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                            didReceive response: UNNotificationResponse) async {
-        guard let roomID = response.notification.request.content.userInfo["room_id"] as? String else {
-            return
+                                            didReceive response: UNNotificationResponse,
+                                            withCompletionHandler completionHandler: @escaping () -> Void) {
+        let roomID = response.notification.request.content.userInfo["room_id"] as? String
+
+        if let roomID {
+            Task { @MainActor in PushRouter.shared.tapped(roomID: roomID) }
         }
-        await MainActor.run { PushRouter.shared.tapped(roomID: roomID) }
+
+        // Called straight away rather than from inside the hop: the system is waiting on it, and
+        // what it is waiting for — opening a conversation — is this app's business, not its own.
+        completionHandler()
     }
 
     /// A push arrived while the app is in front. Without this iOS shows nothing at all, and
     /// somebody reading one conversation never learns that another one has said something.
+    ///
+    /// Answered synchronously, because the answer is the whole of what the system is asking for.
+    /// `assumeIsolated` rather than a hop: this is delivered on the main thread, and saying so out
+    /// loud means that if it ever is not, we find out at once instead of racing quietly.
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                            willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
+                                            willPresent notification: UNNotification,
+                                            withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         let roomID = notification.request.content.userInfo["room_id"] as? String
-        return await MainActor.run { PushRouter.shared.presentation(forRoomID: roomID) }
+        let options = MainActor.assumeIsolated { PushRouter.shared.presentation(forRoomID: roomID) }
+        completionHandler(options)
     }
 
     func application(_ application: UIApplication,

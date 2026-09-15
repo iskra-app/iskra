@@ -13,17 +13,18 @@ import UserNotifications
 /// The whole trick is one call, `content.updating(from:)`, and everything here exists to build the
 /// argument it takes.
 ///
-/// ## What it needs, and what happens without it
+/// ## What it needs
 ///
-/// `com.apple.developer.usernotifications.communication`. It is not yet on either bundle, because
-/// unlike every other entitlement in this project Xcode cannot add it to a Team Provisioning
-/// Profile by itself — the capability has to be switched on for both App IDs at
-/// developer.apple.com first. `Apps/project.yml` says so at the two places the lines go.
+/// `com.apple.developer.usernotifications.communication`, on both bundles — and it is the one
+/// entitlement in this project Xcode cannot add to a Team Provisioning Profile by itself: the
+/// capability has to be switched on for both App IDs at developer.apple.com first, and then the
+/// profile re-issued (`xcodebuild -allowProvisioningUpdates`), because until it is re-issued the
+/// build fails with the *same* message as when the capability was never enabled.
 ///
-/// So this code runs today and changes nothing today: `updating(from:)` throws without the
-/// entitlement, the throw is caught, and the plain notification is returned untouched. That is the
-/// reason it is written as a transformation with a fallback rather than as a branch — when the
-/// capability is turned on, nothing here has to be remembered or revisited.
+/// Without the entitlement `updating(from:)` throws, the throw is caught, and the plain
+/// notification is returned untouched. That fallback stays whether or not the entitlement is
+/// there: an app that shows nothing because it could not decorate a notification would be worse
+/// than one that never tried.
 public enum CommunicationNotification {
     /// Rewrites a notification as a message from a person, or returns it exactly as it was.
     ///
