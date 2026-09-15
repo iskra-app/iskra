@@ -78,6 +78,7 @@ struct RecoveryCodeView: View {
                     .font(.callout)
             }
             .toggleStyle(.switch)
+            .accentControl()
             .padding(.horizontal, Theme.Spacing.close)
 
             Button(action: onSaved) {

@@ -1082,6 +1082,28 @@ public enum Strings {
         /// `AccentTheme.tintsInterfaceKey`.
         public static let tintInterface = LocalizedStringResource("appearance.tintInterface", bundle: bundle)
 
+        /// What lies behind a conversation — see `Wallpaper`.
+        public static let wallpaper = LocalizedStringResource("appearance.wallpaper", bundle: bundle)
+        public static let wallpaperFooter = LocalizedStringResource("appearance.wallpaperFooter", bundle: bundle)
+        public static let wallpaperDimming = LocalizedStringResource("appearance.wallpaperDimming", bundle: bundle)
+        public static let wallpaperChoose = LocalizedStringResource("appearance.wallpaperChoose", bundle: bundle)
+
+        /// The name of a wallpaper, which is the only thing a picture can be read out as. A
+        /// `switch` with no `default`, for the same reason the colours below have none: a seventh
+        /// gradient should stop the build rather than ship unnamed.
+        public static func wallpaperName(_ wallpaper: Wallpaper) -> LocalizedStringResource {
+            switch wallpaper {
+            case .none: LocalizedStringResource("appearance.wallpaper.none", bundle: bundle)
+            case .sunset: LocalizedStringResource("appearance.wallpaper.sunset", bundle: bundle)
+            case .sea: LocalizedStringResource("appearance.wallpaper.sea", bundle: bundle)
+            case .forest: LocalizedStringResource("appearance.wallpaper.forest", bundle: bundle)
+            case .dusk: LocalizedStringResource("appearance.wallpaper.dusk", bundle: bundle)
+            case .sand: LocalizedStringResource("appearance.wallpaper.sand", bundle: bundle)
+            case .night: LocalizedStringResource("appearance.wallpaper.night", bundle: bundle)
+            case .photo: LocalizedStringResource("appearance.wallpaper.photo", bundle: bundle)
+            }
+        }
+
         /// Four lines of a conversation that never happened, so that a colour can be judged as
         /// what it will actually be — the fill behind everything the user ever says — rather than
         /// as a circle on a settings screen. The second one is theirs, and is the one painted.

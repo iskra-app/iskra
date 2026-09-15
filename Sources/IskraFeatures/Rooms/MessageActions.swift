@@ -71,6 +71,9 @@ struct MessageActions<Content: View>: View {
     /// Whether the room picker for forwarding is up.
     @State private var isForwarding = false
 
+    /// Which of the two taps this message's finger turned out to be — see `MessageTaps`.
+    @State private var taps = MessageTaps()
+
     /// Counts double taps, and exists only to be a thing that *changes*: `sensoryFeedback`
     /// fires on a change of value, and "the user did it again" is otherwise not one.
     @State private var quickTaps = 0
@@ -114,22 +117,20 @@ struct MessageActions<Content: View>: View {
             } action: { anchor.rect = $0 }
             .scaleEffect(isPressing ? 0.97 : 1)
             .animation(.smooth(duration: Theme.Timing.chrome), value: isPressing)
-            // A double tap is the quick reaction, and `highPriorityGesture` is what makes that
-            // true of *every* message rather than only the ones with nothing else to tap.
-            //
-            // It used to be a plain `.onTapGesture(count: 2)`, on the reasoning that nothing else
-            // in a conversation answers to two taps. Several things do, and they are the ones
-            // people react to most: a photograph opens the viewer on one tap, a location opens
-            // Maps, a video note plays. SwiftUI gives the *innermost* gesture first refusal, so on
-            // exactly those three the quick reaction was unreachable — while the settings screen
-            // went on saying "double-tap a message to leave it". The promise was true of text and
-            // of nothing else.
-            //
-            // At high priority the double tap is offered first and the single tap still lands when
-            // it fails, so the photo still opens and the circle still plays. The cost is that a
-            // single tap on those waits out the double-tap interval, which is the price of the
-            // promise being kept.
-            .highPriorityGesture(TapGesture(count: 2).onEnded {
+            // A double tap is the quick reaction, on every message rather than only the ones with
+            // nothing else to tap — and `simultaneousGesture` is what makes it true without taking
+            // the conversation's scrolling away. It competes with nothing: not with the tap that
+            // opens a photograph, and not with the scroll view's own pan, which a high-priority
+            // gesture here outranked. A finger that came down on a message and pulled used to hold
+            // the timeline still. See `MessageTaps`, which does the ordering a priority was
+            // standing in for — and does it only between the two taps, where it belongs.
+            .simultaneousGesture(TapGesture(count: 2).onEnded {
+                // Whatever single tap is waiting inside this message — the photograph about to
+                // open, the circle about to play — was the first half of this. Called before the
+                // guard below, because the reaction being refused is no reason to open a picture
+                // nobody asked for.
+                taps.double()
+
                 // Offline the gesture is not merely refused, it is *silent* — and that is the whole
                 // reason to guard it here as well as in the menu. A double tap that puts no pill on
                 // the message reads as an app that did not notice the tap, so somebody would tap
@@ -141,6 +142,10 @@ struct MessageActions<Content: View>: View {
             // The knock that says the reaction went. Without it a double tap on a message
             // whose pill appears a beat later feels like nothing happened.
             .sensoryFeedback(.impact(weight: .medium), trigger: quickTaps)
+            // The arbiter for this row, and the one place it is created. It is per message on
+            // purpose: a tap waiting inside one bubble has nothing to do with a tap in the next.
+            .environment(\.messageTaps, taps)
+            .onDisappear { taps.cancel() }
             .onLongPressGesture(minimumDuration: Theme.Timing.menuLift) {
                 open()
             } onPressingChanged: { pressing in

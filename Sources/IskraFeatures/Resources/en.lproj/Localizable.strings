@@ -385,6 +385,38 @@
 
 "appearance.color.mono" = "Black and white";
 
+/* The Appearance screen: what lies behind a conversation. Nothing, six gradients, or a photo
+   of the user's own. */
+"appearance.wallpaper" = "Wallpaper";
+
+/* Under the row of wallpapers. It says two things at once: the wallpaper is the same in every
+   conversation, and a chosen photograph stays on this device — nobody else ever sees it. */
+"appearance.wallpaperFooter" = "The wallpaper is the same in every conversation. Your photo stays on this device and is never sent anywhere.";
+
+/* The slider under the wallpapers: how far to take the picture down so that messages read on it. */
+"appearance.wallpaperDimming" = "Dimming";
+
+/* The button under the slider — swap your photograph for a different one. */
+"appearance.wallpaperChoose" = "Choose another photo";
+
+/* The names of the wallpapers. They are never seen: a picture has nothing to read out, and
+   VoiceOver names it. */
+"appearance.wallpaper.none" = "No wallpaper";
+
+"appearance.wallpaper.sunset" = "Sunset";
+
+"appearance.wallpaper.sea" = "Sea";
+
+"appearance.wallpaper.forest" = "Forest";
+
+"appearance.wallpaper.dusk" = "Dusk";
+
+"appearance.wallpaper.sand" = "Sand";
+
+"appearance.wallpaper.night" = "Night";
+
+"appearance.wallpaper.photo" = "Your own photo";
+
 /* The photo was picked and could not be read — a refusal that happens before anything is
    sent, so blaming the server would be a lie. Usually it is still in iCloud, not on the phone. */
 "room.attachmentUnreadable" = "This photo could not be read. That happens when it is still in iCloud — open it in Photos and try again.";

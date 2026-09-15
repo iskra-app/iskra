@@ -19,6 +19,13 @@ import Photos
 /// let go of it and the SDK deletes the decrypted bytes from disk, which is the point of
 /// holding it. In an encrypted room those bytes are the user's private photograph sitting in
 /// plaintext, and the moment the viewer closes they are gone again.
+///
+/// The picture itself is handled by `ZoomableImage` on the phone and the iPad, which is a
+/// `UIScrollView` and is there so that a photograph opened here behaves exactly like a photograph
+/// opened anywhere else on the platform — the zoom that follows the fingers, the pan with momentum,
+/// the rubber band at the edges, the double tap that zooms to where it landed. The Mac keeps the
+/// gesture pair below, because a trackpad pinch and a scroll wheel are a different set of
+/// expectations and `UIScrollView` is not there to meet them anyway.
 struct MediaViewer: View {
     let attachment: Attachment
     /// Whether to bring `AVKit` and its scrubber, or a picture and a zoom.
@@ -36,40 +43,33 @@ struct MediaViewer: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var file: MediaFile?
-    @State private var image: Image?
+    @State private var picture: PlatformImage?
     @State private var player: AVPlayer?
     @State private var failed = false
 
-    /// How far down the user has dragged. A photo you can flick away is the gesture every phone
-    /// has taught its owner, and the app that ignores it feels stuck.
-    @State private var dragOffset: CGFloat = 0
+    /// How far along the flick that closes the viewer has come, 0 to 1. The backdrop and the chrome
+    /// fade with it, so the conversation comes back into view as the photograph leaves rather than
+    /// after it has gone.
+    @State private var dismissProgress: CGFloat = 0
 
-    /// The zoom, and where it is centred. Held across gestures — pinching, letting go, and
-    /// pinching again should carry on from where the last one stopped, not snap back to 1×.
+    /// Whether the name, the date and the buttons are on screen.
+    ///
+    /// They are, to begin with — a photograph that opens with no way out and nothing saying whose it
+    /// is would be a screen you have to guess at. A single tap takes them away, which is the gesture
+    /// every photo viewer on this platform answers and the only way to see a picture with nothing
+    /// over it; zooming in takes them away too, because somebody who has zoomed in is looking at the
+    /// photograph rather than at the buttons.
+    @State private var isChromeVisible = true
+
+    #if os(macOS)
+    /// The zoom, and where it is centred, on the Mac — where there is no `UIScrollView` to keep
+    /// them. Held across gestures: pinching, letting go and pinching again carries on from where the
+    /// last one stopped rather than snapping back to 1×.
     @State private var zoom: CGFloat = 1
     @State private var committedZoom: CGFloat = 1
     @State private var pan: CGSize = .zero
     @State private var committedPan: CGSize = .zero
-
-    /// Whether two fingers are on the picture right now.
-    ///
-    /// The drag and the pinch see the same touches — they have to, or neither works (see
-    /// `zoomable`) — and a pinch moves its centroid about as freely as a swipe does. Without
-    /// this the two fingers spreading on an unzoomed photo would also be read as a flick
-    /// downwards, and the viewer would close in the middle of the zoom that was meant to open
-    /// it up. So while a pinch is under way, the drag moves nothing; once the picture *is*
-    /// magnified, the same drag becomes a pan and the question stops arising.
-    ///
-    /// It is only ever read inside `onChanged`, and that is the whole point of it. Read at the
-    /// *end* of the drag it would be a lie: both gestures end when the fingers lift, the pinch's
-    /// `onEnded` runs first and clears this, and the drag then looks at a flag that says no
-    /// pinch happened — which is exactly the case it was added to catch. So nothing at the end
-    /// asks it anything. See `drag`.
-    @State private var isPinching = false
-
-    /// How far down it has to go to count as "close it". Short of that it springs back, which is
-    /// what tells the user the gesture exists.
-    private static let dismissDistance: CGFloat = 120
+    #endif
 
     /// As far in as the picture is worth going. Past this there is nothing on the screen but
     /// the grain of whatever the sender's camera happened to record, and a photo that can be
@@ -77,10 +77,19 @@ struct MediaViewer: View {
     /// back out of.
     private static let maximumZoom: CGFloat = 6
 
-    /// The picture fades as it is dragged away, so the conversation behind it comes back into
-    /// view as the photo leaves rather than after it has gone.
+    /// Where a double tap lands. Not the maximum: a double tap is "closer", not "as close as this
+    /// goes", and a photograph flung to 6× by one tap is a photograph nobody can find their way
+    /// around.
+    private static let doubleTapZoom: CGFloat = 3
+
+    /// The picture fades as it is dragged away.
     private var backdropOpacity: Double {
-        max(0, 1 - Double(abs(dragOffset)) / (Self.dismissDistance * 3))
+        1 - Double(dismissProgress)
+    }
+
+    /// The chrome is gone when it has been hidden, and going while the picture is being thrown.
+    private var chromeOpacity: Double {
+        isChromeVisible ? backdropOpacity : 0
     }
 
     var body: some View {
@@ -90,7 +99,6 @@ struct MediaViewer: View {
                 .ignoresSafeArea()
 
             content
-                .offset(y: dragOffset)
         }
         // Mac only, and that `#if` is a bug fix rather than tidiness. A sheet on the Mac is a
         // window and shrinks to fit what is in it — a spinner, at first — so it needs a floor.
@@ -105,6 +113,7 @@ struct MediaViewer: View {
         #endif
         .overlay(alignment: .top) { title }
         .overlay(alignment: .bottom) { chrome }
+        .animation(.smooth(duration: Theme.Timing.chrome), value: isChromeVisible)
         .task { await load() }
         .onDisappear {
             player?.pause()
@@ -131,36 +140,45 @@ struct MediaViewer: View {
             // top would swallow every press meant for the one beneath it.
             VideoPlayer(player: player)
                 .padding(.bottom, chromeHeight)
-        } else if let image {
-            zoomable(image)
+        } else if let picture {
+            zoomable(picture)
         } else {
             ProgressView()
                 .tint(.white)
         }
     }
 
-    /// The photo, with the two gestures a photo is expected to answer.
-    ///
-    /// The drag is only allowed while the picture is *not* zoomed in, and that is the whole
-    /// trick to making both work: once you are magnified, dragging means panning around the
-    /// photograph, and a downward pan would otherwise throw the viewer off the screen halfway
-    /// through looking at something.
+    #if os(iOS)
+    /// The photograph, in the scroll view that gives it every behaviour a photograph has on this
+    /// platform — see `ZoomableImage`.
+    private func zoomable(_ picture: UIImage) -> some View {
+        ZoomableImage(image: picture,
+                      maximumZoom: Self.maximumZoom,
+                      doubleTapZoom: Self.doubleTapZoom,
+                      onDismissProgress: { dismissProgress = $0 },
+                      onDismiss: { dismiss() },
+                      onSingleTap: { isChromeVisible.toggle() },
+                      onZoomChanged: { isZoomed in
+                          withAnimation(.smooth(duration: Theme.Timing.chrome)) {
+                              isChromeVisible = !isZoomed
+                          }
+                      })
+            .ignoresSafeArea()
+    }
+    #else
+    /// The photo on the Mac, with the two gestures a trackpad makes.
     ///
     /// **One gesture, not two**, and that is what makes the pinch work at all. Written as two
     /// `.gesture` modifiers — which is what this was — they are two recognisers competing for
-    /// the same touches, and the drag wins every time: a pinch begins with one finger landing
-    /// like any other touch, the drag claims the sequence there and then, and the second finger
-    /// arrives to find the magnification never started. The photo could be dragged and could
-    /// not be zoomed, and nothing about the code said so. Composed with `simultaneously`, both
-    /// see every touch, and the pinch is recognised the moment there is something to recognise.
-    private func zoomable(_ image: Image) -> some View {
-        image
+    /// the same events, and the drag wins every time. Composed with `simultaneously`, both see
+    /// everything, and the pinch is recognised the moment there is something to recognise.
+    private func zoomable(_ picture: NSImage) -> some View {
+        Image(nsImage: picture)
             .resizable()
             .scaledToFit()
             .scaleEffect(zoom)
             .offset(pan)
             .gesture(magnification.simultaneously(with: drag))
-            // Двойное касание — the shortcut nobody has to be taught: in, and back out again.
             .onTapGesture(count: 2) {
                 withAnimation(.smooth(duration: 0.25)) {
                     if zoom > 1 {
@@ -169,17 +187,19 @@ struct MediaViewer: View {
                         pan = .zero
                         committedPan = .zero
                     } else {
-                        zoom = 2
-                        committedZoom = 2
+                        zoom = Self.doubleTapZoom
+                        committedZoom = Self.doubleTapZoom
                     }
                 }
             }
+            // A single click hides the chrome, as it does on the phone — and waits for the double
+            // click to fail first, so zooming in does not also take the buttons away twice.
+            .onTapGesture { isChromeVisible.toggle() }
     }
 
     private var magnification: some Gesture {
         MagnifyGesture()
             .onChanged { value in
-                isPinching = true
                 // Never below 1×: a photo pinched smaller than the screen it is on floats in
                 // the middle of a black rectangle, which is not something anybody wanted. And
                 // never past `maximumZoom`, where there is nothing left to look at but the
@@ -187,7 +207,6 @@ struct MediaViewer: View {
                 zoom = min(Self.maximumZoom, max(1, committedZoom * value.magnification))
             }
             .onEnded { _ in
-                isPinching = false
                 committedZoom = zoom
                 if zoom <= 1 {
                     withAnimation(.smooth) {
@@ -198,49 +217,22 @@ struct MediaViewer: View {
             }
     }
 
-    /// One drag, two meanings, and which one it has depends on the zoom.
-    ///
-    /// It has to be a single gesture. Two — one for panning, one for dismissing, chosen with a
-    /// ternary — does not compile and would not work if it did: SwiftUI attaches the gesture
-    /// when the view is built, and swapping which one is attached mid-pinch would take the
-    /// gesture out from under the finger already moving.
+    /// Dragging a magnified photograph moves it under the window. Unmagnified there is nothing to
+    /// move — the Mac closes a window with its close button, not by throwing its contents at the
+    /// floor, so there is no flick-to-dismiss here.
     private var drag: some Gesture {
         DragGesture()
             .onChanged { value in
-                if zoom > 1 {
-                    // Magnified: the drag moves the photograph under the window.
-                    pan = CGSize(width: committedPan.width + value.translation.width,
-                                 height: committedPan.height + value.translation.height)
-                } else if !isPinching {
-                    // Downward only. Dragging a photo *up* off the screen is not a gesture
-                    // anything else in the system honours, and answering it here would mean the
-                    // picture sliding away from a flick that was meant to scroll something.
-                    dragOffset = max(0, value.translation.height)
-                }
+                guard zoom > 1 else { return }
+                pan = CGSize(width: committedPan.width + value.translation.width,
+                             height: committedPan.height + value.translation.height)
             }
-            // What decides this is `dragOffset` and not `value.translation`, and the difference
-            // is the whole fix. `translation` is what the fingers did; `dragOffset` is what this
-            // gesture was *allowed* to do with it — `onChanged` above refuses to move the
-            // picture while a pinch is under way, so a pinch whose centroid wandered 200pt down
-            // the screen leaves `dragOffset` at nothing and closes nothing. The end of the drag
-            // therefore asks no questions about pinching; it only reads how far the photo
-            // actually travelled, which is the thing the user can see.
-            //
-            // And `dragOffset` returns to zero on every path but the one that dismisses. It used
-            // to be left where it lay when a drag turned into a pinch, and the photograph stayed
-            // sitting 80pt down the screen with the conversation showing through behind it for
-            // as long as the viewer was open.
             .onEnded { _ in
-                if zoom > 1 {
-                    committedPan = pan
-                } else if dragOffset > Self.dismissDistance {
-                    dismiss()
-                    return
-                }
-
-                withAnimation(.smooth) { dragOffset = 0 }
+                guard zoom > 1 else { return }
+                committedPan = pan
             }
     }
+    #endif
 
     /// The way out, and whose photograph this is: a cross in the corner, a name and a date in
     /// the middle.
@@ -276,7 +268,10 @@ struct MediaViewer: View {
         }
         .foregroundStyle(.white)
         .background { scrim(from: .top) }
-        .opacity(backdropOpacity)
+        .opacity(chromeOpacity)
+        // Hidden chrome is not merely invisible: a close button faded to nothing that still
+        // answered a press would be a trap in the corner of somebody's photograph.
+        .allowsHitTesting(isChromeVisible)
     }
 
     /// Save and share: the things you can do with the photograph, along the bottom, under the
@@ -319,7 +314,8 @@ struct MediaViewer: View {
         .background { if file != nil { scrim(from: .bottom) } }
         // The buttons fade out with the backdrop as the photo is dragged away, rather than
         // hanging in the air over a picture that is already halfway gone.
-        .opacity(backdropOpacity)
+        .opacity(chromeOpacity)
+        .allowsHitTesting(isChromeVisible)
     }
 
     private func button(_ systemImage: String,
@@ -377,12 +373,21 @@ struct MediaViewer: View {
                 // Read off the file we already have rather than downloading the same bytes a
                 // second time through `data(for:)`. The file is the thing `ShareLink` and the
                 // photo library need anyway.
-                guard let data = try? Data(contentsOf: file.url),
-                      let image = Image(mediaData: data) else {
+                //
+                // Decoded off the main actor: a photograph off a modern camera is forty megapixels,
+                // and turning those into a bitmap on the actor that is drawing the animation of the
+                // viewer opening is a visible hitch in the middle of it.
+                let url = file.url
+                let decoded = await Task.detached(priority: .userInitiated) {
+                    guard let data = try? Data(contentsOf: url) else { return PlatformImage?.none }
+                    return PlatformImage(data: data)
+                }.value
+
+                guard let decoded else {
                     failed = true
                     return
                 }
-                self.image = image
+                picture = decoded
             }
         } catch {
             Log.media.error("the attachment would not open: \(Log.describe(error), privacy: .public)")
@@ -443,3 +448,14 @@ struct MediaViewer: View {
     }
     #endif
 }
+
+/// The picture, in whatever this platform calls one.
+///
+/// A `SwiftUI.Image` is not enough here any more: the scroll view that does the zooming needs a
+/// `UIImage` to measure — the *aspect ratio* is what decides how the photograph is fitted to the
+/// screen, and a `SwiftUI.Image` will not say.
+#if os(iOS)
+typealias PlatformImage = UIImage
+#else
+typealias PlatformImage = NSImage
+#endif
