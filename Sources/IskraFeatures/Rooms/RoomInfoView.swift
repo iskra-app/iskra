@@ -109,6 +109,7 @@ struct RoomInfoView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
+                    .accentControl()
                     .disabled(isOffline)
                 }
             }

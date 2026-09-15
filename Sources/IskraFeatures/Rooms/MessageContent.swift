@@ -102,7 +102,8 @@ struct MessageContent: View {
 
         case let .image(attachment):
             quoted {
-                PictureBubble(attachment: attachment, style: style, isPlayable: false,
+                PictureBubble(attachment: attachment, messageID: message.id,
+                              style: style, isPlayable: false,
                               sender: message.spokenSender, timestamp: message.timestamp)
             }
 
@@ -116,7 +117,8 @@ struct MessageContent: View {
 
         case let .video(attachment):
             quoted {
-                PictureBubble(attachment: attachment, style: style, isPlayable: true,
+                PictureBubble(attachment: attachment, messageID: message.id,
+                              style: style, isPlayable: true,
                               sender: message.spokenSender, timestamp: message.timestamp)
             }
 

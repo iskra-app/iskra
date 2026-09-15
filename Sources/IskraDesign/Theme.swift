@@ -1,5 +1,11 @@
 import SwiftUI
 
+#if canImport(UIKit)
+import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
+
 /// The handful of numbers the whole app agrees on.
 ///
 /// Spacings and sizes are multiples of 4 and all corners are `.continuous`, which is what gives
@@ -225,6 +231,15 @@ public enum Theme {
         /// tinting. Eight percent is the most the colour can say here before legibility is the thing
         /// paying for it.
         public static let interface: Double = 0.08
+
+        /// The same wash, on the mono theme, where it is not a colour at all.
+        ///
+        /// A colour laid over the app tints it; black or white laid over the app only takes the
+        /// light out of it or puts it in, and it does that to the text as much as to the page. The
+        /// eight percent a hue can afford is visibly too much here — it is the difference between
+        /// a monochrome app and a dimmed one — so the colourless theme is washed at half of it.
+        /// See `AccentTheme.washOpacity`.
+        public static let mono: Double = 0.04
     }
 
     public enum Size {
@@ -305,6 +320,11 @@ public enum Theme {
         /// target: a swatch is a button, and a colour you have to aim at is a colour you
         /// pick by accident.
         public static let swatch: CGFloat = 44
+
+        /// A wallpaper to choose from, on the same screen. Not a swatch: a background is judged
+        /// as a *screen*, so the tile is the shape of one — tall, in roughly the proportion of a
+        /// phone — and big enough that a gradient reads as a gradient rather than as a smudge.
+        public static let wallpaperTile = CGSize(width: 72, height: 128)
 
         /// The bar down the side of a quoted message. Narrow, and the whole of what makes a
         /// quote read as one.
@@ -603,7 +623,35 @@ public extension ShapeStyle where Self == Color {
     /// A neutral, hierarchical fill rather than a chosen grey, so it follows the
     /// system into dark mode and into increased-contrast mode without our help.
     static var incomingBubble: Color {
-        Color.primary.opacity(0.08)
+        // Lighter in the light appearance than in the dark one, and the asymmetry is the point.
+        // This used to be one number — `Color.primary.opacity(0.08)` — which is tidy and is not
+        // the same grey twice: eight percent of white on a dark page is a whisper, and eight
+        // percent of black on a white one is a distinctly grey slab. The two appearances were
+        // asking for the same ink and getting different weights of it, and the light one came out
+        // heavy: a column of grey blocks down one side of a white screen.
+        //
+        // So the light appearance gets five percent, which is the same *whisper* rather than the
+        // same number, and the dark one is left exactly as it was.
+        Color.adaptive(light: Color.black.opacity(0.05), dark: Color.white.opacity(0.08))
+    }
+
+    /// The same fill, for a conversation standing on a wallpaper.
+    ///
+    /// Opaque, which is the whole difference. Every other fill in this app is a percentage of the
+    /// foreground colour, so that it follows the appearance and the contrast settings without being
+    /// maintained — and a percentage is a *translucency*, which over the app's own flat page is
+    /// invisible as such and over somebody's photograph is the photograph showing through the words.
+    /// So on a wallpaper the bubble stops being a tint of the page and becomes a surface on top of
+    /// it: near-white in the light appearance, a dark grey in the dark one, both opaque.
+    static var incomingBubbleOnWallpaper: Color {
+        Color.adaptive(light: Color(white: 0.99), dark: Color(white: 0.17))
+    }
+
+    /// Your own bubble on the colourless theme, over a wallpaper — the same argument as above, a
+    /// tone heavier, so that the two sides of the conversation still read as one material told
+    /// apart by weight.
+    static var ownBubbleOnWallpaper: Color {
+        Color.adaptive(light: Color(white: 0.87), dark: Color(white: 0.30))
     }
 
     /// The fill behind a reaction *you* left.
@@ -616,5 +664,31 @@ public extension ShapeStyle where Self == Color {
     /// on the mono theme.
     static var ownReaction: Color {
         Color.primary.opacity(0.16)
+    }
+}
+
+
+public extension Color {
+    /// One colour for the light appearance and another for the dark one.
+    ///
+    /// SwiftUI has no way to say this: `Color.primary.opacity(_:)` follows the appearance, but it
+    /// follows it with the *same* number on both sides, and a grey that is right in the dark can be
+    /// half again too heavy in the light. Everything else in this file is a system colour or a
+    /// hierarchical style precisely so that the system does this for us — this is the one place
+    /// where the two sides genuinely want different values, so it is spelled out once, here, and
+    /// resolved by the platform's own dynamic-colour machinery rather than by reading the scheme in
+    /// a view.
+    static func adaptive(light: Color, dark: Color) -> Color {
+        #if canImport(UIKit)
+        Color(UIColor { traits in
+            UIColor(traits.userInterfaceStyle == .dark ? dark : light)
+        })
+        #elseif canImport(AppKit)
+        Color(NSColor(name: nil) { appearance in
+            NSColor(appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? dark : light)
+        })
+        #else
+        light
+        #endif
     }
 }
