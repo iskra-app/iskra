@@ -73,6 +73,24 @@ enum NotificationProbe {
                 }
                 print("     body     \(notification.body)")
                 print("     sound    \(notification.isNoisy ? "yes" : "no")")
+
+                // The face, and whether it arrived. Printed because "there is no avatar on the
+                // notification" has three different causes that look identical on a lock screen:
+                // the sender has no picture, the picture did not arrive in the two seconds it is
+                // given, or it arrived and iOS drew the notification plainly anyway. These two
+                // lines separate the first two from the third without a word of guesswork.
+                print("     person   \(notification.personName ?? "—") \(notification.personID ?? "")")
+                switch (notification.avatarURL, notification.avatar) {
+                case (nil, _):
+                    print("     avatar   none — this sender has no picture set")
+                case let (url?, nil):
+                    print("     avatar   NOT FETCHED — \(url)")
+                    print("              The URL is there and the bytes are not: either the two-second")
+                    print("              budget ran out or the download failed. `Log.push` says which.")
+                case let (_, bytes?):
+                    print("     avatar   \(bytes.count) bytes")
+                }
+
                 print("     (The extension's own entitlements are not proved by this — see above.)")
                 exit(0)
 

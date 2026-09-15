@@ -330,11 +330,16 @@ public final class UserSession {
         }
     }
 
-    /// Telling the homeserver where to send a push. See `PushRegistration` — and note that the
-    /// gateway it needs does not exist yet, which is the one piece of this app that is genuinely
-    /// waiting on something outside Xcode.
+    /// Telling the homeserver where to send a push. See `PushRegistration`.
     public func pushes() -> PushRegistration {
         PushRegistration(client: client)
+    }
+
+    /// Asking the homeserver to send a push when somebody reacts — which by default it will not.
+    /// See `ReactionPushRule`, which explains why the rule has to be this broad and where the
+    /// noise it invites is taken back out.
+    public func enableReactionPushes() async {
+        await ReactionPushRule(settings: client.getNotificationSettings()).register()
     }
 
     /// What this account is keeping on the device, built when the screen that shows it is opened.

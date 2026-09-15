@@ -147,6 +147,18 @@ targets:
         com.apple.security.application-groups: [group.moscow.swag.iskra]
         keychain-access-groups: [$(AppIdentifierPrefix)moscow.swag.iskra.shared]
         aps-environment: development
+        # What makes a message from a person look like a message from a person: their avatar in
+        # a circle, their name where the app's name would be, a place of their own in
+        # Notification Summary, and a way past a Focus that is letting people through. See
+        # `CommunicationNotification`.
+        #
+        # Unlike everything else in this file, Xcode cannot add this one to a Team Provisioning
+        # Profile on its own: "Communication Notifications" has to be enabled on **both** App IDs
+        # at developer.apple.com first — `moscow.swag.iskra` and
+        # `moscow.swag.iskra.notifications`. Without that the build fails outright, with
+        # "Provisioning profile … doesn't include the Communication Notifications capability",
+        # which is a clear enough sentence to recognise if this ever moves to another account.
+        com.apple.developer.usernotifications.communication: true
 
     info:
       path: iOS/Info.plist
@@ -261,6 +273,10 @@ targets:
         # where it fails. `Iskra --probe-notification` is what says so out loud.
         com.apple.security.application-groups: [group.moscow.swag.iskra]
         keychain-access-groups: [$(AppIdentifierPrefix)moscow.swag.iskra.shared]
+        # Granted here too, and this is the copy that does the work: the intent is donated and
+        # the notification rewritten in *this* process. The app's own grant matters so that the
+        # App ID carries the capability at all.
+        com.apple.developer.usernotifications.communication: true
 
   # The Share sheet target: what lets another app hand text or a link to a specific Iskra chat.
   #

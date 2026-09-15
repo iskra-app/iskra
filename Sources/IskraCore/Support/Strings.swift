@@ -237,6 +237,15 @@ public enum CoreStrings {
         /// Iskra's; the body is a neutral "New message".
         public static let hiddenTitle = LocalizedStringResource("push.hiddenTitle", bundle: bundle)
         public static let hiddenBody = LocalizedStringResource("push.hiddenBody", bundle: bundle)
+
+        /// Somebody put a reaction on something you said. Genderless for the same reason as
+        /// `invite` above — Matrix does not know who is a он and who is a она, and Russian
+        /// insists on knowing. "Реакция на ваше сообщение" is a noun, so it never has to.
+        ///
+        /// Which reaction is deliberately absent, and not by choice: the SDK hands the extension
+        /// a reaction as `reactionContent(relatedEventId:)` and nothing else — the emoji itself is
+        /// not in it. Naming a reaction we cannot see would be worse than not naming one.
+        public static let reaction = LocalizedStringResource("push.reaction", bundle: bundle)
     }
 
     /// The share extension's own few words. In `CoreStrings`, not the app's, because the extension

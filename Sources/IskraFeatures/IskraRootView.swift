@@ -160,6 +160,10 @@ public struct IskraRootView: View {
                     .task {
                         PushPermission.shared.signedIn(session)
                         await PushPermission.shared.request()
+                        // And ask the server to tell us about reactions, which by default it will
+                        // not — see `ReactionPushRule`. Written on the account rather than the
+                        // device, so this is idempotent and costs one request.
+                        await session.enableReactionPushes()
                     }
                     // The server stopped accepting this session while the app was open — somebody
                     // ended it from another device, or the account was deactivated. `UserSession`
@@ -170,6 +174,9 @@ public struct IskraRootView: View {
                     .onChange(of: session.wasEndedElsewhere) { _, wasEnded in
                         guard wasEnded else { return }
                         AppSettings.forget()
+                        // Somebody else's unread count has no business staying on the icon of an
+                        // app nobody is signed into.
+                        AppBadge.clear()
                         selectedRoomID = nil
                         selectedEventID = nil
                         phase = .signedOut
@@ -217,8 +224,11 @@ public struct IskraRootView: View {
                     #endif
                     // Keep the App-Intents chat directory in step, so Siri and Shortcuts can list the
                     // conversations without waking a client — see `ChatDirectory`.
-                    .onChange(of: session.roomList.rooms) { _, rooms in
+                    .onChange(of: session.roomList.rooms, initial: true) { _, rooms in
                         writeChatDirectory(rooms)
+                        // And the number on the icon, from the same list and at the same moment,
+                        // so that reading a chat takes the count down without anybody asking it to.
+                        AppBadge.update(for: rooms)
                     }
                     // Act on what an intent asked for: open the chat it launched us for, and send any
                     // messages it left in the outbox. Once on appear (a cold launch by an intent), and
@@ -226,6 +236,29 @@ public struct IskraRootView: View {
                     .task { await handleIntents(session) }
                     .onChange(of: scenePhase) { _, phase in
                         if phase == .active { Task { await handleIntents(session) } }
+                    }
+                    // A tapped notification asked for a conversation. It does not go through the
+                    // intents slot above: that one lives in the shared defaults because Shortcuts
+                    // runs in another process, and a tap does not — it arrives here, on this actor,
+                    // at a moment that races the very foreground it causes. See `PushRouter`.
+                    //
+                    // Read on appear as well as on change, because a tap on a cold launch is
+                    // delivered long before this tree exists.
+                    .task { openRoomAskedForByANotification() }
+                    .onChange(of: PushRouter.shared.roomToOpen) { _, roomID in
+                        guard roomID != nil else { return }
+                        openRoomAskedForByANotification()
+                    }
+                    // And the other direction: the router is what decides whether a push is worth a
+                    // banner, and the one case where it is not is a message in the conversation
+                    // already on screen.
+                    .onChange(of: selectedRoomID, initial: true) { _, roomID in
+                        PushRouter.shared.visibleRoomID = roomID
+                    }
+                    .onChange(of: scenePhase) { _, phase in
+                        // Nothing is "on screen" when the app is not. Without this, going straight
+                        // from a conversation into a pocket silences every push from it.
+                        PushRouter.shared.visibleRoomID = phase == .active ? selectedRoomID : nil
                     }
             }
         }
@@ -340,6 +373,17 @@ public struct IskraRootView: View {
         }
     }
 
+    /// Opens whatever conversation a tapped banner asked for, if one did.
+    ///
+    /// Takes the room rather than reading it, so that a later foreground — the app comes back after
+    /// the reader has gone somewhere else themselves — does not drag them back to a chat they have
+    /// already left.
+    private func openRoomAskedForByANotification() {
+        guard let roomID = PushRouter.shared.takeRoomToOpen() else { return }
+        selectedRoomID = roomID
+        selectedEventID = nil
+    }
+
     /// Signing out unwinds everything: the session, the selected room, and — because the
     /// whole signed-in tree goes away with it — the settings screen it was asked for on.
     ///
@@ -366,6 +410,7 @@ public struct IskraRootView: View {
         #endif
 
         AppSettings.forget()
+        AppBadge.clear()
         selectedRoomID = nil
         selectedEventID = nil
         phase = .signedOut

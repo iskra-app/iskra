@@ -135,6 +135,9 @@
 "push.hiddenTitle" = "Iskra";
 "push.hiddenBody" = "New message";
 
+/* Somebody reacted to something you said. Which reaction is not in the push — see Strings.swift. */
+"push.reaction" = "Reaction to your message";
+
 /* The Share extension. */
 "share.title" = "Send to…";
 "share.cancel" = "Cancel";

@@ -53,7 +53,10 @@ enum PushMapper {
                                           sender: nil,
                                           body: String(localized: CoreStrings.Push.invite(
                                               senderName.isEmpty ? sender : senderName)),
-                                          isNoisy: isNoisy))
+                                          isNoisy: isNoisy,
+                                          personName: senderName.isEmpty ? sender : senderName,
+                                          personID: sender,
+                                          avatarURL: Self.picture(for: item)))
 
         case let .timeline(event):
             guard let content = try? event.content(),
@@ -71,7 +74,14 @@ enum PushMapper {
                                           title: who.title,
                                           sender: who.sender,
                                           body: body,
-                                          isNoisy: isNoisy))
+                                          isNoisy: isNoisy,
+                                          // Deliberately not `who.sender`, which is nil in a
+                                          // direct chat. Who spoke and what goes on the second
+                                          // line are two questions, and only one of them has an
+                                          // answer that depends on the room.
+                                          personName: senderName.isEmpty ? event.senderId() : senderName,
+                                          personID: event.senderId(),
+                                          avatarURL: Self.picture(for: item)))
         }
     }
 
@@ -125,6 +135,21 @@ enum PushMapper {
         return (title, senderName == title ? nil : senderName)
     }
 
+    /// Whose face to put on the notification: the sender's, and the room's when the sender has
+    /// none.
+    ///
+    /// The fallback is not a nicety. Plenty of people never set a picture — the first sender this
+    /// was tried on had none — and in a direct chat the room's avatar *is* that person's, because
+    /// Matrix builds a DM's picture out of the other member. So the fallback usually finds exactly
+    /// the face the sender would have given us, and in a group it finds the group, which is what
+    /// the eye expects there anyway.
+    static func picture(for item: NotificationItem) -> String? {
+        if let sender = item.senderInfo.avatarUrl, !sender.isEmpty { return sender }
+
+        guard let room = item.roomInfo.avatarUrl, !room.isEmpty else { return nil }
+        return room
+    }
+
     /// The words for one event. Nil means "not news" — see `PushOutcome.Silence`.
     static func text(for content: MessageLikeEventContent) -> String? {
         switch content {
@@ -139,6 +164,13 @@ enum PushMapper {
 
         case .sticker:
             return String(core: CoreStrings.Preview.sticker)
+
+        case .reactionContent:
+            // Only ever reached for a reaction to something the reader wrote — `PushDecoder`
+            // silences the rest before the mapper sees them, because a notification for every
+            // reaction in every room is how a group chat teaches somebody to turn notifications
+            // off. Which emoji it was is not in the event the SDK hands over, so it is not here.
+            return String(core: CoreStrings.Push.reaction)
 
         case .roomEncrypted:
             // Still encrypted after all that: the key for this message never reached this

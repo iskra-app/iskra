@@ -118,12 +118,22 @@ struct PushTests {
         #expect(MessagePreview.text(for: message) == "жду на кухне")
     }
 
-    /// A reaction is an event and it is not news. Nothing here should wake a phone for one —
-    /// and the push rules usually strip them long before this, which is exactly why the case
-    /// is easy to leave out and never notice.
-    @Test("a reaction is not something to wake a phone for")
-    func reactionsAreNotNews() {
-        #expect(PushMapper.text(for: .reactionContent(relatedEventId: "$1")) == nil)
+    /// A reaction *is* news — somebody answering your message with a heart is worth knowing about,
+    /// and this app deliberately asks the server to start sending those (`ReactionPushRule`).
+    ///
+    /// What it does not say is which reaction: the SDK hands over `reactionContent(relatedEventId:)`
+    /// and the emoji is not in it. And whose message was reacted to is decided a layer up, in
+    /// `PushDecoder`, which silences reactions to anybody else's — a pure function of one event
+    /// cannot answer a question about a different event.
+    @Test("a reaction to your own message is worth saying")
+    func reactionsAreNews() {
+        #expect(PushMapper.text(for: .reactionContent(relatedEventId: "$1")) != nil)
+    }
+
+    /// The rest of the machinery of a room, which is not news in any language: a call negotiating
+    /// itself, two devices stepping through a verification handshake.
+    @Test("the machinery of a room is not something to wake a phone for")
+    func plumbingIsNotNews() {
         #expect(PushMapper.text(for: .callCandidates) == nil)
         #expect(PushMapper.text(for: .keyVerificationDone) == nil)
     }

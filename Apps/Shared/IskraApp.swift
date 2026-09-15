@@ -1,4 +1,5 @@
 import SwiftUI
+import UserNotifications
 import IskraCore
 import IskraFeatures
 
@@ -59,9 +60,9 @@ struct IskraApp: App {
 
     #if os(iOS)
     /// APNs hands a device token to a `UIApplicationDelegate` and to nothing else — there is no
-    /// SwiftUI door for it. So there is a delegate, and it is three lines long: it catches the
-    /// bytes and hands them to `IskraFeatures`, which is where the decision about what to do with
-    /// them lives.
+    /// SwiftUI door for it, and the same is true of a tap on a banner. So there is a delegate, and
+    /// it forwards: it catches the bytes and the taps and hands them to `IskraFeatures`, which is
+    /// where the decisions about what to do with them live.
     @UIApplicationDelegateAdaptor(PushDelegate.self) private var pushDelegate
     #endif
 
@@ -79,13 +80,69 @@ struct IskraApp: App {
 }
 
 #if os(iOS)
-/// The one thing `UIApplication` still has to be asked for by hand.
-final class PushDelegate: NSObject, UIApplicationDelegate {
+/// The two things `UIApplication` still has to be asked for by hand: the device token, and what a
+/// tap on a notification means.
+///
+/// It decides nothing. Both of those go straight to `IskraFeatures` — `PushPermission` for the
+/// token, `PushRouter` for the tap — because this target owns the bundle and the entitlements and
+/// is meant to stay this short.
+final class PushDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    func application(_ application: UIApplication,
+                     didFinishLaunchingWithOptions options: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        // Has to happen here. A delegate set any later than "the app has finished launching" is a
+        // delegate iOS has already given up asking, and the tap that *started* the app — the one
+        // most worth acting on — is delivered to nobody.
+        UNUserNotificationCenter.current().delegate = self
+        return true
+    }
+
     func application(_ application: UIApplication,
                      didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         Task { @MainActor in
             PushPermission.shared.received(deviceToken: deviceToken)
         }
+    }
+
+    /// Somebody tapped the banner. The room id is the one thing the extension put in `userInfo`,
+    /// and it is the whole of what is needed: see `PushRouter`.
+    ///
+    /// ## Why the completion-handler form, and not `async`
+    ///
+    /// These two were written as `nonisolated … async`, which compiles and is wrong. The delegate
+    /// requirement is not main-actor isolated, so an `async` implementation of it is free to be
+    /// resumed on the generic executor — and what it carries there is a `UNNotificationResponse`,
+    /// a UserNotifications object that is not `Sendable` and whose whole graph belongs to the main
+    /// thread. Reading it from another one is a data race, and a data race on the path that runs
+    /// *while the app is launching from a tap* is a crash on exactly the tap that started the app.
+    ///
+    /// In this form nothing crosses a thread but a `String`: `userInfo` is read synchronously, on
+    /// the thread the system called us on, and only the room id goes to the main actor.
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                            didReceive response: UNNotificationResponse,
+                                            withCompletionHandler completionHandler: @escaping () -> Void) {
+        let roomID = response.notification.request.content.userInfo["room_id"] as? String
+
+        if let roomID {
+            Task { @MainActor in PushRouter.shared.tapped(roomID: roomID) }
+        }
+
+        // Called straight away rather than from inside the hop: the system is waiting on it, and
+        // what it is waiting for — opening a conversation — is this app's business, not its own.
+        completionHandler()
+    }
+
+    /// A push arrived while the app is in front. Without this iOS shows nothing at all, and
+    /// somebody reading one conversation never learns that another one has said something.
+    ///
+    /// Answered synchronously, because the answer is the whole of what the system is asking for.
+    /// `assumeIsolated` rather than a hop: this is delivered on the main thread, and saying so out
+    /// loud means that if it ever is not, we find out at once instead of racing quietly.
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                            willPresent notification: UNNotification,
+                                            withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        let roomID = notification.request.content.userInfo["room_id"] as? String
+        let options = MainActor.assumeIsolated { PushRouter.shared.presentation(forRoomID: roomID) }
+        completionHandler(options)
     }
 
     func application(_ application: UIApplication,
