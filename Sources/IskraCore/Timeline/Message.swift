@@ -228,7 +228,10 @@ public struct Message: Sendable, Identifiable, Equatable {
     ///
     /// Not `let`, for the same reason `delivery` is not: the moment the reader caught up lives on
     /// the event *they* last read, which is usually not one of yours — `TimelineMapper` hands it
-    /// down to the newest message of yours it covers, which is the one wearing the mark.
+    /// down to every message of yours that receipt covers. On the message the receipt names it is
+    /// the moment it was read; above, it is the moment by which it had been. That is the whole of
+    /// what a receipt knows, and it is the same sentence either way: "read at 14:03" is not a claim
+    /// about the second, it is the reader saying so.
     public var readAt: Date?
     public let isEdited: Bool
     /// What this message is an answer to, for one that is.
