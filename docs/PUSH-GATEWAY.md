@@ -71,7 +71,7 @@ apps:
 
 ```nginx
 location /_matrix/push/ {
-    proxy_pass http://127.0.0.1:5000;
+    proxy_pass http://127.0.0.1:5400;
     proxy_set_header Host $host;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 }
@@ -124,14 +124,18 @@ services:
   sygnal:
     image: matrixdotorg/sygnal:latest
     restart: unless-stopped
-    ports: ["127.0.0.1:5000:5000"]
+    ports: ["127.0.0.1:5400:5000"]
     volumes:
       - ./sygnal.yaml:/sygnal.yaml:ro
       - ./keys:/keys:ro
 ```
 
-`127.0.0.1:5000` — не опечатка. Наружу Sygnal не смотрит вообще; снаружи его видно только через
-nginx, у которого есть TLS.
+`127.0.0.1:5400` — не опечатка, и ни одна из двух половин. `127.0.0.1` значит, что наружу Sygnal
+не смотрит вообще: снаружи его видно только через nginx, у которого есть TLS. А номера разные
+потому, что это две разные стороны: внутри контейнера Sygnal слушает свой обычный 5000, и менять
+там нечего, наружу же он опубликован на 5400 — его и ждёт `proxy_pass` в nginx. Порт в
+`sygnal.yaml` при этом трогать не нужно; если его всё-таки поменять, поменяется правая половина
+`-p`, а не левая.
 
 ```sh
 cd /opt/sygnal && sudo docker compose up -d && sudo docker compose logs -f
@@ -144,7 +148,7 @@ cd /opt/sygnal && sudo docker compose up -d && sudo docker compose logs -f
 
 ```sh
 sudo docker run -d --name sygnal --restart unless-stopped \
-  -p 127.0.0.1:5000:5000 \
+  -p 127.0.0.1:5400:5000 \
   -v /opt/sygnal/sygnal.yaml:/sygnal.yaml:ro \
   -v /opt/sygnal/keys:/keys:ro \
   matrixdotorg/sygnal:latest
