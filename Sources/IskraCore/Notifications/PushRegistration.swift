@@ -98,7 +98,7 @@ public struct PushRegistration: Sendable {
                 kind: .http(data: HttpPusherData(url: url,
                                                  // No message content, ever. See the note above.
                                                  format: .eventIdOnly,
-                                                 defaultPayload: nil)),
+                                                 defaultPayload: Self.defaultPayload())),
                 appDisplayName: "Iskra",
                 deviceDisplayName: deviceName,
                 profileTag: nil,
@@ -116,6 +116,55 @@ public struct PushRegistration: Sendable {
         } catch {
             Log.push.error("the server would not take our push token: \(Log.describe(error), privacy: .public)")
         }
+    }
+
+    /// The shell of the notification, written once at registration and reused for every push.
+    ///
+    /// This was `nil`, and `nil` here means *nothing arrives*. `format: .eventIdOnly` tells the
+    /// gateway to send no content, and a gateway with no content and no default payload sends a
+    /// data-only push: an `aps` with neither `alert` nor `mutable-content`. iOS shows such a push
+    /// nothing at all, and — this is the part that costs an afternoon — it does not run the
+    /// notification service extension either. The extension is only woken for a push that already
+    /// *is* a notification; its job is to rewrite one, not to conjure one. So the whole decryption
+    /// path sat there, correct and never called, while the gateway logged `200` and Apple accepted
+    /// every push.
+    ///
+    /// Hence two keys, and both are load-bearing:
+    ///
+    /// - `mutable-content: 1` — the permission for the extension to run at all.
+    /// - `alert` with a `title` *and* a `body` — what makes this a notification rather than a
+    ///   silent push. Both halves: an alert with only a body does not reliably wake the extension.
+    ///
+    /// The words are the server's fallback, and they are the ones already written for the locked
+    /// screen — "Iskra", "Новое сообщение" — because it is the same sentence for the same reason:
+    /// that something arrived, and nothing more. When the extension runs it replaces all of this
+    /// before anybody sees it; when it cannot, this is what is shown, and it is the one line of a
+    /// notification this app does not write on the device.
+    ///
+    /// Localized here, at registration, because this is the last place that knows the reader's
+    /// language: afterwards the sentence lives on a homeserver and is handed to the gateway the
+    /// same way for every push that follows. The `lang:` argument above tells the server the same
+    /// thing, and this is that promise actually kept.
+    static func defaultPayload() -> String? {
+        let payload: [String: Any] = [
+            "aps": [
+                "mutable-content": 1,
+                "alert": [
+                    "title": String(localized: CoreStrings.Push.hiddenTitle),
+                    "body": String(localized: CoreStrings.Push.hiddenBody)
+                ]
+            ]
+        ]
+
+        guard let data = try? JSONSerialization.data(withJSONObject: payload),
+              let json = String(data: data, encoding: .utf8) else {
+            // Two constant strings and a dictionary literal; there is no input here to be
+            // malformed. Said out loud anyway, because the failure it would cause is silence.
+            Log.push.error("the default push payload could not be built")
+            return nil
+        }
+
+        return json
     }
 
     /// Tells the homeserver to stop sending pushes here.
