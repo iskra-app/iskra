@@ -83,9 +83,9 @@ location /_matrix/push/ {
 
 ### По шагам, на сервере
 
-Ниже — всё подряд, от ключа Apple до живого шлюза. Домен пусть будет `push.example.ru`; подставьте
-свой. Если Sygnal вешается на тот же домен, где уже что-то есть, — это просто ещё один `location`,
-и отдельный сертификат не нужен.
+Ниже — всё подряд, от ключа Apple до живого шлюза, на домене `push.iskra.swag.moscow`. Если Sygnal
+вешается на домен, где уже что-то работает, — это просто ещё один `location`, и шаг с сертификатом
+пропускается.
 
 **1. APNs Auth Key.** [developer.apple.com](https://developer.apple.com/account/resources/authkeys/list)
 → Keys → `+` → имя любое → галочка **Apple Push Notifications service (APNs)** → Continue →
@@ -101,10 +101,10 @@ Register → Download.
 **2. Положить ключ на сервер.**
 
 ```sh
-ssh you@push.example.ru
+ssh you@push.iskra.swag.moscow
 sudo mkdir -p /opt/sygnal/keys
 # с ноутбука, в другом окне:
-scp ~/Downloads/AuthKey_XXXXXXXXXX.p8 you@push.example.ru:/tmp/
+scp ~/Downloads/AuthKey_XXXXXXXXXX.p8 you@push.iskra.swag.moscow:/tmp/
 # обратно на сервере:
 sudo mv /tmp/AuthKey_XXXXXXXXXX.p8 /opt/sygnal/keys/
 sudo chmod 600 /opt/sygnal/keys/AuthKey_XXXXXXXXXX.p8
@@ -158,21 +158,103 @@ sudo docker logs -f sygnal
 Тогда `docker-compose.yml` из шага 4 не нужен вовсе. Перезапуск после правки `sygnal.yaml` —
 `sudo docker restart sygnal`; замена образа — `sudo docker rm -f sygnal` и та же команда заново.
 
+`--restart unless-stopped` — это и есть автозапуск: после перезагрузки сервера контейнер поднимет
+сам Docker. Но поднимет он его только если запускается сам, а на этом стоит убедиться один раз, а
+не выяснять после первой же перезагрузки:
+
+```sh
+systemctl is-enabled docker   # ожидается enabled
+sudo systemctl enable docker  # если нет
+```
+
+Смысл `unless-stopped` — «поднимать всегда, кроме случая, когда его остановили руками». То есть
+после `docker stop sygnal` он не вернётся и после перезагрузки, и это нарочно: остановленный
+человеком контейнер остаётся остановленным. Поднять обратно — `sudo docker start sygnal`.
+
 В логе должно быть, что он слушает порт, и **не** должно быть ничего про `.p8`. Жалоба на ключ на
 старте — это либо путь, либо права, и дальше идти незачем.
 
-**5. Сертификат.** Если домен новый:
+**5. DNS и сертификат.** Сначала `A`-запись `push.iskra.swag.moscow` на IP сервера — certbot
+проверяет владение доменом, ходя на него же, так что без записи он не выдаст ничего.
 
-```sh
-sudo apt install certbot python3-certbot-nginx
-sudo certbot --nginx -d push.example.ru
+Перед тем как звать certbot, нужен `server`-блок, который отвечает на 80-м: он и пишет туда TLS, а
+не создаёт конфиг с нуля. Минимальный — в `/etc/nginx/sites-available/sygnal`:
+
+```nginx
+server {
+    listen 80;
+    listen [::]:80;
+    server_name push.iskra.swag.moscow;
+    root /var/www/html;
+}
 ```
 
-Certbot сам пропишет TLS в конфиг nginx и заведёт обновление по таймеру. Самоподписанный
-сертификат не подойдёт: в шлюз ходит homeserver, а не браузер, и цепочку он проверяет — причём
-молча, так что симптомом будет «пуши не приходят», а не ошибка.
+```sh
+sudo ln -s /etc/nginx/sites-available/sygnal /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d push.iskra.swag.moscow
+```
 
-**6. nginx.** В `server`-блок с TLS добавить `location` из раздела выше, затем:
+Certbot допишет TLS в этот блок и заведёт обновление по таймеру. Самоподписанный сертификат не
+подойдёт: в шлюз ходит homeserver, а не браузер, и цепочку он проверяет — причём молча, так что
+симптомом будет «пуши не приходят», а не ошибка.
+
+**6. nginx целиком.** После certbot довести `/etc/nginx/sites-available/sygnal` до этого вида —
+здесь весь файл, а не фрагмент:
+
+```nginx
+# HTTP: только редирект и место для обновления сертификата.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name push.iskra.swag.moscow;
+
+    # Certbot обновляет сертификат по этому пути, и редирект не должен его съесть.
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    # `listen ... http2` слитно, а не отдельной директивой `http2 on` — та появилась в nginx 1.25,
+    # а в Ubuntu 20.04 nginx 1.18, и конфиг с ней просто не пройдёт `nginx -t`.
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name push.iskra.swag.moscow;
+
+    ssl_certificate     /etc/letsencrypt/live/push.iskra.swag.moscow/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/push.iskra.swag.moscow/privkey.pem;
+    include             /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
+
+    # Свой лог, потому что первый вопрос при молчащих пушах — приходил ли сюда вообще
+    # homeserver. В общем access.log это искать среди всего остального.
+    access_log /var/log/nginx/sygnal.access.log;
+    error_log  /var/log/nginx/sygnal.error.log;
+
+    location /_matrix/push/ {
+        proxy_pass http://127.0.0.1:5400;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Sygnal ждёт ответа от APNs внутри запроса, и на молчащем APNs это дольше обычного.
+        proxy_read_timeout 60s;
+    }
+
+    # Всё остальное на этом домене не существует. Sygnal — не сайт, и единственный путь,
+    # который он обслуживает, назван выше; отдавать наружу что-то ещё незачем.
+    location / {
+        return 404;
+    }
+}
+```
 
 ```sh
 sudo nginx -t && sudo systemctl reload nginx
@@ -184,7 +266,7 @@ sudo nginx -t && sudo systemctl reload nginx
 **7. Проверить снаружи** — командой из репозитория, не с сервера:
 
 ```sh
-curl -si -X POST https://push.example.ru/_matrix/push/v1/notify \
+curl -si -X POST https://push.iskra.swag.moscow/_matrix/push/v1/notify \
   -H 'Content-Type: application/json' \
   -d '{"notification":{"devices":[]}}'
 ```
@@ -193,13 +275,13 @@ curl -si -X POST https://push.example.ru/_matrix/push/v1/notify \
 думаете; ошибка сертификата — шаг 5. Пока здесь не `200`, приложение трогать бессмысленно.
 
 **8. И только теперь — одна строка в Swift.** `PushRegistration.gatewayURL` из `nil` в
-`"https://push.example.ru/_matrix/push/v1/notify"`. Дальше — проверка на устройстве, пункт 3.
+`"https://push.iskra.swag.moscow/_matrix/push/v1/notify"`. Дальше — проверка на устройстве, пункт 3.
 
 Полная форма того же запроса, с настоящим устройством, — для отладки уже после шага 8: `pushkey`
 здесь device token, а взять его можно только с устройства.
 
 ```sh
-curl -X POST https://push.example.ru/_matrix/push/v1/notify \
+curl -X POST https://push.iskra.swag.moscow/_matrix/push/v1/notify \
   -H 'Content-Type: application/json' \
   -d '{"notification":{"devices":[{"app_id":"moscow.swag.iskra.dev","pushkey":"<device token>"}]}}'
 ```
