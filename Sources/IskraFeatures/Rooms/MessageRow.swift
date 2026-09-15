@@ -389,9 +389,10 @@ struct DeliveryTick: View {
     /// Whether this is the message that says "read" for all of them — see `Message.carriesReadMark`.
     ///
     /// Every message above the watermark is read, and drawing an eye on each of them stacked the
-    /// same fact down the side of the screen until it read as decoration. The eye goes on the
-    /// newest one; the rest keep the checkmark they had, which still says the true thing about
-    /// them — it left the phone.
+    /// same fact down the side of the screen until it read as decoration. So the column says only
+    /// what is still outstanding: a checkmark while a message is out and unread, the eye on the
+    /// newest one that has been read, and nothing at all above it. An empty margin is the state
+    /// people want to end up in, and it is the one that should be quietest.
     var carriesReadMark = false
 
     var body: some View {
@@ -402,7 +403,8 @@ struct DeliveryTick: View {
             case .sent:
                 Image(systemName: "checkmark")
             case .read where !carriesReadMark:
-                Image(systemName: "checkmark")
+                // Read, and the eye below it already said so. Nothing to add.
+                EmptyView()
             case .read:
                 // A glance, not a second tick: "sent" and "read" as one checkmark and two, or a
                 // checkmark and a ringed checkmark, are the same small mark twice and the eye is
