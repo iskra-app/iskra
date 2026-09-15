@@ -38,6 +38,11 @@ struct MessageMarks: View {
             // the thing you just wrote has left the phone — and there is no other message it
             // could be asked about. A column you cannot tell your own sent messages in would be
             // a functional loss dressed up as consistency.
+            //
+            // It answers that question only while it is still open, mind: a message read long ago
+            // draws nothing at all (see `DeliveryTick`), because the eye further down has already
+            // spoken for it. What the column shows is what is outstanding, and an old message of
+            // yours is not.
             if message.isOwn, let delivery = message.delivery, !delivery.hasFailed {
                 DeliveryTick(status: delivery, carriesReadMark: message.carriesReadMark)
             }

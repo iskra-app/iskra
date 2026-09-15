@@ -250,9 +250,11 @@ public struct Message: Sendable, Identifiable, Equatable {
     ///
     /// A receipt is monotonic, so every message of yours above the watermark is equally read, and
     /// putting an eye on each one said the same true thing fifteen times down the side of the
-    /// screen. One mark at the bottom says it once. The messages above keep their plain "sent"
-    /// tick, which is still the truth about them — it is the *eye* that moves, not the fact, and
-    /// `delivery` still says `.read` on every one of them for anything that asks.
+    /// screen. One mark says it once, and above it the margin goes quiet altogether: a checkmark
+    /// means a message is out and nobody has read it yet, the eye means the reader got this far,
+    /// and nothing at all means there is nothing outstanding to say. `delivery` still reads
+    /// `.read` on every one of them for anything that asks — what stops is the drawing, not the
+    /// fact.
     ///
     /// The newest *read* message rather than simply the newest: a message still in flight below it
     /// would otherwise take the mark off a conversation that has plainly been read.
