@@ -265,6 +265,20 @@ public struct IskraRootView: View {
         }
         .animation(.smooth(duration: Theme.Timing.reaction), value: tintsInterface)
         .environment(\.appLock, appLock)
+        // The cover the app wears on its way out, so that the picture iOS keeps for the app switcher
+        // is a padlock and not somebody's conversation — see `PrivacyCover`.
+        //
+        // Deliberately unanimated, and that is the whole trick. The system photographs the app as it
+        // leaves; a cover that fades in over a quarter of a second is photographed half-transparent,
+        // with the conversation legible straight through it. `nil` against the scene phase says "no
+        // animation for this one change" — scoped to the phase rather than a blanket `.transaction`,
+        // which would strip the animation from every child in the app.
+        .overlay {
+            if PrivacyCover.isNeeded(lockEnabled: appLock.isEnabled, phase: scenePhase) {
+                PrivacyCover()
+            }
+        }
+        .animation(nil, value: scenePhase)
         // The shield, above everything — the tint, a sheet, a media viewer — because a lock that any
         // screen could sit on top of is not a lock. It is here, at the very root, for the same reason
         // the colour scheme is.

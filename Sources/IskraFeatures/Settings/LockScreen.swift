@@ -50,3 +50,49 @@ struct LockScreen: View {
         }
     }
 }
+
+/// What the app looks like the moment it stops being in front: a blank sheet with a closed padlock
+/// on it, and no conversation behind it.
+///
+/// This is the picture iOS keeps of the app — the card in the app switcher, and the thumbnail it
+/// shows again the next time the app is brought forward. The system takes that picture as the app
+/// leaves, so whatever is on screen at that instant is what anybody scrolling the switcher gets to
+/// read, and that is a whole conversation in plain sight on a phone that is, as far as the owner is
+/// concerned, locked. The shield in `LockScreen` cannot help: it goes up on the way *back*, long
+/// after the photograph was taken.
+///
+/// Only when the lock is switched on. Somebody who has not asked the app to lock itself has not
+/// asked for their app switcher to be blank either, and a cover they did not ask for reads as the
+/// app having crashed.
+struct PrivacyCover: View {
+    var body: some View {
+        ZStack {
+            // Opaque, like the shield and for the same reason: a blur or a tint is a picture of the
+            // conversation with a filter on it, and the words survive a filter better than anyone
+            // expects.
+            Rectangle()
+                .fill(.background)
+                .ignoresSafeArea()
+
+            Image(systemName: "lock.fill")
+                .font(.system(size: Theme.Size.avatarLarge))
+                .foregroundStyle(.secondary)
+        }
+        // Nothing to read out and nothing to touch: this is a cover, not a screen.
+        .accessibilityHidden(true)
+        .allowsHitTesting(false)
+    }
+
+    /// Whether the cover should be up, given the lock's setting and where the app is in its life.
+    ///
+    /// `.inactive` is the whole point and not an edge case: it is the phase the app is in *while*
+    /// the switcher photograph is taken — by the time `.background` arrives the picture has already
+    /// been taken. Waiting for `.background` would cover an app nobody was looking at any more and
+    /// leave the one moment that mattered uncovered.
+    ///
+    /// A pure function so `PrivacyCoverTests` can ask it the question directly; a cover is one of
+    /// those things nobody notices is broken until a screenshot proves it.
+    static func isNeeded(lockEnabled: Bool, phase: ScenePhase) -> Bool {
+        lockEnabled && phase != .active
+    }
+}
