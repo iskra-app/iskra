@@ -137,6 +137,23 @@ nginx, у которого есть TLS.
 cd /opt/sygnal && sudo docker compose up -d && sudo docker compose logs -f
 ```
 
+Если `docker compose` отвечает `unknown shorthand flag: 'd' in -d`, то `compose` на этой машине —
+не тот плагин, который понимает `-d`: команда до него не доходит, и флаг разбирает кто-то другой.
+Разбираться необязательно, compose здесь ничего не даёт — один контейнер запускается и так, и это
+ровно тот же контейнер:
+
+```sh
+sudo docker run -d --name sygnal --restart unless-stopped \
+  -p 127.0.0.1:5000:5000 \
+  -v /opt/sygnal/sygnal.yaml:/sygnal.yaml:ro \
+  -v /opt/sygnal/keys:/keys:ro \
+  matrixdotorg/sygnal:latest
+sudo docker logs -f sygnal
+```
+
+Тогда `docker-compose.yml` из шага 4 не нужен вовсе. Перезапуск после правки `sygnal.yaml` —
+`sudo docker restart sygnal`; замена образа — `sudo docker rm -f sygnal` и та же команда заново.
+
 В логе должно быть, что он слушает порт, и **не** должно быть ничего про `.p8`. Жалоба на ключ на
 старте — это либо путь, либо права, и дальше идти незачем.
 
