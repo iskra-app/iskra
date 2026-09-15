@@ -345,14 +345,14 @@ struct MessageActions<Content: View>: View {
                                          systemImage: "clock",
                                          manner: .fact)]
 
-        // Only on your own, and only when a receipt actually carried a moment — see
-        // `Message.readAt`. The ticks beside the bubble already say *that* it was read, and
-        // this is the one thing they have no room to say: when.
-        if let readAt = message.readAt {
-            actions.append(MessageMenuAction(title: Strings.Message.Menu.readAt(Self.exactly(readAt)),
-                                             systemImage: "eye",
-                                             manner: .fact))
-        }
+        // When it was read is deliberately not here for the moment, though `Message.readAt` is
+        // worked out and kept as carefully as ever — putting the line back is putting these five
+        // lines back, and `Strings.Message.Menu.readAt` is still written in both languages.
+        //
+        // What a receipt reports is "I had read this far by 14:03", so the same sentence means
+        // two slightly different things depending on whether it is the message the receipt names
+        // or one above it, and the menu had no way to say which it was holding. Better silence
+        // than a time nobody can tell how to read.
 
         if let deletedAt = message.deletedAt {
             actions.append(MessageMenuAction(title: Strings.Message.Menu.deletedAt(Self.exactly(deletedAt)),
