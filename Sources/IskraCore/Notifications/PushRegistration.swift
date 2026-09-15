@@ -30,13 +30,22 @@ import MatrixRustSDK
 /// point of the notification extension is that the words are assembled on the device that is
 /// allowed to read them.
 public struct PushRegistration: Sendable {
-    /// Where the homeserver should send pushes. Nil until a Sygnal exists — see
-    /// `docs/PUSH-GATEWAY.md`, which is the whole of the work left.
+    /// Where the homeserver should send pushes.
     ///
-    /// Held here rather than in `AppEnvironment` because it is the only thing in the app that is
-    /// *missing* rather than merely configurable: when it becomes a string, push works, and nothing
-    /// else changes.
-    public static let gatewayURL: String? = nil
+    /// Our own Sygnal, because the public one at matrix.org only accepts app ids registered with
+    /// them. It holds this app's APNs key and is the only thing in the chain that talks to Apple:
+    /// the homeserver talks to it, it talks to APNs, and what comes back down to the device is a
+    /// room id and an event id. How it was stood up — the key, the container, the certificate, the
+    /// nginx in front — is in `docs/PUSH-GATEWAY.md`.
+    ///
+    /// Still an `Optional`, and the `guard` below still stands. Not because this is expected to go
+    /// away, but because a gateway that is down is a thing that happens, and the shape that says
+    /// "there may be nowhere to send this" is the shape that logs a line instead of crashing.
+    ///
+    /// Held here rather than in `AppSettings` because it is not a preference. Nobody chooses it,
+    /// and an app that let somebody type a push gateway in would be an app that lets somebody be
+    /// talked into typing one in.
+    public static let gatewayURL: String? = "https://push.iskra.swag.moscow/_matrix/push/v1/notify"
 
     /// The app id the gateway knows this app by — the name of an entry in its `sygnal.yaml`, and
     /// the only thing that tells the gateway *which* APNs to talk to.
