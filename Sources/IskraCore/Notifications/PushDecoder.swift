@@ -108,7 +108,7 @@ public actor PushDecoder {
     /// Every failure here returns nil and says so quietly. There is no error worth showing: a
     /// notification without a picture is a notification.
     private func avatar(for notification: PushNotification, client: Client) async -> Data? {
-        guard let url = notification.avatarURL, !url.isEmpty else { return nil }
+        guard let url = await avatarURL(for: notification, client: client) else { return nil }
 
         do {
             let data = try await withTimeout(Self.avatarBudget) {
@@ -127,6 +127,39 @@ public actor PushDecoder {
             return nil
         }
     }
+
+    /// Where to get the sender's picture from.
+    ///
+    /// The notification itself is the first place to look and, it turns out, almost never has it:
+    /// `NotificationItem` carries a display name but no avatar — not for the sender and not for the
+    /// room — because the notification client syncs the least it can get away with. This was found
+    /// by looking, and only by looking: the probe said "this sender has no picture set" about
+    /// somebody whose picture the app draws on every screen.
+    ///
+    /// So the second place is the account itself. `getProfile` is one small request against a
+    /// homeserver the client is already talking to, and it answers the question the notification
+    /// could not.
+    private func avatarURL(for notification: PushNotification, client: Client) async -> String? {
+        if let carried = notification.avatarURL, !carried.isEmpty { return carried }
+
+        guard let personID = notification.personID else { return nil }
+
+        do {
+            let profile = try await withTimeout(Self.profileBudget) {
+                try await client.getProfile(userId: personID)
+            }
+
+            guard let url = profile.avatarUrl, !url.isEmpty else { return nil }
+            return url
+        } catch {
+            Log.push.error("the sender's profile could not be read: \(Log.describe(error), privacy: .public)")
+            return nil
+        }
+    }
+
+    /// A second for the profile, on top of the two for the picture itself. Both come out of the
+    /// same twenty the whole decryption gets, and together they are still a sixth of it.
+    private static let profileBudget: Duration = .seconds(1)
 
     /// Two seconds, out of the twenty the whole decryption gets. Deliberately a small share: the
     /// words are the notification and the picture is decoration, and decoration does not get to
