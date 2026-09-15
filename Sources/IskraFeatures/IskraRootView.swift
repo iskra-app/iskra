@@ -160,6 +160,10 @@ public struct IskraRootView: View {
                     .task {
                         PushPermission.shared.signedIn(session)
                         await PushPermission.shared.request()
+                        // And ask the server to tell us about reactions, which by default it will
+                        // not — see `ReactionPushRule`. Written on the account rather than the
+                        // device, so this is idempotent and costs one request.
+                        await session.enableReactionPushes()
                     }
                     // The server stopped accepting this session while the app was open — somebody
                     // ended it from another device, or the account was deactivated. `UserSession`
@@ -170,6 +174,9 @@ public struct IskraRootView: View {
                     .onChange(of: session.wasEndedElsewhere) { _, wasEnded in
                         guard wasEnded else { return }
                         AppSettings.forget()
+                        // Somebody else's unread count has no business staying on the icon of an
+                        // app nobody is signed into.
+                        AppBadge.clear()
                         selectedRoomID = nil
                         selectedEventID = nil
                         phase = .signedOut
@@ -217,8 +224,11 @@ public struct IskraRootView: View {
                     #endif
                     // Keep the App-Intents chat directory in step, so Siri and Shortcuts can list the
                     // conversations without waking a client — see `ChatDirectory`.
-                    .onChange(of: session.roomList.rooms) { _, rooms in
+                    .onChange(of: session.roomList.rooms, initial: true) { _, rooms in
                         writeChatDirectory(rooms)
+                        // And the number on the icon, from the same list and at the same moment,
+                        // so that reading a chat takes the count down without anybody asking it to.
+                        AppBadge.update(for: rooms)
                     }
                     // Act on what an intent asked for: open the chat it launched us for, and send any
                     // messages it left in the outbox. Once on appear (a cold launch by an intent), and
@@ -394,6 +404,7 @@ public struct IskraRootView: View {
         #endif
 
         AppSettings.forget()
+        AppBadge.clear()
         selectedRoomID = nil
         selectedEventID = nil
         phase = .signedOut

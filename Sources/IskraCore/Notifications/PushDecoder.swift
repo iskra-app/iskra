@@ -80,6 +80,14 @@ public actor PushDecoder {
         let notifications = try await client.notificationClient(processSetup: .multipleProcesses)
         let status = try await notifications.getNotification(roomId: roomID, eventId: eventID)
 
+        // A reaction to somebody else's message is not this reader's news. Checked here rather
+        // than in the mapper because answering it takes a second event and a second round trip,
+        // and the mapper is a pure function of the one event it is given.
+        if case let .event(item) = status,
+           await isSomebodyElsesBusiness(item, roomID: roomID, client: client, notifications: notifications) {
+            return .silence(.notWorthWaking)
+        }
+
         let outcome = PushMapper.outcome(for: status, roomID: roomID, eventID: eventID)
 
         // If the app lock is on and the app is locked, the message decrypts but its words never reach
@@ -127,6 +135,49 @@ public actor PushDecoder {
             return nil
         }
     }
+
+    /// Whether this is a reaction to a message the reader did not write.
+    ///
+    /// Reactions are worth a notification — somebody answering your message with a heart is news,
+    /// and it is the one kind of push this app deliberately asked the server to start sending. But
+    /// *every* reaction in a room is not: in a group of thirty people, telling this reader about
+    /// every thumbs-up on every message anybody wrote is how somebody learns to turn notifications
+    /// off altogether. The homeserver cannot make the distinction — a push rule cannot see whose
+    /// message a reaction points at — so it is made here, on the device, where the message can
+    /// actually be fetched and looked at.
+    ///
+    /// False for everything that is not a reaction, so nothing else pays for this.
+    private func isSomebodyElsesBusiness(_ item: NotificationItem,
+                                         roomID: String,
+                                         client: Client,
+                                         notifications: NotificationClient) async -> Bool {
+        guard case let .timeline(event) = item.event,
+              let content = try? event.content(),
+              case let .messageLike(.reactionContent(relatedEventId)) = content else {
+            return false
+        }
+
+        do {
+            let related = try await withTimeout(Self.relatedEventBudget) {
+                try await notifications.getNotification(roomId: roomID, eventId: relatedEventId)
+            }
+
+            guard case let .event(item) = related, case let .timeline(event) = item.event else {
+                // The message being reacted to could not be read. Shown rather than swallowed: a
+                // reaction that might be to your own message is closer to news than to noise.
+                return false
+            }
+
+            return try event.senderId() != client.userId()
+        } catch {
+            Log.push.error("the reacted-to message could not be read: \(Log.describe(error), privacy: .public)")
+            return false
+        }
+    }
+
+    /// Two seconds for the message a reaction points at. It is a second round trip on a push that
+    /// is, at best, a heart — so it gets a small share and gives up quietly.
+    private static let relatedEventBudget: Duration = .seconds(2)
 
     /// Where to get the sender's picture from.
     ///
