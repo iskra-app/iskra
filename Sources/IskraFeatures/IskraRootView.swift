@@ -227,6 +227,29 @@ public struct IskraRootView: View {
                     .onChange(of: scenePhase) { _, phase in
                         if phase == .active { Task { await handleIntents(session) } }
                     }
+                    // A tapped notification asked for a conversation. It does not go through the
+                    // intents slot above: that one lives in the shared defaults because Shortcuts
+                    // runs in another process, and a tap does not — it arrives here, on this actor,
+                    // at a moment that races the very foreground it causes. See `PushRouter`.
+                    //
+                    // Read on appear as well as on change, because a tap on a cold launch is
+                    // delivered long before this tree exists.
+                    .task { openRoomAskedForByANotification() }
+                    .onChange(of: PushRouter.shared.roomToOpen) { _, roomID in
+                        guard roomID != nil else { return }
+                        openRoomAskedForByANotification()
+                    }
+                    // And the other direction: the router is what decides whether a push is worth a
+                    // banner, and the one case where it is not is a message in the conversation
+                    // already on screen.
+                    .onChange(of: selectedRoomID, initial: true) { _, roomID in
+                        PushRouter.shared.visibleRoomID = roomID
+                    }
+                    .onChange(of: scenePhase) { _, phase in
+                        // Nothing is "on screen" when the app is not. Without this, going straight
+                        // from a conversation into a pocket silences every push from it.
+                        PushRouter.shared.visibleRoomID = phase == .active ? selectedRoomID : nil
+                    }
             }
         }
         .animation(.smooth, value: isSignedIn)
@@ -332,6 +355,17 @@ public struct IskraRootView: View {
         for item in ChatDirectory.drainOutbox() {
             await session.sendText(item.text, toRoomID: item.roomID)
         }
+    }
+
+    /// Opens whatever conversation a tapped banner asked for, if one did.
+    ///
+    /// Takes the room rather than reading it, so that a later foreground — the app comes back after
+    /// the reader has gone somewhere else themselves — does not drag them back to a chat they have
+    /// already left.
+    private func openRoomAskedForByANotification() {
+        guard let roomID = PushRouter.shared.takeRoomToOpen() else { return }
+        selectedRoomID = roomID
+        selectedEventID = nil
     }
 
     /// Signing out unwinds everything: the session, the selected room, and — because the

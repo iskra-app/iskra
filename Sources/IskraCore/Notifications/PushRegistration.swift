@@ -38,11 +38,28 @@ public struct PushRegistration: Sendable {
     /// else changes.
     public static let gatewayURL: String? = nil
 
-    /// The app id the gateway knows this app by. It is the **bundle id** — not the App Group and
-    /// not the Keychain group, which are two other identifiers that look just like it and are the
-    /// easiest thing in the world to put here by mistake. A wrong one is a push APNs silently
-    /// discards.
+    /// The app id the gateway knows this app by — the name of an entry in its `sygnal.yaml`, and
+    /// the only thing that tells the gateway *which* APNs to talk to.
+    ///
+    /// It is spelled after the **bundle id** — not the App Group and not the Keychain group, which
+    /// are two other identifiers in this project that look just like it and are the easiest thing
+    /// in the world to put here by mistake. A wrong one is a push APNs silently discards.
+    ///
+    /// Two of them, and this is not tidiness. A token minted for a build signed with
+    /// `aps-environment: development` exists in the APNs **sandbox**; one from TestFlight or the
+    /// App Store exists in **production**; and the two are separate worlds that do not know each
+    /// other's tokens. The gateway holds one APNs key and has to be told which door to knock on,
+    /// which it takes from the app id. One entry for both would mean push working in development
+    /// and then stopping dead on the first TestFlight build — with no error anywhere on this side,
+    /// because there is none: the token is valid, the call succeeds, and Apple drops the push.
+    ///
+    /// The gateway's `topic` stays the plain bundle id in both entries. That one really is the
+    /// bundle id, and there is only one of those.
+    #if DEBUG
+    static let appID = "moscow.swag.iskra.dev"
+    #else
     static let appID = "moscow.swag.iskra"
+    #endif
 
     private let client: Client
 

@@ -1,4 +1,5 @@
 import SwiftUI
+import UserNotifications
 import IskraCore
 import IskraFeatures
 
@@ -59,9 +60,9 @@ struct IskraApp: App {
 
     #if os(iOS)
     /// APNs hands a device token to a `UIApplicationDelegate` and to nothing else — there is no
-    /// SwiftUI door for it. So there is a delegate, and it is three lines long: it catches the
-    /// bytes and hands them to `IskraFeatures`, which is where the decision about what to do with
-    /// them lives.
+    /// SwiftUI door for it, and the same is true of a tap on a banner. So there is a delegate, and
+    /// it forwards: it catches the bytes and the taps and hands them to `IskraFeatures`, which is
+    /// where the decisions about what to do with them live.
     @UIApplicationDelegateAdaptor(PushDelegate.self) private var pushDelegate
     #endif
 
@@ -79,13 +80,49 @@ struct IskraApp: App {
 }
 
 #if os(iOS)
-/// The one thing `UIApplication` still has to be asked for by hand.
-final class PushDelegate: NSObject, UIApplicationDelegate {
+/// The two things `UIApplication` still has to be asked for by hand: the device token, and what a
+/// tap on a notification means.
+///
+/// It decides nothing. Both of those go straight to `IskraFeatures` — `PushPermission` for the
+/// token, `PushRouter` for the tap — because this target owns the bundle and the entitlements and
+/// is meant to stay this short.
+final class PushDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    func application(_ application: UIApplication,
+                     didFinishLaunchingWithOptions options: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        // Has to happen here. A delegate set any later than "the app has finished launching" is a
+        // delegate iOS has already given up asking, and the tap that *started* the app — the one
+        // most worth acting on — is delivered to nobody.
+        UNUserNotificationCenter.current().delegate = self
+        return true
+    }
+
     func application(_ application: UIApplication,
                      didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         Task { @MainActor in
             PushPermission.shared.received(deviceToken: deviceToken)
         }
+    }
+
+    /// Somebody tapped the banner. The room id is the one thing the extension put in `userInfo`,
+    /// and it is the whole of what is needed: see `PushRouter`.
+    // `nonisolated` because the delegate protocol is main-actor isolated and neither a
+    // `UNNotification` nor the centre itself is `Sendable` — so an implementation that inherited
+    // that isolation could not be handed its own arguments. The room id is a `String`; it crosses
+    // to the main actor on its own.
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                            didReceive response: UNNotificationResponse) async {
+        guard let roomID = response.notification.request.content.userInfo["room_id"] as? String else {
+            return
+        }
+        await MainActor.run { PushRouter.shared.tapped(roomID: roomID) }
+    }
+
+    /// A push arrived while the app is in front. Without this iOS shows nothing at all, and
+    /// somebody reading one conversation never learns that another one has said something.
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                            willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
+        let roomID = notification.request.content.userInfo["room_id"] as? String
+        return await MainActor.run { PushRouter.shared.presentation(forRoomID: roomID) }
     }
 
     func application(_ application: UIApplication,
