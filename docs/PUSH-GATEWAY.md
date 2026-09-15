@@ -63,6 +63,7 @@ apps:
     topic: moscow.swag.iskra          # = bundle id приложения
     platform: sandbox                 # под aps-environment: development
     push_type: alert
+    convert_device_token_to_hex: false   # мы уже шлём hex; см. ниже
   moscow.swag.iskra:
     type: apns
     keyfile: /keys/AuthKey_XXXXXXXXXX.p8
@@ -71,6 +72,7 @@ apps:
     topic: moscow.swag.iskra
     platform: production              # под TestFlight и App Store
     push_type: alert
+    convert_device_token_to_hex: false
 ```
 
 Ключевое: `topic` — это **bundle id**, а не app group и не keychain group. Их в проекте три
@@ -367,11 +369,24 @@ Xcode ходит во вход `moscow.swag.iskra.dev` с `platform: sandbox`. �
 `Sending (attempt 0) => … room:!… event:$…` — Sygnal понял, какому приложению и какому устройству
 слать, и пошёл в APNs. Дальше отвечает Apple, и её ответы стоит читать буквально:
 
-- **`400 BadDeviceToken`** — токен предъявлен не в ту APNs. Debug-сборка выдаёт **sandbox**-токен,
-  и вход, через который он идёт, обязан быть `platform: sandbox`; по умолчанию Sygnal ходит в
-  production. Это и есть причина, по которой входов два, и первое, что надо проверить, — та ли
-  строка стоит у `moscow.swag.iskra.dev`. Диагноз однозначный: APNs не говорит `BadDeviceToken`
-  про испорченный токен, она говорит так про чужой.
+- **`400 BadDeviceToken`** — Apple не узнаёт токен. Причин ровно две, и различаются они по длине
+  токена, который Sygnal печатает рядом в логе.
+
+  **Токен в логе длиной 96 символов** — значит, Sygnal его испортил, и виноват
+  `convert_device_token_to_hex`, который по умолчанию **включён**. Он base64-декодирует pushkey и
+  переводит в hex, потому что так делают клиенты, шлющие base64. `PushRegistration` шлёт **уже
+  hex** (64 символа), Sygnal декодирует его как base64, получает 48 байт мусора и предъявляет их
+  Apple. Арифметика сходится ровно: 64 символа base64 — это 48 байт, они же 96 hex-символов.
+  Лечится `convert_device_token_to_hex: false` у **обоих** входов. Настоящий APNs-токен — 32 байта,
+  то есть 64 hex-символа, и столько же должно быть в логе.
+
+  **Токен длиной 64 символа** — токен цел, но предъявлен не в ту APNs. Debug-сборка выдаёт
+  **sandbox**-токен, и вход, через который он идёт, обязан быть `platform: sandbox`; по умолчанию
+  Sygnal ходит в production. Это и есть причина, по которой входов два.
+
+  На этом здесь потерялось время, потому что второе объяснение выглядит исчерпывающим и проверяется
+  первым — а `platform` стоял правильно. Длина токена в логе различает их за секунду, и смотреть
+  надо на неё.
 - `400 BadTopic` / `DeviceTokenNotForTopic` — не совпал `topic`. Он равен **bundle id**
   (`moscow.swag.iskra`) у обоих входов, а не имени входа.
 - `403 InvalidProviderToken` — не тот `.p8`, `key_id` или `team_id`.
