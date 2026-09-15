@@ -100,7 +100,13 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
 
         switch outcome {
         case let .show(notification):
-            delivery.handler(content(for: notification, roomID: roomID))
+            delivery.handler(content(for: notification,
+                                     roomID: roomID,
+                                     // Read off the server's own notification, which is the only
+                                     // place this number exists — and read here, because the line
+                                     // above has already taken `pending` and there is nothing left
+                                     // to ask afterwards.
+                                     unread: delivery.fallback.userInfo["unread_count"] as? Int))
 
         case .silence:
             // Nothing to say. There is no supported way for an extension to *drop* a push
@@ -122,7 +128,9 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
         delivery.handler(delivery.fallback)
     }
 
-    private func content(for notification: PushNotification, roomID: String) -> UNNotificationContent {
+    private func content(for notification: PushNotification,
+                         roomID: String,
+                         unread: Int?) -> UNNotificationContent {
         let content = UNMutableNotificationContent()
         content.title = notification.title
         if let sender = notification.sender {
@@ -131,14 +139,27 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
         content.body = notification.body
         content.sound = notification.isNoisy ? .default : nil
 
+        // The number on the icon, while the app is closed and cannot count for itself. The count
+        // is the homeserver's, carried in the push beside the room and event ids — not something
+        // this process works out, which it could not: it holds one event and has no idea what else
+        // is waiting. `nil` means the server offered no number, and then the badge is left exactly
+        // as it was rather than cleared. The app recomputes it from the room list when it opens.
+        if let unread { content.badge = NSNumber(value: unread) }
+
         // Collapses every push from one conversation into one entry, so a room that gets
         // twenty messages is one line on the lock screen and not twenty.
         content.threadIdentifier = roomID
 
         // What the app opens to when the notification is tapped. The room, and nothing else —
-        // the app already has the conversation.
+        // the app already has the conversation. Read by `PushDelegate`, which hands it to
+        // `PushRouter`.
         content.userInfo = ["room_id": roomID]
-        return content
+
+        // And last, the thing that makes it look like a message rather than an app notice: the
+        // sender's face, their name in place of ours, its own line in Notification Summary. This
+        // returns the content above unchanged until the Communication Notifications capability is
+        // enabled on the App IDs — see `CommunicationNotification`, which says what that means.
+        return CommunicationNotification.apply(to: content, for: notification)
     }
 }
 

@@ -162,12 +162,13 @@ ritual.
 
 What is actually left:
 
-- **A push gateway.** The homeserver does not talk to APNs — it talks to a gateway, which
-  holds the app's APNs key and does. The public one at matrix.org only accepts app ids
-  registered with them, so `moscow.swag.iskra` needs a [Sygnal](https://github.com/matrix-org/sygnal)
-  of its own. Everything on this side of it is written: the permission is asked for, the
-  device token is caught, and `Client.setPusher` is called the moment there is a URL to
-  give it. See `docs/PUSH-GATEWAY.md`.
+- **Push, proven on a phone.** Everything is built and the gateway is up — a
+  [Sygnal](https://github.com/matrix-org/sygnal) of this project's own, because the public one at
+  matrix.org only accepts app ids registered with them. What is left cannot be checked anywhere but
+  on a real device: that iOS wakes the notification extension at all, and that the extension's
+  *own* entitlements resolve — it is a separate bundle id, granted the App Group and the Keychain
+  separately from the app. The simulator has no APNs, and `--probe-notification` runs inside the
+  app's process, so neither answers it. See `docs/PUSH-GATEWAY.md`.
 
 - **Answering a verification request.** Iskra can ask to be verified — seven emoji, compared
   against a device that is already trusted — and cannot yet answer somebody else who asks. So

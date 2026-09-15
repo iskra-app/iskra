@@ -30,19 +30,45 @@ import MatrixRustSDK
 /// point of the notification extension is that the words are assembled on the device that is
 /// allowed to read them.
 public struct PushRegistration: Sendable {
-    /// Where the homeserver should send pushes. Nil until a Sygnal exists — see
-    /// `docs/PUSH-GATEWAY.md`, which is the whole of the work left.
+    /// Where the homeserver should send pushes.
     ///
-    /// Held here rather than in `AppEnvironment` because it is the only thing in the app that is
-    /// *missing* rather than merely configurable: when it becomes a string, push works, and nothing
-    /// else changes.
-    public static let gatewayURL: String? = nil
+    /// Our own Sygnal, because the public one at matrix.org only accepts app ids registered with
+    /// them. It holds this app's APNs key and is the only thing in the chain that talks to Apple:
+    /// the homeserver talks to it, it talks to APNs, and what comes back down to the device is a
+    /// room id and an event id. How it was stood up — the key, the container, the certificate, the
+    /// nginx in front — is in `docs/PUSH-GATEWAY.md`.
+    ///
+    /// Still an `Optional`, and the `guard` below still stands. Not because this is expected to go
+    /// away, but because a gateway that is down is a thing that happens, and the shape that says
+    /// "there may be nowhere to send this" is the shape that logs a line instead of crashing.
+    ///
+    /// Held here rather than in `AppSettings` because it is not a preference. Nobody chooses it,
+    /// and an app that let somebody type a push gateway in would be an app that lets somebody be
+    /// talked into typing one in.
+    public static let gatewayURL: String? = "https://push.iskra.swag.moscow/_matrix/push/v1/notify"
 
-    /// The app id the gateway knows this app by. It is the **bundle id** — not the App Group and
-    /// not the Keychain group, which are two other identifiers that look just like it and are the
-    /// easiest thing in the world to put here by mistake. A wrong one is a push APNs silently
-    /// discards.
+    /// The app id the gateway knows this app by — the name of an entry in its `sygnal.yaml`, and
+    /// the only thing that tells the gateway *which* APNs to talk to.
+    ///
+    /// It is spelled after the **bundle id** — not the App Group and not the Keychain group, which
+    /// are two other identifiers in this project that look just like it and are the easiest thing
+    /// in the world to put here by mistake. A wrong one is a push APNs silently discards.
+    ///
+    /// Two of them, and this is not tidiness. A token minted for a build signed with
+    /// `aps-environment: development` exists in the APNs **sandbox**; one from TestFlight or the
+    /// App Store exists in **production**; and the two are separate worlds that do not know each
+    /// other's tokens. The gateway holds one APNs key and has to be told which door to knock on,
+    /// which it takes from the app id. One entry for both would mean push working in development
+    /// and then stopping dead on the first TestFlight build — with no error anywhere on this side,
+    /// because there is none: the token is valid, the call succeeds, and Apple drops the push.
+    ///
+    /// The gateway's `topic` stays the plain bundle id in both entries. That one really is the
+    /// bundle id, and there is only one of those.
+    #if DEBUG
+    static let appID = "moscow.swag.iskra.dev"
+    #else
     static let appID = "moscow.swag.iskra"
+    #endif
 
     private let client: Client
 
@@ -72,7 +98,7 @@ public struct PushRegistration: Sendable {
                 kind: .http(data: HttpPusherData(url: url,
                                                  // No message content, ever. See the note above.
                                                  format: .eventIdOnly,
-                                                 defaultPayload: nil)),
+                                                 defaultPayload: Self.defaultPayload())),
                 appDisplayName: "Iskra",
                 deviceDisplayName: deviceName,
                 profileTag: nil,
@@ -90,6 +116,55 @@ public struct PushRegistration: Sendable {
         } catch {
             Log.push.error("the server would not take our push token: \(Log.describe(error), privacy: .public)")
         }
+    }
+
+    /// The shell of the notification, written once at registration and reused for every push.
+    ///
+    /// This was `nil`, and `nil` here means *nothing arrives*. `format: .eventIdOnly` tells the
+    /// gateway to send no content, and a gateway with no content and no default payload sends a
+    /// data-only push: an `aps` with neither `alert` nor `mutable-content`. iOS shows such a push
+    /// nothing at all, and — this is the part that costs an afternoon — it does not run the
+    /// notification service extension either. The extension is only woken for a push that already
+    /// *is* a notification; its job is to rewrite one, not to conjure one. So the whole decryption
+    /// path sat there, correct and never called, while the gateway logged `200` and Apple accepted
+    /// every push.
+    ///
+    /// Hence two keys, and both are load-bearing:
+    ///
+    /// - `mutable-content: 1` — the permission for the extension to run at all.
+    /// - `alert` with a `title` *and* a `body` — what makes this a notification rather than a
+    ///   silent push. Both halves: an alert with only a body does not reliably wake the extension.
+    ///
+    /// The words are the server's fallback, and they are the ones already written for the locked
+    /// screen — "Iskra", "Новое сообщение" — because it is the same sentence for the same reason:
+    /// that something arrived, and nothing more. When the extension runs it replaces all of this
+    /// before anybody sees it; when it cannot, this is what is shown, and it is the one line of a
+    /// notification this app does not write on the device.
+    ///
+    /// Localized here, at registration, because this is the last place that knows the reader's
+    /// language: afterwards the sentence lives on a homeserver and is handed to the gateway the
+    /// same way for every push that follows. The `lang:` argument above tells the server the same
+    /// thing, and this is that promise actually kept.
+    static func defaultPayload() -> String? {
+        let payload: [String: Any] = [
+            "aps": [
+                "mutable-content": 1,
+                "alert": [
+                    "title": String(localized: CoreStrings.Push.hiddenTitle),
+                    "body": String(localized: CoreStrings.Push.hiddenBody)
+                ]
+            ]
+        ]
+
+        guard let data = try? JSONSerialization.data(withJSONObject: payload),
+              let json = String(data: data, encoding: .utf8) else {
+            // Two constant strings and a dictionary literal; there is no input here to be
+            // malformed. Said out loud anyway, because the failure it would cause is silence.
+            Log.push.error("the default push payload could not be built")
+            return nil
+        }
+
+        return json
     }
 
     /// Tells the homeserver to stop sending pushes here.
