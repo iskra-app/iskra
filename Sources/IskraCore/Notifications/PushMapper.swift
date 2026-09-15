@@ -53,7 +53,10 @@ enum PushMapper {
                                           sender: nil,
                                           body: String(localized: CoreStrings.Push.invite(
                                               senderName.isEmpty ? sender : senderName)),
-                                          isNoisy: isNoisy))
+                                          isNoisy: isNoisy,
+                                          personName: senderName.isEmpty ? sender : senderName,
+                                          personID: sender,
+                                          avatarURL: item.senderInfo.avatarUrl))
 
         case let .timeline(event):
             guard let content = try? event.content(),
@@ -71,7 +74,14 @@ enum PushMapper {
                                           title: who.title,
                                           sender: who.sender,
                                           body: body,
-                                          isNoisy: isNoisy))
+                                          isNoisy: isNoisy,
+                                          // Deliberately not `who.sender`, which is nil in a
+                                          // direct chat. Who spoke and what goes on the second
+                                          // line are two questions, and only one of them has an
+                                          // answer that depends on the room.
+                                          personName: senderName.isEmpty ? event.senderId() : senderName,
+                                          personID: event.senderId(),
+                                          avatarURL: item.senderInfo.avatarUrl))
         }
     }
 
