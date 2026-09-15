@@ -87,8 +87,55 @@ public actor PushDecoder {
         // and strips the notification down to "New message". The decryption still happened — tapping
         // the banner opens the right room, once the user is past the lock.
         let locked = AppLock.isLockedNow(defaults: UserDefaults(suiteName: AppEnvironment.appGroupIdentifier))
-        return PushMapper.redactIfLocked(outcome, locked: locked)
+        let redacted = PushMapper.redactIfLocked(outcome, locked: locked)
+
+        // The picture goes on last, and only onto something that is still going to be shown. A
+        // locked phone has had its words taken away by the line above; adding the sender's face
+        // back underneath them would give away exactly what was just withheld.
+        guard case let .show(notification) = redacted, !locked else { return redacted }
+        return .show(notification.withAvatar(await avatar(for: notification, client: client)))
     }
+
+    /// The sender's avatar, or nil.
+    ///
+    /// Bounded twice over, and both bounds are the point. `avatarBudget` is short because this is
+    /// the one part of a notification nobody is waiting for: a face is worth two seconds and not a
+    /// second more, and the alternative to a slow avatar is not a slow notification but *no*
+    /// notification, when iOS runs out of patience with the extension and shows the server's
+    /// fallback text instead. And the bytes are capped, because this runs in a process with 24 MB
+    /// to its name and the URL points at a server that can say anything it likes.
+    ///
+    /// Every failure here returns nil and says so quietly. There is no error worth showing: a
+    /// notification without a picture is a notification.
+    private func avatar(for notification: PushNotification, client: Client) async -> Data? {
+        guard let url = notification.avatarURL, !url.isEmpty else { return nil }
+
+        do {
+            let data = try await withTimeout(Self.avatarBudget) {
+                let source = try MediaSource.fromUrl(url: url)
+                return try await client.getMediaContent(mediaSource: source)
+            }
+
+            guard data.count <= Self.avatarLimit else {
+                Log.push.error("the sender's avatar was too large to put on a notification")
+                return nil
+            }
+
+            return data
+        } catch {
+            Log.push.error("the sender's avatar could not be fetched: \(Log.describe(error), privacy: .public)")
+            return nil
+        }
+    }
+
+    /// Two seconds, out of the twenty the whole decryption gets. Deliberately a small share: the
+    /// words are the notification and the picture is decoration, and decoration does not get to
+    /// spend the budget that the words need.
+    private static let avatarBudget: Duration = .seconds(2)
+
+    /// 2 MB. An avatar is a small square and nothing sane is larger; the number is here because
+    /// the extension has 24 MB in total, and "whatever the server sends" is not a size.
+    private static let avatarLimit = 2 * 1024 * 1024
 
     /// A real room and a real message to try this on, for `Iskra --probe-notification` when it
     /// is given nothing to work with. Nil if nobody is signed in, or if there is not a single

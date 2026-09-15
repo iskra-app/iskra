@@ -30,18 +30,64 @@ public struct PushNotification: Sendable, Equatable {
     /// this is where that instruction arrives.
     public let isNoisy: Bool
 
+    /// Who spoke, as a name, *always* — including in a direct chat, where `sender` is
+    /// deliberately nil because printing the name twice is all it would achieve.
+    ///
+    /// The two are not the same question. `sender` is "what goes on the second line"; this is
+    /// "whose message is this", and a notification that draws a person needs an answer even when
+    /// it has nowhere to write it. Nil only when the sender chose no display name and their
+    /// Matrix ID is all there is.
+    public let personName: String?
+
+    /// The sender's Matrix ID. What tells iOS that twenty messages from one person are twenty
+    /// messages from *one person*: it is the handle the intent is built around, and it is stable
+    /// in a way a display name is not.
+    public let personID: String?
+
+    /// The sender's avatar, as an `mxc://` URL — not bytes. The mapper is a pure function and
+    /// cannot fetch anything; `PushDecoder` is what turns this into `avatar`.
+    public let avatarURL: String?
+
+    /// The avatar, downloaded and decrypted. Nil whenever it could not be had in time, which is
+    /// not a failure: a notification without a picture is a notification, and a notification that
+    /// arrived late because it waited for a picture is not.
+    public let avatar: Data?
+
     public init(roomID: String,
                 eventID: String,
                 title: String,
                 sender: String?,
                 body: String,
-                isNoisy: Bool) {
+                isNoisy: Bool,
+                personName: String? = nil,
+                personID: String? = nil,
+                avatarURL: String? = nil,
+                avatar: Data? = nil) {
         self.roomID = roomID
         self.eventID = eventID
         self.title = title
         self.sender = sender
         self.body = body
         self.isNoisy = isNoisy
+        self.personName = personName
+        self.personID = personID
+        self.avatarURL = avatarURL
+        self.avatar = avatar
+    }
+
+    /// The same notification with its picture in it. Written this way so that the fetch lives in
+    /// `PushDecoder`, where the client is, and the mapper stays a pure function of an SDK value.
+    public func withAvatar(_ avatar: Data?) -> PushNotification {
+        PushNotification(roomID: roomID,
+                         eventID: eventID,
+                         title: title,
+                         sender: sender,
+                         body: body,
+                         isNoisy: isNoisy,
+                         personName: personName,
+                         personID: personID,
+                         avatarURL: avatarURL,
+                         avatar: avatar)
     }
 }
 

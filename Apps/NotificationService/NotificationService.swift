@@ -136,9 +136,15 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
         content.threadIdentifier = roomID
 
         // What the app opens to when the notification is tapped. The room, and nothing else —
-        // the app already has the conversation.
+        // the app already has the conversation. Read by `PushDelegate`, which hands it to
+        // `PushRouter`.
         content.userInfo = ["room_id": roomID]
-        return content
+
+        // And last, the thing that makes it look like a message rather than an app notice: the
+        // sender's face, their name in place of ours, its own line in Notification Summary. This
+        // returns the content above unchanged until the Communication Notifications capability is
+        // enabled on the App IDs — see `CommunicationNotification`, which says what that means.
+        return CommunicationNotification.apply(to: content, for: notification)
     }
 }
 
