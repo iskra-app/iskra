@@ -30,6 +30,18 @@ struct ReadReceiptTests {
         return nil
     }
 
+    private func marked(_ rows: [TimelineRow]) -> [String] {
+        rows.compactMap { row in
+            guard case let .message(message) = row, message.carriesReadMark else { return nil }
+            return message.id
+        }
+    }
+
+    private func readAt(_ rows: [TimelineRow], _ id: String) -> Date? {
+        for case let .message(message) in rows where message.id == id { return message.readAt }
+        return nil
+    }
+
     /// The bug as reported: the mark showed up on the last read message and on nothing else.
     @Test("a receipt at the bottom reads everything above it")
     func readReachesBackwards() {
@@ -146,5 +158,85 @@ struct ReadReceiptTests {
         #expect(delivery(rows, "sending") == .sending)
         #expect(delivery(rows, "failed") == .failed(.server))
         #expect(delivery(rows, "sent") == .read)
+    }
+
+    // MARK: - Where the eye goes, and what it can say
+
+    /// The whole conversation being read is one fact, and the screen should state it once.
+    @Test("the eye goes on the newest read message and nowhere else")
+    func onlyTheNewestReadMessageIsMarked() {
+        let rows = TimelineMapper.withReadPropagated([
+            message("m1", delivery: .sent),
+            message("m2", delivery: .sent),
+            message("m3", delivery: .read),
+        ])
+
+        #expect(marked(rows) == ["m3"])
+        // And the others are still read — it is the mark that moved, not the fact.
+        #expect(delivery(rows, "m1") == .read)
+    }
+
+    /// The mark follows the newest *read* message, not the newest one: a message still on its way
+    /// out underneath it must not take "read" off the conversation.
+    @Test("a message still in flight does not take the mark")
+    func unsentMessagesDoNotStealTheMark() {
+        let rows = TimelineMapper.withReadPropagated([
+            message("read", delivery: .read),
+            message("sending", delivery: .sending),
+        ])
+
+        #expect(marked(rows) == ["read"])
+    }
+
+    /// Nobody has read anything, so nothing wears the mark.
+    @Test("an unread conversation has no mark in it")
+    func nothingReadIsNotMarked() {
+        let rows = TimelineMapper.withReadPropagated([
+            message("m1", delivery: .sent),
+            message("m2", delivery: .sent),
+        ])
+
+        #expect(marked(rows).isEmpty)
+    }
+
+    /// Somebody else's message never wears it, however recently it was read.
+    @Test("the mark is only ever on your own")
+    func theirMessagesAreNeverMarked() {
+        let rows = TimelineMapper.withReadPropagated([
+            message("mine", delivery: .read),
+            message("theirs", own: false, delivery: nil),
+        ])
+
+        #expect(marked(rows) == ["mine"])
+    }
+
+    /// The second half of the complaint: the menu had no moment to show, because the receipt's
+    /// timestamp lives on the event the *reader* got to — theirs — and it was thrown away with it.
+    @Test("the watermark's moment reaches the message it is about")
+    func theWatermarkCarriesItsMoment() {
+        let caughtUp = Date(timeIntervalSince1970: 1_700_000_000)
+        let rows = TimelineMapper.withReadPropagated([
+            message("mine1", delivery: .sent),
+            message("mine2", delivery: .sent),
+            message("theirs", own: false, delivery: nil),
+        ], readUpTo: 3, at: caughtUp)
+
+        #expect(marked(rows) == ["mine2"])
+        #expect(readAt(rows, "mine2") == caughtUp)
+        // And no further down: when they read *that* one, nobody knows.
+        #expect(readAt(rows, "mine1") == nil)
+    }
+
+    /// A receipt is allowed to arrive with no timestamp on it. Then the mark is still right and
+    /// the menu still says nothing, which is the whole of what is known.
+    @Test("a watermark without a moment marks the message and invents nothing")
+    func aMomentlessWatermarkInventsNothing() {
+        let rows = TimelineMapper.withReadPropagated([
+            message("mine", delivery: .sent),
+            message("theirs", own: false, delivery: nil),
+        ], readUpTo: 2, at: nil)
+
+        #expect(marked(rows) == ["mine"])
+        #expect(readAt(rows, "mine") == nil)
     }
 }

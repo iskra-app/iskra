@@ -386,6 +386,13 @@ struct ReactionPill: View {
 /// Sending, sent, read. Shown only on your own messages, and never as a raw word.
 struct DeliveryTick: View {
     let status: DeliveryStatus
+    /// Whether this is the message that says "read" for all of them — see `Message.carriesReadMark`.
+    ///
+    /// Every message above the watermark is read, and drawing an eye on each of them stacked the
+    /// same fact down the side of the screen until it read as decoration. The eye goes on the
+    /// newest one; the rest keep the checkmark they had, which still says the true thing about
+    /// them — it left the phone.
+    var carriesReadMark = false
 
     var body: some View {
         Group {
@@ -393,6 +400,8 @@ struct DeliveryTick: View {
             case .sending:
                 Image(systemName: "clock")
             case .sent:
+                Image(systemName: "checkmark")
+            case .read where !carriesReadMark:
                 Image(systemName: "checkmark")
             case .read:
                 // A glance, not a second tick: "sent" and "read" as one checkmark and two, or a
