@@ -47,6 +47,7 @@ struct RecordLock: View {
     var onCamera: Bool = false
 
     @Environment(\.accent) private var accent
+    @Environment(\.colorScheme) private var scheme
 
     private var reach: Double { gesture.reach }
     private var isLocked: Bool { gesture.hasLocked }
@@ -100,7 +101,10 @@ struct RecordLock: View {
             marks.foregroundStyle(onCamera ? AnyShapeStyle(.white) : AnyShapeStyle(.secondary))
 
             marks
-                .foregroundStyle(accent.foreground)
+                // Scheme-aware, because the pill this is masked over is glass: mono's plain
+                // `foreground` is `.background`, which resolves against the glass rather than
+                // against the page and paints the glyph in the colour it is standing on.
+                .foregroundStyle(accent.foreground(in: scheme))
                 .mask(alignment: .bottom) {
                     Rectangle().frame(height: filled)
                 }
