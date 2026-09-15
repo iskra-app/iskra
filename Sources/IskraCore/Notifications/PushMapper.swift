@@ -56,7 +56,7 @@ enum PushMapper {
                                           isNoisy: isNoisy,
                                           personName: senderName.isEmpty ? sender : senderName,
                                           personID: sender,
-                                          avatarURL: item.senderInfo.avatarUrl))
+                                          avatarURL: Self.picture(for: item)))
 
         case let .timeline(event):
             guard let content = try? event.content(),
@@ -81,7 +81,7 @@ enum PushMapper {
                                           // answer that depends on the room.
                                           personName: senderName.isEmpty ? event.senderId() : senderName,
                                           personID: event.senderId(),
-                                          avatarURL: item.senderInfo.avatarUrl))
+                                          avatarURL: Self.picture(for: item)))
         }
     }
 
@@ -133,6 +133,21 @@ enum PushMapper {
 
         let title = isDirect ? senderName : roomName
         return (title, senderName == title ? nil : senderName)
+    }
+
+    /// Whose face to put on the notification: the sender's, and the room's when the sender has
+    /// none.
+    ///
+    /// The fallback is not a nicety. Plenty of people never set a picture — the first sender this
+    /// was tried on had none — and in a direct chat the room's avatar *is* that person's, because
+    /// Matrix builds a DM's picture out of the other member. So the fallback usually finds exactly
+    /// the face the sender would have given us, and in a group it finds the group, which is what
+    /// the eye expects there anyway.
+    static func picture(for item: NotificationItem) -> String? {
+        if let sender = item.senderInfo.avatarUrl, !sender.isEmpty { return sender }
+
+        guard let room = item.roomInfo.avatarUrl, !room.isEmpty else { return nil }
+        return room
     }
 
     /// The words for one event. Nil means "not news" — see `PushOutcome.Silence`.
