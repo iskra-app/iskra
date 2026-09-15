@@ -269,6 +269,19 @@ struct MessageComposer: View {
             // recording itself, which changes ten times a second as the waveform grows, and
             // animating the composer on each of those would set it breathing.
             .animation(.smooth(duration: 0.25), value: voice == nil)
+            // Answering a message puts the cursor in the field and the keyboard on screen.
+            //
+            // Choosing "Reply" — from the menu, or by swiping the bubble — *is* the decision to
+            // write something; asking for a second tap on the field afterwards is asking twice. The
+            // same goes for an edit, where the words are already in the field waiting to be changed.
+            //
+            // Watching the context rather than the message, so that moving from answering one
+            // message to answering another does not steal focus back from a field the user is
+            // already typing in — they are the same gesture, and it only matters that the keyboard
+            // is up, which it already is.
+            .onChange(of: context == nil) { _, isPlainDraft in
+                if !isPlainDraft { isFocused = true }
+            }
             .padding(.horizontal, Theme.Spacing.normal)
             .padding(.vertical, Theme.Spacing.close)
             // How tall the composer actually is right now — one line, or five. Measured,
