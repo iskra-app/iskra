@@ -52,8 +52,12 @@ public final class AppLock {
     public private(set) var isLocked: Bool
 
     /// When the app was last in the foreground, set as it leaves. Nil means it has not left since it
-    /// came up.
+    /// came up — or that the trip it made has already been answered with a face.
     private var lastActive: Date?
+
+    /// Whether the system's authentication sheet is up. While it is, the scene's comings and goings
+    /// belong to that sheet and say nothing about the user leaving the app.
+    private var isAuthenticating = false
 
     private let defaults: UserDefaults?
 
@@ -82,13 +86,27 @@ public final class AppLock {
     /// The app went to the background. Remember when — in memory, and in the shared defaults so the
     /// notification extension can read it — so `enteredForeground` and `isLockedNow` can both measure
     /// the trip.
+    /// Deaf to the scene while the system's own authentication sheet is up. That sheet belongs to
+    /// another process and takes the app off the screen to show itself, so the app is told it left
+    /// and came back — a trip it never made, and one `immediately` would read as reason to lock
+    /// again the instant the face was accepted.
     public func enteredBackground(now: Date = .now) {
+        guard !isAuthenticating else { return }
         lastActive = now
         defaults?.set(now.timeIntervalSinceReferenceDate, forKey: Keys.lastActive)
     }
 
     /// The app came back. Lock if it was away long enough — see `shouldLock`.
+    ///
+    /// A return with no departure behind it locks nothing, and that guard is the whole of the
+    /// unlock-relock loop. `shouldLock` reads a missing `lastActive` as "lock", which is right for
+    /// the two places that ask it cold — a launch, and the notification extension, neither of which
+    /// has anything to vouch for who is holding the phone — and wrong here, where the app has been
+    /// on screen the whole time and no trip happened at all. Without it the shield comes down, the
+    /// scene goes `.active`, there is no departure on record, so the shield goes straight back up
+    /// and asks for the face again, for ever.
     public func enteredForeground(now: Date = .now) {
+        guard !isAuthenticating, lastActive != nil else { return }
         if Self.shouldLock(enabled: isEnabled, lastActive: lastActive, now: now, timeout: timeout) {
             isLocked = true
         }
@@ -124,7 +142,8 @@ public final class AppLock {
 
     /// Asks the system to prove it is the owner. On success the shield comes down. A failure or a
     /// cancel leaves it up — there is no other way past.
-    public func authenticate(reason: String) async -> Bool {
+    public func authenticate(reason: String, now: Date = .now) async -> Bool {
+        guard !isAuthenticating else { return false }
         let context = LAContext()
         var error: NSError?
         // `.deviceOwnerAuthentication` includes the passcode fallback, so this is available whenever
@@ -133,13 +152,32 @@ public final class AppLock {
             return false
         }
 
+        isAuthenticating = true
+        defer { isAuthenticating = false }
+
         do {
             let ok = try await context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason)
-            if ok { isLocked = false }
+            if ok { didAuthenticate(now: now) }
             return ok
         } catch {
             return false
         }
+    }
+
+    /// The shield comes down, and the trip that closed it is spent.
+    ///
+    /// Forgetting `lastActive` is the point: it is the record of a departure, that departure has now
+    /// been answered for, and leaving it behind would have the next `.active` measure the same trip
+    /// a second time and lock again. The shared defaults are stamped with *now* instead, so the
+    /// notification extension — which knows nothing but that stamp — sees an app in use rather than
+    /// one still out of the room.
+    /// Internal rather than private so the tests can walk the lock through an unlock without a face
+    /// to show it — and internal rather than public so that nothing above `IskraCore`, which is to
+    /// say no screen, can open the lock without going through the system.
+    func didAuthenticate(now: Date) {
+        isLocked = false
+        lastActive = nil
+        defaults?.set(now.timeIntervalSinceReferenceDate, forKey: Keys.lastActive)
     }
 
     /// Whether the device can authenticate at all — for the settings screen, which should not offer

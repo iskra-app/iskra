@@ -318,6 +318,15 @@ public struct RoomView: View {
                 // conversation having ended some way above the bar you answer it in.
                 .padding(.bottom, Theme.Spacing.close)
             }
+            // Drag the conversation and the keyboard goes down with your finger.
+            //
+            // `.interactively` rather than `.immediately` because the keyboard should follow the
+            // hand rather than vanish at the first pixel of movement: pulling down takes it down
+            // with you, and changing your mind halfway puts it back. Reaching for something further
+            // up the conversation is the one gesture that plainly means "I have stopped typing for
+            // a moment", and until now it left half the screen covered by a keyboard nobody was
+            // using.
+            .scrollDismissesKeyboard(.interactively)
             .defaultScrollAnchor(.bottom)
             // What keeps the conversation still while history lands on top of it.
             //
