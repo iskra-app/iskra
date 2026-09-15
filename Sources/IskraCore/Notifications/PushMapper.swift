@@ -165,6 +165,13 @@ enum PushMapper {
         case .sticker:
             return String(core: CoreStrings.Preview.sticker)
 
+        case .reactionContent:
+            // Only ever reached for a reaction to something the reader wrote — `PushDecoder`
+            // silences the rest before the mapper sees them, because a notification for every
+            // reaction in every room is how a group chat teaches somebody to turn notifications
+            // off. Which emoji it was is not in the event the SDK hands over, so it is not here.
+            return String(core: CoreStrings.Push.reaction)
+
         case .roomEncrypted:
             // Still encrypted after all that: the key for this message never reached this
             // device. Saying so beats silence — something was said, and the user is entitled
