@@ -10,7 +10,10 @@ import Testing
 /// they plainly read the rest, that is how they arrived at the bottom.
 @Suite("Read receipts")
 struct ReadReceiptTests {
-    private func message(_ id: String, own: Bool = true, delivery: DeliveryStatus?) -> TimelineRow {
+    private func message(_ id: String,
+                         own: Bool = true,
+                         delivery: DeliveryStatus?,
+                         readAt: Date? = nil) -> TimelineRow {
         .message(Message(id: id,
                          kind: .text("…"),
                          senderID: own ? "@me:example.org" : "@a:example.org",
@@ -19,6 +22,7 @@ struct ReadReceiptTests {
                          isOwn: own,
                          timestamp: Date(timeIntervalSince1970: 0),
                          delivery: delivery,
+                         readAt: readAt,
                          isEdited: false,
                          replyTo: nil,
                          reactions: [],
@@ -212,7 +216,7 @@ struct ReadReceiptTests {
 
     /// The second half of the complaint: the menu had no moment to show, because the receipt's
     /// timestamp lives on the event the *reader* got to — theirs — and it was thrown away with it.
-    @Test("the watermark's moment reaches the message it is about")
+    @Test("the watermark's moment reaches every message it covers")
     func theWatermarkCarriesItsMoment() {
         let caughtUp = Date(timeIntervalSince1970: 1_700_000_000)
         let rows = TimelineMapper.withReadPropagated([
@@ -222,9 +226,42 @@ struct ReadReceiptTests {
         ], readUpTo: 3, at: caughtUp)
 
         #expect(marked(rows) == ["mine2"])
+        // Both of them, and not only the one wearing the eye: the receipt is as true of the
+        // message above as of the one it names — read by then, if not before.
         #expect(readAt(rows, "mine2") == caughtUp)
-        // And no further down: when they read *that* one, nobody knows.
-        #expect(readAt(rows, "mine1") == nil)
+        #expect(readAt(rows, "mine1") == caughtUp)
+    }
+
+    /// A message with a receipt of its own is a tighter bound than anything newer, and the messages
+    /// above it take *its* moment rather than the later one.
+    @Test("the nearest receipt is the one that answers")
+    func theNearestReceiptWins() {
+        let earlier = Date(timeIntervalSince1970: 1_700_000_000)
+        let later = Date(timeIntervalSince1970: 1_700_003_600)
+        let rows = TimelineMapper.withReadPropagated([
+            message("old", delivery: .sent),
+            message("mid", delivery: .read, readAt: earlier),
+            message("new", delivery: .sent),
+            message("theirs", own: false, delivery: nil),
+        ], readUpTo: 4, at: later)
+
+        #expect(readAt(rows, "new") == later)
+        #expect(readAt(rows, "mid") == earlier)
+        #expect(readAt(rows, "old") == earlier)
+        #expect(marked(rows) == ["new"])
+    }
+
+    /// Everything read and not one receipt carried a moment: the ticks are still right and the
+    /// menu still says nothing rather than inventing a time.
+    @Test("no moment anywhere invents none")
+    func noMomentInventsNone() {
+        let rows = TimelineMapper.withReadPropagated([
+            message("m1", delivery: .sent),
+            message("m2", delivery: .read),
+        ])
+
+        #expect(delivery(rows, "m1") == .read)
+        #expect(readAt(rows, "m1") == nil)
     }
 
     /// A receipt is allowed to arrive with no timestamp on it. Then the mark is still right and

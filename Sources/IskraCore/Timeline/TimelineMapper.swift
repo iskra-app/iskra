@@ -110,11 +110,12 @@ enum TimelineMapper {
     /// it says, and the screen was reporting the protocol instead of the conversation.
     ///
     /// Receipts are monotonic: reading event N is reading everything before it. So the last event
-    /// carrying a receipt is a watermark, and everything of yours above it is read too. `readAt`
-    /// is deliberately *not* carried down with it — the later receipt's moment is when the reader
-    /// caught up, not when they read the message four above, and `Message.readAt` promises a
-    /// moment somebody actually reported. An inferred read has no moment, which is a case the menu
-    /// already handles (see `Message.readAt`).
+    /// carrying a receipt is a watermark, and everything of yours above it is read too — and so is
+    /// the moment on it, which comes down with the fact rather than staying behind. The receipt
+    /// reports "read this far by 14:03", which is exactly true of the message it names and an upper
+    /// bound for every message above: read then or read earlier, and 14:03 is the only moment
+    /// anybody reported. The alternative was showing the time under one message out of fifteen that
+    /// were all equally read, which answers "when?" by pointing somewhere else.
     ///
     /// The watermark comes in two forms, and the second is the whole reason this takes a parameter.
     /// `.read` on one of your own messages is the easy case: the receipt landed on something you
@@ -135,31 +136,43 @@ enum TimelineMapper {
         var seenRead = false
         var marked = false
 
+        // The moment to hand to a message that was read without a receipt of its own: the nearest
+        // receipt that still covers it. Walking from the newest downwards, that is simply the last
+        // receipt this loop went past — every step back is a step to an older message, and the
+        // receipt it meets next is a tighter bound than the one before.
+        //
+        // Tighter, and never wrong in the other direction. A receipt says "I had read this far by
+        // 14:03", so 14:03 is the answer for the message it names and an upper bound for every
+        // message above it — read then, or read earlier. The menu says the moment the reader
+        // reported; it is the only moment anybody reported.
+        var moment: Date?
+
         // Downwards from the newest, because the watermark is below the messages it settles.
         for index in rows.indices.reversed() {
             guard case var .message(message) = rows[index], message.isOwn else { continue }
 
+            // Stepping into the stretch the foreign watermark covers — see `readUpTo`.
+            if index < readPrefix, moment == nil { moment = readPrefixAt }
+
             if message.delivery == .read {
                 seenRead = true
+                // Its own receipt is the tightest bound there is for everything above it.
+                moment = message.readAt ?? moment
             } else if message.delivery == .sent, seenRead || index < readPrefix {
                 message.delivery = .read
-
-                // The moment goes to the newest message the watermark covers and no further down.
-                // Not thrift: "read at 14:03" against the message four above it would be a claim
-                // the receipt never made — the reader caught up at 14:03, and when they read *that*
-                // one nobody knows. The menu is content to say nothing, which is the right amount
-                // to say. This one message is different because it is the message the receipt is
-                // actually about.
-                if !marked { message.readAt = readPrefixAt }
             }
 
-            // The mark goes on the newest message of yours that has been read — see
-            // `Message.carriesReadMark`. Newest *read*, not simply newest: a message still in
-            // flight underneath it would otherwise take the mark away from a conversation that
-            // has plainly been read, which is the fault this whole file is about.
-            if !marked, message.delivery == .read {
-                message.carriesReadMark = true
-                marked = true
+            if message.delivery == .read {
+                message.readAt = message.readAt ?? moment
+
+                // The mark goes on the newest message of yours that has been read — see
+                // `Message.carriesReadMark`. Newest *read*, not simply newest: a message still in
+                // flight underneath it would otherwise take the mark away from a conversation that
+                // has plainly been read, which is the fault this whole file is about.
+                if !marked {
+                    message.carriesReadMark = true
+                    marked = true
+                }
             }
 
             rows[index] = .message(message)
