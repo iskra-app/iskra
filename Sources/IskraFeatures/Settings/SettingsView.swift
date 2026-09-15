@@ -298,6 +298,7 @@ struct SettingsView: View {
             Toggle(isOn: $appLock.isEnabled) {
                 Label(Strings.Settings.lockEnable, systemImage: "faceid")
             }
+            .accentControl()
             .disabled(!appLock.canAuthenticate)
 
             if appLock.isEnabled {

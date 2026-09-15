@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 import IskraDesign
 
 /// Choosing the colour the app is painted in.
@@ -28,6 +29,22 @@ struct AppearanceView: View {
         )
     }
 
+    /// What the conversations are standing on, and how far down it is taken — see `Wallpaper`.
+    @AppStorage(Wallpaper.storageKey) private var wallpaper: Wallpaper = .default
+    @AppStorage(Wallpaper.dimmingKey) private var dimming: Double = Wallpaper.defaultDimming
+
+    /// The photograph being picked, while it is being picked.
+    @State private var pickedWallpaper: PhotosPickerItem?
+
+    /// Whether the photo library is up.
+    @State private var isChoosingWallpaper = false
+
+    /// Which way round the tick on a chosen wallpaper goes on the colourless theme.
+    @Environment(\.colorScheme) private var scheme
+
+    /// The user's own picture, held where every room can reach it.
+    private let wallpapers = WallpaperStore.shared
+
     /// Whether the colour is let out of the messages and onto the chrome as well. Written here and
     /// read at the root — see `AccentTheme.tintsInterfaceKey`.
     @AppStorage(AccentTheme.tintsInterfaceKey) private var tintsInterface = false
@@ -50,8 +67,10 @@ struct AppearanceView: View {
                 }
                 // The root tint is `.primary` when interface tinting is off, so a switch would
                 // turn white-on-white. The accent is the colour the user came here to pick, and
-                // it should colour the switch itself regardless of whether it washes the rest.
-                .tint(accent.color)
+                // it should colour the switch itself regardless of whether it washes the rest —
+                // and on the colourless theme it is a legible grey rather than the foreground
+                // colour. See `AccentControl`, which is now every switch in the app.
+                .accentControl()
             }
 
             Section {
@@ -78,18 +97,34 @@ struct AppearanceView: View {
                 Toggle(isOn: $tintsInterface.animation(.smooth(duration: Theme.Timing.reaction))) {
                     Text(Strings.Appearance.tintInterface)
                 }
-                // The root tint is `.primary` when interface tinting is off, so a switch would
-                // turn white-on-white. The accent is the colour the user came here to pick, and
-                // it should colour the switch itself regardless of whether it washes the rest.
-                .tint(accent.color)
-                // The mono theme's colour *is* the foreground colour, so a wash of it would grey the
-                // app down rather than tint it: the switch would move and the app would only dim.
-                .disabled(accent == .mono)
+                .accentControl()
             } header: {
                 Text(Strings.Appearance.accent)
             }
+
+            Section {
+                wallpaperRow
+
+                if wallpaper.isSet {
+                    dimmer
+                }
+            } header: {
+                Text(Strings.Appearance.wallpaper)
+            } footer: {
+                Text(Strings.Appearance.wallpaperFooter)
+            }
         }
         .formStyle(.grouped)
+        .photosPicker(isPresented: $isChoosingWallpaper,
+                      selection: $pickedWallpaper,
+                      matching: .images)
+        .onChange(of: pickedWallpaper) { _, item in
+            guard let item else { return }
+            Task { await setWallpaper(item) }
+            // Cleared so that picking the same photograph twice in a row is two choices and not
+            // one — `onChange` fires on a change, and the second pick is not one.
+            pickedWallpaper = nil
+        }
         .navigationTitle(Text(Strings.Settings.appearance))
         .toolbarTitleDisplayMode(.inline)
     }
@@ -171,6 +206,126 @@ struct AppearanceView: View {
                 .font(.callout)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// The wallpapers, in a row you scroll: nothing, six gradients, and your own photograph.
+    ///
+    /// A row rather than the grid the colours use, and the difference is what is being chosen. A
+    /// colour is a dot, and eight dots wrap comfortably into two lines; a wallpaper is a *picture*,
+    /// and a picture shown small enough to fit eight of them across a phone is a picture nobody can
+    /// judge. So these are tall tiles, the shape of the screen they will fill, and the row scrolls.
+    private var wallpaperRow: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: Theme.Spacing.normal) {
+                ForEach(Wallpaper.allCases) { choice in
+                    wallpaperTile(choice)
+                }
+            }
+            .padding(.vertical, Theme.Spacing.close)
+        }
+        .scrollIndicators(.hidden)
+        // The row runs the full width of the sheet rather than sitting inside the form's own
+        // margins, so that a tile scrolled to the edge slides under it instead of stopping short.
+        .listRowInsets(EdgeInsets(top: 0, leading: Theme.Spacing.normal, bottom: 0, trailing: 0))
+    }
+
+    private func wallpaperTile(_ choice: Wallpaper) -> some View {
+        Button {
+            // Choosing your own picture is choosing a *file*, so the library comes up and the
+            // setting changes only once there is something to set it to. Unless there already is
+            // one, in which case this is simply going back to it.
+            if choice == .photo, wallpapers.photo == nil {
+                isChoosingWallpaper = true
+                return
+            }
+
+            withAnimation(.smooth(duration: Theme.Timing.reaction)) { wallpaper = choice }
+        } label: {
+            tile(choice)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(Strings.Appearance.wallpaperName(choice)))
+        .accessibilityAddTraits(choice == wallpaper ? [.isButton, .isSelected] : .isButton)
+    }
+
+    /// One tile: the wallpaper as it will be, with the dimming already on it, so that the slider
+    /// below has something to be about.
+    private func tile(_ choice: Wallpaper) -> some View {
+        RoundedRectangle(cornerRadius: Theme.Radius.picture, style: .continuous)
+            .fill(.quaternary)
+            .frame(width: Theme.Size.wallpaperTile.width, height: Theme.Size.wallpaperTile.height)
+            .overlay {
+                // Clipped and framed here rather than trusted to fill the tile: the backdrop
+                // ignores the safe area, which is exactly what a wallpaper wants and exactly what a
+                // thumbnail of one must not do.
+                WallpaperBackdrop(wallpaper: choice, photo: wallpapers.photo, dimming: dimming)
+                    .frame(width: Theme.Size.wallpaperTile.width,
+                           height: Theme.Size.wallpaperTile.height)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.picture, style: .continuous))
+            }
+            .overlay {
+                // The tile with nothing to show says so, and the photograph nobody has chosen yet
+                // says what pressing it will do.
+                if choice == .none {
+                    Image(systemName: "nosign")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                } else if choice == .photo, wallpapers.photo == nil {
+                    Image(systemName: "photo.badge.plus")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .overlay(alignment: .bottomTrailing) {
+                if choice == wallpaper {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.body.weight(.bold))
+                        .foregroundStyle(.white, accent.control(in: scheme))
+                        .padding(Theme.Spacing.close)
+                }
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: Theme.Radius.picture, style: .continuous)
+                    .strokeBorder(choice == wallpaper ? AnyShapeStyle(.primary) : AnyShapeStyle(.quaternary),
+                                  lineWidth: Theme.Border.hairline)
+            }
+            .contentShape(.rect)
+    }
+
+    /// How far down the wallpaper is taken.
+    ///
+    /// Shown only when there is a wallpaper, because a dimmer over nothing dims nothing — and the
+    /// tiles above it darken as it moves, so the setting is read off the pictures rather than off
+    /// the slider.
+    private var dimmer: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+            HStack {
+                Text(Strings.Appearance.wallpaperDimming)
+                Spacer()
+                Text(dimming.formatted(.percent.precision(.fractionLength(0))))
+                    .font(.callout.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+
+            Slider(value: $dimming, in: 0...Wallpaper.maximumDimming)
+                .accentControl()
+
+            // Changing one's mind about the photograph, which is the only wallpaper that can be
+            // changed as well as chosen.
+            if wallpaper == .photo {
+                Button(String(app: Strings.Appearance.wallpaperChoose)) {
+                    isChoosingWallpaper = true
+                }
+                .font(.callout)
+                .padding(.top, Theme.Spacing.tight)
+            }
+        }
+    }
+
+    private func setWallpaper(_ item: PhotosPickerItem) async {
+        guard let data = await imageData(from: item) else { return }
+        wallpapers.store(data)
+        withAnimation(.smooth(duration: Theme.Timing.reaction)) { wallpaper = .photo }
     }
 
     private func swatch(_ theme: AccentTheme) -> some View {

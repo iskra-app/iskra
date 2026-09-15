@@ -61,6 +61,10 @@ struct MessageBubble: ViewModifier {
 
     @Environment(\.accent) private var accent
 
+    /// Whether the conversation is standing on a wallpaper, which is what decides between a
+    /// hierarchical fill and an opaque one — see `EnvironmentValues.hasWallpaper`.
+    @Environment(\.hasWallpaper) private var hasWallpaper
+
     /// Wider than the padding above and below, so the words sit in the middle of the
     /// bubble rather than pressed against its rounded sides — the corners eat into
     /// the left and right edges in a way they do not eat into the top and bottom.
@@ -71,8 +75,8 @@ struct MessageBubble: ViewModifier {
 
     private var fill: AnyShapeStyle {
         switch style {
-        case .own: accent.bubble
-        case .incoming: AnyShapeStyle(Color.incomingBubble)
+        case .own: accent.bubble(onWallpaper: hasWallpaper)
+        case .incoming: AnyShapeStyle(hasWallpaper ? Color.incomingBubbleOnWallpaper : Color.incomingBubble)
         case .plain: AnyShapeStyle(.clear)
         }
     }
@@ -112,6 +116,7 @@ struct PictureBorder: ViewModifier {
     let style: BubbleStyle
 
     @Environment(\.accent) private var accent
+    @Environment(\.hasWallpaper) private var hasWallpaper
 
     func body(content: Content) -> some View {
         content.overlay {
@@ -129,8 +134,8 @@ struct PictureBorder: ViewModifier {
 
     private var border: AnyShapeStyle {
         switch style {
-        case .own: accent.bubble
-        case .incoming: AnyShapeStyle(Color.incomingBubble)
+        case .own: accent.bubble(onWallpaper: hasWallpaper)
+        case .incoming: AnyShapeStyle(hasWallpaper ? Color.incomingBubbleOnWallpaper : Color.incomingBubble)
         case .plain: AnyShapeStyle(.clear)
         }
     }

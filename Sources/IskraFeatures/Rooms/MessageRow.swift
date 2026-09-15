@@ -636,12 +636,11 @@ struct VideoNoteView: View {
                     .padding(.bottom, Theme.Spacing.normal)
             }
         }
-        // One tap plays, and one tap stops. SwiftUI gives the innermost gesture the first
-        // refusal, so this beats the row's double tap: a circle is played rather than
-        // reacted to, and the quick reaction on one is left to the long press. That is the
-        // right way round — a video message you cannot watch is worse than one you cannot
-        // put an emoji on in one gesture.
-        .onTapGesture { toggle() }
+        // One tap plays, and one tap stops — and it waits a quarter of a second first, in case
+        // the finger is on its way to a second tap and the circle is being reacted to rather
+        // than watched. Both gestures now reach a video note; `MessageTaps` is where the two
+        // are told apart.
+        .messageTap { toggle() }
         // …and the same thing said in the one language a tap gesture does not speak.
         //
         // A `.onTapGesture` is invisible to VoiceOver. Not hard to reach, not badly labelled —
@@ -820,6 +819,10 @@ struct StickerView: View {
 struct PictureBubble: View {
     let attachment: Attachment
 
+    /// Which message this is, so that the viewer it opens can find this picture among the room's
+    /// other ones and be swiped through from here — see `RoomMediaSource`.
+    let messageID: String
+
     /// The edge drawn around the picture — the bubble it stands in for, or nothing at all.
     let style: BubbleStyle
 
@@ -836,12 +839,24 @@ struct PictureBubble: View {
     /// `backdrop`.
     @State private var loaded: Image?
 
-    /// The picture, opened. A photo and an ordinary video both come here — a circle does not,
-    /// because a circle is a glance and plays where it stands.
+    /// The picture, opened — and with it every other picture in the room, so that the viewer can
+    /// be swiped through from the one that was tapped. A photo and an ordinary video both come
+    /// here; a circle does not, because a circle is a glance and plays where it stands.
     ///
     /// Photos used to have no tap at all: the bubble was a picture you could look at and not
     /// touch, which on a phone reads as a broken app rather than as a decision.
-    @State private var isWatching = false
+    @State private var opened: OpenedMedia?
+
+    /// The room's pictures, asked for at the moment one is opened — see `RoomMediaSource`.
+    @Environment(\.roomMedia) private var roomMedia
+
+    /// What the viewer was opened on: the whole run of the room's media, and which of them the
+    /// finger landed on.
+    private struct OpenedMedia: Identifiable {
+        let items: [MediaItem]
+        let index: Int
+        var id: String { items[index].id }
+    }
 
     private var aspectRatio: CGFloat {
         CGFloat(attachment.aspectRatio ?? 4 / 3)
@@ -871,13 +886,45 @@ struct PictureBubble: View {
         // off the conversation, and it now takes in the blurred frame and the caption as well
         // as the photograph — which is the point of their being one bubble at all.
         .contentShape(BubbleShape())
-        // A sheet on both platforms, and not a `fullScreenCover`: the Mac has no such thing,
-        // and a picture on a Mac belongs in a window over the conversation rather than on top
-        // of the entire app.
-        .sheet(isPresented: $isWatching) {
-            MediaViewer(attachment: attachment, isVideo: isPlayable,
-                        sender: sender, timestamp: timestamp)
+        // A cover on the phone and a sheet on the Mac. The Mac has no `fullScreenCover`, and would
+        // not want one: a picture there belongs in a window over the conversation rather than on
+        // top of the entire app. On the phone it is the opposite — a photograph in a sheet is a
+        // photograph with the room showing above it and a card's corners cut out of it, which is
+        // not what looking at a picture is anywhere else on the platform.
+        #if os(iOS)
+        .fullScreenCover(item: $opened) { opened in
+            MediaPager(items: opened.items, startIndex: opened.index)
+                // A sheet dressed as nothing at all: the viewer draws its own black, and the
+                // system's card behind it would be a grey rectangle showing at the corners.
+                .presentationBackground(.black)
         }
+        #else
+        .sheet(item: $opened) { opened in
+            MediaPager(items: opened.items, startIndex: opened.index)
+        }
+        #endif
+    }
+
+    /// Opens the viewer on this picture, with the room's other pictures either side of it.
+    ///
+    /// The room may not be offering a list — a search result, a pinned message, anywhere a bubble is
+    /// drawn outside a conversation — and a picture that could not be found in the list it was
+    /// handed is treated the same way: this photograph, alone, which is exactly what opening one
+    /// used to do everywhere.
+    private func open() {
+        let items = roomMedia?.viewable() ?? []
+
+        if let index = items.firstIndex(where: { $0.id == messageID }) {
+            opened = OpenedMedia(items: items, index: index)
+            return
+        }
+
+        let alone = MediaItem(id: messageID,
+                              attachment: attachment,
+                              kind: isPlayable ? .video : .photo,
+                              sender: sender,
+                              timestamp: timestamp)
+        opened = OpenedMedia(items: [alone], index: 0)
     }
 
     /// The picture itself, sharp, sitting on the blur of itself. It keeps the image it fetched,
@@ -920,12 +967,14 @@ struct PictureBubble: View {
                 }
                 .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.picture, style: .continuous))
                 .contentShape(.rect)
-                .onTapGesture { isWatching = true }
+                // …unless a second tap is on its way, in which case the pair is the quick
+                // reaction and the photograph stays where it is. See `MessageTaps`.
+                .messageTap { open() }
                 // The same act, in the language a tap gesture does not speak — see `VideoNoteView`.
                 // Without this there is no way to open a photograph with VoiceOver on: the gesture
                 // simply does not exist in the accessibility tree.
                 .accessibilityAddTraits(.isButton)
-                .accessibilityAction { isWatching = true }
+                .accessibilityAction { open() }
                 .accessibilityLabel(Text(isPlayable ? Strings.Message.Media.video
                                                     : Strings.Message.Media.photo))
                 .accessibilityHint(Text(Strings.Message.Media.openFullScreen))
