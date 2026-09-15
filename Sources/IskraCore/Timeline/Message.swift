@@ -225,7 +225,11 @@ public struct Message: Sendable, Identifiable, Equatable {
     /// homeserver that sends one is telling us the message was read and not when. So the menu
     /// shows the line when there is a moment to show and says nothing when there is not, rather
     /// than inventing one from the clock.
-    public let readAt: Date?
+    ///
+    /// Not `let`, for the same reason `delivery` is not: the moment the reader caught up lives on
+    /// the event *they* last read, which is usually not one of yours — `TimelineMapper` hands it
+    /// down to the newest message of yours it covers, which is the one wearing the mark.
+    public var readAt: Date?
     public let isEdited: Bool
     /// What this message is an answer to, for one that is.
     public let replyTo: ReplyPreview?
@@ -242,6 +246,17 @@ public struct Message: Sendable, Identifiable, Equatable {
     public let mentionedUserIDs: [String]
     /// Grouped under one avatar with the message above it, iMessage-style.
     public var isContinuation: Bool = false
+    /// The one message that wears the "read" mark on behalf of all of them.
+    ///
+    /// A receipt is monotonic, so every message of yours above the watermark is equally read, and
+    /// putting an eye on each one said the same true thing fifteen times down the side of the
+    /// screen. One mark at the bottom says it once. The messages above keep their plain "sent"
+    /// tick, which is still the truth about them — it is the *eye* that moves, not the fact, and
+    /// `delivery` still says `.read` on every one of them for anything that asks.
+    ///
+    /// The newest *read* message rather than simply the newest: a message still in flight below it
+    /// would otherwise take the mark off a conversation that has plainly been read.
+    public var carriesReadMark: Bool = false
 
     public init(id: String,
                 kind: MessageKind,
@@ -257,7 +272,8 @@ public struct Message: Sendable, Identifiable, Equatable {
                 reactions: [MessageReaction],
                 deletedAt: Date? = nil,
                 mentionedUserIDs: [String] = [],
-                isContinuation: Bool = false) {
+                isContinuation: Bool = false,
+                carriesReadMark: Bool = false) {
         self.id = id
         self.kind = kind
         self.senderID = senderID
@@ -273,6 +289,7 @@ public struct Message: Sendable, Identifiable, Equatable {
         self.deletedAt = deletedAt
         self.mentionedUserIDs = mentionedUserIDs
         self.isContinuation = isContinuation
+        self.carriesReadMark = carriesReadMark
     }
 
     /// Whether the message has been taken back.

@@ -43,13 +43,24 @@ enum TimelineMapper {
         // very often not one of ours and sometimes not a row at all.
         var readPrefix = 0
 
+        // And when they caught up. Lives on the same event as the watermark, which is why it is
+        // picked up here with it: by the time the rows exist, the event that carried the moment
+        // may well have been dropped, and the menu had nothing to show for a message everybody
+        // could see was read.
+        var readPrefixAt: Date?
+
         for item in items {
             // Whatever this item turns into — a row, a merged grey line, or nothing — everything
             // above it has been read the moment it carries a receipt. Recorded after the item is
             // handled, hence the `defer`, and counted in rows rather than in items so the number
             // still means something after the events this app never shows are dropped.
-            let carriesReceipt = item.asEvent().map { hasForeignReceipt($0, ownUserID: ownUserID) } ?? false
-            defer { if carriesReceipt { readPrefix = rows.count } }
+            let receiptEvent = item.asEvent().flatMap { hasForeignReceipt($0, ownUserID: ownUserID) ? $0 : nil }
+            defer {
+                if let receiptEvent {
+                    readPrefix = rows.count
+                    readPrefixAt = readAt(of: receiptEvent, ownUserID: ownUserID)
+                }
+            }
 
             if let virtual = item.asVirtual() {
                 if case let .dateDivider(timestamp) = virtual {
@@ -88,7 +99,7 @@ enum TimelineMapper {
             previous = message
         }
 
-        return withoutEmptyDays(withReadPropagated(rows, readUpTo: readPrefix))
+        return withoutEmptyDays(withReadPropagated(rows, readUpTo: readPrefix, at: readPrefixAt))
     }
 
     /// Marks your earlier messages read once a later one has been.
@@ -117,9 +128,12 @@ enum TimelineMapper {
     /// Not private: `ReadReceiptTests` drives it directly, which is the only way to test it —
     /// a real `EventTimelineItem` cannot be built outside the SDK. Hence the default: a test about
     /// the own-message watermark is saying nothing about the other one.
-    static func withReadPropagated(_ rows: [TimelineRow], readUpTo readPrefix: Int = 0) -> [TimelineRow] {
+    static func withReadPropagated(_ rows: [TimelineRow],
+                                   readUpTo readPrefix: Int = 0,
+                                   at readPrefixAt: Date? = nil) -> [TimelineRow] {
         var rows = rows
         var seenRead = false
+        var marked = false
 
         // Downwards from the newest, because the watermark is below the messages it settles.
         for index in rows.indices.reversed() {
@@ -129,8 +143,26 @@ enum TimelineMapper {
                 seenRead = true
             } else if message.delivery == .sent, seenRead || index < readPrefix {
                 message.delivery = .read
-                rows[index] = .message(message)
+
+                // The moment goes to the newest message the watermark covers and no further down.
+                // Not thrift: "read at 14:03" against the message four above it would be a claim
+                // the receipt never made — the reader caught up at 14:03, and when they read *that*
+                // one nobody knows. The menu is content to say nothing, which is the right amount
+                // to say. This one message is different because it is the message the receipt is
+                // actually about.
+                if !marked { message.readAt = readPrefixAt }
             }
+
+            // The mark goes on the newest message of yours that has been read — see
+            // `Message.carriesReadMark`. Newest *read*, not simply newest: a message still in
+            // flight underneath it would otherwise take the mark away from a conversation that
+            // has plainly been read, which is the fault this whole file is about.
+            if !marked, message.delivery == .read {
+                message.carriesReadMark = true
+                marked = true
+            }
+
+            rows[index] = .message(message)
         }
 
         return rows

@@ -39,7 +39,7 @@ struct MessageMarks: View {
             // could be asked about. A column you cannot tell your own sent messages in would be
             // a functional loss dressed up as consistency.
             if message.isOwn, let delivery = message.delivery, !delivery.hasFailed {
-                DeliveryTick(status: delivery)
+                DeliveryTick(status: delivery, carriesReadMark: message.carriesReadMark)
             }
         }
         // The clock must never squeeze the message it belongs to.
