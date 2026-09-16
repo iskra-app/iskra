@@ -28,6 +28,13 @@ import SwiftUI
 /// place where both taps are known. The cost is the quarter-second a photograph now waits before it
 /// opens, which is the price of the promise being kept — and the same price the high-priority
 /// version charged, for less.
+///
+/// The third act is the press, and it arrived here for the same reason. High priority used to
+/// suppress the inner tap for free: a finger held on a photograph opened the menu, and the tap that
+/// ended the hold went nowhere. Simultaneous recognition suppresses nothing, so the hold would open
+/// the menu *and*, on release, the photograph behind it. `suppress()` is that fact said out loud —
+/// the press announcing that the touch is spent. Every ordering this file performs is now explicit,
+/// which is the point: none of it is a side effect of a priority nobody can see.
 @MainActor
 @Observable
 final class MessageTaps {
@@ -39,8 +46,22 @@ final class MessageTaps {
     /// and a quarter of a second is what it has been for as long as there have been two taps.
     private static let interval = Duration.milliseconds(250)
 
+    /// How long after a press the tap that ends it is refused — see `suppress`. Long enough to
+    /// cover the finger coming up off a hold, short enough that the next real tap is a real tap.
+    private static let suppression: TimeInterval = 0.7
+
+    /// Until when a single tap means nothing, because a press has already spent the touch.
+    @ObservationIgnored private var suppressedUntil: Date = .distantPast
+
     /// A tap on something that opens: the photograph, the map, the round video.
     func single(_ action: @escaping () -> Void) {
+        // A press that has just opened the menu spends the whole touch, and the finger coming off
+        // it is not a tap on the picture underneath — see `suppress`.
+        if Date.now < suppressedUntil {
+            suppressedUntil = .distantPast
+            return
+        }
+
         pending?.cancel()
         pending = Task { [interval = Self.interval] in
             try? await Task.sleep(for: interval)
@@ -59,6 +80,18 @@ final class MessageTaps {
     func cancel() {
         pending?.cancel()
         pending = nil
+    }
+
+    /// The press took the touch; the tap that ends it means nothing.
+    ///
+    /// A window rather than a flag, and the difference matters. A flag would be cleared by the next
+    /// single tap whenever it came — so a press that opened the menu would also eat the deliberate
+    /// tap made a minute later, after the menu had been dismissed, and a photograph would refuse to
+    /// open exactly once for no reason anybody could see. The tap this is here to refuse arrives
+    /// within milliseconds of the finger lifting; anything later is somebody asking for something.
+    func suppress() {
+        cancel()
+        suppressedUntil = .now + Self.suppression
     }
 }
 
