@@ -46,6 +46,13 @@ xcrun simctl install booted .build/xcode/Build/Products/Debug-iphonesimulator/Is
 xcrun simctl launch booted moscow.swag.iskra
 ```
 
+`./run.sh` wraps the two above (`mac`, `ios`, or both). **A real iPhone is `./device.sh`**, which
+builds the tip of `dev` — from its own detached worktree in `.build/dev-src`, so whatever is
+uncommitted in the working tree neither affects the build nor gets touched by it — signs it,
+installs it with `devicectl` and launches it with `--console`. `--here` builds the working tree
+instead, `--fetch` pulls `origin/dev` first, and everything after `--` is passed to the app, which
+is how the probes are run on a device.
+
 **Never pass `CODE_SIGNING_ALLOWED=NO`.** The build succeeds, the app installs, and then it dies
 with `SIGTRAP` the moment the user signs in: an unsigned app is granted none of its entitlements,
 so the App Group container cannot be resolved and `AppEnvironment.containerURL` — correctly —
