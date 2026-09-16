@@ -136,7 +136,6 @@ struct MessageActions<Content: View>: View {
             .onGeometryChange(for: CGRect.self) { proxy in
                 proxy.frame(in: .named(MessageMenu.space))
             } action: { anchor.rect = $0 }
-<<<<<<< HEAD
             // The wait, made visible. The bubble sinks over exactly the length of the press and
             // arrives at the bottom as the menu takes over, so a held finger is watching something
             // happen instead of waiting for it — and a press abandoned halfway springs back, which
@@ -153,44 +152,12 @@ struct MessageActions<Content: View>: View {
             // The knock that says the reaction went. Without it a double tap on a message
             // whose pill appears a beat later feels like nothing happened.
             .sensoryFeedback(.impact(weight: .medium), trigger: quickTaps)
-=======
-            .scaleEffect(isPressing ? 0.97 : 1)
-            .animation(.smooth(duration: Theme.Timing.chrome), value: isPressing)
-            // A double tap is the quick reaction, on every message rather than only the ones with
-            // nothing else to tap — and `simultaneousGesture` is what makes it true without taking
-            // the conversation's scrolling away. It competes with nothing: not with the tap that
-            // opens a photograph, and not with the scroll view's own pan, which a high-priority
-            // gesture here outranked. A finger that came down on a message and pulled used to hold
-            // the timeline still. See `MessageTaps`, which does the ordering a priority was
-            // standing in for — and does it only between the two taps, where it belongs.
-            .simultaneousGesture(TapGesture(count: 2).onEnded {
-                // Whatever single tap is waiting inside this message — the photograph about to
-                // open, the circle about to play — was the first half of this. Called before the
-                // guard below, because the reaction being refused is no reason to open a picture
-                // nobody asked for.
-                taps.double()
-
-                // Offline the gesture is not merely refused, it is *silent* — and that is the whole
-                // reason to guard it here as well as in the menu. A double tap that puts no pill on
-                // the message reads as an app that did not notice the tap, so somebody would tap
-                // again, harder, and go on tapping. See `isOffline`.
-                guard message.canReact, !isOffline else { return }
-                quickTaps += 1
-                handlers.onToggleReaction(quickReaction.key)
-            })
-            // The knock that says the reaction went. Without it a double tap on a message
-            // whose pill appears a beat later feels like nothing happened.
-            .sensoryFeedback(.impact(weight: .medium), trigger: quickTaps)
             // The arbiter for this row, and the one place it is created. It is per message on
-            // purpose: a tap waiting inside one bubble has nothing to do with a tap in the next.
+            // purpose: a tap waiting inside one bubble has nothing to do with a tap in the next —
+            // and `MessageRow` and `LocationView` read it, so if nobody put it here they would be
+            // reading an environment value nobody set.
             .environment(\.messageTaps, taps)
             .onDisappear { taps.cancel() }
-            .onLongPressGesture(minimumDuration: Theme.Timing.menuLift) {
-                open()
-            } onPressingChanged: { pressing in
-                isPressing = pressing
-            }
->>>>>>> worktree-ui-fixes-media-viewer
             // And on a Mac, the click a Mac user will try first. It is a separate gesture and
             // not a variant of the press because it is a different *act*: a right-click is
             // instant and has never had to be held.
@@ -253,6 +220,12 @@ struct MessageActions<Content: View>: View {
             .updating($isPressing) { _, pressing, _ in pressing = true }
             .onEnded { _ in open() }
             .exclusively(before: TapGesture(count: 2).onEnded {
+                // Whatever single tap is waiting inside this message — the photograph about to
+                // open, the circle about to play — was the first half of this, and is called off
+                // here. Before the guard below, because a reaction being refused is no reason to
+                // open a picture nobody asked for. See `MessageTaps`.
+                taps.double()
+
                 // Offline the gesture is not merely refused, it is *silent* — and that is the whole
                 // reason to guard it here as well as in the menu. A double tap that puts no pill on
                 // the message reads as an app that did not notice the tap, so somebody would tap
