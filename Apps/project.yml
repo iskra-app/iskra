@@ -207,6 +207,13 @@ targets:
         # anywhere near the setting that turned the lock on. Touch ID and the passcode do not need it;
         # Face ID does, and the same `.deviceOwnerAuthentication` call can reach for either.
         NSFaceIDUsageDescription: Iskra uses Face ID to unlock the app.
+        # Required of any app holding `com.apple.developer.usernotifications.communication`, and
+        # the absence of it does not look like an absence: the entitlement is granted, the code
+        # runs, `updating(from:)` throws "intent is not supported", the throw is caught, and the
+        # notification appears in its ordinary form with the app's icon on it. Nothing anywhere
+        # says a key is missing. (App Store Connect does say so, eventually, as ITMS-90894 — which
+        # is a slow way to find out.)
+        NSUserActivityTypes: [INSendMessageIntent]
         # ASWebAuthenticationSession intercepts the sign-in callback itself, but the
         # scheme is registered so the OAuth provider can hand it back to us.
         CFBundleURLTypes:
@@ -261,6 +268,11 @@ targets:
         # device where somebody plainly is.
         AppIdentifierPrefix: $(AppIdentifierPrefix)
         NSExtension:
+          # The other half of the same requirement. The app declares that it handles the intent;
+          # the extension declares that it *sends* one — and it is the extension that calls
+          # `updating(from:)`, so without this line the app's declaration alone changes nothing.
+          NSExtensionAttributes:
+            IntentsSupported: [INSendMessageIntent]
           NSExtensionPointIdentifier: com.apple.usernotifications.service
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).NotificationService
     entitlements:
