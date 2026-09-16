@@ -28,13 +28,22 @@ enum AppSettings {
         AppearanceMode.storageKey,
         MessageLayout.storageKey,
         QuickReaction.storageKey,
+        Wallpaper.storageKey,
+        Wallpaper.dimmingKey,
         TunnelSettings.enabledKey,
     ]
 
+    @MainActor
     static func forget() {
         let defaults = UserDefaults.standard
         for key in keys {
             defaults.removeObject(forKey: key)
         }
+
+        // And the one setting that is not a value in `UserDefaults` but a file on the disk: the
+        // wallpaper somebody chose from their own photo library. Forgetting the *key* and leaving
+        // the picture behind would mean the next person to sign in on this device found a stranger's
+        // photograph waiting the moment they went looking at wallpapers.
+        WallpaperStore.shared.forget()
     }
 }

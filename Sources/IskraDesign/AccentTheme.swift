@@ -82,10 +82,49 @@ public enum AccentTheme: String, CaseIterable, Identifiable, Sendable {
     /// glass* — so a mono label asking for `.background` was drawn in the colour of the pill it was
     /// written on, and the sign-in button came out blank. A shape style cannot see the colour scheme
     /// on its own, so the scheme is handed in and the black/white pair is chosen here.
-    func foreground(in scheme: ColorScheme) -> AnyShapeStyle {
+    public func foreground(in scheme: ColorScheme) -> AnyShapeStyle {
         switch self {
         case .mono: AnyShapeStyle(scheme == .dark ? Color.black : Color.white)
         default: foreground
+        }
+    }
+
+    /// The colour a *system control* fills itself with when it is on: the track of a switch, the
+    /// bar of a slider, the tick in a checkbox.
+    ///
+    /// Not `color`, and the difference only matters on mono — but there it matters completely.
+    /// `.primary` is the pair black/white, so a switch tinted with it is a white track in the dark
+    /// and a black one in the light, and the knob the system draws on top of that is white in both.
+    /// White on white is a switch with no visible state: it moves, and nothing about it changes.
+    /// That is the bug this exists to fix, and it was not confined to the appearance screen — every
+    /// switch in the app inherits the root tint, which is `.primary` whenever the interface is not
+    /// tinted.
+    ///
+    /// So mono gives a control a *grey*, drawn from the same black/white pair and pulled far enough
+    /// off it that the knob still reads: a deep grey under a white knob in the light, a soft one in
+    /// the dark. The seven colours need none of this — a switch tinted red is a red switch — and get
+    /// the accent itself.
+    public func control(in scheme: ColorScheme) -> Color {
+        switch self {
+        case .mono: scheme == .dark ? Color.white.opacity(0.38) : Color.black.opacity(0.72)
+        default: color
+        }
+    }
+
+    /// How much of the accent is washed over the app when "tint the interface" is on.
+    ///
+    /// Mono is washed more faintly than a colour, and this is the whole of what used to be a
+    /// *refusal*. The switch was disabled on mono, on the argument that `.primary` is the
+    /// foreground colour and a wash of it greys the app rather than tinting it. The observation is
+    /// right and the conclusion was wrong: greying the app is exactly what a black-and-white theme
+    /// spreading across the interface *is*, and a user who picks the colourless theme and then asks
+    /// for it everywhere has asked for something perfectly coherent. What it needs is not a veto
+    /// but a lighter hand — at eight percent the mono wash starts eating the words it is laid over,
+    /// because unlike a colour it has no hue to spend, only darkness.
+    public var washOpacity: Double {
+        switch self {
+        case .mono: Theme.Tint.mono
+        default: Theme.Tint.interface
         }
     }
 
@@ -97,8 +136,17 @@ public enum AccentTheme: String, CaseIterable, Identifiable, Sendable {
     /// instead, and it is a *deeper* grey than an incoming bubble rather than a different
     /// one, so the two still read as the same material with the sides told apart by weight.
     public var bubble: AnyShapeStyle {
+        bubble(onWallpaper: false)
+    }
+
+    /// The same fill, told whether there is a wallpaper behind it.
+    ///
+    /// Only mono has an answer that changes, and it has to: the seven colours fill a bubble with an
+    /// opaque colour already, while mono fills it with sixteen percent of the foreground — a
+    /// translucency, which over a photograph is the photograph. See `Color.ownBubbleOnWallpaper`.
+    public func bubble(onWallpaper: Bool) -> AnyShapeStyle {
         switch self {
-        case .mono: AnyShapeStyle(Color.primary.opacity(0.16))
+        case .mono: AnyShapeStyle(onWallpaper ? Color.ownBubbleOnWallpaper : Color.primary.opacity(0.16))
         default: AnyShapeStyle(color)
         }
     }

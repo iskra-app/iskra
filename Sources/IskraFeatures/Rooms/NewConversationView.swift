@@ -113,6 +113,7 @@ struct NewConversationView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            .accentControl()
         } footer: {
             // The one thing the switch does that its own label does not say.
             Text(Strings.RoomList.New.openMeansUnencrypted)

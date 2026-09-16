@@ -100,3 +100,42 @@ struct MediaPager: View {
         #endif
     }
 }
+
+/// Everything in this room worth opening full-screen, asked for at the moment somebody opens one.
+///
+/// A photograph tapped in a conversation used to open alone: one picture, one viewer, and the only
+/// way to the next one was to close it, scroll, and tap again — while the room's media *tab*, which
+/// nobody opens as often, had the swipe between them all along. The difference was never a decision;
+/// it was that a row knows about its own message and nothing else.
+///
+/// So the room hands the list down, and hands it down as a *closure*. Not as an array: the array is
+/// rebuilt out of every message the timeline holds, and an array in the environment would be
+/// recomputed and re-diffed on every change to a conversation that is already changing constantly —
+/// a photo arriving, a receipt landing, somebody typing. Asked for on a tap, it is computed once,
+/// for the one thing it is for.
+///
+/// A reference type so that its identity is stable: a fresh closure in the environment on every
+/// pass of the room's body would invalidate every row in the conversation.
+@MainActor
+final class RoomMediaSource {
+    private let provider: () -> [MediaItem]
+
+    init(provider: @escaping () -> [MediaItem]) {
+        self.provider = provider
+    }
+
+    /// The pictures and the videos, newest first as the timeline holds them.
+    ///
+    /// Only those two. Files, music and voice notes are media as far as the room's tabs are
+    /// concerned, and they are not things a full-screen viewer can show — a swipe that landed on a
+    /// PDF would be a black screen with a name on it.
+    func viewable() -> [MediaItem] {
+        provider().filter { $0.kind == .photo || $0.kind == .video }
+    }
+}
+
+extension EnvironmentValues {
+    /// The room's pictures, for the viewer a message opens. Absent outside a conversation — in the
+    /// media grid, which has its own list, and in search results, where a photograph is on its own.
+    @Entry var roomMedia: RoomMediaSource?
+}
