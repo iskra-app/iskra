@@ -86,9 +86,17 @@ public struct GlassActionStyle: ButtonStyle {
 /// both before answering something they had already decided about.
 ///
 /// The two are drawn by one style with a colour passed in, so they cannot drift apart: same
-/// height, same padding, same weight, same corner. Equal *width* is the call site's to give —
-/// `.frame(maxWidth: .infinity)` on both — because only the call site knows what they are
-/// sharing.
+/// height, same padding, same weight, same corner. Width is each button's own — they are the size
+/// of the words on them — and that is what carries the equality now that the capsules are no
+/// longer stretched across half a row each. See `InviteRow`.
+///
+/// The capsule is drawn *inside* a tap target rather than being one. It is set in subheadline with
+/// four points above and below, which comes out around twenty-eight tall — a control that belongs
+/// under a line of secondary text in a list, not a pair of slabs the size of a sign-in button. The
+/// `minHeight` then sits outside the fill, so what the finger has to hit is still the full
+/// forty-four points the HIG asks for while what the eye sees is small. Putting the background
+/// after the frame, which is how this used to read, made the capsule itself forty-four tall and
+/// there was no way to shrink one without shrinking the other.
 ///
 /// White on both, in both appearances, rather than `AccentTheme.foreground`: these fills are
 /// fixed colours and not the accent, and white is readable on both of them light and dark.
@@ -118,14 +126,18 @@ public struct AnswerStyle: ButtonStyle {
 
         var body: some View {
             configuration.label
-                .font(.body.weight(.semibold))
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.white)
                 .lineLimit(1)
                 .padding(.horizontal, Theme.Spacing.normal)
-                .padding(.vertical, Theme.Spacing.close)
-                .frame(minHeight: height)
+                .padding(.vertical, Theme.Spacing.tight)
                 .background(answer.color, in: .capsule)
                 .pressed(configuration.isPressed)
+                // The target, around the capsule rather than under it. A shape this small is
+                // still forty-four points to a finger; `contentShape` is what makes the empty
+                // margin part of the button instead of a gap between two of them.
+                .frame(minHeight: height)
+                .contentShape(.rect)
         }
     }
 }

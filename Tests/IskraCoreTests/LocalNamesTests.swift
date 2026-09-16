@@ -127,4 +127,31 @@ struct LocalNamesTests {
         #expect(plain.title == "Кухня")
         #expect(plain.sender == "Аня")
     }
+
+    /// The title was right and the banner still said `anna_1987`, because in a personal chat iOS
+    /// does not read the title at all: a communication notification is headed by the sender's
+    /// `INPerson.displayName`, and that was being built straight from the server's display name.
+    /// The nickname has to travel on both, which is what `speaker` is for.
+    @Test("the nickname is the name on the banner, not just in the title")
+    func pushPersonUsesTheLocalName() {
+        #expect(PushMapper.speaker(senderName: "anna_1987",
+                                   senderID: "@anna:matrix.org",
+                                   localName: "Мама") == "Мама")
+
+        // Without a nickname, the name they chose for themselves.
+        #expect(PushMapper.speaker(senderName: "Аня",
+                                   senderID: "@anna:matrix.org",
+                                   localName: nil) == "Аня")
+
+        // And with neither, the Matrix ID — which says more than a blank circle with no name
+        // over it.
+        #expect(PushMapper.speaker(senderName: "",
+                                   senderID: "@anna:matrix.org",
+                                   localName: nil) == "@anna:matrix.org")
+
+        // An empty nickname is an absence, exactly as it is everywhere else in `LocalNames`.
+        #expect(PushMapper.speaker(senderName: "Аня",
+                                   senderID: "@anna:matrix.org",
+                                   localName: "") == "Аня")
+    }
 }

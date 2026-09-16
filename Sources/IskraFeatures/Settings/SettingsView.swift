@@ -14,10 +14,17 @@ import IskraDesign
 /// and this screen must not draw a second one. Inside a sidebar it does not, and this
 /// screen must — see `showsBackButton`.
 ///
-/// Notifications is the one row here that is still structure without a feature behind it.
-/// It is shown, and shown disabled, rather than hidden: the shape of the screen is a
-/// promise about where things will go, and a row that is greyed out with a sentence
-/// explaining why is honest in a way that an empty screen is not.
+/// Five rows, and the shape of them is the point. This screen used to be a list of everything the
+/// app could be told, in the order the features happened to be built: appearance, reactions,
+/// encryption, storage, connection, blocked, a greyed-out notifications row, then a lock section,
+/// then a devices section. Nine things, several of which were halves of each other — the devices
+/// signed into this account sat one section away from a screen about this device; a switch marked
+/// "Connection" that decides who can read your traffic sat two rows from the word "Encryption".
+///
+/// So they are gathered by the question they answer rather than by what they happen to be.
+/// Appearance took the quick reaction, which is a choice about how a conversation looks and had no
+/// business being a screen of its own. Security took the devices, the Face ID lock and the bridge.
+/// Notifications stopped being a promise and became a screen — see `NotificationsView`.
 ///
 /// Signing out is the one thing on this screen that cannot be undone, so it is last and it
 /// is red.
@@ -25,9 +32,6 @@ struct SettingsView: View {
     /// Held, not owned — the session outlives this screen, and `@Observable` tracks it
     /// through a plain `let` just as well.
     let session: UserSession
-
-    /// The app lock, put up by the root. Nil only where the root has not — never in the real app.
-    @Environment(\.appLock) private var appLock
 
     /// `async`, because signing out is not instant and this screen has to be able to say so — it
     /// ends the session on the server and deletes the encrypted store. As a plain closure it
@@ -42,16 +46,12 @@ struct SettingsView: View {
     /// Set when the sign-out starts, and never cleared — see the button.
     @State private var isSigningOut = false
 
-    /// Where this account's devices are managed — on the server's own page, because there is nowhere
-    /// in this app they could be. Resolved once, on appearance; `nil` means the session did not come
-    /// through OAuth and there is no such page, and then the row is not drawn at all.
-    @State private var devicesURL: URL?
-
     /// The one place this screen can go that is worth building lazily — see the
     /// `navigationDestination` below.
     private enum Destination: Hashable {
         case profile
-        case encryption
+        case notifications
+        case security
         case storage
     }
 
@@ -93,14 +93,20 @@ struct SettingsView: View {
                     Label(Strings.Settings.appearance, systemImage: "paintbrush")
                 }
 
-                NavigationLink {
-                    QuickReactionView()
-                } label: {
-                    Label(Strings.Settings.reactions, systemImage: "heart")
+                // Value-based, like the two below and for the same reason: `notificationRules()`
+                // builds a store holding an SDK `NotificationSettings` with a listener
+                // registration behind it, and a `NavigationLink` with a destination *closure*
+                // builds its destination eagerly on every pass of this body. See
+                // `navigationDestination`, which is where it is actually made.
+                NavigationLink(value: Destination.notifications) {
+                    Label(Strings.Settings.notifications, systemImage: "bell")
                 }
 
-                NavigationLink(value: Destination.encryption) {
-                    Label(Strings.Settings.encryption, systemImage: "lock")
+                // A shield rather than a padlock, and that is the rename saying itself in the
+                // margin: a padlock is a picture of encryption, and this screen is no longer only
+                // about encryption. See `SecurityView`.
+                NavigationLink(value: Destination.security) {
+                    Label(Strings.Settings.security, systemImage: "lock.shield")
                 }
 
                 NavigationLink(value: Destination.storage) {
@@ -108,61 +114,12 @@ struct SettingsView: View {
                 }
 
                 NavigationLink {
-                    ConnectionView(session: session)
-                } label: {
-                    Label(
-                        Strings.Settings.connection,
-                        systemImage: "point.3.filled.connected.trianglepath.dotted"
-                    )
-                }
-
-                NavigationLink {
                     BlockedUsersView(store: session.blocked)
                 } label: {
                     Label(Strings.Settings.blocked, systemImage: "hand.raised")
                 }
-
-                unbuilt(Strings.Settings.notifications, systemImage: "bell")
             } footer: {
                 Text(Strings.Settings.moreSoon)
-            }
-
-            if let appLock {
-                lockSection(appLock)
-            }
-
-            // The devices, which live somewhere else — and the row is only here when there is
-            // somewhere else for it to lead to.
-            //
-            // There is no native list and there is not going to be one. The Rust SDK has `devices()`
-            // and `delete_devices()`; the FFI deliberately exports neither, and on a homeserver
-            // running the authentication service the endpoint that deletes a device answers 404 —
-            // it is gone, not guarded. What the SDK *does* hand over is the address of the page that
-            // can do it, opened with the session the user already has, which is Element X's answer
-            // to the same wall.
-            //
-            // `deviceManagementURL()` is nil when the session was not obtained through OAuth, and
-            // then this section simply is not drawn. A row that led nowhere would be worse than no
-            // row: it would be the app claiming it could do something it cannot.
-            if let devicesURL {
-                Section {
-                    // Opened in the app's own browser rather than thrown to Safari, and that is what
-                    // carries the sign-in across: the same `ASWebAuthenticationSession` that signed
-                    // the user in shares its cookies, so the server's page recognises them and does
-                    // not ask them to sign in again to see their own devices.
-                    Button {
-                        Task { await WebAuthentication.approve(url: devicesURL) }
-                    } label: {
-                        LabeledContent {
-                            Image(systemName: "arrow.up.forward.app")
-                                .foregroundStyle(.secondary)
-                        } label: {
-                            Label(Strings.Settings.devices, systemImage: "laptopcomputer.and.iphone")
-                        }
-                    }
-                } footer: {
-                    Text(Strings.Settings.devicesHelp)
-                }
             }
 
             Section {
@@ -203,11 +160,13 @@ struct SettingsView: View {
             switch destination {
             case .profile:
                 ProfileEditView(session: session)
-            case .encryption:
-                EncryptionView(recovery: session.recovery,
-                               verification: session.verification,
-                               deviceID: session.deviceID,
-                               hasDeviceManagement: devicesURL != nil)
+            case .notifications:
+                NotificationsView(rules: session.notificationRules())
+            case .security:
+                SecurityView(session: session,
+                             recovery: session.recovery,
+                             verification: session.verification,
+                             deviceID: session.deviceID)
             case .storage:
                 // Built here, on the push, for the same reason as the encryption screen above:
                 // a `NavigationLink` with a destination closure builds it on every pass of this
@@ -215,9 +174,6 @@ struct SettingsView: View {
                 StorageView(storage: session.storage(), onCleared: onClearedCache)
             }
         }
-        // Cheap: the SDK builds this out of OAuth metadata it has already cached, without going to
-        // the network. It is still async, so it cannot be read straight out of `body`.
-        .task { devicesURL = await session.deviceManagementURL() }
         .toolbar {
             // The one thing on this screen that is *yours* rather than the app's, so it gets the
             // corner. It is a pencil and not the word "Edit" because the corner opposite already
@@ -279,42 +235,6 @@ struct SettingsView: View {
         .frame(maxWidth: .infinity)
         .padding(.top, Theme.Spacing.roomy)
         .textSelection(.enabled)
-    }
-
-    /// A setting that exists as a place on the screen and nothing more.
-    private func unbuilt(_ title: LocalizedStringResource, systemImage: String) -> some View {
-        Label(title, systemImage: systemImage)
-            .foregroundStyle(.secondary)
-    }
-
-    /// The app-lock controls: a switch, and — once it is on — how long a trip away is forgiven. The
-    /// switch is `@Bindable` on the lock itself, so flipping it writes straight through to the store
-    /// that persists it. When the device has no passcode of its own there is nothing to lean on, so
-    /// the switch is disabled and says why.
-    @ViewBuilder
-    private func lockSection(_ appLock: AppLock) -> some View {
-        @Bindable var appLock = appLock
-        Section {
-            Toggle(isOn: $appLock.isEnabled) {
-                Label(Strings.Settings.lockEnable, systemImage: "faceid")
-            }
-            .accentControl()
-            .disabled(!appLock.canAuthenticate)
-
-            if appLock.isEnabled {
-                Picker(selection: $appLock.timeout) {
-                    ForEach(AppLockTimeout.allCases) { option in
-                        Text(Strings.Settings.lockTimeoutLabel(option)).tag(option)
-                    }
-                } label: {
-                    Label(Strings.Settings.lockTimeout, systemImage: "clock")
-                }
-            }
-        } header: {
-            Text(Strings.Settings.lock)
-        } footer: {
-            Text(appLock.canAuthenticate ? Strings.Settings.lockExplanation : Strings.Settings.lockUnavailable)
-        }
     }
 
 }

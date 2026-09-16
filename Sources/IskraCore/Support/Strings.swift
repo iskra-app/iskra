@@ -58,6 +58,18 @@ public enum CoreStrings {
         public static let unblockFailed = LocalizedStringResource("account.unblockFailed", bundle: bundle)
     }
 
+    /// A notification rule the homeserver would not change — see `NotificationRulesFailure`.
+    /// One sentence per switch, because the control has already been put back by the time the
+    /// alert is read and the sentence is the only thing left that says which one it was.
+    public enum NotificationRules {
+        public static let directFailed = LocalizedStringResource("notificationRules.directFailed", bundle: bundle)
+        public static let groupFailed = LocalizedStringResource("notificationRules.groupFailed", bundle: bundle)
+        public static let mentionFailed = LocalizedStringResource("notificationRules.mentionFailed", bundle: bundle)
+        public static let roomMentionFailed = LocalizedStringResource("notificationRules.roomMentionFailed", bundle: bundle)
+        public static let invitationFailed = LocalizedStringResource("notificationRules.invitationFailed", bundle: bundle)
+        public static let callFailed = LocalizedStringResource("notificationRules.callFailed", bundle: bundle)
+    }
+
     /// A change to the room that the homeserver would not make. One sentence per act — see
     /// `RoomActionFailure` for why they are not all "something went wrong".
     public enum RoomAction {

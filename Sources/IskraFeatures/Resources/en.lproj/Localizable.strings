@@ -119,7 +119,6 @@
 
 "settings.appearance" = "Appearance";
 
-"settings.reactions" = "Reactions";
 
 "settings.storage" = "Storage";
 
@@ -801,3 +800,37 @@
 "reactions.places" = "Places";
 "reactions.objects" = "Objects";
 "reactions.symbols" = "Symbols";
+
+/* The Security tab — what used to be Encryption. Everything that answers "who can get at this"
+   lives under one roof now: recovery, this device, my devices, the Face ID lock and the bridge.
+   Apart they read as five small things; together they are one conversation. */
+"settings.security" = "Security";
+
+/* The Notifications screen: what arrives by default, until a particular chat says otherwise.
+   Two things have to be said out loud about these rules — they live on the server, so they apply
+   to every device at once, and a chat's own setting always wins over them. */
+"notifications.title" = "Notifications";
+
+"notifications.defaults" = "By default";
+"notifications.direct" = "Personal chats";
+"notifications.groups" = "Groups";
+"notifications.defaultsFooter" = "These are account rules: they apply on every device you are signed in on. If a chat has its own notification setting, that one wins.";
+
+"notifications.mentions" = "Mentions";
+"notifications.mentionsMe" = "When I’m mentioned";
+"notifications.roomMentions" = "When someone writes @room";
+"notifications.mentionsFooter" = "Mentions reach you even from chats you have silenced. @room wakes everybody at once, so it can be turned off on its own.";
+
+"notifications.other" = "Everything else";
+"notifications.invitations" = "Chat invitations";
+"notifications.calls" = "Calls";
+"notifications.otherFooter" = "There are no calls in Iskra yet, but the rule belongs to the account: another app signed into it can ring.";
+
+"notifications.system" = "Permission";
+"notifications.systemOn" = "The system lets notifications through";
+"notifications.systemOff" = "The system is blocking notifications";
+"notifications.systemUnknown" = "Permission hasn’t been asked for yet";
+"notifications.openSystem" = "Open Settings";
+"notifications.systemFooter" = "While the system is blocking notifications, none of the rules below will fire.";
+
+"notifications.failed" = "The notification settings couldn’t be read. The server isn’t answering — try again later.";

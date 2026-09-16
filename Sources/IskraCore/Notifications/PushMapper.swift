@@ -65,21 +65,20 @@ enum PushMapper {
                 return .silence(.notWorthWaking)
             }
 
+            let localName = LocalNames.name(for: roomID)
             let who = attribution(roomName: roomName,
                                   senderName: senderName,
                                   isDirect: room.isDm,
-                                  localName: LocalNames.name(for: roomID))
+                                  localName: localName)
             return .show(PushNotification(roomID: roomID,
                                           eventID: eventID,
                                           title: who.title,
                                           sender: who.sender,
                                           body: body,
                                           isNoisy: isNoisy,
-                                          // Deliberately not `who.sender`, which is nil in a
-                                          // direct chat. Who spoke and what goes on the second
-                                          // line are two questions, and only one of them has an
-                                          // answer that depends on the room.
-                                          personName: senderName.isEmpty ? event.senderId() : senderName,
+                                          personName: speaker(senderName: senderName,
+                                                              senderID: event.senderId(),
+                                                              localName: localName),
                                           personID: event.senderId(),
                                           avatarURL: Self.picture(for: item)))
         }
@@ -133,6 +132,28 @@ enum PushMapper {
 
         let title = isDirect ? senderName : roomName
         return (title, senderName == title ? nil : senderName)
+    }
+
+    /// The name iOS puts at the top of the banner — which is **not** `title`, and that is the whole
+    /// of why renaming a chat did nothing to its notifications.
+    ///
+    /// A notification carrying an `INSendMessageIntent` is drawn by the system as a communication:
+    /// in a personal chat it heads the banner with the *sender's* `displayName` and ignores
+    /// `content.title` entirely. So a push whose title said «Мама» still arrived on the lock screen
+    /// headed `anna_1987`, and the nickname — which `LocalNames` promises follows the person
+    /// everywhere in the app — stopped at the one screen its owner cannot open to correct it. See
+    /// `CommunicationNotification.intent(for:)`.
+    ///
+    /// The nickname wins outright, for the same reason it wins in `attribution`: a local name only
+    /// ever exists for a personal chat, where the sender *is* the chat. Where there is none, the
+    /// display name they chose, and where there is not one of those either, the Matrix ID — a bare
+    /// `@anya:matrix.org` says more than a blank.
+    ///
+    /// Who spoke and what goes on the second line remain two different questions: this is
+    /// deliberately not `attribution`'s `sender`, which is nil in a personal chat.
+    static func speaker(senderName: String, senderID: String, localName: String?) -> String {
+        if let localName, !localName.isEmpty { return localName }
+        return senderName.isEmpty ? senderID : senderName
     }
 
     /// Whose face to put on the notification: the sender's, and the room's when the sender has

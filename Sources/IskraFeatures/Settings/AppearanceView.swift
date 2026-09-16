@@ -21,6 +21,15 @@ struct AppearanceView: View {
     /// conversation is drawn, the same way the two above travel.
     @AppStorage(MessageLayout.storageKey) private var layout: MessageLayout = .default
 
+    /// What a double tap on a message leaves behind — see `QuickReaction`.
+    ///
+    /// It had a screen of its own, one row up on the settings root, holding a single grid. That was
+    /// a whole push and a whole back button to choose one emoji, and it was filed under nothing:
+    /// "Reactions" sat beside "Appearance" as though they were two subjects. They are not. Which
+    /// emoji the double tap sends is a decision about what a conversation looks like, and it is
+    /// made here now, under the swatches, in the same shape as the swatches.
+    @AppStorage(QuickReaction.storageKey) private var reaction: QuickReaction = .default
+
     /// A checkbox view of the same storage: the plain column is either on or it is not.
     private var isCompact: Binding<Bool> {
         Binding(
@@ -41,6 +50,10 @@ struct AppearanceView: View {
 
     /// Which way round the tick on a chosen wallpaper goes on the colourless theme.
     @Environment(\.colorScheme) private var scheme
+
+    /// The colour the chosen quick reaction sits in. Read from the environment rather than from
+    /// `accent` above, because the environment is what the rest of the app is actually painted in.
+    @Environment(\.accent) private var accentColor
 
     /// The user's own picture, held where every room can reach it.
     private let wallpapers = WallpaperStore.shared
@@ -103,6 +116,19 @@ struct AppearanceView: View {
             }
 
             Section {
+                LazyVGrid(columns: columns, spacing: Theme.Spacing.roomy) {
+                    ForEach(QuickReaction.allCases) { candidate in
+                        quickReaction(candidate)
+                    }
+                }
+                .padding(.vertical, Theme.Spacing.close)
+            } header: {
+                Text(Strings.Reactions.quick)
+            } footer: {
+                Text(Strings.Reactions.quickHelp)
+            }
+
+            Section {
                 wallpaperRow
 
                 if wallpaper.isSet {
@@ -127,6 +153,36 @@ struct AppearanceView: View {
         }
         .navigationTitle(Text(Strings.Settings.appearance))
         .toolbarTitleDisplayMode(.inline)
+    }
+
+    /// One of the six emoji a double tap can send.
+    ///
+    /// Laid out like the colour swatches above and for the same reason: the thing being chosen
+    /// *is* what it looks like, so it is shown rather than named in a menu. The choice is written
+    /// straight to `@AppStorage`, so there is no "done" — the next double tap in any conversation
+    /// already sends the new one.
+    private func quickReaction(_ candidate: QuickReaction) -> some View {
+        Button {
+            withAnimation(.smooth(duration: Theme.Timing.reaction)) { reaction = candidate }
+        } label: {
+            Text(candidate.key)
+                .font(.title2)
+                .frame(width: Theme.Size.swatch, height: Theme.Size.swatch)
+                // The chosen one sits in a disc of the app's colour. The unchosen ones sit on
+                // nothing at all — an emoji is legible against the sheet it is on, and a row of
+                // six grey circles would read as six buttons that are all switched off.
+                .background {
+                    if candidate == reaction {
+                        Circle().fill(accentColor.color.opacity(0.18))
+                        Circle().strokeBorder(accentColor.color, lineWidth: Theme.Border.hairline)
+                    }
+                }
+                .contentShape(.circle)
+        }
+        .buttonStyle(.plain)
+        // VoiceOver reads an emoji by its own name, which is better than anything we would
+        // write for it; what it cannot say is which one is currently in force.
+        .accessibilityAddTraits(candidate == reaction ? [.isButton, .isSelected] : .isButton)
     }
 
     /// Four lines of a conversation that never happened, so the two choices above can be made by

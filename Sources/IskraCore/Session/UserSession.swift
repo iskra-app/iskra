@@ -335,6 +335,15 @@ public final class UserSession {
         PushRegistration(client: client)
     }
 
+    /// What the account notifies about by default, for the screen that lets it be changed.
+    ///
+    /// Built on demand, like `storage()`: it holds an SDK `NotificationSettings` with a listener
+    /// registration behind it, and a session that minted one at sign-in would carry it for the
+    /// lifetime of the app on behalf of a screen almost nobody opens. See `NotificationRulesStore`.
+    public func notificationRules() -> NotificationRulesStore {
+        NotificationRulesStore(client: client)
+    }
+
     /// Asking the homeserver to send a push when somebody reacts — which by default it will not.
     /// See `ReactionPushRule`, which explains why the rule has to be this broad and where the
     /// noise it invites is taken back out.

@@ -97,6 +97,48 @@ public enum Strings {
         public static let seesBody = LocalizedStringResource("connection.seesBody", bundle: bundle)
     }
 
+    /// The notifications screen — what the account does before any one chat has an opinion.
+    ///
+    /// The words are careful about one thing above all: these are rules on the *server*, not
+    /// preferences on this phone, so they follow the account everywhere and a chat's own setting
+    /// beats them. A screen that let somebody silence their groups here and then be woken by a
+    /// group they had personally set to "all messages" would be a screen that lied. See
+    /// `NotificationRulesStore`.
+    public enum Notifications {
+        public static let title = LocalizedStringResource("notifications.title", bundle: bundle)
+
+        public static let defaults = LocalizedStringResource("notifications.defaults", bundle: bundle)
+        public static let direct = LocalizedStringResource("notifications.direct", bundle: bundle)
+        public static let groups = LocalizedStringResource("notifications.groups", bundle: bundle)
+        public static let defaultsFooter = LocalizedStringResource("notifications.defaultsFooter", bundle: bundle)
+
+        public static let mentions = LocalizedStringResource("notifications.mentions", bundle: bundle)
+        public static let mentionsMe = LocalizedStringResource("notifications.mentionsMe", bundle: bundle)
+        public static let roomMentions = LocalizedStringResource("notifications.roomMentions", bundle: bundle)
+        public static let mentionsFooter = LocalizedStringResource("notifications.mentionsFooter", bundle: bundle)
+
+        public static let other = LocalizedStringResource("notifications.other", bundle: bundle)
+        public static let invitations = LocalizedStringResource("notifications.invitations", bundle: bundle)
+        public static let calls = LocalizedStringResource("notifications.calls", bundle: bundle)
+        public static let otherFooter = LocalizedStringResource("notifications.otherFooter", bundle: bundle)
+
+        /// Whether the system is letting anything through at all, said before the rules rather
+        /// than after them. Every switch below is about what the *server* sends; none of it
+        /// reaches the screen if the system is holding the door shut, and a person who refused
+        /// the permission once would otherwise spend a while adjusting rules that cannot fire.
+        public static let system = LocalizedStringResource("notifications.system", bundle: bundle)
+        public static let systemOn = LocalizedStringResource("notifications.systemOn", bundle: bundle)
+        public static let systemOff = LocalizedStringResource("notifications.systemOff", bundle: bundle)
+        public static let systemUnknown = LocalizedStringResource("notifications.systemUnknown", bundle: bundle)
+        public static let openSystem = LocalizedStringResource("notifications.openSystem", bundle: bundle)
+        public static let systemFooter = LocalizedStringResource("notifications.systemFooter", bundle: bundle)
+
+        /// The rules could not be read. Not the same as "everything is off", and the difference
+        /// is the whole of what the reader needs: nothing here has been changed, and the screen
+        /// is not describing their account.
+        public static let failed = LocalizedStringResource("notifications.failed", bundle: bundle)
+    }
+
     public enum RoomList {
         public static let title = LocalizedStringResource("roomList.title", bundle: bundle)
         public static let searchPrompt = LocalizedStringResource("roomList.searchPrompt", bundle: bundle)
@@ -967,10 +1009,20 @@ public enum Strings {
         /// localized — by the system, so this string never appears there.
         public static let back = LocalizedStringResource("settings.back", bundle: bundle)
 
-        /// The one section here that exists as structure and nothing more. It is shown
-        /// disabled, and `moreSoon` is what says why — a greyed-out row with no explanation
-        /// reads as a bug rather than as a promise. It goes when stage 7 lands.
+        /// The notifications screen, which for a long time was a greyed-out row promising one.
+        /// See `NotificationsView`.
         public static let notifications = LocalizedStringResource("settings.notifications", bundle: bundle)
+
+        /// What used to be called "Encryption", and was too narrow a name for what was already
+        /// on it. The screen has always answered "who can get at this" rather than "is this
+        /// encrypted" — which in this app is never a question, because it always is. It now also
+        /// holds the devices, the Face ID lock and the bridge, which were three separate rows on
+        /// the settings root asking three halves of the same question. See `SecurityView`.
+        public static let security = LocalizedStringResource("settings.security", bundle: bundle)
+
+        /// The heading *inside* that screen, over the recovery state. Still "Encryption", and
+        /// deliberately: the section really is about encryption, and it is the screen around it
+        /// that was misnamed.
         public static let encryption = LocalizedStringResource("settings.encryption", bundle: bundle)
 
         /// The row that leads out of the app entirely, to the server's own page — because there is
@@ -982,8 +1034,6 @@ public enum Strings {
         public static let devicesHelp = LocalizedStringResource("settings.devicesHelp", bundle: bundle)
 
         public static let appearance = LocalizedStringResource("settings.appearance", bundle: bundle)
-        /// Where the emoji a double tap sends is chosen — see `QuickReaction`.
-        public static let reactions = LocalizedStringResource("settings.reactions", bundle: bundle)
         public static let storage = LocalizedStringResource("settings.storage", bundle: bundle)
         /// Where the bridge is switched on — see `Strings.Connection`.
         public static let connection = LocalizedStringResource("settings.connection", bundle: bundle)
