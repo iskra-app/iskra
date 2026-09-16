@@ -148,7 +148,7 @@ struct MessageActions<Content: View>: View {
             // lands underneath, so a photograph still opens and a round video still plays; the
             // cost is that a single tap on those waits out the double-tap interval, which is the
             // price of the quick reaction being true of every message rather than only of text.
-            .highPriorityGesture(press)
+            .simultaneousGesture(press)
             // The knock that says the reaction went. Without it a double tap on a message
             // whose pill appears a beat later feels like nothing happened.
             .sensoryFeedback(.impact(weight: .medium), trigger: quickTaps)
@@ -207,12 +207,31 @@ struct MessageActions<Content: View>: View {
     /// timeout, and the tap is unharmed: a tap is over in a fraction of the quarter second the
     /// press needs.
     ///
-    /// At high priority over the content, which is what makes both acts true of *every* message
-    /// rather than only the ones with nothing else to tap. A photograph opens the viewer on one
-    /// tap, a location opens Maps, a video note plays — and those are exactly the messages people
-    /// react to most. SwiftUI gives the innermost gesture first refusal, so without this the two
-    /// things this file exists for would be unreachable on precisely those three. A single tap
-    /// still lands underneath when neither of these claims the touch.
+    /// Attached **simultaneously**, and that word is the whole of why the conversation scrolls.
+    ///
+    /// It was attached at high priority, for a good reason: SwiftUI gives the innermost gesture
+    /// first refusal, so a photograph — which has a tap of its own — would otherwise answer neither
+    /// of the two acts this file exists for, and photographs are exactly what people react to. High
+    /// priority bought that, and charged for it somewhere nobody was looking. Priority in SwiftUI is
+    /// not a preference, it is a *failure requirement*: everything else, the enclosing scroll view's
+    /// pan included, is made to wait until this gesture has failed. And this gesture contains a
+    /// `TapGesture(count: 2)`, which does not fail when a finger moves — it fails on its own
+    /// timeout, about three quarters of a second later. So a finger that came down on a message and
+    /// pulled was a finger the timeline ignored for three quarters of a second, which is a timeline
+    /// that does not scroll. `ScrollTouches` makes it exact rather than intermittent: with the
+    /// scroll view's own 150 ms delay turned off, the touch reaches this recogniser immediately and
+    /// there is no window in which the pan could have claimed it first.
+    ///
+    /// Simultaneous recognition asks for no such wait: the pan runs whenever the pan wants to, and
+    /// the press and the tap run alongside it — a moving finger fails both of them anyway, one on
+    /// distance and one on never getting its second tap.
+    ///
+    /// What simultaneity gives up is the suppression that high priority threw in for free: the
+    /// photograph's own tap now also recognises, so both halves of this have to say so out loud.
+    /// The double tap tells the arbiter that a second tap arrived (`taps.double()`), and the press
+    /// tells it that the touch was spent on the menu (`taps.suppress()`, in `open()`). Both are the
+    /// same fact said to `MessageTaps`, which is where the ordering between a tap on a message and a
+    /// tap on what is *inside* it has lived since it stopped being a matter of priority.
     private var press: some Gesture {
         LongPressGesture(minimumDuration: Theme.Timing.menuLift)
             // `updating` rather than a callback: true while the finger is down, and cleared by the
@@ -237,6 +256,12 @@ struct MessageActions<Content: View>: View {
     }
 
     private func open() {
+        // The finger that lifts off this press is not asking for the photograph underneath it.
+        // Nothing is waiting yet at this moment — a single tap is scheduled when the finger comes
+        // *up*, which is after the menu is already open — so this is not a cancellation but a
+        // refusal of the tap that is about to arrive. See `MessageTaps.suppress`.
+        taps.suppress()
+
         let rect = anchor.rect
         guard let menu, rect != .zero else { return }
         menu.present(MessageMenuPresentation(
