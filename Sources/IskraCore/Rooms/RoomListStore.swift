@@ -154,6 +154,16 @@ public final class RoomListStore {
             self?.scheduleRebuild()
         }
 
+        // Which rooms are silenced, and then whenever that changes.
+        //
+        // The same problem as a rename, and it is worth spelling out because it does not look like
+        // one: muting a chat writes a *push rule*, not room state, so nothing about the room
+        // changes and no room-list diff is ever emitted. Without this the badge stayed the accent
+        // until some unrelated message arrived and happened to rebuild the row. The delegate is the
+        // SDK's own "the notification settings moved" — it says nothing about which rule, which is
+        // all this needs: the set is read again and the list recomputed.
+        await watchMuting()
+
         // Offline mode is the SDK's own answer to a network that has gone away, and without it the
         // sync loop treats one as a failure: it reports `.error`, stops, and waits to be restarted.
         // The rooms are all still there in the encrypted store — the app simply had no way to keep
@@ -383,6 +393,14 @@ public final class RoomListStore {
         entriesResult = nil
         orderedRooms = []
 
+        // The delegate is a retain cycle waiting to happen — the SDK holds it, it holds us — and
+        // more to the point it is a callback into a store for an account that is being signed out
+        // of. Cleared before the settings object goes with it.
+        notificationSettings?.setDelegate(delegate: nil)
+        notificationSettings = nil
+        notificationWatcher = nil
+        mutedRoomIDs = []
+
         // And the screen forgets the conversations. This store is only ever stopped on the way out
         // of an account, and a list of somebody's chats — their names, their faces, the last thing
         // each of them said — is not a thing to leave published on a signed-out app because the
@@ -532,6 +550,62 @@ public final class RoomListStore {
     /// `scheduleRebuild`.
     private var needsRebuild = false
 
+    /// The rooms this account has silenced by name, so the list can draw their badges grey.
+    ///
+    /// Held here rather than asked per row, because asking is a round trip: the badge is drawn for
+    /// every conversation on the screen, and a rebuild already costs one `roomInfo()` and one
+    /// `latestEvent()` each. This is two calls for the *whole list* — the rooms with a rule of
+    /// their own, and then that rule — and there are only ever a handful of those.
+    private var mutedRoomIDs: Set<String> = []
+
+    /// Kept for the delegate below, which the SDK holds only weakly-by-convention: an object we
+    /// dropped would stop being told, and the badges would then be correct until the first time
+    /// somebody muted something.
+    private var notificationSettings: NotificationSettings?
+    private var notificationWatcher: NotificationSettingsWatcher?
+
+    /// Reads the silenced rooms, and arranges to be told when they change.
+    ///
+    /// Failures are swallowed on purpose and the set is simply left as it was. Every one of these
+    /// calls can fail — an account whose push rules have never been fetched, a server that is not
+    /// answering — and none of those is a reason to stop drawing a chat list. The cost of being
+    /// wrong is a badge in the wrong colour, which is the mildest thing on the screen; the cost of
+    /// treating it as an error would be a list that does not appear.
+    private func watchMuting() async {
+        let settings = await client.getNotificationSettings()
+        notificationSettings = settings
+
+        let watcher = NotificationSettingsWatcher { [weak self] in
+            Task { @MainActor [weak self] in
+                await self?.reloadMuting()
+                self?.scheduleRebuild()
+            }
+        }
+        notificationWatcher = watcher
+        settings.setDelegate(delegate: watcher)
+
+        await reloadMuting()
+    }
+
+    /// The set itself. Two calls for the whole list — see `mutedRoomIDs`.
+    private func reloadMuting() async {
+        guard let settings = notificationSettings else { return }
+
+        // `nil` rather than `true`: the argument asks whether the rule is *enabled*, which is not
+        // the same question as what the rule says. A disabled mute is still a room with a rule of
+        // its own, and asking the mode below is what actually settles it.
+        let withRules = await settings.getRoomsWithUserDefinedRules(enabled: nil)
+
+        var muted: Set<String> = []
+        for roomID in withRules {
+            guard let mode = try? await settings.getUserDefinedRoomNotificationMode(roomId: roomID),
+                  mode == .mute else { continue }
+            muted.insert(roomID)
+        }
+
+        mutedRoomIDs = muted
+    }
+
     private func rebuildSummaries() async {
         let handles = orderedRooms
 
@@ -559,7 +633,8 @@ public final class RoomListStore {
             guard let summary = RoomSummary(info: info,
                                             ownUserID: ownUserID,
                                             lastMessage: preview,
-                                            lastActivity: activity) else {
+                                            lastActivity: activity,
+                                            isMuted: mutedRoomIDs.contains(info.id)) else {
                 continue
             }
             summaries.append(summary)
@@ -747,6 +822,21 @@ public final class RoomListStore {
     /// Fetches the live handle for a room, which the timeline needs.
     func room(withID id: String) -> Room? {
         orderedRooms.first { $0.id() == id }
+    }
+}
+
+/// The account's notification rules moved. Which rule is not said, and does not need to be: the
+/// list answers by reading the silenced rooms again, which is the fetch it would have had to make
+/// to act on anything more specific.
+private final class NotificationSettingsWatcher: NotificationSettingsDelegate {
+    private let onChange: @Sendable () -> Void
+
+    init(onChange: @escaping @Sendable () -> Void) {
+        self.onChange = onChange
+    }
+
+    func settingsDidChange() {
+        onChange()
     }
 }
 
