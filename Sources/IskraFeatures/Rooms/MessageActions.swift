@@ -61,7 +61,7 @@ struct MessageActions<Content: View>: View {
     /// itself the instant the gesture ends, *including* when it ends by failing. A press released
     /// early, or one that turns into a scroll, leaves nothing behind — where a plain flag would
     /// need a callback that does not fire on failure, and a bubble could be left sitting at 97%.
-    @GestureState private var isPressing = false
+    @State private var isPressing = false
 
     /// Guarding a redaction behind a confirmation, because it cannot be undone and every
     /// other item in that menu can.
@@ -150,7 +150,24 @@ struct MessageActions<Content: View>: View {
             // a round video still plays; the cost is that a single tap on those waits out the
             // double-tap interval, which is the price of the quick reaction being true of every
             // message rather than only of the ones with nothing else to tap.
-            .simultaneousGesture(hold)
+            // The hold is UIKit's on the phone and SwiftUI's on the Mac, and that split is not
+            // taste — see `MessageHold`, which has the measurements. A SwiftUI `LongPressGesture`
+            // inside a `ScrollView` takes the touch and the list stops scrolling, whatever it is
+            // attached with. The Mac has no such problem: scrolling there is a wheel and two
+            // fingers on a trackpad, not a drag on the content, so nothing is being competed for.
+            #if os(iOS)
+            .overlay {
+                MessageHold(duration: Theme.Timing.menuLift,
+                            onPressingChanged: { isPressing = $0 },
+                            onHold: open)
+            }
+            #else
+            .onLongPressGesture(minimumDuration: Theme.Timing.menuLift) {
+                open()
+            } onPressingChanged: { pressing in
+                isPressing = pressing
+            }
+            #endif
             .simultaneousGesture(doubleTap)
             // The knock that says the reaction went. Without it a double tap on a message
             // whose pill appears a beat later feels like nothing happened.
@@ -233,14 +250,6 @@ struct MessageActions<Content: View>: View {
     /// press tells it the touch was spent on the menu (`taps.suppress()`, in `open()`). See
     /// `MessageTaps`, which is where the ordering between a tap on a message and a tap on what is
     /// *inside* it lives now that it is nobody's side effect.
-    private var hold: some Gesture {
-        LongPressGesture(minimumDuration: Theme.Timing.menuLift)
-            // `updating` rather than a callback: true while the finger is down, and cleared by the
-            // framework however the gesture ends. See `isPressing`.
-            .updating($isPressing) { _, pressing, _ in pressing = true }
-            .onEnded { _ in open() }
-    }
-
     private var doubleTap: some Gesture {
         TapGesture(count: 2).onEnded {
             // Whatever single tap is waiting inside this message — the photograph about to open,
