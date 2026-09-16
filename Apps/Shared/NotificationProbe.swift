@@ -1,4 +1,5 @@
 import Foundation
+import UserNotifications
 import IskraCore
 
 /// `Iskra --probe-notification <roomID> <eventID>` decrypts one event exactly the way the
@@ -89,6 +90,24 @@ enum NotificationProbe {
                     print("              budget ran out or the download failed. `Log.push` says which.")
                 case let (_, bytes?):
                     print("     avatar   \(bytes.count) bytes")
+                }
+
+                // And the half that decides whether this looks like a message from a person or
+                // like an app notice. Every requirement for it is invisible from the code —
+                // the entitlement on two bundles, `NSUserActivityTypes` on one, `IntentsSupported`
+                // on the other — and missing any one of them fails in the same silent way: an
+                // ordinary banner with the app's icon, and not a word anywhere about why.
+                if let intent = CommunicationNotification.intent(for: notification) {
+                    do {
+                        _ = try CommunicationNotification.updated(UNMutableNotificationContent(),
+                                                                  from: intent)
+                        print("     style    communication — face, sender's name, its own summary line")
+                    } catch {
+                        print("     style    PLAIN — iOS refused the intent:")
+                        print("              \(error)")
+                    }
+                } else {
+                    print("     style    plain — nobody to draw (no sender id or name)")
                 }
 
                 print("     (The extension's own entitlements are not proved by this — see above.)")
