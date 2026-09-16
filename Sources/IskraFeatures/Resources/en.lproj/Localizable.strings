@@ -89,6 +89,7 @@
 
 /* Accessibility label for the pin icon on a pinned chat. */
 "roomList.pinned" = "Pinned chat";
+"roomList.hasUnread" = "Unread";
 
 "roomList.searchPrompt" = "Search messages";
 

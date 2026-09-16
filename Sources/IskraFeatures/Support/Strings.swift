@@ -154,6 +154,10 @@ public enum Strings {
             LocalizedStringResource("roomList.unread", defaultValue: "\(count) unread", bundle: bundle)
         }
 
+        /// Unread, with nothing to count — a muted chat, or one flagged unread by hand. The
+        /// counted sentence would have said "0 unread" here, which is the opposite of true.
+        public static let hasUnread = LocalizedStringResource("roomList.hasUnread", bundle: bundle)
+
         public static func mentions(_ count: Int) -> LocalizedStringResource {
             LocalizedStringResource("roomList.mentions", defaultValue: "\(count) mentioning you", bundle: bundle)
         }
