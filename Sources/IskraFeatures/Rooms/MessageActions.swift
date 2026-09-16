@@ -144,11 +144,14 @@ struct MessageActions<Content: View>: View {
             .scaleEffect(isPressing ? Theme.Scale.pressedMessage : 1)
             .animation(isPressing ? .easeOut(duration: Theme.Timing.menuLift) : Theme.Timing.menuReleases,
                        value: isPressing)
-            // The hold and the double tap, as one gesture — see `press`. The single tap still
-            // lands underneath, so a photograph still opens and a round video still plays; the
-            // cost is that a single tap on those waits out the double-tap interval, which is the
-            // price of the quick reaction being true of every message rather than only of text.
-            .simultaneousGesture(press)
+            // The hold and the double tap, each simultaneous with everything else on the screen —
+            // see `hold` and `doubleTap`, where the three attempts it took to get there are
+            // written down. The single tap still lands underneath, so a photograph still opens and
+            // a round video still plays; the cost is that a single tap on those waits out the
+            // double-tap interval, which is the price of the quick reaction being true of every
+            // message rather than only of the ones with nothing else to tap.
+            .simultaneousGesture(hold)
+            .simultaneousGesture(doubleTap)
             // The knock that says the reaction went. Without it a double tap on a message
             // whose pill appears a beat later feels like nothing happened.
             .sensoryFeedback(.impact(weight: .medium), trigger: quickTaps)
@@ -196,63 +199,64 @@ struct MessageActions<Content: View>: View {
     /// The *content* goes with it — `content()` called a second time — so what lifts off the
     /// page is the real bubble rather than a picture of one: a video note goes on playing while
     /// the menu is open, and a photograph is still a photograph.
-    /// The press that lifts the message, and — only if the press never happens — the double tap
-    /// that leaves a reaction.
+    /// The press that lifts the message into its menu, and the double tap that leaves a reaction.
     ///
-    /// One gesture rather than two, so the choice between them is a single arbitration instead of
-    /// two recognisers waiting each other out; the note on `body` has the three quarters of a
-    /// second that bought back. `exclusively(before:)` tries the press first and gives it the touch
-    /// outright at `menuLift`; the double tap is offered the touch only once the press has failed,
-    /// which is exactly what a finger lifted before `menuLift` has made it do. Nothing waits on a
-    /// timeout, and the tap is unharmed: a tap is over in a fraction of the quarter second the
-    /// press needs.
+    /// Two gestures, attached **simultaneously**, and every word of that has been the wrong way
+    /// round at least once. What follows is the whole history, because three attempts were spent on
+    /// this and each one moved the bug rather than fixing it.
     ///
-    /// Attached **simultaneously**, and that word is the whole of why the conversation scrolls.
+    /// They started as a `.highPriorityGesture` double tap and an `.onLongPressGesture`. Priority
+    /// was there for a real reason: SwiftUI gives the innermost gesture first refusal, so on a
+    /// photograph — which has a tap of its own — the quick reaction was unreachable, and
+    /// photographs are exactly what people react to. But priority in SwiftUI is not a preference,
+    /// it is a *failure requirement*: every other recogniser, the enclosing scroll view's pan
+    /// included, waits until the prioritised one has failed. A `TapGesture(count: 2)` does not fail
+    /// when the finger moves; it fails on its own timeout, three quarters of a second later. So the
+    /// press could not be recognised until then — the menu took the better part of a second to
+    /// lift — and neither could the scroll.
     ///
-    /// It was attached at high priority, for a good reason: SwiftUI gives the innermost gesture
-    /// first refusal, so a photograph — which has a tap of its own — would otherwise answer neither
-    /// of the two acts this file exists for, and photographs are exactly what people react to. High
-    /// priority bought that, and charged for it somewhere nobody was looking. Priority in SwiftUI is
-    /// not a preference, it is a *failure requirement*: everything else, the enclosing scroll view's
-    /// pan included, is made to wait until this gesture has failed. And this gesture contains a
-    /// `TapGesture(count: 2)`, which does not fail when a finger moves — it fails on its own
-    /// timeout, about three quarters of a second later. So a finger that came down on a message and
-    /// pulled was a finger the timeline ignored for three quarters of a second, which is a timeline
-    /// that does not scroll. `ScrollTouches` makes it exact rather than intermittent: with the
-    /// scroll view's own 150 ms delay turned off, the touch reaches this recogniser immediately and
-    /// there is no window in which the pan could have claimed it first.
+    /// Fusing them into one `exclusively(before:)` gesture cured the lift, because the press was
+    /// then tried first and claimed the touch at `menuLift` instead of waiting on a tap's timeout.
+    /// It did nothing for the scroll, because the fused gesture was still attached at high priority
+    /// and still contained the tap that takes three quarters of a second to fail.
     ///
-    /// Simultaneous recognition asks for no such wait: the pan runs whenever the pan wants to, and
-    /// the press and the tap run alongside it — a moving finger fails both of them anyway, one on
-    /// distance and one on never getting its second tap.
+    /// Simultaneous recognition is what removes the question rather than re-asking it: nothing
+    /// waits for these, the pan scrolls whenever the finger goes down the screen, and a moving
+    /// finger fails both of them by itself — one on distance, one on never getting its second tap.
+    /// With no failure requirement left between them there is also nothing to fuse: the press and
+    /// the tap are two separate gestures again, each recognised on its own terms, which is one
+    /// dependency fewer to be wrong about.
     ///
-    /// What simultaneity gives up is the suppression that high priority threw in for free: the
-    /// photograph's own tap now also recognises, so both halves of this have to say so out loud.
-    /// The double tap tells the arbiter that a second tap arrived (`taps.double()`), and the press
-    /// tells it that the touch was spent on the menu (`taps.suppress()`, in `open()`). Both are the
-    /// same fact said to `MessageTaps`, which is where the ordering between a tap on a message and a
-    /// tap on what is *inside* it has lived since it stopped being a matter of priority.
-    private var press: some Gesture {
+    /// What simultaneity gives up is the suppression high priority threw in for free: a
+    /// photograph's own tap now also recognises, so both of these say out loud what priority used
+    /// to imply. The double tap tells the arbiter that a second tap arrived (`taps.double()`); the
+    /// press tells it the touch was spent on the menu (`taps.suppress()`, in `open()`). See
+    /// `MessageTaps`, which is where the ordering between a tap on a message and a tap on what is
+    /// *inside* it lives now that it is nobody's side effect.
+    private var hold: some Gesture {
         LongPressGesture(minimumDuration: Theme.Timing.menuLift)
             // `updating` rather than a callback: true while the finger is down, and cleared by the
             // framework however the gesture ends. See `isPressing`.
             .updating($isPressing) { _, pressing, _ in pressing = true }
             .onEnded { _ in open() }
-            .exclusively(before: TapGesture(count: 2).onEnded {
-                // Whatever single tap is waiting inside this message — the photograph about to
-                // open, the circle about to play — was the first half of this, and is called off
-                // here. Before the guard below, because a reaction being refused is no reason to
-                // open a picture nobody asked for. See `MessageTaps`.
-                taps.double()
+    }
 
-                // Offline the gesture is not merely refused, it is *silent* — and that is the whole
-                // reason to guard it here as well as in the menu. A double tap that puts no pill on
-                // the message reads as an app that did not notice the tap, so somebody would tap
-                // again, harder, and go on tapping. See `isOffline`.
-                guard message.canReact, !isOffline else { return }
-                quickTaps += 1
-                handlers.onToggleReaction(quickReaction.key)
-            })
+    private var doubleTap: some Gesture {
+        TapGesture(count: 2).onEnded {
+            // Whatever single tap is waiting inside this message — the photograph about to open,
+            // the circle about to play — was the first half of this, and is called off here.
+            // Before the guard below, because a reaction being refused is no reason to open a
+            // picture nobody asked for. See `MessageTaps`.
+            taps.double()
+
+            // Offline the gesture is not merely refused, it is *silent* — and that is the whole
+            // reason to guard it here as well as in the menu. A double tap that puts no pill on
+            // the message reads as an app that did not notice the tap, so somebody would tap
+            // again, harder, and go on tapping. See `isOffline`.
+            guard message.canReact, !isOffline else { return }
+            quickTaps += 1
+            handlers.onToggleReaction(quickReaction.key)
+        }
     }
 
     private func open() {
@@ -473,9 +477,26 @@ private struct RightClickCatcher: NSViewRepresentable {
 /// everything that belongs to it — the face beside it, the clock — and a bubble sliding out
 /// from under its own avatar would read as a bug.
 ///
-/// `minimumDistance` keeps it out of the way of scrolling, and the row is inset from the screen
-/// edge (avatar, margins) so the incoming-message swipe does not start where the system's
-/// back-edge gesture lives — a thing to confirm on a device, where that gesture actually exists.
+/// **Simultaneous, and that is the whole of why the conversation scrolls.** This was `.gesture(_:)`,
+/// with a `minimumDistance` and a direction check, and the comment here said that kept it out of
+/// the way of scrolling. It did not, and the two guards are why it looked as though it should.
+///
+/// `minimumDistance` postpones *recognition*; it does not restrict it to a direction. Eighteen
+/// points in any direction at all — straight down the screen included — and this gesture has
+/// recognised, which in SwiftUI means the enclosing scroll view's pan has lost the touch to it.
+/// The direction check then runs, decides the drag is vertical, and declines to move the row: so
+/// the message stays still, the list stays still, and the finger is holding a conversation that
+/// cannot be scrolled. The check was reading the right number one step too late — by then the
+/// question it answers has already been decided against the scroll view.
+///
+/// Simultaneous recognition never poses the question. The pan scrolls whenever the finger goes
+/// down the screen, this gesture runs alongside it, and the direction check keeps its original job:
+/// deciding whether the *row* moves. Which of the two owns a drag is now latched on the first
+/// movement, so a swipe that starts vertical stays the scroll view's for its whole length.
+///
+/// The row is inset from the screen edge (avatar, margins) so the incoming-message swipe does not
+/// start where the system's back-edge gesture lives — a thing to confirm on a device, where that
+/// gesture actually exists.
 struct SwipeToReply: ViewModifier {
     let message: Message
 
@@ -499,6 +520,14 @@ struct SwipeToReply: ViewModifier {
     /// Bumped when the drag crosses the threshold, so the knock lands exactly once per swipe.
     @State private var haptic = 0
 
+    /// Whose drag this is, decided once on the first movement and held until the finger lifts.
+    ///
+    /// Asked afresh on every event — which is what it was — the answer can change mid-drag: a
+    /// finger that starts down the screen and curls sideways would begin scrolling the conversation
+    /// and then start dragging a message out of it at the same time. A swipe is one act, and which
+    /// act it is is settled by how it starts.
+    @State private var isScrolling: Bool?
+
     /// The distance past which letting go replies.
     private static let threshold: CGFloat = 56
 
@@ -509,7 +538,7 @@ struct SwipeToReply: ViewModifier {
                 // The arrow waits on the edge the message is coming away from, which is the
                 // opposite of the one it moves toward.
                 .background(alignment: dragsToward == .leading ? .trailing : .leading) { hint }
-                .gesture(gesture)
+                .simultaneousGesture(gesture)
                 .sensoryFeedback(.impact(weight: .light), trigger: haptic)
                 .animation(.spring(response: 0.3, dampingFraction: 0.7), value: dragOffset)
         } else {
@@ -532,9 +561,13 @@ struct SwipeToReply: ViewModifier {
         DragGesture(minimumDistance: 18)
             .onChanged { value in
                 // Only a mostly-horizontal drag toward the centre. A drag that is more vertical
-                // than horizontal belongs to the scroll view, and one heading for the edge is not
-                // a reply.
-                guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                // than horizontal belongs to the scroll view — which is now free to take it, and
+                // takes it whatever this gesture decides — and one heading for the edge is not a
+                // reply either way.
+                if isScrolling == nil {
+                    isScrolling = abs(value.translation.height) >= abs(value.translation.width)
+                }
+                guard isScrolling == false else { return }
                 let directed = dragsToward == .leading ? min(0, value.translation.width)
                                                        : max(0, value.translation.width)
                 // Rubber-band: it gives, then resists, so it never flies to the edge.
@@ -551,6 +584,7 @@ struct SwipeToReply: ViewModifier {
                 if isArmed { onReply() }
                 isArmed = false
                 dragOffset = 0
+                isScrolling = nil
             }
     }
 }
