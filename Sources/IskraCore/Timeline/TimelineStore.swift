@@ -1304,8 +1304,30 @@ public final class TimelineStore {
     private func page(showingSpinner: Bool) async -> PageOutcome {
         // Somebody else's page is already on its way. Wait for it and let the caller re-examine
         // the world — `fillPages` will look again and take another turn if it still needs one.
+        //
+        // And then put the handle down if it is still the one we waited on. It is the *owner* of a
+        // page that normally clears this, and there is one path where the owner cannot: a page that
+        // comes back to find the generation has moved on returns without touching the field, because
+        // by then it may belong to the room that replaced ours. If `stop()` has not run in between —
+        // a resync, a failed opening that tore itself down and started again — nothing else clears
+        // it either, and the handle is left pointing at a task that finished long ago.
+        //
+        // That is the shape of "sometimes a room opens with only the last message in it". Every
+        // later call takes this branch, `await` on a finished task returns instantly, and `page`
+        // answers `.waited` without ever going near the network. `fillPages` spends its whole wait
+        // budget in a few microseconds, the opening ends having fetched nothing, and the room
+        // settles on whatever the SDK's first reset happened to carry — the live tail, which is one
+        // message. Scrolling could not mend it either: `loadMore` goes through here too.
+        //
+        // Clearing it makes the next turn of the loop fetch for real, which is the recovery the
+        // symptom needs whatever left the handle stale. Guarded on identity so a wait that
+        // overlapped a *live* page started by somebody else does not pull that one out from under
+        // them.
         if let inFlight = pageInFlight {
-            await inFlight.value
+            _ = await inFlight.value
+            // `==`, because a `Task` is a struct — identity here is the handle's own equality,
+            // which the standard library defines as pointing at the same task.
+            if pageInFlight == inFlight { pageInFlight = nil }
             return .waited
         }
 
@@ -1349,7 +1371,14 @@ public final class TimelineStore {
 
         let didFetch = await task.value
 
-        guard generation == self.generation else { return .fetched }
+        guard generation == self.generation else {
+            // The reader left mid-page. Nothing below is ours to write — `canLoadMore`,
+            // `isPaginating` and `didFailToPaginate` all describe the room that replaced ours — but
+            // the handle is, if it is still ours. Leaving it set is what stranded the next opening;
+            // see the wait at the top of this function.
+            if pageInFlight == task { pageInFlight = nil }
+            return .fetched
+        }
 
         pageInFlight = nil
         isPaginating = false

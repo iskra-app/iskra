@@ -2,21 +2,43 @@ import SwiftUI
 import IskraCore
 import IskraDesign
 
-/// Whether this account's messages survive this device — and the two things that can be
-/// done about it.
+/// Who can get at this account, and from where.
 ///
-/// The screen answers one question, and it is not "is end-to-end encryption enabled": in
-/// this app it always is, in every private room, and there is no switch for it. The question
-/// is the one people actually discover the hard way, on the day they get a new phone: *will
-/// I still be able to read any of this?* Everything here is written around that, which is
-/// why the state is called `HistoryProtection` and not `RecoveryState`, and why the word
-/// "key" only appears where the user has to physically handle one.
+/// This was `EncryptionView`, and the rename is not cosmetic. The screen never did answer "is
+/// end-to-end encryption enabled" — in this app it always is, in every private room, and there is
+/// no switch for it. It answers the question people discover the hard way on the day they get a
+/// new phone: *will I still be able to read any of this?* That is why the state is called
+/// `HistoryProtection` and not `RecoveryState`, and why the word "key" only appears where the user
+/// has to physically handle one.
 ///
-/// The key itself is shown exactly once, in a sheet with no way to dismiss it except the
+/// Three more things were asking halves of the same question from three separate rows on the
+/// settings root — the other devices signed into this account, the Face ID lock on the app, and
+/// whether traffic goes through a bridge that can see it. Scattered, each read as a small
+/// preference; gathered here, under a name that covers them, they read as one subject. So the
+/// screen has five sections and one heading, and the heading is "Security".
+///
+/// The recovery key itself is shown exactly once, in a sheet with no way to dismiss it except the
 /// button that says the user has saved it. That is not an interaction pattern anyone enjoys,
 /// and it is the correct one: a recovery key the user swiped away is a recovery key they do
 /// not have, and they find that out months later, from a screen that cannot help them.
-struct EncryptionView: View {
+struct SecurityView: View {
+    /// The session, which this screen needs for two of the things it has taken in: the bridge
+    /// screen is built over it, and the address of the account's own devices page is asked of it.
+    let session: UserSession
+
+    /// The app lock, put up by the root. Nil only where the root has not — never in the real app.
+    /// It used to be read by `SettingsView`, which drew the switch itself.
+    @Environment(\.appLock) private var appLock
+
+    /// Where this account's devices are managed — on the server's own page, because there is
+    /// nowhere in this app they could be. Resolved once, on appearance; `nil` means the session
+    /// did not come through OAuth and there is no such page, and then the row is not drawn at all.
+    ///
+    /// Resolved *here* now rather than being handed down from settings. The row and the sentence
+    /// in `otherDevices` that depends on whether the row exists are on the same screen at last, so
+    /// the fact does not have to travel between two of them.
+    @State private var devicesURL: URL?
+
     /// The session's, not this screen's — a plain `let`, exactly like `verification` below.
     ///
     /// It used to be built by this screen and torn down with it, which was fine while this screen was
@@ -49,17 +71,14 @@ struct EncryptionView: View {
     /// Whether the "are you sure" for a new code is up. See the button.
     @State private var isMintingNewCode = false
 
-    /// Whether settings has a "My devices" row to send the reader to — see `otherDevices`.
-    let hasDeviceManagement: Bool
-
-    init(recovery: RecoveryStore,
+    init(session: UserSession,
+         recovery: RecoveryStore,
          verification: VerificationStore,
-         deviceID: String?,
-         hasDeviceManagement: Bool) {
+         deviceID: String?) {
+        self.session = session
         self.recovery = recovery
         self.verification = verification
         self.deviceID = deviceID
-        self.hasDeviceManagement = hasDeviceManagement
     }
 
     var body: some View {
@@ -86,10 +105,21 @@ struct EncryptionView: View {
             }
 
             thisDevice
+
+            otherDevicesSection
+
+            if let appLock {
+                lockSection(appLock)
+            }
+
+            bridge
         }
         .formStyle(.grouped)
-        .navigationTitle(Text(Strings.Encryption.title))
+        .navigationTitle(Text(Strings.Settings.security))
         .toolbarTitleDisplayMode(.inline)
+        // Cheap: the SDK builds this out of OAuth metadata it has already cached, without going to
+        // the network. It is still async, so it cannot be read straight out of `body`.
+        .task { devicesURL = await session.deviceManagementURL() }
         // Neither store is stopped here any more, and neither is started here. Both belong to the
         // session and outlive this screen — `load()` is called once, when the session starts. Tearing
         // either down on the way out would unhook a listener the rest of the app is reading: the
@@ -251,16 +281,108 @@ struct EncryptionView: View {
 
     /// The sentence under this device, once it is trusted and there is nothing left to do about it.
     ///
-    /// It has to be told whether the "My devices" row exists, because it used to simply assert that
-    /// it did — and on a session signed in with a password there is no such row, so the app was
-    /// citing a section of its own settings that was not there. The row only appears where the
-    /// server hands over an account page, which it only does for a session obtained through the
-    /// browser; everywhere else the honest answer is the older one, which is that the other devices
-    /// are the server's business and not ours.
+    /// Which of two sentences it is depends on whether the "My devices" row below exists, because
+    /// it used to simply assert that it did — and on a session signed in with a password there is
+    /// no such row, so the app was citing a section of its own settings that was not there. The row
+    /// only appears where the server hands over an account page, which it only does for a session
+    /// obtained through the browser; everywhere else the honest answer is the older one, which is
+    /// that the other devices are the server's business and not ours.
     private var otherDevices: LocalizedStringResource {
         guard recovery.isDeviceVerified else { return Strings.Verification.why }
-        return hasDeviceManagement ? Strings.Encryption.otherDevicesHere
-                                   : Strings.Encryption.otherDevices
+        return devicesURL != nil ? Strings.Encryption.otherDevicesHere
+                                 : Strings.Encryption.otherDevices
+    }
+
+    /// The devices, which live somewhere else — and the row is only here when there is somewhere
+    /// else for it to lead to.
+    ///
+    /// There is no native list and there is not going to be one. The Rust SDK has `devices()` and
+    /// `delete_devices()`; the FFI deliberately exports neither, and on a homeserver running the
+    /// authentication service the endpoint that deletes a device answers 404 — it is gone, not
+    /// guarded. What the SDK *does* hand over is the address of the page that can do it, opened
+    /// with the session the user already has, which is Element X's answer to the same wall.
+    ///
+    /// `deviceManagementURL()` is nil when the session was not obtained through OAuth, and then
+    /// this section simply is not drawn. A row that led nowhere would be worse than no row: it
+    /// would be the app claiming it could do something it cannot.
+    ///
+    /// It sat on the settings root until now, one section above a section about encryption, which
+    /// put "this device" and "my other devices" on two different screens.
+    @ViewBuilder
+    private var otherDevicesSection: some View {
+        if let devicesURL {
+            Section {
+                // Opened in the app's own browser rather than thrown to Safari, and that is what
+                // carries the sign-in across: the same `ASWebAuthenticationSession` that signed
+                // the user in shares its cookies, so the server's page recognises them and does
+                // not ask them to sign in again to see their own devices.
+                Button {
+                    Task { await WebAuthentication.approve(url: devicesURL) }
+                } label: {
+                    LabeledContent {
+                        Image(systemName: "arrow.up.forward.app")
+                            .foregroundStyle(.secondary)
+                    } label: {
+                        Label(Strings.Settings.devices, systemImage: "laptopcomputer.and.iphone")
+                    }
+                }
+            } footer: {
+                Text(Strings.Settings.devicesHelp)
+            }
+        }
+    }
+
+    /// The app-lock controls: a switch, and — once it is on — how long a trip away is forgiven. The
+    /// switch is `@Bindable` on the lock itself, so flipping it writes straight through to the store
+    /// that persists it. When the device has no passcode of its own there is nothing to lean on, so
+    /// the switch is disabled and says why.
+    ///
+    /// Moved here from the settings root. A lock on the app is a question about who can get at this
+    /// account from this device, which is the question this screen is.
+    @ViewBuilder
+    private func lockSection(_ appLock: AppLock) -> some View {
+        @Bindable var appLock = appLock
+        Section {
+            Toggle(isOn: $appLock.isEnabled) {
+                Label(Strings.Settings.lockEnable, systemImage: "faceid")
+            }
+            .accentControl()
+            .disabled(!appLock.canAuthenticate)
+
+            if appLock.isEnabled {
+                Picker(selection: $appLock.timeout) {
+                    ForEach(AppLockTimeout.allCases) { option in
+                        Text(Strings.Settings.lockTimeoutLabel(option)).tag(option)
+                    }
+                } label: {
+                    Label(Strings.Settings.lockTimeout, systemImage: "clock")
+                }
+            }
+        } header: {
+            Text(Strings.Settings.lock)
+        } footer: {
+            Text(appLock.canAuthenticate ? Strings.Settings.lockExplanation : Strings.Settings.lockUnavailable)
+        }
+    }
+
+    /// Whether traffic goes through a bridge rather than straight at the homeserver — see
+    /// `ConnectionView`, which spells out what a bridge can read and what the switch does not yet
+    /// do for you.
+    ///
+    /// It belongs on this screen and not on the settings root, and the screen itself is the
+    /// argument: two of its four sections exist to say who can see your traffic and how far the
+    /// protection actually goes. That is a security question wearing the word "connection".
+    private var bridge: some View {
+        Section {
+            NavigationLink {
+                ConnectionView(session: session)
+            } label: {
+                Label(
+                    Strings.Settings.connection,
+                    systemImage: "point.3.filled.connected.trianglepath.dotted"
+                )
+            }
+        }
     }
 
     /// A button's label while the request behind it is in flight. Every act on this screen

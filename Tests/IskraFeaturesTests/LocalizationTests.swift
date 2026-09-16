@@ -53,7 +53,6 @@ struct LocalizationTests {
         // VoiceOver is the only place a sticker's description is ever said out loud — nothing
         // is drawn under the picture — so the sentence it goes into is checked in both.
         (Strings.Message.Spoken.sentStickerNamed("😄"), en: "a sticker, 😄", ru: "стикер «😄»"),
-        (Strings.Settings.reactions, en: "Reactions", ru: "Реакции"),
         (Strings.Reactions.quick, en: "Quick reaction", ru: "Быстрая реакция"),
         // The menu a long press opens is this app's own — see `MessageMenu` — so every word in
         // it is this app's to translate, including the ones only VoiceOver ever says.
@@ -211,7 +210,19 @@ struct LocalizationTests {
 
         // The share extension's words (Core strings, since the extension links IskraCore).
         (CoreStrings.Share.title, en: "Send to…", ru: "Отправить в…"),
-        (CoreStrings.Share.cancel, en: "Cancel", ru: "Отмена")
+        (CoreStrings.Share.cancel, en: "Cancel", ru: "Отмена"),
+
+        // The settings tab that used to be called "Encryption", and the screen the greyed-out
+        // notifications row finally became.
+        (Strings.Settings.security, en: "Security", ru: "Безопасность"),
+        (Strings.Notifications.title, en: "Notifications", ru: "Уведомления"),
+        (Strings.Notifications.defaults, en: "By default", ru: "По умолчанию"),
+        (Strings.Notifications.direct, en: "Personal chats", ru: "Личные чаты"),
+        (Strings.Notifications.groups, en: "Groups", ru: "Группы"),
+        (Strings.Notifications.mentions, en: "Mentions", ru: "Упоминания"),
+        (Strings.Notifications.invitations, en: "Chat invitations", ru: "Приглашения в чаты"),
+        (Strings.Notifications.calls, en: "Calls", ru: "Звонки"),
+        (Strings.Notifications.system, en: "Permission", ru: "Разрешение")
     ]
 
     @Test("app strings resolve in English and in Russian")
@@ -326,6 +337,23 @@ struct LocalizationTests {
                 let sentence = String(localized: explanation)
 
                 #expect(!sentence.hasPrefix("timeline."), "\(sentence) is a key, not a sentence")
+                #expect(sentence.count > 5, "\(failure) says too little to act on")
+            }
+        }
+    }
+
+    /// And from the account's notification rules. Driven from `allCases`, so a switch added to
+    /// that screen without a sentence for the day the server refuses it fails here rather than
+    /// showing "notificationRules.whatever" to whoever hits it first.
+    @Test("every notification rule failure explains itself in both languages")
+    func notificationRuleFailuresAreTranslated() {
+        for failure in NotificationRulesFailure.allCases {
+            for language in ["en", "ru"] {
+                var explanation = failure.explanation
+                explanation.locale = Locale(identifier: language)
+                let sentence = String(localized: explanation)
+
+                #expect(!sentence.hasPrefix("notificationRules."), "\(sentence) is a key, not a sentence")
                 #expect(sentence.count > 5, "\(failure) says too little to act on")
             }
         }

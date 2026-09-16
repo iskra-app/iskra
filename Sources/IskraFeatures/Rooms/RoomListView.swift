@@ -587,25 +587,29 @@ private struct InviteRow: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
 
-                // Green and red, and exactly the same size as each other — see `AnswerStyle`.
+                // Green and red, and neither one nudged ahead of the other — see `AnswerStyle`.
                 // The two used to be a filled "Join" beside a bordered "Decline", which is the
                 // shape of a screen with one action and a way out of it. This is not that: both
                 // are real answers, and the row was quietly nudging towards one of them while
                 // making the other look like the smaller, safer thing to press.
                 //
-                // `maxWidth: .infinity` on both is what makes them equal, and it is here rather
-                // than in the style because only the row knows what they are dividing between
-                // them. There is no `Spacer` after them for the same reason: a spacer would take
-                // a share of the row and the two buttons would be equal to each other and
-                // ragged against everything else in the list.
-                HStack(spacing: Theme.Spacing.close) {
+                // They used to be stretched to `maxWidth: .infinity` as well, each taking half
+                // the row, which made them equal by making them enormous: two full-width slabs
+                // under every invitation in a list of ordinary chat rows. They are the size of
+                // their own words now, sitting together on the leading edge with the `Spacer`
+                // taking the rest — small enough to read as a pair of answers to the sentence
+                // above them rather than as a screen of their own. Equality is carried by the
+                // style, which gives both the same font, padding and height, and not by width:
+                // "Войти" is a shorter word than "Отклонить" and pretending otherwise is what
+                // cost the row its proportions.
+                HStack(spacing: Theme.Spacing.tight) {
                     Button(String(app: Strings.RoomList.Invite.accept), action: onAccept)
                         .buttonStyle(.answer(.accepting))
-                        .frame(maxWidth: .infinity)
 
                     Button(String(app: Strings.RoomList.Invite.decline), action: onDecline)
                         .buttonStyle(.answer(.declining))
-                        .frame(maxWidth: .infinity)
+
+                    Spacer(minLength: 0)
                 }
                 .padding(.top, Theme.Spacing.tight)
                 // Joining is `client.joinRoomById` and declining is `room.leave()` — both go straight
