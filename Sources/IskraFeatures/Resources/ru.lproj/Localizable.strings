@@ -89,6 +89,7 @@
 
 /* Accessibility label for the pin icon on a pinned chat. */
 "roomList.pinned" = "Закреплённый чат";
+"roomList.hasUnread" = "Есть непрочитанные";
 
 "roomList.searchPrompt" = "Поиск по сообщениям";
 

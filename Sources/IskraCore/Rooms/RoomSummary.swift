@@ -76,10 +76,15 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
     /// this says how the room was *made*, not how many people are in it today.
     public let kind: RoomKind
     public let privacy: PrivacyStatus
-    /// Unread messages. Drives the badge.
+    /// Unread messages that would have notified — the SDK counts them against the user's own
+    /// notification settings. Drives the number in the badge.
     public let unreadCount: Int
     /// Unread messages that mention the user directly. Drives the badge's colour.
     public let mentionCount: Int
+    /// Unread messages, whatever the notification settings say. A muted room notifies nobody and
+    /// still has new messages in it, so this is what a muted room has instead of a count: the
+    /// list shows a plain dot rather than a number.
+    public let unreadMessageCount: Int
     public let lastMessage: String?
     public let lastActivity: Date?
 
@@ -117,7 +122,11 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
     /// can be missing when the invite event itself is not in the store.
     public let invitedBy: String?
 
-    public var hasUnread: Bool { unreadCount > 0 || isMarkedUnread }
+    public var hasUnread: Bool { unreadCount > 0 || unreadMessageCount > 0 || isMarkedUnread }
+    /// There is a number to show. A muted room, or a room flagged unread by hand, has unread
+    /// *something* and nothing to count — it gets a dot instead, and asking this is how the row
+    /// tells the two apart.
+    public var hasUnreadCount: Bool { unreadCount > 0 }
     public var isMentioned: Bool { mentionCount > 0 }
     public var isInvitation: Bool { membership == .invited }
     /// Pinned to the top. A friendlier name than "favourite" for the one place the rest of the app
@@ -137,6 +146,7 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
                 kind: RoomKind = .group,
                 privacy: PrivacyStatus = .protected,
                 unreadCount: Int = 0,
+                unreadMessageCount: Int = 0,
                 mentionCount: Int = 0,
                 lastMessage: String? = nil,
                 lastActivity: Date? = nil,
@@ -151,6 +161,7 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
         self.kind = kind
         self.privacy = privacy
         self.unreadCount = unreadCount
+        self.unreadMessageCount = unreadMessageCount
         self.mentionCount = mentionCount
         self.lastMessage = lastMessage
         self.lastActivity = lastActivity
@@ -177,8 +188,16 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
         self.avatarURL = info.pictureURL(besides: ownUserID)
         self.kind = info.kind
         self.privacy = PrivacyStatus(info.encryptionState)
-        self.unreadCount = Int(info.notificationCount)
-        self.mentionCount = Int(info.highlightCount)
+        // `numUnread*`, not `notificationCount`/`highlightCount`.
+        //
+        // The latter pair is what the homeserver sent in `unread_notifications`, and under
+        // sliding sync the server does not send it: it stays at zero for every room forever, so
+        // every badge in the list was drawn `if 0 > 0` and no chat ever looked unread. The
+        // `numUnread*` fields are the SDK's own, computed locally from read receipts against the
+        // user's notification settings, and they are what Element X reads for the same badge.
+        self.unreadCount = Int(info.numUnreadNotifications)
+        self.mentionCount = Int(info.numUnreadMentions)
+        self.unreadMessageCount = Int(info.numUnreadMessages)
         self.lastMessage = lastMessage
         self.lastActivity = lastActivity
         self.isFavourite = info.isFavourite

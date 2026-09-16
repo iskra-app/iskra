@@ -470,14 +470,25 @@ struct RoomRow: View {
                         // unread count used to be the accent, which made a list of chats the
                         // loudest screen in the app and left red with nothing to stand out
                         // against; it is grey now, and the red is legible again.
-                        Text(room.unreadCount, format: .number)
-                            .font(.caption.weight(.semibold).monospacedDigit())
-                            .foregroundStyle(room.isMentioned ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 2)
-                            .background(room.isMentioned ? AnyShapeStyle(Color.red)
-                                                         : AnyShapeStyle(Color.primary.opacity(0.16)),
-                                        in: Capsule())
+                        //
+                        // A number when there is one to show, and a dot when there is not.
+                        // A muted room counts no notifications and still has new messages in
+                        // it, and a room flagged unread by hand has none at all — both used to
+                        // draw a badge with **0** written in it.
+                        Group {
+                            if room.hasUnreadCount {
+                                Text(room.unreadCount, format: .number)
+                                    .font(.caption.weight(.semibold).monospacedDigit())
+                                    .foregroundStyle(room.isMentioned ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
+                                    .padding(.horizontal, 7)
+                                    .padding(.vertical, 2)
+                            } else {
+                                Circle().fill(.clear).frame(width: 10, height: 10)
+                            }
+                        }
+                        .background(room.isMentioned ? AnyShapeStyle(Color.red)
+                                                     : AnyShapeStyle(Color.primary.opacity(0.16)),
+                                    in: Capsule())
                     }
                 }
             }
@@ -515,8 +526,12 @@ struct RoomRow: View {
         // unread messages and one mention in them showed a red **12** on screen and told VoiceOver
         // "1 mention". The badge and the voice were reading different numbers off the same row,
         // and the one you could not see was the one leaving twelve messages out.
-        if room.hasUnread {
+        if room.hasUnreadCount {
             parts.append(String(app: Strings.RoomList.unread(room.unreadCount)))
+        } else if room.hasUnread {
+            // Unread with nothing to count — a muted room, or one flagged by hand. "0 unread"
+            // is what the counted sentence would have said, and it is the opposite of true.
+            parts.append(String(app: Strings.RoomList.hasUnread))
         }
         if room.isMentioned {
             parts.append(String(app: Strings.RoomList.mentions(room.mentionCount)))
