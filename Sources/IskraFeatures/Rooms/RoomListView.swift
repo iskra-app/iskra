@@ -464,12 +464,19 @@ struct RoomRow: View {
                         // A count, not a sentence — but still formatted for the locale
                         // rather than interpolated, so the digits are the right ones.
                         //
-                        // Two badges, and only one of them is a colour. A mention is red —
-                        // it is the one badge that means "you, specifically", and it is red
-                        // whatever the app is painted in, with white on it. An ordinary
-                        // unread count used to be the accent, which made a list of chats the
-                        // loudest screen in the app and left red with nothing to stand out
-                        // against; it is grey now, and the red is legible again.
+                        // Three badges and three colours — see `UnreadEmphasis`, which is where
+                        // the *choice* between them is made, out of reach of anything that knows
+                        // what a colour is.
+                        //
+                        // The middle one was grey until now, and the argument for that was real:
+                        // an accent badge on every unread chat made the list the loudest screen in
+                        // the app and left red with nothing to stand out against. What was wrong
+                        // with it was not the loudness but that grey meant nothing — it was simply
+                        // the default, so it said only "unread", which the badge's existence had
+                        // already said. Grey now belongs to muted rooms and to nothing else, which
+                        // is a thing worth saying, and the accent carries the ordinary case. Red
+                        // still reads against both, because there are only ever a few mentions in
+                        // a list and never a row of them.
                         //
                         // A number when there is one to show, and a dot when there is not.
                         // A muted room counts no notifications and still has new messages in
@@ -479,16 +486,14 @@ struct RoomRow: View {
                             if room.hasUnreadCount {
                                 Text(room.unreadCount, format: .number)
                                     .font(.caption.weight(.semibold).monospacedDigit())
-                                    .foregroundStyle(room.isMentioned ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
+                                    .foregroundStyle(badgeInk)
                                     .padding(.horizontal, 7)
                                     .padding(.vertical, 2)
                             } else {
                                 Circle().fill(.clear).frame(width: 10, height: 10)
                             }
                         }
-                        .background(room.isMentioned ? AnyShapeStyle(Color.red)
-                                                     : AnyShapeStyle(Color.primary.opacity(0.16)),
-                                    in: Capsule())
+                        .background(badgeFill, in: Capsule())
                     }
                 }
             }
@@ -537,6 +542,39 @@ struct RoomRow: View {
             parts.append(String(app: Strings.RoomList.mentions(room.mentionCount)))
         }
         return parts.joined(separator: ", ")
+    }
+
+    /// What the badge is filled with.
+    ///
+    /// `accent.bubble(onWallpaper: false)` rather than `accent.color`, and for the one case where
+    /// the two differ: on the colourless theme there is no colour to fill anything with, and that
+    /// pair is already the app's answer to "the accent, as a surface" — sixteen percent of the
+    /// foreground. Using `color` would paint a mono badge in `.primary`, which is a solid black
+    /// slab in the light with black digits on it. Same reasoning, and the same pair, as a message
+    /// bubble; see `AccentTheme.bubble(onWallpaper:)`.
+    private var badgeFill: AnyShapeStyle {
+        switch room.unreadEmphasis {
+        case .mention: AnyShapeStyle(Color.red)
+        case .ordinary: accent.bubble(onWallpaper: false)
+        // A solid grey, built the way the red one is: a fixed colour with white on it, the same in
+        // both appearances. Not a translucency of the foreground, which is what the ordinary badge
+        // was until now and what mono's still is — and that is the reason. A muted room is *always*
+        // the dot case, because it counts no notifications and so has no number to show, and a dot
+        // is ten points across. Nine percent of the foreground at that size is a smudge; on the
+        // colourless theme, where the ordinary badge is itself a grey translucency, it would also
+        // have been the same smudge as the thing it is meant to be distinguished from.
+        case .muted: AnyShapeStyle(Color.gray)
+        }
+    }
+
+    /// And what is written on it. The pair to `badgeFill`: each fill comes with the one thing that
+    /// stays readable on it.
+    private var badgeInk: AnyShapeStyle {
+        switch room.unreadEmphasis {
+        case .mention: AnyShapeStyle(.white)
+        case .ordinary: accent.onBubble
+        case .muted: AnyShapeStyle(.white)
+        }
     }
 }
 

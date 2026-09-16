@@ -111,6 +111,27 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
     /// counts actual unread messages — a room can have zero unread messages and still be flagged.
     public let isMarkedUnread: Bool
 
+    /// This room has been silenced *by name* — `RoomNotificationMode.mute`, set on the chat's own
+    /// info screen and stored as a push rule against this room ID.
+    ///
+    /// Read from `RoomInfo.cachedUserDefinedNotificationMode`, which costs nothing: it rides along
+    /// with the room info the list is already receiving, so the badge does not need a second call
+    /// per row to know how loud the room is.
+    ///
+    /// Two things it is not, and both are deliberate.
+    ///
+    /// It is not "this room will not notify you". A room that inherits a muted *account* default
+    /// has no rule of its own, so the SDK caches nothing and this is false — which is the honest
+    /// answer to the question actually being asked, because the grey badge is meant to say "you
+    /// silenced this one", not "the account is quiet". An account muted everywhere would otherwise
+    /// draw a list in which every badge was grey and the colour meant nothing.
+    ///
+    /// And it is not the same as having no number to show. A muted room counts no notifications
+    /// and falls back to a dot — see `hasUnreadCount` — but so does a room flagged unread by hand,
+    /// which nobody has silenced. Inferring the mute from the missing count would paint that one
+    /// grey too.
+    public let isMuted: Bool
+
     /// Joined, or invited and waiting for an answer.
     public let membership: RoomMembership
 
@@ -128,6 +149,18 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
     /// tells the two apart.
     public var hasUnreadCount: Bool { unreadCount > 0 }
     public var isMentioned: Bool { mentionCount > 0 }
+
+    /// How loudly the unread badge should say so — three answers, and the view turns them into
+    /// three colours.
+    ///
+    /// It lives here rather than in the row because it is a fact about the room and not about
+    /// paint: `IskraCore` is not allowed to know what colour an accent is, and the row should not
+    /// be the place that decides what "muted" means. Same division as `PrivacyStatus`, and it is
+    /// what lets the rule be pinned in a test without standing up SwiftUI. See `UnreadEmphasis`.
+    public var unreadEmphasis: UnreadEmphasis {
+        if isMentioned { return .mention }
+        return isMuted ? .muted : .ordinary
+    }
     public var isInvitation: Bool { membership == .invited }
     /// Pinned to the top. A friendlier name than "favourite" for the one place the rest of the app
     /// reasons about it — the row is pinned, the tag underneath happens to be `m.favourite`.
@@ -153,6 +186,7 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
                 isFavourite: Bool = false,
                 isLowPriority: Bool = false,
                 isMarkedUnread: Bool = false,
+                isMuted: Bool = false,
                 membership: RoomMembership = .joined,
                 invitedBy: String? = nil) {
         self.id = id
@@ -168,11 +202,16 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
         self.isFavourite = isFavourite
         self.isLowPriority = isLowPriority
         self.isMarkedUnread = isMarkedUnread
+        self.isMuted = isMuted
         self.membership = membership
         self.invitedBy = invitedBy
     }
 
-    init?(info: RoomInfo, ownUserID: String, lastMessage: String?, lastActivity: Date?) {
+    init?(info: RoomInfo,
+          ownUserID: String,
+          lastMessage: String?,
+          lastActivity: Date?,
+          isMuted: Bool = false) {
         // A room that is neither joined nor invited is not a row. Failing here rather than
         // defaulting to `.joined` is the point: a left or banned room rendered as an ordinary chat
         // is exactly the class of bug this type is being introduced to end.
@@ -203,6 +242,42 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
         self.isFavourite = info.isFavourite
         self.isLowPriority = info.isLowPriority
         self.isMarkedUnread = info.isMarkedUnread
+        // Two sources, and the room is muted if either says so.
+        //
+        // The argument is the list's own answer — `RoomListStore` reads the push rules once and
+        // keeps the set, which is the reliable half. `cachedUserDefinedNotificationMode` is the
+        // SDK's, and the word *cached* is load-bearing: it is nil until something has asked the
+        // server for this room's rule, so on a cold launch it knows almost nothing. It is still
+        // worth reading, because it is the half that is right *first* — opening a chat's info
+        // screen warms it, and a mute made there shows in the list before the set is reloaded.
+        //
+        // Neither alone was enough. The cache alone left every muted room in the app drawn in the
+        // accent until the day its info screen happened to be opened.
+        self.isMuted = isMuted || info.cachedUserDefinedNotificationMode == .mute
         self.invitedBy = info.inviter.map { $0.displayName ?? $0.userId }
     }
+}
+
+/// How loudly an unread badge says there is something waiting.
+///
+/// Three answers and not a colour among them, because this is `IskraCore`: the row in the chat
+/// list turns each one into paint, and that is the only place that knows what the accent is.
+///
+/// The ordering is a hierarchy, and `RoomSummary.unreadEmphasis` reads it top down. A mention in a
+/// muted room is still a mention — silencing a room is a statement about its chatter, not about
+/// being named in it, and Matrix agrees: `.m.rule.is_user_mention` fires through a muted room's
+/// own rule. So a room can be grey on Tuesday and red on Wednesday without anything having been
+/// changed.
+public enum UnreadEmphasis: String, Sendable, CaseIterable {
+    /// Somebody named you. Red, whatever the app is painted in — it is the one badge that means
+    /// "you, specifically", and it has to survive being looked at in a list of eight other colours.
+    case mention
+
+    /// Ordinary unread messages, in the colour the user chose the app to be.
+    case ordinary
+
+    /// A room the user silenced by name. Grey — and the grey is the point rather than the absence
+    /// of one: it is the badge saying "yes, there is something here, and you already told me you
+    /// did not want to hear about it".
+    case muted
 }

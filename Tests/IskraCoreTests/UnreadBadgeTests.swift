@@ -43,6 +43,43 @@ struct UnreadBadgeTests {
         let room = RoomSummary.preview(unreadCount: 3, mentionCount: 1, unreadMessageCount: 3)
         #expect(room.isMentioned)
         #expect(room.hasUnreadCount)
+        #expect(room.unreadEmphasis == .mention)
+    }
+
+    /// The three colours, and the order they beat each other in.
+    @Test("an ordinary unread chat wears the accent")
+    func ordinaryIsTheAccent() {
+        let room = RoomSummary.preview(unreadCount: 3, unreadMessageCount: 3)
+        #expect(room.unreadEmphasis == .ordinary)
+    }
+
+    @Test("a silenced chat wears grey")
+    func silencedIsGrey() {
+        let room = RoomSummary.preview(unreadMessageCount: 4, isMuted: true)
+        #expect(room.hasUnread)
+        #expect(room.unreadEmphasis == .muted)
+    }
+
+    /// Silencing a room is a statement about its chatter, not about being named in it — and Matrix
+    /// agrees, because `.m.rule.is_user_mention` fires through a muted room's own rule. So the red
+    /// badge survives the mute, and a room can be grey one day and red the next with nothing
+    /// having been changed.
+    @Test("being named in a silenced chat is still being named")
+    func aMentionBeatsTheMute() {
+        let room = RoomSummary.preview(mentionCount: 1, unreadMessageCount: 4, isMuted: true)
+        #expect(room.unreadEmphasis == .mention)
+    }
+
+    /// The one that made this worth a stored field rather than an inference. A muted room has
+    /// unread messages and no count, and so does a room flagged unread by hand — reading the mute
+    /// off the missing number would have painted the hand-flagged one grey as well, and said the
+    /// user had silenced a chat they had in fact just told the app to keep in front of them.
+    @Test("marked unread by hand is not the same as silenced")
+    func markedUnreadIsNotMuted() {
+        let room = RoomSummary.preview(isMarkedUnread: true)
+        #expect(room.hasUnread)
+        #expect(!room.hasUnreadCount, "nothing to count — the same shape a muted room has")
+        #expect(room.unreadEmphasis == .ordinary, "nobody silenced this one")
     }
 }
 
@@ -50,12 +87,14 @@ private extension RoomSummary {
     static func preview(unreadCount: Int = 0,
                         mentionCount: Int = 0,
                         unreadMessageCount: Int = 0,
-                        isMarkedUnread: Bool = false) -> RoomSummary {
+                        isMarkedUnread: Bool = false,
+                        isMuted: Bool = false) -> RoomSummary {
         RoomSummary(id: "!room:example.org",
                     name: "Room",
                     unreadCount: unreadCount,
                     unreadMessageCount: unreadMessageCount,
                     mentionCount: mentionCount,
-                    isMarkedUnread: isMarkedUnread)
+                    isMarkedUnread: isMarkedUnread,
+                    isMuted: isMuted)
     }
 }
