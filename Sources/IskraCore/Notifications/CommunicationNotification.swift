@@ -43,7 +43,7 @@ public enum CommunicationNotification {
         interaction.donate(completion: nil)
 
         do {
-            return try content.updating(from: intent)
+            return try updated(content, from: intent)
         } catch {
             // The expected path until the capability is enabled, and the reason this is `.info`
             // rather than `.error`: it is a notification drawn the plain way, which is what this
@@ -53,13 +53,27 @@ public enum CommunicationNotification {
         }
     }
 
+    /// The one call that does the work, with the failure left in.
+    ///
+    /// Split out from `apply` so that a diagnostic can see the error `apply` swallows — and it has
+    /// to be swallowed there, because a notification nobody sees is worse than a plain one. Every
+    /// requirement for this to succeed is invisible from the code: the entitlement on both bundles,
+    /// `NSUserActivityTypes` on the app, `IntentsSupported` on the extension. Miss any one and this
+    /// throws "intent is not supported", the banner arrives looking ordinary, and nothing says why.
+    /// `Iskra --probe-notification` prints what this throws, which is the only cheap way to tell
+    /// which of them is missing.
+    public static func updated(_ content: UNNotificationContent,
+                               from intent: INSendMessageIntent) throws -> UNNotificationContent {
+        try content.updating(from: intent)
+    }
+
     /// The intent that describes "this person said this, in this conversation".
     ///
     /// Nil when there is no person to describe — an invitation from someone with no name and no
     /// ID, or a notification we stripped down because the app is locked. A communication
     /// notification with nobody in it would be worse than a plain one: it would draw an empty
     /// circle where a face goes.
-    static func intent(for notification: PushNotification) -> INSendMessageIntent? {
+    public static func intent(for notification: PushNotification) -> INSendMessageIntent? {
         guard let personID = notification.personID, let personName = notification.personName else {
             return nil
         }
