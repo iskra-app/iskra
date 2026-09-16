@@ -19,6 +19,7 @@ struct ConnectionView: View {
                 Toggle(isOn: $throughBridge.animation(.smooth(duration: Theme.Timing.reaction))) {
                     Label(Strings.Connection.bridge, systemImage: "point.3.filled.connected.trianglepath.dotted")
                 }
+                .accentControl()
             } footer: {
                 Text(Strings.Connection.bridgeFooter)
             }

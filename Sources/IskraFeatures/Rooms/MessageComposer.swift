@@ -176,6 +176,9 @@ struct MessageComposer: View {
 
     @Environment(\.accent) private var accent
 
+    /// Which way round the mono accent's label goes — see the foreground in `icon`.
+    @Environment(\.colorScheme) private var scheme
+
     /// The one namespace the glass morphs across. Every piece of glass that should flow
     /// into another — the "+" and the two choices it becomes — is identified within it.
     @Namespace private var glass
@@ -921,7 +924,13 @@ struct MessageComposer: View {
                       rotation: Angle = .zero) -> some View {
         let glyph = Image(systemName: systemImage)
             .font(.body.weight(.semibold))
-            .foregroundStyle(isPrimary ? (tint != nil ? AnyShapeStyle(.white) : accent.foreground)
+            // `foreground(in:)` and not `foreground`. The difference is the whole of why the send
+            // button came out blank on the colourless theme: mono's plain `foreground` is
+            // `.background`, a *contextual* style meaning "the background of whatever this is drawn
+            // into" — and what this is drawn into is a pill of glass, so the arrow was painted the
+            // colour of the pill it was written on. `AccentTheme` already spells the pair out for
+            // exactly this case; the composer was the one place still asking the other way.
+            .foregroundStyle(isPrimary ? (tint != nil ? AnyShapeStyle(.white) : accent.foreground(in: scheme))
                                        : AnyShapeStyle(.primary))
             // Turned *before* the frame, so the frame still centres it. Rotation does not
             // change a view's layout size, so the glyph spins inside a square that never

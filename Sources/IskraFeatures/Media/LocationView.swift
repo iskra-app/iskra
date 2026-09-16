@@ -37,7 +37,10 @@ struct LocationBubble: View {
             .clipShape(BubbleShape())
             .pictureBorder(style)
             .contentShape(BubbleShape())
-            .onTapGesture { openInMaps() }
+            // Deferred by a quarter of a second, in case a second tap is coming and the map is
+            // being reacted to rather than opened — see `MessageTaps`. Outside a conversation
+            // there is no second tap to wait for and this is an ordinary one.
+            .messageTap { openInMaps() }
             .accessibilityLabel(Text(Strings.Location.title))
             .accessibilityAddTraits(.isButton)
 

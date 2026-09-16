@@ -258,6 +258,13 @@ public struct RoomView: View {
         isSearchingRoom = true
     }
 
+    /// The room's media, handed to every picture in it — see `RoomMediaSource`.
+    ///
+    /// Made once, on appearing, and held: a source rebuilt on each pass of this body would be a new
+    /// value in the environment every time anything in the conversation changed, and would
+    /// invalidate every row in it.
+    @State private var mediaSource: RoomMediaSource?
+
     public var body: some View {
         ScrollViewReader { scroll in
             ScrollView {
@@ -408,6 +415,16 @@ public struct RoomView: View {
                 timelineWidth = width
             }
             .environment(\.timelineWidth, timelineWidth)
+            // The room's pictures, for the viewer a tapped photograph opens — so that it can be
+            // swiped through the conversation's media the way the media tab's can. Built once, and
+            // not on every pass of this body: see `RoomMediaSource`.
+            .environment(\.roomMedia, mediaSource)
+            .onAppear {
+                guard mediaSource == nil else { return }
+                mediaSource = RoomMediaSource { [timeline] in
+                    MediaItem.items(from: timeline.rows.compactMap(\.message))
+                }
+            }
             // The messages fade out under the toolbar rather than being cut off by a line.
             //
             // Where the content meets the toolbar, macOS resolves the automatic scroll-edge
@@ -674,6 +691,11 @@ public struct RoomView: View {
         // animation on it would animate every animatable value in the whole subtree — the
         // timeline, the rows, the composer — each time the camera came up.
         .overlay { videoNoteOverlay }
+        // What the conversation is standing on: nothing, a gradient, or a picture of the user's
+        // own, taken down as far as they asked — see `Wallpaper`. Applied here, on the whole room
+        // rather than on the scroll view inside it, so that the wallpaper runs under the composer
+        // and the pinned strip instead of stopping at the edge of the messages.
+        .chatWallpaper()
         // The strip at the top of the room, above the conversation and below the toolbar.
         // Present only when there is something pinned — a room with nothing pinned should not
         // give up a row of its screen to say so.

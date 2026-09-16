@@ -284,14 +284,20 @@ public struct IskraRootView: View {
         //
         // Off, the app is exactly what it was: `.primary` chrome and no wash — the accent spent only
         // where it means something, the messages you sent, the reactions that are yours, the send
-        // button about to make one. `.mono` is where the two would meet — its colour *is* `.primary`,
-        // so a wash of it would grey the app rather than tint it — so the switch is disabled there,
-        // and the appearance screen says why.
+        // button about to make one.
+        //
+        // `.mono` is allowed here, and used not to be: the switch was disabled on the colourless
+        // theme because its colour *is* `.primary`, so the wash dims the app rather than colouring
+        // it. True, and not a reason to refuse — that dimming is what a black-and-white theme
+        // spreading over the interface looks like, and somebody who picks the colourless theme and
+        // then asks for it everywhere has asked for something that makes sense. It is washed with a
+        // lighter hand instead, because darkness has no hue to spend and starts eating the words at
+        // the opacity a colour is fine at. See `AccentTheme.washOpacity`.
         .tint(tintsInterface ? accent.color : .primary)
         .overlay {
             if tintsInterface {
                 accent.color
-                    .opacity(Theme.Tint.interface)
+                    .opacity(accent.washOpacity)
                     .ignoresSafeArea()
                     .allowsHitTesting(false)
             }
