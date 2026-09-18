@@ -107,6 +107,17 @@
 /* A conversation several people can join. */
 "roomList.newRoom" = "New room";
 
+/* The headings of the native macOS sidebar, which is the one place this app groups the
+   conversations at all — see `BetaFeatures.nativeSidebarKey`. The plain list keeps them in the
+   order the server sends, because a phone screen is not a place to be filing things. */
+"roomList.section.invitations" = "Invitations";
+
+"roomList.section.spaces" = "Spaces";
+
+"roomList.section.pinned" = "Pinned";
+
+"roomList.section.chats" = "Chats";
+
 "settings.title" = "Settings";
 
 /* The back button settings draws for itself in a sidebar, where the system gives it none.
@@ -118,6 +129,20 @@
 "settings.encryption" = "Encryption";
 
 "settings.appearance" = "Appearance";
+/* The settings row that leads to the unfinished things. Mac only — see `BetaFeatures`. */
+"settings.beta" = "Beta features";
+
+"beta.title" = "Beta features";
+
+/* Said once at the top of the screen, so that every switch below it is read as an offer
+   rather than as a setting somebody forgot to finish. */
+"beta.intro" = "The unfinished things live here. Turn one on if you are curious and off if it gets in the way: nothing breaks and nothing is lost.";
+
+"beta.nativeSidebar" = "Native sidebar";
+
+"beta.nativeSidebarHelp" = "The chat list becomes an ordinary macOS sidebar: chats gathered into sections, search at the top, and the panel itself tucked away by the button in the corner. Like Mail and Notes — and less like a phone.";
+
+
 
 
 "settings.storage" = "Storage";

@@ -29,6 +29,15 @@ struct LocalizationTests {
         (Strings.SignIn.continue, en: "Continue", ru: "Продолжить"),
         (Strings.RoomList.title, en: "Chats", ru: "Чаты"),
         (Strings.RoomList.pinned, en: "Pinned chat", ru: "Закреплённый чат"),
+        // The headings of the native sidebar, which exist nowhere else in the app — see
+        // `BetaFeatures`. A heading that fell back to English would be the one word on a Russian
+        // screen that is not Russian, and it would sit above every conversation on it.
+        (Strings.RoomList.Sidebar.invitations, en: "Invitations", ru: "Приглашения"),
+        (Strings.RoomList.Sidebar.spaces, en: "Spaces", ru: "Пространства"),
+        (Strings.RoomList.Sidebar.pinned, en: "Pinned", ru: "Закреплённые"),
+        (Strings.RoomList.Sidebar.chats, en: "Chats", ru: "Чаты"),
+        (Strings.Settings.beta, en: "Beta features", ru: "Бета-функции"),
+        (Strings.Beta.nativeSidebar, en: "Native sidebar", ru: "Родная боковая панель"),
         // The offline sentences. They are the ones a person reads at the worst moment — no network,
         // and a screen that has to convince them their conversations are not gone — so a fallback to
         // the wrong language here would be felt more than most.

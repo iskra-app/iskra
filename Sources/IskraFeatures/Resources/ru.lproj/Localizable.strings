@@ -107,6 +107,17 @@
 /* A conversation several people can join. */
 "roomList.newRoom" = "Новая комната";
 
+/* The headings of the native macOS sidebar, which is the one place this app groups the
+   conversations at all — see `BetaFeatures.nativeSidebarKey`. The plain list keeps them in the
+   order the server sends, because a phone screen is not a place to be filing things. */
+"roomList.section.invitations" = "Приглашения";
+
+"roomList.section.spaces" = "Пространства";
+
+"roomList.section.pinned" = "Закреплённые";
+
+"roomList.section.chats" = "Чаты";
+
 "settings.title" = "Настройки";
 
 /* The back button settings draws for itself in a sidebar, where the system gives it none.
@@ -118,6 +129,20 @@
 "settings.encryption" = "Шифрование";
 
 "settings.appearance" = "Внешний вид";
+/* The settings row that leads to the unfinished things. Mac only — see `BetaFeatures`. */
+"settings.beta" = "Бета-функции";
+
+"beta.title" = "Бета-функции";
+
+/* Said once at the top of the screen, so that every switch below it is read as an offer
+   rather than as a setting somebody forgot to finish. */
+"beta.intro" = "Здесь то, что ещё не доделано. Включайте, если любопытно, и выключайте, если мешает: ничего не сломается и ничего не потеряется.";
+
+"beta.nativeSidebar" = "Родная боковая панель";
+
+"beta.nativeSidebarHelp" = "Список чатов становится обычной боковой панелью macOS: чаты собраны в разделы, поиск стоит сверху, а саму панель можно убрать кнопкой в углу. Похоже на Почту и Заметки — и меньше похоже на телефон.";
+
+
 
 
 "settings.storage" = "Хранилище";
