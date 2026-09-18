@@ -39,6 +39,9 @@ struct CompactMessageRow: View {
     /// see `MessageRow.opensDay`, which explains why the row stops charging for it.
     var opensDay: Bool = false
 
+    /// Whether a message appearing here is arriving *now* — see `MessageRow.arrivesAnimated`.
+    var arrivesAnimated: Bool = true
+
     /// Whether the conversation has just jumped *to* this message, and it is briefly lit so
     /// that the eye can find it. Owned by `RoomView` — see `MessageRow.isHighlighted`.
     var isHighlighted: Bool = false
@@ -96,8 +99,19 @@ struct CompactMessageRow: View {
         .animation(.smooth(duration: Theme.Timing.reaction * 2), value: isHighlighted)
         .animation(.smooth(duration: Theme.Timing.reaction), value: message.reactions)
         .animation(.smooth(duration: Theme.Timing.deletion), value: message.kind)
-        .transition(.asymmetric(insertion: .opacity,
+        .transition(.asymmetric(insertion: arrival,
                                 removal: .scale(scale: 0.85).combined(with: .opacity)))
+    }
+
+    /// A message coming in — see `MessageRow`, which explains the shape of it and why it is a
+    /// scale rather than a move. The anchor is the leading edge in every case: the plain column
+    /// has no sides, so a message of yours does not come from anywhere different.
+    private var arrival: AnyTransition {
+        guard arrivesAnimated else { return .identity }
+
+        return .scale(scale: 0.92, anchor: .bottomLeading)
+            .combined(with: .opacity)
+            .animation(Theme.Timing.arrival)
     }
 
     /// The face on every line. In the compact column the sender is the only thing that says who

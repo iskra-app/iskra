@@ -65,6 +65,43 @@ enum MessagePreview {
         }
     }
 
+    /// The same words again, for a message this app has already flattened.
+    ///
+    /// The third door into the one sentence, and it is here rather than beside its caller for
+    /// exactly the reason the second one is: a photo has to read "Photo" in the chat list, on the
+    /// lock screen *and* in the strip above a reply, and three switches over the same vocabulary
+    /// is three places for them to drift apart. This one is asked by the quote a reply carries
+    /// before the reply has been sent — see `TimelineStore.send` — where all that is left of the
+    /// original is the `Message` on the screen.
+    static func text(for kind: MessageKind) -> String {
+        switch kind {
+        case let .text(body), let .notice(body), let .emote(body):
+            return body
+        case let .image(attachment):
+            return attachment.caption ?? String(core: CoreStrings.Preview.photo)
+        case .sticker:
+            return String(core: CoreStrings.Preview.sticker)
+        case .video:
+            return String(core: CoreStrings.Preview.video)
+        case .videoNote:
+            return String(core: CoreStrings.Preview.videoNote)
+        case .voice:
+            return String(core: CoreStrings.Preview.voice)
+        case .audio:
+            return String(core: CoreStrings.Preview.audio)
+        case .file:
+            return String(core: CoreStrings.Preview.file)
+        case .location:
+            return String(core: CoreStrings.Preview.location)
+        case .deleted:
+            return String(core: CoreStrings.Preview.deleted)
+        case .unreadable:
+            return String(core: CoreStrings.Preview.unreadable)
+        case .unsupported:
+            return ""
+        }
+    }
+
     /// Matrix timestamps are milliseconds since the epoch.
     static func date(from timestamp: Timestamp) -> Date {
         Date(timeIntervalSince1970: TimeInterval(timestamp) / 1000)
