@@ -522,11 +522,16 @@ private extension View {
     /// reason this is a named modifier instead of one line at the top of the screen: it has to be
     /// said in three places, and a fourth section added later that forgets it would be the one
     /// with a different rhythm. See `Theme.Spacing.sidebarRow` for why it is tighter.
+    ///
+    /// Nothing at all vertically and the smallest step sideways. The sides are not zero because
+    /// the first thing on a row is a circle: flush against the capsule's own rounded edge, a face
+    /// reads as having been cropped by it, and four points is the least that keeps the two curves
+    /// apart. The rest of the row's breathing room is the sidebar's own margin, further out.
     func sidebarRowInsets() -> some View {
         listRowInsets(EdgeInsets(top: Theme.Spacing.sidebarRow,
-                                 leading: Theme.Spacing.close,
+                                 leading: Theme.Spacing.tight,
                                  bottom: Theme.Spacing.sidebarRow,
-                                 trailing: Theme.Spacing.close))
+                                 trailing: Theme.Spacing.tight))
     }
 
     /// A separator between one row and the next, and nowhere else.
