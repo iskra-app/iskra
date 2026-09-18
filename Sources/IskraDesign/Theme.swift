@@ -91,7 +91,13 @@ public enum Theme {
         /// last message. Spent on a row four times the height it was sized for, that breathing
         /// room stops reading as breathing room and starts reading as a gap: the same window
         /// holds noticeably fewer conversations, and a chat list is a thing you scan.
-        public static let sidebarRow: CGFloat = 4
+        ///
+        /// Zero, and that is not the same as no padding. What separates one conversation from the
+        /// next in a sidebar is the gap the list leaves *between* the selection shapes, which this
+        /// does not touch; what this measures is the air inside the shape, around a row that
+        /// already carries its own — a 56-point face is taller than the name and the message
+        /// stacked beside it, so the row arrives with room to spare before anything is added.
+        public static let sidebarRow: CGFloat = 0
     }
 
     /// The few durations the app agrees on. Not `Duration` — that is Swift's own type, and
