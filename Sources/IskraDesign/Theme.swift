@@ -82,6 +82,16 @@ public enum Theme {
         /// solid body. The step is *inwards*, which is why it swaps sides with the message:
         /// the edge it comes away from is the one the conversation is anchored to.
         public static let reactionInset: CGFloat = 12
+
+        /// How much air a conversation gets above and below it in the Mac's own sidebar.
+        ///
+        /// Less than the list would choose, and on purpose. The system's own row insets are
+        /// measured for what a sidebar usually holds — one line of text with a small symbol
+        /// beside it — while a row here is a 56-point face, a name, and two reserved lines of the
+        /// last message. Spent on a row four times the height it was sized for, that breathing
+        /// room stops reading as breathing room and starts reading as a gap: the same window
+        /// holds noticeably fewer conversations, and a chat list is a thing you scan.
+        public static let sidebarRow: CGFloat = 4
     }
 
     /// The few durations the app agrees on. Not `Duration` — that is Swift's own type, and

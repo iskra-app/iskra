@@ -11,7 +11,7 @@ import SwiftUI
 /// It is reached only where there is something on it — see `BetaFeatures.hasAnything`, and
 /// `SettingsView`, which is where the row is hidden on iOS.
 struct BetaView: View {
-    @AppStorage(BetaFeatures.nativeSidebarKey) private var nativeSidebar = false
+    @AppStorage(BetaFeatures.nativeSidebarKey) private var nativeSidebar = BetaFeatures.nativeSidebarByDefault
 
     var body: some View {
         Form {

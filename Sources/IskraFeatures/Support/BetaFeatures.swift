@@ -17,6 +17,19 @@ enum BetaFeatures {
     /// plain list — see `RoomListView`.
     static let nativeSidebarKey = "beta.nativeSidebar"
 
+    /// And it is on unless somebody turns it off.
+    ///
+    /// A beta feature nobody has seen is a beta feature nobody has an opinion about: off by
+    /// default, this one would have lived its whole life behind a switch on a screen most people
+    /// never open, and the thing it is being tried out *for* — whether the Mac's own sidebar is
+    /// better than the app's list — would never have been answered. So the Mac opens with it on,
+    /// and the switch is the way back rather than the way in.
+    ///
+    /// Spelled out here rather than written into the two `@AppStorage` declarations that read it,
+    /// because a default that disagrees with itself between the screen that sets it and the screen
+    /// that obeys it is a bug nothing catches: the toggle would simply show the wrong position.
+    static let nativeSidebarByDefault = true
+
     /// Whether there is anything in here to show on this platform.
     ///
     /// False on iOS, where the one experiment is about a sidebar that does not exist: the split

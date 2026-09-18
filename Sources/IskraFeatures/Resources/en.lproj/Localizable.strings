@@ -136,11 +136,11 @@
 
 /* Said once at the top of the screen, so that every switch below it is read as an offer
    rather than as a setting somebody forgot to finish. */
-"beta.intro" = "The unfinished things live here. Turn one on if you are curious and off if it gets in the way: nothing breaks and nothing is lost.";
+"beta.intro" = "The unfinished things live here. Turn one off if it gets in the way and back on if you change your mind: nothing breaks and nothing is lost.";
 
 "beta.nativeSidebar" = "Native sidebar";
 
-"beta.nativeSidebarHelp" = "The chat list becomes an ordinary macOS sidebar: chats gathered into sections, search at the top, and the panel itself tucked away by the button in the corner. Like Mail and Notes — and less like a phone.";
+"beta.nativeSidebarHelp" = "The chat list becomes an ordinary macOS sidebar: chats gathered into sections, search at the top, and rows set closer together. Like Mail and Notes — and less like a phone.";
 
 
 
