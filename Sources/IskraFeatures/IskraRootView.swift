@@ -477,13 +477,14 @@ public struct IskraRootView: View {
                          isSidebar: isSidebar,
                          onSignOut: { await signOut(session) },
                          onClearedCache: { restart() })
-                // Fixed rather than content-derived, and that is what keeps the app from
-                // hanging when a settings row is opened. Settings pushes onto this column's
-                // own stack — a `Form` onto a `Form` — and a column whose width is derived
-                // from its content re-measures on that push, which re-lays-out the pushed
-                // `Form`, which changes the width it is deriving from: a layout loop that
-                // pins the main thread. Handing the column an absolute width leaves nothing
-                // to derive. See `Theme.Size.sidebar*`.
+                // Fixed rather than content-derived, so that opening settings — a `Form`
+                // pushed onto a column holding a `Form` — cannot move the column under the
+                // room list. This was once believed to be the cure for the macOS settings
+                // hang as well, and measurement says it is not: the hang survives both an
+                // absolute width and no width at all. Its real cause was one property in
+                // `SettingsView` — see `SettingsView.onClose`. The width stays because a
+                // column that resizes itself when you open settings is its own small bug.
+                // See `Theme.Size.sidebar*`.
                 .navigationSplitViewColumnWidth(min: Theme.Size.sidebarMinimum,
                                                 ideal: Theme.Size.sidebarIdeal,
                                                 max: Theme.Size.sidebarMaximum)
