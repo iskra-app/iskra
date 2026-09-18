@@ -65,7 +65,19 @@ struct SettingsView: View {
     /// the only way out of it.
     let showsBackButton: Bool
 
-    @Environment(\.dismiss) private var dismiss
+    /// Closing the screen, handed down rather than taken from the environment.
+    ///
+    /// It would be `@Environment(\.dismiss)`, and it was, and that one property hung the app.
+    /// `dismiss` is a dynamic property tied to the presentation this screen sits in, and this
+    /// screen sits in the *sidebar column's* stack: on macOS 26, a view pushed there that both
+    /// reads `dismiss` and pushes a screen of its own re-enters layout forever — the main thread
+    /// spins at 100% inside `NSHostingView.layout()` and the window stops answering. It took
+    /// every settings row down with it, because every settings row is a push from here.
+    ///
+    /// Nothing is lost by handing it down. The flag that opened this screen belongs to the room
+    /// list (`isShowingSettings`), so the room list can perfectly well be the one to clear it,
+    /// and a closure has no layout behaviour to go wrong. See `RoomListView`.
+    var onClose: () -> Void
 
     /// The one screen whose chrome is allowed the colour. A `Label` in a `Form` draws its
     /// icon in the tint, and the app's tint is monochrome everywhere else (see
@@ -73,16 +85,10 @@ struct SettingsView: View {
     /// of coloured symbols is the point rather than noise.
     @Environment(\.accent) private var accent
 
-    // TEMP DIAGNOSTIC — locating the macOS settings layout hang. Remove once found.
-    // Launch with e.g. `ISKRA_NOSELECT=1 .../Iskra.app/Contents/MacOS/Iskra` to disable one suspect.
-    private static func dbgOff(_ key: String) -> Bool {
-        ProcessInfo.processInfo.environment["ISKRA_" + key] == "1"
-    }
-
     var body: some View {
         Form {
             Section {
-                if Self.dbgOff("NOPROFILE") { Text(verbatim: "profile") } else { profile }
+                profile
             }
             .profileHeaderRow()
 
@@ -149,7 +155,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .tint(Self.dbgOff("NOTINT") ? Color.primary : accent.color)
+        .tint(accent.color)
         .profileScreen()
         // Value-based, because a `NavigationLink` with a destination *closure* builds that
         // destination eagerly, on every pass of this `body`. `session.storage()` allocates a store
@@ -187,10 +193,10 @@ struct SettingsView: View {
                 .accessibilityLabel(Text(Strings.Account.edit))
             }
 
-            if showsBackButton && !Self.dbgOff("NOBACK") {
+            if showsBackButton {
                 ToolbarItem(placement: .navigation) {
                     Button {
-                        dismiss()
+                        onClose()
                     } label: {
                         // A chevron, and the word — this is the system's own back button
                         // spelled out by hand, so it should look like one.
@@ -216,7 +222,7 @@ struct SettingsView: View {
         ProfileHeader(name: session.displayName,
                       avatarURL: session.avatarURL,
                       subtitle: session.userID,
-                      isSubtitleSelectable: !Self.dbgOff("NOSELECT"))
+                      isSubtitleSelectable: true)
     }
 
     /// The app saying what it is and which build of it this is.
