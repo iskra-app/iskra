@@ -131,7 +131,11 @@ xcodebuild -project Apps/Iskra.xcodeproj -scheme 'Iskra (iOS)' \
   -destination 'generic/platform=iOS Simulator' \
   -derivedDataPath .build/xcode build
 
-open -a Simulator     # boot a simulator, any iPhone will do
+# Xcode 27 replaced Simulator.app with DeviceHub.app, and DeviceHub shows the devices
+# without booting any of them — so the boot is its own step now, and `open -a Simulator`
+# fails outright rather than quietly doing nothing.
+xcrun simctl bootstatus 'iPhone 18 Pro' -b   # any iPhone will do; waits until it is up
+open -b com.apple.dt.Devices                 # DeviceHub, to see the screen
 xcrun simctl install booted .build/xcode/Build/Products/Debug-iphonesimulator/Iskra.app
 xcrun simctl launch booted moscow.swag.iskra
 ```
