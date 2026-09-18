@@ -36,6 +36,11 @@ public struct RoomListView: View {
     /// view sees the window's real size class, so the answer comes down from `IskraRootView`.
     let isSidebar: Bool
 
+    /// Whether the user has asked, in settings, for the Mac's own sidebar rather than this app's
+    /// list — see `BetaFeatures` and `BetaView`. Read rather than passed down, because it is a
+    /// preference and not a fact about the layout: `isSidebar` above is the layout.
+    @AppStorage(BetaFeatures.nativeSidebarKey) private var prefersNativeSidebar = false
+
     @State private var searchText = ""
     @State private var isShowingSettings = false
     @State private var isShowingArchive = false
@@ -79,12 +84,16 @@ public struct RoomListView: View {
         List(selection: $selectedRoomID) {
             if isSearching {
                 searchResults
+            } else if isNativeSidebar {
+                // The same conversations, filed into sections, because that is what a sidebar on
+                // a Mac is — see `sectionedRooms` and `isNativeSidebar`.
+                sectionedRooms
             } else {
                 archiveEntry
                 rooms
             }
         }
-        .listStyle(.plain)
+        .roomListStyle(nativeSidebar: isNativeSidebar)
         // An invitation that would not be accepted or declined. The same apology every other
         // refusal in the app gets — see `FailureAlert`.
         .failureAlert(Bindable(session.roomList).failure)
@@ -106,13 +115,12 @@ public struct RoomListView: View {
         }
         // Nothing to remove on iPhone — a collapsed split view never shows the toggle —
         // so this only bites where it is meant to, on iPad and Mac.
-        .toolbar(removing: .sidebarToggle)
-        // An inset rather than an overlay: this reserves the space, so the last
-        // conversation can still be scrolled clear of the search field instead of
-        // living underneath it forever.
-        .safeAreaInset(edge: .bottom) {
-            RoomSearchField(text: $searchText)
-        }
+        //
+        // The native sidebar keeps it, and that is half of what makes it native: a Mac sidebar is
+        // something you put away, by the button in the corner or by ⌃⌘S, and one that cannot be put
+        // away is a column. `nil` removes nothing, which is exactly what is wanted here.
+        .toolbar(removing: isNativeSidebar ? nil : .sidebarToggle)
+        .roomListSearch(text: $searchText, nativeSidebar: isNativeSidebar)
         // And the same reasoning at the other end. The banner is in the way *on purpose* — it is
         // about messages the user cannot read, or a code that is one lost phone away from mattering
         // very much — but being in the way is not the same as sitting on top of the first
@@ -205,6 +213,16 @@ public struct RoomListView: View {
         !searchText.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
+    /// Whether this list is drawn as the Mac's own sidebar.
+    ///
+    /// Three conditions and all three matter. The platform, because the thing being imitated only
+    /// exists on one of them. `isSidebar`, because a sidebar that is the whole screen is not a
+    /// sidebar — and this is why the flag is checked here rather than switched on globally.
+    /// And the preference, because it is an experiment somebody opted into.
+    private var isNativeSidebar: Bool {
+        BetaFeatures.hasAnything && isSidebar && prefersNativeSidebar
+    }
+
     // MARK: - Chrome
 
     /// The "+": top-left on iPhone, beside the gear on iPad and Mac.
@@ -274,7 +292,20 @@ public struct RoomListView: View {
     private var rooms: some View {
         let rooms = session.roomList.rooms
         ForEach(Array(rooms.enumerated()), id: \.element.id) { index, room in
-            Group {
+            row(for: room)
+                .separatorsBetweenRowsOnly(isFirst: index == 0, isLast: index == rooms.count - 1)
+        }
+    }
+
+    /// One conversation, in whichever of its three shapes it is.
+    ///
+    /// Pulled out of `rooms` so the sectioned sidebar can draw the same rows — see
+    /// `sectionedRooms`. Two lists that agree about what a room *is* and disagree only about how
+    /// they are ordered is the point; two lists with two copies of this would drift apart at the
+    /// first swipe action added to one of them.
+    @ViewBuilder
+    private func row(for room: RoomSummary) -> some View {
+        Group {
                 if room.isInvitation {
                     // Deliberately *not* tagged. A tagged row in a `List(selection:)` is a row you
                     // can open, and there is nothing to open: you are not in this room, its
@@ -305,8 +336,75 @@ public struct RoomListView: View {
                                               roomList: session.roomList,
                                               onLeave: { roomToLeave = room })
                 }
+        }
+    }
+
+    /// The conversations filed into sections, for the native sidebar only.
+    ///
+    /// The app's own list is deliberately unsorted: it shows what the server sends, most recent
+    /// first, which is the order a chat app is read in and the order every chat app uses. A Mac
+    /// sidebar is a different object — it is a place where things are *kept*, every Mac app keeps
+    /// them under headings, and a sidebar that refused to would read as unfinished rather than as
+    /// principled. So the headings exist here and only here.
+    ///
+    /// Within each section the server's order survives untouched, so a section is a filter and
+    /// never a re-sort: the busiest conversation is still at the top of the one it belongs to.
+    @ViewBuilder
+    private var sectionedRooms: some View {
+        let all = session.roomList.rooms
+        let invitations = all.filter(\.isInvitation)
+        let spaces = all.filter { $0.isSpace && !$0.isInvitation }
+        let chats = all.filter { !$0.isSpace && !$0.isInvitation }
+        let pinned = chats.filter(\.isPinned)
+        let unpinned = chats.filter { !$0.isPinned }
+
+        // First, because it is a question waiting for an answer rather than a place to read.
+        if !invitations.isEmpty {
+            section(invitations, titled: Strings.RoomList.Sidebar.invitations)
+        }
+
+        if !spaces.isEmpty {
+            section(spaces, titled: Strings.RoomList.Sidebar.spaces)
+        }
+
+        // Pinned conversations get a heading of their own rather than a pin drawn on a row in one
+        // long list. That is the difference the sidebar is for: on a phone the pin is a mark on a
+        // chat, here it is a shelf the chat is kept on.
+        if !pinned.isEmpty {
+            section(pinned, titled: Strings.RoomList.Sidebar.pinned)
+        }
+
+        // Unheaded when it is the only thing on screen. A lone "Chats" over every conversation
+        // there is names nothing — there is nothing it tells them apart from — so the heading
+        // appears the moment something else does.
+        let isAlone = invitations.isEmpty && spaces.isEmpty && pinned.isEmpty
+        section(unpinned, titled: isAlone ? nil : Strings.RoomList.Sidebar.chats)
+
+        // Last rather than first. In the plain list the archive is a quiet row at the top, where
+        // Telegram keeps it; a Mac sidebar puts the shelf you rarely open at the bottom, under
+        // everything you do.
+        if !session.roomList.archivedRooms.isEmpty {
+            Section { archiveEntry }
+        }
+    }
+
+    /// One heading and the conversations under it — or, with no title, the conversations alone.
+    ///
+    /// The two shapes are spelled out rather than handed a header that is sometimes `EmptyView`:
+    /// an empty header is still a header as far as the list is concerned, and it leaves a gap
+    /// above the first row where a heading was not.
+    @ViewBuilder
+    private func section(_ rooms: [RoomSummary], titled title: LocalizedStringResource?) -> some View {
+        if let title {
+            Section {
+                ForEach(rooms, id: \.id) { row(for: $0) }
+            } header: {
+                Text(title)
             }
-            .separatorsBetweenRowsOnly(isFirst: index == 0, isLast: index == rooms.count - 1)
+        } else {
+            Section {
+                ForEach(rooms, id: \.id) { row(for: $0) }
+            }
         }
     }
 
@@ -373,6 +471,49 @@ public struct RoomListView: View {
 }
 
 private extension View {
+    /// The list's own look, or the Mac's.
+    ///
+    /// `.plain` is the app's: flat rows, hairlines drawn by hand between them, and a row that fills
+    /// its width. `.sidebar` is what every Mac app's source list is made of — inset rows, a rounded
+    /// selection that follows the accent, collapsible headings, and the sidebar material behind all
+    /// of it. Neither is reachable from the other by tweaking: they are two list styles, so this is
+    /// two branches rather than a value.
+    ///
+    /// Flipping the switch changes the identity of the view underneath, which rebuilds the list.
+    /// That is the right trade here — the switch is thrown once, in settings, by somebody who is
+    /// looking at the list precisely to see it change.
+    @ViewBuilder
+    func roomListStyle(nativeSidebar: Bool) -> some View {
+        if nativeSidebar {
+            listStyle(.sidebar)
+        } else {
+            listStyle(.plain)
+        }
+    }
+
+    /// Where the search field goes.
+    ///
+    /// The app's own is a floating field at the *bottom*, which is where a thumb already is — see
+    /// `RoomSearchField`. That reasoning is about a phone and does not survive the trip to a Mac,
+    /// where there is no thumb and where search has sat at the top of the sidebar since Mail had a
+    /// sidebar. `.searchable(placement: .sidebar)` is the system's own field in the system's own
+    /// place, which also buys ⌘F and the toolbar's focus ring for free.
+    @ViewBuilder
+    func roomListSearch(text: Binding<String>, nativeSidebar: Bool) -> some View {
+        if nativeSidebar {
+            searchable(text: text,
+                       placement: .sidebar,
+                       prompt: Text(Strings.RoomList.searchPrompt))
+        } else {
+            // An inset rather than an overlay: this reserves the space, so the last conversation
+            // can still be scrolled clear of the search field instead of living underneath it
+            // forever.
+            safeAreaInset(edge: .bottom) {
+                RoomSearchField(text: text)
+            }
+        }
+    }
+
     /// A separator between one row and the next, and nowhere else.
     ///
     /// A plain `List` also draws one *above* the first row and *below* the last, which is a

@@ -149,6 +149,20 @@ public enum Strings {
         public static let privateChat = LocalizedStringResource("roomList.privateChat", bundle: bundle)
         public static let pinned = LocalizedStringResource("roomList.pinned", bundle: bundle)
 
+        /// The headings of the native macOS sidebar, and of nowhere else.
+        ///
+        /// The app's own list is deliberately unsorted — it shows the conversations in the order
+        /// the server puts them in, most recent first, which is the order a chat app is read in.
+        /// A *sidebar* is a different thing: it is a place things are filed, every Mac app files
+        /// them, and a sidebar that refused to would look broken rather than principled. So the
+        /// headings exist only where the sidebar does. See `BetaFeatures.nativeSidebarKey`.
+        public enum Sidebar {
+            public static let invitations = LocalizedStringResource("roomList.section.invitations", bundle: bundle)
+            public static let spaces = LocalizedStringResource("roomList.section.spaces", bundle: bundle)
+            public static let pinned = LocalizedStringResource("roomList.section.pinned", bundle: bundle)
+            public static let chats = LocalizedStringResource("roomList.section.chats", bundle: bundle)
+        }
+
         /// A room somebody has asked you into, and the two answers to it.
         ///
         /// Written to be true of anybody, for the same reason every sentence in `RoomEvent` is:
@@ -1001,6 +1015,18 @@ public enum Strings {
         public static let otherDevices = LocalizedStringResource("encryption.otherDevices", bundle: bundle)
     }
 
+    /// The screen where the unfinished things are switched on — see `BetaView`.
+    public enum Beta {
+        public static let title = LocalizedStringResource("beta.title", bundle: bundle)
+
+        /// The sentence over the switches, which is the whole reason the screen is worth having:
+        /// it says that nothing here is load-bearing and that changing your mind costs nothing.
+        public static let intro = LocalizedStringResource("beta.intro", bundle: bundle)
+
+        public static let nativeSidebar = LocalizedStringResource("beta.nativeSidebar", bundle: bundle)
+        public static let nativeSidebarHelp = LocalizedStringResource("beta.nativeSidebarHelp", bundle: bundle)
+    }
+
     public enum Settings {
         public static let title = LocalizedStringResource("settings.title", bundle: bundle)
 
@@ -1034,6 +1060,11 @@ public enum Strings {
         public static let devicesHelp = LocalizedStringResource("settings.devicesHelp", bundle: bundle)
 
         public static let appearance = LocalizedStringResource("settings.appearance", bundle: bundle)
+
+        /// The row that leads to the things that are not finished. Shown only where there is
+        /// something behind it — see `BetaFeatures.hasAnything`.
+        public static let beta = LocalizedStringResource("settings.beta", bundle: bundle)
+
         public static let storage = LocalizedStringResource("settings.storage", bundle: bundle)
         /// Where the bridge is switched on — see `Strings.Connection`.
         public static let connection = LocalizedStringResource("settings.connection", bundle: bundle)

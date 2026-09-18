@@ -124,6 +124,17 @@ struct SettingsView: View {
                 } label: {
                     Label(Strings.Settings.blocked, systemImage: "hand.raised")
                 }
+
+                // Last in the section, and only where there is something behind it: on iPhone the
+                // one experiment on offer is about a sidebar that does not exist there. A row that
+                // leads to an empty screen is worse than no row — see `BetaFeatures.hasAnything`.
+                if BetaFeatures.hasAnything {
+                    NavigationLink {
+                        BetaView()
+                    } label: {
+                        Label(Strings.Settings.beta, systemImage: "flask")
+                    }
+                }
             } footer: {
                 Text(Strings.Settings.moreSoon)
             }
