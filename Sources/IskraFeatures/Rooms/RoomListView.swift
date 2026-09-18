@@ -39,7 +39,7 @@ public struct RoomListView: View {
     /// Whether the user has asked, in settings, for the Mac's own sidebar rather than this app's
     /// list — see `BetaFeatures` and `BetaView`. Read rather than passed down, because it is a
     /// preference and not a fact about the layout: `isSidebar` above is the layout.
-    @AppStorage(BetaFeatures.nativeSidebarKey) private var prefersNativeSidebar = false
+    @AppStorage(BetaFeatures.nativeSidebarKey) private var prefersNativeSidebar = BetaFeatures.nativeSidebarByDefault
 
     @State private var searchText = ""
     @State private var isShowingSettings = false
@@ -116,10 +116,12 @@ public struct RoomListView: View {
         // Nothing to remove on iPhone — a collapsed split view never shows the toggle —
         // so this only bites where it is meant to, on iPad and Mac.
         //
-        // The native sidebar keeps it, and that is half of what makes it native: a Mac sidebar is
-        // something you put away, by the button in the corner or by ⌃⌘S, and one that cannot be put
-        // away is a column. `nil` removes nothing, which is exactly what is wanted here.
-        .toolbar(removing: isNativeSidebar ? nil : .sidebarToggle)
+        // The native sidebar does not get it back either, and that is deliberate. This app is a
+        // chat client: the list of conversations is not a panel of options beside the document,
+        // it is one of the two halves of the window, and a button whose whole job is to take one
+        // of those halves away earns its place in Xcode and not here. What is left is the system's
+        // sidebar *look* without the system's assumption about what a sidebar is for.
+        .toolbar(removing: .sidebarToggle)
         .roomListSearch(text: $searchText, nativeSidebar: isNativeSidebar)
         // And the same reasoning at the other end. The banner is in the way *on purpose* — it is
         // about messages the user cannot read, or a code that is one lost phone away from mattering
@@ -384,7 +386,7 @@ public struct RoomListView: View {
         // Telegram keeps it; a Mac sidebar puts the shelf you rarely open at the bottom, under
         // everything you do.
         if !session.roomList.archivedRooms.isEmpty {
-            Section { archiveEntry }
+            Section { archiveEntry.sidebarRowInsets() }
         }
     }
 
@@ -397,13 +399,13 @@ public struct RoomListView: View {
     private func section(_ rooms: [RoomSummary], titled title: LocalizedStringResource?) -> some View {
         if let title {
             Section {
-                ForEach(rooms, id: \.id) { row(for: $0) }
+                ForEach(rooms, id: \.id) { row(for: $0).sidebarRowInsets() }
             } header: {
                 Text(title)
             }
         } else {
             Section {
-                ForEach(rooms, id: \.id) { row(for: $0) }
+                ForEach(rooms, id: \.id) { row(for: $0).sidebarRowInsets() }
             }
         }
     }
@@ -512,6 +514,19 @@ private extension View {
                 RoomSearchField(text: text)
             }
         }
+    }
+
+    /// A row in the Mac sidebar, padded more tightly than the list would pad it.
+    ///
+    /// A row trait, so it goes on each row rather than on the `List` — and that is the whole
+    /// reason this is a named modifier instead of one line at the top of the screen: it has to be
+    /// said in three places, and a fourth section added later that forgets it would be the one
+    /// with a different rhythm. See `Theme.Spacing.sidebarRow` for why it is tighter.
+    func sidebarRowInsets() -> some View {
+        listRowInsets(EdgeInsets(top: Theme.Spacing.sidebarRow,
+                                 leading: Theme.Spacing.close,
+                                 bottom: Theme.Spacing.sidebarRow,
+                                 trailing: Theme.Spacing.close))
     }
 
     /// A separator between one row and the next, and nowhere else.
