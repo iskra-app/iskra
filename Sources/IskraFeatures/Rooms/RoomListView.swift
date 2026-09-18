@@ -325,14 +325,14 @@ public struct RoomListView: View {
                     Button {
                         openedSpace = room
                     } label: {
-                        RoomRow(room: room)
+                        RoomRow(room: room, compact: isNativeSidebar)
                     }
                     .buttonStyle(.plain)
                     .roomListSwipeActions(room: room,
                                           roomList: session.roomList,
                                           onLeave: { roomToLeave = room })
                 } else {
-                    RoomRow(room: room)
+                    RoomRow(room: room, compact: isNativeSidebar)
                         .tag(room.id)
                         .roomListSwipeActions(room: room,
                                               roomList: session.roomList,
@@ -550,6 +550,18 @@ private extension View {
 struct RoomRow: View {
     let room: RoomSummary
 
+    /// Whether this row is standing in the Mac's own sidebar, where it has to be shorter.
+    ///
+    /// One line of the last message instead of two, and no space reserved for the second. In the
+    /// app's own list the reserved line is load-bearing — see `lineLimit` below — but a sidebar is
+    /// a narrow column read down its length, and a band of empty space under every message is
+    /// exactly the padding that makes a list of eight conversations look like a list of five.
+    ///
+    /// The rows stay the same height as each other regardless, which is what the reserved line was
+    /// protecting: with one line of preview the tallest thing in the row is the face beside it, and
+    /// a face is the same size in every row there is.
+    var compact = false
+
     /// For the pin, which is the one coloured thing on this row. See `body`.
     @Environment(\.accent) private var accent
 
@@ -615,7 +627,11 @@ struct RoomRow: View {
                         // eye reads that ragged column as the list being *sorted* by something,
                         // which it is not. A steady row is what lets the faces beside them scan as
                         // a column at all.
-                        .lineLimit(2, reservesSpace: true)
+                        //
+                        // In the sidebar one line, and nothing reserved — see `compact`. The rows
+                        // are still all one height there, because the face is then the tallest
+                        // thing in them.
+                        .lineLimit(compact ? 1 : 2, reservesSpace: !compact)
 
                     Spacer(minLength: 0)
 
