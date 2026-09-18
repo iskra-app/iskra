@@ -41,7 +41,10 @@ open .build/xcode/Build/Products/Debug/Iskra.app
 # a name and xcodebuild refuses an ambiguous destination
 xcodebuild -project Apps/Iskra.xcodeproj -scheme 'Iskra (iOS)' \
   -destination 'generic/platform=iOS Simulator' -derivedDataPath .build/xcode build
-open -a Simulator
+# Xcode 27 has no Simulator.app — DeviceHub.app took its place, and it shows devices
+# without booting one, so the boot is now an explicit step
+xcrun simctl bootstatus 'iPhone 18 Pro' -b
+open -b com.apple.dt.Devices
 xcrun simctl install booted .build/xcode/Build/Products/Debug-iphonesimulator/Iskra.app
 xcrun simctl launch booted moscow.swag.iskra
 ```
