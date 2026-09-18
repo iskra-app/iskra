@@ -246,6 +246,17 @@ fill and the words from `AccentTheme.color` and `AccentTheme.foreground(in:)`, w
 "the accent, and what stays readable on top of it". Use `.glassAction` on the navigation layer
 (sign-in, recovery) and `.primaryAction` in content.
 
+**`@Environment(\.dismiss)` is not allowed in a screen pushed onto the sidebar column.** On
+macOS 26 a view that sits in the sidebar's stack, reads `dismiss`, *and* pushes a screen of its
+own re-enters layout forever: the main thread spins at 100% inside `NSHostingView.layout()` and
+the window stops answering. It hung every settings row at once, because every settings row is a
+push from `SettingsView` — and it looked like a bug in the rows, which is why it cost an
+afternoon and one wrong fix (the sidebar's fixed width, which changes nothing: the hang survives
+both an absolute width and no width at all). The way out is handed down instead — `onClose`, set
+by whoever owns the flag that opened the screen. A sheet's `dismiss` is fine; a sheet has its own
+stack. Narrowed by bisection under `sample`: a single `@Environment(\.dismiss)` added to an
+otherwise empty pushed `Form` is enough to reproduce it.
+
 **Sizes come from `Theme`.** Every spacing, radius and size is a named constant in
 `IskraDesign/Theme.swift`, all multiples of 4, corners `.continuous`. A view that hard-codes
 `.padding(12)` is a bug waiting to drift.

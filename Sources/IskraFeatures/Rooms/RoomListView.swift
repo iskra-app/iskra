@@ -180,7 +180,10 @@ public struct RoomListView: View {
             SettingsView(session: session,
                          onSignOut: onSignOut,
                          onClearedCache: onClearedCache,
-                         showsBackButton: isSidebar)
+                         showsBackButton: isSidebar,
+                         // The way out, given rather than taken from the environment — and the
+                         // reason why is worth the line: see `SettingsView.onClose`.
+                         onClose: { isShowingSettings = false })
         }
         // A sheet, not a push: creating a chat is a question with a Cancel, and the answer
         // to it replaces what is *behind* this column — so it is a thing you put down, not
