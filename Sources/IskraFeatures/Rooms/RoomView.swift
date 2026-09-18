@@ -1271,6 +1271,7 @@ public struct RoomView: View {
                        handlers: handlers,
                        isPinned: isPinned,
                        opensDay: opensDay,
+                       arrivesAnimated: timeline.hasLoaded,
                        isHighlighted: isHighlighted)
         case .compact:
             // No `isOneToOne`: the plain column says who spoke in every conversation, because
@@ -1279,6 +1280,7 @@ public struct RoomView: View {
                               handlers: handlers,
                               isPinned: isPinned,
                               opensDay: opensDay,
+                              arrivesAnimated: timeline.hasLoaded,
                               isHighlighted: isHighlighted)
         }
     }

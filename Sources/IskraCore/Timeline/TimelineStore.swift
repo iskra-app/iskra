@@ -143,6 +143,11 @@ public final class TimelineStore {
     /// The fetch that refills a conversation the SDK has just emptied — see `refill()`.
     private var refillTask: Task<Void, Never>?
 
+    /// Messages the user has pressed send on that the SDK has not echoed back yet, shown at the
+    /// end of the conversation so that pressing send puts the words on the screen rather than
+    /// starting a wait for them. See `PendingSends`.
+    private var pending = PendingSends()
+
     /// The page of history currently being fetched, if there is one. The re-entrancy guard for
     /// `page(showingSpinner:)` — and a task rather than a flag, so that a caller who arrives
     /// mid-flight can *wait* for the page instead of being turned away without one.
@@ -661,6 +666,30 @@ public final class TimelineStore {
         // the next `apply` computing diffs against a timeline that no longer exists.
         items = []
 
+        // And the rows those items made. `rows` deliberately stay — they are what the reader is
+        // looking at, and `open()` holds them on the screen while it fetches the conversation
+        // back — but `latestRows` is a different thing wearing the same shape: it is the *measure*
+        // `fillPages` works towards. Left at the depth of the room we have just put down, it says
+        // the reopening is already as deep as it needs to be, `fillPages` does not turn its loop
+        // even once, and the room comes back holding whatever the fresh listener's first reset
+        // happens to carry — the live tail, which is one message. That is the "sometimes a chat
+        // reopens with only the last message in it" this pair of lines closes; the other half of
+        // it is the stale page handle described in `page(showingSpinner:)`.
+        latestRows = []
+
+        // `canLoadMore` is a statement about the timeline we hold, and we are no longer holding
+        // one. Left false — which is what it is in every room that has been read back to its
+        // beginning — it stops the reopening fetch before it asks for anything at all: `fillPages`
+        // tests it on the way into the loop and `page()` refuses outright. `refill()` resets it
+        // for precisely this reason, and putting the room down throws the timeline away just as
+        // thoroughly as the event cache does.
+        canLoadMore = true
+
+        // What we had sent and were still waiting to see. The stand-in bubbles belong to the
+        // timeline that has gone, and the message itself is safe in the SDK's send queue — it
+        // comes back as an ordinary echo when the room opens again. See `PendingSends`.
+        pending.removeAll()
+
         // And what we had asked about them. See `askedForReplyDetails`.
         askedForReplyDetails.removeAll()
 
@@ -692,10 +721,29 @@ public final class TimelineStore {
             return
         }
 
+        // The words go on the screen *first*, and the sending happens behind them.
+        //
+        // The SDK does echo a sent message back into the timeline almost at once — that is what
+        // normally puts the bubble there, with a clock beside it — but "almost" was a few hundred
+        // milliseconds, and the user spends every one of them looking at a composer they have
+        // already emptied and a conversation that has not changed. The app appears to have
+        // swallowed what they wrote. So the bubble is ours until the real one arrives; see
+        // `PendingSends`, which also explains how the two are told apart.
+        let pendingID = pending.add(text: trimmed, replyingTo: replyID)
+        rebuildRows()
+        forgetPending(pendingID, after: PendingSends.lifetime)
+
         // Sending is the end of writing. Waiting for the four-second lull to notice would leave
         // the other person watching "typing…" for four seconds *after* the message had landed in
         // front of them, which is the one moment it is obviously untrue.
-        await stoppedTyping()
+        //
+        // Not *awaited*, and that is the whole of where the delay went. `typingNotice` is a
+        // request to the homeserver like any other, and this one stood between the press and the
+        // message even reaching the send queue: on a slow network the bubble waited out a round
+        // trip whose only purpose was to stop a "typing…" nobody would have seen again anyway.
+        // Withdrawing the notice is still the right thing to do and still done at once — it is
+        // simply not something the message has to queue behind.
+        stopTellingThemWeType()
 
         // Not logged, not stored anywhere but the SDK's encrypted send queue.
         let content = messageEventContentFromMarkdown(md: trimmed)
@@ -707,7 +755,33 @@ public final class TimelineStore {
                 _ = try await timeline.send(msg: content)
             }
         } catch {
+            // The SDK would not even take it, so there is no echo coming and nothing in the queue:
+            // the stand-in is all there is, and leaving it would be a bubble claiming to be on its
+            // way to a room it never left. It goes, and the failure is reported instead.
+            pending.remove(id: pendingID)
+            rebuildRows()
             failure = .send
+        }
+    }
+
+    /// Gives up on a stand-in that nothing ever came to replace.
+    ///
+    /// Nothing is said about it and nothing is lost: the message is in the SDK's encrypted send
+    /// queue, which is what actually guarantees it goes, and it will appear as an ordinary bubble
+    /// the moment the timeline catches up with it. This only stops a row that exists to cover a
+    /// few hundred milliseconds from sitting in the conversation for the rest of the session if
+    /// the echo we were matching on never looked the way we expected.
+    private func forgetPending(_ id: String, after delay: Duration) {
+        let generation = self.generation
+
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: delay)
+
+            guard let self, generation == self.generation,
+                  self.pending.all.contains(where: { $0.id == id }) else { return }
+
+            self.pending.remove(id: id)
+            self.rebuildRows()
         }
     }
 
@@ -1240,6 +1314,23 @@ public final class TimelineStore {
         }
     }
 
+    /// The same withdrawal, not waited for — the one the *sending* path uses.
+    ///
+    /// It exists rather than being folded into `stoppedTyping()` because the difference is the
+    /// point: leaving the composer can afford to wait for the server to be told, and pressing
+    /// send cannot. Everything before the request is done here and now, so a second press cannot
+    /// send a second notice; only the round trip is let go of.
+    private func stopTellingThemWeType() {
+        typingStopper?.cancel()
+        typingStopper = nil
+
+        guard isTellingThemWeType else { return }
+        isTellingThemWeType = false
+
+        let room = room
+        Task { try? await room.typingNotice(isTyping: false) }
+    }
+
     /// Withdraws the notice at once — the message has been sent, or the composer has been left.
     public func stoppedTyping() async {
         typingStopper?.cancel()
@@ -1510,7 +1601,19 @@ public final class TimelineStore {
     /// what it replaces — same rows, same identities, same scroll position, and the deleted
     /// message quietly becomes "message deleted" in place.
     private func rebuildRows() {
-        latestRows = TimelineMapper.rows(from: items, ownUserID: ownUserID, unsent: unsentReactions)
+        var built = TimelineMapper.rows(from: items, ownUserID: ownUserID, unsent: unsentReactions)
+
+        // The messages we have sent and not yet been shown, added to the end of the conversation —
+        // and dropped again the moment the SDK's own echo of one turns up among the rows above.
+        // Pruned before they are appended, because the echo lands as an ordinary diff and this is
+        // the rebuild that carries it: appending first would put the same sentence in the
+        // conversation twice for one frame. See `PendingSends`.
+        if !pending.isEmpty {
+            pending.pruneEchoed(in: built)
+            built.append(contentsOf: pendingRows(after: built))
+        }
+
+        latestRows = built
 
         // A reply whose original the SDK is holding nothing for is not a lost message — it is a
         // message nobody has asked for. Ask.
@@ -1520,6 +1623,76 @@ public final class TimelineStore {
         if isRefilling, latestRows.count < rows.count { return }
 
         rows = latestRows
+    }
+
+    /// Turns the messages still on their way out into rows at the end of the conversation.
+    ///
+    /// A stand-in is a real `Message` with a real `.sending` delivery, so everything the screen
+    /// already knows applies to it unchanged: it is drawn as a bubble on our side with a clock
+    /// beside it, it cannot be reacted to or edited or deleted — `canReact` and its neighbours
+    /// all turn on that same `.sending` — and nothing goes looking for a send handle it does not
+    /// have, because its ID belongs to no event.
+    ///
+    /// No day divider is invented above it. A divider is the mapper's to place and it places one
+    /// from the SDK's own virtual item; guessing at it here would put a second, differently
+    /// identified line on the screen a moment before the real one arrived. The only message this
+    /// costs is the first of a new day, which gains its divider when the echo lands.
+    private func pendingRows(after rows: [TimelineRow]) -> [TimelineRow] {
+        // Ourselves, as this room already draws us. There is no cheaper way to ask: the display
+        // name and the picture live on the room member, fetching one is a call and an await, and
+        // an await is the single thing a message that must appear *now* cannot afford. The
+        // conversation is holding the answer already — it is above every message we have sent in
+        // it — and in a room where we have said nothing yet the ID is what the SDK would fall
+        // back to anyway.
+        let me = rows.reversed().lazy.compactMap(\.message).first { $0.isOwn }
+
+        var previous = rows.last?.message
+        var built: [TimelineRow] = []
+
+        for item in pending.all {
+            // Grouped under the message above it by the same rule the mapper uses, so that
+            // sending three lines in a row does not put our name and face above each of them —
+            // and so that nothing jumps when the echo replaces the stand-in with a row the
+            // mapper has grouped for itself.
+            let isContinuation = previous.map { above in
+                above.senderID == ownUserID
+                    && item.sentAt.timeIntervalSince(above.timestamp) < TimelineMapper.runWindow
+            } ?? false
+
+            let message = Message(id: item.id,
+                                  kind: .text(item.text),
+                                  senderID: ownUserID,
+                                  senderName: me?.senderName ?? ownUserID,
+                                  senderAvatarURL: me?.senderAvatarURL,
+                                  isOwn: true,
+                                  timestamp: item.sentAt,
+                                  delivery: .sending,
+                                  isEdited: false,
+                                  replyTo: item.replyingTo.flatMap { quote(of: $0, in: rows) },
+                                  reactions: [],
+                                  isContinuation: isContinuation)
+
+            built.append(.message(message))
+            previous = message
+        }
+
+        return built
+    }
+
+    /// The strip above a reply that has not been sent yet, built from the message being answered
+    /// as it stands on the screen.
+    ///
+    /// Nil where the original is no longer in the conversation — paginated away, or deleted
+    /// between the quote being picked and send being pressed. A reply with no strip is a great
+    /// deal better than a strip that says "Message unavailable" about a message that is plainly
+    /// there: the echo arrives with the SDK's own resolved quote a moment later either way.
+    private func quote(of messageID: String, in rows: [TimelineRow]) -> ReplyPreview? {
+        guard let original = rows.lazy.compactMap(\.message).first(where: { $0.id == messageID }),
+              let eventID = eventID(for: messageID) else { return nil }
+
+        return ReplyPreview(eventID: eventID,
+                            senderName: original.senderName,
+                            text: MessagePreview.text(for: original.kind))
     }
 
     /// The replies we have already asked the SDK to finish, so that a rebuild does not ask again.

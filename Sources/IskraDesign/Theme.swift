@@ -165,6 +165,21 @@ public enum Theme {
         /// that something is gone.
         public static let deletion: TimeInterval = 0.3
 
+        /// A message arriving in the conversation — one you have just sent, or one that has
+        /// just been said to you.
+        ///
+        /// A spring, and the twin of `deletion` at the other end of a message's life. A message
+        /// leaving is slow on purpose, because the conversation has lost something and the reader
+        /// should be able to see it go. A message arriving is the opposite errand: it has weight
+        /// and it should land, not glide in. The bounce is small — a bubble that wobbles under
+        /// the words above it is a toy — and it is there so the arrival reads as a thing put down
+        /// rather than as a fade somebody might miss.
+        ///
+        /// It is carried by the transition on the row rather than by the animation scope around
+        /// the list (see `RoomView`), because that scope belongs to the removal and the two are
+        /// not the same gesture.
+        public static let arrival: Animation = .spring(duration: 0.32, bounce: 0.18)
+
         /// A video note growing as it starts, and settling back when it ends.
         ///
         /// A spring rather than a duration, because the circle should arrive with a little

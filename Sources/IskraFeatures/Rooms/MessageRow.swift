@@ -28,6 +28,15 @@ struct MessageRow: View {
     /// for. See `DayDividerView`, which now owns both sides of that gap.
     var opensDay: Bool = false
 
+    /// Whether a message appearing here is arriving *now*, and should be seen to arrive.
+    ///
+    /// False while the room is still filling itself in. Opening a conversation puts fifteen
+    /// messages on the screen at once, and fifteen bubbles springing in together is not an
+    /// arrival — it is the whole room twitching. What this exists for is the one message that
+    /// lands in a conversation somebody is already reading: their own, going out, and the answer
+    /// coming back. `RoomView` knows which of the two is happening and says so.
+    var arrivesAnimated: Bool = true
+
     /// Whether the conversation has just jumped *to* this message, and it is briefly lit so that
     /// the eye can find it.
     ///
@@ -124,8 +133,31 @@ struct MessageRow: View {
         // which never reached anyone and leaves no trace behind it — it shrinks away
         // instead of blinking out. The animation that drives this belongs to the list, not
         // to the row: see `RoomView`.
-        .transition(.asymmetric(insertion: .opacity,
+        .transition(.asymmetric(insertion: arrival,
                                 removal: .scale(scale: 0.85).combined(with: .opacity)))
+    }
+
+    /// A message coming in: it grows out of the side of the screen it belongs to rather than
+    /// fading up in place.
+    ///
+    /// `.scale` and not `.move`, and the difference is not taste. A scale is drawn, not laid out —
+    /// the row takes its full height the instant it exists and only its *picture* grows — so the
+    /// conversation is exactly as tall during the animation as it is after it. A transition that
+    /// changed the height over a third of a second would grow the content in a dozen steps, and
+    /// every one of them is a size change the scroll view answers: the reader standing halfway up
+    /// a busy room would watch it drift under them while a message they cannot see arrives below.
+    /// See the `held` metrics in `RoomView`, which exist to correct exactly that.
+    ///
+    /// The anchor is the corner the message comes from — yours from the composer on the right,
+    /// theirs from the left — which is what makes it read as a message being *put* there.
+    private var arrival: AnyTransition {
+        guard arrivesAnimated else { return .identity }
+
+        return .scale(scale: 0.86, anchor: message.isOwn ? .bottomTrailing : .bottomLeading)
+            .combined(with: .opacity)
+            // Its own animation, overriding the scope around the list. That one is the deletion's
+            // and is deliberately slower — see `Theme.Timing.arrival`.
+            .animation(Theme.Timing.arrival)
     }
 
     // MARK: - The bubble, and what can be done to it
