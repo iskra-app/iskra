@@ -108,6 +108,19 @@ struct SettingsView: View {
                     Label(Strings.Settings.reactions, systemImage: "face.smiling")
                 }
 
+                // iPhone and iPad only, and not drawn at all where the device forbids it.
+                // `setAlternateIconName` is UIKit's and AppKit has no equivalent, so on a Mac
+                // this row would lead to a screen that could only explain itself — see `HomeIcon`.
+                #if os(iOS)
+                if HomeIcons.areSupported {
+                    NavigationLink {
+                        HomeIconView()
+                    } label: {
+                        Label(Strings.Settings.appIcon, systemImage: "app.badge")
+                    }
+                }
+                #endif
+
                 // Value-based, like the two below and for the same reason: `notificationRules()`
                 // builds a store holding an SDK `NotificationSettings` with a listener
                 // registration behind it, and a `NavigationLink` with a destination *closure*

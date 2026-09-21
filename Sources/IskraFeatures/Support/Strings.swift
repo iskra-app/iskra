@@ -1072,6 +1072,10 @@ public enum Strings {
         /// app looks like, and it is the word people come looking for.
         public static let reactions = LocalizedStringResource("settings.reactions", bundle: bundle)
 
+        /// The row that leads to the six icons — see `HomeIconView`. iPhone and iPad only, and
+        /// the row is not drawn elsewhere, so this string is never read on a Mac.
+        public static let appIcon = LocalizedStringResource("settings.appIcon", bundle: bundle)
+
         /// The row that leads to the things that are not finished. Shown only where there is
         /// something behind it — see `BetaFeatures.hasAnything`.
         public static let beta = LocalizedStringResource("settings.beta", bundle: bundle)
@@ -1224,6 +1228,39 @@ public enum Strings {
         public static let places = LocalizedStringResource("reactions.places", bundle: bundle)
         public static let objects = LocalizedStringResource("reactions.objects", bundle: bundle)
         public static let symbols = LocalizedStringResource("reactions.symbols", bundle: bundle)
+    }
+
+    /// Choosing which icon the app wears on the home screen — see `HomeIconView`.
+    ///
+    /// The names are the one part of this the tiles cannot say for themselves. They are things
+    /// rather than colours — уголь, иней, гранат — because "dark grey" is a description and a
+    /// name is something you can ask somebody for.
+    public enum HomeIcon {
+        public static let help = LocalizedStringResource("appIcon.help", bundle: bundle)
+
+        /// When the system refuses. It does on a device where alternate icons are switched off
+        /// by a management profile, and there is nothing the app can do about it beyond saying
+        /// so — hence one sentence and one button.
+        public static let failed = LocalizedStringResource("appIcon.failed", bundle: bundle)
+        public static let failedOK = LocalizedStringResource("appIcon.failedOK", bundle: bundle)
+
+        #if os(iOS)
+        /// A `switch` with no `default`, like the appearance modes above and for the same
+        /// reason: a seventh icon should stop the build rather than ship unnamed.
+        ///
+        /// Internal where everything around it is public, because `HomeIcon` is: the type only
+        /// exists on iOS and only this module ever names one.
+        static func name(_ icon: IskraFeatures.HomeIcon) -> LocalizedStringResource {
+            switch icon {
+            case .spark: LocalizedStringResource("appIcon.spark", bundle: bundle)
+            case .coal: LocalizedStringResource("appIcon.coal", bundle: bundle)
+            case .frost: LocalizedStringResource("appIcon.frost", bundle: bundle)
+            case .garnet: LocalizedStringResource("appIcon.garnet", bundle: bundle)
+            case .pine: LocalizedStringResource("appIcon.pine", bundle: bundle)
+            case .paper: LocalizedStringResource("appIcon.paper", bundle: bundle)
+            }
+        }
+        #endif
     }
 
     /// Choosing what the app is painted in.

@@ -39,6 +39,14 @@ public enum Theme {
         /// own radius inside the bubble's own inset would run *outside* the shape it sits in,
         /// and the eye reads that as a picture pushing through its frame.
         public static let picture: CGFloat = 20
+
+        /// The corner of an app icon drawn at some size — see `Size.appIconTile`.
+        ///
+        /// A proportion rather than a constant, because that is what the home screen's corner
+        /// is: iOS rounds an icon to a fixed *fraction* of its side, so a tile drawn with any
+        /// fixed radius reads as the right picture in the wrong shape. The fraction is the one
+        /// the system uses.
+        public static func appIcon(side: CGFloat) -> CGFloat { side * 0.2237 }
         public static let card: CGFloat = 16
         public static let control: CGFloat = 12
 
@@ -235,6 +243,11 @@ public enum Theme {
     public enum Border {
         public static let hairline: CGFloat = 1
 
+        /// A ring that has to be seen from across a grid rather than merely be present — the
+        /// chosen app icon's. A hairline around a 60-point picture is a line the eye has to be
+        /// looking for.
+        public static let thick: CGFloat = 2
+
         /// The dashes of the outline a deleted message leaves behind — see `deletedBubble`.
         /// Even dash and gap, so the line reads as a placeholder rather than as a decoration.
         public static let dash: [CGFloat] = [4, 4]
@@ -392,6 +405,11 @@ public enum Theme {
         /// as a *screen*, so the tile is the shape of one — tall, in roughly the proportion of a
         /// phone — and big enough that a gradient reads as a gradient rather than as a smudge.
         public static let wallpaperTile = CGSize(width: 72, height: 128)
+
+        /// An app icon to choose from, on the icon screen. Square, and larger than a swatch
+        /// because what is being judged is a picture rather than a colour — at swatch size the
+        /// spark in the middle of it is a speck.
+        public static let appIconTile: CGFloat = 60
 
         /// The bar down the side of a quoted message. Narrow, and the whole of what makes a
         /// quote read as one.

@@ -133,6 +133,26 @@
 /* The settings row that leads to the emoji a double tap leaves. One word, and it is the one
    people go looking for. */
 "settings.reactions" = "Reactions";
+
+/* The settings row that leads to the app's icon. iPhone and iPad only. */
+"settings.appIcon" = "Icon";
+
+/* Under the six tiles. It warns about the system alert, which is coming whatever we do and is
+   better expected than met. */
+"appIcon.help" = "The icon on your home screen. The system will say once that it has changed — that is meant to happen. The app switcher and search catch up a moment later.";
+
+/* When the system refuses, which it does where a management profile forbids alternate icons. */
+"appIcon.failed" = "The icon could not be changed. It looks like this device does not allow it.";
+"appIcon.failedOK" = "I see";
+
+/* The icons' names. Things rather than colours: "dark grey" is a description, and a name is
+   something you can say out loud. */
+"appIcon.spark" = "Spark";
+"appIcon.coal" = "Coal";
+"appIcon.frost" = "Frost";
+"appIcon.garnet" = "Garnet";
+"appIcon.pine" = "Pine";
+"appIcon.paper" = "Paper";
 /* The settings row that leads to the unfinished things. See `BetaFeatures`. */
 "settings.beta" = "Beta features";
 
