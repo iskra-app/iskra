@@ -25,9 +25,10 @@ struct RoomAvatar: View {
     var faces: [RoomFace] = []
 
     @AppStorage(BetaFeatures.blobatarKey) private var blobatarEnabled = BetaFeatures.blobatarByDefault
+    @AppStorage(BetaFeatures.forceBlobatarKey) private var forceBlobatar = BetaFeatures.forceBlobatarByDefault
 
     var body: some View {
-        if url == nil, blobatarEnabled, faces.count > 1 {
+        if url == nil || forceBlobatar, blobatarEnabled, faces.count > 1 {
             FaceCluster(faces: faces, size: size, shape: shape)
         } else {
             // One hero is not a cluster, and it must not become one: a group drawn with the single
@@ -60,6 +61,8 @@ private struct FaceCluster: View {
     /// it at the accessibility sizes.
     @TextScale private var textScale
 
+    @AppStorage(BetaFeatures.forceBlobatarKey) private var forceBlobatar = BetaFeatures.forceBlobatarByDefault
+
     private var diameter: CGFloat { size * textScale }
 
     /// The ring of clear between two faces, as a fraction of the whole rather than as a fixed
@@ -80,6 +83,11 @@ private struct FaceCluster: View {
     var body: some View {
         ZStack {
             ForEach(Array(zip(faces.prefix(3), places)), id: \.0.id) { face, place in
+                // Whether *this* member comes out as a disc or as a creature, which decides both
+                // of the next two things. Forced, everybody is a creature — including the people
+                // who have a photograph, which is not fetched.
+                let isCreature = face.avatarURL == nil || forceBlobatar
+
                 // A creature gets a roomier slot than a photograph, because it does not fill the
                 // one it is given: a blobatar's body is about three quarters of its box, on
                 // purpose, and sizing it as though it were a thumbnail leaves three specks
@@ -88,13 +96,13 @@ private struct FaceCluster: View {
                 //
                 // 1.12 and no more: three quarters of that still has to fit inside the clip at
                 // the outermost centre, or the creature at the edge is served with a flat side.
-                let inner = size * place.fraction * (face.avatarURL == nil ? 1.12 : 1)
+                let inner = size * place.fraction * (isCreature ? 1.12 : 1)
                 let center = CGPoint(x: diameter * place.x, y: diameter * place.y)
 
                 // The gap under a photograph, cut out of everything already drawn.
                 // `destinationOut` needs the whole stack in one layer to have something to cut
                 // *into* — see `.compositingGroup()`.
-                if face.avatarURL != nil {
+                if !isCreature {
                     Circle()
                         .frame(
                             width: inner * textScale + gap * 2,

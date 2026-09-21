@@ -1028,6 +1028,9 @@ public enum Strings {
 
         public static let blobatar = LocalizedStringResource("beta.blobatar", bundle: bundle)
         public static let blobatarHelp = LocalizedStringResource("beta.blobatarHelp", bundle: bundle)
+
+        public static let blobatarForce = LocalizedStringResource("beta.blobatarForce", bundle: bundle)
+        public static let blobatarForceHelp = LocalizedStringResource("beta.blobatarForceHelp", bundle: bundle)
     }
 
     public enum Settings {

@@ -43,6 +43,19 @@ enum BetaFeatures {
     /// a hundred familiar circles at once, which is not a thing to do on their behalf.
     static let blobatarByDefault = false
 
+    /// Whether the creature wins even against a picture somebody actually set.
+    ///
+    /// Only meaningful with `blobatarKey` on, and the switch for it appears only when that one
+    /// is — a preference that does nothing, shown next to the one it depends on, is a switch
+    /// that teaches somebody the wrong thing about what it does.
+    static let forceBlobatarKey = "beta.blobatar.force"
+
+    /// Off. Replacing a face somebody chose with a drawing is a thing to ask for, never a
+    /// default — and it is offered at all because it is the only way to *see* the feature: most
+    /// of the people worth looking at in a real account are exactly the ones who have a
+    /// photograph.
+    static let forceBlobatarByDefault = false
+
     /// Whether there is anything in here to show on this platform.
     ///
     /// True everywhere now, and it was not always: the first experiment here was about a sidebar
