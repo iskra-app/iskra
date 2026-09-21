@@ -48,5 +48,3 @@ Apps/ShareExtension/Iskra.entitlements
 
 # Worktrees agents create for themselves. Transient, and never part of the tree.
 .claude/worktrees/
-
-Apps/ShareExtension/Info.plist
