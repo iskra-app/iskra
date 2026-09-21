@@ -35,6 +35,10 @@
 /* Summary line for a message this device has no key for. Deliberately avoids the words 'decrypt' and 'key'. */
 "preview.unreadable" = "Сообщение, которое пока не открыть";
 
+/* Звонок, который уже закончился — под названием чата в списке. */
+"preview.call" = "Звонок";
+"preview.callDeclined" = "Звонок отклонён";
+
 /* Summary line for a video in the chat list. */
 "preview.video" = "Видео";
 
@@ -99,6 +103,13 @@
 "roomEvent.roomPictureChanged" = "У чата новое фото";
 "roomEvent.roomCreated" = "Чат создан";
 "roomEvent.encryptionEnabled" = "Теперь эти сообщения читают только участники чата";
+
+/* Серая строка о звонке. Существительные, без подлежащего: SDK даёт здесь Matrix ID,
+   а все соседние строки построены на отображаемых именах. */
+"roomEvent.call" = "Звонок";
+"roomEvent.voiceCall" = "Звонок";
+"roomEvent.videoCall" = "Видеозвонок";
+"roomEvent.callDeclined" = "Звонок отклонён";
 "roomEvent.pair" = "%1$@ и %2$@";
 
 /* What a client that cannot draw a map shows instead of one. */

@@ -1497,6 +1497,14 @@ public enum Strings {
         /// is what a person gets, and "try again" is honest — a widget that would not build once
         /// often builds the second time.
         public static let couldNotStart = LocalizedStringResource("call.couldNotStart", bundle: bundle)
+
+        /// In the chat list and on the strip above a conversation: somebody is on a call in here
+        /// right now. Present tense, and it replaces the last message rather than joining it —
+        /// what was said before the call started is no longer the most useful thing on the row.
+        public static let ongoing = LocalizedStringResource("call.ongoing", bundle: bundle)
+
+        /// The way into a call that is already happening.
+        public static let join = LocalizedStringResource("call.join", bundle: bundle)
     }
 
 }

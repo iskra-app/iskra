@@ -8,6 +8,15 @@ import MatrixRustSDK
 /// placeholder full of protocol vocabulary.
 enum MessagePreview {
     static func text(for content: TimelineItemContent) -> String? {
+        // A call is not message-like, so it would fall through the guard below and leave the row
+        // showing whatever was said before it — which, after a call that has just ended, is the
+        // least useful of the two things the room knows. While one is *happening*,
+        // `RoomSummary.hasActiveCall` says so instead and this line is not reached.
+        if case let .rtcNotification(_, declinedBy) = content {
+            return String(core: declinedBy.isEmpty ? CoreStrings.Preview.call
+                                                   : CoreStrings.Preview.callDeclined)
+        }
+
         guard case let .msgLike(msgLike) = content else { return nil }
 
         switch msgLike.kind {

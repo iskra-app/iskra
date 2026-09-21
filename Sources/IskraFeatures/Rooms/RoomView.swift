@@ -737,14 +737,31 @@ public struct RoomView: View {
         // Present only when there is something pinned — a room with nothing pinned should not
         // give up a row of its screen to say so.
         .safeAreaInset(edge: .top) {
-            if !timeline.pinnedEventIDs.isEmpty, let pinned {
-                PinnedStrip(pinned: pinned,
-                            onGoTo: { message in jumpTarget = message.id },
-                            onOpenList: { isShowingPinned = true })
+            VStack(spacing: 0) {
+                // Above the pinned message, because a call is happening *now* and a pinned
+                // message has been there for days. Only where the reader could actually join
+                // one: a strip offering a call this account cannot place is an invitation to
+                // press something that does nothing.
+                if timeline.hasActiveCall, canCall, !isCalling {
+                    OngoingCallStrip(participants: timeline.callParticipants) {
+                        // The kind of call the room already has, not a kind of our choosing —
+                        // see `TimelineStore.callIsVideo`. Nil means the room has no opinion,
+                        // and a group with no opinion is joined as the group call it is.
+                        startCall(.join(video: timeline.callIsVideo ?? !timeline.isOneToOne))
+                    }
                     .transition(.move(edge: .top).combined(with: .opacity))
+                }
+
+                if !timeline.pinnedEventIDs.isEmpty, let pinned {
+                    PinnedStrip(pinned: pinned,
+                                onGoTo: { message in jumpTarget = message.id },
+                                onOpenList: { isShowingPinned = true })
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
             }
         }
         .animation(.smooth, value: timeline.pinnedEventIDs)
+        .animation(.smooth, value: timeline.hasActiveCall)
         // Above the pinned strip, because it is about the whole app rather than about this room —
         // and because somebody reading a conversation should not have to go back to the list to find
         // out why nothing new is arriving in it. See `OfflineBanner`.

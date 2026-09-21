@@ -420,6 +420,13 @@ public struct RoomEvent: Sendable, Identifiable, Equatable {
         case .roomPictureChanged: String(core: CoreStrings.RoomEvent.roomPictureChanged)
         case .roomCreated: String(core: CoreStrings.RoomEvent.roomCreated)
         case .encryptionEnabled: String(core: CoreStrings.RoomEvent.encryptionEnabled)
+        case let .callStarted(isVideo):
+            switch isVideo {
+            case true: String(core: CoreStrings.RoomEvent.videoCall)
+            case false: String(core: CoreStrings.RoomEvent.voiceCall)
+            case nil: String(core: CoreStrings.RoomEvent.call)
+            }
+        case .callDeclined: String(core: CoreStrings.RoomEvent.callDeclined)
         }
     }
 
@@ -462,6 +469,21 @@ public enum RoomEventKind: Sendable, Equatable {
     case roomPictureChanged
     case roomCreated
     case encryptionEnabled
+
+    /// Somebody rang the room — an `m.rtc.notification`.
+    ///
+    /// Not a message, and drawn as the same quiet grey line as everything else here. A call is a
+    /// thing that happened in the room, like somebody arriving; it is not a thing somebody said.
+    ///
+    /// `isVideo` is nil where the event did not say, which is a real case rather than a defensive
+    /// one — see `TimelineMapper`, where the SDK hands this over as a bare string.
+    case callStarted(isVideo: Bool?)
+
+    /// The ring was turned down. The people who turned it down are not named: the SDK gives their
+    /// Matrix IDs, and every other line here is built from display names, so naming them would
+    /// mean a line that reads "@anna_1987:matrix.org declined" in a room where everything else
+    /// says "Аня".
+    case callDeclined
 
     /// The people named, for the shapes that name people. Nil for the rest, which is what
     /// lets `merged(with:)` refuse to pool two lines that have nobody to pool.

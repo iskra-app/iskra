@@ -108,7 +108,40 @@ struct CallTests {
         #expect(!CallAvailability.none.isAvailable)
     }
 
+    // MARK: - The grey line in the conversation
+
+    @Test("Each kind of call gets its own line, including the kind that did not say")
+    func callLinesAreDistinct() {
+        let video = Self.event(.callStarted(isVideo: true)).text
+        let voice = Self.event(.callStarted(isVideo: false)).text
+        let unsaid = Self.event(.callStarted(isVideo: nil)).text
+        let declined = Self.event(.callDeclined).text
+
+        #expect(!video.isEmpty)
+        #expect(video != voice)
+        #expect(!unsaid.isEmpty)
+        #expect(declined != unsaid)
+    }
+
+    /// Two calls in a row are two calls, and the enum already guarantees it — `people` answers nil
+    /// for everything that is not an arrival or a departure, so there is nothing to pool. Pinned
+    /// because the guarantee is a `default:` several screens away from these cases, and somebody
+    /// adding `people` to a future case would break this without touching this file.
+    @Test("Two calls in a row are not collapsed into one line")
+    func callsDoNotMerge() {
+        let first = RoomEventKind.callStarted(isVideo: nil)
+        let second = RoomEventKind.callStarted(isVideo: nil)
+
+        #expect(first.people == nil)
+        #expect(first.merged(with: second) == nil)
+        #expect(RoomEventKind.callDeclined.merged(with: second) == nil)
+    }
+
     // MARK: -
+
+    private static func event(_ kind: RoomEventKind) -> RoomEvent {
+        RoomEvent(id: "$one", kind: kind, timestamp: Date(timeIntervalSince1970: 0))
+    }
 
     /// A defaults suite of this test's own, so that running the suite cannot write into the
     /// preferences of whoever is running it.

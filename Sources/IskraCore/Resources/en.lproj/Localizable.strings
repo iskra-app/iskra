@@ -35,6 +35,10 @@
 /* Summary line for a message this device has no key for. Deliberately avoids the words 'decrypt' and 'key'. */
 "preview.unreadable" = "Message you can’t read yet";
 
+/* A call that has finished, under a room's name in the chat list. */
+"preview.call" = "Call";
+"preview.callDeclined" = "Call declined";
+
 /* Summary line for a video in the chat list. */
 "preview.video" = "Video";
 
@@ -97,6 +101,13 @@
 "roomEvent.roomPictureChanged" = "The chat has a new picture";
 "roomEvent.roomCreated" = "The chat was created";
 "roomEvent.encryptionEnabled" = "From now on, only people in this chat can read these messages";
+
+/* The grey line about a call. Nouns, with no subject: the SDK gives Matrix IDs here,
+   while every neighbouring line is built from display names. */
+"roomEvent.call" = "Call";
+"roomEvent.voiceCall" = "Voice call";
+"roomEvent.videoCall" = "Video call";
+"roomEvent.callDeclined" = "Call declined";
 "roomEvent.pair" = "%1$@ and %2$@";
 
 /* What a client that cannot draw a map shows instead of one. */

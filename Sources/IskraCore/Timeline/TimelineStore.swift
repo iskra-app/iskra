@@ -90,6 +90,21 @@ public final class TimelineStore {
     public private(set) var roomAvatarSeed: String?
     public private(set) var memberCount = 0
 
+    /// Somebody is on a call in this room right now — see `RoomSummary.hasActiveCall`, which is
+    /// the same fact read from the same place for the chat list.
+    public private(set) var hasActiveCall = false
+
+    /// Who is on it, by Matrix ID, in the order the SDK gives: oldest membership first.
+    public private(set) var callParticipants: [String] = []
+
+    /// Whether the call in progress is a video call, as the people already in it have it.
+    ///
+    /// Read from the room rather than guessed, because joining is the one moment where guessing
+    /// is visible to somebody else: walking into a voice call announcing video turns on a camera
+    /// nobody in there expected. Nil when the room has no opinion — which is what `.none` means,
+    /// and what an empty room means.
+    public private(set) var callIsVideo: Bool?
+
     /// The other person's Matrix ID, in a chat that has exactly one other person.
     ///
     /// This is what the header shows under their name. It is deliberately *not* a "last
@@ -468,6 +483,19 @@ public final class TimelineStore {
         // has no counterpart, and claiming one would put your own address in the
         // header of your own chat.
         directCounterpartID = isOneToOne ? info.counterpart(besides: ownUserID)?.userId : nil
+        // Already on every room-info update, so a call starting or ending reaches the strip above
+        // the conversation without a subscription of its own.
+        hasActiveCall = info.hasRoomCall
+        callParticipants = info.activeRoomCallParticipants
+        // `.partial` is a room mid-disagreement — somebody has their camera on and somebody has
+        // not — and it is read the same as agreement here. The consensus is a description of what
+        // is happening, not a vote to be tallied, and a joiner only needs to know which kind of
+        // call to announce.
+        callIsVideo = switch info.activeRoomCallConsensusIntent {
+        case let .full(intent): intent == .video
+        case let .partial(intent, _, _): intent == .video
+        case .none: nil
+        }
 
         // Sending is governed by the room's power levels. If the levels are not in the
         // info we just received, leave the previous answer alone: it may have arrived in an

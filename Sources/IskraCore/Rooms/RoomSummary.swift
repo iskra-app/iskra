@@ -142,6 +142,18 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
     public let isMuted: Bool
 
     /// Joined, or invited and waiting for an answer.
+    /// Somebody is on a call in this room right now.
+    ///
+    /// A property of the room, not of its last message — which is why the chat list shows it
+    /// *instead of* the preview rather than as one: a call is happening now, and the sentence
+    /// somebody typed before it started is no longer the most useful thing on the row.
+    public let hasActiveCall: Bool
+
+    /// Who is on it, by Matrix ID. The same person appears twice if they joined from two devices,
+    /// which is the SDK's own shape and is left alone here — the row counts faces, not sessions,
+    /// and deduplicating is the row's business.
+    public let callParticipants: [String]
+
     public let membership: RoomMembership
 
     /// Who asked you in, when somebody has. Their display name, or their Matrix ID where they have
@@ -199,7 +211,9 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
                 membership: RoomMembership = .joined,
                 invitedBy: String? = nil,
                 avatarSeed: String? = nil,
-                faces: [RoomFace] = []) {
+                faces: [RoomFace] = [],
+                hasActiveCall: Bool = false,
+                callParticipants: [String] = []) {
         self.id = id
         self.name = name
         self.avatarURL = avatarURL
@@ -218,6 +232,8 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
         self.isMuted = isMuted
         self.membership = membership
         self.invitedBy = invitedBy
+        self.hasActiveCall = hasActiveCall
+        self.callParticipants = callParticipants
     }
 
     init?(info: RoomInfo,
@@ -272,6 +288,11 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
         // accent until the day its info screen happened to be opened.
         self.isMuted = isMuted || info.cachedUserDefinedNotificationMode == .mute
         self.invitedBy = info.inviter.map { $0.displayName ?? $0.userId }
+        // Both already on `RoomInfo`, and both were being thrown away here. The list is fed by
+        // room-info diffs, so a call starting or ending arrives on this path by itself — there is
+        // nothing extra to subscribe to.
+        self.hasActiveCall = info.hasRoomCall
+        self.callParticipants = info.activeRoomCallParticipants
     }
 }
 

@@ -627,9 +627,13 @@ struct RoomRow: View {
                 // it would drift down beside a long message and sit level with the middle of a
                 // sentence rather than with the row it belongs to.
                 HStack(alignment: .top, spacing: Theme.Spacing.close) {
-                    Text(room.lastMessage ?? " ")
+                    // A call in this room takes the preview's place while it lasts. It is the
+                    // one thing about a room that is true *now* rather than true of its past,
+                    // and a row that reads "ага, понял" while three people are talking in there
+                    // is a row telling you the least useful of the two facts it knows.
+                    Text(room.hasActiveCall ? String(app: Strings.Call.ongoing) : (room.lastMessage ?? " "))
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(room.hasActiveCall ? accent.color : .secondary)
                         // Two lines, and the space for both is kept even when only one is used.
                         //
                         // Without `reservesSpace` a list of chats has rows of two different
@@ -709,7 +713,13 @@ struct RoomRow: View {
         if room.isPinned {
             parts.append(String(app: Strings.RoomList.pinned))
         }
-        if let message = room.lastMessage { parts.append(message) }
+        // The same substitution the row makes on screen — see above. VoiceOver reading out a
+        // stale message while the row says a call is happening would be the two disagreeing.
+        if room.hasActiveCall {
+            parts.append(String(app: Strings.Call.ongoing))
+        } else if let message = room.lastMessage {
+            parts.append(message)
+        }
 
         // Both, when both are true, and that is the fix rather than a flourish. These used to be
         // an either/or: a mention suppressed the unread count entirely, so a room with twelve

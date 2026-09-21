@@ -1008,6 +1008,10 @@
 
 /* It should have worked. "Try again" is honest: a widget that would not build often builds next time. */
 "call.couldNotStart" = "It would not start. Try again.";
+/* In the chat list and on the strip above a conversation. Replaces the last message, not joins it. */
+"call.ongoing" = "Call in progress";
+"call.join" = "Join";
+
 
 /* MARK: - Beta features */
 

@@ -33,6 +33,12 @@ public enum CoreStrings {
         public static let poll = LocalizedStringResource("preview.poll", bundle: bundle)
         public static let deleted = LocalizedStringResource("preview.deleted", bundle: bundle)
         public static let unreadable = LocalizedStringResource("preview.unreadable", bundle: bundle)
+
+        /// A call that has finished, under a room's name in the chat list. While one is still
+        /// happening the row says so from `RoomSummary.hasActiveCall` instead, and this is what
+        /// is left behind afterwards.
+        public static let call = LocalizedStringResource("preview.call", bundle: bundle)
+        public static let callDeclined = LocalizedStringResource("preview.callDeclined", bundle: bundle)
     }
 
     public enum Room {
@@ -168,6 +174,17 @@ public enum CoreStrings {
         public static let roomPictureChanged = LocalizedStringResource("roomEvent.roomPictureChanged", bundle: bundle)
         public static let roomCreated = LocalizedStringResource("roomEvent.roomCreated", bundle: bundle)
         public static let encryptionEnabled = LocalizedStringResource("roomEvent.encryptionEnabled", bundle: bundle)
+
+        /// A call rang in this room. Three of them, because the event may or may not say which
+        /// kind it was, and "Звонок" on its own is the honest line when it did not.
+        ///
+        /// Nouns, not sentences, and deliberately: nobody is named on these lines. The SDK gives
+        /// Matrix IDs here where every other line in this enum is built from display names, so a
+        /// sentence would either name somebody by their address or invent a subject for a verb.
+        public static let call = LocalizedStringResource("roomEvent.call", bundle: bundle)
+        public static let voiceCall = LocalizedStringResource("roomEvent.voiceCall", bundle: bundle)
+        public static let videoCall = LocalizedStringResource("roomEvent.videoCall", bundle: bundle)
+        public static let callDeclined = LocalizedStringResource("roomEvent.callDeclined", bundle: bundle)
 
         /// Two people, named. Its own string because "и" sits between them in Russian and
         /// "and" in English, and neither language is entitled to assume the other's word order.

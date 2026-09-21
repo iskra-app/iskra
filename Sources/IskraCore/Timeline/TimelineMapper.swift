@@ -319,6 +319,12 @@ enum TimelineMapper {
             guard let displayName, let prevDisplayName, displayName != prevDisplayName else { return nil }
             return .renamedThemselves(from: prevDisplayName, to: displayName)
 
+        case let .rtcNotification(callIntent, declinedBy):
+            // Somebody turned it down wins over the fact that it rang: by the time this line is
+            // read, "declined" is the outcome and "a call happened" is merely how it started.
+            guard declinedBy.isEmpty else { return .callDeclined }
+            return .callStarted(isVideo: isVideo(callIntent))
+
         case let .state(_, state):
             return switch state {
             case let .roomName(name): name.map { .roomRenamed($0) }
@@ -332,6 +338,21 @@ enum TimelineMapper {
         default:
             return nil
         }
+    }
+
+    /// What kind of call an `m.rtc.notification` announced, if it said.
+    ///
+    /// The SDK hands this one over as a **bare string** — `TimelineItemContent.rtcNotification`
+    /// carries `callIntent: String?` — where the same fact elsewhere in the FFI is the enum
+    /// `RtcCallIntent`. So the exact spelling is not something to pin a `==` against: it may
+    /// arrive as `m.video`, `video`, or an unstable-prefixed variant depending on what the sender
+    /// wrote. Matching loosely and answering nil for anything unrecognised is the honest reading,
+    /// and nil has a line of its own — a call that does not say which kind it is is still a call.
+    private static func isVideo(_ callIntent: String?) -> Bool? {
+        guard let intent = callIntent?.lowercased(), !intent.isEmpty else { return nil }
+        if intent.contains("video") { return true }
+        if intent.contains("audio") || intent.contains("voice") { return false }
+        return nil
     }
 
     // MARK: - Replies
