@@ -39,13 +39,41 @@ import IskraCore
 @MainActor
 enum AudioSession {
     /// What the session is wanted for.
-    enum Use {
+    enum Use: Sendable {
         /// Anything the app plays: a voice message, a video note, a video opened full-screen.
         case playback
         /// The microphone. `playAndRecord` rather than `record`, because the app plays as well —
         /// a session left in `record` makes the next voice message the user *listens* to come out
         /// of nowhere. `.defaultToSpeaker` is what keeps it off the earpiece.
         case recording
+
+        /// A call. The third user of this queue, and the only one that does not activate the
+        /// session itself — see `apply`.
+        case call(video: Bool)
+    }
+
+    /// Whether a call owns the session right now.
+    ///
+    /// A call is not one more thing that plays audio; it is a thing that *holds* the audio session
+    /// for minutes while other parts of the app go on being used. Somebody listening to a voice
+    /// message mid-call would otherwise set the category to `.playback` and take the microphone
+    /// away from the conversation they are in — and letting go of a finished recording would
+    /// deactivate the session underneath CallKit, which is a call that goes silent for reasons
+    /// nothing logs.
+    ///
+    /// So while this is true the queue still runs in order and does nothing.
+    private static var callIsUp = false
+
+    /// A call has the session. Configures the category; **does not activate it.**
+    static func callBegan(video: Bool) async {
+        callIsUp = true
+        await serially { apply(.call(video: video)) }.value
+    }
+
+    /// The call is over and the session goes back to whoever wants it next.
+    static func callEnded() {
+        callIsUp = false
+        serially { relinquish() }
     }
 
     /// Configures the session and waits until it really is configured.
@@ -53,6 +81,9 @@ enum AudioSession {
     /// The wait is a suspension, not a block: the main actor is free while `mediaserverd` thinks
     /// about it, and the caller still knows the session is live by the time it has a player.
     static func prepare(for use: Use) async {
+        // A call owns the session while it lasts — see `callIsUp`. Playing a voice message in the
+        // middle of one must not take the microphone away from it.
+        guard !callIsUp else { return }
         await serially { apply(use) }.value
     }
 
@@ -67,6 +98,9 @@ enum AudioSession {
     /// the finger lifts. It is still *ordered* against everything else on the queue, which is the
     /// part that matters.
     static func release() {
+        // Not while a call is up. A finished voice recording letting go of the session would take
+        // the conversation down with it — see `callIsUp`.
+        guard !callIsUp else { return }
         serially { relinquish() }
     }
 
@@ -100,7 +134,22 @@ enum AudioSession {
                 try session.setCategory(.playback, mode: .moviePlayback)
             case .recording:
                 try session.setCategory(.playAndRecord, mode: .spokenAudio, options: [.defaultToSpeaker])
+            case let .call(video):
+                // `.videoChat` and `.voiceChat` are not decoration: they pick the echo
+                // cancellation and the default route, and a video call on the earpiece is a call
+                // nobody can hear at arm's length.
+                var options: AVAudioSession.CategoryOptions = [.allowBluetooth, .allowBluetoothA2DP]
+                if video { options.insert(.defaultToSpeaker) }
+                try session.setCategory(.playAndRecord,
+                                        mode: video ? .videoChat : .voiceChat,
+                                        options: options)
             }
+
+            // **A call does not activate the session — CallKit does**, and it says so afterwards
+            // through `provider(_:didActivate:)`. Activating it here as well is a race with
+            // CallKit for the same resource, and the way it loses is the classic one: the first
+            // second or two of a call with no sound at all.
+            if case .call = use { return }
             try session.setActive(true)
         } catch {
             Log.media.error("the audio session refused \(String(describing: use), privacy: .public): \(Log.describe(error), privacy: .public)")

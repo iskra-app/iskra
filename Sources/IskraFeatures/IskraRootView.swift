@@ -198,6 +198,24 @@ public struct IskraRootView: View {
                         // not — see `ReactionPushRule`. Written on the account rather than the
                         // device, so this is idempotent and costs one request.
                         await session.enableReactionPushes()
+
+                        // Calls, and **the order of these two lines is load-bearing.** The rule
+                        // is what lets the gateway tell a ring from a message; the VoIP pusher is
+                        // what a ring is delivered down. Registering the pusher first would mean
+                        // a VoIP push for every message until the rule lands — and iOS withdraws
+                        // an app's VoIP privilege for far less than that. See `CallPushRule`.
+                        await session.enableCallPushes()
+                        IncomingCallCenter.shared.signedIn(session)
+                        VoIPPermission.shared.signedIn(session)
+                    }
+                    // A call was answered on the lock screen. All this does is select the room;
+                    // `RoomView` picks the answer up from `IncomingCallCenter` and opens the call
+                    // over itself. Split that way because the answer can arrive before any of
+                    // these views exist — a VoIP push is a background launch — so the thing that
+                    // opens the call has to be able to find it on appearing, not only be told.
+                    .onChange(of: IncomingCallCenter.shared.answered) { _, answered in
+                        guard let answered else { return }
+                        selectedRoomID = answered.roomID
                     }
                     // The server stopped accepting this session while the app was open — somebody
                     // ended it from another device, or the account was deactivated. `UserSession`
@@ -432,6 +450,12 @@ public struct IskraRootView: View {
         // nobody signed in, and shows the server's own "New message" — notifications, forever,
         // about conversations the user can no longer open.
         await PushPermission.shared.signingOut(session)
+
+        // And the VoIP pusher with it, which matters more than the ordinary one: an account that
+        // still points a ringing pusher at a signed-out device sends it calls it cannot report to
+        // CallKit, and that is the exact behaviour Apple withdraws the privilege for.
+        await VoIPPermission.shared.signingOut(session)
+        IncomingCallCenter.shared.signedOut()
 
         await session.signOut()
 

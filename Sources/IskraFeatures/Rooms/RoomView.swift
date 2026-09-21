@@ -290,6 +290,21 @@ public struct RoomView: View {
         isCalling = true
     }
 
+    /// Opens the call somebody accepted from the lock screen, if it is this room's.
+    ///
+    /// The answer is *consumed*, so that going back into the room later does not reopen a call
+    /// that ended twenty minutes ago. It is deliberately not guarded on `canCall`: that is
+    /// permission to *start* a call, and somebody who has already answered one is past it.
+    private func openAnsweredCall() {
+        guard let answered = IncomingCallCenter.shared.answered,
+              answered.roomID == timeline.roomID
+        else {
+            return
+        }
+        IncomingCallCenter.shared.consumeAnswered()
+        startCall(.join(video: answered.isVideo))
+    }
+
     private func openRoomSearch() {
         if roomSearch == nil { roomSearch = timeline.makeSearch() }
         isSearchingRoom = true
@@ -852,7 +867,14 @@ public struct RoomView: View {
         }
         // Asked once, when the room opens. Not re-asked on every redraw: it is a network question
         // about power levels, and the answer does not change while somebody reads a conversation.
-        .task { canCall = await mayCall() }
+        .task {
+            canCall = await mayCall()
+            // A call answered on the lock screen before this screen existed. Checked on appearing
+            // as well as watched below, because the answer usually arrives first: the phone was
+            // woken by a push, and this view is built afterwards.
+            openAnsweredCall()
+        }
+        .onChange(of: IncomingCallCenter.shared.answered) { _, _ in openAnsweredCall() }
         .callPresentation(isPresented: $isCalling) {
             if let call {
                 CallScreen(store: call,

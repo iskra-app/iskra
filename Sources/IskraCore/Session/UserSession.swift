@@ -115,6 +115,13 @@ public final class UserSession {
     /// to be idempotent or every redraw mints a second call.
     var openCalls: [String: WeakBox<CallStore>] = [:]
 
+    /// Subscriptions to "somebody turned this ring down", by the ring's event id.
+    ///
+    /// Held here for the ordinary reason a `TaskHandle` is held: letting go of one unsubscribes.
+    /// Keyed by event id rather than by room, because two rings in one room is a real sequence —
+    /// somebody calls, gives up, calls again — and the second must not cancel the first's cleanup.
+    var callDeclineHandles: [String: TaskHandle] = [:]
+
     /// Kept alive because dropping it unsubscribes. Cancelled in `signOut()`.
     private var authErrorHandle: TaskHandle?
 
@@ -373,6 +380,16 @@ public final class UserSession {
         await ReactionPushRule(settings: client.getNotificationSettings()).register()
     }
 
+    /// Asking the homeserver to stamp incoming calls, so that the gateway can tell one from a
+    /// message and send a VoIP push for the first and not the second. See `CallPushRule`.
+    ///
+    /// **Registered before the VoIP pusher, never after** — see `PushRegistration.registerVoIP`.
+    /// The other order means a VoIP push for every message in the window between the two, and iOS
+    /// takes the VoIP privilege away for far less.
+    public func enableCallPushes() async {
+        await CallPushRule(settings: client.getNotificationSettings()).register()
+    }
+
     /// What this account is keeping on the device, built when the screen that shows it is opened.
     ///
     /// It takes the room list with it, and not for the rooms: clearing the cache means taking the
@@ -486,6 +503,11 @@ public final class UserSession {
             box.value?.stop()
         }
         openCalls = [:]
+
+        for handle in callDeclineHandles.values {
+            handle.cancel()
+        }
+        callDeclineHandles = [:]
 
         // Nothing to tell any more, and nobody to tell. The closure holds `self` weakly, so this is
         // not a leak being cleaned up — it is the store being left with no reason to call into a

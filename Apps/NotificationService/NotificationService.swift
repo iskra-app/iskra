@@ -119,13 +119,33 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
             // We could not read it. Leave the server's own text alone: a message described
             // badly still tells the user a message arrived, and silence does not. Why it
             // failed is in `Log.push`, for whoever comes looking.
-            delivery.handler(delivery.fallback)
+            delivery.handler(Self.fallback(of: delivery))
         }
     }
 
     private func deliverFallback() {
         guard let delivery = pending.withLock({ $0.take() }) else { return }
-        delivery.handler(delivery.fallback)
+        delivery.handler(Self.fallback(of: delivery))
+    }
+
+    /// The server's own words — unless the app is ringing about this very event.
+    ///
+    /// A ringing call arrives twice: as a VoIP push, which rings, and as an ordinary push, which
+    /// wakes this process. The ordinary copy is meant to come to nothing, and does whenever it
+    /// decrypts — `PushMapper` returns a silence for it. But this extension has one obligation it
+    /// cannot skip, and when it cannot decrypt in time what it hands over is "Новое сообщение".
+    /// Landing on top of a call that is ringing at that moment, it reads as two unrelated bugs and
+    /// is one.
+    ///
+    /// So the app writes the ring down where this process can see it. See `RingLedger`, and note
+    /// that the check is deliberately narrow: only an event the app has *said* it is ringing about
+    /// is silenced, so a genuine message can never be swallowed by this.
+    private static func fallback(of delivery: Delivery) -> UNNotificationContent {
+        if let eventID = delivery.fallback.userInfo["event_id"] as? String,
+           RingLedger.isRinging(eventID: eventID) {
+            return UNMutableNotificationContent()
+        }
+        return delivery.fallback
     }
 
     private func content(for notification: PushNotification,

@@ -161,9 +161,25 @@ public final class NotificationRulesStore {
     }
 
     /// Calls. See `calls`.
+    ///
+    /// **Two rules, not one, and that is the fix rather than belt and braces.**
+    /// `setCallEnabled` flips `.m.rule.call`, which matches `m.call.invite` — the legacy 1:1
+    /// WebRTC call. A MatrixRTC call is an `m.rtc.notification`, and it is our own override that
+    /// notifies about it (`CallPushRule`). Flipping only the first would leave a switch that looks
+    /// like it works, is read by the reader as "the phone will not ring", and does not stop the
+    /// phone ringing.
+    ///
+    /// The SDK's rule goes first because it is the one the screen's own state is read back from.
     public func setCalls(_ enabled: Bool) async {
         await flip(\.calls, to: enabled, failing: .call) { settings, value in
             try await settings.setCallEnabled(enabled: value)
+
+            let rule = CallPushRule(settings: settings)
+            if value {
+                await rule.register()
+            } else {
+                await rule.silence()
+            }
         }
     }
 

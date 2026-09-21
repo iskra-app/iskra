@@ -1505,6 +1505,12 @@ public enum Strings {
 
         /// The way into a call that is already happening.
         public static let join = LocalizedStringResource("call.join", bundle: bundle)
+
+        /// The name on a ringing call before the event has been decrypted and the caller is
+        /// known. It is on screen for a second or two at most, and it is never nothing: CallKit
+        /// requires a name at the moment the call is reported, which is before anybody can be
+        /// asked who is calling. See `IncomingCallCenter`.
+        public static let incoming = LocalizedStringResource("call.incoming", bundle: bundle)
     }
 
 }

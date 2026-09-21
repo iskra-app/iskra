@@ -259,10 +259,16 @@ targets:
         # the app goes to the background. The symptom is not an error — it is a conversation that
         # goes silent mid-sentence while both people keep talking.
         #
-        # `voip` belongs beside it when PushKit lands (stage 8.3) and is deliberately not here
-        # yet: it is the key that lets a `PKPushRegistry` get a token at all, and declaring it
-        # before anything reports to CallKit is how an app gets its VoIP privilege taken away.
-        UIBackgroundModes: [remote-notification, audio]
+        # `voip` is what lets a `PKPushRegistry` produce a token at all. Without it there is no
+        # token, no `didUpdate credentials`, and — this is the part worth remembering — **no error
+        # anywhere**: calls simply never ring, and the only diagnostic is
+        # `Iskra --probe-voip-token` printing nothing.
+        #
+        # It is declared now that something reports to CallKit for every VoIP push it receives
+        # (see IncomingCallCenter). That obligation is not a nicety: iOS withdraws the privilege
+        # from an app that takes VoIP pushes and does not ring, and App Review rejects one that
+        # declares this mode without a CallKit call behind it.
+        UIBackgroundModes: [remote-notification, audio, voip]
 
   # The process that decrypts a push. iOS wakes it when one arrives, gives it ~30 seconds,
   # and shows whatever it puts on screen — see Apps/NotificationService/NotificationService.swift.

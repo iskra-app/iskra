@@ -199,6 +199,18 @@ enum PushMapper {
             // to know that much even though we cannot say what.
             return String(core: CoreStrings.Preview.unreadable)
 
+        case .rtcNotification:
+            // A ringing call arrives twice — as a VoIP push, which rings, and as this, which is
+            // the same fact coming down the ordinary pusher. Silenced here **explicitly** rather
+            // than falling into the `default` below it, because "quiet by accident" is one edit
+            // away from becoming loud by accident: somebody giving this switch a friendlier
+            // default would give every call a duplicate banner behind the CallKit screen.
+            //
+            // The other half of this is `RingLedger`, which stops the extension's *fallback* text
+            // landing on top of a call when decryption fails. This case only covers the path
+            // where decryption worked.
+            return nil
+
         default:
             // Reactions, call negotiation, key-verification steps, redactions. All events;
             // none of them news. The push rules usually strip these long before they reach

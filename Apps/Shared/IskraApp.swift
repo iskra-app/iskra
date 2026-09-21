@@ -103,6 +103,14 @@ final class PushDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCen
         // delegate iOS has already given up asking, and the tap that *started* the app — the one
         // most worth acting on — is delivered to nobody.
         UNUserNotificationCenter.current().delegate = self
+
+        // PushKit, and here for the same reason as the line above: a registry created later is a
+        // registry iOS has already given up delivering to. Unlike notifications this asks nobody
+        // anything — there is no VoIP permission — so there is no reason to wait for a moment when
+        // the question would mean something. See `VoIPPermission`.
+        MainActor.assumeIsolated {
+            VoIPPermission.shared.start()
+        }
         return true
     }
 

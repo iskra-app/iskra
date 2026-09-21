@@ -77,6 +77,67 @@ public extension UserSession {
         return store
     }
 
+    /// Looks up an incoming ring with this session's own client.
+    ///
+    /// The live-session half of `RingResolver`. Restoring a second client from a process that
+    /// already has one would open the same encrypted store twice for no reason.
+    func resolveRing(roomID: String, eventID: String) async -> RingOutcome {
+        do {
+            return try await withTimeout(RingResolver.budget) { [client] in
+                try await RingResolver.resolve(roomID: roomID, eventID: eventID, client: client)
+            }
+        } catch is TimeoutError {
+            Log.calls.error("the ring did not resolve inside \(RingResolver.budget)")
+            return .failed("timed out")
+        } catch {
+            Log.calls.error("the ring would not resolve: \(Log.describe(error), privacy: .public)")
+            return .failed(Log.describe(error))
+        }
+    }
+
+    /// Tells the caller this device is not taking the call.
+    ///
+    /// `declineCall` is what stops the *other* devices ringing too — it is a message to the room,
+    /// not a local dismissal. Hence a real request rather than simply tearing the screen down.
+    func declineCall(ring: CallRing) async {
+        guard let room = roomList.room(withID: ring.roomID) ?? (try? client.getRoom(roomId: ring.roomID)) else {
+            return
+        }
+        do {
+            try await room.declineCall(rtcNotificationEventId: ring.eventID)
+        } catch {
+            Log.calls.error("the decline would not send: \(Log.describe(error), privacy: .public)")
+        }
+        stopWatchingDeclines(for: ring)
+    }
+
+    /// Watches for somebody else turning this ring down — another of the user's own devices
+    /// answering or declining — so that this one stops ringing too.
+    ///
+    /// The handle is kept by the session, because letting go of it unsubscribes and the thing
+    /// being waited for arrives while nobody is holding anything.
+    func watchCallDeclines(ring: CallRing, onDecline: @escaping @Sendable () -> Void) async {
+        guard let room = roomList.room(withID: ring.roomID) ?? (try? client.getRoom(roomId: ring.roomID)),
+              callDeclineHandles[ring.eventID] == nil
+        else {
+            return
+        }
+
+        do {
+            callDeclineHandles[ring.eventID] = try room.subscribeToCallDeclineEvents(
+                rtcNotificationEventId: ring.eventID,
+                listener: CallDeclines(onDecline: onDecline)
+            )
+        } catch {
+            Log.calls.error("could not watch for declines: \(Log.describe(error), privacy: .public)")
+        }
+    }
+
+    /// Unsubscribes once the ring is over, whichever way it ended.
+    func stopWatchingDeclines(for ring: CallRing) {
+        callDeclineHandles.removeValue(forKey: ring.eventID)?.cancel()
+    }
+
     /// Whether this room, rather than this account, will let the user start a call.
     ///
     /// Asked of the room's power levels and not guessed from a badge: joining a call means writing
@@ -90,5 +151,24 @@ public extension UserSession {
         }
         guard let levels = try? await room.getPowerLevels() else { return false }
         return (try? levels.canUserSendState(userId: userID, stateEvent: .callMember)) ?? false
+    }
+}
+
+/// Somebody turned the ring down — on another of this user's devices, or on the caller's side.
+///
+/// The same shape as `RoomInfoUpdates`: a tiny class because the SDK's listener protocols are
+/// class-bound, in a file of its own reason rather than nested, because two different stores could
+/// want it.
+final class CallDeclines: CallDeclineListener {
+    private let onDecline: @Sendable () -> Void
+
+    init(onDecline: @escaping @Sendable () -> Void) {
+        self.onDecline = onDecline
+    }
+
+    /// The decliner's ID is dropped. Which of your own devices refused a call is not a fact the
+    /// phone in your hand has anything to say about — it simply stops ringing.
+    func call(declinerUserId: String) {
+        onDecline()
     }
 }

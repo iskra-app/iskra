@@ -1011,6 +1011,8 @@
 /* In the chat list and on the strip above a conversation. Replaces the last message, not joins it. */
 "call.ongoing" = "Call in progress";
 "call.join" = "Join";
+/* The name on a ringing call before the event is decrypted. A second or two, and never blank. */
+"call.incoming" = "Incoming call";
 
 
 /* MARK: - Beta features */

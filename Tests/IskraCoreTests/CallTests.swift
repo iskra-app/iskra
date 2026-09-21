@@ -137,7 +137,89 @@ struct CallTests {
         #expect(RoomEventKind.callDeclined.merged(with: second) == nil)
     }
 
+    // MARK: - The identity of a ringing call
+
+    /// The bug this prevents is visible and confusing: two ringing calls on the lock screen from
+    /// one person, because a retried VoIP push was given a fresh random UUID.
+    @Test("One event always names the same call")
+    func ringIDIsDerivedNotInvented() {
+        let first = RingID.uuid(forEventID: "$abc:matrix.org")
+        let second = RingID.uuid(forEventID: "$abc:matrix.org")
+        let other = RingID.uuid(forEventID: "$abd:matrix.org")
+
+        #expect(first == second)
+        #expect(first != other)
+    }
+
+    @Test("The identifier is a well-formed v4 UUID, hash or not")
+    func ringIDLooksLikeAUUID() {
+        let uuid = RingID.uuid(forEventID: "$abc:matrix.org")
+        let bytes = withUnsafeBytes(of: uuid.uuid) { Array($0) }
+
+        #expect(bytes[6] >> 4 == 0x4)
+        #expect(bytes[8] >> 6 == 0b10)
+    }
+
+    // MARK: - Not shouting over a ringing call
+
+    @Test("A ring the app has taken charge of silences the extension's fallback")
+    func ledgerRemembersARing() {
+        let defaults = Self.scratchDefaults()
+
+        #expect(!RingLedger.isRinging(eventID: "$one", in: defaults))
+
+        RingLedger.reported(eventID: "$one", in: defaults)
+        #expect(RingLedger.isRinging(eventID: "$one", in: defaults))
+        // Only that event. A ledger that silenced everything would swallow real messages.
+        #expect(!RingLedger.isRinging(eventID: "$two", in: defaults))
+
+        RingLedger.ended(eventID: "$one", in: defaults)
+        #expect(!RingLedger.isRinging(eventID: "$one", in: defaults))
+    }
+
+    /// The hand-off lasts seconds; the entry must not last for the life of the install. A stale id
+    /// left lying about is a genuine notification silenced later for no reason.
+    @Test("An entry stops counting once it is old")
+    func ledgerForgets() {
+        let defaults = Self.scratchDefaults()
+        let now = Date()
+
+        RingLedger.reported(eventID: "$one", at: now, in: defaults)
+
+        #expect(RingLedger.isRinging(eventID: "$one", at: now.addingTimeInterval(10), in: defaults))
+        #expect(!RingLedger.isRinging(eventID: "$one",
+                                      at: now.addingTimeInterval(RingLedger.memory + 1),
+                                      in: defaults))
+    }
+
+    // MARK: - How long a ring rings
+
+    @Test("A ring is capped however long the caller says")
+    func ringingTimeIsCapped() {
+        let absurd = Self.ring(expiresAt: Date().addingTimeInterval(3600))
+        #expect(absurd.ringingTime(cap: 60) == 60)
+
+        let none = Self.ring(expiresAt: nil)
+        #expect(none.ringingTime(cap: 60) == 60)
+
+        // Already past: no negative interval for somebody to schedule a timer with.
+        let gone = Self.ring(expiresAt: Date().addingTimeInterval(-10))
+        #expect(gone.ringingTime(cap: 60) == 0)
+        #expect(gone.hasExpired())
+    }
+
     // MARK: -
+
+    private static func ring(expiresAt: Date?) -> CallRing {
+        CallRing(roomID: "!room:matrix.org",
+                 eventID: "$one",
+                 callerName: "Аня",
+                 callerID: "@anna:matrix.org",
+                 roomName: "Аня",
+                 isDirect: true,
+                 isVideo: false,
+                 expiresAt: expiresAt)
+    }
 
     private static func event(_ kind: RoomEventKind) -> RoomEvent {
         RoomEvent(id: "$one", kind: kind, timestamp: Date(timeIntervalSince1970: 0))

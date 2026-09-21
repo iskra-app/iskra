@@ -70,6 +70,27 @@ public struct PushRegistration: Sendable {
     static let appID = "moscow.swag.iskra"
     #endif
 
+    /// The app id for ringing calls, which is a **second pusher** on the same account.
+    ///
+    /// A VoIP push is the only kind iOS wakes an app for in time to ring, and since iOS 13 every
+    /// one that is delivered must end in `CXProvider.reportNewIncomingCall` or the system takes
+    /// the privilege away. So this pusher must receive calls and nothing else — and Matrix push
+    /// rules cannot arrange that, because every pusher on an account receives every notification.
+    ///
+    /// The sorting happens in our own Sygnal, on a tweak our own push rule stamps onto a ring. See
+    /// `CallPushRule`, which explains why it is a tweak and not a fuller payload, and
+    /// `docs/PUSH-GATEWAY.md` for the gateway's half.
+    ///
+    /// The same sandbox/production split as `appID` above, for the same reason and with the same
+    /// silent failure if it is got wrong. The gateway's `topic` for these entries is the bundle id
+    /// **plus `.voip`** — that suffix is the whole of what makes APNs treat it as a VoIP push, and
+    /// a mismatch is rejected with `BadTopic` at the gateway and nothing at all on the device.
+    #if DEBUG
+    static let voipAppID = "moscow.swag.iskra.voip.dev"
+    #else
+    static let voipAppID = "moscow.swag.iskra.voip"
+    #endif
+
     private let client: Client
 
     init(client: Client) {
@@ -115,6 +136,51 @@ public struct PushRegistration: Sendable {
             )
         } catch {
             Log.push.error("the server would not take our push token: \(Log.describe(error), privacy: .public)")
+        }
+    }
+
+    /// Registers this device's **PushKit** token, which is a different token from the one above
+    /// and names a different door at Apple.
+    ///
+    /// Two things about this are easy to get backwards.
+    ///
+    /// **It does not replace the ordinary pusher.** `append: false` is kept, and keeping it is
+    /// correct: the spec's `append` governs pushers belonging to *other users* with the same
+    /// pushkey, and these two differ in both halves anyway — a PushKit token is not an APNs token,
+    /// and `voipAppID` is not `appID`. Somebody reading the comment on the call above and
+    /// "fixing" this to `true` would change nothing here and would reintroduce doubled
+    /// notifications if they also changed it there.
+    ///
+    /// **The format stays `.eventIdOnly`.** The tempting alternative is to leave `format` nil, so
+    /// the gateway sees the event's `type` and can filter on it directly — and that would hand the
+    /// gateway `sender`, `room_name` and `content` for every notifying event on the account,
+    /// forever, to answer a yes/no question about roughly one event a day. In an unencrypted room
+    /// `content` is the message. The filtering is done on a push-rule tweak instead, which rides
+    /// outside the stripped event and carries exactly one bit: see `CallPushRule`.
+    ///
+    /// **Called after the rule, never before** — see `UserSession.enableCallPushes`.
+    public func registerVoIP(token: Data, deviceName: String) async {
+        guard let url = Self.gatewayURL else {
+            Log.push.error("no push gateway is configured, so calls have nowhere to ring from")
+            return
+        }
+
+        let pushkey = token.map { String(format: "%02x", $0) }.joined()
+
+        do {
+            try await client.setPusher(
+                identifiers: PusherIdentifiers(pushkey: pushkey, appId: Self.voipAppID),
+                kind: .http(data: HttpPusherData(url: url,
+                                                 format: .eventIdOnly,
+                                                 defaultPayload: Self.defaultPayload())),
+                appDisplayName: "Iskra",
+                deviceDisplayName: deviceName,
+                profileTag: nil,
+                lang: Locale.current.language.languageCode?.identifier ?? "en",
+                append: false
+            )
+        } catch {
+            Log.push.error("the server would not take our VoIP token: \(Log.describe(error), privacy: .public)")
         }
     }
 
@@ -197,6 +263,26 @@ public struct PushRegistration: Sendable {
             }
         } catch {
             Log.push.error("the server would not forget our push token: \(Log.describe(error), privacy: .public)")
+        }
+    }
+
+    /// The same, for the VoIP pusher.
+    ///
+    /// Its own method rather than a parameter on the one above, because forgetting to call it has
+    /// a worse consequence than forgetting the other: a signed-out device that still has a VoIP
+    /// pusher on the account goes on being sent ringing pushes it cannot possibly report to
+    /// CallKit — which is the exact behaviour Apple withdraws the privilege for.
+    public func unregisterVoIP(token: Data) async {
+        let pushkey = token.map { String(format: "%02x", $0) }.joined()
+
+        do {
+            try await withTimeout(Self.unregisterTimeout) { [client] in
+                try await client.deletePusher(
+                    identifiers: PusherIdentifiers(pushkey: pushkey, appId: Self.voipAppID)
+                )
+            }
+        } catch {
+            Log.push.error("the server would not forget our VoIP token: \(Log.describe(error), privacy: .public)")
         }
     }
 
