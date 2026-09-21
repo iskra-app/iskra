@@ -1,30 +1,15 @@
 {
   "fill" : {
-    "automatic-gradient" : "srgb:0.98824,0.97647,0.11765,1.00000"
+    "automatic-gradient" : "srgb:0.12941,0.09804,0.00784,1.00000"
   },
   "groups" : [
     {
       "layers" : [
         {
-          "fill-specializations" : [
-            {
-              "appearance" : "dark",
-              "value" : {
-                "solid" : "srgb:0.98824,0.97647,0.11765,1.00000"
-              }
-            },
-            {
-              "appearance" : "tinted",
-              "value" : {
-                "solid" : "srgb:1.00000,1.00000,1.00000,1.00000"
-              }
-            }
-          ],
-          "glass" : false,
-          "image-name" : "Union2.svg",
-          "name" : "Union2",
+          "image-name" : "Subtract2.svg",
+          "name" : "Subtract2",
           "position" : {
-            "scale" : 1.55,
+            "scale" : 1.12,
             "translation-in-points" : [
               0,
               0
