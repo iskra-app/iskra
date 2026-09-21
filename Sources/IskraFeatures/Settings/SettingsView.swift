@@ -135,6 +135,17 @@ struct SettingsView: View {
                         Label(Strings.Settings.beta, systemImage: "flask")
                     }
                 }
+
+                // After the experiments, because it is the one row that changes nothing. The
+                // version stayed in the footer below — a number you glance at should not cost a
+                // tap — and this leads to the rest of the answer: what the app is, the build
+                // details in a form that can be pasted, and the credit the SDK is owed. See
+                // `AboutView`.
+                NavigationLink {
+                    AboutView()
+                } label: {
+                    Label(Strings.Settings.about, systemImage: "info.circle")
+                }
             } footer: {
                 Text(Strings.Settings.moreSoon)
             }

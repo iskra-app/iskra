@@ -1071,6 +1071,9 @@ public enum Strings {
         /// something behind it — see `BetaFeatures.hasAnything`.
         public static let beta = LocalizedStringResource("settings.beta", bundle: bundle)
 
+        /// The last row, and the only one that changes nothing — see `Strings.About`.
+        public static let about = LocalizedStringResource("settings.about", bundle: bundle)
+
         public static let storage = LocalizedStringResource("settings.storage", bundle: bundle)
         /// Where the bridge is switched on — see `Strings.Connection`.
         public static let connection = LocalizedStringResource("settings.connection", bundle: bundle)
@@ -1110,6 +1113,48 @@ public enum Strings {
                                     defaultValue: "Version \(version) (\(build))",
                                     bundle: bundle)
         }
+    }
+
+    /// The screen behind the last row of settings: what the app is, which build of it this is,
+    /// and whose code it is standing on.
+    ///
+    /// The acknowledgements are the part that has to be here rather than in the README. The SDK
+    /// is Apache-2.0, and that licence travels with the binary — so the app itself has to say so
+    /// somewhere a person holding it can read.
+    public enum About {
+        public static let title = LocalizedStringResource("about.title", bundle: bundle)
+
+        /// One sentence under the icon. Says what the app is *and* what it is not, because
+        /// "Matrix client" alone does not distinguish it from the web page in a wrapper.
+        public static let tagline = LocalizedStringResource("about.tagline", bundle: bundle)
+
+        /// The two numbers, this time as a row you can select rather than a line of small print.
+        public static let version = LocalizedStringResource("about.version", bundle: bundle)
+        /// Which machine and which OS — the two lines a bug report is useless without, and the
+        /// two nobody can answer from memory.
+        public static let device = LocalizedStringResource("about.device", bundle: bundle)
+        public static let system = LocalizedStringResource("about.system", bundle: bundle)
+
+        /// Copying all of it at once, because the alternative is somebody transcribing a build
+        /// number into a bug report by hand and getting a digit wrong.
+        public static let copy = LocalizedStringResource("about.copy", bundle: bundle)
+        public static let copied = LocalizedStringResource("about.copied", bundle: bundle)
+        public static let copyHelp = LocalizedStringResource("about.copyHelp", bundle: bundle)
+
+        /// The app's own page. A section to itself and above the credits, because it is about
+        /// Iskra rather than about what Iskra is built out of. The address is shown under the
+        /// label rather than hidden behind it: a link whose destination is invisible is one
+        /// nobody presses.
+        public static let website = LocalizedStringResource("about.website", bundle: bundle)
+
+        /// The credits. Each one is a link out, so the name leads somewhere.
+        public static let builtOn = LocalizedStringResource("about.builtOn", bundle: bundle)
+        public static let sdk = LocalizedStringResource("about.sdk", bundle: bundle)
+        public static let sdkLicence = LocalizedStringResource("about.sdkLicence", bundle: bundle)
+        /// `protocol` is a keyword, and the row is about Matrix itself rather than the SDK.
+        public static let protocolName = LocalizedStringResource("about.protocol", bundle: bundle)
+        public static let protocolExplained = LocalizedStringResource("about.protocolExplained", bundle: bundle)
+        public static let cryptography = LocalizedStringResource("about.cryptography", bundle: bundle)
     }
 
     /// What the app is keeping on the device, and the one part of it the user can throw away.
