@@ -99,6 +99,15 @@ struct SettingsView: View {
                     Label(Strings.Settings.appearance, systemImage: "paintbrush")
                 }
 
+                // Next to appearance rather than inside it. What the double tap sends is not a
+                // decision about how a conversation *looks* — it is what a gesture does — and it
+                // is a word people arrive at settings already looking for. See `ReactionsView`.
+                NavigationLink {
+                    ReactionsView()
+                } label: {
+                    Label(Strings.Settings.reactions, systemImage: "face.smiling")
+                }
+
                 // Value-based, like the two below and for the same reason: `notificationRules()`
                 // builds a store holding an SDK `NotificationSettings` with a listener
                 // registration behind it, and a `NavigationLink` with a destination *closure*

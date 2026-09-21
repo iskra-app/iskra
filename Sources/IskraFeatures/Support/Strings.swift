@@ -1067,6 +1067,11 @@ public enum Strings {
 
         public static let appearance = LocalizedStringResource("settings.appearance", bundle: bundle)
 
+        /// The row that leads to the emoji a double tap leaves — see `ReactionsView`. A screen of
+        /// its own rather than a section of Appearance: it is what a gesture *does*, not what the
+        /// app looks like, and it is the word people come looking for.
+        public static let reactions = LocalizedStringResource("settings.reactions", bundle: bundle)
+
         /// The row that leads to the things that are not finished. Shown only where there is
         /// something behind it — see `BetaFeatures.hasAnything`.
         public static let beta = LocalizedStringResource("settings.beta", bundle: bundle)
@@ -1201,6 +1206,11 @@ public enum Strings {
         /// The "+" at the end of the bar of six, which opens all the rest. Said out loud only —
         /// on screen it is a plus sign, because a word there would be as wide as three emoji.
         public static let more = LocalizedStringResource("reactions.more", bundle: bundle)
+
+        /// Closing that panel when it is a sheet on the settings screen rather than a pane
+        /// hanging off a message. Over a message there is nothing to write this on — the way out
+        /// is a tap anywhere else.
+        public static let cancel = LocalizedStringResource("reactions.cancel", bundle: bundle)
 
         /// The groups the panel of every emoji is divided into — see `EmojiCatalog`. Each is a
         /// heading in the grid and the name VoiceOver gives the tab that jumps to it.
