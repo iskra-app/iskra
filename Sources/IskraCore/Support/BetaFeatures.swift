@@ -68,6 +68,33 @@ public enum BetaFeatures {
     /// photograph.
     public static let forceBlobatarByDefault = false
 
+    /// An Element Call address typed by hand, for a server that does not advertise one.
+    ///
+    /// Not a fallback and not a default — see `ElementCallDiscovery`, which refuses to invent one.
+    /// This is the other half of that refusal: somebody running their own Element Call, or willing
+    /// to use somebody else's on purpose, can say so in a sentence they wrote. The screen that
+    /// offers it says plainly what it means, because the thing being typed is the address of a
+    /// service that learns who is in every call.
+    ///
+    /// Empty by default, which is what "the server decides" looks like.
+    public static let elementCallURLKey = "beta.elementCallURL"
+
+    /// The address somebody typed, if it is one at all.
+    ///
+    /// Held to the same rule as the server's own answer: `https`, or it does not count. A typo
+    /// that leaves the scheme off should be nothing, not a call placed over plain http.
+    public static func elementCallURL(in defaults: UserDefaults = .standard) -> URL? {
+        guard let typed = defaults.string(forKey: elementCallURLKey)?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+              !typed.isEmpty,
+              let url = URL(string: typed),
+              url.scheme?.lowercased() == "https"
+        else {
+            return nil
+        }
+        return url
+    }
+
     /// Whether there is anything in here to show on this platform.
     ///
     /// True everywhere now, and it was not always: the first experiment here was about a sidebar
@@ -128,6 +155,7 @@ public enum BetaFeatures {
     /// `AppSettings.forget()` walks on sign-out. A flag emptied from the wrong store survives a
     /// sign-out silently, and the next person inherits somebody else's experiment.
     public static var stores: [(key: String, store: UserDefaults?)] {
-        [(nativeSidebarKey, nil), (blobatarKey, faceStore), (forceBlobatarKey, faceStore)]
+        [(nativeSidebarKey, nil), (blobatarKey, faceStore), (forceBlobatarKey, faceStore),
+         (elementCallURLKey, nil)]
     }
 }

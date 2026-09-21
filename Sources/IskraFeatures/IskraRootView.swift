@@ -538,7 +538,9 @@ public struct IskraRootView: View {
                     RoomView(timeline: timeline,
                              makeDetails: { session.details(forRoomID: roomID) },
                              openAt: $selectedEventID,
-                             onLeave: { selectedRoomID = nil })
+                             onLeave: { selectedRoomID = nil },
+                             makeCall: { session.call(forRoomID: roomID) },
+                             mayCall: { await session.canStartCall(inRoomID: roomID) })
                         // Rebuilds the view when the user picks a different room, rather
                         // than reusing one room's state for another's messages.
                         .id(roomID)

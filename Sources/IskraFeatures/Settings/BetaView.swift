@@ -17,6 +17,10 @@ struct BetaView: View {
     @AppStorage(BetaFeatures.blobatarKey, store: BetaFeatures.faceStore) private var blobatar = BetaFeatures.blobatarByDefault
     @AppStorage(BetaFeatures.forceBlobatarKey, store: BetaFeatures.faceStore) private var forceBlobatar = BetaFeatures.forceBlobatarByDefault
 
+    /// In the app's own defaults, not the App Group's: the notification extension has no use for
+    /// it. Only the app places calls.
+    @AppStorage(BetaFeatures.elementCallURLKey) private var elementCallURL = ""
+
     var body: some View {
         Form {
             Section {
@@ -60,6 +64,23 @@ struct BetaView: View {
                 } footer: {
                     Text(Strings.Beta.blobatarForceHelp)
                 }
+            }
+
+            // A field rather than a switch, because the thing being chosen is not on-or-off: it
+            // is an address, and there is no sensible one to offer. See `ElementCallDiscovery` on
+            // why the app ships no default — and why the sentence under this field says what it
+            // says instead of being a cheerful explanation of a feature.
+            Section {
+                TextField(text: $elementCallURL, prompt: Text(Strings.Beta.elementCallPrompt)) {
+                    Label(Strings.Beta.elementCallTitle, systemImage: "phone.badge.waveform")
+                }
+                #if !os(macOS)
+                .textInputAutocapitalization(.never)
+                .keyboardType(.URL)
+                #endif
+                .autocorrectionDisabled()
+            } footer: {
+                Text(Strings.Beta.elementCallNote)
             }
         }
         .formStyle(.grouped)

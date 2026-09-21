@@ -51,6 +51,17 @@ public struct RoomView: View {
     @State private var pinned: PinnedStore?
     @State private var isShowingPinned = false
 
+    /// The call, once one has been asked for. Held rather than made inside the presentation, so
+    /// that the screen and the store have the same lifetime and the widget driver is not rebuilt
+    /// every time SwiftUI re-runs this body.
+    @State private var call: CallStore?
+    @State private var callIntent: CallIntent = .start(video: false)
+    @State private var isCalling = false
+
+    /// Whether the buttons are there at all. False until the room has answered, which is why the
+    /// buttons appear a moment late rather than appearing and then vanishing.
+    @State private var canCall = false
+
     /// The two attachment pickers, owned by the screen rather than by the composer that asks
     /// for them. The composer is a `safeAreaInset` floating over this view, and a
     /// presentation put there has already gone missing once (see `MessageComposer`); from
@@ -215,14 +226,27 @@ public struct RoomView: View {
     /// sign-out in `RoomListView` — the act is reported upwards and performed there.
     var onLeave: () -> Void
 
+    /// A call in this room, built when the button is pressed. Nil where the account cannot call
+    /// at all — see `UserSession.call(forRoomID:)`, which refuses for the same reasons the button
+    /// is hidden, so that the screen cannot be reached by a route the button does not guard.
+    var makeCall: () -> CallStore?
+
+    /// Whether this room will let this person start a call. Asked of the room's power levels, so
+    /// it is a question with a network answer and cannot be a plain property.
+    var mayCall: () async -> Bool
+
     public init(timeline: TimelineStore,
                 makeDetails: @escaping () -> RoomDetailsStore?,
                 openAt: Binding<String?> = .constant(nil),
-                onLeave: @escaping () -> Void) {
+                onLeave: @escaping () -> Void,
+                makeCall: @escaping () -> CallStore? = { nil },
+                mayCall: @escaping () async -> Bool = { false }) {
         _timeline = State(initialValue: timeline)
         self.makeDetails = makeDetails
         _openAt = openAt
         self.onLeave = onLeave
+        self.makeCall = makeCall
+        self.mayCall = mayCall
     }
 
     /// The message this room is being opened *on*, if it is being opened on one — a search result.
@@ -251,6 +275,19 @@ public struct RoomView: View {
     private func openDetails() {
         if details == nil { details = makeDetails() }
         isShowingDetails = true
+    }
+
+    /// Opens the call screen, building the call on the first press and keeping it.
+    ///
+    /// Silently does nothing when there is no call to be had. That is not a swallowed error: the
+    /// buttons are already hidden in that case, so reaching here at all means something changed
+    /// between the answer and the press — and the honest response to "you may no longer call" is
+    /// not to call.
+    private func startCall(_ intent: CallIntent) {
+        guard let store = call ?? makeCall() else { return }
+        call = store
+        callIntent = intent
+        isCalling = true
     }
 
     private func openRoomSearch() {
@@ -752,6 +789,15 @@ public struct RoomView: View {
                 // says the opposite.
                 .sharedBackgroundVisibility(.hidden)
 
+                // Before the picture, not after it: the picture is the room and belongs nearest
+                // the thumb, where it has always been. A call button that pushed it inward would
+                // move the one control in this bar that people reach for without looking.
+                if canCall {
+                    ToolbarItem(placement: .primaryAction) {
+                        CallButtons(isOneToOne: timeline.isOneToOne, onCall: startCall)
+                    }
+                }
+
                 // Out of the shared background, and — unlike the title above — *not* because
                 // it should be bare. It carries a glass circle of its own instead, cut to the
                 // picture: the toolbar's shared background comes with the toolbar's margins,
@@ -777,6 +823,25 @@ public struct RoomView: View {
                                onOpenDetails: openDetails)
                 }
                 .sharedBackgroundVisibility(.hidden)
+
+                // The wide layout's trailing edge is otherwise empty — the header took the
+                // leading one — so there is nothing here to push out of the way.
+                if canCall {
+                    ToolbarItem(placement: .primaryAction) {
+                        CallButtons(isOneToOne: timeline.isOneToOne, onCall: startCall)
+                    }
+                }
+            }
+        }
+        // Asked once, when the room opens. Not re-asked on every redraw: it is a network question
+        // about power levels, and the answer does not change while somebody reads a conversation.
+        .task { canCall = await mayCall() }
+        .callPresentation(isPresented: $isCalling) {
+            if let call {
+                CallScreen(store: call,
+                           roomName: timeline.roomName,
+                           intent: callIntent,
+                           onClose: { isCalling = false })
             }
         }
         .sheet(isPresented: $isSearchingRoom) {

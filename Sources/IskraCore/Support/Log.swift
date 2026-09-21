@@ -39,6 +39,15 @@ public enum Log {
     /// holding *is* a decrypted message. The body never goes in — only which step failed.
     public static let push = Logger(subsystem: subsystem, category: "push")
 
+    /// Calls: finding out whether the server can carry one, building the widget, and the driver
+    /// that pumps messages between the SDK and the page the call is drawn on.
+    ///
+    /// The rule above bites here in its own way. A widget URL is not a secret the way a token is,
+    /// but it carries the room ID and the user ID in its query, so it is written down only by
+    /// `--probe-call`, never by this log. What goes here is which step refused: the server, the
+    /// well-known, the driver.
+    public static let calls = Logger(subsystem: subsystem, category: "calls")
+
     /// What may be written down about a failure.
     ///
     /// Every error in this app used to reach the log as `String(describing: error)`, and that was

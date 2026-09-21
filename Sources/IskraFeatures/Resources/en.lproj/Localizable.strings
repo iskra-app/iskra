@@ -988,3 +988,29 @@
 
 "onboarding.faces.picturedName" = "Chloe";
 "onboarding.faces.unpicturedName" = "Tim";
+
+/* MARK: - Calls */
+
+/* The toolbar button. On a phone it is a handset and nothing else, so this is what is read aloud. */
+"call.voice" = "Call";
+"call.video" = "Video call";
+
+/* While Element Call loads. It is a real wait, and a black rectangle for that long reads as a crash. */
+"call.connecting" = "Connecting…";
+
+/* Our own way out: the page's header is hidden, and its own way out went with it. */
+"call.leave" = "Leave";
+
+"call.failedTitle" = "The call did not happen";
+
+/* The server simply does not carry calls. There is no remedy inside the app, and none is offered. */
+"call.unavailable" = "This server does not do calls — ask whoever runs it.";
+
+/* It should have worked. "Try again" is honest: a widget that would not build often builds next time. */
+"call.couldNotStart" = "It would not start. Try again.";
+
+/* MARK: - Beta features */
+
+"beta.elementCall.title" = "Your own Element Call address";
+"beta.elementCall.prompt" = "https://call.example.org";
+"beta.elementCall.note" = "Normally the server names the address. When it names none there are no calls, and that is not a fault: whoever runs an Element Call sees who is talking to whom, and when. Only put your own here.";

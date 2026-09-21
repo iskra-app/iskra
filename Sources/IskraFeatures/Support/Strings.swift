@@ -1134,6 +1134,18 @@ public enum Strings {
 
         public static let blobatarForce = LocalizedStringResource("beta.blobatarForce", bundle: bundle)
         public static let blobatarForceHelp = LocalizedStringResource("beta.blobatarForceHelp", bundle: bundle)
+
+        /// Naming an Element Call deployment by hand, for a server that advertises none.
+        public static let elementCallTitle = LocalizedStringResource("beta.elementCall.title", bundle: bundle)
+
+        /// What stands in the empty field. An example, not a suggestion — deliberately a domain
+        /// that cannot exist, so that nobody types it in and reaches somebody.
+        public static let elementCallPrompt = LocalizedStringResource("beta.elementCall.prompt", bundle: bundle)
+
+        /// The sentence under the field. It has to say what is actually at stake, because the
+        /// thing being typed is the address of a service that learns who is in every call — and
+        /// the reason the app has no default is exactly that.
+        public static let elementCallNote = LocalizedStringResource("beta.elementCall.note", bundle: bundle)
     }
 
     public enum Settings {
@@ -1452,6 +1464,41 @@ public enum Strings {
             }
         }
     }
+
+    /// Calls — see `CallScreen`, and the buttons in a room's toolbar that lead to it.
+    ///
+    /// Short words, and that is the whole brief. Everything here is read either in a toolbar,
+    /// where there is room for one word, or over a call that is already happening, where nobody
+    /// is reading anything.
+    public enum Call {
+        /// The toolbar button for a call with no picture. Read aloud on the phone, where the
+        /// button is a handset and nothing else.
+        public static let voice = LocalizedStringResource("call.voice", bundle: bundle)
+
+        /// The other toolbar button. Only in a direct chat: a group has one kind of call.
+        public static let video = LocalizedStringResource("call.video", bundle: bundle)
+
+        /// Over the web view while Element Call is loading. It is a real wait — seconds, on a
+        /// phone — and an empty black rectangle for that long reads as a crash.
+        public static let connecting = LocalizedStringResource("call.connecting", bundle: bundle)
+
+        /// The way out, in our own bar above the page. The page's own header is hidden, and with
+        /// it the page's own way out; this is what replaces it.
+        public static let leave = LocalizedStringResource("call.leave", bundle: bundle)
+
+        /// The heading over a call that did not happen.
+        public static let failedTitle = LocalizedStringResource("call.failedTitle", bundle: bundle)
+
+        /// Why, when the server simply does not carry calls. It names no remedy inside the app
+        /// because there is none: this is a fact about somebody else's server.
+        public static let unavailable = LocalizedStringResource("call.unavailable", bundle: bundle)
+
+        /// Why, when it should have worked and did not. The SDK's own words go to the log; this
+        /// is what a person gets, and "try again" is honest — a widget that would not build once
+        /// often builds the second time.
+        public static let couldNotStart = LocalizedStringResource("call.couldNotStart", bundle: bundle)
+    }
+
 }
 
 extension String {

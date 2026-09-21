@@ -99,6 +99,22 @@ public final class UserSession {
     /// Read by `IskraRootView`, which takes the app back to the sign-in screen and says why.
     public private(set) var wasEndedElsewhere = false
 
+    /// Whether this account can place a call, and where the call screen comes from.
+    ///
+    /// Answered once per session, in the background, and `.none` until it is — so the call button
+    /// appears when the answer arrives and never appears and then vanishes. Both halves of it are
+    /// properties of the *server*, not of a room, which is why it is settled here and not by
+    /// whichever room happens to be open. See `CallAvailability` and `loadCallAvailability`.
+    public internal(set) var callAvailability: CallAvailability = .none
+
+    /// The calls this session has handed out and that are still on screen, by room.
+    ///
+    /// The same shape and the same two jobs as `openTimelines`, for the same reasons: a widget
+    /// driver still running over a store that sign-out has deleted is a live listener over a file
+    /// that no longer exists, and `call(forRoomID:)` is called from inside a view body, so it has
+    /// to be idempotent or every redraw mints a second call.
+    var openCalls: [String: WeakBox<CallStore>] = [:]
+
     /// Kept alive because dropping it unsubscribes. Cancelled in `signOut()`.
     private var authErrorHandle: TaskHandle?
 
@@ -126,7 +142,9 @@ public final class UserSession {
     /// closes, the box empties on its own and the next visit builds a new one.
     private var openTimelines: [String: WeakBox<TimelineStore>] = [:]
 
-    private struct WeakBox<T: AnyObject> {
+    /// Internal rather than private because the calls extension lives in another file and keeps
+    /// its own registry in exactly this shape — see `UserSession+Calls`.
+    struct WeakBox<T: AnyObject> {
         weak var value: T?
     }
 
@@ -151,6 +169,10 @@ public final class UserSession {
         // subscribes for the rest. What it knows *now* may well be `.unknown`; the screen that
         // actually has to branch on the answer calls `waitForSetup()` and waits properly.
         recovery.load()
+
+        // Not awaited: it is two network questions whose only consequence is whether a button
+        // appears, and the room list has no business waiting behind them.
+        Task { await loadCallAvailability() }
 
         // The one road from "the sync loop noticed the network" to "the room on screen noticed it
         // too". `RoomListStore` learns about the network and knows nothing about timelines; the
@@ -457,6 +479,13 @@ public final class UserSession {
             box.value?.stop()
         }
         openTimelines = [:]
+
+        // Same reason as the timelines above, one layer further out: a widget driver is a live
+        // subscription to the room, and the store it reads is about to be deleted.
+        for box in openCalls.values {
+            box.value?.stop()
+        }
+        openCalls = [:]
 
         // Nothing to tell any more, and nobody to tell. The closure holds `self` weakly, so this is
         // not a leak being cleaned up — it is the store being left with no reason to call into a

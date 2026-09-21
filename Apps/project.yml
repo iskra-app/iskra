@@ -213,8 +213,8 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         # Written in the first person, because that is who is being asked.
-        NSCameraUsageDescription: Iskra uses the camera so you can record video messages and take photos to send.
-        NSMicrophoneUsageDescription: Iskra uses the microphone so you can record voice messages.
+        NSCameraUsageDescription: Iskra uses the camera so you can record video messages, take photos to send, and be seen on a call.
+        NSMicrophoneUsageDescription: Iskra uses the microphone so you can record voice messages and be heard on a call.
         # There is deliberately no NSPhotoLibraryUsageDescription, and its absence is the point.
         #
         # That key asks for read access to the *entire* photo library, and this app has never needed
@@ -254,7 +254,15 @@ targets:
           # AppEnvironment.oauthRedirectURI, which it has to be.
           - CFBundleURLName: moscow.swag.iskra.oauth
             CFBundleURLSchemes: [moscow.swag.iskra]
-        UIBackgroundModes: [remote-notification]
+        # `audio` is here for calls, and it is not optional for them: Element Call runs inside a
+        # WKWebView, and without this key WebKit suspends the page the moment the screen locks or
+        # the app goes to the background. The symptom is not an error — it is a conversation that
+        # goes silent mid-sentence while both people keep talking.
+        #
+        # `voip` belongs beside it when PushKit lands (stage 8.3) and is deliberately not here
+        # yet: it is the key that lets a `PKPushRegistry` get a token at all, and declaring it
+        # before anything reports to CallKit is how an app gets its VoIP privilege taken away.
+        UIBackgroundModes: [remote-notification, audio]
 
   # The process that decrypts a push. iOS wakes it when one arrives, gives it ~30 seconds,
   # and shows whatever it puts on screen — see Apps/NotificationService/NotificationService.swift.
@@ -412,8 +420,8 @@ targets:
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [en, ru]
         LSMinimumSystemVersion: "26.0"
-        NSCameraUsageDescription: Iskra uses the camera so you can record video messages.
-        NSMicrophoneUsageDescription: Iskra uses the microphone so you can record voice messages.
+        NSCameraUsageDescription: Iskra uses the camera so you can record video messages and be seen on a call.
+        NSMicrophoneUsageDescription: Iskra uses the microphone so you can record voice messages and be heard on a call.
         NSLocationWhenInUseUsageDescription: Iskra uses your location only when you ask it to, to put a map on the place you are.
         CFBundleURLTypes:
           # Reverse-DNS of the client's domain (iskra.swag.moscow), which is the only scheme a
