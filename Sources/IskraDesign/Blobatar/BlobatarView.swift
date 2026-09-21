@@ -20,45 +20,11 @@ public struct BlobatarView: View {
     public var body: some View {
         Canvas(opaque: false, rendersAsynchronously: false) { context, size in
             let figure = BlobatarCache.shared.figure(for: seed, backdrop: backdrop)
-            // The figure is laid out in a 100×100 box; everything below is that box mapped onto
-            // whatever the caller gave us.
-            let scale = min(size.width, size.height) / 100
-
-            if let plate = figure.backdrop {
-                context.fill(
-                    plate.path(scale: scale), with: .color(Color(figure.palette.background))
-                )
-            }
-
-            // Each mark is filled on its own rather than unioned into one path. The union is
-            // what the overlap already draws — and a single path would have its subpaths decide
-            // by winding whether they add to the body or punch a hole in it, which is a way for
-            // a creature to arrive with a bite taken out of its side.
-            let head = GraphicsContext.Shading.color(Color(figure.palette.head))
-            for petal in figure.layout.petals {
-                let r = BlobatarOutline.round2(petal.r) * scale
-                let center = CGPoint(
-                    x: BlobatarOutline.round2(petal.cx) * scale,
-                    y: BlobatarOutline.round2(petal.cy) * scale
-                )
-                context.fill(
-                    Path(ellipseIn: CGRect(
-                        x: center.x - r, y: center.y - r, width: r * 2, height: r * 2
-                    )),
-                    with: head
-                )
-            }
-            for outline in figure.layout.extra {
-                context.fill(outline.path(scale: scale), with: head)
-            }
-            context.fill(figure.layout.outline.path(scale: scale), with: head)
-
-            let eye = GraphicsContext.Shading.color(Color(figure.palette.eye))
-            for e in figure.layout.eyes {
-                let outline = BlobatarGeometry.superellipse(
-                    cx: e.cx, cy: e.cy, rx: e.rx, ry: e.ry, n: e.n, rot: e.rot
-                )
-                context.fill(outline.path(scale: scale), with: eye)
+            // The figure is laid out in a 100×100 box; the marks below are that box mapped onto
+            // whatever the caller gave us — and they are the same marks the notification
+            // extension rasterizes, which is what keeps one seed one face everywhere.
+            for mark in figure.marks(scale: min(size.width, size.height) / 100) {
+                context.fill(Path(mark.path), with: .color(Color(mark.color)))
             }
         }
         .accessibilityHidden(true)

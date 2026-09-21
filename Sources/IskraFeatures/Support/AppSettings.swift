@@ -31,9 +31,6 @@ enum AppSettings {
         Wallpaper.storageKey,
         Wallpaper.dimmingKey,
         TunnelSettings.enabledKey,
-        BetaFeatures.nativeSidebarKey,
-        BetaFeatures.blobatarKey,
-        BetaFeatures.forceBlobatarKey,
     ]
 
     @MainActor
@@ -41,6 +38,14 @@ enum AppSettings {
         let defaults = UserDefaults.standard
         for key in keys {
             defaults.removeObject(forKey: key)
+        }
+
+        // And the beta flags, which are not all in one store: the two about generated faces live
+        // in the App Group's defaults, because the notification extension reads them. Emptying
+        // `.standard` and calling it done would leave the *effective* setting exactly where the
+        // last user left it — see `BetaFeatures.faceStore`.
+        for flag in BetaFeatures.stores {
+            (flag.store ?? defaults).removeObject(forKey: flag.key)
         }
 
         // And the one setting that is not a value in `UserDefaults` but a file on the disk: the

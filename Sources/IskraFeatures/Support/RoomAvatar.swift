@@ -24,8 +24,8 @@ struct RoomAvatar: View {
     /// is not a group.
     var faces: [RoomFace] = []
 
-    @AppStorage(BetaFeatures.blobatarKey) private var blobatarEnabled = BetaFeatures.blobatarByDefault
-    @AppStorage(BetaFeatures.forceBlobatarKey) private var forceBlobatar = BetaFeatures.forceBlobatarByDefault
+    @AppStorage(BetaFeatures.blobatarKey, store: BetaFeatures.faceStore) private var blobatarEnabled = BetaFeatures.blobatarByDefault
+    @AppStorage(BetaFeatures.forceBlobatarKey, store: BetaFeatures.faceStore) private var forceBlobatar = BetaFeatures.forceBlobatarByDefault
 
     var body: some View {
         if url == nil || forceBlobatar, blobatarEnabled, faces.count > 1 {
@@ -61,7 +61,7 @@ private struct FaceCluster: View {
     /// it at the accessibility sizes.
     @TextScale private var textScale
 
-    @AppStorage(BetaFeatures.forceBlobatarKey) private var forceBlobatar = BetaFeatures.forceBlobatarByDefault
+    @AppStorage(BetaFeatures.forceBlobatarKey, store: BetaFeatures.faceStore) private var forceBlobatar = BetaFeatures.forceBlobatarByDefault
 
     private var diameter: CGFloat { size * textScale }
 

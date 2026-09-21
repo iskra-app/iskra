@@ -1,3 +1,4 @@
+import IskraCore
 import IskraDesign
 import SwiftUI
 
@@ -13,8 +14,8 @@ import SwiftUI
 /// Mac-only; the rest of the screen is the same everywhere.
 struct BetaView: View {
     @AppStorage(BetaFeatures.nativeSidebarKey) private var nativeSidebar = BetaFeatures.nativeSidebarByDefault
-    @AppStorage(BetaFeatures.blobatarKey) private var blobatar = BetaFeatures.blobatarByDefault
-    @AppStorage(BetaFeatures.forceBlobatarKey) private var forceBlobatar = BetaFeatures.forceBlobatarByDefault
+    @AppStorage(BetaFeatures.blobatarKey, store: BetaFeatures.faceStore) private var blobatar = BetaFeatures.blobatarByDefault
+    @AppStorage(BetaFeatures.forceBlobatarKey, store: BetaFeatures.faceStore) private var forceBlobatar = BetaFeatures.forceBlobatarByDefault
 
     var body: some View {
         Form {

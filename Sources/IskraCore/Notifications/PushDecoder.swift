@@ -116,6 +116,15 @@ public actor PushDecoder {
     /// Every failure here returns nil and says so quietly. There is no error worth showing: a
     /// notification without a picture is a notification.
     private func avatar(for notification: PushNotification, client: Client) async -> Data? {
+        // Nothing to fetch when a generated creature is going to be drawn over it anyway. The same
+        // decision `Avatar.load` makes on screen, and made for the same reason: downloading a
+        // photograph in order to hide it is a switch that quietly costs somebody their data — and
+        // here it would also spend part of the extension's thirty seconds on bytes nobody sees.
+        // Only ever true with the "always draw a creature" switch on; see `BetaFeatures`.
+        if notification.personID != nil, BetaFeatures.drawsGeneratedFace(hasPicture: true) {
+            return nil
+        }
+
         guard let url = await avatarURL(for: notification, client: client) else { return nil }
 
         do {

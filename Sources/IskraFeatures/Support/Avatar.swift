@@ -38,8 +38,8 @@ struct Avatar: View {
     var seed: String?
 
     @Environment(\.mediaLoader) private var loader
-    @AppStorage(BetaFeatures.blobatarKey) private var blobatarEnabled = BetaFeatures.blobatarByDefault
-    @AppStorage(BetaFeatures.forceBlobatarKey) private var forceBlobatar = BetaFeatures.forceBlobatarByDefault
+    @AppStorage(BetaFeatures.blobatarKey, store: BetaFeatures.faceStore) private var blobatarEnabled = BetaFeatures.blobatarByDefault
+    @AppStorage(BetaFeatures.forceBlobatarKey, store: BetaFeatures.faceStore) private var forceBlobatar = BetaFeatures.forceBlobatarByDefault
 
     /// The face grows with the name beside it. A 28pt circle next to a line of text that is twice
     /// its height at the accessibility sizes reads as a bug in the layout, because it is one — see
