@@ -81,10 +81,13 @@ struct BlobatarOutline {
         return d
     }
 
-    /// The same outline as a `Path`, on the same rounded numbers the SVG carries, so what is
+    /// The same outline as a `CGPath`, on the same rounded numbers the SVG carries, so what is
     /// drawn and what is asserted cannot drift apart.
-    func path(scale: Double) -> Path {
-        var path = Path()
+    ///
+    /// Core Graphics rather than SwiftUI because this is also what the notification extension
+    /// draws with, and that process has no view in it — see `BlobatarImage`.
+    func cgPath(scale: Double) -> CGPath {
+        let path = CGMutablePath()
         let p = { (x: Double, y: Double) in
             CGPoint(x: Self.round2(x) * scale, y: Self.round2(y) * scale)
         }
@@ -114,5 +117,12 @@ struct BlobatarOutline {
             }
         }
         return path
+    }
+
+    /// The outline SwiftUI draws — the same path, wrapped. Wrapped rather than traced a second
+    /// time: two loops over the same commands is exactly the kind of duplication that stays
+    /// identical until somebody fixes a rounding bug in one of them.
+    func path(scale: Double) -> Path {
+        Path(cgPath(scale: scale))
     }
 }

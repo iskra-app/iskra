@@ -236,6 +236,10 @@ targets:
     templates: [Stamped]
     sources:
       - path: NotificationService
+      # Compiled into the app as well, which is the point of it: the app's `--probe-notification`
+      # has to say what this process will actually draw, and a second copy of that decision is a
+      # probe that can be wrong about the one thing it is for.
+      - path: Shared/PushFace.swift
     dependencies:
       # IskraCore, not IskraFeatures. The extension has no screens and must not link any:
       # it is memory-limited (24 MB), and dragging SwiftUI and every view in the app into a
@@ -243,6 +247,17 @@ targets:
       # before it decrypts anything.
       - package: Iskra
         product: IskraCore
+      # And IskraDesign, which is not the same concession. It has no dependencies at all — not
+      # the Rust SDK, not IskraFeatures — and it is linked for exactly one symbol:
+      # `BlobatarImage`, which draws the face of a sender who has no picture. Without it a push
+      # from such a person arrives with an empty circle while the chat list shows a creature, and
+      # nothing in the app can put the same face on the lock screen, because the code that knows
+      # what the face looks like would be in the other process.
+      #
+      # It draws with Core Graphics and never calls into SwiftUI at runtime, so the cost here is
+      # a link, not a view hierarchy.
+      - package: Iskra
+        product: IskraDesign
     settings:
       base:
         PRODUCT_NAME: IskraNotificationService

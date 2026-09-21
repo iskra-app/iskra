@@ -92,6 +92,24 @@ enum NotificationProbe {
                     print("     avatar   \(bytes.count) bytes")
                 }
 
+                // And what actually goes in the circle, which is not the same question: a sender
+                // with no picture gets the creature their Matrix ID comes out as, drawn right here
+                // the way the extension draws it. Printed separately from the line above so that
+                // "no picture" and "no face" stay two different answers — the first is about the
+                // homeserver, the second is about a switch in Beta features.
+                let drawn = PushFace.applied(to: notification)
+                switch (drawn.avatar, notification.avatar) {
+                case let (face?, nil):
+                    print("     face     generated — \(face.count) bytes, seeded with the sender's ID")
+                case let (face?, original?) where face != original:
+                    print("     face     generated — \(face.count) bytes, drawn over the sender's own")
+                case (nil, nil):
+                    print("     face     none — iOS will draw its own grey placeholder")
+                    print("              Generated faces are a Beta features switch, and it is off.")
+                default:
+                    print("     face     the sender's own picture")
+                }
+
                 // And the half that decides whether this looks like a message from a person or
                 // like an app notice. Every requirement for it is invisible from the code —
                 // the entitlement on two bundles, `NSUserActivityTypes` on one, `IntentsSupported`

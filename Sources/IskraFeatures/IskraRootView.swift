@@ -91,6 +91,12 @@ public struct IskraRootView: View {
         // Every scroll view in the app hands touches on immediately, so the press that lifts a
         // message is the length it says it is — see `ScrollTouches`.
         ScrollTouches.stopDelaying()
+
+        // The generated-faces switch moved into the App Group's defaults so that the notification
+        // extension can read it too — and somebody who turned it on before it moved would
+        // otherwise find it back off, and their lock screen disagreeing with their chat list.
+        // See `BetaFeatures.faceStore`.
+        BetaFeatures.adoptFaceFlags()
     }
 
     public var body: some View {

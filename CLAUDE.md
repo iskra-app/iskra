@@ -203,6 +203,20 @@ The extension links `IskraCore` and **not** `IskraFeatures`. It has 24 MB and no
 SwiftUI and every view in the app into a process that exists to write two lines of text is how an
 extension gets killed before it decrypts anything.
 
+It does link `IskraDesign`, which is not the same concession: that target has no dependencies at
+all, and it is linked for one symbol — `BlobatarImage`, which draws the face of a sender who has no
+picture. The circle on a notification is filled from the intent and from nowhere else, so the
+creature `Avatar` draws in the app's process never reaches it; it is drawn again in this one, from
+the same seed, with Core Graphics, never touching SwiftUI at runtime. `PushFace` (`Apps/Shared/`,
+compiled into *both* bundles) is the one place that decides whether it is drawn, so that
+`--probe-notification` cannot disagree with the extension about the very thing it diagnoses.
+
+Which is also why **the two generated-face flags live in the App Group's defaults**, not in
+`.standard` — `BetaFeatures.faceStore`. An extension's own `UserDefaults.standard` is its own and
+empty: a switch only the app can see is a switch the lock screen silently disobeys, and the symptom
+is an empty circle with nothing in any log. `BetaFeatures` itself moved to `IskraCore` for the same
+reason. Everything else in it stays in `.standard`, where a preference of the app's belongs.
+
 ## Invariants that are easy to break by accident
 
 **Localization.** No user-facing string appears in a view. Every one is named in a `Strings.swift`

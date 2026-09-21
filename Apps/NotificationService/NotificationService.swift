@@ -159,7 +159,11 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
         // sender's face, their name in place of ours, its own line in Notification Summary. This
         // returns the content above unchanged until the Communication Notifications capability is
         // enabled on the App IDs — see `CommunicationNotification`, which says what that means.
-        return CommunicationNotification.apply(to: content, for: notification)
+        //
+        // `PushFace` is what fills the circle when the sender has no picture of their own: the app
+        // draws a creature for such people, and the lock screen has to draw the same one, in this
+        // process, from the same seed.
+        return CommunicationNotification.apply(to: content, for: PushFace.applied(to: notification))
     }
 }
 
