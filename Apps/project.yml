@@ -103,6 +103,29 @@ targets:
       - path: ../iskra.icon
         type: file
         buildPhase: resources
+      # The five the icon can be changed to, on iPhone and iPad — see `AppIcon` and
+      # `AppIconView`. Each is the same spark on a different ground, and each is listed
+      # here with `type: file` for the same reason the one above is.
+      #
+      # They ship on iOS only, and not out of tidiness: `setAlternateIconName` is
+      # UIKit's, AppKit has no equivalent at all, and a Mac app's icon is the one in its
+      # bundle. Listing them in the macOS target would embed five icons nothing could
+      # ever select.
+      - path: ../iskra-coal.icon
+        type: file
+        buildPhase: resources
+      - path: ../iskra-frost.icon
+        type: file
+        buildPhase: resources
+      - path: ../iskra-garnet.icon
+        type: file
+        buildPhase: resources
+      - path: ../iskra-pine.icon
+        type: file
+        buildPhase: resources
+      - path: ../iskra-paper.icon
+        type: file
+        buildPhase: resources
     dependencies:
       - package: Iskra
         product: IskraFeatures
@@ -127,6 +150,15 @@ targets:
         # of `AppIcon`, and a target setting beats the project-level one, so putting it
         # in the shared `settings.base` above looks right and silently loses.
         ASSETCATALOG_COMPILER_APPICON_NAME: iskra
+        # The five the app can be changed to. Named the same way — without the extension —
+        # and this is the whole of what makes `setAlternateIconName` able to find them:
+        # an icon listed in `sources` is merely compiled, and an icon named here is
+        # *registered*, which is a different thing and the one that matters.
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: iskra-coal iskra-frost iskra-garnet iskra-pine iskra-paper
+        # And this is what keeps their artwork in the bundle. Without it actool ships only
+        # the icon the app launches with, and every alternate resolves to nothing: the
+        # call succeeds, the icon does not change, and there is nothing in any log.
+        ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: YES
     entitlements:
       path: iOS/Iskra.entitlements
       properties:

@@ -55,6 +55,7 @@ struct IskraApp: App {
         if NotificationProbe.wasRequested {
             NotificationProbe.runAndExit()
         }
+
         #endif
     }
 
@@ -69,6 +70,15 @@ struct IskraApp: App {
     var body: some Scene {
         WindowGroup {
             IskraRootView()
+            // The one probe that cannot run from `init` above: it asks UIKit questions UIKit
+            // does not answer truthfully until the app has finished launching. See IconProbe.
+            #if DEBUG && os(iOS)
+                .task {
+                    if IconProbe.wasRequested {
+                        await IconProbe.runAndExit()
+                    }
+                }
+            #endif
         }
         #if os(macOS)
         // A messenger is a content window, not a document: one window, resizable,

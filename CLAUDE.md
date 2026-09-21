@@ -315,6 +315,28 @@ things in `Apps/project.yml` make it work, and both are easy to get subtly wrong
   beats a project-level one — so the tidier-looking placement silently loses, and the build fails
   with *"None of the input catalogs contained … an app icon set … named AppIcon"*.
 
+### The five others, on iPhone and iPad
+
+`iskra-coal.icon` and its four siblings are the same spark on a different ground. They ship on
+**iOS only** — `setAlternateIconName` is UIKit's and AppKit has no equivalent — and they need one
+more setting beyond the two above: `ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES`, which is what
+*registers* a name. An icon merely listed in `sources` is compiled and then refused at the moment
+somebody taps it.
+
+**The compiled icons cannot be got back out of the bundle as pictures.** `UIImage(named:)` returns
+nothing for the alternates, and asked for the primary by its bare name it does not fail politely —
+it throws `Need an imageRef` and takes the app down. (The one name that works, `iskra60x60`, exists
+only because the primary is also registered the old way under `CFBundleIconFiles`.) This is normal:
+Apple's own guidance is that an icon picker ships its own preview images. So the tiles on the icon
+screen are **drawn**, by `SparkShape`, from `Sources/IskraFeatures/Resources/spark.svg` — which is a
+**symlink** into `iskra.icon/Assets/`, not a copy. Redraw the icon and the tiles follow; only the
+two colours per icon are written out a second time, in `HomeIcon`.
+
+`Iskra --probe-icons` checks all of it inside the installed app: that the system knows all six
+names, that it allows the change at all, and that the spark parses. It runs from the root view and
+not from `IskraApp.init`, because `supportsAlternateIcons` answers `false` if it is asked before
+UIKit has finished launching — which is a lie that looks exactly like a locked-down device.
+
 ## Dependencies and licence
 
 The package depends on `matrix-org/matrix-rust-components-swift`, **not** the `element-hq` fork.
