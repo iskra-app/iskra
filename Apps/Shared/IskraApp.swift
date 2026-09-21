@@ -56,6 +56,31 @@ struct IskraApp: App {
             NotificationProbe.runAndExit()
         }
 
+        // `Iskra --probe-call [<roomID>]` answers whether this account can call at all, and with
+        // what. Works in the simulator — none of it needs a camera. See CallProbe, and stage 8.
+        if CallProbe.wasRequested {
+            CallProbe.runAndExit()
+        }
+
+        // `Iskra --probe-ring <roomID> <eventID>` decrypts a real ring and prints what CallKit
+        // would be told. Also simulator-friendly, and deliberately silent about PushKit, which it
+        // proves nothing about. See RingProbe.
+        if RingProbe.wasRequested {
+            RingProbe.runAndExit()
+        }
+
+        #if os(iOS)
+        // The two that need a real device: APNs does not exist in the simulator, so there is no
+        // VoIP token there and CallKit draws nothing.
+        if VoIPProbe.tokenWasRequested {
+            VoIPProbe.runTokenAndExit()
+        }
+
+        if VoIPProbe.callKitWasRequested {
+            VoIPProbe.runCallKitAndExit()
+        }
+        #endif
+
         #endif
     }
 

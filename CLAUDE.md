@@ -97,6 +97,28 @@ entitlements — it runs in the *app's* process, and the `.appex` is a different
 the App Group and the Keychain separately — and nothing but a real push proves that iOS wakes the
 extension at all.
 
+The four call probes split the same way, and the split is the useful thing about them.
+`--probe-call [<roomID>]` and `--probe-ring <roomID> <eventID>` **work in the simulator**: they
+answer whether the server carries MatrixRTC, which Element Call it names, what widget URL would be
+loaded, and — for a real `m.rtc.notification` — exactly what CallKit would be told about it. That
+is the whole decision half, and none of it needs a camera or APNs.
+
+```sh
+xcrun simctl launch --console booted moscow.swag.iskra --probe-call '!room:matrix.org'
+xcrun simctl launch --console booted moscow.swag.iskra --probe-ring '!room:matrix.org' '$event'
+```
+
+`--probe-voip-token` and `--probe-callkit` need a real device and say so: there is no APNs in the
+simulator, so PushKit issues no token, and `CXProvider` accepts calls there and draws nothing. The
+first is the one to run when calls do not ring — a missing token almost always means `voip` is
+absent from `UIBackgroundModes`, which is reported nowhere else at all — and it also lists the
+account's pushers over HTTP, because the FFI has `setPusher` and no way to read one back.
+
+**Be exact about what the first two prove.** They run in the app's own process with no push behind
+them. Whether iOS wakes this app for a VoIP push, and whether CallKit then draws a ringing call, is
+answered only by a real call from a second account — the same honesty as `--probe-notification`
+about the extension.
+
 ## Architecture
 
 Three SwiftPM library targets, and the dependency rule between them is the whole design:
@@ -284,6 +306,23 @@ Exactly square, ≤60 s. Tagging them with a custom field would mean `Client.upl
 uploads the user's face to the homeserver in the clear. Send ordinary `m.video` via
 `Timeline.sendVideo`, which encrypts properly.
 
+**Calls are Element Call in a web view, and the address is never invented.**
+`VirtualElementCallWidgetProperties.elementCallUrl` is required, and the tempting default —
+`https://call.element.io` — would hand a third party the list of who talks to whom and when. The
+address comes from the user's own server (`io.element.call.widget_url` in `.well-known`) or from a
+line somebody typed in Beta features. **No address, no call button**, the same refusal as a missing
+App Group. See `ElementCallDiscovery`, and note it asks the *server name* (`Client.server()`), not
+`homeserver()` — `.well-known` lives on `matrix.org`, not on `matrix-client.matrix.org`, and under
+the bridge `homeserver()` is a loopback address.
+
+**Every delivered VoIP push must end in `CXProvider.reportNewIncomingCall`** — including a ring
+that has expired, been cancelled, or been answered on another device. Since iOS 13 this is not a
+guideline: miss it and the system holds pushes back and then stops delivering them to this app
+until it is reinstalled, with nothing logged anywhere. "There is no call, so there is nothing to
+report" is the most natural sentence in the world and it is the bug. See `IncomingCallCenter`,
+which reports first and judges afterwards, and `CallPushRule`, which is why a VoIP push only ever
+arrives for a call in the first place.
+
 ## Security rules
 
 - Access token, refresh token, store passphrase and search-index key live **only** in the Keychain,
@@ -346,6 +385,13 @@ that single fact is what makes a native Mac build possible instead of a Catalyst
 `element-x-ios` was read as a reference but **no code was copied from it** — it is AGPL-3.0, and
 copying would carry that licence into this project. If any code is ever lifted from it directly, it
 must be flagged in the commit that does so.
+
+**Element Call is AGPL-3.0 too, and it is loaded rather than shipped.** The call screen points a
+`WKWebView` at a deployment the user's own homeserver names; none of Element Call's code is
+compiled into, bundled with or distributed by Iskra, so the AGPL places no obligation on this
+project's source. That changes the day Element Call is *hosted* by this project — AGPL §13 requires
+offering Corresponding Source to users who interact over a network. `Licenses/element-call.txt`
+says so, and is the file to update if that day comes.
 
 **blobatar is the one thing here that was ported rather than written** (`IskraDesign/Blobatar/`).
 It is MIT — permissive, not copyleft, so nothing about it obliges this project to publish its own

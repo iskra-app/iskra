@@ -1,0 +1,22 @@
+Element Call
+============
+
+Iskra does not ship Element Call. It loads it over the network, into a WKWebView, from the
+deployment the user's own homeserver names in `/.well-known/matrix/client` under
+`io.element.call.widget_url` — or from an address the user typed in Beta features. There is
+deliberately no default; see `Sources/IskraCore/Calls/ElementCallDiscovery.swift`.
+
+Element Call is licensed under the GNU Affero General Public License, version 3.
+
+    https://github.com/element-hq/element-call
+
+Loading a remote web page in a web view is neither linking nor distribution: none of Element
+Call's code is compiled into, bundled with, or distributed by Iskra, so the AGPL places no
+obligation on Iskra's own source.
+
+That changes the moment Element Call is *hosted* by this project. AGPL section 13 requires that
+users interacting with the software over a network be offered its Corresponding Source. If Iskra
+ever ships or operates its own Element Call deployment, that offer has to be made.
+
+The same distinction applies to element-x-ios, which is also AGPL-3.0 and was read as a reference
+only. No code was copied from it. See the note in CLAUDE.md.

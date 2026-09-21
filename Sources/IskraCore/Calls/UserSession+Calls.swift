@@ -154,6 +154,31 @@ public extension UserSession {
     }
 }
 
+#if DEBUG
+public extension UserSession {
+    /// The homeserver and the access token, for a diagnostic that has to make an HTTP request the
+    /// FFI does not expose.
+    ///
+    /// **`#if DEBUG`, and that is the whole safety argument.** An access token is one of the four
+    /// secrets this project keeps in the Keychain and nowhere else, and a method that hands one
+    /// out is a method somebody will one day call from a screen. Compiled out of a shipped build,
+    /// it cannot be.
+    ///
+    /// It exists because `--probe-voip-token` has a question with no other answer: whether the
+    /// server actually holds the two pushers it should. The FFI has `setPusher` and
+    /// `deletePusher` and no way at all to *read* them back, so the probe asks
+    /// `/_matrix/client/v3/pushers` itself. Nothing is logged, and the probe prints only app ids.
+    func credentialsForProbe() -> (homeserver: URL, accessToken: String)? {
+        guard let url = URL(string: client.homeserver()),
+              let session = try? client.session()
+        else {
+            return nil
+        }
+        return (url, session.accessToken)
+    }
+}
+#endif
+
 /// Somebody turned the ring down — on another of this user's devices, or on the caller's side.
 ///
 /// The same shape as `RoomInfoUpdates`: a tiny class because the SDK's listener protocols are
