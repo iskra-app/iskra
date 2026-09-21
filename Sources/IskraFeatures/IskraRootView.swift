@@ -39,6 +39,11 @@ public struct IskraRootView: View {
     /// user's. See the wash below, and `AccentTheme.tintsInterfaceKey` for why it is off by default.
     @AppStorage(AccentTheme.tintsInterfaceKey) private var tintsInterface = false
 
+    /// Whether this device has already been shown what the app is — see `Onboarding` and
+    /// `WelcomeView`. False on a fresh install, and the slides are what stands where the sign-in
+    /// screen otherwise would.
+    @AppStorage(Onboarding.welcomeSeenKey) private var hasSeenWelcome = false
+
     /// Read here, *outside* the `NavigationSplitView`, because this is the only place it
     /// means what it appears to mean: the size class of the window. Inside the split view
     /// each column gets the size class its own width earns, so the sidebar reports
@@ -66,6 +71,15 @@ public struct IskraRootView: View {
         /// not open. Somebody who merely reopened the app answered it long ago, and asking again
         /// every morning would be the app forgetting rather than remembering.
         case settingUp(UserSession)
+        /// Signed in, encryption settled, and being shown the first run: a hello by name, the
+        /// colour, and the faces. See `FirstRunView`.
+        ///
+        /// After the encryption question and not before it, although the two colour screens come
+        /// last in the order somebody describes this flow. The reason is that one of these is a
+        /// question about the account and the other two are questions about taste: an app that
+        /// asks what colour it should be and *then* asks whether this device can read your history
+        /// has put the trivial question in front of the one that decides what the app can do.
+        case decorating(UserSession)
         case signedIn(UserSession)
     }
 
@@ -107,8 +121,17 @@ public struct IskraRootView: View {
                     .task { await restore() }
 
             case .signedOut:
-                SignInView { session in
-                    phase = .settingUp(session)
+                // The slides first, once per device. They are what this app is, said before
+                // anybody is asked to type an address into it — and `hasSeenWelcome` is not
+                // forgotten on sign-out, deliberately: somebody signing out to change accounts,
+                // or signed out by a server that ended their session, has not forgotten what
+                // Iskra is. See `Onboarding`.
+                if hasSeenWelcome {
+                    SignInView { session in
+                        phase = .settingUp(session)
+                    }
+                } else {
+                    WelcomeView { hasSeenWelcome = true }
                 }
 
             case .offline:
@@ -121,9 +144,14 @@ public struct IskraRootView: View {
                 // sign-in seam handing over a session it had not started would have made the first
                 // thing the user sees a spinner over an account nobody was syncing.
                 RecoverySetupView(session: session) {
-                    phase = .signedIn(session)
+                    phase = .decorating(session)
                 }
                 .task { try? await session.start() }
+
+            case let .decorating(session):
+                FirstRunView(session: session) {
+                    phase = .signedIn(session)
+                }
 
             case let .signedIn(session):
                 conversations(session)

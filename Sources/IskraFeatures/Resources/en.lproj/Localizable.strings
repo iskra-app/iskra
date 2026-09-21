@@ -933,3 +933,58 @@
 "notifications.systemFooter" = "While the system is blocking notifications, none of the rules below will fire.";
 
 "notifications.failed" = "The notification settings couldn’t be read. The server isn’t answering — try again later.";
+
+/* The first run. Six slides before the sign-in — the only place the app talks about itself,
+   so the lines are short and no protocol word appears on any of them. See `WelcomeView`. */
+"onboarding.slide.iskra.title" = "Iskra";
+"onboarding.slide.iskra.body" = "Conversations that belong to you and nobody else";
+
+"onboarding.slide.encryption.title" = "End-to-end encrypted by default";
+"onboarding.slide.encryption.body" = "Nobody but you and the person you are writing to can read it. Not even the CIA";
+
+"onboarding.slide.decentralised.title" = "Decentralised";
+"onboarding.slide.decentralised.body" = "Iskra runs on Matrix, an open protocol the community builds";
+
+"onboarding.slide.appleWay.title" = "Apple way";
+"onboarding.slide.appleWay.body" = "A native Swift app for every platform at once — it flies, and it leaves your battery alone";
+
+"onboarding.slide.freedom.title" = "Your choice";
+"onboarding.slide.freedom.body" = "Take a server that already exists, or run your own. Nobody locks you into one ecosystem";
+
+"onboarding.slide.anonymous.title" = "Anonymous";
+"onboarding.slide.anonymous.body" = "An account is tied to no phone number and no email: a username and a password, and that is all";
+
+"onboarding.start" = "Get started";
+
+/* VoiceOver for the row of dots under a slide, which says nothing on its own. */
+"onboarding.slidePosition" = "Slide %1$lld of %2$lld";
+
+"onboarding.continue" = "Continue";
+
+/* Both screens after the sign-in ask about taste rather than about anything that matters,
+   so there is a way straight past them. */
+"onboarding.skip" = "Skip";
+
+"onboarding.greeting" = "Hello, %@!";
+"onboarding.greetingNameless" = "Hello!";
+
+"onboarding.appearance.title" = "What colour is Iskra?";
+"onboarding.appearance.body" = "This is the colour of your own messages and of everything you press. Change it whenever you like, under Appearance in the settings.";
+
+"onboarding.faces.title" = "Who gets a creature";
+"onboarding.faces.body" = "A creature is worked out on the device from the person’s address: everyone gets their own, and always the same one. Nothing is sent anywhere.";
+
+"onboarding.faces.pictures" = "Pictures";
+"onboarding.faces.picturesHelp" = "Exactly as they are: a picture where somebody set one, initials for everybody else.";
+
+"onboarding.faces.mixed" = "Pictures and creatures";
+"onboarding.faces.mixedHelp" = "A creature for anyone who has no picture of their own.";
+
+"onboarding.faces.faces" = "Creatures";
+"onboarding.faces.facesHelp" = "A creature for everybody, including the people who did set a picture.";
+
+"onboarding.faces.withPicture" = "Has a picture";
+"onboarding.faces.withoutPicture" = "No picture";
+
+"onboarding.faces.picturedName" = "Chloe";
+"onboarding.faces.unpicturedName" = "Tim";

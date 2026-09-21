@@ -928,3 +928,57 @@
 "notifications.systemFooter" = "Пока система не пропускает уведомления, ни одно правило ниже не сработает.";
 
 "notifications.failed" = "Не удалось прочитать настройки уведомлений. Похоже, сервер не отвечает — попробуйте позже.";
+
+/* Первый запуск. Шесть слайдов до входа — это единственное место, где приложение говорит
+   о себе, поэтому фразы короткие и без единого протокольного слова. См. WelcomeView. */
+"onboarding.slide.iskra.title" = "Iskra";
+"onboarding.slide.iskra.body" = "Переписка, которая принадлежит только вам";
+
+"onboarding.slide.encryption.title" = "Сквозное шифрование по умолчанию";
+"onboarding.slide.encryption.body" = "Никто, кроме вас и собеседника, переписку не прочитает. Даже ЦРУ";
+
+"onboarding.slide.decentralised.title" = "Децентрализация";
+"onboarding.slide.decentralised.body" = "Iskra работает на открытом протоколе Matrix, который развивает сообщество";
+
+"onboarding.slide.appleWay.title" = "Apple way";
+"onboarding.slide.appleWay.body" = "Нативное приложение на Swift для всех платформ сразу — летает и не жрёт батарею";
+
+"onboarding.slide.freedom.title" = "Свобода выбора";
+"onboarding.slide.freedom.body" = "Хотите — берите готовый сервер, хотите — поднимите свой. Никто не запирает вас в одной экосистеме";
+
+"onboarding.slide.anonymous.title" = "Анонимно";
+"onboarding.slide.anonymous.body" = "Аккаунт не привязан ни к телефону, ни к почте: только имя пользователя и пароль";
+
+"onboarding.start" = "Начать";
+
+/* VoiceOver про ряд точек под слайдом: сами по себе они не говорят ничего. */
+"onboarding.slidePosition" = "Слайд %1$lld из %2$lld";
+
+"onboarding.continue" = "Продолжить";
+
+/* Оба экрана после входа спрашивают про вкус, а не про дело, — поэтому мимо них есть дорога. */
+"onboarding.skip" = "Пропустить";
+
+"onboarding.greeting" = "Привет, %@!";
+"onboarding.greetingNameless" = "Привет!";
+
+"onboarding.appearance.title" = "Какого цвета Iskra?";
+"onboarding.appearance.body" = "Этим цветом будут ваши сообщения и всё, что вы нажимаете. Поменять можно когда угодно — в настройках, на экране «Внешний вид».";
+
+"onboarding.faces.title" = "Кому рисовать мордочки";
+"onboarding.faces.body" = "Мордочка считается прямо на устройстве из адреса собеседника: у каждого своя и всегда одна и та же. Никуда ничего не уходит.";
+
+"onboarding.faces.pictures" = "Аватарки";
+"onboarding.faces.picturesHelp" = "Всё как есть: у кого аватарка стоит — аватарка, у остальных инициалы.";
+
+"onboarding.faces.mixed" = "Аватарки и мордочки";
+"onboarding.faces.mixedHelp" = "Показывать мордочки для пользователей без аватара.";
+
+"onboarding.faces.faces" = "Мордочки";
+"onboarding.faces.facesHelp" = "Мордочки для всех, даже для тех, у кого есть аватарка.";
+
+"onboarding.faces.withPicture" = "С аватаркой";
+"onboarding.faces.withoutPicture" = "Без аватарки";
+
+"onboarding.faces.picturedName" = "Ксения";
+"onboarding.faces.unpicturedName" = "Тимур";
