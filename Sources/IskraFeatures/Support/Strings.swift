@@ -27,6 +27,109 @@ public enum Strings {
         public static let reason = LocalizedStringResource("lock.reason", bundle: bundle)
     }
 
+    /// The first run: the slides that say what this app is, and the questions it asks once
+    /// somebody is in — see `WelcomeView` and `FirstRunView`.
+    public enum Onboarding {
+        /// The six slides, in the order they come. One case per slide rather than six pairs of
+        /// properties, so that the carousel can count them and nothing on screen has to know how
+        /// many there are.
+        ///
+        /// Every key below is spelled out rather than built from the case, and that is not
+        /// clumsiness: a key with a `\(…)` in it is not a key at all — `LocalizedStringResource`
+        /// reads an interpolation as a *format placeholder*, so the lookup would go looking for
+        /// "onboarding.slide.%@.title" and find nothing. Every dynamic name in this file switches
+        /// over literals for the same reason.
+        public enum Slide: Int, CaseIterable, Identifiable, Sendable {
+            case iskra, encryption, decentralised, appleWay, freedom, anonymous
+
+            public var id: Int { rawValue }
+
+            public var title: LocalizedStringResource {
+                switch self {
+                case .iskra: LocalizedStringResource("onboarding.slide.iskra.title", bundle: bundle)
+                case .encryption: LocalizedStringResource("onboarding.slide.encryption.title", bundle: bundle)
+                case .decentralised: LocalizedStringResource("onboarding.slide.decentralised.title", bundle: bundle)
+                case .appleWay: LocalizedStringResource("onboarding.slide.appleWay.title", bundle: bundle)
+                case .freedom: LocalizedStringResource("onboarding.slide.freedom.title", bundle: bundle)
+                case .anonymous: LocalizedStringResource("onboarding.slide.anonymous.title", bundle: bundle)
+                }
+            }
+
+            public var body: LocalizedStringResource {
+                switch self {
+                case .iskra: LocalizedStringResource("onboarding.slide.iskra.body", bundle: bundle)
+                case .encryption: LocalizedStringResource("onboarding.slide.encryption.body", bundle: bundle)
+                case .decentralised: LocalizedStringResource("onboarding.slide.decentralised.body", bundle: bundle)
+                case .appleWay: LocalizedStringResource("onboarding.slide.appleWay.body", bundle: bundle)
+                case .freedom: LocalizedStringResource("onboarding.slide.freedom.body", bundle: bundle)
+                case .anonymous: LocalizedStringResource("onboarding.slide.anonymous.body", bundle: bundle)
+                }
+            }
+        }
+
+        /// The button under the slides. It is the only one there: the slides are a pitch, not a
+        /// form, and the way past them is the way in.
+        public static let start = LocalizedStringResource("onboarding.start", bundle: bundle)
+
+        /// VoiceOver's name for the row of dots, which says nothing on its own.
+        public static func slidePosition(_ index: Int, of total: Int) -> LocalizedStringResource {
+            LocalizedStringResource("onboarding.slidePosition",
+                                    defaultValue: "Slide \(index) of \(total)",
+                                    bundle: bundle)
+        }
+
+        public static let `continue` = LocalizedStringResource("onboarding.continue", bundle: bundle)
+
+        /// The way past a question that has a perfectly good answer already. Both screens after
+        /// the sign-in have one: these are preferences, not steps, and somebody who wants their
+        /// conversations should not be detained by a colour.
+        public static let skip = LocalizedStringResource("onboarding.skip", bundle: bundle)
+
+        /// The hello, by name, on the way in from the sign-in.
+        public static func greeting(_ name: String) -> LocalizedStringResource {
+            LocalizedStringResource("onboarding.greeting", defaultValue: "Hello, \(name)!", bundle: bundle)
+        }
+
+        /// And the same hello where the account has no name to say yet — a fresh account often
+        /// has none at all, and "Hello, !" is not a greeting.
+        public static let greetingNameless = LocalizedStringResource("onboarding.greetingNameless", bundle: bundle)
+
+        public static let appearanceTitle = LocalizedStringResource("onboarding.appearance.title", bundle: bundle)
+        public static let appearanceBody = LocalizedStringResource("onboarding.appearance.body", bundle: bundle)
+
+        public static let facesTitle = LocalizedStringResource("onboarding.faces.title", bundle: bundle)
+        public static let facesBody = LocalizedStringResource("onboarding.faces.body", bundle: bundle)
+
+        /// The three positions of the slider — see `FaceMode`.
+        public static func faceMode(_ mode: FaceMode) -> LocalizedStringResource {
+            switch mode {
+            case .pictures: LocalizedStringResource("onboarding.faces.pictures", bundle: bundle)
+            case .mixed: LocalizedStringResource("onboarding.faces.mixed", bundle: bundle)
+            case .faces: LocalizedStringResource("onboarding.faces.faces", bundle: bundle)
+            }
+        }
+
+        /// And what each of them does, in a sentence under the slider.
+        public static func faceModeHelp(_ mode: FaceMode) -> LocalizedStringResource {
+            switch mode {
+            case .pictures: LocalizedStringResource("onboarding.faces.picturesHelp", bundle: bundle)
+            case .mixed: LocalizedStringResource("onboarding.faces.mixedHelp", bundle: bundle)
+            case .faces: LocalizedStringResource("onboarding.faces.facesHelp", bundle: bundle)
+            }
+        }
+
+        /// The two faces under the slider: somebody who set a picture, and somebody who did not.
+        /// Named, because the whole of what the slider does is treat those two people differently.
+        public static let withPicture = LocalizedStringResource("onboarding.faces.withPicture", bundle: bundle)
+        public static let withoutPicture = LocalizedStringResource("onboarding.faces.withoutPicture", bundle: bundle)
+
+        /// And the names those two go by. Invented people, named in each language, because the
+        /// first position of the slider draws initials — and initials are a letter of somebody's
+        /// alphabet, so a Russian stand-in name would put a Cyrillic letter on an English screen.
+        public static let picturedName = LocalizedStringResource("onboarding.faces.picturedName", bundle: bundle)
+        public static let unpicturedName = LocalizedStringResource("onboarding.faces.unpicturedName", bundle: bundle)
+    }
+
     public enum SignIn {
         public static let title = LocalizedStringResource("signIn.title", bundle: bundle)
         public static let tagline = LocalizedStringResource("signIn.tagline", bundle: bundle)

@@ -221,6 +221,22 @@ public enum Theme {
         /// So this is a quarter of a second again, which is the number that keeps the widest margin
         /// between a hold and the tap that flips the button between voice and video.
         public static let holdBegins: Duration = .milliseconds(250)
+
+        /// How long one slide of the welcome carousel stands still before the next one comes.
+        ///
+        /// Long enough to read two lines without hurrying — the slides are the app's only pitch,
+        /// and a carousel that moves while somebody is still reading it is a carousel they fight.
+        /// Short enough that a person who is not reading gets through all six on the way to the
+        /// button. See `WelcomeView`, which stops the timer at the last slide rather than looping:
+        /// once everything has been said, the screen waits.
+        public static let welcomeSlide: Duration = .seconds(5)
+
+        /// How long the hello stands on screen before the first run moves on.
+        ///
+        /// Three seconds: long enough to be read and to register as the app saying something
+        /// rather than as a flash between two screens, short enough that nobody waits for it. It
+        /// is a greeting and not a step, so there is nothing on it to press — see `FirstRunView`.
+        public static let greeting: Duration = .seconds(3)
     }
 
     /// Things drawn smaller than they are, as feedback. There is exactly one so far, and it has a
@@ -510,6 +526,15 @@ public enum Theme {
         /// not text, it is a picture, and it is the one place in the app where something is drawn
         /// large simply to be looked at.
         public static let signInMark: CGFloat = 56
+
+        /// The mark over a welcome slide. A placeholder for now — the illustrations that go
+        /// there are not drawn yet — and sized as the picture it will be rather than as the
+        /// symbol standing in for it, so the layout does not shift when they arrive.
+        public static let welcomeMark: CGFloat = 132
+
+        /// One of the dots under the welcome slides. Small: it says where you are, it is not a
+        /// control anybody aims at — the tap target around it is a full `minimumTapTarget`.
+        public static let pageDot: CGFloat = 8
 
         /// The red badge beside a message that failed to send. Bigger than the delivery
         /// ticks on purpose: those report progress and may be ignored, this one is the

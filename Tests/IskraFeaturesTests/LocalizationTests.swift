@@ -37,6 +37,19 @@ struct LocalizationTests {
         (Strings.RoomList.Sidebar.pinned, en: "Pinned", ru: "Закреплённые"),
         (Strings.RoomList.Sidebar.chats, en: "Chats", ru: "Чаты"),
         (Strings.Settings.beta, en: "Beta features", ru: "Бета-функции"),
+        // The first run. The slides are the only place the app describes itself, and they are
+        // seen before anything else — a sentence of them falling back to English would be the
+        // first thing a Russian speaker learned about this app.
+        (Strings.Onboarding.start, en: "Get started", ru: "Начать"),
+        (Strings.Onboarding.Slide.encryption.title,
+         en: "End-to-end encrypted by default",
+         ru: "Сквозное шифрование по умолчанию"),
+        (Strings.Onboarding.skip, en: "Skip", ru: "Пропустить"),
+        // The name is the account's own and is already in whatever language it was typed in;
+        // what is checked here is the greeting around it.
+        (Strings.Onboarding.greeting("Борис"), en: "Hello, Борис!", ru: "Привет, Борис!"),
+        (Strings.Onboarding.faceMode(.mixed), en: "Pictures and creatures", ru: "Аватарки и мордочки"),
+        (Strings.Onboarding.slidePosition(2, of: 6), en: "Slide 2 of 6", ru: "Слайд 2 из 6"),
         (Strings.Beta.nativeSidebar, en: "Native sidebar", ru: "Родная боковая панель"),
         // The offline sentences. They are the ones a person reads at the worst moment — no network,
         // and a screen that has to convince them their conversations are not gone — so a fallback to
@@ -602,6 +615,38 @@ struct LocalizationTests {
         }
         // Not one that is gone.
         #expect(!message(isOwn: true, delivery: .sent, kind: .deleted).canEdit)
+    }
+
+    /// The three stops of the first run's slider are the two face switches, and the pair has one
+    /// combination the slider cannot name.
+    ///
+    /// `force` on with creatures off is a state the app can hold — Beta features writes the two
+    /// switches separately, and the second keeps its value while the first is turned off — and
+    /// there is no position for it. It has to read as `.pictures`, because that is what the app
+    /// in that state actually draws: a slider that showed "creatures for everybody" over an app
+    /// showing initials would be lying about the very thing it is for.
+    @Test("the face slider names exactly the states the app can be in")
+    func faceModesRoundTrip() {
+        for mode in FaceMode.allCases {
+            #expect(FaceMode(drawsCreatures: mode.drawsCreatures,
+                             overridesPictures: mode.overridesPictures) == mode)
+        }
+
+        #expect(FaceMode(drawsCreatures: false, overridesPictures: true) == .pictures)
+        #expect(FaceMode(drawsCreatures: true, overridesPictures: false) == .mixed)
+        #expect(FaceMode(drawsCreatures: true, overridesPictures: true) == .faces)
+
+        // And the same question `Avatar` and the lock screen ask, answered the same way — the
+        // slider is a view of `BetaFeatures`, not a second opinion about it.
+        let defaults = UserDefaults(suiteName: "onboarding.facemode.test")!
+        for mode in FaceMode.allCases {
+            defaults.set(mode.drawsCreatures, forKey: BetaFeatures.blobatarKey)
+            defaults.set(mode.overridesPictures, forKey: BetaFeatures.forceBlobatarKey)
+
+            #expect(BetaFeatures.drawsGeneratedFace(hasPicture: false, in: defaults) == (mode != .pictures))
+            #expect(BetaFeatures.drawsGeneratedFace(hasPicture: true, in: defaults) == (mode == .faces))
+        }
+        defaults.removePersistentDomain(forName: "onboarding.facemode.test")
     }
 
     /// A reaction on a message that has been taken back is the one this app must refuse.

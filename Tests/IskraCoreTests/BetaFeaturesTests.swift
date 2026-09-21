@@ -18,9 +18,28 @@ struct BetaFeaturesTests {
         return defaults
     }
 
-    @Test("no creature until somebody asks for one")
-    func offByDefault() {
+    /// The shipped answer, on defaults nobody has written to: a creature where there is no
+    /// picture, and never over one there is.
+    ///
+    /// This test used to pin the opposite — the feature was off until asked for — and the change
+    /// is deliberate rather than a drift: initials are not a neutral default, they are the absence
+    /// of a face, and most people in most rooms have never set a picture. What must not change is
+    /// the second line. A default that drew over a photograph somebody chose would be the app
+    /// overruling them, and that stays behind a switch.
+    @Test("by default a creature stands in for a missing picture, and only for that")
+    func onByDefault() {
         let defaults = freshDefaults("default")
+        #expect(BetaFeatures.drawsGeneratedFace(hasPicture: false, in: defaults))
+        #expect(BetaFeatures.drawsGeneratedFace(hasPicture: true, in: defaults) == false)
+    }
+
+    /// And turning it off is still turning it off — the value written by hand beats the default,
+    /// which is the whole of what a default is.
+    @Test("switched off, nobody gets a creature")
+    func offWhenAsked() {
+        let defaults = freshDefaults("off")
+        defaults.set(false, forKey: BetaFeatures.blobatarKey)
+
         #expect(BetaFeatures.drawsGeneratedFace(hasPicture: false, in: defaults) == false)
         #expect(BetaFeatures.drawsGeneratedFace(hasPicture: true, in: defaults) == false)
     }
@@ -50,6 +69,9 @@ struct BetaFeaturesTests {
     @Test("forced means nothing while the feature is off")
     func forcedIsMeaninglessWhenOff() {
         let defaults = freshDefaults("forcedOff")
+        // Both written by hand: creatures are on by default now, so the state this test is about
+        // — forced, over a feature that is off — is only reachable by saying so.
+        defaults.set(false, forKey: BetaFeatures.blobatarKey)
         defaults.set(true, forKey: BetaFeatures.forceBlobatarKey)
 
         #expect(BetaFeatures.drawsGeneratedFace(hasPicture: false, in: defaults) == false)

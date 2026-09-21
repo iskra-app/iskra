@@ -39,13 +39,21 @@ public enum BetaFeatures {
     /// is the same question asked on a lock screen.
     public static let blobatarKey = "beta.blobatar"
 
-    /// And it is off until somebody asks for it.
+    /// And it is **on**, which it was not.
     ///
-    /// The opposite of `nativeSidebarByDefault`, and for the opposite reason: a sidebar is a
-    /// layout somebody can judge in a second and undo in a second, while this changes what every
-    /// person in the app *looks like*. Turning that on for somebody who did not ask would replace
-    /// a hundred familiar circles at once, which is not a thing to do on their behalf.
-    public static let blobatarByDefault = false
+    /// The argument for off was that this changes what every person in the app looks like, and
+    /// that replacing a hundred familiar circles on somebody's behalf is not a thing to do. That
+    /// argument is about an app somebody is already using. It is not about the app a new person
+    /// meets: what they would meet with this off is a chat list of grey discs with one letter in
+    /// each, because most people in most rooms have never set a picture — and initials are not a
+    /// neutral default, they are the *absence* of a face rendered as a placeholder.
+    ///
+    /// The creature replaces nothing anybody chose: a picture somebody set still wins, which is
+    /// the whole difference between this flag and `forceBlobatarByDefault` below. And the first
+    /// run now asks the question outright, with the three answers drawn rather than named (see
+    /// `FaceMode`), so this default is what the slider starts on rather than something decided
+    /// behind a person's back.
+    public static let blobatarByDefault = true
 
     /// Whether the creature wins even against a picture somebody actually set.
     ///
