@@ -25,9 +25,30 @@ import MatrixRustSDK
 /// question about roughly one event a day.
 ///
 /// A push rule's *actions* travel with the notification and sit in `devices[].tweaks`, **outside**
-/// the stripped event metadata — so `event_id_only` does not touch them. One custom tweak carries
-/// exactly one bit and nothing else, both pushers stay `.eventIdOnly`, and the gateway learns
-/// nothing it did not already know except "this one is a call".
+/// the stripped event metadata — so `event_id_only` does not touch them. One tweak carries exactly
+/// one bit, both pushers stay `.eventIdOnly`, and the gateway learns nothing it did not already
+/// know except "this one is a call".
+///
+/// ## Why the mark is the *sound*, of all things
+///
+/// It should be a custom tweak — Matrix allows them and Synapse forwards them, and
+/// `Tweak.custom(name:value:)` is right there in the FFI. It cannot be, and the reason is in
+/// Sygnal rather than in Matrix. Sygnal parses a notification before any pushkin sees it, and its
+/// parser is this:
+///
+/// ```python
+/// class Tweaks:
+///     def __init__(self, raw):
+///         self.sound = get_key(raw, "sound", str)
+/// ```
+///
+/// It keeps `sound` and drops everything else, and `Notification` does not keep the raw payload
+/// either. So a custom tweak arrives at the gateway host and is thrown away *inside the gateway
+/// process*, one layer above anything we can write, and no amount of care on this side changes it.
+///
+/// `sound` survives, is a string, and its value is ours to choose. Hence a sound nobody will ever
+/// hear: there is no `iskra.ring` file in the bundle, and the ring itself is CallKit's, not a
+/// notification sound. See `Gateway/iskra_ring.py`, which reads it.
 ///
 /// The gateway's side of the bargain is a Sygnal pushkin of ours that sends nothing to the `.voip`
 /// app id unless this tweak is present. See `docs/PUSH-GATEWAY.md`.
@@ -41,9 +62,14 @@ public struct CallPushRule: Sendable {
     /// while debugging a different client — can see whose it is and what it is for.
     public static let ruleID = "moscow.swag.iskra.calls"
 
-    /// The name of the tweak the gateway looks for. One string, shared with the server-side
-    /// pushkin by being written down in both places; there is no way to share it in code.
-    public static let ringTweak = "moscow.swag.iskra.ring"
+    /// The sound value that marks a ring. Read by `Gateway/iskra_ring.py`, and written down in
+    /// both places because there is no way to share a constant between a Swift app and a Python
+    /// module on somebody else's server.
+    ///
+    /// Not a sound anybody hears: there is no such file in the bundle, and the ringing is
+    /// CallKit's. It is a one-bit flag riding in the only tweak Sygnal preserves — see the note
+    /// above, which is the whole story.
+    public static let ringSound = "iskra.ring"
 
     private let settings: NotificationSettings
 
@@ -64,13 +90,10 @@ public struct CallPushRule: Sendable {
                 ruleKind: .override,
                 actions: [
                     .notify,
-                    // Silent on purpose. The ring is CallKit's, and CallKit is already making a
-                    // noise; the ordinary push that arrives beside the VoIP one is a copy of the
-                    // same fact, and it is silenced here as well as suppressed on the device.
-                    .setTweak(value: .sound(value: "")),
-                    // The whole point of the rule. The value is an encoded JSON string, so this
-                    // is the boolean `true` rather than the word.
-                    .setTweak(value: .custom(name: Self.ringTweak, value: "true"))
+                    // The mark, and the whole point of the rule. It is also what keeps the
+                    // ordinary copy of this push quiet: iOS finds no such sound in the bundle,
+                    // and the notification extension replaces the content outright anyway.
+                    .setTweak(value: .sound(value: Self.ringSound))
                 ],
                 conditions: [
                     // A glob, and deliberately. MSC4075/4143 are still in flight, so a homeserver
