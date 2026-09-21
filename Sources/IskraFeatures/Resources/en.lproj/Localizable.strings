@@ -232,11 +232,45 @@
 /* Explains why the settings above it are greyed out. Says what will happen, not what is missing. */
 "settings.moreSoon" = "More settings are on the way.";
 
+/* The last row of settings, the way through to the About screen. */
+"settings.about" = "About Iskra";
+
 /* The app about itself, at the very foot of the screen, under the way out. The name is not
    translated — it is what the app is called in both languages. The version and the build sit
    together, because on its own neither number says much. */
 "settings.appName" = "Iskra App";
 "settings.version" = "Version %1$@ (%2$@)";
+
+/* The About screen, the last row in settings, where the app says what it is, which build this
+   is, and whose work it stands on. The acknowledgements are not politeness: the Apache 2.0
+   licence travels with the binary, so a person holding the app has to be able to read about it
+   inside the app. */
+"about.title" = "About Iskra";
+"about.tagline" = "A Matrix messenger for iPhone, iPad and Mac. Written in Swift — a real app, not a website in a wrapper.";
+
+/* The same two numbers as the settings footer, this time as a row you can select and copy. */
+"about.version" = "Version";
+"about.device" = "Device";
+"about.system" = "System";
+
+/* The button and its note: otherwise a build number gets transcribed into a report by hand,
+   with a digit wrong. */
+"about.copy" = "Copy build details";
+"about.copied" = "Copied";
+"about.copyHelp" = "Handy when something breaks: paste this into your report instead of copying the numbers out by hand.";
+
+/* The app's own page. A line of its own above the credits: it is about Iskra itself
+   rather than about what Iskra is built out of. The address shows under the label —
+   nobody presses a link whose destination is invisible. */
+"about.website" = "Iskra online";
+
+/* The credits. Every line is a link out, so the name leads somewhere. */
+"about.builtOn" = "What it stands on";
+"about.sdk" = "matrix-rust-sdk";
+"about.sdkLicence" = "Apache 2.0 licence";
+"about.protocol" = "Matrix";
+"about.protocolExplained" = "The open protocol these chats run on";
+"about.cryptography" = "All the encryption comes from matrix-rust-sdk. Not a line of it is written here, and that is for the best.";
 
 /* The screen where the double-tap reaction is chosen: the heading over the six emoji, and
    the line under them. */
