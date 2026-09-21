@@ -2,14 +2,17 @@ import SwiftUI
 import IskraCore
 import IskraDesign
 
-/// A round avatar: the picture if there is one, the initials until it arrives, and the
-/// initials for good if there is none.
+/// A round avatar: the picture if there is one, something standing in for it until it arrives,
+/// and that stand-in for good if there is none.
 ///
-/// The initials are not a spinner. Most people in most rooms have no picture at all, and a
+/// The stand-in is not a spinner. Most people in most rooms have no picture at all, and a
 /// list of grey circles quietly spinning would be an app pretending to be busy — so the
 /// fallback is drawn immediately, as though it were the answer, and the photograph replaces
 /// it when it lands. Nothing about the row moves when that happens: the circle is the same
 /// size either way.
+///
+/// What the stand-in *is* depends on one switch in Beta features: initials, or the creature the
+/// person's identifier comes out as. See `Blobatar`.
 /// The two silhouettes an avatar can wear. A round one is a person or an ordinary chat; a
 /// square-cornered one is a space — so a space is told apart from a conversation at a glance, before
 /// a single word is read.
@@ -26,7 +29,16 @@ struct Avatar: View {
     let size: CGFloat
     var shape: AvatarShape = .circle
 
+    /// What a generated face is computed from — a Matrix user ID, or a room ID.
+    ///
+    /// **An identifier, never the display name.** A name is something people change, and a face
+    /// that changes when somebody edits their profile is not a face. Left nil where a generated
+    /// creature makes no sense — a space is not a person — and nil is also what turns the feature
+    /// off at a call site: no seed, no creature, initials as before.
+    var seed: String?
+
     @Environment(\.mediaLoader) private var loader
+    @AppStorage(BetaFeatures.blobatarKey) private var blobatarEnabled = BetaFeatures.blobatarByDefault
 
     /// The face grows with the name beside it. A 28pt circle next to a line of text that is twice
     /// its height at the accessibility sizes reads as a bug in the layout, because it is one — see
@@ -49,9 +61,16 @@ struct Avatar: View {
         }
     }
 
+    /// Whether a creature is standing in here, rather than a letter.
+    private var drawsBlobatar: Bool { image == nil && blobatarEnabled && seed != nil }
+
     var body: some View {
         outline
-            .fill(.quaternary)
+            // No grey plate under a creature. A blobatar draws its own body and is meant to sit
+            // directly on whatever is behind it — its darkest tone is floored against a dark page
+            // for exactly that — so a disc behind it would only put it in a box nothing else is
+            // in.
+            .fill(drawsBlobatar ? AnyShapeStyle(.clear) : AnyShapeStyle(.quaternary))
             .frame(width: diameter, height: diameter)
             .overlay {
                 if let image {
@@ -59,6 +78,8 @@ struct Avatar: View {
                         .resizable()
                         .scaledToFill()
                         .clipShape(outline)
+                } else if blobatarEnabled, let seed {
+                    BlobatarView(seed: seed)
                 } else {
                     Text(initials)
                         .font(.system(size: diameter * 0.4, weight: .medium))

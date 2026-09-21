@@ -52,6 +52,12 @@ let package = Package(
             resources: [.process("Resources")]
         ),
         .testTarget(name: "IskraCoreTests", dependencies: ["IskraCore"]),
+        // Carries blobatar's own golden fixture, so the port can be held to it.
+        .testTarget(
+            name: "IskraDesignTests",
+            dependencies: ["IskraDesign"],
+            resources: [.process("Resources")]
+        ),
         .testTarget(name: "IskraFeaturesTests", dependencies: ["IskraFeatures", "IskraCore"])
     ]
 )

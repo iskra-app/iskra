@@ -62,6 +62,7 @@ struct MemberProfileView: View {
                 ProfileHeader(name: member.name,
                               avatarURL: member.avatarURL,
                               subtitle: member.id,
+                              seed: member.id,
                               // The ID is exactly the string somebody opens this screen to copy.
                               isSubtitleSelectable: true)
                     .profileHeaderRow()

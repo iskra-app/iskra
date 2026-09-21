@@ -8,10 +8,12 @@ import SwiftUI
 /// person who finds "Native sidebar" under Appearance has no way of knowing it is an experiment;
 /// a person who finds it here cannot miss it, and the sentence at the top says the rest.
 ///
-/// It is reached only where there is something on it — see `BetaFeatures.hasAnything`, and
-/// `SettingsView`, which is where the row is hidden on iOS.
+/// It is reached only where there is something on it — see `BetaFeatures.hasAnything`, which
+/// `SettingsView` asks before drawing the row. The sidebar switch is the one thing here that is
+/// Mac-only; the rest of the screen is the same everywhere.
 struct BetaView: View {
     @AppStorage(BetaFeatures.nativeSidebarKey) private var nativeSidebar = BetaFeatures.nativeSidebarByDefault
+    @AppStorage(BetaFeatures.blobatarKey) private var blobatar = BetaFeatures.blobatarByDefault
 
     var body: some View {
         Form {
@@ -34,6 +36,15 @@ struct BetaView: View {
                 Text(Strings.Beta.nativeSidebarHelp)
             }
             #endif
+
+            Section {
+                Toggle(isOn: $blobatar.animation(.smooth(duration: Theme.Timing.reaction))) {
+                    Label(Strings.Beta.blobatar, systemImage: "face.smiling")
+                }
+                .accentControl()
+            } footer: {
+                Text(Strings.Beta.blobatarHelp)
+            }
         }
         .formStyle(.grouped)
         .navigationTitle(Text(Strings.Beta.title))

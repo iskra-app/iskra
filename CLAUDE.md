@@ -310,3 +310,19 @@ that single fact is what makes a native Mac build possible instead of a Catalyst
 `element-x-ios` was read as a reference but **no code was copied from it** — it is AGPL-3.0, and
 copying would carry that licence into this project. If any code is ever lifted from it directly, it
 must be flagged in the commit that does so.
+
+**blobatar is the one thing here that was ported rather than written** (`IskraDesign/Blobatar/`).
+It is MIT — permissive, not copyleft, so nothing about it obliges this project to publish its own
+source — but the notice travels with the binary: `Licenses/blobatar.txt` is kept verbatim, every
+ported file carries the attribution header, and a distributed build has to show that notice
+somewhere a person can reach.
+
+It is a *port*, not a call to `blobatar.dev/avatar/<seed>`, and the endpoint is not an option: the
+seed is a Matrix user ID, so using it would send the list of everyone you talk to a third party,
+once per row of the chat list. Being a port also means it has to be the same program — the same
+seed must come out as the same creature here as anywhere else blobatar runs. `BlobatarTests` holds
+it to blobatar's own golden fixture: a thousand seeds byte for byte, every silhouette's markup, and
+the band histogram over twenty thousand. **A change that moves any of those numbers is a change of
+identity**, not a bug fix — it gives people a different face — and the fixture is there to make
+that impossible to do by accident. The port stops short of blobatar's *expressions*, which this app
+does not use; the fixture's expression cases are skipped by name.

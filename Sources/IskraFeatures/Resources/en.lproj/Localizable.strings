@@ -129,7 +129,7 @@
 "settings.encryption" = "Encryption";
 
 "settings.appearance" = "Appearance";
-/* The settings row that leads to the unfinished things. Mac only — see `BetaFeatures`. */
+/* The settings row that leads to the unfinished things. See `BetaFeatures`. */
 "settings.beta" = "Beta features";
 
 "beta.title" = "Beta features";
@@ -141,6 +141,12 @@
 "beta.nativeSidebar" = "Native sidebar";
 
 "beta.nativeSidebarHelp" = "The chat list becomes an ordinary macOS sidebar: chats gathered into sections, search at the top, and rows set closer together. Like Mail and Notes — and less like a phone.";
+
+"beta.blobatar" = "Creatures instead of initials";
+
+/* Says the two things a person actually wants to know before flipping it: that the face
+   belongs to that person and will not change, and that nothing left the device to draw it. */
+"beta.blobatarHelp" = "Anyone without a picture of their own gets a little creature instead — their own, and the same one every time. It is drawn here on the device; nothing is sent anywhere. Groups get a cluster of the people in them rather than a letter.";
 
 
 

@@ -1025,6 +1025,9 @@ public enum Strings {
 
         public static let nativeSidebar = LocalizedStringResource("beta.nativeSidebar", bundle: bundle)
         public static let nativeSidebarHelp = LocalizedStringResource("beta.nativeSidebarHelp", bundle: bundle)
+
+        public static let blobatar = LocalizedStringResource("beta.blobatar", bundle: bundle)
+        public static let blobatarHelp = LocalizedStringResource("beta.blobatarHelp", bundle: bundle)
     }
 
     public enum Settings {

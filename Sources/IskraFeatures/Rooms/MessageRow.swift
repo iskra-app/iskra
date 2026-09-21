@@ -205,7 +205,8 @@ struct MessageRow: View {
                 if message.isContinuation {
                     Color.clear.frame(width: avatarSize)
                 } else {
-                    Avatar(name: message.senderName, url: message.senderAvatarURL, size: Theme.Size.avatarSmall)
+                    Avatar(name: message.senderName, url: message.senderAvatarURL,
+                           size: Theme.Size.avatarSmall, seed: message.senderID)
                 }
             }
 

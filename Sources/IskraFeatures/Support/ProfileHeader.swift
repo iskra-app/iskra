@@ -22,6 +22,9 @@ struct ProfileHeader: View {
     /// something.
     var subtitle: String?
     var shape: AvatarShape = .circle
+    /// What a generated stand-in face is computed from — a Matrix user ID, or a room ID. Nil
+    /// where one would make no sense, which is a space. See `Avatar`.
+    var seed: String?
     /// Whether the line underneath is the kind of thing somebody opened this screen to copy.
     /// A Matrix ID is; "12 participants" is not, and a count that highlights under a long press
     /// is a small piece of nonsense.
@@ -29,7 +32,8 @@ struct ProfileHeader: View {
 
     var body: some View {
         VStack(spacing: Theme.Spacing.normal) {
-            Avatar(name: name, url: avatarURL, size: Theme.Size.avatarProfile, shape: shape)
+            Avatar(name: name, url: avatarURL, size: Theme.Size.avatarProfile, shape: shape,
+                   seed: seed)
 
             VStack(spacing: Theme.Spacing.tight) {
                 // A size up from the `.title2` a heading in a form would get, because this is not

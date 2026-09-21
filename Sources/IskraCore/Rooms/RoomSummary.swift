@@ -72,6 +72,15 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
     public let id: String
     public let name: String
     public let avatarURL: String?
+
+    /// What a generated stand-in face is computed from when there is no picture — the room's own
+    /// ID, or the other person's in a personal chat. See `RoomInfo.avatarSeed(besides:)`.
+    public let avatarSeed: String
+
+    /// The few members the server names as a description of this room. Empty unless this is a
+    /// group: a personal chat already borrows the other person's picture, and a space is not a
+    /// collection of people. See `RoomInfo.faces(besides:)`.
+    public let faces: [RoomFace]
     /// A chat with one person, a chat with several, or a space. See `RoomKind` — and note that
     /// this says how the room was *made*, not how many people are in it today.
     public let kind: RoomKind
@@ -188,10 +197,14 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
                 isMarkedUnread: Bool = false,
                 isMuted: Bool = false,
                 membership: RoomMembership = .joined,
-                invitedBy: String? = nil) {
+                invitedBy: String? = nil,
+                avatarSeed: String? = nil,
+                faces: [RoomFace] = []) {
         self.id = id
         self.name = name
         self.avatarURL = avatarURL
+        self.avatarSeed = avatarSeed ?? id
+        self.faces = faces
         self.kind = kind
         self.privacy = privacy
         self.unreadCount = unreadCount
@@ -225,6 +238,10 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
         // somebody who has a photograph showed their name beside a circle of initials.
         self.name = info.title(besides: ownUserID)
         self.avatarURL = info.pictureURL(besides: ownUserID)
+        self.avatarSeed = info.avatarSeed(besides: ownUserID)
+        // Only a group gathers a cluster. A personal chat falls back to the other person's
+        // picture a line above this, and a space is a shelf of rooms rather than a set of people.
+        self.faces = info.kind == .group ? info.faces(besides: ownUserID) : []
         self.kind = info.kind
         self.privacy = PrivacyStatus(info.encryptionState)
         // `numUnread*`, not `notificationCount`/`highlightCount`.

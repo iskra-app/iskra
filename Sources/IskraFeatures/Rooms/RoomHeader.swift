@@ -42,6 +42,8 @@ import IskraDesign
 struct RoomHeader: View {
     let name: String
     let avatarURL: String?
+    /// See `TimelineStore.roomAvatarSeed`.
+    var avatarSeed: String?
     let privacy: PrivacyStatus
 
     /// The line under the name: how many people are here, or — in a chat with one other
@@ -55,7 +57,7 @@ struct RoomHeader: View {
     var body: some View {
         Button(action: onOpenDetails) {
             HStack(spacing: Theme.Spacing.close) {
-                Avatar(name: name, url: avatarURL, size: Theme.Size.avatarSmall)
+                Avatar(name: name, url: avatarURL, size: Theme.Size.avatarSmall, seed: avatarSeed)
                 RoomIdentity(name: name, privacy: privacy, subtitle: subtitle, alignment: .leading)
             }
             // A title bar is a crowded place and a long room name will happily eat the
@@ -112,12 +114,14 @@ struct RoomTitle: View {
 struct RoomAvatarButton: View {
     let name: String
     let avatarURL: String?
+    /// See `TimelineStore.roomAvatarSeed`.
+    var avatarSeed: String?
 
     var onOpenDetails: () -> Void
 
     var body: some View {
         Button(action: onOpenDetails) {
-            Avatar(name: name, url: avatarURL, size: Theme.Size.avatarToolbar)
+            Avatar(name: name, url: avatarURL, size: Theme.Size.avatarToolbar, seed: avatarSeed)
                 .padding(Theme.Spacing.tight)
                 .navigationGlass(in: .circle)
                 .contentShape(.circle)

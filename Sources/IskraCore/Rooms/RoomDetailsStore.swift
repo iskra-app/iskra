@@ -186,6 +186,13 @@ public final class RoomDetailsStore {
     public private(set) var serverName = ""
     public private(set) var topic: String?
     public private(set) var avatarURL: String?
+
+    /// What a generated stand-in face for this room is computed from, when there is no picture.
+    /// The room's own ID, or the other person's in a personal chat — the same rule the chat list
+    /// follows, so the portrait at the top of this screen is the face from the row that opened it.
+    /// Nil until the room info has arrived: an empty seed is a valid string and would
+    /// draw a creature of its own, so the face would change once, visibly, on load.
+    public private(set) var avatarSeed: String?
     public private(set) var privacy: PrivacyStatus = .unknown
     /// What this room is — personal chat, group, or space. See `RoomKind`. This is what the
     /// screen should ask when it decides whether to call the room a room: a personal chat with
@@ -427,6 +434,7 @@ public final class RoomDetailsStore {
         // The other person's picture in a personal chat, exactly as the name above it. See
         // `RoomInfo.pictureURL` — a one-to-one room almost never has an avatar of its own.
         avatarURL = info.pictureURL(besides: ownUserID)
+        avatarSeed = info.avatarSeed(besides: ownUserID)
         privacy = PrivacyStatus(info.encryptionState)
         kind = info.kind
         isOneToOne = info.isOneToOne

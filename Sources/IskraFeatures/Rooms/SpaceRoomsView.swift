@@ -66,8 +66,12 @@ struct SpaceRoomsView: View {
 
     private func row(_ room: SpaceRoomSummary) -> some View {
         HStack(spacing: Theme.Spacing.normal) {
+            // These are rooms seen from outside — a directory listing, with no membership behind
+            // it and so nobody to gather into a cluster. A room gets its own creature, a nested
+            // space keeps its initials.
             Avatar(name: room.name, url: room.avatarURL, size: Theme.Size.roomAvatar,
-                   shape: room.isSpace ? .roundedSquare : .circle)
+                   shape: room.isSpace ? .roundedSquare : .circle,
+                   seed: room.isSpace ? nil : room.id)
             VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
                 Text(room.name)
                     .font(.body.weight(.semibold))

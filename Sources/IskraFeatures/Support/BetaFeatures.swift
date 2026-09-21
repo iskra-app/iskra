@@ -30,18 +30,25 @@ enum BetaFeatures {
     /// that obeys it is a bug nothing catches: the toggle would simply show the wrong position.
     static let nativeSidebarByDefault = true
 
+    /// Whether a person with no picture of their own is drawn as a generated creature rather
+    /// than as their initials — see `Blobatar`, and `Avatar`, which is the only place that reads
+    /// this.
+    static let blobatarKey = "beta.blobatar"
+
+    /// And it is off until somebody asks for it.
+    ///
+    /// The opposite of `nativeSidebarByDefault`, and for the opposite reason: a sidebar is a
+    /// layout somebody can judge in a second and undo in a second, while this changes what every
+    /// person in the app *looks like*. Turning that on for somebody who did not ask would replace
+    /// a hundred familiar circles at once, which is not a thing to do on their behalf.
+    static let blobatarByDefault = false
+
     /// Whether there is anything in here to show on this platform.
     ///
-    /// False on iOS, where the one experiment is about a sidebar that does not exist: the split
-    /// view collapses to a stack on iPhone, and on iPad the sidebar is already the system's. A
-    /// settings row leading to a screen with nothing on it is worse than no row at all — so the
-    /// row is asked this question, not `#if os(macOS)` spelled out at each of the three places
-    /// that care.
-    static var hasAnything: Bool {
-        #if os(macOS)
-        true
-        #else
-        false
-        #endif
-    }
+    /// True everywhere now, and it was not always: the first experiment here was about a sidebar
+    /// that does not exist on iPhone, so the screen had nothing on it and the row that led there
+    /// was hidden. Generated faces are on every platform, so the screen always has something —
+    /// but the question stays, because it is the right one to ask and the answer is free to go
+    /// back to being false.
+    static var hasAnything: Bool { true }
 }
