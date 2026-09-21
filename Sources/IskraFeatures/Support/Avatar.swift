@@ -39,6 +39,7 @@ struct Avatar: View {
 
     @Environment(\.mediaLoader) private var loader
     @AppStorage(BetaFeatures.blobatarKey) private var blobatarEnabled = BetaFeatures.blobatarByDefault
+    @AppStorage(BetaFeatures.forceBlobatarKey) private var forceBlobatar = BetaFeatures.forceBlobatarByDefault
 
     /// The face grows with the name beside it. A 28pt circle next to a line of text that is twice
     /// its height at the accessibility sizes reads as a bug in the layout, because it is one — see
@@ -61,8 +62,14 @@ struct Avatar: View {
         }
     }
 
-    /// Whether a creature is standing in here, rather than a letter.
-    private var drawsBlobatar: Bool { image == nil && blobatarEnabled && seed != nil }
+    /// Whether a creature is standing in here, rather than a letter or a photograph.
+    ///
+    /// Normally only where there is nothing else. Forced, it wins over a picture somebody
+    /// actually set — which is a thing to ask for and never a default, and is also the only way
+    /// to see this feature at all in an account where everybody has a face already.
+    private var drawsBlobatar: Bool {
+        blobatarEnabled && seed != nil && (image == nil || forceBlobatar)
+    }
 
     var body: some View {
         outline
@@ -73,13 +80,13 @@ struct Avatar: View {
             .fill(drawsBlobatar ? AnyShapeStyle(.clear) : AnyShapeStyle(.quaternary))
             .frame(width: diameter, height: diameter)
             .overlay {
-                if let image {
+                if drawsBlobatar, let seed {
+                    BlobatarView(seed: seed)
+                } else if let image {
                     image
                         .resizable()
                         .scaledToFill()
                         .clipShape(outline)
-                } else if blobatarEnabled, let seed {
-                    BlobatarView(seed: seed)
                 } else {
                     Text(initials)
                         .font(.system(size: diameter * 0.4, weight: .medium))
@@ -89,12 +96,18 @@ struct Avatar: View {
             // The picture arrives late by definition, and swapping it in on the spot makes a
             // room list twitch as it syncs. It fades instead.
             .animation(.smooth(duration: Theme.Timing.reaction), value: image == nil)
-            .task(id: url) { await load() }
+            // The flag is part of the identity of this request, not just of how it is drawn:
+            // turning it on has to *stop* the fetch, not merely cover up what it returned.
+            .task(id: "\(forceBlobatar)\u{0}\(url ?? "")") { await load() }
             .accessibilityHidden(true)
     }
 
     private func load() async {
         image = nil
+        // Nothing to fetch when a creature is going to be drawn over it anyway. Worth saying out
+        // loud, because the alternative — download the photograph and then hide it — is what this
+        // would do by itself, and it would be a switch that quietly costs a person their data.
+        guard !(forceBlobatar && blobatarEnabled && seed != nil) else { return }
         guard let url, let loader else { return }
 
         // Cached across every row that shows the same face — and there are many: one person

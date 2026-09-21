@@ -148,6 +148,13 @@
    belongs to that person and will not change, and that nothing left the device to draw it. */
 "beta.blobatarHelp" = "Anyone without a picture of their own gets a little creature instead — their own, and the same one every time. It is drawn here on the device; nothing is sent anywhere. Groups get a cluster of the people in them rather than a letter.";
 
+"beta.blobatarForce" = "Even instead of pictures";
+
+/* Sits under the first switch and appears only with it. The second sentence is not a
+   detail: this is the only way to see the creatures in a real account, where nearly
+   everybody has a picture, and it answers "are the photographs still being fetched?". */
+"beta.blobatarForceHelp" = "Everybody gets a creature, including the people who did set a picture. Their photographs are not fetched at all.";
+
 
 
 

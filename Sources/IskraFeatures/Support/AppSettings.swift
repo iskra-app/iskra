@@ -33,6 +33,7 @@ enum AppSettings {
         TunnelSettings.enabledKey,
         BetaFeatures.nativeSidebarKey,
         BetaFeatures.blobatarKey,
+        BetaFeatures.forceBlobatarKey,
     ]
 
     @MainActor

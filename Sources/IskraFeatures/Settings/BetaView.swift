@@ -14,6 +14,7 @@ import SwiftUI
 struct BetaView: View {
     @AppStorage(BetaFeatures.nativeSidebarKey) private var nativeSidebar = BetaFeatures.nativeSidebarByDefault
     @AppStorage(BetaFeatures.blobatarKey) private var blobatar = BetaFeatures.blobatarByDefault
+    @AppStorage(BetaFeatures.forceBlobatarKey) private var forceBlobatar = BetaFeatures.forceBlobatarByDefault
 
     var body: some View {
         Form {
@@ -44,6 +45,20 @@ struct BetaView: View {
                 .accentControl()
             } footer: {
                 Text(Strings.Beta.blobatarHelp)
+            }
+
+            // Appears with the switch it depends on rather than sitting there greyed out: a
+            // disabled row is the app showing somebody a thing they cannot have and not saying
+            // why, and the answer — "turn the one above on" — is the row directly above it.
+            if blobatar {
+                Section {
+                    Toggle(isOn: $forceBlobatar.animation(.smooth(duration: Theme.Timing.reaction))) {
+                        Label(Strings.Beta.blobatarForce, systemImage: "person.crop.circle.badge.xmark")
+                    }
+                    .accentControl()
+                } footer: {
+                    Text(Strings.Beta.blobatarForceHelp)
+                }
             }
         }
         .formStyle(.grouped)
