@@ -18,9 +18,12 @@ import IskraCore
 /// whether the system draws a ringing call when it does, is answered only by a real call from a
 /// second account to a real device — exactly as `docs/PUSH-GATEWAY.md` says about the extension.
 ///
-/// Given no arguments it goes and finds a recent ring itself, the way `--probe-notification` finds
-/// a recent message: nobody has an event ID to hand, and a probe that demanded one is a probe
-/// nobody runs.
+/// **It wants both identifiers, and that is a shortfall rather than a design.**
+/// `--probe-notification` hunts for a recent message when given nothing, precisely because nobody
+/// has an event ID to hand — and the same argument applies here with more force, since a ring is
+/// rarer than a message and harder to find by eye. The hunt is not written yet: `RecentMessage`
+/// walks a timeline looking for message-like items, and a ring is not one, so it needs its own
+/// pass. Until then this prints how to find the ID by hand instead of pretending.
 enum RingProbe {
     static var wasRequested: Bool {
         CommandLine.arguments.contains("--probe-ring")
