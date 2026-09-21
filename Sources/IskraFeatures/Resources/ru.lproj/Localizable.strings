@@ -129,7 +129,7 @@
 "settings.encryption" = "Шифрование";
 
 "settings.appearance" = "Внешний вид";
-/* The settings row that leads to the unfinished things. Mac only — see `BetaFeatures`. */
+/* The settings row that leads to the unfinished things. See `BetaFeatures`. */
 "settings.beta" = "Бета-функции";
 
 "beta.title" = "Бета-функции";
@@ -141,6 +141,12 @@
 "beta.nativeSidebar" = "Родная боковая панель";
 
 "beta.nativeSidebarHelp" = "Список чатов становится обычной боковой панелью macOS: чаты собраны в разделы, поиск стоит сверху, строки прижаты друг к другу плотнее. Похоже на Почту и Заметки — и меньше похоже на телефон.";
+
+"beta.blobatar" = "Существа вместо инициалов";
+
+/* Says the two things a person actually wants to know before flipping it: that the face
+   belongs to that person and will not change, and that nothing left the device to draw it. */
+"beta.blobatarHelp" = "У кого нет аватарки, тому приложение нарисует существо: у каждого своё и всегда одно и то же. Рисуется прямо на устройстве — никуда ничего не уходит. А у групп вместо буквы соберётся кружок из тех, кто в них состоит.";
 
 
 

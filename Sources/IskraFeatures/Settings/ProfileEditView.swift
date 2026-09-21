@@ -86,7 +86,8 @@ struct ProfileEditView: View {
         VStack(spacing: Theme.Spacing.normal) {
             Avatar(name: session.displayName,
                    url: session.avatarURL,
-                   size: Theme.Size.avatarProfile)
+                   size: Theme.Size.avatarProfile,
+                   seed: session.userID)
 
             VStack(spacing: Theme.Spacing.close) {
                 Button {

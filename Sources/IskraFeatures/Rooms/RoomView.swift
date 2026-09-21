@@ -760,6 +760,7 @@ public struct RoomView: View {
                 ToolbarItem(placement: .primaryAction) {
                     RoomAvatarButton(name: timeline.roomName,
                                      avatarURL: timeline.roomAvatarURL,
+                                     avatarSeed: timeline.roomAvatarSeed,
                                      onOpenDetails: openDetails)
                 }
                 .sharedBackgroundVisibility(.hidden)
@@ -770,6 +771,7 @@ public struct RoomView: View {
                 ToolbarItem(placement: .navigation) {
                     RoomHeader(name: timeline.roomName,
                                avatarURL: timeline.roomAvatarURL,
+                               avatarSeed: timeline.roomAvatarSeed,
                                privacy: timeline.privacy,
                                subtitle: headerSubtitle,
                                onOpenDetails: openDetails)

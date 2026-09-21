@@ -233,6 +233,7 @@ struct SettingsView: View {
         ProfileHeader(name: session.displayName,
                       avatarURL: session.avatarURL,
                       subtitle: session.userID,
+                      seed: session.userID,
                       isSubtitleSelectable: true)
     }
 

@@ -82,6 +82,12 @@ public final class TimelineStore {
     /// `UserSession.details(forRoomID:)`, because that is a screenful of requests and this
     /// is a title bar.
     public private(set) var roomAvatarURL: String?
+
+    /// What a generated stand-in face for this room is computed from, when there is no picture.
+    /// See `RoomInfo.avatarSeed(besides:)` — in a personal chat it is the other person's ID.
+    /// Nil until the room info has arrived: an empty seed is a valid string and would
+    /// draw a creature of its own, so the face would change once, visibly, on load.
+    public private(set) var roomAvatarSeed: String?
     public private(set) var memberCount = 0
 
     /// The other person's Matrix ID, in a chat that has exactly one other person.
@@ -451,6 +457,9 @@ public final class TimelineStore {
         // The picture falls back to the other person's in a personal chat, exactly as the name
         // above it does — see `RoomInfo.pictureURL`.
         roomAvatarURL = info.pictureURL(besides: ownUserID)
+        // And the seed for the stand-in face, from the same place and by the same rule, so the
+        // creature in the header is the creature in the chat list rather than a second one.
+        roomAvatarSeed = info.avatarSeed(besides: ownUserID)
         memberCount = Int(info.joinedMembersCount)
         pinnedEventIDs = info.pinnedEventIds
         // The heroes are the people the server names to describe a room that has no

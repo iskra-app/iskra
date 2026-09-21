@@ -153,7 +153,8 @@ struct PinnedMessagesView: View {
             if !isOneToOne {
                 Avatar(name: message.senderName,
                        url: message.senderAvatarURL,
-                       size: Theme.Size.avatarSmall)
+                       size: Theme.Size.avatarSmall,
+                       seed: message.senderID)
             }
 
             VStack(alignment: .leading, spacing: Theme.Spacing.tight) {

@@ -32,6 +32,7 @@ enum AppSettings {
         Wallpaper.dimmingKey,
         TunnelSettings.enabledKey,
         BetaFeatures.nativeSidebarKey,
+        BetaFeatures.blobatarKey,
     ]
 
     @MainActor

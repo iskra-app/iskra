@@ -177,7 +177,8 @@ struct RoomEditView: View {
     /// than hidden in a menu on the image.
     private var picture: some View {
         VStack(spacing: Theme.Spacing.normal) {
-            Avatar(name: details.name, url: details.avatarURL, size: Theme.Size.avatarProfile)
+            Avatar(name: details.name, url: details.avatarURL, size: Theme.Size.avatarProfile,
+                   seed: details.kind == .space ? nil : details.avatarSeed)
 
             VStack(spacing: Theme.Spacing.close) {
                 Button {

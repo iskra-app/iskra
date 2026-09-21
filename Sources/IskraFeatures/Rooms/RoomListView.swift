@@ -265,7 +265,8 @@ public struct RoomListView: View {
         } label: {
             Avatar(name: session.displayName,
                    url: session.avatarURL,
-                   size: Theme.Size.avatarToolbar)
+                   size: Theme.Size.avatarToolbar,
+                   seed: session.userID)
                 .padding(Theme.Spacing.tight)
                 .navigationGlass(in: .circle)
                 .contentShape(.circle)
@@ -574,8 +575,12 @@ struct RoomRow: View {
         HStack(spacing: Theme.Spacing.normal) {
             // A space wears a square-cornered face so it reads as a space, not a chat, before its
             // name is even read — see `AvatarShape`.
-            Avatar(name: room.name, url: room.avatarURL, size: Theme.Size.roomAvatar,
-                   shape: room.isSpace ? .roundedSquare : .circle)
+            // A space is a shelf of rooms rather than somebody to look at, so it gets no
+            // creature — only the square and its initials.
+            RoomAvatar(name: room.name, url: room.avatarURL, size: Theme.Size.roomAvatar,
+                       shape: room.isSpace ? .roundedSquare : .circle,
+                       seed: room.isSpace ? nil : room.avatarSeed,
+                       faces: room.faces)
 
             VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
                 HStack(spacing: Theme.Spacing.tight) {
@@ -781,8 +786,12 @@ private struct InviteRow: View {
         HStack(spacing: Theme.Spacing.normal) {
             // A space wears a square-cornered face so it reads as a space, not a chat, before its
             // name is even read — see `AvatarShape`.
-            Avatar(name: room.name, url: room.avatarURL, size: Theme.Size.roomAvatar,
-                   shape: room.isSpace ? .roundedSquare : .circle)
+            // A space is a shelf of rooms rather than somebody to look at, so it gets no
+            // creature — only the square and its initials.
+            RoomAvatar(name: room.name, url: room.avatarURL, size: Theme.Size.roomAvatar,
+                       shape: room.isSpace ? .roundedSquare : .circle,
+                       seed: room.isSpace ? nil : room.avatarSeed,
+                       faces: room.faces)
 
             VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
                 HStack(spacing: Theme.Spacing.tight) {

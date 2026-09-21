@@ -118,7 +118,8 @@ struct CompactMessageRow: View {
     /// spoke, so the avatar is not hidden in a run — and not hidden in a direct chat either.
     @ViewBuilder
     private var avatarColumn: some View {
-        Avatar(name: message.senderName, url: message.senderAvatarURL, size: Theme.Size.avatarSmall)
+        Avatar(name: message.senderName, url: message.senderAvatarURL,
+               size: Theme.Size.avatarSmall, seed: message.senderID)
     }
 
     /// The message itself, and the grey facts at the end of it.

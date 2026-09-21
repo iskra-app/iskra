@@ -265,6 +265,9 @@ struct RoomInfoView: View {
                       // portrait is the largest this picture is ever drawn, and it would be an odd
                       // place for it to change shape.
                       shape: details.kind == .space ? .roundedSquare : .circle,
+                      // A space keeps its initials for the same reason it keeps its square: it is
+                      // a shelf of rooms, not somebody.
+                      seed: details.kind == .space ? nil : details.avatarSeed,
                       // In a one-to-one chat the line underneath is the other person's Matrix ID,
                       // which is exactly the string someone opens this screen to copy. A count of
                       // participants is not.
@@ -578,7 +581,8 @@ private struct MemberRow: View {
                               block: block)
         } label: {
             HStack(spacing: Theme.Spacing.normal) {
-                Avatar(name: member.name, url: member.avatarURL, size: Theme.Size.avatar)
+                Avatar(name: member.name, url: member.avatarURL, size: Theme.Size.avatar,
+                       seed: member.id)
 
                 VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
                     Text(member.name)

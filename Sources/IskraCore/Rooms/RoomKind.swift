@@ -110,4 +110,31 @@ extension RoomInfo {
         guard kind == .direct else { return nil }
         return counterpart(besides: ownUserID)?.avatarUrl
     }
+
+    /// The people the server offers as a description of this room, minus the user themselves.
+    ///
+    /// The comment on `pictureURL` says why one hero's photograph must never become a group's
+    /// avatar: it would label the room with the face of whoever happened to be listed first.
+    /// Several of them together is the other answer to the same question, and the honest one —
+    /// a group looks like the people in it. Three, because a fourth in a 44-point circle is a
+    /// smudge, and in that order, because the server's order is stable and a cluster that
+    /// reshuffles itself between syncs reads as a glitch.
+    func faces(besides ownUserID: String?) -> [RoomFace] {
+        heroes
+            .filter { $0.userId != ownUserID }
+            .prefix(3)
+            .map { RoomFace(id: $0.userId, name: $0.displayName ?? $0.userId, avatarURL: $0.avatarUrl) }
+    }
+
+    /// What a generated face for this room is computed from.
+    ///
+    /// The room's own ID, except in a personal chat, where the picture beside the name is the
+    /// other person's and so the creature standing in for it has to be *theirs* — the same one
+    /// they wear beside their messages inside the room, and in every other chat they are in.
+    /// Seeding that from the room ID instead would give one person a different face per
+    /// conversation, which is the opposite of what a face is for.
+    func avatarSeed(besides ownUserID: String?) -> String {
+        guard kind == .direct, let counterpart = counterpart(besides: ownUserID) else { return id }
+        return counterpart.userId
+    }
 }

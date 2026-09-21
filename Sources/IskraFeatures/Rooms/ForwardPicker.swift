@@ -27,7 +27,10 @@ struct ForwardPicker: View {
                     send(to: room.id)
                 } label: {
                     HStack(spacing: Theme.Spacing.normal) {
-                        Avatar(name: room.name, url: room.avatarURL, size: Theme.Size.avatar)
+                        RoomAvatar(name: room.name, url: room.avatarURL, size: Theme.Size.avatar,
+                                   shape: room.isSpace ? .roundedSquare : .circle,
+                                   seed: room.isSpace ? nil : room.avatarSeed,
+                                   faces: room.faces)
                         Text(room.name)
                             .font(.body)
                             .lineLimit(1)
