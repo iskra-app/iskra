@@ -100,7 +100,11 @@ struct MessageActions<Content: View>: View {
 
     /// The emoji a double tap leaves. The user's, chosen once in settings and read by every
     /// row in every conversation — see `QuickReaction`.
-    @AppStorage(QuickReaction.storageKey) private var quickReaction: QuickReaction = .default
+    ///
+    /// A `String`, because the setting is any emoji at all and not one of the six the menu bar
+    /// offers. What is stored has always been the character itself, so a choice made before that
+    /// was true reads back here unchanged.
+    @AppStorage(QuickReaction.storageKey) private var quickReaction = QuickReaction.defaultKey
 
     /// The press that opens the menu, and the double tap that does not wait for it.
     ///
@@ -264,7 +268,7 @@ struct MessageActions<Content: View>: View {
             // again, harder, and go on tapping. See `isOffline`.
             guard message.canReact, !isOffline else { return }
             quickTaps += 1
-            handlers.onToggleReaction(quickReaction.key)
+            handlers.onToggleReaction(quickReaction)
         }
     }
 

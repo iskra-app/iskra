@@ -129,6 +129,10 @@
 "settings.encryption" = "Encryption";
 
 "settings.appearance" = "Appearance";
+
+/* The settings row that leads to the emoji a double tap leaves. One word, and it is the one
+   people go looking for. */
+"settings.reactions" = "Reactions";
 /* The settings row that leads to the unfinished things. See `BetaFeatures`. */
 "settings.beta" = "Beta features";
 
@@ -860,6 +864,9 @@
 
 /* The plus at the end of the six: everything else is behind it. */
 "reactions.more" = "More emoji";
+
+/* Closes that panel when it is opened from settings as a sheet of its own. */
+"reactions.cancel" = "Cancel";
 
 /* The groups in the emoji panel. Short — they are headings over a grid, not chapter titles. */
 "reactions.recent" = "Recent";
