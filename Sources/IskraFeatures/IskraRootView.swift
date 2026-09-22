@@ -44,6 +44,10 @@ public struct IskraRootView: View {
     /// screen otherwise would.
     @AppStorage(Onboarding.welcomeSeenKey) private var hasSeenWelcome = false
 
+    /// Whether the app is in the demo rather than the real account — see `MockHomeserver`. Watched
+    /// here because switching it swaps the whole session, and this is the view that owns one.
+    @AppStorage(BetaFeatures.mockBackendKey) private var mockBackend = false
+
     /// Read here, *outside* the `NavigationSplitView`, because this is the only place it
     /// means what it appears to mean: the size class of the window. Inside the split view
     /// each column gets the size class its own width earns, so the sidebar reports
@@ -111,6 +115,12 @@ public struct IskraRootView: View {
         // otherwise find it back off, and their lock screen disagreeing with their chat list.
         // See `BetaFeatures.faceStore`.
         BetaFeatures.adoptFaceFlags()
+
+        // `Iskra --mock-backend`: straight into the demo, for a device with nobody signed in —
+        // where the switch, being in settings, cannot be reached.
+        if CommandLine.arguments.contains(BetaFeatures.mockBackendArgument) {
+            UserDefaults.standard.set(true, forKey: BetaFeatures.mockBackendKey)
+        }
     }
 
     public var body: some View {
@@ -192,6 +202,9 @@ public struct IskraRootView: View {
                     // conversations on the screen behind the prompt, and the question means what
                     // it says.
                     .task {
+                        // Not for the demo. A pusher registered for a made-up account would be a
+                        // pusher pointing this phone's token at a server that does not exist.
+                        guard !session.isDemo else { return }
                         PushPermission.shared.signedIn(session)
                         await PushPermission.shared.request()
                         // And ask the server to tell us about reactions, which by default it will
@@ -259,7 +272,9 @@ public struct IskraRootView: View {
                     // Keep the App-Intents chat directory in step, so Siri and Shortcuts can list the
                     // conversations without waking a client — see `ChatDirectory`.
                     .onChange(of: session.roomList.rooms, initial: true) { _, rooms in
-                        writeChatDirectory(rooms)
+                        // Siri's list is the real account's. Made-up chats in it would outlive
+                        // the demo and send somebody's dictated message nowhere.
+                        if !session.isDemo { writeChatDirectory(rooms) }
                         // And the number on the icon, from the same list and at the same moment,
                         // so that reading a chat takes the count down without anybody asking it to.
                         AppBadge.update(for: rooms)
@@ -297,6 +312,10 @@ public struct IskraRootView: View {
             }
         }
         .animation(.smooth, value: isSignedIn)
+        // The demo switch, flipped in settings, from inside the very session it replaces.
+        .onChange(of: mockBackend) { _, _ in
+            Task { await switchBackend() }
+        }
         .alert(Text(Strings.Session.endedTitle), isPresented: $wasSignedOutRemotely) {
             Button(String(app: Strings.Problem.ok), role: .cancel) {}
         } message: {
@@ -399,6 +418,8 @@ public struct IskraRootView: View {
     /// messages it queued. Draining is one-shot — the reads clear the shared slots — so this is safe
     /// to call on every foreground.
     private func handleIntents(_ session: UserSession) async {
+        // What Shortcuts left in the outbox is for the real account, and waits for it.
+        guard !session.isDemo else { return }
         if let roomID = ChatDirectory.takePendingOpen() {
             selectedRoomID = roomID
         }
@@ -426,6 +447,15 @@ public struct IskraRootView: View {
     /// and deletes the encrypted store — and while it ran, the screen it was pressed on sat there
     /// looking untouched. So it got pressed again. Now the caller can await it and say so.
     private func signOut(_ session: UserSession) async {
+        // Signing out of the demo is leaving it. Nothing below applies: there is no pusher to
+        // take down, and `AppSettings.forget()` would take the real account's preferences with it.
+        // Turning the switch off is what `switchBackend` answers, and it goes back to the account
+        // that was there before — or to the sign-in screen, if there was none.
+        if session.isDemo {
+            mockBackend = false
+            return
+        }
+
         // Before the session goes, because telling the server to stop pushing here is a request
         // that needs the session to make it. Without it the homeserver goes on pushing this
         // account's messages to a phone that has been signed out of: the extension wakes, finds
@@ -482,6 +512,26 @@ public struct IskraRootView: View {
     /// `restore()` again — which builds a fresh client from the session that is still, untouched,
     /// in the Keychain. Nobody is signed out; the account, the keys and the messages on the server
     /// are exactly where they were, and what was thrown away downloads again.
+    /// The session on screen, whichever phase it is in.
+    private var currentSession: UserSession? {
+        switch phase {
+        case let .settingUp(session), let .decorating(session), let .signedIn(session): session
+        case .starting, .signedOut, .offline: nil
+        }
+    }
+
+    /// Between the demo and the real account, in whichever direction the switch went.
+    ///
+    /// The session going away is *closed*, not signed out: whichever of the two it is, it is still
+    /// there to come back to. Then the app starts over, and `restore()` reads the switch.
+    private func switchBackend() async {
+        // Already starting: `restore()` has not got as far as reading the switch, or is the one
+        // that just turned it off because the demo would not start.
+        if case .starting = phase { return }
+        await currentSession?.close()
+        restart()
+    }
+
     private func restart() {
         selectedRoomID = nil
         selectedEventID = nil
@@ -571,6 +621,22 @@ public struct IskraRootView: View {
         // nothing pointing at it. This is the one moment it is safe to say so; see
         // `sweepOrphanedStores`.
         await authentication.sweepOrphanedStores()
+
+        // The demo, when the switch says so. It is restored *instead of* the real session and never
+        // on top of it: the Keychain is not read, so nothing of the real account is even opened.
+        if mockBackend {
+            do {
+                let session = try await authentication.startDemoSession()
+                phase = .signedIn(session)
+                try? await session.start()
+                return
+            } catch {
+                // Not the user's problem to diagnose and not worth a sentence on screen: the switch
+                // goes back off, which is itself the message, and the real account opens instead.
+                Log.session.error("the demo would not start: \(Log.describe(error), privacy: .public)")
+                mockBackend = false
+            }
+        }
 
         do {
             if let session = try await authentication.restorePreviousSession() {

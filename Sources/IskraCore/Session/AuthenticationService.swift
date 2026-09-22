@@ -64,7 +64,7 @@ public enum AuthenticationError: Error {
 /// Nothing here logs a token, a password, or a callback URL — callback URLs carry
 /// the authorization code, so they are as sensitive as the token they buy.
 public actor AuthenticationService {
-    private let environment: AppEnvironment
+    let environment: AppEnvironment
     private let sessionStore: SessionStore
 
     /// The local listener the SDK is pointed at while the bridge switch is on. Owned here because

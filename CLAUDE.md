@@ -97,6 +97,31 @@ entitlements — it runs in the *app's* process, and the `.appex` is a different
 the App Group and the Keychain separately — and nothing but a real push proves that iOS wakes the
 extension at all.
 
+### The demo server
+
+Settings → Beta features → **Demo server** (`BetaFeatures.mockBackendKey`) swaps the real account
+for a made-up one on a homeserver that lives inside the app (`IskraCore/MockBackend/`). It is there
+for looking at every screen with something on it: DMs and groups, a photo, a voice message, a file,
+a location, a poll, edits, reactions, a deleted message, a pinned one, a mention, a space, an
+invitation, a room long enough to paginate, and people who answer (with "typing…") when you write.
+
+It is **not** a fake of the stores. `MockHomeserver` is an `HTTPUpstream` behind the same
+`LocalHTTPProxy` the bridge uses, so the real SDK, sliding sync, send queue and every store run
+unchanged against it — which is why it can show a screen's real behaviour and why nothing above
+`IskraCore` had to learn about it. `DemoBackendTests` drives it through the real SDK end to end and
+pins that nothing the SDK asks for falls through as "unrecognized"; when a screen misbehaves only in
+the demo, that list (`MockHomeserver.unrecognized`, also logged under `session`) is the first place
+to look.
+
+What it must never do is touch the real account, and three things hold that line: no tokens go
+into the Keychain (the store's passphrase is random and the store is wiped every time the demo
+starts); `UserSession.isDemo` turns sign-out and "ended elsewhere" into *leaving the demo*, never
+`SessionStore.clear`; and the root view skips pushers, the Siri directory and the Shortcuts outbox
+for it. The server's memory lasts one launch.
+
+The switch is behind sign-in, so `Iskra --mock-backend` turns it on from the command line for a
+device with nobody signed in — `./device.sh -- --mock-backend`. It stays on until turned off.
+
 ## Architecture
 
 Three SwiftPM library targets, and the dependency rule between them is the whole design:

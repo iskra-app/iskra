@@ -1134,6 +1134,10 @@ public enum Strings {
 
         public static let blobatarForce = LocalizedStringResource("beta.blobatarForce", bundle: bundle)
         public static let blobatarForceHelp = LocalizedStringResource("beta.blobatarForceHelp", bundle: bundle)
+
+        /// The in-process demo server — see `MockHomeserver`.
+        public static let mockBackend = LocalizedStringResource("beta.mockBackend", bundle: bundle)
+        public static let mockBackendHelp = LocalizedStringResource("beta.mockBackendHelp", bundle: bundle)
     }
 
     public enum Settings {
