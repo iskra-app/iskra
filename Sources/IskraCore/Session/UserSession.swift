@@ -123,12 +123,33 @@ public final class UserSession {
     /// which is what the view was assuming all along.
     ///
     /// Weakly, because the screen owns the store and this is only a way to reach it. When the room
-    /// closes, the box empties on its own and the next visit builds a new one.
+    /// closes, the box empties on its own and the next visit builds a new one — except for the
+    /// handful in `recentTimelines`, which are deliberately kept.
     private var openTimelines: [String: WeakBox<TimelineStore>] = [:]
 
     private struct WeakBox<T: AnyObject> {
         weak var value: T?
     }
+
+    /// The last few conversations, kept alive after their screen has gone.
+    ///
+    /// Leaving a room used to throw its store away, so coming back a moment later rebuilt it from
+    /// nothing: a new timeline, a listener that opens with an empty reset, and the whole first
+    /// screenful fetched again before there was a word to show. Going back and forth between two
+    /// chats — which is most of how a messenger is used — paid that price every single time, and
+    /// it is the price the reader reads as "the app is slow to open a chat".
+    ///
+    /// A kept store comes back already holding its rows. `stop()` is a pause and leaves them
+    /// alone, and `start()` finds them there and takes the reopening path, which holds the
+    /// conversation on screen while it catches up. So the second visit has nothing to wait for.
+    ///
+    /// Three, and no cleverness beyond that. It is the depth of the "ask a question in one chat,
+    /// answer it in another, go back" that this exists for; a longer list would hold SDK timeline
+    /// items for rooms nobody is going to open again. Most recent first.
+    private var recentTimelines: [TimelineStore] = []
+
+    /// How many conversations are kept. See `recentTimelines`.
+    private static let timelinesKept = 3
 
     /// Starts the sync loop. Everything else follows from this.
     public func start() async throws {
@@ -218,13 +239,20 @@ public final class UserSession {
     /// reaction the user left from one they merely received — see `MessageReaction`.
     public func timeline(forRoomID roomID: String) -> TimelineStore? {
         // The one that is already open, if this room is the one on screen. See `openTimelines`.
-        if let open = openTimelines[roomID]?.value { return open }
+        if let open = openTimelines[roomID]?.value {
+            // Opened again, so it goes back to the front of the queue rather than ageing out
+            // while it is being read. See `recentTimelines`.
+            keep(open)
+            return open
+        }
 
         guard let room = roomList.room(withID: roomID) ?? (try? client.getRoom(roomId: roomID)) else {
             return nil
         }
 
         let store = TimelineStore(room: room, ownUserID: userID)
+
+        keep(store)
 
         // The empty boxes go on the way past. There is no timer and no bookkeeping: a box is added
         // only when a room is opened, and nobody opens enough rooms in one sitting for the sweep to
@@ -233,6 +261,20 @@ public final class UserSession {
         openTimelines[roomID] = WeakBox(value: store)
 
         return store
+    }
+
+    /// Moves a conversation to the front of the kept few, and lets the oldest go. See
+    /// `recentTimelines`.
+    ///
+    /// The one being dropped is *not* stopped on the way out. It was stopped when its screen went
+    /// away, and if it was not — a room still open in the detail column beside the list — then it
+    /// is still somebody's, and this is only letting go of a second reference to it.
+    private func keep(_ store: TimelineStore) {
+        recentTimelines.removeAll { $0 === store }
+        recentTimelines.insert(store, at: 0)
+        if recentTimelines.count > Self.timelinesKept {
+            recentTimelines.removeLast(recentTimelines.count - Self.timelinesKept)
+        }
     }
 
     /// Everything the room-info screen needs, built only when it is opened.
@@ -457,6 +499,8 @@ public final class UserSession {
             box.value?.stop()
         }
         openTimelines = [:]
+        // The kept conversations go too. They are rooms in a store that is about to be deleted.
+        recentTimelines = []
 
         // Nothing to tell any more, and nobody to tell. The closure holds `self` weakly, so this is
         // not a leak being cleaned up — it is the store being left with no reason to call into a

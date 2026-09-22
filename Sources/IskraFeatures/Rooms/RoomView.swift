@@ -231,18 +231,6 @@ public struct RoomView: View {
 
     @State private var scrollPosition = ScrollPosition()
 
-    /// The messages that are still in the send queue, which are the only rows that can ever leave
-    /// the conversation — see the `.animation` on the stack, which exists for exactly that and
-    /// watches this.
-    private var unsentIDs: [String] {
-        timeline.rows.compactMap { row in
-            guard let message = row.message,
-                  let delivery = message.delivery,
-                  delivery == .sending || delivery.hasFailed else { return nil }
-            return message.id
-        }
-    }
-
     /// The message the conversation has just been sent to by pressing a quote, lit until the
     /// reader has had time to see which one it is — and the timer that puts it out. See `light`.
     @State private var highlighted: String?
@@ -351,43 +339,25 @@ public struct RoomView: View {
 
                     endMarker
                 }
-                // A message leaving the conversation is the one change here worth animating.
+                // One scope, and it exists for one thing: a message arriving.
                 //
-                // There are two ways it can go, and they look different because they *are*
-                // different. A redaction leaves the row behind — the bubble collapses into
-                // the grey "message deleted" line, which `MessageRow` animates itself. A
-                // message that never left the device is lifted out of the send queue and the
-                // row goes with it, and that removal is a change to this array, so only the
-                // list around it can animate it: hence the transition on the row and the
-                // animation scope here.
+                // A transition does not run on its own. SwiftUI plays the insertion a row asks
+                // for only when the change that inserted it was made inside an animated
+                // transaction, so without a scope here the arrival on `MessageRow` would never
+                // be seen — and everything this scope *does* cover is animated whether it wanted
+                // to be or not. That cuts both ways, and the second half is the bug this
+                // replaced: the scope used to watch the send queue, so the instant a message
+                // went from sending to sent — the clock turning into a tick — its id left that
+                // list, the whole stack was animated, and every other change riding in the same
+                // pass was animated with it. The state changes that were supposed to be
+                // instantaneous were animated by the thing meant to animate arrivals.
                 //
-                // Scoped to the identities, not to the rows themselves. Every delivery tick
-                // and every reaction rewrites a row without changing the shape of the list,
-                // and animating the whole stack each time one of them lands would set the
-                // conversation quietly shifting under the reader for no reason.
-                //
-                // And scoped to the *end* of the list, because the removals it exists for all
-                // happen there: an unsent message is at the bottom by definition. A page of
-                // history arriving at the top also changes the identities, and watching the
-                // whole list meant animating twenty-five rows into existence above the reader —
-                // which grows the content over a quarter of a second rather than at once, so
-                // there is no single moment at which the scroll view can be put back where it
-                // was. The tail cannot be changed by pagination, so it is the honest thing to
-                // watch.
-                //
-                // And nothing at all until the room has settled: while it is still assembling
-                // itself every batch of diffs changes these identities, and an animation on that
-                // is the whole column sliding into place several times over. See `hasSettled`.
-                //
-                // What it watches is not the tail of the conversation any more but the messages
-                // that have not left the device — which is the same set, named honestly. The tail
-                // was a guess that an unsent message is at the bottom, and in a short room it was
-                // also every other row: a page of history landing in a five-message chat changed
-                // the last twenty ids, and the animation this scope exists for ran over the whole
-                // column. Watching the send queue cannot be moved by pagination, because history
-                // has all been sent.
-                .animation(hasSettled ? .smooth(duration: Theme.Timing.deletion) : nil,
-                           value: unsentIDs)
+                // So it watches the end of the conversation, which is the only place an arrival
+                // can happen. A tick, a reaction, an edit, a redaction: the last row's identity
+                // is unchanged, no transaction is animated, and the row changes at once. A page
+                // of history is added above, so it does not change either. A message being said
+                // does change it — which is the whole list of what may move.
+                .animation(hasSettled ? Theme.Timing.arrival : nil, value: timeline.rows.last?.id)
                 // The typing bubble sliding in and out is its own change, not a change to the rows,
                 // so it needs its own scope — see `TypingBubble`, which carries the transition.
                 .animation(.smooth(duration: Theme.Timing.chrome), value: timeline.typing.isEmpty)
@@ -746,7 +716,19 @@ public struct RoomView: View {
                     return
                 }
 
-                withAnimation(.smooth) { scroll.scrollTo(last, anchor: .bottom) }
+                // Animated once the room is up, and plainly before that — which is not a
+                // nicety. `withAnimation` animates *every* change in the pass it wraps, so while
+                // the opening fetch was still landing batch after batch, this turned each batch
+                // into an animated transaction: the scroll glided, and the rows arriving in the
+                // same pass played their transitions inside it. The room assembled itself in
+                // front of the reader with a different piece of it moving every few hundred
+                // milliseconds, and it came from the one line here that looks like it is only
+                // about scrolling.
+                if hasSettled {
+                    withAnimation(.smooth) { scroll.scrollTo(last, anchor: .bottom) }
+                } else {
+                    scroll.scrollTo(last, anchor: .bottom)
+                }
             }
             // Laid out from the first row, shown only when there is a whole conversation to
             // show — see `isRevealed`. Opacity and not an `if`: the scroll view has to exist and
