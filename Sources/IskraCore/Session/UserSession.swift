@@ -65,6 +65,17 @@ public final class UserSession {
     let client: Client
     private let authentication: AuthenticationService
 
+    /// Whether this is the made-up account on the in-process demo server — see `MockHomeserver`.
+    ///
+    /// It changes exactly two things, both about leaving: signing out of the demo must not sign
+    /// the device out of the real account, and the demo cannot be "ended elsewhere". Everything
+    /// else is the same session, which is the point of it.
+    public let isDemo: Bool
+
+    /// Where this session's stores are, when that is not what the Keychain says — which is only the
+    /// demo, whose store the Keychain has never heard of.
+    private let storageLocations: [StorageKind: URL]?
+
     /// What the connection is doing right now: direct, or through the local listener.
     ///
     /// Forwarded rather than exposing the service itself — the settings screen needs this one
@@ -73,9 +84,12 @@ public final class UserSession {
         await authentication.tunnelStatus()
     }
 
-    public init(client: Client, authentication: AuthenticationService) {
+    public init(client: Client, authentication: AuthenticationService, isDemo: Bool = false,
+                storageLocations: [StorageKind: URL]? = nil) {
         self.client = client
         self.authentication = authentication
+        self.isDemo = isDemo
+        self.storageLocations = storageLocations
         let userID = (try? client.userId()) ?? ""
         self.userID = userID
         self.deviceID = try? client.deviceId()
@@ -224,6 +238,9 @@ public final class UserSession {
         // Not `signOut()`: that one asks the server to forget the device, and the server has
         // already forgotten it. The local half — keys, tokens, the encrypted store — happens
         // exactly as it would have.
+        //
+        // Never for the demo. The session in the Keychain is somebody's real one.
+        guard !isDemo else { return }
         await authentication.forgetSession()
     }
 
@@ -410,7 +427,7 @@ public final class UserSession {
     /// sync service down and bringing it back up, and the room list is the only thing that holds
     /// one.
     public func storage() -> StorageStore {
-        StorageStore(client: client, roomList: roomList, locations: authentication.storageURLs())
+        StorageStore(client: client, roomList: roomList, locations: storageLocations ?? authentication.storageURLs())
     }
 
     // MARK: - Changing who you are
@@ -482,7 +499,18 @@ public final class UserSession {
         // been unlinked underneath it. See `openTimelines`.
         await stopEverything()
 
+        // The demo's store is thrown away when the next demo starts, and the Keychain it would
+        // otherwise empty belongs to the real account. See `DemoBackend`.
+        guard !isDemo else { return }
         await authentication.signOut(client: client)
+    }
+
+    /// Stops the session without signing out of anything — for switching between the demo and the
+    /// real account, where both are still there afterwards.
+    public func close() async {
+        authErrorHandle?.cancel()
+        authErrorHandle = nil
+        await stopEverything()
     }
 
     /// The app has gone into the user's pocket, or come back out of it.

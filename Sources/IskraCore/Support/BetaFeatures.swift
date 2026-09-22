@@ -68,6 +68,19 @@ public enum BetaFeatures {
     /// photograph.
     public static let forceBlobatarByDefault = false
 
+    /// Whether the app talks to the made-up server inside it instead of the real account — see
+    /// `MockHomeserver`. For looking at every screen with something on it, without anybody's
+    /// conversations and without a network.
+    ///
+    /// Off, obviously. And it touches nothing on the way in or out: the real session stays in the
+    /// Keychain the whole time, and turning this off goes back to it.
+    public static let mockBackendKey = "beta.mockBackend"
+
+    /// What `Iskra --mock-backend` means: start in the demo, as though the switch were on. The
+    /// switch is in settings, and settings are behind signing in — so without this, the demo
+    /// could not be reached from a device that has no account on it.
+    public static let mockBackendArgument = "--mock-backend"
+
     /// Whether there is anything in here to show on this platform.
     ///
     /// True everywhere now, and it was not always: the first experiment here was about a sidebar
@@ -128,6 +141,7 @@ public enum BetaFeatures {
     /// `AppSettings.forget()` walks on sign-out. A flag emptied from the wrong store survives a
     /// sign-out silently, and the next person inherits somebody else's experiment.
     public static var stores: [(key: String, store: UserDefaults?)] {
-        [(nativeSidebarKey, nil), (blobatarKey, faceStore), (forceBlobatarKey, faceStore)]
+        [(nativeSidebarKey, nil), (blobatarKey, faceStore), (forceBlobatarKey, faceStore),
+         (mockBackendKey, nil)]
     }
 }

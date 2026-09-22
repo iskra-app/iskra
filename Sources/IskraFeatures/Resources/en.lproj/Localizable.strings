@@ -181,6 +181,12 @@
    everybody has a picture, and it answers "are the photographs still being fetched?". */
 "beta.blobatarForceHelp" = "Everybody gets a creature, including the people who did set a picture. Their photographs are not fetched at all.";
 
+"beta.mockBackend" = "Demo server";
+
+/* The last sentence is the one that matters: whoever turns this on is first of all afraid
+   of losing their real account. */
+"beta.mockBackendHelp" = "A made-up account instead of yours, with chats, photos, voice messages and even an invitation already in it. The server lives inside the app and never goes online. Your own account stays where it is: turn this off and you are back in it.";
+
 
 
 

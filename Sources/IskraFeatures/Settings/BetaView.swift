@@ -16,6 +16,7 @@ struct BetaView: View {
     @AppStorage(BetaFeatures.nativeSidebarKey) private var nativeSidebar = BetaFeatures.nativeSidebarByDefault
     @AppStorage(BetaFeatures.blobatarKey, store: BetaFeatures.faceStore) private var blobatar = BetaFeatures.blobatarByDefault
     @AppStorage(BetaFeatures.forceBlobatarKey, store: BetaFeatures.faceStore) private var forceBlobatar = BetaFeatures.forceBlobatarByDefault
+    @AppStorage(BetaFeatures.mockBackendKey) private var mockBackend = false
 
     var body: some View {
         Form {
@@ -60,6 +61,18 @@ struct BetaView: View {
                 } footer: {
                     Text(Strings.Beta.blobatarForceHelp)
                 }
+            }
+
+            // Flipping it takes the whole app with it — `IskraRootView` watches the same key and
+            // swaps the session underneath this screen, so the switch is the last thing touched
+            // in the account it was touched in. No confirmation: nothing is lost either way.
+            Section {
+                Toggle(isOn: $mockBackend) {
+                    Label(Strings.Beta.mockBackend, systemImage: "theatermasks")
+                }
+                .accentControl()
+            } footer: {
+                Text(Strings.Beta.mockBackendHelp)
             }
         }
         .formStyle(.grouped)
