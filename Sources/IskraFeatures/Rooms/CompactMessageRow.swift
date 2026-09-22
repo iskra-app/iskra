@@ -18,7 +18,9 @@ import IskraDesign
 /// the avatar and the name in a conversation with one other person, because the side of the
 /// screen is already saying who spoke and a name would be repeating it. Here nothing else says
 /// it. A direct chat without names would be an anonymous column of sentences — two people
-/// talking, and nothing attached to either. So this row never asks.
+/// talking, and nothing attached to either. So this row never asks *who* — but it does ask
+/// *again*: within a run the face and the name are drawn once, over the first line, and the
+/// rest are indented under it.
 ///
 /// **The clock stays on every line rather than moving into the header**, which is where the
 /// shape this borrows from puts it. `TimelineMapper.runWindow` bounds the gap between *any two
@@ -103,12 +105,23 @@ struct CompactMessageRow: View {
         .arrives(arrivesAnimated)
     }
 
-    /// The face on every line. In the compact column the sender is the only thing that says who
-    /// spoke, so the avatar is not hidden in a run — and not hidden in a direct chat either.
+    /// The face over a run, and an empty column of exactly its width under it.
+    ///
+    /// Only the first message of a run carries the avatar — the same rule as `MessageRow`, and
+    /// for the same reason: a face repeated down five consecutive lines from one person says
+    /// nothing the first one did not, and it turns a run into five separate arrivals. The lines
+    /// after it are indented by `avatarSize` so the run still starts on one column.
+    ///
+    /// What does *not* follow the bubbles is dropping it in a direct chat. There is no
+    /// `isOneToOne` here, because nothing else in this row says who spoke.
     @ViewBuilder
     private var avatarColumn: some View {
-        Avatar(name: message.senderName, url: message.senderAvatarURL,
-               size: Theme.Size.avatarSmall, seed: message.senderID)
+        if message.isContinuation {
+            Color.clear.frame(width: avatarSize)
+        } else {
+            Avatar(name: message.senderName, url: message.senderAvatarURL,
+                   size: Theme.Size.avatarSmall, seed: message.senderID)
+        }
     }
 
     /// The message itself, and the grey facts at the end of it.
