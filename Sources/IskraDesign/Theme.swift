@@ -188,6 +188,16 @@ public enum Theme {
         /// not the same gesture.
         public static let arrival: Animation = .spring(duration: 0.32, bounce: 0.18)
 
+        /// How long a room that has just opened stays perfectly still before it is allowed to
+        /// animate anything.
+        ///
+        /// A conversation does not arrive in one piece — the first page comes in batches, the
+        /// events decrypt after they are drawn, and their pictures land after that. Every one of
+        /// those is a change to the list, and a list that animates its changes spends the first
+        /// half-second of every room sliding. So it does not: it is drawn where it is, and only
+        /// then does movement start to mean something. See `RoomView.hasSettled`.
+        public static let timelineSettles: Duration = .milliseconds(400)
+
         /// A video note growing as it starts, and settling back when it ends.
         ///
         /// A spring rather than a duration, because the circle should arrive with a little
