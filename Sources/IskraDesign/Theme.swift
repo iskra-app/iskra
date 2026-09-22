@@ -185,6 +185,10 @@ public enum Theme {
         /// want to scroll away. See `RoomView.followsEnd`.
         public static let endIsHeld: Duration = .milliseconds(700)
 
+        /// How often the end is asked for again while it is being held. See
+        /// `Timing.endIsHeld` and `RoomView.followEnd()`.
+        public static let endIsCheckedEvery: Duration = .milliseconds(50)
+
         /// How long a room that has just opened stays perfectly still before it is allowed to
         /// animate anything.
         ///
