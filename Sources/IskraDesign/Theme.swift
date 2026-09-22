@@ -198,6 +198,14 @@ public enum Theme {
         /// then does movement start to mean something. See `RoomView.hasSettled`.
         public static let timelineSettles: Duration = .milliseconds(400)
 
+        /// The longest a room will stay blank waiting to be shown whole.
+        ///
+        /// A conversation is fetched in several round trips, and it is not shown until they are
+        /// done — see `RoomView.isRevealed`. That is a promise about somebody else's server, so
+        /// there is a floor under it: past this, the room shows what it has, because a partly
+        /// fetched conversation beats an empty screen that goes on being empty.
+        public static let roomWaitsToBeSeen: Duration = .milliseconds(2500)
+
         /// A video note growing as it starts, and settling back when it ends.
         ///
         /// A spring rather than a duration, because the circle should arrive with a little
