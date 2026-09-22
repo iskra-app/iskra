@@ -125,7 +125,15 @@ public final class UserSession {
     /// Weakly, because the screen owns the store and this is only a way to reach it. When the room
     /// closes, the box empties on its own and the next visit builds a new one — except for the
     /// handful in `recentTimelines`, which are deliberately kept.
-    private var openTimelines: [String: WeakBox<TimelineStore>] = [:]
+    ///
+    /// **`@ObservationIgnored`, and it has to be.** This is read from inside a view's `body` —
+    /// that is the whole point of it — and it is written on the way past. On an `@Observable`
+    /// class, a write is an invalidation of every view observing the session, so a write during
+    /// a body is a body that asks to be run again, which writes again. It is not a slow loop: it
+    /// spins the main thread at 100%, the app shows a white screen, and the footprint was past a
+    /// gigabyte by the time it was sampled. A cache is not state anybody is watching, and saying
+    /// so here is what keeps it out of the view graph.
+    @ObservationIgnored private var openTimelines: [String: WeakBox<TimelineStore>] = [:]
 
     private struct WeakBox<T: AnyObject> {
         weak var value: T?
@@ -146,7 +154,15 @@ public final class UserSession {
     /// Three, and no cleverness beyond that. It is the depth of the "ask a question in one chat,
     /// answer it in another, go back" that this exists for; a longer list would hold SDK timeline
     /// items for rooms nobody is going to open again. Most recent first.
-    private var recentTimelines: [TimelineStore] = []
+    ///
+    /// Ordered by when a store was *built*, and not touched again when one is handed out a second
+    /// time. A room being read is held by its own screen and needs nothing from this list, so
+    /// re-ordering on read would buy nothing — and it is a write on the one path that is walked
+    /// from inside a view's body. See the note on `openTimelines`.
+    /// `@ObservationIgnored` for the same reason as `openTimelines`, and this is the one that
+    /// proved it: bumping a conversation to the front on every read put a write in the middle of
+    /// a body that had just read it.
+    @ObservationIgnored private var recentTimelines: [TimelineStore] = []
 
     /// How many conversations are kept. See `recentTimelines`.
     private static let timelinesKept = 3
@@ -239,12 +255,7 @@ public final class UserSession {
     /// reaction the user left from one they merely received — see `MessageReaction`.
     public func timeline(forRoomID roomID: String) -> TimelineStore? {
         // The one that is already open, if this room is the one on screen. See `openTimelines`.
-        if let open = openTimelines[roomID]?.value {
-            // Opened again, so it goes back to the front of the queue rather than ageing out
-            // while it is being read. See `recentTimelines`.
-            keep(open)
-            return open
-        }
+        if let open = openTimelines[roomID]?.value { return open }
 
         guard let room = roomList.room(withID: roomID) ?? (try? client.getRoom(roomId: roomID)) else {
             return nil
