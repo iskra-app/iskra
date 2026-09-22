@@ -334,6 +334,21 @@ Apple's own guidance is that an icon picker ships its own preview images, and th
 240, carrying its own rounded corner and transparent outside, so the tile neither masks it nor puts
 a shape behind it.
 
+**They are loaded from their file URL, never by name.** `Image("icon-x", bundle: .module)` resolves
+through an asset catalog, and a SwiftPM resource directory has none: the lookup misses, SwiftUI
+draws an empty view, and nothing is written anywhere — eight blank tiles and a clean log. Asking
+`UIImage(named:in:)` whether the picture is there does not catch it either, because *that* does
+fall back to loose files and answers yes about an image SwiftUI will never find. So
+`HomeIcon.previewURL` is the single way in, for the tile and for `--probe-icons` alike, and
+`HomeIconPreviewTests` holds every icon to having a file and every file to having an icon.
+
+**And `alternateIconName` cannot be read literally.** `nil` is UIKit's word for "the icon the app
+shipped with", and it is also what the Simulator answers after a change that plainly worked. Taken
+at face value it wiped the ring off the chosen tile every time the screen was left and returned
+to, while the home screen went on showing the right icon. `HomeIcons` therefore writes the choice
+down in `UserDefaults.standard` and falls back to it when UIKit names nothing; the note is written
+only after a change the system accepted, so a refusal cannot make the ring lie either.
+
 The tiles used to be **drawn** instead, by a `SparkShape` reading a symlink into the icon document,
 and that was right while every icon was the same spark on a different ground: nothing could drift.
 It stopped being right rather than stopped working — `iskra-retro` knocks the spark out of a disc

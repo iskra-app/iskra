@@ -90,10 +90,19 @@ struct HomeIconView: View {
         let side = Theme.Size.appIconTile
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.appIcon(side: side), style: .continuous)
 
-        return candidate.preview
-            .resizable()
-            .interpolation(.high)
-            .frame(width: side, height: side)
+        return Group {
+            if let preview = candidate.preview {
+                preview
+                    .resizable()
+                    .interpolation(.high)
+            } else {
+                // Not nothing. A preview that failed to load would otherwise be a gap in the
+                // grid with a name under it, which reads as a bug in the icon rather than in
+                // the app — see `HomeIcon.preview`, and `--probe-icons`, which names the file.
+                shape.fill(.quaternary)
+            }
+        }
+        .frame(width: side, height: side)
             .overlay {
                 // A ring on the chosen one, set off the tile so it reads as a ring rather than
                 // as an edge the artwork happens to have — the same device the colour swatches

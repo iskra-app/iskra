@@ -152,7 +152,7 @@
 "appIcon.garnet" = "Garnet";
 "appIcon.pine" = "Pine";
 "appIcon.rio" = "Rio de Janeiro";
-"appIcon.blackWhite" = "W/b";
+"appIcon.blackWhite" = "B/w";
 "appIcon.retro" = "Retro";
 "appIcon.letters" = "Letters";
 /* The settings row that leads to the unfinished things. See `BetaFeatures`. */
