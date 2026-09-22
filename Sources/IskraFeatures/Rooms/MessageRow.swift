@@ -123,43 +123,11 @@ struct MessageRow: View {
         // over when it is read, a reaction lands under it, an edit rewrites it, a redaction
         // replaces it with the grey line. None of those are things the message does, they are
         // facts becoming true, and a fact that eases into place asks the eye to watch a row
-        // the reader had finished with. The reactions and the redaction each used to have a
-        // `.animation(value:)` here; they are gone deliberately, and a new one should not be
-        // added without the same question being asked of it.
+        // the reader had finished with.
         //
-        // And when the row really does leave — a message thrown out of the send queue,
-        // which never reached anyone and leaves no trace behind it — it shrinks away
-        // instead of blinking out. The animation that drives this belongs to the list, not
-        // to the row: see `RoomView`.
-        .transition(.asymmetric(insertion: arrival,
-                                removal: .scale(scale: 0.85).combined(with: .opacity)))
-    }
-
-    /// A message coming in: it rises into place from below, the way a conversation grows.
-    ///
-    /// Up from the bottom and not down from the top, and that is the whole of what an arrival
-    /// should look like here — the end of the conversation is at the foot of the screen, so a new
-    /// message comes from *there*, out of the composer, and settles into the row it now owns.
-    /// Anything that drops in from above is a message falling into a conversation rather than
-    /// being added to it, which is exactly how the old scale-from-the-corner read once several of
-    /// them landed at once.
-    ///
-    /// Drawn, not laid out, and the difference is not taste — it is the same reason the transition
-    /// was a `.scale` before. `.move` offsets the row's picture; the row takes its full height the
-    /// instant it exists, so the conversation is exactly as tall during the animation as it is
-    /// after it. A transition that changed the *height* over a third of a second would grow the
-    /// content in a dozen steps, and every one of them is a size change the scroll view answers:
-    /// the reader standing halfway up a busy room would watch it drift under them while a message
-    /// they cannot see arrives below. See the `held` metrics in `RoomView`, which exist to correct
-    /// exactly that.
-    private var arrival: AnyTransition {
-        guard arrivesAnimated else { return .identity }
-
-        return .move(edge: .bottom)
-            .combined(with: .opacity)
-            // Its own animation, overriding the scope around the list. That one is the deletion's
-            // and is deliberately slower — see `Theme.Timing.arrival`.
-            .animation(Theme.Timing.arrival)
+        // The arrival, which is the one thing that does move, is `arrives` below. It is not a
+        // `.transition`, and that is the point of it.
+        .arrives(arrivesAnimated)
     }
 
     // MARK: - The bubble, and what can be done to it

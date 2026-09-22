@@ -331,36 +331,34 @@ public struct RoomView: View {
                     // Someone writing, shown as an unfinished incoming message at the foot of the
                     // conversation — the header says who, this is the animation of it. It rides the
                     // bottom animation scope below, so it slides in and out rather than popping.
-                    if !timeline.typing.isEmpty {
-                        TypingBubble()
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.top, Theme.Spacing.withinRun)
+                    Group {
+                        if !timeline.typing.isEmpty {
+                            TypingBubble()
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.top, Theme.Spacing.withinRun)
+                        }
                     }
+                    .animation(.smooth(duration: Theme.Timing.chrome), value: timeline.typing.isEmpty)
 
                     endMarker
                 }
-                // One scope, and it exists for one thing: a message arriving.
+                // **No `.animation` here, and none may be added.** This modifier wraps the
+                // whole conversation, and an implicit scope animates *every* animatable value in
+                // what it wraps whenever the one value it watches changes — so a scope here is a
+                // standing offer to animate a delivery tick, a reaction, an edit or a redaction
+                // because something else happened in the same pass. That is the bug that came
+                // back three times under three different values: the tail of the list, then the
+                // send queue, then the end of the conversation. Each looked narrow and each of
+                // them animated the wrong thing, because the thing being watched was never the
+                // thing being animated.
                 //
-                // A transition does not run on its own. SwiftUI plays the insertion a row asks
-                // for only when the change that inserted it was made inside an animated
-                // transaction, so without a scope here the arrival on `MessageRow` would never
-                // be seen — and everything this scope *does* cover is animated whether it wanted
-                // to be or not. That cuts both ways, and the second half is the bug this
-                // replaced: the scope used to watch the send queue, so the instant a message
-                // went from sending to sent — the clock turning into a tick — its id left that
-                // list, the whole stack was animated, and every other change riding in the same
-                // pass was animated with it. The state changes that were supposed to be
-                // instantaneous were animated by the thing meant to animate arrivals.
+                // A message arriving now animates *itself*, from inside the row, and asks the
+                // list for nothing. See `MessageRow.arrivesAnimated`.
                 //
-                // So it watches the end of the conversation, which is the only place an arrival
-                // can happen. A tick, a reaction, an edit, a redaction: the last row's identity
-                // is unchanged, no transaction is animated, and the row changes at once. A page
-                // of history is added above, so it does not change either. A message being said
-                // does change it — which is the whole list of what may move.
-                .animation(hasSettled ? Theme.Timing.arrival : nil, value: timeline.rows.last?.id)
-                // The typing bubble sliding in and out is its own change, not a change to the rows,
-                // so it needs its own scope — see `TypingBubble`, which carries the transition.
-                .animation(.smooth(duration: Theme.Timing.chrome), value: timeline.typing.isEmpty)
+                // The typing bubble's own animation used to be here too, watching
+                // `timeline.typing`, which is a thing that changes constantly in a busy
+                // conversation and animated the entire column every time it did. It rides with
+                // the bubble now.
                 .padding(.horizontal, Theme.Spacing.normal)
                 // The composer floats over the timeline on glass, so the last message
                 // must be able to scroll clear of it — but only just. The composer already
@@ -744,11 +742,14 @@ public struct RoomView: View {
             // proxy exists — and at the bottom of the conversation rather than floating in the
             // middle of it, because that is the direction it takes you.
             .overlay(alignment: .bottom) {
-                if hasUnseenBelow {
-                    jumpToNewest(in: scroll)
-                        .padding(.bottom, Theme.Spacing.close)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                Group {
+                    if hasUnseenBelow {
+                        jumpToNewest(in: scroll)
+                            .padding(.bottom, Theme.Spacing.close)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
                 }
+                .animation(.smooth(duration: Theme.Timing.chrome), value: hasUnseenBelow)
             }
             // And the plain way down, for when nothing has been said and you are simply a long
             // way up. This did not exist, and its absence is only invisible on a short
@@ -761,14 +762,23 @@ public struct RoomView: View {
             // announcement, and the middle of the screen belongs to the pill on the rare occasions
             // there is one. When both are on screen they do not collide.
             .overlay(alignment: .bottomTrailing) {
-                if !isAtNewest {
-                    scrollToBottom(in: scroll)
-                        .padding(.trailing, Theme.Spacing.normal)
-                        .padding(.bottom, Theme.Spacing.close)
-                        .transition(.scale.combined(with: .opacity))
+                Group {
+                    if !isAtNewest {
+                        scrollToBottom(in: scroll)
+                            .padding(.trailing, Theme.Spacing.normal)
+                            .padding(.bottom, Theme.Spacing.close)
+                            .transition(.scale.combined(with: .opacity))
+                    }
                 }
+                // On the button, not on the room. This scope used to sit out here on the whole
+                // `ScrollViewReader` — the scroll view, every row in it, and the reveal that
+                // shows the conversation — watching a value that flips whenever the reader
+                // reaches or leaves the end of the chat. A room filling itself in reaches the end
+                // while it fills, so opening a chat animated the entire conversation, including
+                // the moment it became visible. That is the "strange animation on opening", and
+                // it came from a modifier about a little round button in the corner.
+                .animation(.smooth(duration: Theme.Timing.chrome), value: isAtNewest)
             }
-            .animation(.smooth(duration: Theme.Timing.chrome), value: isAtNewest)
         }
         .safeAreaInset(edge: .bottom) {
             Group {
