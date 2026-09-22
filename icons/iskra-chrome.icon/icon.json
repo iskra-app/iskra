@@ -1,11 +1,15 @@
 {
   "fill" : {
-    "automatic-gradient" : "srgb:0.65628,0.59970,0.17812,1.00000"
+    "automatic-gradient" : "srgb:0.08054,0.12128,0.14549,1.00000"
   },
   "groups" : [
     {
       "layers" : [
         {
+          "fill" : {
+            "solid" : "srgb:0.84702,0.88263,0.93474,1.00000"
+          },
+          "glass" : true,
           "image-name" : "Subtract2.svg",
           "name" : "Subtract2",
           "position" : {

@@ -2,7 +2,7 @@
 import SwiftUI
 import UIKit
 
-/// The icon on the home screen, and the five others it can be.
+/// The icon on the home screen, and the seven others it can be.
 ///
 /// iPhone and iPad only, and that is not a decision taken here. `setAlternateIconName` is
 /// UIKit's; AppKit has no equivalent, and a Mac app's icon is the one inside its bundle —
@@ -11,10 +11,12 @@ import UIKit
 /// settings row that leads to it is too, rather than a screen on the Mac that explains it cannot
 /// do anything.
 ///
-/// Every one of them is the same spark. What changes is the ground it sits on and what colour it
-/// catches: coal so the spark is the only light in it, frost for the cold end of it, garnet and
-/// pine for the deep ends, paper for the one that is quiet on a home screen full of colour. A set
-/// of icons that were six different drawings would be six different apps.
+/// Most of them are the same spark on a different ground — chrome so it is metal in the dark,
+/// garnet and pine for the deep ends, black-and-white for the one that is quiet on a home screen
+/// full of colour, Rio for the one that is not quiet at all. Two are not: `retro` cuts the spark
+/// out of a disc, and `letters` drops the spark altogether for the name set in type. That is why
+/// the tiles on the picker are pictures now and no longer a shape drawn from two colours — see
+/// `preview`.
 ///
 /// The raw value is the icon's name in the bundle, which is what `setAlternateIconName` takes
 /// and what `alternateIconName` gives back — so the enum converts in both directions with no
@@ -22,11 +24,13 @@ import UIKit
 /// UIKit says "the original", and `spark` is the name for it here.
 enum HomeIcon: String, CaseIterable, Identifiable, Sendable {
     case spark = "iskra"
-    case coal = "iskra-coal"
-    case frost = "iskra-frost"
+    case chrome = "iskra-chrome"
     case garnet = "iskra-garnet"
     case pine = "iskra-pine"
-    case paper = "iskra-paper"
+    case rio = "iskra-rio-de-janeiro"
+    case blackWhite = "iskra-black-white"
+    case retro = "iskra-retro"
+    case letters = "iskra-letters"
 
     var id: String { rawValue }
 
@@ -38,34 +42,27 @@ enum HomeIcon: String, CaseIterable, Identifiable, Sendable {
         self = alternateName.flatMap(HomeIcon.init(rawValue:)) ?? .spark
     }
 
-    /// The ground the spark sits on.
+    /// The picture on the tile: the icon itself, exported at 1024 from its own Icon Composer
+    /// document and shipped in `IskraFeatures/Resources` at 240 points square.
     ///
-    /// The same colour the icon's own `icon.json` names, written here a second time because the
-    /// tile on the settings screen is drawn rather than loaded — see `SparkShape` for why it has
-    /// to be. Two numbers per icon, and the icon would have to be redrawn for them to drift; the
-    /// *shape*, which is the part that has actually changed twice, is not copied at all.
-    var ground: Color {
-        switch self {
-        case .spark: Color(red: 0.656, green: 0.600, blue: 0.178)
-        case .coal: Color(red: 0.110, green: 0.110, blue: 0.125)
-        case .frost: Color(red: 0.380, green: 0.620, blue: 0.860)
-        case .garnet: Color(red: 0.440, green: 0.070, blue: 0.160)
-        case .pine: Color(red: 0.070, green: 0.260, blue: 0.200)
-        case .paper: Color(red: 0.940, green: 0.920, blue: 0.870)
-        }
-    }
+    /// It is a second copy of the artwork and there is no way round that. A compiled `.icon`
+    /// cannot be got back out of the bundle as a picture — `UIImage(named:)` returns nothing for
+    /// the alternates and throws for the primary — so Apple's own guidance is that a picker
+    /// ships its own previews, which is exactly what these are.
+    ///
+    /// The tiles used to be *drawn* instead, from the one vector every icon shared, which was
+    /// honest while every icon was the same spark on a different ground. It stopped being
+    /// honest: `retro` is the spark knocked out of a disc and `letters` has no spark in it at
+    /// all, so a drawn tile would have shown two icons that do not exist. A picture cannot
+    /// disagree with the icon it is a picture of.
+    ///
+    /// The export already carries the rounded corner and a transparent outside, so the tile
+    /// neither masks it nor puts a shape behind it.
+    var preview: Image { Image("icon-\(rawValue)", bundle: .module) }
 
-    /// What the spark catches on that ground: the colour the glyph is filled with, and the same
-    /// one this icon's copy of the SVG carries.
-    var spark: Color {
-        switch self {
-        case .spark, .coal: Color(red: 0.988, green: 0.976, blue: 0.118)
-        case .frost: Color(red: 0.918, green: 0.965, blue: 1.000)
-        case .garnet: Color(red: 1.000, green: 0.761, blue: 0.796)
-        case .pine: Color(red: 0.651, green: 0.941, blue: 0.776)
-        case .paper: Color(red: 0.090, green: 0.090, blue: 0.102)
-        }
-    }
+    /// Whether that picture is actually in the bundle. Only the probe asks — a missing preview
+    /// is an empty tile and writes nothing to any log.
+    var hasPreview: Bool { UIImage(named: "icon-\(rawValue)", in: .module, with: nil) != nil }
 
     /// Whether the system has this icon registered under this name.
     ///
@@ -116,11 +113,11 @@ public enum HomeIcons {
     /// It answers the one question about this feature that no test can. Two build settings have
     /// to be right for an alternate icon to work, they are right in different ways, and both fail
     /// quietly: an icon missing from `ALTERNATE_APPICON_NAMES` is refused at the moment somebody
-    /// taps it, and a spark vector missing from the resources leaves six blank tiles on the very
-    /// screen where the choosing happens. Neither writes anything to any log. So the probe asks
-    /// the installed app what it actually has: whether the system will allow the change at all,
-    /// which icon is in force, whether each of the six is registered, and whether the tiles have
-    /// anything to draw.
+    /// taps it, and a preview missing from the resources leaves a blank tile on the very screen
+    /// where the choosing happens. Neither writes anything to any log. So the probe asks the
+    /// installed app what it actually has: whether the system will allow the change at all,
+    /// which icon is in force, whether each of the eight is registered, and whether each has a
+    /// picture to show.
     ///
     /// Public, and the only part of this file that is: the app shell is deliberately thin, so the
     /// probe there prints what this returns rather than working any of it out itself.
@@ -137,14 +134,11 @@ public enum HomeIcons {
                 lines.append("     It is missing from ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES,")
                 lines.append("     or its .icon is not in the target's sources. See Apps/project.yml.")
             }
-        }
 
-        // And whether the tiles have anything to draw. The vector is a symlink into the icon
-        // document, which is exactly the kind of thing a packaging change breaks silently.
-        if SparkShape.isDrawable {
-            lines.append("  ✅ spark.svg — parsed, the tiles will draw")
-        } else {
-            lines.append("  ❌ spark.svg — missing or unparseable, the tiles will be flat colour")
+            if !icon.hasPreview {
+                lines.append("     ⚠️ icon-\(icon.rawValue).png is missing — its tile will be blank.")
+                lines.append("        Re-export it from icons/\(icon.rawValue).icon; see HomeIcon.preview.")
+            }
         }
 
         return lines

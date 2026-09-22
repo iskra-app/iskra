@@ -303,9 +303,12 @@ XcodeGen and gitignored. **Edit `Apps/project.yml` and rerun `xcodegen`.**
 
 ## The app icon
 
-`iskra.icon` at the repo root is an Icon Composer document, and one icon serves both platforms —
-it carries its own light, dark and tinted appearances, so there are no PNGs to keep in step. Two
-things in `Apps/project.yml` make it work, and both are easy to get subtly wrong:
+`icons/iskra.icon` is an Icon Composer document, and one icon serves both platforms — it carries
+its own light, dark and tinted appearances, so there is no set of PNGs to keep in step *in the
+bundle*. (The picker's previews are a separate thing and are argued for below.) The whole set
+lives in `icons/`, alongside `icons/pngs/`, which is where Icon Composer's 1024 exports are kept —
+they are the source the previews are made from and are not built into anything. Two things in
+`Apps/project.yml` make the icon work, and both are easy to get subtly wrong:
 
 - It is listed in each target's `sources` with **`type: file`**. An `.icon` is a directory on disk,
   and without that XcodeGen walks into it and adds its insides as loose files instead of handing
@@ -315,27 +318,33 @@ things in `Apps/project.yml` make it work, and both are easy to get subtly wrong
   beats a project-level one — so the tidier-looking placement silently loses, and the build fails
   with *"None of the input catalogs contained … an app icon set … named AppIcon"*.
 
-### The five others, on iPhone and iPad
+### The seven others, on iPhone and iPad
 
-`iskra-coal.icon` and its four siblings are the same spark on a different ground. They ship on
-**iOS only** — `setAlternateIconName` is UIKit's and AppKit has no equivalent — and they need one
-more setting beyond the two above: `ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES`, which is what
-*registers* a name. An icon merely listed in `sources` is compiled and then refused at the moment
-somebody taps it.
+`icons/iskra-chrome.icon` and its six siblings ship on **iOS only** — `setAlternateIconName` is
+UIKit's and AppKit has no equivalent — and they need one more setting beyond the two above:
+`ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES`, which is what *registers* a name. An icon merely
+listed in `sources` is compiled and then refused at the moment somebody taps it.
 
 **The compiled icons cannot be got back out of the bundle as pictures.** `UIImage(named:)` returns
 nothing for the alternates, and asked for the primary by its bare name it does not fail politely —
 it throws `Need an imageRef` and takes the app down. (The one name that works, `iskra60x60`, exists
 only because the primary is also registered the old way under `CFBundleIconFiles`.) This is normal:
-Apple's own guidance is that an icon picker ships its own preview images. So the tiles on the icon
-screen are **drawn**, by `SparkShape`, from `Sources/IskraFeatures/Resources/spark.svg` — which is a
-**symlink** into `iskra.icon/Assets/`, not a copy. Redraw the icon and the tiles follow; only the
-two colours per icon are written out a second time, in `HomeIcon`.
+Apple's own guidance is that an icon picker ships its own preview images, and that is what
+`Sources/IskraFeatures/Resources/icon-<name>.png` are — each icon exported at 1024 and scaled to
+240, carrying its own rounded corner and transparent outside, so the tile neither masks it nor puts
+a shape behind it.
 
-`Iskra --probe-icons` checks all of it inside the installed app: that the system knows all six
-names, that it allows the change at all, and that the spark parses. It runs from the root view and
-not from `IskraApp.init`, because `supportsAlternateIcons` answers `false` if it is asked before
-UIKit has finished launching — which is a lie that looks exactly like a locked-down device.
+The tiles used to be **drawn** instead, by a `SparkShape` reading a symlink into the icon document,
+and that was right while every icon was the same spark on a different ground: nothing could drift.
+It stopped being right rather than stopped working — `iskra-retro` knocks the spark out of a disc
+and `iskra-letters` has no spark in it at all, so a drawn tile would have shown two icons that do
+not exist. Redrawing an icon now means re-exporting its PNG; `HomeIcon.preview` says so, and
+`--probe-icons` names the file when one is missing.
+
+`Iskra --probe-icons` checks all of it inside the installed app: that the system knows all eight
+names, that it allows the change at all, and that each has a preview to show. It runs from the root
+view and not from `IskraApp.init`, because `supportsAlternateIcons` answers `false` if it is asked
+before UIKit has finished launching — which is a lie that looks exactly like a locked-down device.
 
 ## Dependencies and licence
 

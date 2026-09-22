@@ -4,7 +4,7 @@ import IskraDesign
 
 /// Choosing which icon the app wears on the home screen.
 ///
-/// Six tiles and nothing else, laid out like the colour swatches on the appearance screen and
+/// Eight tiles and nothing else, laid out like the colour swatches on the appearance screen and
 /// for the same reason: what is being chosen *is* a picture, so it is shown rather than named in
 /// a menu. The names are still there, under each tile, because unlike a colour an icon does have
 /// a name worth reading.
@@ -76,37 +76,29 @@ struct HomeIconView: View {
         .accessibilityAddTraits(candidate == icon ? [.isButton, .isSelected] : .isButton)
     }
 
-    /// The icon as it will be on the home screen, drawn rather than loaded.
+    /// The icon as it will be on the home screen — the picture of it, not an impression.
     ///
-    /// Drawn because it has to be: an Icon Composer document is compiled into a form only the
-    /// home screen can read, and the alternates cannot be got back out of the bundle as pictures
-    /// at all — see `SparkShape`, which is also where the spark itself comes from. The ground and
-    /// the glyph's colour are the two numbers each `.icon` file names, and the shape is the very
-    /// same vector, so this is the icon rather than an impression of it.
+    /// It used to be drawn, because a compiled Icon Composer document cannot be got back out of
+    /// the bundle as a picture. It still cannot: what changed is that the icons stopped being
+    /// one shape on eight grounds, so the set now ships its own exports and the tile shows one —
+    /// see `HomeIcon.preview`, which is also where the second copy of the artwork is argued for.
     ///
-    /// What it does not reproduce is Icon Composer's own gloss — the layered gradient, the shadow
-    /// under the glyph, the tint the system can put over the whole thing. A picker's job is to
-    /// let somebody tell six icons apart, and colour and shape do that.
+    /// The export carries the rounded corner and is transparent outside it, so there is no mask
+    /// and nothing behind it. The gloss, the shadow under the glyph and the tint the system can
+    /// put over the whole thing all survive, which the drawn tile never had.
     private func artwork(_ candidate: HomeIcon) -> some View {
         let side = Theme.Size.appIconTile
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.appIcon(side: side), style: .continuous)
 
-        return shape
-            .fill(candidate.ground.gradient)
+        return candidate.preview
+            .resizable()
+            .interpolation(.high)
             .frame(width: side, height: side)
-            .overlay {
-                SparkShape()
-                    .fill(candidate.spark)
-                    // The glyph fills the icon almost to its edges in the real thing — the
-                    // document scales it to 1.12 — and a spark drawn politely small in the middle
-                    // of a tile is a different picture.
-                    .padding(side * 0.12)
-            }
             .overlay {
                 // A ring on the chosen one, set off the tile so it reads as a ring rather than
                 // as an edge the artwork happens to have — the same device the colour swatches
-                // use, and for the same reason: the paper icon on a white sheet would otherwise
-                // be an invisible choice.
+                // use, and for the same reason: the black-and-white icon on a white sheet would
+                // otherwise be an invisible choice.
                 shape
                     .strokeBorder(candidate == icon ? AnyShapeStyle(accent.color) : AnyShapeStyle(.quaternary),
                                   lineWidth: candidate == icon ? Theme.Border.thick : Theme.Border.hairline)

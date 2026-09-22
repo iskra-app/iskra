@@ -1336,8 +1336,9 @@ public enum Strings {
     /// Choosing which icon the app wears on the home screen — see `HomeIconView`.
     ///
     /// The names are the one part of this the tiles cannot say for themselves. They are things
-    /// rather than colours — уголь, иней, гранат — because "dark grey" is a description and a
-    /// name is something you can ask somebody for.
+    /// rather than colours — хром, гранат, хвоя — because "dark grey" is a description and a
+    /// name is something you can ask somebody for. Two of them name what the picture *is*
+    /// instead, because that is the whole of what sets them apart: «Ретро» and «Буквы».
     public enum HomeIcon {
         public static let help = LocalizedStringResource("appIcon.help", bundle: bundle)
 
@@ -1349,18 +1350,20 @@ public enum Strings {
 
         #if os(iOS)
         /// A `switch` with no `default`, like the appearance modes above and for the same
-        /// reason: a seventh icon should stop the build rather than ship unnamed.
+        /// reason: a ninth icon should stop the build rather than ship unnamed.
         ///
         /// Internal where everything around it is public, because `HomeIcon` is: the type only
         /// exists on iOS and only this module ever names one.
         static func name(_ icon: IskraFeatures.HomeIcon) -> LocalizedStringResource {
             switch icon {
             case .spark: LocalizedStringResource("appIcon.spark", bundle: bundle)
-            case .coal: LocalizedStringResource("appIcon.coal", bundle: bundle)
-            case .frost: LocalizedStringResource("appIcon.frost", bundle: bundle)
+            case .chrome: LocalizedStringResource("appIcon.chrome", bundle: bundle)
             case .garnet: LocalizedStringResource("appIcon.garnet", bundle: bundle)
             case .pine: LocalizedStringResource("appIcon.pine", bundle: bundle)
-            case .paper: LocalizedStringResource("appIcon.paper", bundle: bundle)
+            case .rio: LocalizedStringResource("appIcon.rio", bundle: bundle)
+            case .blackWhite: LocalizedStringResource("appIcon.blackWhite", bundle: bundle)
+            case .retro: LocalizedStringResource("appIcon.retro", bundle: bundle)
+            case .letters: LocalizedStringResource("appIcon.letters", bundle: bundle)
             }
         }
         #endif
