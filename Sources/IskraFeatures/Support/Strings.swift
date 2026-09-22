@@ -1337,8 +1337,8 @@ public enum Strings {
     ///
     /// The names are the one part of this the tiles cannot say for themselves. They are things
     /// rather than colours — хром, гранат, хвоя — because "dark grey" is a description and a
-    /// name is something you can ask somebody for. Two of them name what the picture *is*
-    /// instead, because that is the whole of what sets them apart: «Ретро» and «Буквы».
+    /// name is something you can ask somebody for. The rest name what the picture *is*, because
+    /// that is the whole of what sets them apart: «Ретро», «Буквы», «Ч/б».
     public enum HomeIcon {
         public static let help = LocalizedStringResource("appIcon.help", bundle: bundle)
 

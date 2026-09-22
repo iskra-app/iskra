@@ -149,8 +149,8 @@
 "appIcon.chrome" = "Хром";
 "appIcon.garnet" = "Гранат";
 "appIcon.pine" = "Хвоя";
-"appIcon.rio" = "Рио";
-"appIcon.blackWhite" = "Чёрным по белому";
+"appIcon.rio" = "Рио де Жанейро";
+"appIcon.blackWhite" = "Ч/б";
 "appIcon.retro" = "Ретро";
 "appIcon.letters" = "Буквы";
 /* The settings row that leads to the unfinished things. See `BetaFeatures`. */
