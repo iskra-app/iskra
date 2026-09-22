@@ -122,6 +122,34 @@ for it. The server's memory lasts one launch.
 The switch is behind sign-in, so `Iskra --mock-backend` turns it on from the command line for a
 device with nobody signed in — `./device.sh -- --mock-backend`. It stays on until turned off.
 
+### The sign-in server
+
+The demo server skips the sign-in screen; this one is for it. `Iskra --mock-signin` opens the
+sign-in screen against a second homeserver inside the app (`SignInMockServer`,
+`IskraCore/Transport/`), with its address already typed in. There is always
+`alice` / `password`; registration makes more accounts for as long as the app runs. Words after the
+flag pick the server: `password` (no browser, no "create account"), `sso` (legacy `m.login.sso`
+only), `closed` (OIDC without registration), `slow` (two seconds a request).
+
+```sh
+xcrun simctl launch --console booted moscow.swag.iskra --mock-signin
+./device.sh -- --mock-signin password slow
+```
+
+Only the *server* is fake. It is an `HTTPUpstream` behind the same `LocalHTTPProxy` the bridge
+uses, and the real SDK talks to it over real HTTP, so `SignInModel`, `AuthenticationService`, the
+OIDC dance and the browser page all run as they do against matrix.org, and the flow ends in a real
+`UserSession`. That is also why it cannot be a fake `AuthenticationService`: a session is built
+around a live `Client`. Past sign-in it answers what an empty account needs to get through the
+first-run screen to its recovery code: account data, keys, backup versions, an empty sliding sync.
+Anything else gets `M_UNRECOGNIZED` and goes on `unanswered`, which `MockSignInTests` holds to
+empty. When an SDK update starts asking for something new, that test names the endpoint.
+
+**It never touches the real account on the device.** The session goes in `StorageMode.scratch` with
+`InMemorySecrets`. The next launch without the flag restores whoever was signed in, untouched, and
+`AppSettings.forget` does nothing under the flag, so signing out of `alice` leaves the real
+accent and wallpaper where they were.
+
 ## Architecture
 
 Three SwiftPM library targets, and the dependency rule between them is the whole design:

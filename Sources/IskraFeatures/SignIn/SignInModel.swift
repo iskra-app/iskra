@@ -30,8 +30,10 @@ public final class SignInModel {
     private let onSignedIn: @MainActor (UserSession) -> Void
 
     public init(authentication: AuthenticationService = AuthenticationService(),
+                address: String = "",
                 onSignedIn: @escaping @MainActor (UserSession) -> Void) {
         self.authentication = authentication
+        self.address = address
         self.onSignedIn = onSignedIn
     }
 

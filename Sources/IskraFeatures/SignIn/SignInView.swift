@@ -21,8 +21,16 @@ public struct SignInView: View {
     /// other one is a door you have to open.
     @State private var isUsingPassword = false
 
-    public init(onSignedIn: @escaping @MainActor (UserSession) -> Void) {
-        _model = State(initialValue: SignInModel(onSignedIn: onSignedIn))
+    /// - Parameters:
+    ///   - authentication: who to sign in with. Only ever not the default under `--mock-signin`,
+    ///     whose sessions must not land where the real account's do — see `MockSignIn`.
+    ///   - address: what the field starts with.
+    public init(authentication: AuthenticationService = AuthenticationService(),
+                address: String = "",
+                onSignedIn: @escaping @MainActor (UserSession) -> Void) {
+        _model = State(initialValue: SignInModel(authentication: authentication,
+                                                 address: address,
+                                                 onSignedIn: onSignedIn))
     }
 
     public var body: some View {

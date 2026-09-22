@@ -44,7 +44,7 @@ public struct IskraRootView: View {
     /// screen otherwise would.
     @AppStorage(Onboarding.welcomeSeenKey) private var hasSeenWelcome = false
 
-    /// Whether the app is in the demo rather than the real account — see `MockHomeserver`. Watched
+    /// Whether the app is in the demo rather than the real account — see `SignInMockServer`. Watched
     /// here because switching it swaps the whole session, and this is the view that owns one.
     @AppStorage(BetaFeatures.mockBackendKey) private var mockBackend = false
 
@@ -103,7 +103,10 @@ public struct IskraRootView: View {
     /// simply has one button instead of two.
     @State private var devicesURL: URL?
 
-    private let authentication = AuthenticationService()
+    private let authentication = MockSignIn.isRequested ? MockSignIn.authentication : AuthenticationService()
+
+    /// Where `--mock-signin` is listening, once it is. Nil in every ordinary launch.
+    @State private var mockAddress: String?
 
     public init() {
         // Every scroll view in the app hands touches on immediately, so the press that lifts a
@@ -137,9 +140,7 @@ public struct IskraRootView: View {
                 // or signed out by a server that ended their session, has not forgotten what
                 // Iskra is. See `Onboarding`.
                 if hasSeenWelcome {
-                    SignInView { session in
-                        phase = .settingUp(session)
-                    }
+                    signIn
                 } else {
                     WelcomeView { hasSeenWelcome = true }
                 }
@@ -605,8 +606,30 @@ public struct IskraRootView: View {
         .environment(\.isOffline, session.roomList.isOffline)
     }
 
+    /// The sign-in screen — pointed at the in-app server under `--mock-signin`, and otherwise at
+    /// whatever the user types.
+    @ViewBuilder
+    private var signIn: some View {
+        if MockSignIn.isRequested {
+            SignInView(authentication: authentication, address: mockAddress ?? "") { session in
+                phase = .settingUp(session)
+            }
+        } else {
+            SignInView { session in
+                phase = .settingUp(session)
+            }
+        }
+    }
+
     /// Brings back the signed-in user, if there is one, before showing anything.
     private func restore() async {
+        // Under `--mock-signin` there is nobody to bring back: the service is the scratch one, its
+        // Keychain is in memory and empty, and the restore below finds nothing and falls through to
+        // sign-in — which is the point. The server just has to be up before that screen appears.
+        if MockSignIn.isRequested, mockAddress == nil {
+            mockAddress = await MockSignIn.start()
+        }
+
         // Whatever the last run left lying about. A file opened on the Mac is copied out of the
         // encrypted store in the clear so another application can read it, and the app is never
         // told when that application is finished — so the sweeping is done at the two moments we

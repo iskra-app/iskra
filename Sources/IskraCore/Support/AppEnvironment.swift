@@ -15,12 +15,17 @@ import Foundation
 ///   what makes the app runnable on a machine that has not had its App ID configured
 ///   in the developer portal.
 ///
+/// - `.scratch` puts the store in a directory of the caller's choosing and is for sessions that
+///   are not the user's at all — a sign-in against `SignInMockServer`. It keeps them out of both
+///   places a real account lives, so that trying the sign-in screen cannot disturb one.
+///
 /// The distinction is explicit on purpose. An App Group that silently falls back to
 /// the app's own container gives you an app that works perfectly until the first
 /// push arrives and then fails somewhere far away from the cause.
 public enum StorageMode: Sendable, Equatable {
     case shared(appGroupIdentifier: String, keychainAccessGroup: String)
     case standalone
+    case scratch(URL)
 }
 
 public enum StorageError: Error, Equatable {
@@ -140,7 +145,7 @@ public struct AppEnvironment: Sendable {
     public var keychainAccessGroup: String? {
         switch storage {
         case let .shared(_, group): group
-        case .standalone: nil
+        case .standalone, .scratch: nil
         }
     }
 
@@ -164,6 +169,10 @@ public struct AppEnvironment: Sendable {
 
         case .standalone:
             let url = URL.applicationSupportDirectory.appending(component: "Iskra")
+            try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+            return url
+
+        case let .scratch(url):
             try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
             return url
         }
