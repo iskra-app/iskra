@@ -743,31 +743,25 @@ public struct RoomView: View {
                     return
                 }
 
-                // Not animated, and that is the fix for "sending is jerky".
+                // To the end of the *conversation*, not to the last message — and that
+                // distinction is the whole of the jump-to-bottom button appearing over a message
+                // that had just been sent.
                 //
-                // Two things were moving at once and they were not moving together: the row
-                // rising into its place on a spring, and the scroll view gliding to the end on
-                // `.smooth`. Two curves of different lengths over the same few dozen points read
-                // as one thing stuttering, because from the reader's side it *is* one thing —
-                // the message they just sent — and it was being animated twice.
+                // `scrollTo(last, anchor: .bottom)` puts the bottom of the last row against the
+                // bottom of the viewport, and there are things below the last row: the space the
+                // typing bubble takes when somebody is writing, the padding that lifts the
+                // conversation off the composer, and the end marker itself. All of it stayed
+                // below the fold — including the marker, which is one of the two things that
+                // answer "is the reader at the end". So the room scrolled as far as it had been
+                // asked to, reported itself short of the end, and offered a button to go to the
+                // end it was already at, on top of the message it was showing.
                 //
-                // So the scroll simply goes there, and the only thing that moves is the message.
-                // Nothing is lost by it: the reader is at the end of the conversation already
-                // (that is what got us into this branch), so the jump is the height of one row.
-                //
-                // `withAnimation` here also animated *every* change in its pass, which is how
-                // the opening fetch used to turn each batch of rows into an animated transaction
-                // — the room assembling itself in front of the reader out of a line that looks
-                // like it is only about scrolling.
-                scroll.scrollTo(last, anchor: .bottom)
-
-                // …and stay there while the message finishes becoming itself. See `followsEnd`.
-                followsEnd = true
-                followingEnd?.cancel()
-                followingEnd = Task {
-                    try? await Task.sleep(for: Theme.Timing.endIsHeld)
-                    followsEnd = false
-                }
+                // Not animated, and that is the other half. Two things were moving at once and
+                // not together: the row rising on a spring, and the scroll gliding on `.smooth`.
+                // Two curves of different lengths over the same few dozen points read as one
+                // thing stuttering — because from the reader's side it *is* one thing, the
+                // message they just sent, animated twice.
+                followEnd()
             }
             // Laid out from the first row, shown only when there is a whole conversation to
             // show — see `isRevealed`. Opacity and not an `if`: the scroll view has to exist and
@@ -785,7 +779,7 @@ public struct RoomView: View {
             .overlay(alignment: .bottom) {
                 Group {
                     if hasUnseenBelow {
-                        jumpToNewest(in: scroll)
+                        jumpToNewest()
                             .padding(.bottom, Theme.Spacing.close)
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
@@ -805,7 +799,7 @@ public struct RoomView: View {
             .overlay(alignment: .bottomTrailing) {
                 Group {
                     if !isAtNewest {
-                        scrollToBottom(in: scroll)
+                        scrollToBottom()
                             .padding(.trailing, Theme.Spacing.normal)
                             .padding(.bottom, Theme.Spacing.close)
                             .transition(.scale.combined(with: .opacity))
@@ -1094,6 +1088,32 @@ public struct RoomView: View {
         // screens already had a modifier for.
         .failureAlert($timeline.failure)
         .failureAlert($problem)
+    }
+
+    /// Keeps the conversation at its end while a message that has just landed takes its shape.
+    ///
+    /// A loop, and not one `scrollTo` — see `followsEnd` for why once is not enough. The first
+    /// attempt at this hung off the scroll-geometry callback, which sounds tighter and is not: a
+    /// row is inserted, the geometry changes, the callback runs, and only *then* does the change
+    /// handler that sets the flag get its turn. By the time anything was being held, the
+    /// geometry had finished moving and the callback never came again. Asking for the end on a
+    /// clock of its own does not depend on the order two handlers happen to run in.
+    ///
+    /// Putting a scroll view that is already at its end back at its end costs nothing and is
+    /// invisible, so the loop is free to be dumb. The reader touching the conversation cancels
+    /// it — see `onScrollPhaseChange`.
+    private func followEnd() {
+        followingEnd?.cancel()
+        followsEnd = true
+
+        followingEnd = Task {
+            let deadline = ContinuousClock.now + Theme.Timing.endIsHeld
+            while !Task.isCancelled, ContinuousClock.now < deadline {
+                scrollPosition.scrollTo(edge: .bottom)
+                try? await Task.sleep(for: Theme.Timing.endIsCheckedEvery)
+            }
+            followsEnd = false
+        }
     }
 
     /// Putting the room down: the draft, the listeners, the camera, the microphone.
@@ -1502,9 +1522,9 @@ public struct RoomView: View {
     /// The pill that says something was said while you were reading further up, and takes you to
     /// it. Glass, and on the navigation layer where glass belongs: it floats over the conversation
     /// and is not part of it.
-    private func jumpToNewest(in scroll: ScrollViewProxy) -> some View {
+    private func jumpToNewest() -> some View {
         Button {
-            goToNewest(in: scroll)
+            goToNewest()
             // Not cleared here — arriving is what clears it, and arriving is what the scroll
             // geometry reports. Clearing it on the press would take the pill away from somebody
             // whose scroll had not started yet.
@@ -1600,9 +1620,9 @@ public struct RoomView: View {
     /// A circle with an arrow in it and no words, because there is nothing to say: the pill above
     /// exists to *tell* you something and therefore has a sentence in it, and this exists only to
     /// take you somewhere.
-    private func scrollToBottom(in scroll: ScrollViewProxy) -> some View {
+    private func scrollToBottom() -> some View {
         Button {
-            goToNewest(in: scroll)
+            goToNewest()
         } label: {
             Image(systemName: "chevron.down")
                 .font(.body.weight(.semibold))
@@ -1615,9 +1635,12 @@ public struct RoomView: View {
         .accessibilityLabel(Text(Strings.Room.scrollToBottom))
     }
 
-    private func goToNewest(in scroll: ScrollViewProxy) {
-        guard let last = timeline.rows.last?.id else { return }
-        withAnimation(.smooth) { scroll.scrollTo(last, anchor: .bottom) }
+    private func goToNewest() {
+        // The end of the conversation, not the last row — the same distinction as above, and
+        // here it decided whether the button could put itself away. Sent to the last message,
+        // the reader landed a composer's height short of the end, the end marker stayed off
+        // screen, and the button that had just taken them there was still on top of it.
+        withAnimation(.smooth) { scrollPosition.scrollTo(edge: .bottom) }
     }
 
     /// How far back a jump is willing to dig for a message that is not loaded. Ten pages of
