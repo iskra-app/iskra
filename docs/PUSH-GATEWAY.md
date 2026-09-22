@@ -501,6 +501,43 @@ class Tweaks:
 проверяются на импорте: контейнер, которому они не подошли, не поднимется. Это лучше, чем шлюз,
 который поднялся и молча никому не звонит, — со стороны такой неотличим от рабочего.
 
+### Как выкатывать
+
+Три файла: `pushkins/iskra_ring.py`, обновлённый `sygnal.yaml` и обновлённый `docker-compose.yml`.
+Записи в `sygnal.yaml` дописываются скриптом `Gateway/make_voip_entries.py` — текстом, а не
+round-trip'ом через PyYAML, который снёс бы все комментарии, — и он же копирует `key_id` и
+`team_id` из уже работающей записи, так что ключи никуда не выносятся:
+
+```sh
+python3 make_voip_entries.py /opt/sygnal/sygnal.yaml ~/iskra-calls/sygnal.yaml
+python3 -c 'import yaml; print(list(yaml.safe_load(open("sygnal.yaml"))["apps"]))'   # должно быть 4
+```
+
+**Проброс порта надо починить тем же заходом.** В `docker-compose.yml` на машине стоит
+`127.0.0.1:5400:5400`, а `sygnal.yaml` говорит `port: 5000`. Сейчас всё работает — значит,
+работающий контейнер создан при другом сочетании, — но первый же `up -d` пересоздаст его по файлу,
+Sygnal сядет на 5000, проброс поведёт на 5400, и умрут **все** пуши. Правильное значение —
+`127.0.0.1:5400:5000`, и почему половинки разные, написано в разделе 1.
+
+Выкатка — с бэкапом и автооткатом: если после перезапуска шлюз не отвечает 400 на пустой POST,
+скрипт возвращает старые файлы и поднимает то, что было.
+
+```sh
+cd ~/iskra-calls && sudo bash install.sh
+```
+
+Проверить после:
+
+```sh
+# записи подхватились (незнакомое имя даёт другую ошибку, чем известное)
+curl -s -X POST -H 'Content-Type: application/json' \
+  -d '{"notification":{"devices":[{"app_id":"moscow.swag.iskra.voip.dev","pushkey":"x"}]}}' \
+  https://push.iskra.swag.moscow/_matrix/push/v1/notify
+
+# и что RingPushkin импортировался, а не свалился на _assert_hooks
+sudo docker compose -f /opt/sygnal/docker-compose.yml logs --tail=50 | grep -i iskra
+```
+
 ### Порядок
 
 **Правило первым, VoIP-pusher последним.** В приложении это `enableCallPushes()` перед
