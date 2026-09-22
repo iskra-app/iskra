@@ -87,6 +87,27 @@ public struct RoomView: View {
     /// above". So the room is drawn, flatly, and only then allowed to move.
     @State private var hasSettled = false
 
+    /// Whether the conversation may be shown at all yet.
+    ///
+    /// This is the one that actually cures the twitching, and it took two wrong answers to find.
+    /// A room is *drawn while it is still being fetched*: the store publishes rows on every batch
+    /// of diffs, and the opening fetch is a loop — a page is 25 events and events are not
+    /// messages, so it asks again, and again, until it has a screenful. Each of those turns is a
+    /// network round trip, and each one put more messages on a screen the reader was already
+    /// looking at. So the room opened showing its last message alone, at the bottom, and the rest
+    /// of the conversation then piled in above it over the next second or two — which is exactly
+    /// "they fly in from above", and no amount of taking animations away could fix it, because
+    /// by the second attempt there was no animation left to take. It was never the animation. It
+    /// was the room being shown half-built.
+    ///
+    /// So it is not shown half-built. The scroll view is laid out from the first row — invisible,
+    /// so it anchors itself to the bottom and settles while nobody is watching — and the
+    /// conversation appears when the store says it has one, whole and already in place.
+    ///
+    /// Once, and never again: a refill, a page of history, a message arriving must not hide the
+    /// room. See `Theme.Timing.roomWaitsToBeSeen` for the ceiling on the wait.
+    @State private var isRevealed = false
+
     /// What "arriving" means here, and why it is not "new".
     ///
     /// A time limit was not enough, and the reason is worth writing down: a conversation does
@@ -583,6 +604,19 @@ public struct RoomView: View {
             .onChange(of: timeline.rows.last?.id, initial: true) { _, last in
                 newestRowID = last
             }
+            // The store has a conversation: show it. `initial: true` for a room whose store was
+            // already open and full before this view existed — there is nothing to wait for, and
+            // it must not blink.
+            .onChange(of: timeline.hasLoaded, initial: true) { _, loaded in
+                if loaded { isRevealed = true }
+            }
+            // …and a floor under it, because "when the store is done" is a promise about a
+            // network. A conversation half-fetched is worth more than an empty screen that goes
+            // on being empty, so past this point the room is shown with whatever it has.
+            .task {
+                try? await Task.sleep(for: Theme.Timing.roomWaitsToBeSeen)
+                isRevealed = true
+            }
             .onChange(of: isReady, initial: true) { _, ready in
                 guard ready, !hasAnchored, let last = timeline.rows.last?.id else { return }
                 hasAnchored = true
@@ -714,6 +748,12 @@ public struct RoomView: View {
 
                 withAnimation(.smooth) { scroll.scrollTo(last, anchor: .bottom) }
             }
+            // Laid out from the first row, shown only when there is a whole conversation to
+            // show — see `isRevealed`. Opacity and not an `if`: the scroll view has to exist and
+            // do its work while it is hidden, because what it is doing is anchoring itself to the
+            // bottom of a conversation that is still arriving. Built only at the end, it would
+            // have to do all of that in front of the reader, which is the thing being cured.
+            .opacity(isRevealed ? 1 : 0)
             // Over the timeline but *under* the composer, which is a safe-area inset added
             // further down: a placeholder that covered the box you type into would be
             // telling you to say something and hiding the way to say it.
