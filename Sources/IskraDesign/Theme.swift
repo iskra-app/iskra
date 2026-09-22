@@ -177,6 +177,14 @@ public enum Theme {
         /// reacted to, edited, deleted — changes at once.
         public static let arrival: Animation = .spring(duration: 0.32, bounce: 0.18)
 
+        /// How long the conversation stays pinned to its end after a message has landed there.
+        ///
+        /// A row is not its final height when it is inserted — the picture in it arrives, the
+        /// quote above it resolves — so being sent to the end once lands short of it. Long enough
+        /// for an attachment to size itself; short enough that it is over before anybody could
+        /// want to scroll away. See `RoomView.followsEnd`.
+        public static let endIsHeld: Duration = .milliseconds(700)
+
         /// How long a room that has just opened stays perfectly still before it is allowed to
         /// animate anything.
         ///

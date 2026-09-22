@@ -28,8 +28,8 @@ import IskraDesign
 /// **Up, from the bottom.** The end of the conversation is at the foot of the screen, so that is
 /// where a new message comes from — out of the composer, settling into the row it now owns.
 private struct MessageArrival: ViewModifier {
-    /// Whether this row is genuinely arriving. False for everything else, and then this modifier
-    /// does nothing at all: no offset, no opacity, no state, no `onAppear` work.
+    /// Whether this row is genuinely arriving. False for everything else, and then the row is
+    /// drawn in place, at full strength, and `onAppear` does nothing.
     ///
     /// It has to be false for the ordinary case, and not merely "not animated". A `LazyVStack`
     /// builds a row when it scrolls into view, so a row that animated itself on appearing would
@@ -42,21 +42,41 @@ private struct MessageArrival: ViewModifier {
     /// down, not one flying in from off-screen.
     private static let rise: CGFloat = 14
 
-    @State private var hasLanded = false
+    /// Where the row is, and how solid — held as state rather than read from `isArriving`,
+    /// because `isArriving` is true for exactly one pass and the animation outlives it.
+    ///
+    /// This is the whole of what went wrong the first time. The modifier branched on
+    /// `isArriving`, so the row was one view while arriving and a different one after — and
+    /// "after" is the *next* pass, a few milliseconds later, once `RoomView` has written down
+    /// where the conversation now ends. SwiftUI duly tore down the animating branch and built
+    /// the plain one in its place, which cancelled the animation before a single frame of it was
+    /// drawn. A message you sent simply appeared, with nothing to show for it.
+    ///
+    /// Seeded at `init` instead. A `@State` initial value is used on the first build and then
+    /// left alone, so the row starts low and clear, lands once, and stays landed no matter what
+    /// the flag does afterwards. One view throughout, and nothing to tear down.
+    @State private var lift: CGFloat
+    @State private var solidity: Double
+
+    init(isArriving: Bool) {
+        self.isArriving = isArriving
+        _lift = State(initialValue: isArriving ? Self.rise : 0)
+        _solidity = State(initialValue: isArriving ? 0 : 1)
+    }
 
     func body(content: Content) -> some View {
-        if isArriving {
-            content
-                .offset(y: hasLanded ? 0 : Self.rise)
-                .opacity(hasLanded ? 1 : 0)
-                .onAppear {
-                    // The animation lives on the change, inside the row, and reaches nothing
-                    // outside it.
-                    withAnimation(Theme.Timing.arrival) { hasLanded = true }
+        content
+            .offset(y: lift)
+            .opacity(solidity)
+            .onAppear {
+                guard isArriving else { return }
+                // The animation lives on the change, inside the row, and reaches nothing
+                // outside it.
+                withAnimation(Theme.Timing.arrival) {
+                    lift = 0
+                    solidity = 1
                 }
-        } else {
-            content
-        }
+            }
     }
 }
 
