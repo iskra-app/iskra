@@ -74,6 +74,37 @@ public struct RoomView: View {
     /// conversation, because from then on where it sits is their business and not ours.
     @State private var isOpening = true
 
+    /// Whether the conversation has stopped assembling itself, and a change to it is therefore
+    /// something that *happened* rather than the room still arriving.
+    ///
+    /// Nothing here may animate until this is true, and `hasLoaded` was not a strict enough
+    /// answer. Opening a room is not one change but a dozen: the store publishes each batch of
+    /// diffs on its own pass, then the events decrypt and their rows change height where they
+    /// stand, then the pictures in them arrive and change height again — all of it after the
+    /// first page is nominally loaded. With an animation scope around the list, every one of
+    /// those passes set the whole column sliding to its new place, and fifteen messages sliding
+    /// half a row at a time is exactly the twitching the reader sees as messages "flying in from
+    /// above". So the room is drawn, flatly, and only then allowed to move.
+    @State private var hasSettled = false
+
+    /// What "arriving" means here, and why it is not "new".
+    ///
+    /// A time limit was not enough, and the reason is worth writing down: a conversation does
+    /// not finish loading when it is first shown. The store hands over what it has, the room
+    /// draws it, and the rest of the first screenful is then paginated in — page after page,
+    /// each one arriving seconds later and each one, to a view watching only the clock, looking
+    /// exactly like a message somebody has just sent. That is the "they still fly in" report:
+    /// not the opening, but the history landing behind it.
+    ///
+    /// The honest test is not *when* a row appeared but *where*. History is added above what is
+    /// already there; a new message is added past the end of it. So only the rows that come
+    /// after the row that used to be last are arrivals, and everything else — a page of history,
+    /// a re-keyed local echo, a room reloading itself — appears where it belongs, at once.
+    ///
+    /// The last row of the conversation as it stood on the previous pass is what "past the end"
+    /// is measured from; `placedRows` is where the measuring happens.
+    @State private var newestRowID: String?
+
     /// Whether the room is *saying* it is fetching history, which is not quite the same as
     /// fetching it — see the spinner. The task is what puts the disc away again.
     @State private var isFetchingHistory = false
@@ -179,9 +210,17 @@ public struct RoomView: View {
 
     @State private var scrollPosition = ScrollPosition()
 
-    /// How much of the end of the list the deletion animation watches. See the `.animation` on
-    /// the stack: only unsent messages are ever removed, and they are the last rows there are.
-    private static let animatedTail = 20
+    /// The messages that are still in the send queue, which are the only rows that can ever leave
+    /// the conversation — see the `.animation` on the stack, which exists for exactly that and
+    /// watches this.
+    private var unsentIDs: [String] {
+        timeline.rows.compactMap { row in
+            guard let message = row.message,
+                  let delivery = message.delivery,
+                  delivery == .sending || delivery.hasFailed else { return nil }
+            return message.id
+        }
+    }
 
     /// The message the conversation has just been sent to by pressing a quote, lit until the
     /// reader has had time to see which one it is — and the timer that puts it out. See `light`.
@@ -275,6 +314,7 @@ public struct RoomView: View {
                         view(for: placed.row,
                              followsEvent: placed.followsEvent,
                              opensDay: placed.opensDay,
+                             arrives: placed.arrives,
                              in: scroll)
                             .id(placed.id)
                     }
@@ -313,8 +353,20 @@ public struct RoomView: View {
                 // there is no single moment at which the scroll view can be put back where it
                 // was. The tail cannot be changed by pagination, so it is the honest thing to
                 // watch.
-                .animation(.smooth(duration: Theme.Timing.deletion),
-                           value: timeline.rows.suffix(Self.animatedTail).map(\.id))
+                //
+                // And nothing at all until the room has settled: while it is still assembling
+                // itself every batch of diffs changes these identities, and an animation on that
+                // is the whole column sliding into place several times over. See `hasSettled`.
+                //
+                // What it watches is not the tail of the conversation any more but the messages
+                // that have not left the device — which is the same set, named honestly. The tail
+                // was a guess that an unsent message is at the bottom, and in a short room it was
+                // also every other row: a page of history landing in a five-message chat changed
+                // the last twenty ids, and the animation this scope exists for ran over the whole
+                // column. Watching the send queue cannot be moved by pagination, because history
+                // has all been sent.
+                .animation(hasSettled ? .smooth(duration: Theme.Timing.deletion) : nil,
+                           value: unsentIDs)
                 // The typing bubble sliding in and out is its own change, not a change to the rows,
                 // so it needs its own scope — see `TypingBubble`, which carries the transition.
                 .animation(.smooth(duration: Theme.Timing.chrome), value: timeline.typing.isEmpty)
@@ -519,6 +571,18 @@ public struct RoomView: View {
             // Opening a room puts it on its newest message, once — the moment the first
             // fetch has come back with something to show. `initial: true` covers a room
             // whose store was already open and full before this view was ever built.
+            // Where the conversation ends, remembered for the next pass — which is the whole of
+            // what tells an arrival from a page of history. See `newestRowID`.
+            //
+            // It runs *after* the rows have been drawn, and that is the right way round: the pass
+            // that first shows a new message still sees the old end, works out that the message
+            // comes after it, and animates it. This only writes down where the end is now.
+            //
+            // `initial: true` so that a room whose store was already full before this view was
+            // built records its end without a thing moving.
+            .onChange(of: timeline.rows.last?.id, initial: true) { _, last in
+                newestRowID = last
+            }
             .onChange(of: isReady, initial: true) { _, ready in
                 guard ready, !hasAnchored, let last = timeline.rows.last?.id else { return }
                 hasAnchored = true
@@ -526,6 +590,17 @@ public struct RoomView: View {
                 // hold above keeps it there while the conversation finishes arriving; this is
                 // only the first of those moves, made as soon as there is a row to make it to.
                 scroll.scrollTo(last, anchor: .bottom)
+
+                // The room may now move — but not this instant. The batches still in flight, the
+                // decryptions and the pictures all land in the moments after the first page is
+                // ready, and each of them would otherwise be animated as though somebody had just
+                // said something. A beat of stillness costs nothing: nothing the reader did is
+                // waiting on it, and the only thing it delays is the arrival of a message that
+                // has not been sent yet. See `hasSettled`.
+                Task {
+                    try? await Task.sleep(for: Theme.Timing.timelineSettles)
+                    hasSettled = true
+                }
 
                 // …and if it was opened *on* a message — a search result — it goes there next. The
                 // anchor still happens first, and deliberately: a conversation has to have
@@ -700,14 +775,22 @@ public struct RoomView: View {
         // Present only when there is something pinned — a room with nothing pinned should not
         // give up a row of its screen to say so.
         .safeAreaInset(edge: .top) {
-            if !timeline.pinnedEventIDs.isEmpty, let pinned {
-                PinnedStrip(pinned: pinned,
-                            onGoTo: { message in jumpTarget = message.id },
-                            onOpenList: { isShowingPinned = true })
-                    .transition(.move(edge: .top).combined(with: .opacity))
+            Group {
+                if !timeline.pinnedEventIDs.isEmpty, let pinned {
+                    PinnedStrip(pinned: pinned,
+                                onGoTo: { message in jumpTarget = message.id },
+                                onOpenList: { isShowingPinned = true })
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
             }
+            // Scoped to the strip itself, exactly as the composer's is below, and not to the
+            // room. It used to hang off the outermost view — which is what the note on the
+            // video overlay above warns against: an implicit animation there animates *every*
+            // animatable value in the subtree, the whole conversation included, and a room's
+            // pinned list is first reported while that conversation is still filling itself in.
+            // Opening a pinned room therefore set every message in it sliding.
+            .animation(.smooth, value: timeline.pinnedEventIDs)
         }
-        .animation(.smooth, value: timeline.pinnedEventIDs)
         // Above the pinned strip, because it is about the whole app rather than about this room —
         // and because somebody reading a conversation should not have to go back to the list to find
         // out why nothing new is arriving in it. See `OfflineBanner`.
@@ -1219,6 +1302,7 @@ public struct RoomView: View {
     private func view(for row: TimelineRow,
                       followsEvent: Bool,
                       opensDay: Bool,
+                      arrives: Bool,
                       in scroll: ScrollViewProxy) -> some View {
         switch row {
         case let .dayDivider(divider):
@@ -1226,7 +1310,7 @@ public struct RoomView: View {
         case let .event(event):
             RoomEventRow(event: event, followsEvent: followsEvent, opensDay: opensDay)
         case let .message(message):
-            messageRow(message, opensDay: opensDay, in: scroll)
+            messageRow(message, opensDay: opensDay, arrives: arrives, in: scroll)
         }
     }
 
@@ -1239,20 +1323,48 @@ public struct RoomView: View {
         let row: TimelineRow
         let followsEvent: Bool
         let opensDay: Bool
+        /// Whether this row is arriving *now* — see `newestRowID`, and `MessageRow.arrivesAnimated`.
+        let arrives: Bool
         var id: String { row.id }
     }
 
     private var placedRows: [PlacedRow] {
+        let rows = timeline.rows
+        // Everything past where the conversation used to end is arriving; everything else is
+        // either already here or was added above, which is history and not an arrival. Found
+        // once, here, rather than asked row by row — the search is a walk of the timeline, and
+        // one per row would be a walk per row.
+        //
+        // Worked out while the view is being built and *not* in an `onChange`, which is the
+        // mistake this replaced. A transition is chosen at the instant a row is inserted, and a
+        // handler that runs after the change has been applied is a handler that answers "is this
+        // arriving?" one pass too late — the row is already on screen, unanimated, and nothing
+        // will ask again.
+        let firstArrival = rows.count - newArrivalCount(in: rows)
+
         var previousWasEvent = false
         var previousWasDivider = false
-        return timeline.rows.map { row in
+        return rows.enumerated().map { index, row in
             let placed = PlacedRow(row: row,
                                    followsEvent: previousWasEvent,
-                                   opensDay: previousWasDivider)
+                                   opensDay: previousWasDivider,
+                                   arrives: hasSettled && index >= firstArrival)
             if case .event = row { previousWasEvent = true } else { previousWasEvent = false }
             if case .dayDivider = row { previousWasDivider = true } else { previousWasDivider = false }
             return placed
         }
+    }
+
+    /// How many rows at the end of the conversation were not there on the last pass.
+    ///
+    /// Zero unless the row that used to be last is still in the list and still has something
+    /// after it. A conversation whose old end has gone has not been added to — it has been
+    /// rebuilt, or a local echo has just been given its real identity — and neither of those is
+    /// a message being said.
+    private func newArrivalCount(in rows: [TimelineRow]) -> Int {
+        guard let newestRowID,
+              let end = rows.lastIndex(where: { $0.id == newestRowID }) else { return 0 }
+        return rows.count - 1 - end
     }
 
     /// Bubbles on two sides, or the plain column — see `MessageLayout`. The one place in the app
@@ -1261,6 +1373,7 @@ public struct RoomView: View {
     @ViewBuilder
     private func messageRow(_ message: Message,
                             opensDay: Bool,
+                            arrives: Bool,
                             in scroll: ScrollViewProxy) -> some View {
         let handlers = handlers(for: message, in: scroll)
         let isPinned = timeline.isPinned(messageID: message.id)
@@ -1273,7 +1386,7 @@ public struct RoomView: View {
                        handlers: handlers,
                        isPinned: isPinned,
                        opensDay: opensDay,
-                       arrivesAnimated: timeline.hasLoaded,
+                       arrivesAnimated: arrives,
                        isHighlighted: isHighlighted)
         case .compact:
             // No `isOneToOne`: the plain column says who spoke in every conversation, because
@@ -1282,7 +1395,7 @@ public struct RoomView: View {
                               handlers: handlers,
                               isPinned: isPinned,
                               opensDay: opensDay,
-                              arrivesAnimated: timeline.hasLoaded,
+                              arrivesAnimated: arrives,
                               isHighlighted: isHighlighted)
         }
     }

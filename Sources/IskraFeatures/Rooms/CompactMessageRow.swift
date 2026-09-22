@@ -97,19 +97,19 @@ struct CompactMessageRow: View {
                 .allowsHitTesting(false)
         }
         .animation(.smooth(duration: Theme.Timing.reaction * 2), value: isHighlighted)
-        .animation(.smooth(duration: Theme.Timing.reaction), value: message.reactions)
-        .animation(.smooth(duration: Theme.Timing.deletion), value: message.kind)
+        // And nothing else — a message that is only *changing* changes at once, here exactly as
+        // in the bubbles. See `MessageRow`, where the reasoning is written out.
         .transition(.asymmetric(insertion: arrival,
                                 removal: .scale(scale: 0.85).combined(with: .opacity)))
     }
 
-    /// A message coming in — see `MessageRow`, which explains the shape of it and why it is a
-    /// scale rather than a move. The anchor is the leading edge in every case: the plain column
-    /// has no sides, so a message of yours does not come from anywhere different.
+    /// A message coming in — see `MessageRow`, which explains the shape of it and why it rises
+    /// from below rather than dropping in. The plain column has no sides, so there is nothing
+    /// here to vary: a message of yours arrives from the same place as everyone else's.
     private var arrival: AnyTransition {
         guard arrivesAnimated else { return .identity }
 
-        return .scale(scale: 0.92, anchor: .bottomLeading)
+        return .move(edge: .bottom)
             .combined(with: .opacity)
             .animation(Theme.Timing.arrival)
     }
