@@ -519,12 +519,19 @@ python3 -c 'import yaml; print(list(yaml.safe_load(open("sygnal.yaml"))["apps"])
 Sygnal сядет на 5000, проброс поведёт на 5400, и умрут **все** пуши. Правильное значение —
 `127.0.0.1:5400:5000`, и почему половинки разные, написано в разделе 1.
 
-Выкатка — с бэкапом и автооткатом: если после перезапуска шлюз не отвечает 400 на пустой POST,
-скрипт возвращает старые файлы и поднимает то, что было.
+Выкатка — `Gateway/install.sh`, с бэкапом и автооткатом: если после перезапуска шлюз не отвечает
+400 на пустой POST, скрипт возвращает старые файлы и поднимает контейнер заново.
 
 ```sh
 cd ~/iskra-calls && sudo bash install.sh
 ```
+
+**Внутри он зовёт голый `docker`, а не `docker compose`, и это не вкусовщина.** На этой машине
+плагина compose нет вовсе (`docker compose version` → `'compose' is not a docker command`), и
+`docker` разбирает `-d` сам, отвечая `unknown shorthand flag: 'd' in -d`. Ровно это описано в
+разделе 1; первая версия скрипта на этом и споткнулась. Контейнер здесь один, compose ничего не
+даёт, и скрипт находит его **по образу**, а не по имени, — имя ему давал compose, и какое, никто
+не помнит. После выкатки контейнер называется `sygnal` и живёт под обычным `docker`.
 
 Проверить после:
 
@@ -535,7 +542,7 @@ curl -s -X POST -H 'Content-Type: application/json' \
   https://push.iskra.swag.moscow/_matrix/push/v1/notify
 
 # и что RingPushkin импортировался, а не свалился на _assert_hooks
-sudo docker compose -f /opt/sygnal/docker-compose.yml logs --tail=50 | grep -i iskra
+sudo docker logs --tail=50 sygnal | grep -iE 'iskra|pushkin|Traceback'
 ```
 
 ### Порядок
