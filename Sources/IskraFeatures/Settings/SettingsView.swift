@@ -152,7 +152,12 @@ struct SettingsView: View {
                 // leads to an empty screen is worse than no row — see `BetaFeatures.hasAnything`.
                 if BetaFeatures.hasAnything {
                     NavigationLink {
-                        BetaView()
+                        BetaView(onCallAddressChanged: {
+                            // A typed Element Call address is the one input to `callAvailability`
+                            // that does not come from the server, so it is the one that can change
+                            // while the app is running. See `BetaView.onCallAddressChanged`.
+                            Task { await session.loadCallAvailability() }
+                        })
                     } label: {
                         Label(Strings.Settings.beta, systemImage: "flask")
                     }

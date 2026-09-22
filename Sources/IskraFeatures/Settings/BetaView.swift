@@ -21,6 +21,20 @@ struct BetaView: View {
     /// it. Only the app places calls.
     @AppStorage(BetaFeatures.elementCallURLKey) private var elementCallURL = ""
 
+    /// What the address was when this screen opened, so that leaving it without touching the field
+    /// asks the server nothing.
+    @State private var elementCallURLOnEntry = ""
+
+    /// Told when the call address has actually been changed, so the session can look again.
+    ///
+    /// It exists because the availability of calls is worked out **once**, in `UserSession.start()`
+    /// — two network questions whose only consequence is whether a button appears, and no reason
+    /// to re-ask them while somebody reads a conversation. That is right for the server's answer
+    /// and wrong for this field: without this, a person types an address here, goes back, finds no
+    /// call button, and the only cure is restarting the app. The field would look broken, and the
+    /// bug would be invisible — the address *was* saved.
+    var onCallAddressChanged: (() -> Void)?
+
     var body: some View {
         Form {
             Section {
@@ -85,5 +99,14 @@ struct BetaView: View {
         }
         .formStyle(.grouped)
         .navigationTitle(Text(Strings.Beta.title))
+        .onAppear { elementCallURLOnEntry = elementCallURL }
+        // On the way out rather than on every keystroke: half a typed address is a different
+        // address, and asking the server about each one would be a network request per letter.
+        // This screen pushes nothing, so `onDisappear` here means what it says — see the warning
+        // about it in `RoomInfoView`, where it does not.
+        .onDisappear {
+            guard elementCallURL != elementCallURLOnEntry else { return }
+            onCallAddressChanged?()
+        }
     }
 }

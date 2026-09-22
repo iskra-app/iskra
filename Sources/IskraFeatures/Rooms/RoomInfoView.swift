@@ -33,6 +33,18 @@ struct RoomInfoView: View {
     /// Opening the in-chat search from the info screen.
     var onSearch: () -> Void
 
+    /// Placing a call, or `nil` where this account cannot place one in this room.
+    ///
+    /// Nil rather than a disabled row, and that is the same refusal the toolbar makes: a call
+    /// needs an Element Call the server actually names, and a power level that allows writing
+    /// `m.call.member`. Where either is missing there is no call to be had, and a greyed-out
+    /// "Позвонить" would be the screen offering something it cannot do. See `ElementCallDiscovery`.
+    ///
+    /// It is a closure rather than a `CallStore` because this screen is pushed from the room and
+    /// the call belongs to the room: `RoomView` owns the store, the presentation and the web view,
+    /// and this screen only says when. It also has to *close itself* on the way — see the caller.
+    var onCall: ((CallIntent) -> Void)?
+
     @Environment(\.dismiss) private var dismiss
 
     /// Offline, this screen is a *description* of the room rather than a way to change it. Every
@@ -67,11 +79,16 @@ struct RoomInfoView: View {
     /// Optional so the info screen still stands on its own where there is no timeline behind it.
     private let timeline: TimelineStore?
 
-    init(details: RoomDetailsStore, timeline: TimelineStore? = nil, onLeave: @escaping () -> Void, onSearch: @escaping () -> Void) {
+    init(details: RoomDetailsStore,
+         timeline: TimelineStore? = nil,
+         onLeave: @escaping () -> Void,
+         onSearch: @escaping () -> Void,
+         onCall: ((CallIntent) -> Void)? = nil) {
         _details = State(initialValue: details)
         self.timeline = timeline
         self.onLeave = onLeave
         self.onSearch = onSearch
+        self.onCall = onCall
     }
 
     /// A one-to-one chat has no name, no description and no picture of its own — all three
@@ -89,6 +106,8 @@ struct RoomInfoView: View {
                 identity
                     .profileHeaderRow()
             }
+
+            callActions
 
             about
 
@@ -297,6 +316,58 @@ struct RoomInfoView: View {
     /// why. A personal chat's nickname is written to this device and nowhere else, so there is
     /// nothing for the network to refuse and the pencil stays live.
     private var editingNeedsNetwork: Bool { isRoom }
+
+    // MARK: - Calling from here
+
+    /// The way into a call, directly under the portrait.
+    ///
+    /// The room's header has the same two buttons, and this is not a duplicate for its own sake:
+    /// on the phone that header is two icons with no words, sized for a thumb that already knows
+    /// what they do. This screen is where somebody goes to find out what can be done with a chat,
+    /// and a row saying "Позвонить" in full is how they find it the first time.
+    ///
+    /// It offers to *join* when the room already has a call rather than to start a second one
+    /// beside it — the same reading `OngoingCallStrip` makes above the conversation, and it costs
+    /// nothing here because the timeline that knows is already handed to this screen for its media.
+    @ViewBuilder
+    private var callActions: some View {
+        if let onCall {
+            Section {
+                if timeline?.hasActiveCall == true {
+                    Button {
+                        // The kind of call the room already has, never one of our choosing, and a
+                        // group with no opinion is joined as the group call it is. Deliberately the
+                        // same expression as `RoomView`'s strip: two places deciding this
+                        // differently would put somebody into a video call nobody else is in.
+                        onCall(.join(video: timeline?.callIsVideo ?? isRoom))
+                    } label: {
+                        Label(String(app: Strings.Call.join), systemImage: "phone.connection")
+                    }
+                } else {
+                    // A voice call is its own intent in Matrix rather than a video call with the
+                    // camera switched off — the other side is told which it is — and the SDK has
+                    // one only for direct chats. So the pair of rows is not a nicety for personal
+                    // chats; the single row is the whole of what a group can be offered.
+                    if !isRoom {
+                        Button {
+                            onCall(.start(video: false))
+                        } label: {
+                            Label(String(app: Strings.Call.voice), systemImage: "phone")
+                        }
+                    }
+
+                    Button {
+                        onCall(.start(video: true))
+                    } label: {
+                        Label(String(app: Strings.Call.video), systemImage: "video")
+                    }
+                }
+            }
+            // A call is a network act with nothing queueing it. Offline the greying is the honest
+            // answer, and the footer further down already says why everything here is grey.
+            .disabled(isOffline)
+        }
+    }
 
     // MARK: - What it is for, and what it does to your phone
 

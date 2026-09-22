@@ -908,7 +908,14 @@ public struct RoomView: View {
                 }, onSearch: {
                     isShowingDetails = false
                     openRoomSearch()
-                })
+                }, onCall: canCall ? { intent in
+                    // Closed first, exactly as the search above closes it, and for a plainer
+                    // reason: the call is presented by *this* screen, and a full-screen call with
+                    // the info screen still standing behind it would drop the reader back onto a
+                    // list of room settings when they hang up, rather than into the conversation.
+                    isShowingDetails = false
+                    startCall(intent)
+                } : nil)
             }
         }
         .navigationDestination(isPresented: $isShowingPinned) {
