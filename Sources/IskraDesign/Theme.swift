@@ -250,6 +250,40 @@ public enum Theme {
         /// once everything has been said, the screen waits.
         public static let welcomeSlide: Duration = .seconds(5)
 
+        /// The pause between the question and the answer in the first run's preview.
+        ///
+        /// The two lines are a conversation, so they arrive the way a conversation does: one, and
+        /// then the other, with long enough between them to be an answer rather than a second half
+        /// of the same breath. Short enough that somebody who came to pick a colour is not kept
+        /// waiting for the thing they are picking it against.
+        public static let previewReplies: Duration = .milliseconds(450)
+
+        /// One first-run screen giving way to the next.
+        ///
+        /// Half a second, and no bounce. A whole screen is the largest thing this app ever
+        /// animates, and weight that is charming on a message bubble is a wobbling wall at this
+        /// size — so it is a spring for the ease alone: quick off the mark, and settling rather
+        /// than stopping. See `AnyTransition.onboardingStep`.
+        public static let stepChanges: Animation = .spring(duration: 0.45, bounce: 0)
+
+        /// One frame at sixty hertz.
+        ///
+        /// Not a delay: it is the frame in which a thing is drawn *where it starts*, so that the
+        /// animation asked for immediately afterwards has somewhere to begin. `onAppear` runs
+        /// inside the same pass that first lays a view out, and SwiftUI does the sensible thing
+        /// with an animation whose initial value it has never drawn — it collapses the two into
+        /// one render and puts the view straight at its final place. See `MessageArrival.land()`,
+        /// which is where this was learned, and `GreetingStep`, which learned it second-hand.
+        public static let aFrame: Duration = .milliseconds(16)
+
+        /// How far apart two things that arrive together are let land.
+        ///
+        /// A face and the hello under it, two lines of a conversation that has not happened: they
+        /// belong to one event, so they must not arrive at one instant — everything landing on the
+        /// same frame reads as a screen being switched on, and the point of animating any of it is
+        /// that something is *happening*. Small enough that nobody counts it out.
+        public static let stagger: TimeInterval = 0.12
+
         /// How long the hello stands on screen before the first run moves on.
         ///
         /// Three seconds: long enough to be read and to register as the app saying something
@@ -271,6 +305,14 @@ public enum Theme {
         /// as the message being picked up, and it is still far from the cartoon squash that a
         /// deeper number would give a wall of text.
         public static let pressedMessage: CGFloat = 0.94
+
+        /// How far the first run's preview bubble swells when a new accent lands on it.
+        ///
+        /// Four percent, and upward. It is the smallest movement that is still seen on a bubble
+        /// the size of one line of text, and it is the right size for what it says — the reply did
+        /// not *do* anything, it was repainted, and a bubble that jumped would be claiming more
+        /// than that. See `AppearanceStep.nod()`.
+        public static let nod: CGFloat = 1.04
     }
 
     /// The lines the app draws *around* things rather than under them. There are very few:
