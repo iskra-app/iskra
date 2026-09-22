@@ -13,6 +13,12 @@ import SwiftUI
 /// drawn as nothing. A hard-coded height would be right at the default Dynamic Type size and wrong
 /// at every other one.
 ///
+/// **It does not carry its own transition.** How it comes and goes belongs to whoever inserts it,
+/// because a transition is only ever played by the animated transaction that put the view there —
+/// see `RoomView`, where the bubble rises and fades on `AnyTransition.arrival`, the same rise a
+/// message lands with. A transition declared here would be silently ignored anywhere that scope
+/// is missing, which is exactly how it used to fail.
+///
 /// The dots pulse in a staggered wave, iMessage's timing: a gentle rise and fall, never a hard
 /// blink. It is driven by a repeating animation on a single `@State` flag, **not** by
 /// `TimelineView(.animation)` — and that difference is load-bearing. `TimelineView(.animation)`
@@ -69,6 +75,5 @@ public struct TypingBubble: View {
         // Decorative: VoiceOver hears "typing" from the room's header subtitle, which names *who*.
         // Two announcements of the same fact — one of them wordless dots — is one too many.
         .accessibilityHidden(true)
-        .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 }
