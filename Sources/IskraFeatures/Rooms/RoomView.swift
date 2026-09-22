@@ -1418,7 +1418,11 @@ public struct RoomView: View {
         let opensDay: Bool
         /// Whether this row is arriving *now* — see `newestRowID`, and `MessageRow.arrivesAnimated`.
         let arrives: Bool
-        var id: String { row.id }
+        /// What the row is drawn under, which for a message of ours that the server has just
+        /// echoed is the ID its bubble already had — see `TimelineStore.viewIdentity(of:)`. It
+        /// is the identity SwiftUI keys the view on, and keeping it steady is what lets a
+        /// message you sent finish the arrival it started.
+        let id: String
     }
 
     private var placedRows: [PlacedRow] {
@@ -1441,7 +1445,8 @@ public struct RoomView: View {
             let placed = PlacedRow(row: row,
                                    followsEvent: previousWasEvent,
                                    opensDay: previousWasDivider,
-                                   arrives: hasSettled && index >= firstArrival)
+                                   arrives: hasSettled && index >= firstArrival,
+                                   id: timeline.viewIdentity(of: row))
             if case .event = row { previousWasEvent = true } else { previousWasEvent = false }
             if case .dayDivider = row { previousWasDivider = true } else { previousWasDivider = false }
             return placed

@@ -1618,8 +1618,18 @@ public final class TimelineStore {
         // the rebuild that carries it: appending first would put the same sentence in the
         // conversation twice for one frame. See `PendingSends`.
         if !pending.isEmpty {
-            pending.pruneEchoed(in: built)
+            // Which echo took over from which of our bubbles, remembered so the screen can keep
+            // the row rather than replace it. See `viewIdentity(of:)`.
+            adopted.merge(pending.pruneEchoed(in: built)) { _, new in new }
             built.append(contentsOf: pendingRows(after: built))
+        }
+
+        // Only for as long as the message it belongs to is on the screen. A conversation
+        // scrolled far enough back drops its oldest rows, and a mapping nothing refers to any
+        // more is a mapping nobody will ever look up.
+        if !adopted.isEmpty {
+            let present = Set(built.map(\.id))
+            adopted = adopted.filter { present.contains($0.key) }
         }
 
         latestRows = built
@@ -1633,6 +1643,29 @@ public final class TimelineStore {
 
         rows = latestRows
     }
+
+    /// The ID a row should be drawn under, which is not always the ID it *is*.
+    ///
+    /// They differ for exactly one thing, and briefly: a message of ours between being sent and
+    /// being echoed. Our own bubble goes up the instant send is pressed — that is what
+    /// `PendingSends` is for — and the server's echo of it arrives a fraction of a second later
+    /// with a real event ID. To everything below the screen those are two different rows, and
+    /// SwiftUI dutifully destroyed one view and built another: which is why a message you sent
+    /// never got the arrival it was given, while a message somebody sent *you* rose into place
+    /// as intended. The echo was replacing the bubble mid-animation, and whichever of the two
+    /// came second was drawn standing still.
+    ///
+    /// So the echo inherits the bubble's identity for as long as it is on the screen, and the
+    /// conversation keeps one row throughout. Only the *drawing* uses this. Everything that acts
+    /// on a message — replying, reacting, pinning, jumping to it — keeps using its real ID,
+    /// because that is the ID the server knows and the only one an action can be sent with.
+    public func viewIdentity(of row: TimelineRow) -> String {
+        adopted[row.id] ?? row.id
+    }
+
+    /// Echoes that have taken over from a bubble of ours: the real message's ID against the ID
+    /// the row already had on screen. See `viewIdentity(of:)`.
+    private var adopted: [String: String] = [:]
 
     /// Turns the messages still on their way out into rows at the end of the conversation.
     ///
