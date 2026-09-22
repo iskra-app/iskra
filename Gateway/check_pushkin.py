@@ -1,14 +1,27 @@
-"""Checks iskra_ring against stubs that carry Sygnal's real signatures.
+"""Checks iskra_ring against stubs standing in for Sygnal, without Sygnal and without Docker.
 
-The point is narrow: prove that `_assert_hooks` passes for the Sygnal we are actually deploying
-against, and *fails* when a signature moves — which is the bug that just shipped. The stubs are
-copied from matrix-org/sygnal main, not invented.
+    python3 Gateway/check_pushkin.py Gateway
+
+Two signatures are exercised on purpose. Upstream's main branch has
+``_get_payload_event_id_only(self, n, default_payload)``; the Sygnal actually deployed on the
+gateway has ``(self, n, default_payload, send_badge_counts)``. The pushkin must fit both, because
+pinning it to either is how it broke — once by being written for a shape that was already out of
+date, and once by refusing to start against a shape that was newer than upstream.
+
+What is checked:
+
+1. the hook names exist and a ring can still be marked (`_assert_hooks` passes);
+2. a *removed* hook is still caught, because that one genuinely breaks the class;
+3. the payload passes through both signatures untouched;
+4. ``aps`` is gone from the VoIP payload and the identifiers PushKit needs are not;
+5. only a marked ring counts as a ring.
 """
+
 import sys
 import types
 from typing import Any, Dict, List, Optional
 
-# --- stubs, with signatures copied verbatim from Sygnal ---------------------------------------
+# --- stubs ------------------------------------------------------------------------------------
 
 notifications = types.ModuleType("sygnal.notifications")
 
@@ -45,7 +58,9 @@ apnspushkin = types.ModuleType("sygnal.apnspushkin")
 
 
 class ApnsPushkin:
-    def __init__(self, name, sygnal, config):
+    """Upstream main: three parameters."""
+
+    def __init__(self, name: str, sygnal: Any, config: Any):
         self.name = name
 
     async def _dispatch_notification_unlimited(
@@ -56,98 +71,107 @@ class ApnsPushkin:
     def _get_payload_event_id_only(
         self, n: Notification, default_payload: Dict[str, Any]
     ) -> Dict[str, Any]:
-        payload = {}
-        payload.update(default_payload)
+        payload = dict(default_payload)
         payload["room_id"] = n.room_id
         payload["event_id"] = n.event_id
         return payload
 
 
+class DeployedApnsPushkin(ApnsPushkin):
+    """The one on the gateway: four, with `send_badge_counts`."""
+
+    def _get_payload_event_id_only(
+        self, n: Notification, default_payload: Dict[str, Any], send_badge_counts: bool = False
+    ) -> Dict[str, Any]:
+        payload = dict(default_payload)
+        payload["room_id"] = n.room_id
+        payload["event_id"] = n.event_id
+        if send_badge_counts:
+            payload["unread_count"] = 1
+        return payload
+
+
 apnspushkin.ApnsPushkin = ApnsPushkin
 
-sygnal_pkg = types.ModuleType("sygnal")
-sys.modules["sygnal"] = sygnal_pkg
+sys.modules["sygnal"] = types.ModuleType("sygnal")
 sys.modules["sygnal.notifications"] = notifications
 sys.modules["sygnal.apnspushkin"] = apnspushkin
 
 sys.path.insert(0, sys.argv[1])
 import iskra_ring  # noqa: E402
 
-failures = []
+failures: List[str] = []
+BANNER = {"aps": {"mutable-content": 1, "alert": {"title": "Iskra", "body": "Новое сообщение"}}}
 
-# --- 1. the hooks fit the Sygnal we deploy against --------------------------------------------
+
+def check(condition: bool, good: str, bad: str) -> None:
+    if condition:
+        print(f"✅ {good}")
+    else:
+        failures.append(bad)
+        print(f"❌ {bad}")
+
+
+# --- 1. the hooks are there --------------------------------------------------------------------
 
 try:
     iskra_ring.RingPushkin._assert_hooks()
-    print("✅ _assert_hooks passes against Sygnal's real signatures")
+    check(True, "_assert_hooks passes", "")
 except RuntimeError as error:
-    failures.append(f"_assert_hooks rejected a Sygnal it should accept: {error}")
+    check(False, "", f"_assert_hooks rejected a Sygnal it should accept: {error}")
 
-# --- 2. and it notices when one moves ---------------------------------------------------------
+# --- 2. a removed hook is caught ---------------------------------------------------------------
 
-
-def _moved(self, n):  # the old, one-argument shape — exactly the bug that shipped
-    return {}
-
-
-ApnsPushkin._get_payload_event_id_only = _moved
+saved = ApnsPushkin._get_payload_event_id_only
+del ApnsPushkin._get_payload_event_id_only
 try:
     iskra_ring.RingPushkin._assert_hooks()
-    failures.append("_assert_hooks accepted a moved signature — the check is worthless")
+    check(False, "", "a missing hook was not noticed — the check is worthless")
 except RuntimeError as error:
-    print(f"✅ a moved signature is caught: {error}")
+    check(True, f"a missing hook is caught: {error}", "")
 finally:
-    ApnsPushkin._get_payload_event_id_only = (
-        apnspushkin.ApnsPushkin.__dict__["_get_payload_event_id_only"]
-    )
+    ApnsPushkin._get_payload_event_id_only = saved
 
-# --- 3. the payload really loses `aps`, and keeps the identifiers ------------------------------
+# --- 3 & 4. the payload survives both signatures, minus `aps` ----------------------------------
 
+for label, base in (("upstream main (3 args)", ApnsPushkin),
+                    ("the deployed Sygnal (4 args)", DeployedApnsPushkin)):
+    # Re-parent RingPushkin itself. A subclass of it with its bases swapped would stop inheriting
+    # the very override under test — which this got wrong once, and the test dutifully reported
+    # the pushkin as broken when the pushkin was fine.
+    iskra_ring.RingPushkin.__bases__ = (base,)
+    pushkin = iskra_ring.RingPushkin.__new__(iskra_ring.RingPushkin)
+    pushkin.name = "moscow.swag.iskra.voip.dev"
 
-class _Restored(ApnsPushkin):
-    def _get_payload_event_id_only(self, n, default_payload):
-        payload = {}
-        payload.update(default_payload)
-        payload["room_id"] = n.room_id
-        payload["event_id"] = n.event_id
-        return payload
+    note = Notification({"room_id": "!r:example.org", "event_id": "$e"})
+    try:
+        payload = pushkin._get_payload_event_id_only(note, BANNER)
+    except TypeError as error:
+        check(False, "", f"{label}: the override does not fit — {error}")
+        continue
 
+    check("aps" not in payload,
+          f"{label}: aps is gone",
+          f"{label}: aps survived into the VoIP payload")
+    check(payload.get("room_id") == "!r:example.org" and payload.get("event_id") == "$e",
+          f"{label}: room_id and event_id are there — {payload}",
+          f"{label}: PushKit would get no identifiers — {payload}")
 
-iskra_ring.RingPushkin.__bases__ = (_Restored,)
+iskra_ring.RingPushkin.__bases__ = (ApnsPushkin,)
 
-pushkin = iskra_ring.RingPushkin.__new__(iskra_ring.RingPushkin)
-pushkin.name = "moscow.swag.iskra.voip.dev"
+# --- 5. the filter ------------------------------------------------------------------------------
 
-default_payload = {
-    "aps": {"mutable-content": 1, "alert": {"title": "Iskra", "body": "Новое сообщение"}}
-}
-payload = pushkin._get_payload_event_id_only(
-    Notification({"room_id": "!r:example.org", "event_id": "$e"}), default_payload
-)
-
-if "aps" in payload:
-    failures.append("aps survived into the VoIP payload")
-elif payload.get("room_id") != "!r:example.org" or payload.get("event_id") != "$e":
-    failures.append(f"the identifiers PushKit needs are missing: {payload}")
-else:
-    print(f"✅ VoIP payload is {payload} — no aps, both identifiers present")
-
-# --- 4. the filter itself ----------------------------------------------------------------------
-
-ring = Device({"app_id": "x", "pushkey": "y", "tweaks": {"sound": iskra_ring.RING_SOUND}})
-message = Device({"app_id": "x", "pushkey": "y", "tweaks": {}})
+marked = Device({"app_id": "x", "pushkey": "y", "tweaks": {"sound": iskra_ring.RING_SOUND}})
+plain = Device({"app_id": "x", "pushkey": "y", "tweaks": {}})
 other = Device({"app_id": "x", "pushkey": "y", "tweaks": {"sound": "default"}})
 
-if not iskra_ring.RingPushkin._is_ring(ring):
-    failures.append("a marked ring was not recognised")
-elif iskra_ring.RingPushkin._is_ring(message) or iskra_ring.RingPushkin._is_ring(other):
-    failures.append("something that is not a ring was treated as one")
-else:
-    print("✅ only a ring is a ring")
+check(iskra_ring.RingPushkin._is_ring(marked),
+      "a marked ring is recognised", "a marked ring was not recognised")
+check(not iskra_ring.RingPushkin._is_ring(plain) and not iskra_ring.RingPushkin._is_ring(other),
+      "an ordinary message is not a ring", "something that is not a ring was treated as one")
 
 print()
 if failures:
-    for failure in failures:
-        print(f"❌ {failure}")
+    print(f"{len(failures)} проблем(ы)")
     sys.exit(1)
 print("all good")

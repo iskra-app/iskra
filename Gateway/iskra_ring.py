@@ -74,14 +74,13 @@ plus the same entry named ``moscow.swag.iskra.voip`` with ``platform: production
 A note on versions
 ------------------
 
-``ApnsPushkin``'s internals are not a public API. The three things this rests on — the dispatch
-hook, the payload builder for ``event_id_only``, and ``Tweaks.sound`` — are checked at import time
-rather than assumed, so a Sygnal that has moved one of them fails loudly at startup. That is the
-failure worth engineering for: a gateway that comes up and quietly rings nobody looks exactly like
-a gateway that is working.
+``ApnsPushkin``'s internals are not a public API, and the deployed Sygnal is not upstream's main
+branch — its ``_get_payload_event_id_only`` takes a ``send_badge_counts`` argument that main does
+not have. So the overrides here pass ``*args, **kwargs`` straight through to ``super()`` and pin no
+signature at all, and ``_assert_hooks`` checks only that the methods and ``Tweaks.sound`` still
+exist. See the long note on that method: both halves of it were learned the hard way.
 """
 
-import inspect
 import logging
 from typing import Any, Dict, List
 
@@ -103,42 +102,41 @@ class RingPushkin(ApnsPushkin):
         super().__init__(name, sygnal, config)
         self._assert_hooks()
 
-    #: The hooks this class overrides, with the parameters each must take. Names *and*
-    #: parameters, because a name that still exists with a different signature is the failure that
-    #: actually happened: ``_get_payload_event_id_only`` gained a ``default_payload`` argument, an
-    #: override written for the old shape raised ``TypeError`` deep inside a send, and Sygnal
-    #: turned that into a 500 — on the one path that matters, with the filtering half still
-    #: working perfectly. Checking only ``hasattr`` let that through.
-    _HOOKS = {
-        "_dispatch_notification_unlimited": ("self", "n", "device", "context"),
-        "_get_payload_event_id_only": ("self", "n", "default_payload"),
-    }
+    #: The hooks this class overrides. Names only — see `_assert_hooks` on why not signatures.
+    _HOOKS = ("_dispatch_notification_unlimited", "_get_payload_event_id_only")
 
     @classmethod
     def _assert_hooks(cls) -> None:
         """Fail at startup rather than at three in the morning.
 
-        Everything below rests on things that belong to Sygnal rather than to us. If any has moved
-        — in name or in shape — the honest outcome is a container that refuses to start, not one
-        that comes up, filters correctly, and answers 500 the moment somebody actually calls.
-        """
-        problems = []
+        Only that the names exist, and that a ring can still be marked at all.
 
-        for name, expected in cls._HOOKS.items():
-            hook = getattr(ApnsPushkin, name, None)
-            if hook is None:
-                problems.append(f"{name} is gone")
-                continue
-            actual = tuple(inspect.signature(hook).parameters)
-            if actual != expected:
-                problems.append(f"{name}{actual} — expected {expected}")
+        **Not the signatures, and that is the second lesson rather than a relaxation of the
+        first.** An earlier version pinned them, and it was right to: an override written for
+        ``_get_payload_event_id_only(n)`` when Sygnal wanted ``(n, default_payload)`` imported
+        cleanly, filtered correctly, and raised ``TypeError`` inside the first real send — a 500 on
+        the one path the whole class exists for.
+
+        But pinning turned out to break on the *next* thing, and for no good reason: the deployed
+        Sygnal takes ``(n, default_payload, send_badge_counts)``, a parameter upstream's own main
+        branch does not have yet. A check pinned to one shape refuses to start on any Sygnal that
+        has added an argument — which is every future Sygnal.
+
+        The overrides below take ``*args, **kwargs`` and hand them straight back to ``super()``, so
+        an added parameter passes through untouched and there is no signature left to disagree
+        about. What still has to hold is that the methods exist to be overridden, and that
+        ``Tweaks`` still carries the one field a ring is marked with; a removal breaks this class
+        for real, and those are what is checked.
+        """
+        problems = [name for name in cls._HOOKS if not hasattr(ApnsPushkin, name)]
 
         if not hasattr(Tweaks({}), "sound"):
             problems.append("Tweaks no longer keeps .sound, so a ring cannot be marked at all")
 
         if problems:
             raise RuntimeError(
-                "iskra_ring.RingPushkin does not fit this Sygnal: " + "; ".join(problems)
+                "iskra_ring.RingPushkin does not fit this Sygnal, these are gone: "
+                + ", ".join(problems)
             )
 
     @staticmethod
@@ -147,7 +145,7 @@ class RingPushkin(ApnsPushkin):
         return getattr(device.tweaks, "sound", None) == RING_SOUND
 
     async def _dispatch_notification_unlimited(
-        self, n: Notification, device: Device, context: NotificationContext
+        self, n: Notification, device: Device, context: NotificationContext, *args: Any, **kwargs: Any
     ) -> List[str]:
         """Send, or say nothing at all.
 
@@ -166,10 +164,10 @@ class RingPushkin(ApnsPushkin):
             return []
 
         logger.info("ringing: room=%s event=%s", n.room_id, n.event_id)
-        return await super()._dispatch_notification_unlimited(n, device, context)
+        return await super()._dispatch_notification_unlimited(n, device, context, *args, **kwargs)
 
     def _get_payload_event_id_only(
-        self, n: Notification, default_payload: Dict[str, Any]
+        self, n: Notification, *args: Any, **kwargs: Any
     ) -> Dict[str, Any]:
         """The room id and the event id, and nothing else.
 
@@ -181,6 +179,6 @@ class RingPushkin(ApnsPushkin):
         Dropped rather than never sent, because the same ``default_payload`` is registered for both
         pushers and the ordinary one genuinely needs it.
         """
-        payload = super()._get_payload_event_id_only(n, default_payload)
+        payload = super()._get_payload_event_id_only(n, *args, **kwargs)
         payload.pop("aps", None)
         return payload
