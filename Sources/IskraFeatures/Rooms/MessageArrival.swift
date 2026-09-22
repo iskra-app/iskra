@@ -70,13 +70,31 @@ private struct MessageArrival: ViewModifier {
             .opacity(solidity)
             .onAppear {
                 guard isArriving else { return }
-                // The animation lives on the change, inside the row, and reaches nothing
-                // outside it.
-                withAnimation(Theme.Timing.arrival) {
-                    lift = 0
-                    solidity = 1
-                }
+                land()
             }
+    }
+
+    /// Starts the rise, one frame after the row exists.
+    ///
+    /// The frame is the point. `onAppear` runs inside the same pass that first lays the row out,
+    /// so animating from there gives SwiftUI a view whose initial value it has never drawn — and
+    /// it does the sensible thing with that, which is to collapse the two into a single render
+    /// and put the row straight at its final place. The animation was correct and simply had no
+    /// frames to happen in: a message appeared, fully formed, exactly as though nothing had been
+    /// asked for.
+    ///
+    /// So the row is drawn once where it starts, low and clear, and the landing is asked for
+    /// after that. One frame is all it takes, and one frame is not a delay anybody can see —
+    /// `onAppear` has already put the bubble on screen; this only decides where it is standing
+    /// when the eye arrives.
+    private func land() {
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(16))
+            withAnimation(Theme.Timing.arrival) {
+                lift = 0
+                solidity = 1
+            }
+        }
     }
 }
 
@@ -85,5 +103,25 @@ extension View {
     /// left in a conversation belongs to the row and not to the list.
     func arrives(_ isArriving: Bool) -> some View {
         modifier(MessageArrival(isArriving: isArriving))
+    }
+}
+
+/// Which rows at the end of a conversation are arriving, and which were merely added to it.
+///
+/// Pulled out of `RoomView` and given a name so it can be *tested*. The rule has been wrong
+/// three times — first "anything new", then "anything new after a delay", then this — and every
+/// one of those was found by a person looking at a screen, which is a slow and unreliable way to
+/// learn that a page of history counted as fifteen people speaking at once.
+enum MessageArrivals {
+    /// The index of the first arriving row, or `rows.count` when nothing is arriving.
+    ///
+    /// The test is *where*, not *when*. History is added above what is already there; a message
+    /// is added past the end of it. So a row is arriving only if it comes after the row that was
+    /// last on the previous pass — and if that row is gone, nothing is: the conversation was
+    /// rebuilt, or a local echo has just been given its real identity by the server, and neither
+    /// is somebody speaking.
+    static func firstArriving(in ids: [String], after newest: String?) -> Int {
+        guard let newest, let end = ids.lastIndex(of: newest) else { return ids.count }
+        return end + 1
     }
 }
