@@ -165,4 +165,40 @@ struct PendingSendsTests {
 
         #expect(pending.all.count == 1)
     }
+
+    @Test("The echo is told which bubble it is replacing")
+    func pairsEachEchoWithTheBubbleItTakesOver() {
+        var pending = PendingSends()
+        let id = pending.add(text: "привет", replyingTo: nil)
+
+        let echo = mine("привет", at: .now)
+        let taken = pending.pruneEchoed(in: [echo])
+
+        // The row on screen keeps its identity, so the arrival it was playing is not thrown
+        // away halfway through — see `TimelineStore.viewIdentity(of:)`.
+        #expect(taken[echo.id] == id)
+        #expect(pending.all.isEmpty)
+    }
+
+    @Test("Two of the same word are paired in the order they were sent")
+    func pairsRepeatedWordsInOrder() {
+        var pending = PendingSends()
+        let first = pending.add(text: "ок", replyingTo: nil)
+        let second = pending.add(text: "ок", replyingTo: nil)
+
+        let early = mine("ок", at: .now)
+        let late = mine("ок", at: .now.addingTimeInterval(1))
+        let taken = pending.pruneEchoed(in: [early, late])
+
+        #expect(taken[early.id] == first)
+        #expect(taken[late.id] == second)
+    }
+
+    @Test("Nothing to pair when nothing was echoed")
+    func pairsNothingWithoutAnEcho() {
+        var pending = PendingSends()
+        pending.add(text: "привет", replyingTo: nil)
+
+        #expect(pending.pruneEchoed(in: [mine("другое", at: .now)]).isEmpty)
+    }
 }

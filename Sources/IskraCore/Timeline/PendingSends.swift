@@ -69,24 +69,40 @@ struct PendingSends: Equatable, Sendable {
     /// bubble there. Retiring one too late would leave the same sentence in the conversation
     /// twice, which is the failure a reader would actually notice — so the window is generous
     /// and the tie is broken towards forgetting.
-    mutating func pruneEchoed(in rows: [TimelineRow]) {
-        guard let earliest = all.map(\.sentAt).min() else { return }
+    /// Returns which echo took over from which of ours — the real message's ID against the ID
+    /// the bubble on the screen already had.
+    ///
+    /// The pairing is not bookkeeping for its own sake; it is what lets the replacement be
+    /// invisible. Our bubble goes up the moment send is pressed and the echo replaces it a
+    /// fraction of a second later, and to the screen that is one view being destroyed and
+    /// another built in its place — which threw away a message's arrival animation somewhere in
+    /// the middle of it, so a message you sent appeared and one somebody sent you rose into
+    /// place. Told which is which, the conversation can keep the *same* row and change what is
+    /// in it. See `TimelineStore.viewIdentity(of:)`.
+    @discardableResult
+    mutating func pruneEchoed(in rows: [TimelineRow]) -> [String: String] {
+        guard let earliest = all.map(\.sentAt).min() else { return [:] }
 
         let since = earliest.addingTimeInterval(-Self.echoWindow)
-        var echoes: [String: Int] = [:]
+        // In order, and per message ID rather than only counted, so that the second echo of "ок"
+        // is paired with the second "ок" we are holding and not with the first.
+        var echoes: [String: [String]] = [:]
         for row in rows {
             guard let message = row.message,
                   message.isOwn,
                   message.timestamp >= since,
                   case let .text(body) = message.kind else { continue }
-            echoes[body, default: 0] += 1
+            echoes[body, default: []].append(message.id)
         }
 
+        var taken: [String: String] = [:]
         all.removeAll { pending in
-            guard let count = echoes[pending.text], count > 0 else { return false }
-            echoes[pending.text] = count - 1
+            guard var waiting = echoes[pending.text], !waiting.isEmpty else { return false }
+            taken[waiting.removeFirst()] = pending.id
+            echoes[pending.text] = waiting
             return true
         }
+        return taken
     }
 
     /// Anything still waiting after this long is given up on rather than left on the screen.
