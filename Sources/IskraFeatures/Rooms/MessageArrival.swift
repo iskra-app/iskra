@@ -27,7 +27,7 @@ import IskraDesign
 ///
 /// **Up, from the bottom.** The end of the conversation is at the foot of the screen, so that is
 /// where a new message comes from — out of the composer, settling into the row it now owns.
-private struct MessageArrival: ViewModifier {
+struct MessageArrival: ViewModifier {
     /// Whether this row is genuinely arriving. False for everything else, and then the row is
     /// drawn in place, at full strength, and `onAppear` does nothing.
     ///
@@ -40,7 +40,11 @@ private struct MessageArrival: ViewModifier {
 
     /// How far below its place the message starts. Small on purpose: this is a message being put
     /// down, not one flying in from off-screen.
-    private static let rise: CGFloat = 14
+    ///
+    /// Shared with `AnyTransition.arrival`, so that the one thing in a conversation that does
+    /// arrive as a *transition* — the typing bubble, which is inserted and removed rather than
+    /// appended — comes up from exactly as far down as a message does.
+    static let rise: CGFloat = 14
 
     /// Where the row is, and how solid — held as state rather than read from `isArriving`,
     /// because `isArriving` is true for exactly one pass and the animation outlives it.
@@ -103,6 +107,22 @@ extension View {
     /// left in a conversation belongs to the row and not to the list.
     func arrives(_ isArriving: Bool) -> some View {
         modifier(MessageArrival(isArriving: isArriving))
+    }
+}
+
+extension AnyTransition {
+    /// The same arrival, for a view that genuinely is inserted and removed.
+    ///
+    /// `MessageArrival` exists because rows must *not* be animated by the list — see the long
+    /// note above. The typing bubble is the exception that proves it: it is not a row, it has no
+    /// identity to hold on to, and it leaves again, so there is nothing to carry an entrance of
+    /// its own. It gets a transition instead, driven by an `.animation` scope that wraps the
+    /// bubble and nothing else.
+    ///
+    /// Up and in, down and out, both fading — the same rise and the same `Theme.Timing.arrival`
+    /// spring as a message, because to the eye it is a message that has not been finished yet.
+    static var arrival: AnyTransition {
+        .offset(y: MessageArrival.rise).combined(with: .opacity)
     }
 }
 

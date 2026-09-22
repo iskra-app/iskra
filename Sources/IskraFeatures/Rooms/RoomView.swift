@@ -345,16 +345,30 @@ public struct RoomView: View {
                     }
 
                     // Someone writing, shown as an unfinished incoming message at the foot of the
-                    // conversation — the header says who, this is the animation of it. It rides the
-                    // bottom animation scope below, so it slides in and out rather than popping.
-                    Group {
+                    // conversation — the header says who, this is the animation of it. It comes up
+                    // from below and fades, exactly as a message does (`AnyTransition.arrival`),
+                    // and goes back down the same way when they stop.
+                    //
+                    // The `VStack` is load-bearing and must not go back to being a `Group`. A
+                    // `Group` is not a container: it hands every modifier to each of its members,
+                    // so the `.animation` below landed on `TypingBubble` itself rather than around
+                    // the `if` that inserts it — no animated transaction, no transition, and the
+                    // bubble popped in and out while the modifier that was supposed to stop it sat
+                    // right there looking correct.
+                    //
+                    // This is the one implicit animation scope in the conversation, and it is
+                    // allowed because of how little it wraps: a single bubble whose only other
+                    // animatable state, the pulse of the dots, carries an `.animation` of its own
+                    // further in and therefore wins. Nothing else can be caught by it.
+                    VStack(spacing: 0) {
                         if !timeline.typing.isEmpty {
                             TypingBubble()
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.top, Theme.Spacing.withinRun)
+                                .transition(.arrival)
                         }
                     }
-                    .animation(.smooth(duration: Theme.Timing.chrome), value: timeline.typing.isEmpty)
+                    .animation(Theme.Timing.arrival, value: timeline.typing.isEmpty)
 
                     endMarker
                 }
