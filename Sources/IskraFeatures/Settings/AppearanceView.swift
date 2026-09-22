@@ -162,6 +162,32 @@ struct AppearanceView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(Theme.Spacing.normal)
+        // Standing on the wallpaper, because that is where a conversation stands.
+        //
+        // The preview exists to answer "what will this look like to live in", and until now it
+        // answered it on the app's own page while the rooms it stands for were on a photograph.
+        // That is not a small difference: over a wallpaper a bubble stops being a percentage of
+        // the foreground colour and takes an opaque fill instead — see `EnvironmentValues
+        // .hasWallpaper` — so the accent the swatches above are choosing is a *different colour*
+        // in the two cases, and the one being shown was the one the user would not get.
+        //
+        // It also makes the row below it worth looking at: the dimmer is a slider about
+        // legibility, and legibility is a question about words on a picture, which is the thing
+        // this card now is.
+        .background {
+            // Sized and clipped here, not trusted to fill: the backdrop ignores the safe area,
+            // which is what a wallpaper wants and exactly what a card inside a form must not do.
+            // The same care the tiles take — see `tile(_:)`.
+            WallpaperBackdrop(wallpaper: wallpaper, photo: wallpapers.photo, dimming: dimming)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.picture, style: .continuous))
+        // Told, so the bubbles inside it draw the way they will in a room. The whole point of the
+        // card is that it does not lie about this.
+        .environment(\.hasWallpaper, wallpaper.isSet)
+        // The picture is read off the disk once per launch, and this screen can be the first thing
+        // to want it — somebody who has a wallpaper and opens Appearance before opening a room.
+        .task { await wallpapers.load() }
         .padding(.vertical, Theme.Spacing.close)
         // One thing, read as one thing. Four bubbles apiece would have VoiceOver walk somebody
         // through a fake conversation on the way to the colours they came for.

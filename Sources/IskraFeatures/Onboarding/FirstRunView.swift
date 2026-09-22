@@ -26,19 +26,51 @@ struct FirstRunView: View {
     private enum Step { case greeting, appearance, faces }
 
     var body: some View {
-        Group {
+        // A `ZStack`, so the step leaving and the step arriving are on screen together for as
+        // long as it takes one to hand over to the other. A `Group` around a `switch` puts them
+        // in the same place in the hierarchy and SwiftUI is at liberty to swap them in a single
+        // frame; stacked, the one on its way out has somewhere to be while it goes.
+        ZStack {
             switch step {
             case .greeting:
-                GreetingStep(name: session.displayName) { step = .appearance }
+                GreetingStep(name: session.displayName,
+                             avatarURL: session.avatarURL,
+                             userID: session.userID) { advance(to: .appearance) }
             case .appearance:
-                AppearanceStep { step = .faces }
+                AppearanceStep { advance(to: .faces) }
             case .faces:
                 FacesStep(onDone: onDone)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .animation(.smooth, value: step)
-        .transition(.opacity)
+        // The face on the greeting is the account's own picture, and a picture is bytes off the
+        // homeserver like any other — so this run of screens needs the loader the rest of the app
+        // gets at the root. It is the only thing here that touches the network, and it is asked
+        // for one image.
+        .environment(\.mediaLoader, session.media())
+    }
+
+    /// One step on.
+    ///
+    /// The animation is on the *change* rather than on the view, which is the difference between
+    /// a flow that moves and a flow that also lurches whenever something inside a step changes —
+    /// `.animation(_:value:)` on the container would take the slider on the faces screen with it.
+    private func advance(to next: Step) {
+        withAnimation(Theme.Timing.stepChanges) { step = next }
+    }
+}
+
+extension AnyTransition {
+    /// How one first-run screen gives way to the next.
+    ///
+    /// Sideways, and always the same way: this is three screens in a fixed order with no way
+    /// back, so the movement can say so. The screen leaving goes out to the left and the one
+    /// arriving comes in from the right — the direction a page is turned — and both fade, because
+    /// a slide without a fade at this size reads as the whole app sliding rather than as one
+    /// screen replacing another.
+    static var onboardingStep: AnyTransition {
+        .asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity),
+                    removal: .move(edge: .leading).combined(with: .opacity))
     }
 }
 
@@ -50,22 +82,62 @@ struct FirstRunView: View {
 /// itself nothing at all, and there is a greeting for that too rather than a stray comma.
 private struct GreetingStep: View {
     let name: String
+
+    /// The picture on the account, if the person arrived with one — the same `mxc://` the chat
+    /// list draws them by. Very often nil, and that is the ordinary case rather than the sad one:
+    /// what stands in for it is either their initial or the creature their ID comes out as,
+    /// exactly as everywhere else in the app. See `Avatar`.
+    let avatarURL: String?
+
+    /// What a drawn face is computed from, which is the Matrix ID and never the name — a face
+    /// that changed when somebody edited their profile would not be a face.
+    let userID: String
+
     let onDone: () -> Void
 
+    /// Whether the hello has landed.
+    ///
+    /// False for the first frame on purpose. A greeting that is simply *there* when the screen
+    /// appears is a heading; this one is the app saying hello to somebody by name, and for that
+    /// to be seen happening there has to be a frame it was not in yet. See `Theme.Timing.aFrame`.
+    @State private var hasLanded = false
+
     var body: some View {
-        Text(greeting)
-            .font(.largeTitle.bold())
-            .multilineTextAlignment(.center)
-            .padding(Theme.Spacing.generous)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .transition(.opacity)
-            .task {
-                try? await Task.sleep(for: Theme.Timing.greeting)
-                // Not on the way out. A cancelled sleep means this screen is already gone, and
-                // moving the flow on from a view that has left would skip the screen after it.
-                guard !Task.isCancelled else { return }
-                onDone()
-            }
+        VStack(spacing: Theme.Spacing.roomy) {
+            // Their own face, over their own name. It is the first thing in the app that belongs
+            // to *them* rather than to the app, which is the whole reason it is here: the sign-in
+            // before this screen was a form, and this is the account it turned into.
+            Avatar(name: name, url: avatarURL, size: Theme.Size.avatarProfile, seed: userID)
+                .scaleEffect(hasLanded ? 1 : 0.8)
+                .opacity(hasLanded ? 1 : 0)
+                .animation(Theme.Timing.arrival, value: hasLanded)
+
+            Text(greeting)
+                .font(.largeTitle.bold())
+                .multilineTextAlignment(.center)
+                .opacity(hasLanded ? 1 : 0)
+                .offset(y: hasLanded ? 0 : Theme.Spacing.normal)
+                // A moment behind the face, so the two read as one thing arriving and not as two
+                // things switched on. See `Theme.Timing.stagger`.
+                .animation(Theme.Timing.arrival.delay(Theme.Timing.stagger), value: hasLanded)
+        }
+        .padding(Theme.Spacing.generous)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .transition(.onboardingStep)
+        .task {
+            // Drawn where it starts, and only then asked to move — one frame, which nobody sees
+            // and which is the difference between an animation and a screen that is simply
+            // already finished.
+            try? await Task.sleep(for: Theme.Timing.aFrame)
+            guard !Task.isCancelled else { return }
+            hasLanded = true
+
+            try? await Task.sleep(for: Theme.Timing.greeting)
+            // Not on the way out. A cancelled sleep means this screen is already gone, and
+            // moving the flow on from a view that has left would skip the screen after it.
+            guard !Task.isCancelled else { return }
+            onDone()
+        }
     }
 
     private var greeting: LocalizedStringResource {
@@ -86,6 +158,14 @@ private struct AppearanceStep: View {
 
     @AppStorage(AccentTheme.storageKey) private var accent: AccentTheme = .default
 
+    /// How many of the two lines have been said. The preview is a conversation, and a
+    /// conversation that is simply *there* is a screenshot of one — see `speak()`.
+    @State private var spokenLines = 0
+
+    /// Whether the reply is in the middle of its nudge, which is what it does when the colour
+    /// under it changes — see `nod()`.
+    @State private var isNodding = false
+
     var body: some View {
         OnboardingPage(title: Strings.Onboarding.appearanceTitle,
                        explanation: Strings.Onboarding.appearanceBody,
@@ -96,24 +176,70 @@ private struct AppearanceStep: View {
                 AccentSwatches(accent: $accent)
             }
         }
+        .task { await speak() }
+        // The colour changed under the reply, so the reply says it noticed. The swatch already
+        // takes the tick and the ring; this is the other half of the answer, on the thing the
+        // choice is actually about.
+        .onChange(of: accent) { _, _ in nod() }
     }
 
     private var conversation: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.close) {
-            Text(Strings.Appearance.previewAsk)
-                .font(.callout)
-                .messageBubble(.incoming)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            Text(Strings.Appearance.previewAnswer)
-                .font(.callout)
-                .messageBubble(.own)
-                .frame(maxWidth: .infinity, alignment: .trailing)
+            line(Strings.Appearance.previewAsk, isOwn: false, position: 0)
+            line(Strings.Appearance.previewAnswer, isOwn: true, position: 1)
         }
         // Read as one thing: VoiceOver has no business walking somebody through a fake
         // conversation on the way to the colours they are here for.
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(Strings.Appearance.previewLabel))
+    }
+
+    /// One line of the preview, drawn whether or not it has been said yet.
+    ///
+    /// Always in the layout and merely invisible, rather than inserted when its turn comes. A
+    /// bubble that appears out of nothing takes its height with it, so the swatches below would
+    /// be pushed down twice on the way in — and the colours are what this screen is for. They do
+    /// not move.
+    private func line(_ text: LocalizedStringResource, isOwn: Bool, position: Int) -> some View {
+        let hasLanded = spokenLines > position
+
+        return Text(text)
+            .font(.callout)
+            .messageBubble(isOwn ? .own : .incoming)
+            .frame(maxWidth: .infinity, alignment: isOwn ? .trailing : .leading)
+            .opacity(hasLanded ? 1 : 0)
+            .offset(y: hasLanded ? 0 : Theme.Spacing.normal)
+            // Only the reply nods: it is the one bubble on this screen wearing the colour.
+            .scaleEffect(isOwn && isNodding ? Theme.Scale.nod : 1)
+            .animation(Theme.Timing.arrival, value: hasLanded)
+    }
+
+    /// The conversation, said rather than displayed.
+    ///
+    /// The first frame is the point of the sleep before it, exactly as in `GreetingStep`: a view
+    /// asked to animate from a value that was never drawn is put straight at its final one, so
+    /// the lines are drawn where they start and *then* asked to land.
+    private func speak() async {
+        try? await Task.sleep(for: Theme.Timing.aFrame)
+        guard !Task.isCancelled else { return }
+        spokenLines = 1
+
+        try? await Task.sleep(for: Theme.Timing.previewReplies)
+        guard !Task.isCancelled else { return }
+        spokenLines = 2
+    }
+
+    /// The reply's nudge when a new colour lands on it.
+    ///
+    /// Two updates and a frame between them, and the frame is load-bearing: setting the scale and
+    /// animating it back inside one function would leave SwiftUI with a state that never changed,
+    /// and nothing would happen at all. So it is put up on one pass and let go on the next.
+    private func nod() {
+        isNodding = true
+        Task { @MainActor in
+            try? await Task.sleep(for: Theme.Timing.aFrame)
+            withAnimation(Theme.Timing.arrival) { isNodding = false }
+        }
     }
 }
 
@@ -320,7 +446,7 @@ private struct OnboardingPage<Content: View>: View {
         // screens they see back to back. An inset takes them out of the scrolling altogether:
         // they are always in the same place, and the content scrolls underneath them.
         .safeAreaInset(edge: .bottom) { actions }
-        .transition(.opacity)
+        .transition(.onboardingStep)
     }
 
     private var actions: some View {
