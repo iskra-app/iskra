@@ -35,6 +35,11 @@ enum AppSettings {
 
     @MainActor
     static func forget() {
+        // Signing out of an account on `--mock-signin` is not the person holding this device
+        // leaving it. Their accent, their wallpaper and their experiments belong to the real
+        // account, which the mock never touched, and is still there on the next ordinary launch.
+        guard !MockSignIn.isRequested else { return }
+
         let defaults = UserDefaults.standard
         for key in keys {
             defaults.removeObject(forKey: key)
