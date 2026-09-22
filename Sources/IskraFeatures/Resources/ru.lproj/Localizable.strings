@@ -146,11 +146,13 @@
 
 /* Названия иконок. Вещи, а не цвета: «тёмно-серая» — это описание, а имя можно назвать вслух. */
 "appIcon.spark" = "Искра";
-"appIcon.coal" = "Уголь";
-"appIcon.frost" = "Иней";
+"appIcon.chrome" = "Хром";
 "appIcon.garnet" = "Гранат";
 "appIcon.pine" = "Хвоя";
-"appIcon.paper" = "Бумага";
+"appIcon.rio" = "Рио";
+"appIcon.blackWhite" = "Чёрным по белому";
+"appIcon.retro" = "Ретро";
+"appIcon.letters" = "Буквы";
 /* The settings row that leads to the unfinished things. See `BetaFeatures`. */
 "settings.beta" = "Бета-функции";
 

@@ -148,11 +148,13 @@
 /* The icons' names. Things rather than colours: "dark grey" is a description, and a name is
    something you can say out loud. */
 "appIcon.spark" = "Spark";
-"appIcon.coal" = "Coal";
-"appIcon.frost" = "Frost";
+"appIcon.chrome" = "Chrome";
 "appIcon.garnet" = "Garnet";
 "appIcon.pine" = "Pine";
-"appIcon.paper" = "Paper";
+"appIcon.rio" = "Rio";
+"appIcon.blackWhite" = "Black on white";
+"appIcon.retro" = "Retro";
+"appIcon.letters" = "Letters";
 /* The settings row that leads to the unfinished things. See `BetaFeatures`. */
 "settings.beta" = "Beta features";
 
