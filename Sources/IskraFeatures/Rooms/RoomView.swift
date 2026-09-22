@@ -1433,7 +1433,7 @@ public struct RoomView: View {
         // handler that runs after the change has been applied is a handler that answers "is this
         // arriving?" one pass too late — the row is already on screen, unanimated, and nothing
         // will ask again.
-        let firstArrival = rows.count - newArrivalCount(in: rows)
+        let firstArrival = MessageArrivals.firstArriving(in: rows.map(\.id), after: newestRowID)
 
         var previousWasEvent = false
         var previousWasDivider = false
@@ -1446,18 +1446,6 @@ public struct RoomView: View {
             if case .dayDivider = row { previousWasDivider = true } else { previousWasDivider = false }
             return placed
         }
-    }
-
-    /// How many rows at the end of the conversation were not there on the last pass.
-    ///
-    /// Zero unless the row that used to be last is still in the list and still has something
-    /// after it. A conversation whose old end has gone has not been added to — it has been
-    /// rebuilt, or a local echo has just been given its real identity — and neither of those is
-    /// a message being said.
-    private func newArrivalCount(in rows: [TimelineRow]) -> Int {
-        guard let newestRowID,
-              let end = rows.lastIndex(where: { $0.id == newestRowID }) else { return 0 }
-        return rows.count - 1 - end
     }
 
     /// Bubbles on two sides, or the plain column — see `MessageLayout`. The one place in the app
