@@ -164,28 +164,17 @@ public enum Theme {
         /// by accident and nobody ever notices that one control moves differently from the rest.
         public static let chrome: TimeInterval = 0.2
 
-        /// A message being taken back: the bubble collapsing into the "deleted" line, or —
-        /// for one that never left the device — leaving the timeline altogether.
-        ///
-        /// Slower than a reaction on purpose. A reaction is a small thing appearing beside
-        /// what you were already reading; a message vanishing changes what the conversation
-        /// says, and it should be possible to see it happen rather than to notice afterwards
-        /// that something is gone.
-        public static let deletion: TimeInterval = 0.3
-
         /// A message arriving in the conversation — one you have just sent, or one that has
         /// just been said to you.
         ///
-        /// A spring, and the twin of `deletion` at the other end of a message's life. A message
-        /// leaving is slow on purpose, because the conversation has lost something and the reader
-        /// should be able to see it go. A message arriving is the opposite errand: it has weight
-        /// and it should land, not glide in. The bounce is small — a bubble that wobbles under
-        /// the words above it is a toy — and it is there so the arrival reads as a thing put down
-        /// rather than as a fade somebody might miss.
+        /// A spring. A message arriving has weight and should land rather than glide in. The
+        /// bounce is small — a bubble that wobbles under the words above it is a toy — and it is
+        /// there so the arrival reads as a thing put down rather than as a fade somebody might
+        /// miss.
         ///
-        /// It is carried by the transition on the row rather than by the animation scope around
-        /// the list (see `RoomView`), because that scope belongs to the removal and the two are
-        /// not the same gesture.
+        /// It is carried by the row itself, in `MessageArrival`, and by nothing else. This is
+        /// the only animation left in a conversation: a message that is merely *changing* — read,
+        /// reacted to, edited, deleted — changes at once.
         public static let arrival: Animation = .spring(duration: 0.32, bounce: 0.18)
 
         /// How long a room that has just opened stays perfectly still before it is allowed to

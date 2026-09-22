@@ -98,20 +98,9 @@ struct CompactMessageRow: View {
         }
         .animation(.smooth(duration: Theme.Timing.reaction * 2), value: isHighlighted)
         // And nothing else — a message that is only *changing* changes at once, here exactly as
-        // in the bubbles. See `MessageRow`, where the reasoning is written out.
-        .transition(.asymmetric(insertion: arrival,
-                                removal: .scale(scale: 0.85).combined(with: .opacity)))
-    }
-
-    /// A message coming in — see `MessageRow`, which explains the shape of it and why it rises
-    /// from below rather than dropping in. The plain column has no sides, so there is nothing
-    /// here to vary: a message of yours arrives from the same place as everyone else's.
-    private var arrival: AnyTransition {
-        guard arrivesAnimated else { return .identity }
-
-        return .move(edge: .bottom)
-            .combined(with: .opacity)
-            .animation(Theme.Timing.arrival)
+        // in the bubbles, and the arrival is the row's own. See `MessageRow`, where the reasoning
+        // is written out, and `MessageArrival`.
+        .arrives(arrivesAnimated)
     }
 
     /// The face on every line. In the compact column the sender is the only thing that says who
