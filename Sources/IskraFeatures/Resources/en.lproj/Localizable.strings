@@ -151,8 +151,8 @@
 "appIcon.chrome" = "Chrome";
 "appIcon.garnet" = "Garnet";
 "appIcon.pine" = "Pine";
-"appIcon.rio" = "Rio";
-"appIcon.blackWhite" = "Black on white";
+"appIcon.rio" = "Rio de Janeiro";
+"appIcon.blackWhite" = "W/b";
 "appIcon.retro" = "Retro";
 "appIcon.letters" = "Letters";
 /* The settings row that leads to the unfinished things. See `BetaFeatures`. */
