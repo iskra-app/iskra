@@ -89,7 +89,7 @@ private struct MessageArrival: ViewModifier {
     /// when the eye arrives.
     private func land() {
         Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(16))
+            try? await Task.sleep(for: Theme.Timing.aFrame)
             withAnimation(Theme.Timing.arrival) {
                 lift = 0
                 solidity = 1
