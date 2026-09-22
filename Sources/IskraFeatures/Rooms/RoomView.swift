@@ -231,6 +231,22 @@ public struct RoomView: View {
 
     @State private var scrollPosition = ScrollPosition()
 
+    /// Whether the conversation is being kept at its end while a message that has just landed
+    /// finishes taking its shape.
+    ///
+    /// One `scrollTo` at the moment the row appears is not enough, and the reason is the one the
+    /// opening hold already knows: a row is not its final height when it is inserted. The bubble
+    /// is laid out, then the picture in it arrives, then the reply quote above it resolves, and
+    /// each of those makes the conversation taller *after* the scroll has already been told
+    /// where to go. So the end was missed by a few dozen points, which is enough for
+    /// `isAtNewest` to answer no — and then the little round button appears, over the very
+    /// message that was just sent.
+    ///
+    /// So the end is held rather than aimed at, for as long as it takes a message to settle. The
+    /// reader touching the conversation ends it at once: see `onScrollPhaseChange`.
+    @State private var followsEnd = false
+    @State private var followingEnd: Task<Void, Never>?
+
     /// The message the conversation has just been sent to by pressing a quote, lit until the
     /// reader has had time to see which one it is — and the timer that puts it out. See `light`.
     @State private var highlighted: String?
@@ -536,6 +552,14 @@ public struct RoomView: View {
                     return
                 }
 
+                // The same hold, for the moments after a message lands rather than the moments
+                // after the room opens. See `followsEnd`. Deferred for the same reason as above:
+                // scrolling from inside this callback calls it again.
+                if followsEnd {
+                    Task { scrollPosition.scrollTo(edge: .bottom) }
+                    return
+                }
+
                 guard let place = held, metrics.contentHeight > place.contentHeight else { return }
                 held = nil
                 scrollPosition.scrollTo(y: place.offset)
@@ -556,6 +580,11 @@ public struct RoomView: View {
             .onScrollPhaseChange { _, phase in
                 guard phase != .idle, phase != .animating else { return }
                 isOpening = false
+                // Moving the conversation yourself outranks the room's wish to stay at the end —
+                // the same rule the opening hold follows, and for the same reason. See
+                // `followsEnd`.
+                followsEnd = false
+                followingEnd?.cancel()
             }
             // Opening a room puts it on its newest message, once — the moment the first
             // fetch has come back with something to show. `initial: true` covers a room
@@ -714,18 +743,30 @@ public struct RoomView: View {
                     return
                 }
 
-                // Animated once the room is up, and plainly before that — which is not a
-                // nicety. `withAnimation` animates *every* change in the pass it wraps, so while
-                // the opening fetch was still landing batch after batch, this turned each batch
-                // into an animated transaction: the scroll glided, and the rows arriving in the
-                // same pass played their transitions inside it. The room assembled itself in
-                // front of the reader with a different piece of it moving every few hundred
-                // milliseconds, and it came from the one line here that looks like it is only
-                // about scrolling.
-                if hasSettled {
-                    withAnimation(.smooth) { scroll.scrollTo(last, anchor: .bottom) }
-                } else {
-                    scroll.scrollTo(last, anchor: .bottom)
+                // Not animated, and that is the fix for "sending is jerky".
+                //
+                // Two things were moving at once and they were not moving together: the row
+                // rising into its place on a spring, and the scroll view gliding to the end on
+                // `.smooth`. Two curves of different lengths over the same few dozen points read
+                // as one thing stuttering, because from the reader's side it *is* one thing —
+                // the message they just sent — and it was being animated twice.
+                //
+                // So the scroll simply goes there, and the only thing that moves is the message.
+                // Nothing is lost by it: the reader is at the end of the conversation already
+                // (that is what got us into this branch), so the jump is the height of one row.
+                //
+                // `withAnimation` here also animated *every* change in its pass, which is how
+                // the opening fetch used to turn each batch of rows into an animated transaction
+                // — the room assembling itself in front of the reader out of a line that looks
+                // like it is only about scrolling.
+                scroll.scrollTo(last, anchor: .bottom)
+
+                // …and stay there while the message finishes becoming itself. See `followsEnd`.
+                followsEnd = true
+                followingEnd?.cancel()
+                followingEnd = Task {
+                    try? await Task.sleep(for: Theme.Timing.endIsHeld)
+                    followsEnd = false
                 }
             }
             // Laid out from the first row, shown only when there is a whole conversation to
