@@ -25,6 +25,12 @@ struct CallScreen: View {
     /// web view exists — see `CallBridge`, which is the whole of the fix.
     @State private var bridge = CallBridge()
 
+    /// Whether Element Call has painted anything yet, and whether it refused to load at all.
+    /// Held here rather than in `CallStore`: the store's job ends at handing over an address, and
+    /// how a web view is getting on with it is not something `IskraCore` can see.
+    @State private var isPageLoaded = false
+    @State private var pageFailed = false
+
     var body: some View {
         ZStack {
             // Behind everything, including while the page is still blank. A call that starts as a
@@ -36,12 +42,25 @@ struct CallScreen: View {
             case .idle, .preparing:
                 connecting
             case let .ready(url):
-                CallWebView(url: url) { json in
-                    store.incoming(json)
-                } onReady: { webView in
-                    bridge.attach(webView)
+                ZStack {
+                    CallWebView(url: url,
+                                onMessage: { json in store.incoming(json) },
+                                onReady: { webView in bridge.attach(webView) },
+                                onLoaded: { isPageLoaded = true },
+                                onLoadFailed: { pageFailed = true })
+                        .ignoresSafeArea()
+
+                    // The whole point of this screen's spinner, and it used to be in the wrong
+                    // place: it was shown while the *URL* was being built — milliseconds — and
+                    // taken away at the exact moment the real wait began. Element Call is a large
+                    // application on somebody else's server, and until it has painted, this view
+                    // is transparent over black. Half a minute of that reads as a crash, and did.
+                    if pageFailed {
+                        CallFailureView(failure: .couldNotStart)
+                    } else if !isPageLoaded {
+                        connecting
+                    }
                 }
-                .ignoresSafeArea()
             case let .failed(failure):
                 CallFailureView(failure: failure)
             }

@@ -38,12 +38,22 @@ struct CallWebView: CallViewRepresentable {
     /// Handed the web view once it exists, so the screen can push SDK messages into it.
     let onReady: (WKWebView) -> Void
 
+    /// Told when the page has finished loading, and when it could not be loaded at all.
+    ///
+    /// This view is transparent on purpose — it sits over the screen's own black — so until the
+    /// page has painted there is nothing here to see, and Element Call is a large application
+    /// fetched from somebody else's server. On a slow route that is tens of seconds of black
+    /// rectangle, which reads as a call that has crashed. The screen keeps its own "Соединяем…"
+    /// over the top until one of these says otherwise.
+    let onLoaded: () -> Void
+    let onLoadFailed: () -> Void
+
     /// The name the injected script posts to. Ours, so that a page which knows the widget API
     /// still has to be told this one.
     private static let handlerName = "iskraWidget"
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(url: url, onMessage: onMessage)
+        Coordinator(url: url, onMessage: onMessage, onLoaded: onLoaded, onLoadFailed: onLoadFailed)
     }
 
     #if os(macOS)
@@ -139,10 +149,42 @@ struct CallWebView: CallViewRepresentable {
     final class Coordinator: NSObject, WKScriptMessageHandler, WKUIDelegate, WKNavigationDelegate {
         private let url: URL
         private let onMessage: (String) -> Void
+        private let onLoaded: () -> Void
+        private let onLoadFailed: () -> Void
 
-        init(url: URL, onMessage: @escaping (String) -> Void) {
+        init(url: URL,
+             onMessage: @escaping (String) -> Void,
+             onLoaded: @escaping () -> Void,
+             onLoadFailed: @escaping () -> Void) {
             self.url = url
             self.onMessage = onMessage
+            self.onLoaded = onLoaded
+            self.onLoadFailed = onLoadFailed
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            onLoaded()
+        }
+
+        /// A load that did not happen — but **not** one that was called off.
+        ///
+        /// Cancellation is ordinary here and arrives down the same road: `decidePolicyFor` refuses
+        /// every navigation that leaves the deployment, and `tearDown` calls `stopLoading` when the
+        /// call ends. Both surface as `NSURLErrorCancelled`, and treating either as a failure would
+        /// put "the call did not happen" on screen at the moment somebody hung up.
+        func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+            report(error)
+        }
+
+        func webView(_ webView: WKWebView,
+                     didFailProvisionalNavigation navigation: WKNavigation!,
+                     withError error: Error) {
+            report(error)
+        }
+
+        private func report(_ error: Error) {
+            guard (error as NSError).code != NSURLErrorCancelled else { return }
+            onLoadFailed()
         }
 
         func userContentController(_ controller: WKUserContentController,
