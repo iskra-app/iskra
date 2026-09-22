@@ -81,8 +81,9 @@ failure worth engineering for: a gateway that comes up and quietly rings nobody 
 a gateway that is working.
 """
 
+import inspect
 import logging
-from typing import List
+from typing import Any, Dict, List
 
 from sygnal.apnspushkin import ApnsPushkin
 from sygnal.notifications import Device, Notification, NotificationContext, Tweaks
@@ -102,28 +103,42 @@ class RingPushkin(ApnsPushkin):
         super().__init__(name, sygnal, config)
         self._assert_hooks()
 
-    @staticmethod
-    def _assert_hooks() -> None:
+    #: The hooks this class overrides, with the parameters each must take. Names *and*
+    #: parameters, because a name that still exists with a different signature is the failure that
+    #: actually happened: ``_get_payload_event_id_only`` gained a ``default_payload`` argument, an
+    #: override written for the old shape raised ``TypeError`` deep inside a send, and Sygnal
+    #: turned that into a 500 — on the one path that matters, with the filtering half still
+    #: working perfectly. Checking only ``hasattr`` let that through.
+    _HOOKS = {
+        "_dispatch_notification_unlimited": ("self", "n", "device", "context"),
+        "_get_payload_event_id_only": ("self", "n", "default_payload"),
+    }
+
+    @classmethod
+    def _assert_hooks(cls) -> None:
         """Fail at startup rather than at three in the morning.
 
-        Everything below rests on three things that belong to Sygnal rather than to us. If any has
-        moved, the honest outcome is a container that refuses to start — not one that comes up and
-        rings nobody.
+        Everything below rests on things that belong to Sygnal rather than to us. If any has moved
+        — in name or in shape — the honest outcome is a container that refuses to start, not one
+        that comes up, filters correctly, and answers 500 the moment somebody actually calls.
         """
-        missing = [
-            name
-            for name, owner in (
-                ("_dispatch_notification_unlimited", ApnsPushkin),
-                ("_get_payload_event_id_only", ApnsPushkin),
-            )
-            if not hasattr(owner, name)
-        ]
+        problems = []
+
+        for name, expected in cls._HOOKS.items():
+            hook = getattr(ApnsPushkin, name, None)
+            if hook is None:
+                problems.append(f"{name} is gone")
+                continue
+            actual = tuple(inspect.signature(hook).parameters)
+            if actual != expected:
+                problems.append(f"{name}{actual} — expected {expected}")
+
         if not hasattr(Tweaks({}), "sound"):
-            missing.append("Tweaks.sound")
-        if missing:
+            problems.append("Tweaks no longer keeps .sound, so a ring cannot be marked at all")
+
+        if problems:
             raise RuntimeError(
-                "this Sygnal does not have %s; iskra_ring.RingPushkin needs updating for it"
-                % ", ".join(missing)
+                "iskra_ring.RingPushkin does not fit this Sygnal: " + "; ".join(problems)
             )
 
     @staticmethod
@@ -153,7 +168,9 @@ class RingPushkin(ApnsPushkin):
         logger.info("ringing: room=%s event=%s", n.room_id, n.event_id)
         return await super()._dispatch_notification_unlimited(n, device, context)
 
-    def _get_payload_event_id_only(self, n: Notification) -> dict:
+    def _get_payload_event_id_only(
+        self, n: Notification, default_payload: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """The room id and the event id, and nothing else.
 
         The app's ``default_payload`` is merged in by the base class and is shaped for a banner:
@@ -164,6 +181,6 @@ class RingPushkin(ApnsPushkin):
         Dropped rather than never sent, because the same ``default_payload`` is registered for both
         pushers and the ordinary one genuinely needs it.
         """
-        payload = super()._get_payload_event_id_only(n)
+        payload = super()._get_payload_event_id_only(n, default_payload)
         payload.pop("aps", None)
         return payload
