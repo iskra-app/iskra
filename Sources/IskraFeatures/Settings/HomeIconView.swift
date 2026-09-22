@@ -19,13 +19,19 @@ import IskraDesign
 /// There is no undo and none is needed — the icon the app ships with is the first tile, always
 /// there, and going back to it is one tap.
 struct HomeIconView: View {
-    /// What is in force, read from UIKit rather than kept in `@AppStorage`.
+    /// What is in force, drawn straight out of storage.
     ///
-    /// UIKit *is* the storage here: the choice survives reinstall-less updates because the
-    /// system remembers it, and a copy of ours could only ever disagree with it. It is read once
-    /// when the screen appears and then kept in step by hand, because the only thing that can
-    /// change it is this screen.
-    @State private var icon = HomeIcon.spark
+    /// It used to be `@State`, filled from UIKit in `onAppear`. That is the shape of the bug it
+    /// caused: a pushed screen is built afresh every time it is returned to, so the ring was
+    /// blank for as long as it took the fill to happen, and it stayed blank for good whenever
+    /// the fill produced `spark` — which it did, because the note behind it went unwritten every
+    /// time `setAlternateIconName` reported a cancellation for a change it had made. Read from
+    /// `@AppStorage` there is nothing to re-fill and nothing to be late: the value the screen
+    /// opens with is the value it closed with, and `HomeIcons.set` writes the same key, so a
+    /// change lights the new tile without the screen being told twice.
+    @AppStorage(HomeIcons.rememberedKey) private var chosen = HomeIcon.spark.rawValue
+
+    private var icon: HomeIcon { HomeIcon(rawValue: chosen) ?? .spark }
 
     /// What went wrong, when the system refused the change.
     @State private var failed = false
@@ -53,7 +59,9 @@ struct HomeIconView: View {
         .formStyle(.grouped)
         .navigationTitle(Text(Strings.Settings.appIcon))
         .toolbarTitleDisplayMode(.inline)
-        .onAppear { icon = HomeIcons.current }
+        // Only for the case the note cannot cover — a reinstall, or an icon set by a build that
+        // kept no note. It writes the same key the ring reads, so there is nothing to assign.
+        .onAppear { HomeIcons.reconcile() }
         .alert(Text(Strings.HomeIcon.failed), isPresented: $failed) {
             Button(String(app: Strings.HomeIcon.failedOK), role: .cancel) {}
         }
@@ -121,13 +129,14 @@ struct HomeIconView: View {
 
         Task {
             do {
+                // The ring follows the note this writes, so there is nothing to set here.
                 try await HomeIcons.set(candidate)
-                icon = HomeIcons.current
             } catch {
-                // Put back what is actually in force rather than what was tapped. A tile that
-                // stays lit after the system refused it is the screen telling a lie about the
-                // home screen, which the person can go and check in two seconds.
-                icon = HomeIcons.current
+                // A refusal leaves the note alone, so the ring is already back on whatever is
+                // really in force. A tile that stays lit after the system refused it is the
+                // screen telling a lie about the home screen, which the person can go and check
+                // in two seconds.
+                HomeIcons.reconcile()
                 failed = true
             }
         }

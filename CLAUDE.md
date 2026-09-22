@@ -342,12 +342,21 @@ fall back to loose files and answers yes about an image SwiftUI will never find.
 `HomeIcon.previewURL` is the single way in, for the tile and for `--probe-icons` alike, and
 `HomeIconPreviewTests` holds every icon to having a file and every file to having an icon.
 
-**And `alternateIconName` cannot be read literally.** `nil` is UIKit's word for "the icon the app
-shipped with", and it is also what the Simulator answers after a change that plainly worked. Taken
-at face value it wiped the ring off the chosen tile every time the screen was left and returned
-to, while the home screen went on showing the right icon. `HomeIcons` therefore writes the choice
-down in `UserDefaults.standard` and falls back to it when UIKit names nothing; the note is written
-only after a change the system accepted, so a refusal cannot make the ring lie either.
+**`setAlternateIconName` reports a cancellation for changes it makes.** It comes back
+`NSCocoaErrorDomain` / `NSUserCancelledError` whenever the app is not fully active at the moment
+of the call, having changed the icon anyway — the same call from an active app throws nothing, and
+`alternateIconName` names the new icon correctly either way. Nobody can cancel an icon change;
+there is no cancel button in it. Taken at face value it put the failure alert up over a home
+screen that had just changed correctly, so `HomeIcons.set` swallows that one error and treats the
+change as made.
+
+**And the ring is drawn from storage, not from a re-read.** `HomeIcons.set` writes the choice into
+`UserDefaults.standard`, and the screen reads that key through `@AppStorage`. It used to be
+`@State` filled from UIKit in `onAppear`, which is the shape of the bug it caused: a pushed screen
+is built afresh every time it is returned to, so the ring was blank until the fill happened and
+stayed blank whenever the fill produced `spark`. There is now nothing to re-fill and nothing to be
+late. `onAppear` only reconciles the note with UIKit, for the one case the note cannot cover — a
+reinstall, or an icon set by a build that kept no note.
 
 The tiles used to be **drawn** instead, by a `SparkShape` reading a symlink into the icon document,
 and that was right while every icon was the same spark on a different ground: nothing could drift.

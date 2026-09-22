@@ -135,12 +135,27 @@ public enum HomeIcons {
             return HomeIcon(alternateName: name)
         }
 
-        return UserDefaults.standard.string(forKey: rememberedKey).flatMap(HomeIcon.init(rawValue:)) ?? .spark
+        return remembered
+    }
+
+    /// The note on its own, which is what the screen draws its ring from.
+    static var remembered: HomeIcon {
+        UserDefaults.standard.string(forKey: rememberedKey).flatMap(HomeIcon.init(rawValue:)) ?? .spark
+    }
+
+    /// Bring the note into line with UIKit, for the one case the note cannot cover: the app was
+    /// reinstalled, or the icon was set by a build that kept no note. Called when the screen
+    /// appears, and it is the *only* thing that happens then — the ring itself is already drawn.
+    static func reconcile() {
+        guard let name = UIApplication.shared.alternateIconName else { return }
+        UserDefaults.standard.set(name, forKey: rememberedKey)
     }
 
     /// Where that note is kept. `.standard`, not the App Group's — this is a preference of the
-    /// app's, and nothing in the extension has a home screen to care about.
-    private static let rememberedKey = "homeIcon.chosen"
+    /// app's, and nothing in the extension has a home screen to care about. Not private: the
+    /// screen reads the very same key through `@AppStorage`, so the ring is drawn from storage
+    /// rather than from something re-read every time the screen appears.
+    static let rememberedKey = "homeIcon.chosen"
 
     /// Setting it shows a system alert — "You have changed the icon for Iskra" — which is iOS's
     /// and cannot be turned off. It is worth knowing about rather than being surprised by: the
@@ -148,9 +163,19 @@ public enum HomeIcons {
     /// something having gone wrong.
     static func set(_ icon: HomeIcon) async throws {
         guard icon != current else { return }
-        try await UIApplication.shared.setAlternateIconName(icon.alternateName)
-        // Only once it has actually happened. A refused change must leave the note alone, or the
-        // ring would sit on a tile the home screen disagrees with.
+
+        do {
+            try await UIApplication.shared.setAlternateIconName(icon.alternateName)
+        } catch let error as NSError where error.domain == NSCocoaErrorDomain
+            && error.code == NSUserCancelledError {
+            // A change iOS went ahead and made, reported as a cancellation. There is no cancel
+            // button anywhere in this — nobody can cancel an icon change — and it comes back
+            // whenever the app is not fully active at the moment of the call. Taken at face
+            // value it put the failure alert up over a home screen that had just changed
+            // correctly, and left the note unwritten, so the ring went back to the first tile.
+            // Measured with `--probe-icons`: the same call from an active app throws nothing.
+        }
+
         UserDefaults.standard.set(icon.rawValue, forKey: rememberedKey)
     }
 
