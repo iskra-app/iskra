@@ -570,16 +570,37 @@ cd ~/iskra-calls && sudo bash install.sh
 даёт, и скрипт находит его **по образу**, а не по имени, — имя ему давал compose, и какое, никто
 не помнит. После выкатки контейнер называется `sygnal` и живёт под обычным `docker`.
 
-Проверить после:
+Проверить после — **три запроса, отличающиеся одной меткой.** Порознь ни один из них ничего не
+доказывает; доказывает разница между первым и вторым.
 
 ```sh
-# записи подхватились (незнакомое имя даёт другую ошибку, чем известное)
-curl -s -X POST -H 'Content-Type: application/json' \
-  -d '{"notification":{"devices":[{"app_id":"moscow.swag.iskra.voip.dev","pushkey":"x"}]}}' \
-  https://push.iskra.swag.moscow/_matrix/push/v1/notify
+ZERO=$(python3 -c 'print("0"*64)')      # заведомо поддельный токен
+post() {
+  curl -s -X POST -H 'Content-Type: application/json' \
+    -d "{\"notification\":{\"room_id\":\"!probe:example.org\",\"event_id\":\"\$probe\",\"counts\":{\"unread\":1},\"devices\":[{\"app_id\":\"$1\",\"pushkey\":\"$ZERO\",\"pushkey_ts\":0$2}]}}" \
+    http://127.0.0.1:5400/_matrix/push/v1/notify; echo
+}
 
-# и что RingPushkin импортировался, а не свалился на _assert_hooks
-sudo docker logs --tail=50 sygnal | grep -iE 'iskra|pushkin|Traceback'
+post moscow.swag.iskra.voip.dev ''                               # → {"rejected": []}
+post moscow.swag.iskra.voip.dev ',"tweaks":{"sound":"iskra.ring"}'  # → rejected: [000…0]
+post moscow.swag.iskra.dev ''                                    # → rejected: [000…0]
+```
+
+Что каждый ответ значит:
+
+- **Пустой `rejected` на непомеченном звонковом `app_id`** — pushkin промолчал: в APNs не ушло
+  ничего, а pusher остался жив. Это обычное сообщение, и телефон на него не зазвонит. Пустой
+  список здесь — успех, а не «ничего не произошло».
+- **Отказ на помеченном** — запрос дошёл до Apple и Apple отвергла поддельный токен. Это то, чего
+  добивались: раньше на этом месте был HTTP 500.
+- **Отказ на обычном `app_id`** — старый путь не задет.
+
+Первые два запроса отличаются ровно одним полем, а ответы противоположны, — значит фильтр
+действительно наш и действительно срабатывает. Логи для этого не нужны (и под обычным пользователем
+недоступны), но если есть root:
+
+```sh
+sudo docker logs --tail=50 sygnal | grep -iE 'iskra|pushkin|ringing|Traceback'
 ```
 
 ### Порядок
