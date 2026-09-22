@@ -52,28 +52,49 @@ die() { printf '\n\033[1;31m!! %s\033[0m\n' "$1" >&2; exit 1; }
 
 say "Ищу iPhone"
 devices=$(xcrun devicectl list devices 2>/dev/null) || die "devicectl не отвечает — нет Xcode?"
-# Физические устройства, одной строкой «UDID<TAB>имя». Столбцы фиксированной ширины,
-# поэтому имя берётся до двух пробелов подряд, а UDID — по форме, а не по позиции.
+# Физические устройства, одной строкой «UDID<TAB>имя<TAB>состояние». Столбцы фиксированной
+# ширины, поэтому UDID ищется по форме, а имя и состояние — как текст до и после него,
+# каждое до двух пробелов подряд.
 phones=$(printf '%s\n' "$devices" | awk '
   /physical/ {
-    match($0, /[0-9A-Fa-f]{8}-[0-9A-Fa-f]{16}|[0-9A-Fa-f-]{36}/)
+    if (!match($0, /[0-9A-Fa-f]{8}-[0-9A-Fa-f]{16}|[0-9A-Fa-f-]{36}/)) next
     udid = substr($0, RSTART, RLENGTH)
-    name = $0
-    sub(/  .*/, "", name)
-    if (udid != "") printf "%s\t%s\n", udid, name
+    name = substr($0, 1, RSTART - 1)
+    sub(/^ +/, "", name); sub(/  .*/, "", name)
+    state = substr($0, RSTART + RLENGTH)
+    sub(/^ *\(UDID\) */, "", state); sub(/  .*/, "", state)
+    printf "%s\t%s\t%s\n", udid, name, state
   }')
 [ -n "$phones" ] || die "Ни одного устройства не подключено. Воткни кабель или включи Wi-Fi-отладку, и разблокируй экран."
 
+# devicectl перечисляет каждый телефон, который когда-либо был спарен с этим Mac, — и давно
+# унесённый домой тоже, с состоянием «unavailable». Если считать их вместе с подключённым,
+# скрипт упирается в «несколько устройств» там, где воткнут один.
+connected() { printf '%s\n' "$1" | awk -F'\t' 'NF && $3 !~ /^unavailable/'; }
+count() { if [ -n "$1" ]; then printf '%s\n' "$1" | wc -l | tr -d ' '; else echo 0; fi; }
+
+# ${device}, а не $device, перед «»»: /bin/bash 3.2 считает первый байт этой кавычки
+# частью имени переменной и падает с «device�: unbound variable» вместо сообщения.
 if [ -n "$device" ]; then
-  match=$(printf '%s\n' "$phones" | grep -i -- "$device" || true)
-  [ -n "$match" ] || die "Устройство «$device» не найдено. Есть такие:
+  # Сначала точное совпадение с UDID или именем, и только потом подстрока: иначе имя,
+  # которое целиком входит в чужое, не выбрать никак.
+  match=$(printf '%s\n' "$phones" | awk -F'\t' -v d="$device" 'tolower($1) == tolower(d) || $2 == d')
+  [ -n "$match" ] || match=$(printf '%s\n' "$phones" | grep -iF -- "$device" || true)
+  [ -n "$match" ] || die "Устройство «${device}» не найдено. Есть такие:
 $phones"
-  [ "$(printf '%s\n' "$match" | wc -l)" -eq 1 ] || die "Под «$device» подходит больше одного устройства:
+  # Из нескольких подходящих берётся подключённое, если оно одно.
+  if [ "$(count "$match")" -gt 1 ] && [ "$(count "$(connected "$match")")" -eq 1 ]; then
+    match=$(connected "$match")
+  fi
+  [ "$(count "$match")" -eq 1 ] || die "Под «${device}» подходит больше одного устройства:
 $match"
+  [ -n "$(connected "$match")" ] || die "«$(printf '%s' "$match" | cut -f2)» сейчас не подключён. Воткни кабель или включи Wi-Fi-отладку, и разблокируй экран."
 else
-  match="$phones"
-  [ "$(printf '%s\n' "$match" | wc -l)" -eq 1 ] || die "Подключено несколько устройств — выбери одно через --device:
+  match=$(connected "$phones")
+  [ -n "$match" ] || die "Ни одно из известных устройств сейчас не подключено. Воткни кабель или включи Wi-Fi-отладку, и разблокируй экран:
 $phones"
+  [ "$(count "$match")" -eq 1 ] || die "Подключено несколько устройств — выбери одно через --device:
+$match"
 fi
 device_id=$(printf '%s' "$match" | cut -f1)
 device_name=$(printf '%s' "$match" | cut -f2)
