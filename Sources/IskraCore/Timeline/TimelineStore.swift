@@ -88,6 +88,9 @@ public final class TimelineStore {
     /// Nil until the room info has arrived: an empty seed is a valid string and would
     /// draw a creature of its own, so the face would change once, visibly, on load.
     public private(set) var roomAvatarSeed: String?
+    /// The few members the server names for a group, so the header can draw the same cluster of
+    /// faces the chat list does. Empty for anything that is not a group. See `RoomSummary.faces`.
+    public private(set) var roomFaces: [RoomFace] = []
     public private(set) var memberCount = 0
 
     /// The other person's Matrix ID, in a chat that has exactly one other person.
@@ -460,6 +463,7 @@ public final class TimelineStore {
         // And the seed for the stand-in face, from the same place and by the same rule, so the
         // creature in the header is the creature in the chat list rather than a second one.
         roomAvatarSeed = info.avatarSeed(besides: ownUserID)
+        roomFaces = info.kind == .group ? info.faces(besides: ownUserID) : []
         memberCount = Int(info.joinedMembersCount)
         pinnedEventIDs = info.pinnedEventIds
         // The heroes are the people the server names to describe a room that has no
