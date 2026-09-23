@@ -186,6 +186,7 @@ public struct IskraRootView: View {
                     // else, without being given the session to do it.
                     .environment(\.currentUserID, session.userID)
                     .environment(\.currentUserName, session.displayName)
+                    .environment(\.currentUserAvatarURL, session.avatarURL)
                     .environment(\.blockStore, session.blocked)
                     .environment(\.forwarding, Forwarding(session: session))
                     // Writing to somebody whose name was pressed in a room's member list, and the

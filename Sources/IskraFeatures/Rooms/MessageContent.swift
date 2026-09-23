@@ -229,6 +229,14 @@ struct MessageContent: View {
             guard run.iskra.mentionUserID != nil else { return nil }
             return (run.range, run.iskra.mentionIsSelf ?? false)
         }
+        // Links underlined, as well as tinted. Colour alone is a promise the reader has to know the
+        // code for — and in a bubble already filled with the accent, the tinted words were very
+        // nearly the colour of the bubble around them.
+        let linkRanges = attributed.runs.compactMap { run in run.link == nil ? nil : run.range }
+        for range in linkRanges {
+            attributed[range].underlineStyle = .single
+        }
+
         for (range, isSelf) in mentionRuns {
             attributed[range].foregroundColor = accent.color
             if isSelf {

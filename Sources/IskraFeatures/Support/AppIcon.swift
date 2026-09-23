@@ -22,6 +22,25 @@ import IskraDesign
 /// all — so this returns an optional and `AppIconView` draws a spark instead. A screen about
 /// the app is not worth a crash, and a hole where the icon should be is worse than a stand-in.
 enum AppIcon {
+    /// The icon as Icon Composer exported it (`icons/pngs`), scaled to 384 and shipped as
+    /// `about-iskra.png` — which is what the About screen shows.
+    ///
+    /// Asked for first, and the bundle's compiled icon only after it, because the two are not the
+    /// same picture: on iOS the only one that can be got back out of the bundle is the legacy
+    /// 60-point square, an older rendering with no layers in it, and on macOS it is the icon
+    /// already inset in the Mac's own margin. Loaded from its file URL and never by name — a
+    /// SwiftPM resource directory has no asset catalog, so a lookup by name draws nothing. See
+    /// `HomeIcon.previewURL`, which is the same rule.
+    @MainActor
+    static var artwork: Image? {
+        guard let url = Bundle.module.url(forResource: "about-iskra", withExtension: "png") else { return nil }
+        #if os(macOS)
+        return NSImage(contentsOf: url).map { Image(nsImage: $0) }
+        #else
+        return UIImage(contentsOfFile: url.path).map { Image(uiImage: $0) }
+        #endif
+    }
+
     #if os(macOS)
     @MainActor
     static var image: Image? {
@@ -68,6 +87,20 @@ struct AppIconView: View {
     @Environment(\.accent) private var accent
 
     var body: some View {
+        if let artwork = AppIcon.artwork {
+            // The Icon Composer export, which carries its own corner and transparent outside —
+            // so it is drawn as it is, and not clipped again to a corner that is not quite its own.
+            artwork
+                .resizable()
+                .interpolation(.high)
+                .frame(width: size, height: size)
+                .accessibilityHidden(true)
+        } else {
+            bundleIcon
+        }
+    }
+
+    private var bundleIcon: some View {
         Group {
             if let icon = AppIcon.image {
                 icon

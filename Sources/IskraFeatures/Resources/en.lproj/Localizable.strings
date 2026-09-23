@@ -465,6 +465,7 @@
 /* The Appearance screen: the colour the app is painted in. The seven colours of the
    rainbow, and a mono theme with no colour at all. */
 "appearance.accent" = "App colour";
+"appearance.avatars" = "Avatars";
 
 /* The switch under the swatches. Washes the chosen colour across the whole interface — every
    screen's background, the text, the messages themselves. Off by default: a colour that is

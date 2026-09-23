@@ -1376,6 +1376,8 @@ public enum Strings {
     /// Choosing what the app is painted in.
     public enum Appearance {
         public static let theme = LocalizedStringResource("appearance.theme", bundle: bundle)
+        /// The heading over the faces picker — the same question the first run asks.
+        public static let avatars = LocalizedStringResource("appearance.avatars", bundle: bundle)
 
         /// Light, dark, or the system's own. A `switch` with no `default`, for the same reason
         /// the colours below have none: a fourth mode should stop the build, not ship unnamed.

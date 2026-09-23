@@ -27,15 +27,31 @@ struct RoomAvatar: View {
     @AppStorage(BetaFeatures.blobatarKey, store: BetaFeatures.faceStore) private var blobatarEnabled = BetaFeatures.blobatarByDefault
     @AppStorage(BetaFeatures.forceBlobatarKey, store: BetaFeatures.faceStore) private var forceBlobatar = BetaFeatures.forceBlobatarByDefault
 
+    @Environment(\.currentUserID) private var currentUserID
+    @Environment(\.currentUserName) private var currentUserName
+    @Environment(\.currentUserAvatarURL) private var currentUserAvatarURL
+
     var body: some View {
-        if url == nil || forceBlobatar, blobatarEnabled, faces.count > 1 {
-            FaceCluster(faces: faces, size: size, shape: shape)
+        if url == nil || forceBlobatar, blobatarEnabled, !faces.isEmpty, !currentUserID.isEmpty {
+            FaceCluster(faces: cluster, size: size, shape: shape)
         } else {
-            // One hero is not a cluster, and it must not become one: a group drawn with the single
-            // face of whoever the server happened to list first is a group labelled with a
-            // stranger. It gets the room's own creature instead.
             Avatar(name: name, url: url, size: size, shape: shape, seed: seed)
         }
+    }
+
+    /// The people drawn for a group: up to two of the others, and the reader.
+    ///
+    /// The reader is in it on purpose. A group is people *you* are talking to, and a cluster of
+    /// strangers with you nowhere in it was the reason a group with only one other member named
+    /// came out as a single creature — a single hero is not a cluster, and drawing a group as the
+    /// face of whoever the server listed first labels it with one person. With the reader beside
+    /// them it is two, which is what a group of two other people and you actually looks like
+    /// from the inside.
+    private var cluster: [RoomFace] {
+        let me = RoomFace(id: currentUserID,
+                          name: currentUserName.isEmpty ? currentUserID : currentUserName,
+                          avatarURL: currentUserAvatarURL)
+        return Array(faces.filter { $0.id != currentUserID }.prefix(2)) + [me]
     }
 }
 
