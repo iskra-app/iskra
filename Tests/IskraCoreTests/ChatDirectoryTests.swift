@@ -51,4 +51,32 @@ struct ChatDirectoryTests {
         // Drained means gone — the app must not send them twice.
         #expect(ChatDirectory.drainOutbox(from: defaults).isEmpty)
     }
+
+    /// What the Share extension adds: files alongside the words, which have to come out the other
+    /// side exactly as they went in.
+    @Test("shared files ride in the outbox with the words")
+    func attachmentsRoundTrip() {
+        let defaults = freshDefaults("attachments")
+        let photo = ChatDirectory.OutboxAttachment(kind: .image, filename: "A/IMG_0001.HEIC")
+        let file = ChatDirectory.OutboxAttachment(kind: .file, filename: "B/отчёт.pdf")
+        ChatDirectory.enqueue(.init(roomID: "!a", text: "смотри", attachments: [photo, file]), in: defaults)
+
+        let drained = ChatDirectory.drainOutbox(from: defaults)
+        #expect(drained.first?.attachments == [photo, file])
+        #expect(drained.first?.text == "смотри")
+    }
+
+    /// An outbox written by a build from before attachments existed — a Shortcut queued the message,
+    /// then the app was updated before it came up. It has no `attachments` key at all, and must
+    /// still send rather than be thrown away as unreadable.
+    @Test("an outbox from before attachments still drains")
+    func oldOutboxStillDecodes() throws {
+        let defaults = freshDefaults("oldOutbox")
+        let old = #"[{"roomID":"!a","text":"привет"}]"#.data(using: .utf8)!
+        defaults.set(old, forKey: "appIntents.outbox")
+
+        let drained = ChatDirectory.drainOutbox(from: defaults)
+        #expect(drained.map(\.text) == ["привет"])
+        #expect(drained.first?.attachments == [])
+    }
 }

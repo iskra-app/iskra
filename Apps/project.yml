@@ -344,7 +344,8 @@ targets:
         # App ID carries the capability at all.
         com.apple.developer.usernotifications.communication: true
 
-  # The Share sheet target: what lets another app hand text or a link to a specific Iskra chat.
+  # The Share sheet target: what lets another app hand text, a link, photos, videos or files to a
+  # specific Iskra chat.
   #
   # Unlike the notification extension it *does* have a screen — a room picker — so it links SwiftUI,
   # but still only IskraCore, never IskraFeatures: it needs the shared chat directory and the App
@@ -378,13 +379,17 @@ targets:
         NSExtension:
           NSExtensionPointIdentifier: com.apple.share-services
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
-          # Offered for text and links — the two things this extension can carry today. It is not
-          # offered for photos or files: sharing those would need the bytes handed across and a typed
-          # send on the far side, which is the next step, not this one.
+          # Offered for text, links, photos, videos and files. The files are copied into the App
+          # Group's outbox folder and the app sends them through its own encrypted upload — see
+          # `ShareViewController`. Ten of each is a share sheet's worth; a hundred photos would be
+          # a hundred copies in a process with a small allowance.
           NSExtensionAttributes:
             NSExtensionActivationRule:
               NSExtensionActivationSupportsText: true
               NSExtensionActivationSupportsWebURLWithMaxCount: 1
+              NSExtensionActivationSupportsImageWithMaxCount: 10
+              NSExtensionActivationSupportsMovieWithMaxCount: 10
+              NSExtensionActivationSupportsFileWithMaxCount: 10
     entitlements:
       path: ShareExtension/Iskra.entitlements
       properties:
