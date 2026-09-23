@@ -12,7 +12,10 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use anyhow::{anyhow, Result};
-use iskra_tunnel_proto::{open, seal, HttpRequest, HttpResponse, KIND_REQUEST, KIND_RESPONSE};
+use iskra_tunnel_proto::{
+    open, seal, Accepted, HttpRequest, HttpResponse, Limits, Reassembler, DEFAULT_MAX_BODY_CHUNK,
+    KIND_REQUEST, KIND_RESPONSE,
+};
 use nostr_sdk::prelude::*;
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
@@ -104,15 +107,18 @@ impl TunnelClient {
             .expect("pending map")
             .insert(id.clone(), tx);
 
-        let envelope = request.into_single_envelope();
-        let content = seal(self.keys.secret_key(), &self.bridge, &envelope)?;
-        let event = EventBuilder::new(Kind::Custom(KIND_REQUEST), content)
-            .tag(Tag::public_key(self.bridge))
-            .sign_with_keys(&self.keys)?;
+        // As many events as the body takes. The bridge puts them back together; out of order and
+        // duplicated per relay is the normal case, not the exception.
+        for envelope in request.into_envelopes(DEFAULT_MAX_BODY_CHUNK) {
+            let content = seal(self.keys.secret_key(), &self.bridge, &envelope)?;
+            let event = EventBuilder::new(Kind::Custom(KIND_REQUEST), content)
+                .tag(Tag::public_key(self.bridge))
+                .sign_with_keys(&self.keys)?;
 
-        if let Err(error) = self.client.send_event(&event).await {
-            self.pending.lock().expect("pending map").remove(&id);
-            return Err(error.into());
+            if let Err(error) = self.client.send_event(&event).await {
+                self.pending.lock().expect("pending map").remove(&id);
+                return Err(error.into());
+            }
         }
 
         match tokio::time::timeout(timeout, rx).await {
@@ -143,6 +149,9 @@ async fn dispatch(
     bridge: PublicKey,
     pending: Pending,
 ) {
+    // One peer, so the message id alone tells two answers apart.
+    let mut partials: Reassembler<String> = Reassembler::new(Limits::default());
+
     loop {
         let notification = match notifications.recv().await {
             Ok(notification) => notification,
@@ -165,10 +174,16 @@ async fn dispatch(
         let Ok(reply) = open(&secret, &bridge, &event.content) else {
             continue;
         };
-        let Ok(body) = reply.body() else {
-            continue;
+        let key = reply.id.clone();
+        let (head, body) = match partials.accept(key, reply, std::time::Instant::now()) {
+            Accepted::Complete { head, body } => (head, body),
+            Accepted::Waiting => continue,
+            Accepted::Refused(reason) => {
+                tracing::warn!(reason, "dropped a chunk of a response");
+                continue;
+            }
         };
-        let Ok(response) = HttpResponse::from_head(&reply, body) else {
+        let Ok(response) = HttpResponse::from_head(&head, body) else {
             continue;
         };
 

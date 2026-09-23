@@ -116,23 +116,16 @@ impl HttpRequest {
         self
     }
 
-    /// Stage 1 only: the whole request in one envelope, no chunking.
+    /// The whole request in one envelope, for a body small enough that the chunker would produce
+    /// exactly this anyway.
     ///
-    /// Stage 2 replaces this with the chunker; until then a body larger than one chunk is refused
-    /// loudly rather than silently truncated.
+    /// Kept for the callers that know their body is tiny — a refusal, a probe — and implemented in
+    /// terms of the chunker rather than beside it, so there is still only one place that decides
+    /// what an envelope looks like.
     pub fn into_single_envelope(self) -> Envelope {
-        Envelope {
-            v: PROTOCOL_VERSION,
-            id: self.id,
-            seq: 0,
-            total: 1,
-            method: Some(self.method),
-            path: Some(self.path),
-            headers: Some(self.headers),
-            status: None,
-            upstream: self.upstream,
-            body_chunk: BASE64_STANDARD.encode(&self.body),
-        }
+        self.into_envelopes(usize::MAX)
+            .pop()
+            .expect("the chunker always produces at least one envelope")
     }
 
     /// Rebuild a request from a head envelope plus the body the reassembler produced.
@@ -167,19 +160,11 @@ pub struct HttpResponse {
 }
 
 impl HttpResponse {
+    /// One envelope, for an answer small enough that the chunker would produce exactly this.
     pub fn into_single_envelope(self) -> Envelope {
-        Envelope {
-            v: PROTOCOL_VERSION,
-            id: self.id,
-            seq: 0,
-            total: 1,
-            method: None,
-            path: None,
-            headers: Some(self.headers),
-            status: Some(self.status),
-            upstream: None,
-            body_chunk: BASE64_STANDARD.encode(&self.body),
-        }
+        self.into_envelopes(usize::MAX)
+            .pop()
+            .expect("the chunker always produces at least one envelope")
     }
 
     pub fn from_head(envelope: &Envelope, body: Vec<u8>) -> Result<Self, ProtoError> {

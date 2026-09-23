@@ -1,13 +1,23 @@
 //! The nostr half: events in, events out.
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex as StdMutex};
+use std::time::Instant;
 
 use anyhow::Result;
 use iskra_tunnel_proto::{
-    log_path, open, seal, HttpRequest, HttpResponse, ProtoError, KIND_REQUEST, KIND_RESPONSE,
+    log_path, open, seal, Accepted, HttpRequest, HttpResponse, Limits, ProtoError, Reassembler,
+    KIND_REQUEST, KIND_RESPONSE,
 };
 use nostr_sdk::prelude::*;
 use tokio::sync::{broadcast, Mutex};
+
+/// Half-arrived requests, keyed by who is sending and which message it is.
+///
+/// Keyed by **both**, because the message id is chosen by the client: two clients that happen to
+/// pick the same one would otherwise be assembled into each other's requests. A `std` mutex and
+/// not tokio's — accepting a chunk is a memcpy and a hash lookup, and the guard is dropped before
+/// anything is awaited.
+type Partials = Arc<StdMutex<Reassembler<(PublicKey, String)>>>;
 
 use crate::config::Config;
 use crate::forwarder::Forwarder;
@@ -17,6 +27,7 @@ pub struct Bridge {
     config: Arc<Config>,
     forwarder: Arc<Forwarder>,
     limit: Arc<RateLimit>,
+    partials: Partials,
     client: Client,
     /// Taken by `run`. Held here because the order of the two lines that create it matters —
     /// see `start`.
@@ -81,6 +92,7 @@ impl Bridge {
             config: Arc::new(config),
             forwarder: Arc::new(forwarder),
             limit: Arc::new(limit),
+            partials: Arc::new(StdMutex::new(Reassembler::new(Limits::default()))),
             client,
             notifications: Mutex::new(Some(notifications)),
         })
@@ -124,12 +136,13 @@ impl Bridge {
             let config = Arc::clone(&self.config);
             let forwarder = Arc::clone(&self.forwarder);
             let limit = Arc::clone(&self.limit);
+            let partials = Arc::clone(&self.partials);
             let client = self.client.clone();
 
             // One task per request: a homeserver that takes thirty seconds to answer one call must
             // not stop the bridge from hearing the next.
             tokio::spawn(async move {
-                if let Err(error) = serve(&config, &forwarder, &limit, &client, &event).await {
+                if let Err(error) = serve(&config, &forwarder, &limit, &partials, &client, &event).await {
                     tracing::warn!(client = %event.pubkey, %error, "request failed");
                 }
             });
@@ -147,6 +160,7 @@ async fn serve(
     config: &Config,
     forwarder: &Forwarder,
     limit: &RateLimit,
+    partials: &Partials,
     client: &Client,
     event: &Event,
 ) -> Result<()> {
@@ -171,15 +185,26 @@ async fn serve(
         }
     };
 
-    // Stage 1 carries one chunk. Chunked requests arrive in stage 2; until then a multi-chunk
-    // request is refused rather than half-served.
-    if envelope.total != 1 {
-        tracing::warn!(client = %sender, "chunked requests are not supported yet");
-        return Ok(());
-    }
+    // A request may arrive in pieces, from several relays, in any order. Everything up to here
+    // happens per *event*; everything below happens once per *message*.
+    let key = (sender, envelope.id.clone());
+    let accepted = {
+        let mut reassembler = partials.lock().expect("the reassembler");
+        reassembler.accept(key, envelope, Instant::now())
+    };
+    let (head, body) = match accepted {
+        Accepted::Complete { head, body } => (head, body),
+        Accepted::Waiting => return Ok(()),
+        Accepted::Refused(reason) => {
+            // Nothing goes back. There is no id to answer on — the head may be the very chunk that
+            // was refused — and a bridge that replied to every malformed chunk would be a way to
+            // make it publish to a relay on demand.
+            tracing::info!(client = %sender, reason, "dropped a chunk");
+            return Ok(());
+        }
+    };
 
-    let body = envelope.body()?;
-    let request = HttpRequest::from_head(&envelope, body)?;
+    let request = HttpRequest::from_head(&head, body)?;
     let request_id = request.id.clone();
     let method = request.method.clone();
     let route = log_path(&request.path);
@@ -205,15 +230,18 @@ async fn serve(
                 reason = refusal.as_str(),
                 "refused"
             );
-            let refusal = HttpResponse {
-                id: request_id,
-                status: 403,
-                headers: Default::default(),
-                body: Vec::new(),
-            }
-            .into_single_envelope();
-            let content = seal(secret, &sender, &refusal)?;
-            return publish(config, client, &sender, content).await;
+            return answer(
+                config,
+                client,
+                &sender,
+                HttpResponse {
+                    id: request_id,
+                    status: 403,
+                    headers: Default::default(),
+                    body: Vec::new(),
+                },
+            )
+            .await;
         }
     };
     let host = upstream.host_str().unwrap_or("?").to_string();
@@ -244,40 +272,52 @@ async fn serve(
         "served"
     );
 
-    let reply = response.into_single_envelope();
-    let content = match seal(secret, &sender, &reply) {
-        Ok(content) => content,
-        // Too big for one NIP-44 payload. Until chunking lands the honest answer is a 502: the
-        // alternative is returning an error here and sending nothing, and silence is the one thing
-        // the bridge may never do — the client would sit out its own timeout with no way to tell a
-        // huge response from a dead bridge.
-        Err(ProtoError::TooLarge(bytes)) => {
-            tracing::warn!(
-                client = %sender,
-                %method,
-                route,
-                bytes,
-                "response does not fit one envelope; answering 502 until chunking lands"
-            );
-            let refusal = HttpResponse {
-                id: reply.id.clone(),
-                status: 502,
-                headers: Default::default(),
-                body: Vec::new(),
-            }
-            .into_single_envelope();
-            seal(secret, &sender, &refusal)?
-        }
-        Err(error) => return Err(error.into()),
-    };
-    publish(config, client, &sender, content).await
+    answer(config, client, &sender, response).await
 }
 
-/// Send one sealed reply back to the client that asked.
+/// Send one response back to the client that asked, in as many chunks as it takes.
 ///
 /// Extracted because a refusal is as owed an answer as a success is: silence would leave the SDK
 /// waiting out its own timeout with no way to tell "this bridge will not serve that homeserver"
 /// from "this bridge is dead".
+async fn answer(
+    config: &Config,
+    client: &Client,
+    to: &PublicKey,
+    response: HttpResponse,
+) -> Result<()> {
+    let id = response.id.clone();
+    let envelopes = response.into_envelopes(config.max_body_chunk);
+
+    for envelope in &envelopes {
+        let content = match seal(config.keys.secret_key(), to, envelope) {
+            Ok(content) => content,
+            // One chunk of the body always fits; a *head* need not, because the head also carries
+            // the response headers, and a homeserver may send headers longer than the whole chunk
+            // budget. There is nothing to cut there, so the honest answer is the one the client
+            // can act on rather than silence.
+            Err(ProtoError::TooLarge(bytes)) => {
+                tracing::warn!(bytes, "a chunk head does not fit one envelope; answering 502");
+                let refusal = HttpResponse {
+                    id: id.clone(),
+                    status: 502,
+                    headers: Default::default(),
+                    body: Vec::new(),
+                }
+                .into_single_envelope();
+                let content = seal(config.keys.secret_key(), to, &refusal)?;
+                return publish(config, client, to, content).await;
+            }
+            Err(error) => return Err(error.into()),
+        };
+        // In order, and one at a time. The relay pool sends to every relay at once, so this is not
+        // a round trip per chunk; and the client reassembles out of order anyway.
+        publish(config, client, to, content).await?;
+    }
+    Ok(())
+}
+
+/// Publish one sealed event to every relay.
 async fn publish(
     config: &Config,
     client: &Client,

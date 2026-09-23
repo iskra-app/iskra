@@ -178,7 +178,16 @@ is in the Keychain, under a **service of its own** — `SessionStore.clear` empt
 service on sign-out, and a key regenerated there would have to be re-added to every closed bridge
 before the user could sign in again, through the bridge they can no longer reach.
 
-Two rules about it fail far from their cause:
+A message longer than 24 KiB travels in several events (`TunnelChunker`, `TunnelReassembler`), and
+the arithmetic is the Rust side's, case for case — `TunnelChunkingTests` asks this implementation
+the same questions `chunk.rs` and `reassemble.rs` are asked. Three of those cases are worth knowing
+by heart, because each is a bug that only shows up under load: the head fields ride on chunk 0 and
+an envelope carrying them elsewhere is refused by both ends; chunks arrive out of order and more
+than once, so the head may be last and a duplicate must count once; and everything half-arrived is
+capped — 512 chunks, 8 MB, 64 messages at a time, 60 seconds each — because on a phone the memory
+being held is somebody's.
+
+Three rules about it fail far from their cause:
 
 - **With an address filled in, a tunnel that will not come up is a refusal**
   (`AuthenticationError.bridgeUnavailable`), never a quiet direct connection. While there was
