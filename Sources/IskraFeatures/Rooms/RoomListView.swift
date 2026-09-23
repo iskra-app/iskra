@@ -326,14 +326,18 @@ public struct RoomListView: View {
                     Button {
                         openedSpace = room
                     } label: {
-                        RoomRow(room: room, compact: isNativeSidebar)
+                        RoomRow(room: room,
+                                isTyping: session.roomList.typingRoomIDs.contains(room.id),
+                                compact: isNativeSidebar)
                     }
                     .buttonStyle(.plain)
                     .roomListSwipeActions(room: room,
                                           roomList: session.roomList,
                                           onLeave: { roomToLeave = room })
                 } else {
-                    RoomRow(room: room, compact: isNativeSidebar)
+                    RoomRow(room: room,
+                                isTyping: session.roomList.typingRoomIDs.contains(room.id),
+                                compact: isNativeSidebar)
                         .tag(room.id)
                         .roomListSwipeActions(room: room,
                                               roomList: session.roomList,
@@ -425,8 +429,16 @@ public struct RoomListView: View {
                       systemImage: "archivebox")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.secondary)
+                    // The whole width of the row is the button, not only the words in it: a row
+                    // that looks like a row and answers only where its label happens to end is
+                    // a row people tap twice.
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(.rect)
             }
             .buttonStyle(.plain)
+            // Nothing drawn above it. It is the first thing under the title, and a rule there is
+            // a line under an edge that already exists.
+            .listRowSeparator(.hidden, edges: .top)
         }
     }
 
@@ -535,26 +547,16 @@ private extension View {
                                  trailing: Theme.Spacing.tight))
     }
 
-    /// A separator between one row and the next, and nowhere else.
-    ///
-    /// A plain `List` also draws one *above* the first row and *below* the last, which is a
-    /// hairline hanging under the toolbar and another floating beneath the final chat — lines
-    /// that divide a conversation from nothing. Only the interior ones say anything, so the
-    /// two outer edges are switched off at the ends of the list.
-    ///
-    /// The edges are hidden only on the rows that own them, rather than hiding `.top`
-    /// everywhere and keeping `.bottom`: between two rows the two edges are the same line, and
-    /// asking for it to be hidden from either side is enough to lose it.
-    func separatorsBetweenRowsOnly(isFirst: Bool, isLast: Bool) -> some View {
-        listRowSeparator(isFirst ? .hidden : .automatic, edges: .top)
-            .listRowSeparator(isLast ? .hidden : .automatic, edges: .bottom)
-    }
 }
 
 /// One conversation in the list. Internal, not private, so the archive screen renders its rows the
 /// same way the main list does — an archived chat should look like exactly what it is.
 struct RoomRow: View {
     let room: RoomSummary
+
+    /// Somebody in the room is writing — said instead of the last message. See
+    /// `RoomListStore.typingRoomIDs`.
+    var isTyping = false
 
     /// Whether this row is standing in the Mac's own sidebar, where it has to be shorter.
     ///
@@ -570,6 +572,7 @@ struct RoomRow: View {
 
     /// For the pin, which is the one coloured thing on this row. See `body`.
     @Environment(\.accent) private var accent
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         HStack(spacing: Theme.Spacing.normal) {
@@ -627,9 +630,13 @@ struct RoomRow: View {
                 // it would drift down beside a long message and sit level with the middle of a
                 // sentence rather than with the row it belongs to.
                 HStack(alignment: .top, spacing: Theme.Spacing.close) {
-                    Text(room.lastMessage ?? " ")
+                    // "печатает…" in place of the last message while somebody is writing, in the
+                    // accent — the one moment the preview is news rather than history.
+                    Text(isTyping ? String(app: Strings.Room.typing) : (room.lastMessage ?? " "))
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(isTyping ? AnyShapeStyle(accent.color) : AnyShapeStyle(.secondary))
+                        .contentTransition(.opacity)
+                        .animation(.smooth(duration: Theme.Timing.chrome), value: isTyping)
                         // Two lines, and the space for both is kept even when only one is used.
                         //
                         // Without `reservesSpace` a list of chats has rows of two different
@@ -646,39 +653,47 @@ struct RoomRow: View {
                     Spacer(minLength: 0)
 
                     if room.hasUnread {
-                        // A count, not a sentence — but still formatted for the locale
-                        // rather than interpolated, so the digits are the right ones.
-                        //
-                        // Three badges and three colours — see `UnreadEmphasis`, which is where
-                        // the *choice* between them is made, out of reach of anything that knows
-                        // what a colour is.
-                        //
-                        // The middle one was grey until now, and the argument for that was real:
-                        // an accent badge on every unread chat made the list the loudest screen in
-                        // the app and left red with nothing to stand out against. What was wrong
-                        // with it was not the loudness but that grey meant nothing — it was simply
-                        // the default, so it said only "unread", which the badge's existence had
-                        // already said. Grey now belongs to muted rooms and to nothing else, which
-                        // is a thing worth saying, and the accent carries the ordinary case. Red
-                        // still reads against both, because there are only ever a few mentions in
-                        // a list and never a row of them.
-                        //
-                        // A number when there is one to show, and a dot when there is not.
-                        // A muted room counts no notifications and still has new messages in
-                        // it, and a room flagged unread by hand has none at all — both used to
-                        // draw a badge with **0** written in it.
-                        Group {
-                            if room.hasUnreadCount {
-                                Text(room.unreadCount, format: .number)
-                                    .font(.caption.weight(.semibold).monospacedDigit())
-                                    .foregroundStyle(badgeInk)
-                                    .padding(.horizontal, 7)
-                                    .padding(.vertical, 2)
-                            } else {
-                                Circle().fill(.clear).frame(width: 10, height: 10)
+                        HStack(spacing: Theme.Spacing.tight) {
+                            // Somebody named you, or answered you. It used to turn the whole badge
+                            // red, and red in a list of chats reads as an *error* — so it is its
+                            // own mark now, an "@" beside the count, in the same colour as the
+                            // count. What it says is who the messages are for, not how alarmed
+                            // to be about them.
+                            if room.isMentioned {
+                                Image(systemName: "at")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(accent.foreground(in: colorScheme))
+                                    .frame(width: Theme.Size.unreadBadge, height: Theme.Size.unreadBadge)
+                                    .background(mentionFill, in: Circle())
                             }
+
+                            // A count, not a sentence — but still formatted for the locale
+                            // rather than interpolated, so the digits are the right ones.
+                            //
+                            // Two colours — see `UnreadEmphasis`. The accent for a chat that
+                            // notifies you, grey for one you silenced: grey is a thing worth
+                            // saying, and the accent carries the ordinary case. On the mono theme
+                            // the accent is the foreground itself — black in the light, white in
+                            // the dark — with the page's colour written on it.
+                            //
+                            // A number when there is one to show, and a dot when there is not.
+                            // A muted room counts no notifications and still has new messages in
+                            // it, and a room flagged unread by hand has none at all — both used to
+                            // draw a badge with **0** written in it.
+                            Group {
+                                if room.hasUnreadCount {
+                                    Text(room.unreadCount, format: .number)
+                                        .font(.caption.weight(.semibold).monospacedDigit())
+                                        .foregroundStyle(badgeInk)
+                                        .padding(.horizontal, 7)
+                                        .frame(minWidth: Theme.Size.unreadBadge,
+                                               minHeight: Theme.Size.unreadBadge)
+                                } else if !room.isMentioned {
+                                    Circle().fill(.clear).frame(width: 10, height: 10)
+                                }
+                            }
+                            .background(badgeFill, in: Capsule())
                         }
-                        .background(badgeFill, in: Capsule())
                     }
                 }
             }
@@ -729,37 +744,32 @@ struct RoomRow: View {
         return parts.joined(separator: ", ")
     }
 
-    /// What the badge is filled with.
+    /// What the badge is filled with: the accent itself — `.primary` on the mono theme, which is
+    /// the black-and-white pair — or a solid grey for a room the user silenced.
     ///
-    /// `accent.bubble(onWallpaper: false)` rather than `accent.color`, and for the one case where
-    /// the two differ: on the colourless theme there is no colour to fill anything with, and that
-    /// pair is already the app's answer to "the accent, as a surface" — sixteen percent of the
-    /// foreground. Using `color` would paint a mono badge in `.primary`, which is a solid black
-    /// slab in the light with black digits on it. Same reasoning, and the same pair, as a message
-    /// bubble; see `AccentTheme.bubble(onWallpaper:)`.
+    /// A solid grey, not a translucency of the foreground: a muted room is almost always the dot
+    /// case, and nine percent of the foreground ten points across is a smudge.
     private var badgeFill: AnyShapeStyle {
         switch room.unreadEmphasis {
-        case .mention: AnyShapeStyle(Color.red)
-        case .ordinary: accent.bubble(onWallpaper: false)
-        // A solid grey, built the way the red one is: a fixed colour with white on it, the same in
-        // both appearances. Not a translucency of the foreground, which is what the ordinary badge
-        // was until now and what mono's still is — and that is the reason. A muted room is *always*
-        // the dot case, because it counts no notifications and so has no number to show, and a dot
-        // is ten points across. Nine percent of the foreground at that size is a smudge; on the
-        // colourless theme, where the ordinary badge is itself a grey translucency, it would also
-        // have been the same smudge as the thing it is meant to be distinguished from.
+        case .ordinary: AnyShapeStyle(accent.color)
         case .muted: AnyShapeStyle(Color.gray)
         }
     }
 
     /// And what is written on it. The pair to `badgeFill`: each fill comes with the one thing that
-    /// stays readable on it.
+    /// stays readable on it — `foreground(in:)` rather than `foreground`, because on mono the
+    /// latter is `.background`, which resolves against whatever it happens to be drawn into.
     private var badgeInk: AnyShapeStyle {
         switch room.unreadEmphasis {
-        case .mention: AnyShapeStyle(.white)
-        case .ordinary: accent.onBubble
+        case .ordinary: accent.foreground(in: colorScheme)
         case .muted: AnyShapeStyle(.white)
         }
+    }
+
+    /// The "@" is always the accent, even in a silenced room: Matrix lets a mention through a
+    /// muted room's own rule, and so does this.
+    private var mentionFill: AnyShapeStyle {
+        AnyShapeStyle(accent.color)
     }
 }
 
@@ -864,3 +874,20 @@ private struct InviteRow: View {
 // `Avatar` used to live here, and it never loaded anything: it drew initials and dropped the
 // URL on the floor, so there was not a single face anywhere in the app. It is now its own
 // view in `Support/Avatar.swift`, and it fetches.
+
+extension View {
+    /// A separator between one row and the next, and nowhere else.
+    ///
+    /// A plain `List` also draws one *above* the first row and *below* the last, which is a
+    /// hairline hanging under the toolbar and another floating beneath the final chat — lines
+    /// that divide a conversation from nothing. Only the interior ones say anything, so the
+    /// two outer edges are switched off at the ends of the list.
+    ///
+    /// The edges are hidden only on the rows that own them, rather than hiding `.top`
+    /// everywhere and keeping `.bottom`: between two rows the two edges are the same line, and
+    /// asking for it to be hidden from either side is enough to lose it.
+    func separatorsBetweenRowsOnly(isFirst: Bool, isLast: Bool) -> some View {
+        listRowSeparator(isFirst ? .hidden : .automatic, edges: .top)
+            .listRowSeparator(isLast ? .hidden : .automatic, edges: .bottom)
+    }
+}

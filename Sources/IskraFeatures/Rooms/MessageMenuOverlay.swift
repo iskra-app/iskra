@@ -88,17 +88,17 @@ struct MessageMenuOverlay: View {
 
     // MARK: - The conversation, behind
 
-    /// The room does not go away while the menu is open; it goes *quiet*. Soft and a shade
+    /// The room does not go away while the menu is open; it goes *quiet*. Soft and a good deal
     /// darker, so the one bubble that is still sharp is obviously the one being talked about.
     ///
-    /// A material rather than a plain black wash, because a wash dims a conversation and a
-    /// material takes the *words* out of it — which is the actual point. The whole screen is
-    /// covered, toolbar and composer included: this is a modal moment, and a composer still
-    /// crisp at the bottom of a dimmed room is an invitation to type into a menu.
+    /// On iPhone and iPad a material under the wash, because a wash dims a conversation and a
+    /// material takes the *words* out of it. On a Mac only the wash: a blurred window is not
+    /// how a Mac says "a menu is open" — its menus sit over a sharp window — and a whole window
+    /// going soft under a right-click reads as the app having frozen. The whole screen is
+    /// covered either way, toolbar and composer included: this is a modal moment, and a
+    /// composer still crisp at the bottom of a dimmed room is an invitation to type into a menu.
     private var scrim: some View {
-        Rectangle()
-            .fill(.ultraThinMaterial)
-            .overlay(Color.black.opacity(Theme.Backdrop.wash))
+        curtain
             .ignoresSafeArea()
             .contentShape(.rect)
             .onTapGesture { close() }
@@ -106,6 +106,18 @@ struct MessageMenuOverlay: View {
             .accessibilityAddTraits(.isButton)
             .accessibilityAction { close() }
             .transition(.opacity)
+    }
+
+    @ViewBuilder
+    private var curtain: some View {
+        #if os(macOS)
+        Rectangle()
+            .fill(Color.black.opacity(Theme.Backdrop.menuScrim))
+        #else
+        Rectangle()
+            .fill(.ultraThinMaterial)
+            .overlay(Color.black.opacity(Theme.Backdrop.menuScrim))
+        #endif
     }
 
     // MARK: - The arrangement
@@ -133,12 +145,17 @@ struct MessageMenuOverlay: View {
                             .offset(x: layout.emojiOffset)
                             .transition(.scale(scale: 0.9, anchor: .bottom).combined(with: .opacity))
                     } else {
-                        ReactionBar(width: layout.width,
+                        // As wide as the panel the "+" opens, not as narrow as the verbs:
+                        // seven round targets in the width of a column of words came out at
+                        // thumb-and-a-half apart, and a reaction is the thing people reach for
+                        // most. Slid onto the screen by the same correction as the panel.
+                        ReactionBar(width: layout.emojiWidth,
                                     mine: presentation.mine,
                                     onPick: { react($0, in: presentation) },
                                     onMore: {
                                         withAnimation(Theme.Timing.menuOpens) { isPickingEmoji = true }
                                     })
+                            .offset(x: layout.emojiOffset)
                             .transition(.scale(scale: 0.9, anchor: .bottom).combined(with: .opacity))
                     }
                 }
@@ -173,28 +190,33 @@ struct MessageMenuOverlay: View {
     /// maximum can only ever be looser than what the row proposed, so nothing wraps that did not
     /// wrap before, and a short message still sizes to its own words.
     ///
-    /// Its height is left alone for the same reason. The only case that needs a fixed one is the
-    /// message too tall to fit the screen, which is scaled — and a scale is drawn without being
-    /// laid out, so that one *has* to be told how much space it now takes or it pushes the menu
-    /// off the bottom of the screen it was shrunk to fit.
+    /// Its height is left alone for the same reason — unless it is taller than the screen has
+    /// room for. Then it is given the height `MessageMenuLayout` allows and *scrolls* in it, at
+    /// full size. It used to be scaled down to fit instead, and a scaled page of text is a page
+    /// of text too small to read; the long message is often the very one somebody opened the
+    /// menu to copy a piece of, or to read again before answering.
     @ViewBuilder
     private func lifted(_ presentation: MessageMenuPresentation,
                         layout: MessageMenuLayout) -> some View {
-        let anchor: UnitPoint = presentation.isOwn ? .topTrailing : .topLeading
-
-        presentation.content
+        let alignment: Alignment = presentation.isOwn ? .trailing : .leading
+        let message = presentation.content
             .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: max(layout.width, presentation.anchor.width),
-                   alignment: presentation.isOwn ? .trailing : .leading)
-            .scaleEffect(layout.contentScale, anchor: anchor)
-            .frame(height: layout.contentScale < 1
-                   ? presentation.anchor.height * layout.contentScale
-                   : nil,
-                   alignment: .top)
-            .shadow(color: .black.opacity(Theme.Backdrop.wash), radius: Theme.Spacing.normal, y: Theme.Spacing.tight)
-            // It is a copy of something that is still in the list underneath, so VoiceOver is
-            // told about it once — by the menu — and not twice.
-            .accessibilityHidden(true)
+            .frame(maxWidth: max(layout.width, presentation.anchor.width), alignment: alignment)
+
+        Group {
+            if layout.contentHeight < presentation.anchor.height {
+                ScrollView(.vertical) { message }
+                    .scrollIndicators(.visible)
+                    .frame(height: layout.contentHeight, alignment: .top)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.bubble, style: .continuous))
+            } else {
+                message
+            }
+        }
+        .shadow(color: .black.opacity(Theme.Backdrop.wash), radius: Theme.Spacing.normal, y: Theme.Spacing.tight)
+        // It is a copy of something that is still in the list underneath, so VoiceOver is
+        // told about it once — by the menu — and not twice.
+        .accessibilityHidden(true)
     }
 
     private func actions(_ presentation: MessageMenuPresentation,

@@ -375,6 +375,15 @@ public enum Theme {
         /// bubble's rim would go translucent and the conversation would show through the
         /// frame. Overdrawing pushes those soft edges out past the clip.
         public static let overdraw: CGFloat = 1.3
+
+        /// How dark the conversation goes behind an open message menu.
+        ///
+        /// Much darker than `wash`, which is a tint for a panel and not a curtain: at 0.12 the
+        /// room behind the menu was still a room, and the bubbles in it competed with the one
+        /// that had been lifted out of it. On a Mac, where the curtain is the *only* thing
+        /// between the menu and the conversation (there is no blur there, see
+        /// `MessageMenuOverlay.scrim`), it has to do all of that work by itself.
+        public static let menuScrim: Double = 0.4
     }
 
     public enum Tint {
@@ -410,6 +419,10 @@ public enum Theme {
         /// how a conversation is found: the eye goes down the column of faces, not down the column
         /// of names, and at 40pt it was doing that work at the size of a footnote.
         public static let roomAvatar: CGFloat = 56
+
+        /// The height of the unread badge in the chat list, and the width of the "@" beside it —
+        /// one number, so the circle and the capsule stand exactly level.
+        public static let unreadBadge: CGFloat = 20
         public static let avatarSmall: CGFloat = 28
         /// A picture that *is* a button in the title bar: the chat's, at the end of a room's
         /// bar, and the user's own at the end of the room list's.

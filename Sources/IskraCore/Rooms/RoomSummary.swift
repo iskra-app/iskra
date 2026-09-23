@@ -166,9 +166,11 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
     /// paint: `IskraCore` is not allowed to know what colour an accent is, and the row should not
     /// be the place that decides what "muted" means. Same division as `PrivacyStatus`, and it is
     /// what lets the rule be pinned in a test without standing up SwiftUI. See `UnreadEmphasis`.
+    ///
+    /// Being named is no longer one of the answers. It used to be a red badge; it is now an "@"
+    /// drawn *beside* the badge, and the badge keeps the colour of the room — see `isMentioned`.
     public var unreadEmphasis: UnreadEmphasis {
-        if isMentioned { return .mention }
-        return isMuted ? .muted : .ordinary
+        isMuted ? .muted : .ordinary
     }
     public var isInvitation: Bool { membership == .invited }
     /// Pinned to the top. A friendlier name than "favourite" for the one place the rest of the app
@@ -286,10 +288,6 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
 /// own rule. So a room can be grey on Tuesday and red on Wednesday without anything having been
 /// changed.
 public enum UnreadEmphasis: String, Sendable, CaseIterable {
-    /// Somebody named you. Red, whatever the app is painted in — it is the one badge that means
-    /// "you, specifically", and it has to survive being looked at in a list of eight other colours.
-    case mention
-
     /// Ordinary unread messages, in the colour the user chose the app to be.
     case ordinary
 

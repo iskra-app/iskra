@@ -1846,7 +1846,7 @@ private final class RoomQueueListener: SendQueueListener {
 }
 
 /// The room telling us who is writing. `[String]` is `Sendable`, so it needs no `UnsafeTransfer`.
-private final class TypingListener: TypingNotificationsListener {
+final class TypingListener: TypingNotificationsListener {
     private let onUpdate: @Sendable ([String]) -> Void
 
     init(onUpdate: @escaping @Sendable ([String]) -> Void) {

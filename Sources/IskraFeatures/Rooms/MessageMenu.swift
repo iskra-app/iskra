@@ -150,7 +150,7 @@ public extension EnvironmentValues {
 /// Pure arithmetic, in its own type, because it is the part of a context menu that is actually
 /// *hard* — everything else is a rounded rectangle. There are four things it has to be true of
 /// at once: the message should stay as near as possible to where the finger left it, the whole
-/// column has to fit between the safe areas, a message taller than the screen has to give way
+/// column has to fit between the safe areas, a message taller than the screen has to scroll
 /// rather than push the menu off the bottom, and the menu has to open under the edge the
 /// message is anchored to — at one width, which is deliberately not the pressed message's.
 /// Being a struct of numbers, it can be tested — see
@@ -185,16 +185,19 @@ struct MessageMenuLayout: Equatable {
     /// naturally sit, and it is zero for every message that is not near an edge.
     var emojiOffset: CGFloat
 
-    /// How much the lifted message is shrunk to make room. 1 unless it is a very long message
-    /// on a very short screen.
-    var contentScale: CGFloat
+    /// How tall the lifted message is allowed to be. Its own height, unless it is a very long
+    /// message on a very short screen — and then it keeps its size and *scrolls* inside this
+    /// height, rather than being shrunk to fit, which is what it used to do. A shrunken page of
+    /// text is a page nobody can read, and reading it is often why the menu was opened.
+    var contentHeight: CGFloat
 
     /// The most the list of actions may take. Beyond that it scrolls — a menu with eleven items
     /// on an iPhone SE with a tall message above it is a real arrangement, not a hypothetical.
     var listMaxHeight: CGFloat
 
-    /// A message never shrinks below this. Past it the thing being lifted stops being legible,
-    /// and an illegible message with a menu under it is worse than a menu that scrolls.
+    /// A message is never given less height than this. Past it the window onto the message is too
+    /// small to read through,
+    /// and an unreadable message with a menu under it is worse than a menu that scrolls.
     static let leastContentHeight: CGFloat = Theme.Size.menuRow * 2
 
     /// - Parameters:
@@ -226,8 +229,7 @@ struct MessageMenuLayout: Equatable {
         // long somebody wrote it.
         let roomForContent = available - aboveHeight - listHeight - gap * 2
         let allowed = max(leastContentHeight, roomForContent)
-        let contentScale = anchor.height > 0 ? min(1, allowed / anchor.height) : 1
-        let contentHeight = anchor.height * contentScale
+        let contentHeight = min(anchor.height, allowed)
 
         // And only when the message has given everything it can does the list start scrolling.
         let listMaxHeight = max(Theme.Size.menuRow,
@@ -256,7 +258,7 @@ struct MessageMenuLayout: Equatable {
                                  width: width,
                                  emojiWidth: emojiWidth,
                                  emojiOffset: emojiX - wantedEmojiX,
-                                 contentScale: contentScale,
+                                 contentHeight: contentHeight,
                                  listMaxHeight: listMaxHeight)
     }
 }

@@ -47,7 +47,7 @@ struct MessageMenuLayoutTests {
         let layout = resolve(anchor: anchor)
 
         #expect(layout.origin.y == local(anchor).minY - bar - MessageMenu.gap)
-        #expect(layout.contentScale == 1)
+        #expect(layout.contentHeight == 60)
         #expect(layout.listMaxHeight == list)
     }
 
@@ -102,16 +102,16 @@ struct MessageMenuLayoutTests {
         #expect(layout.origin.x + layout.width <= region.width - MessageMenu.margin)
     }
 
-    /// A very long message is what shrinks, and it shrinks *first*: the bar and the verbs are a
+    /// A very long message is what gives way, and it gives *first* — it scrolls: the bar and the verbs are a
     /// fixed cost, and a photograph that pushed them off the screen would leave a menu with no
     /// menu in it.
     @Test func aTallMessageGivesWayBeforeTheMenuDoes() {
         let layout = resolve(anchor: CGRect(x: 16, y: 100, width: 260, height: 700))
 
-        #expect(layout.contentScale < 1)
+        #expect(layout.contentHeight < 700)
         #expect(layout.listMaxHeight == list)
 
-        let columnHeight = bar + MessageMenu.gap + 700 * layout.contentScale + MessageMenu.gap + list
+        let columnHeight = bar + MessageMenu.gap + layout.contentHeight + MessageMenu.gap + list
         #expect(layout.origin.y + columnHeight <= region.height - MessageMenu.margin + 0.001)
     }
 
@@ -123,7 +123,7 @@ struct MessageMenuLayoutTests {
                              region: short,
                              listHeight: Theme.Size.menuRow * 9)
 
-        let contentHeight = 600 * layout.contentScale
+        let contentHeight = layout.contentHeight
         #expect(contentHeight >= MessageMenuLayout.leastContentHeight - 0.001)
         #expect(layout.listMaxHeight < Theme.Size.menuRow * 9)
         #expect(layout.listMaxHeight >= Theme.Size.menuRow)
