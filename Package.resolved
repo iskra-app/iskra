@@ -1,5 +1,5 @@
 {
-  "originHash" : "f5d5219b92495f4bfd6508767dd994bff454de6b0c1d42690491bf834d9b4ca8",
+  "originHash" : "ccd93bafebeccca683c0a7636863d5d8dc0520bf36d3f5e8a0c1688056bbb181",
   "pins" : [
     {
       "identity" : "matrix-rust-components-swift",
@@ -8,6 +8,15 @@
       "state" : {
         "revision" : "ec3b2161ba371a13609e7181077d2f3baef188f5",
         "version" : "26.6.6"
+      }
+    },
+    {
+      "identity" : "swift-secp256k1",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/21-DOT-DEV/swift-secp256k1.git",
+      "state" : {
+        "revision" : "39dd39248e769ea88253a0ce300399b402a64529",
+        "version" : "0.9.2"
       }
     }
   ],

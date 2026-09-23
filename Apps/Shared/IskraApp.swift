@@ -49,6 +49,12 @@ struct IskraApp: App {
             DeviceProbe.runAndExit()
         }
 
+        // `Iskra --probe-bridge [npub] [homeserver]` sends one request through the nostr tunnel
+        // and says which of the five identical-looking failures it was. See BridgeProbe.
+        if BridgeProbe.wasRequested {
+            BridgeProbe.runAndExit()
+        }
+
         // `Iskra --probe-notification <roomID> <eventID>` decrypts one event the way the
         // notification extension will. A push carries nothing but those two identifiers, so
         // this needs no push gateway to be honest — see NotificationProbe, and ROADMAP stage 7.

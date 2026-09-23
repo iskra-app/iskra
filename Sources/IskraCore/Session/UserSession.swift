@@ -84,6 +84,22 @@ public final class UserSession {
         await authentication.tunnelStatus()
     }
 
+    /// This device's nostr key, as `npub1…`, for the settings screen to show and for somebody to
+    /// paste into a closed bridge's `ALLOWED_PUBKEYS`.
+    public func tunnelPublicKey() async -> String? {
+        await authentication.tunnelPublicKey()
+    }
+
+    /// The homeserver, as the homeserver — never this app's own listener.
+    ///
+    /// With the bridge on, the SDK believes it is talking to `http://127.0.0.1:<port>`, because it
+    /// is. Anything that wants the *real* address, like the bridge check, has to be given the
+    /// server the listener stands in for instead.
+    public var homeserverURL: URL {
+        let known = TunnelSettings.persistableHomeserver(client.homeserver())
+        return URL(string: known) ?? URL(string: "https://matrix.org")!
+    }
+
     public init(client: Client, authentication: AuthenticationService, isDemo: Bool = false,
                 storageLocations: [StorageKind: URL]? = nil) {
         self.client = client

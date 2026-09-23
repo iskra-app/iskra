@@ -97,6 +97,18 @@ entitlements — it runs in the *app's* process, and the `.appex` is a different
 the App Group and the Keychain separately — and nothing but a real push proves that iOS wakes the
 extension at all.
 
+`Iskra --probe-bridge [npub] [homeserver]` sends one real request through the nostr tunnel and says
+which failure it was. Five things make a bridge look broken in exactly the same way — a mistyped
+key, a bridge that is not running, one whose `ALLOWED_UPSTREAMS` does not cover this homeserver, a
+closed one that has never been told about this device, relays that are all refusing connections —
+and from inside the app all five are a sign-in that spins. Given no arguments it uses what is in
+Settings → Connection, which is the case worth having.
+
+```sh
+xcrun simctl launch --console booted moscow.swag.iskra --probe-bridge
+./device.sh -- --probe-bridge npub1… matrix.org
+```
+
 ### The demo server
 
 Settings → Beta features → **Demo server** (`BetaFeatures.mockBackendKey`) swaps the real account
@@ -149,6 +161,40 @@ empty. When an SDK update starts asking for something new, that test names the e
 `InMemorySecrets`. The next launch without the flag restores whoever was signed in, untouched, and
 `AppSettings.forget` does nothing under the flag, so signing out of `alice` leaves the real
 accent and wallpaper where they were.
+
+### The bridge, from this side
+
+`Bridge/` is a Rust service that carries Matrix over nostr; `IskraCore/Transport/Nostr/` is the
+other half of it. Both link the same wire format on purpose — an envelope one side chunks one way
+and the other reassembles another way fails only under load and only in production — so
+`TunnelEnvelope` mirrors `iskra-tunnel-proto`'s `Envelope` field for field, `body_chunk` included,
+and `NostrTunnelTests` pins that JSON as text.
+
+`NostrTunnelUpstream` is an `HTTPUpstream`, which is the whole trick: it stands exactly where
+`DirectUpstream` stands, behind the same `LocalHTTPProxy` that puts the SDK's requests in front of
+us in the clear, and nothing above the transport learns anything. The bridge's address is
+`TunnelSettings.addressKey` in `UserDefaults` (Settings → Connection); this device's own nostr key
+is in the Keychain, under a **service of its own** — `SessionStore.clear` empties the session's
+service on sign-out, and a key regenerated there would have to be re-added to every closed bridge
+before the user could sign in again, through the bridge they can no longer reach.
+
+Two rules about it fail far from their cause:
+
+- **With an address filled in, a tunnel that will not come up is a refusal**
+  (`AuthenticationError.bridgeUnavailable`), never a quiet direct connection. While there was
+  nothing on the far side of the switch, falling back cost nothing; now the switch is a decision
+  about who may see the traffic, and going direct without saying so answers that question behind
+  the user's back. With **no** address, there is nothing to fall back *from*: the listener comes up,
+  requests go straight out, and the status says `routingLocally` in those words.
+- **A relay list of one is a mistake, not a simplification.** An event is published to all relays
+  at once and the answer comes from whichever is quickest; `relay.damus.io` answers `503` to the
+  connection itself often enough to be the standing example. Duplicates are the price, and
+  `NostrRelayPool` drops them by event id.
+
+`Iskra --probe-bridge [npub] [homeserver]` and the "Check the bridge" button both drive
+`BridgeCheck`, so the terminal and the screen cannot disagree. `LiveBridgeTests` is the end-to-end
+check against a real bridge and is **off** unless `ISKRA_BRIDGE_PUBKEY` is set — `swift test` stays
+offline. See `Bridge/README.md` for the bridge itself and for what it can see.
 
 ## Architecture
 
@@ -345,7 +391,19 @@ uploads the user's face to the homeserver in the clear. Send ordinary `m.video` 
   do nothing on macOS.
 - The Matrix store and the local search index are both encrypted at rest. Search runs against the
   local index; the query never reaches the server.
-- All cryptography is the Rust SDK's. **None of it is reimplemented here, and none of it should be.**
+- **All *Matrix* cryptography is the Rust SDK's. None of it is reimplemented here, and none of it
+  should be.** Olm, Megolm, cross-signing, the encrypted store: the SDK's, untouched.
+
+  The bridge's transport is the one thing outside that sentence, and it is worth knowing why it is
+  not an exception to it. NIP-44 is nostr's, not Matrix's, and it needs three primitives: a
+  secp256k1 ECDH, HKDF-SHA256, and *unauthenticated* ChaCha20 under its own HMAC. The curve is
+  libsecp256k1 (`21-DOT-DEV/swift-secp256k1` — the C library, not a Swift rewrite of it) and the
+  HKDF and HMAC are CryptoKit's. Only the ChaCha20 block function is written out, in
+  `IskraCore/Transport/Nostr/ChaCha20.swift`, because CryptoKit exposes `ChaChaPoly` and nothing
+  underneath it: the AEAD appends its own Poly1305 tag and will not hand back a keystream, and
+  using it instead would produce a payload no other nostr implementation could read. `NIP44Tests`
+  runs the vector file published with the NIP — every case, including the 65535-byte message —
+  which is what makes "the same encryption the bridge speaks" a fact rather than an intention.
 - Nothing logs message content, tokens, passwords, or OAuth callback URLs — a callback URL carries
   the authorization code and is as sensitive as the token it buys.
 
