@@ -356,7 +356,7 @@ XcodeGen and gitignored. **Edit `Apps/project.yml` and rerun `xcodegen`.**
 
 ## The app icon
 
-`icons/iskra.icon` is an Icon Composer document, and one icon serves both platforms — it carries
+`icons/iskra-spark.icon` is an Icon Composer document, and one icon serves both platforms — it carries
 its own light, dark and tinted appearances, so there is no set of PNGs to keep in step *in the
 bundle*. (The picker's previews are a separate thing and are argued for below.) The whole set
 lives in `icons/`, alongside `icons/pngs/`, which is where Icon Composer's 1024 exports are kept —
@@ -366,10 +366,17 @@ they are the source the previews are made from and are not built into anything. 
 - It is listed in each target's `sources` with **`type: file`**. An `.icon` is a directory on disk,
   and without that XcodeGen walks into it and adds its insides as loose files instead of handing
   the bundle to `actool` whole.
-- `ASSETCATALOG_COMPILER_APPICON_NAME: iskra` is set **on each target**, not in the shared
+- `ASSETCATALOG_COMPILER_APPICON_NAME: iskra-spark` is set **on each target**, not in the shared
   `settings.base`. XcodeGen gives every app target a default of `AppIcon`, and a target setting
   beats a project-level one — so the tidier-looking placement silently loses, and the build fails
   with *"None of the input catalogs contained … an app icon set … named AppIcon"*.
+
+**Renaming the primary icon is how iOS is made to forget it.** It was `iskra.icon` until
+notifications kept showing an older icon long after the home screen had the new one. Nothing old
+was in the bundle — Assets.car and the `CFBundleIconFiles` PNGs were both current — so it was
+iOS's cache, which is keyed on the icon's name. `HomeIcon.spark` keeps the id `"iskra"`: that is
+the app's name for the choice (the preview file, the remembered setting), and UIKit never sees it,
+because the primary is `nil` to `setAlternateIconName`.
 
 ### The seven others, on iPhone and iPad
 
@@ -380,7 +387,7 @@ listed in `sources` is compiled and then refused at the moment somebody taps it.
 
 **The compiled icons cannot be got back out of the bundle as pictures.** `UIImage(named:)` returns
 nothing for the alternates, and asked for the primary by its bare name it does not fail politely —
-it throws `Need an imageRef` and takes the app down. (The one name that works, `iskra60x60`, exists
+it throws `Need an imageRef` and takes the app down. (The one name that works, `iskra-spark60x60`, exists
 only because the primary is also registered the old way under `CFBundleIconFiles`.) This is normal:
 Apple's own guidance is that an icon picker ships its own preview images, and that is what
 `Sources/IskraFeatures/Resources/icon-<name>.png` are — each icon exported at 1024 and scaled to
