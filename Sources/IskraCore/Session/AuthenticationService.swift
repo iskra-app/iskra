@@ -53,6 +53,14 @@ public enum AuthenticationError: Error {
     case networkUnavailable
     /// The server does not offer any sign-in method we can drive.
     case noSupportedSignInMethod
+    /// The bridge is switched on, an address is set, and the tunnel could not be raised.
+    ///
+    /// A refusal, and deliberately not a fallback. While there was nothing on the far side of the
+    /// switch, falling back to a direct connection cost the user nothing — it was what they would
+    /// have had anyway. Now that turning the switch on is a decision about who may see the
+    /// traffic, going direct without saying so would tell somebody they were protected while they
+    /// were not, and that is the one failure this feature must never have.
+    case bridgeUnavailable(Error)
     /// `startSignIn` was not called, or the flow was abandoned.
     case noSignInInProgress
     case invalidCallbackURL
@@ -70,6 +78,10 @@ public actor AuthenticationService {
     /// The local listener the SDK is pointed at while the bridge switch is on. Owned here because
     /// it has to outlive `build()` by the whole life of the session: it *is* the connection.
     private var tunnel: LocalHTTPProxy?
+    /// The nostr side, when there is one. Held separately from `tunnel` because the listener owns
+    /// it as an `HTTPUpstream` and cannot be asked the things only this knows — how many relays
+    /// are up, and what this device's key is.
+    private var bridgeUpstream: NostrTunnelUpstream?
     private var tunnelState: TunnelStatus = .off
 
     /// The client we are mid-sign-in with. Discarded if the flow is abandoned.
@@ -147,7 +159,7 @@ public actor AuthenticationService {
         guard let entry = poisoned ? stored.serverName : stored.homeserverURL else {
             throw AuthenticationError.homeserverNotFound
         }
-        let homeserver = await route(to: entry)
+        let homeserver = try await route(to: entry)
 
         let client: Client
         do {
@@ -269,7 +281,7 @@ public actor AuthenticationService {
         // that accepts the connection and then says nothing — otherwise leaves the
         // "Continue" button spinning with no way out and nothing on screen to explain
         // it. A wrong answer the user can act on beats a spinner that never stops.
-        let entryPoint = await route(to: address)
+        let entryPoint = try await route(to: address)
 
         let client: Client
         do {
@@ -557,7 +569,19 @@ public actor AuthenticationService {
     // MARK: - Bridge
 
     /// What the transport is doing, for the settings screen to show.
-    public func tunnelStatus() -> TunnelStatus { tunnelState }
+    ///
+    /// The relay count is asked for rather than remembered: relays come and go on their own, and a
+    /// number written down when the tunnel was raised would be a number from another hour.
+    public func tunnelStatus() async -> TunnelStatus {
+        guard case .bridged = tunnelState, let bridge = bridgeUpstream else { return tunnelState }
+        return .bridged(relays: await bridge.connectedRelays())
+    }
+
+    /// This device's nostr public key, for the settings screen to show: it is what somebody
+    /// running a closed bridge has to add to `ALLOWED_PUBKEYS` before this device is served.
+    public func tunnelPublicKey() -> String? {
+        try? TunnelIdentity(environment: environment).keypair().npub
+    }
 
     /// The address to hand the SDK, given the bridge switch.
     ///
@@ -565,12 +589,16 @@ public actor AuthenticationService {
     /// raised and its loopback address is returned instead, so every call the SDK makes arrives
     /// there first; the homeserver the user actually wants becomes the listener's upstream.
     ///
-    /// A listener that will not start falls back to a direct connection rather than to nothing.
-    /// That is the right trade **only because there is no circumvention in this build yet** — the
-    /// direct route is exactly what the user would have had anyway. The day a real bridge is on the
-    /// far side, this has to become a refusal: silently going direct would tell someone they were
-    /// protected while they were not, and that is the one failure this feature must never have.
-    private func route(to address: String) async -> String {
+    /// What is on the far side of that listener depends on one thing — whether a bridge address
+    /// has been filled in:
+    ///
+    /// - **With one**, the far side is the nostr tunnel, and a failure here **throws**. There is
+    ///   no falling back to a direct connection: the switch is now a decision about who may see
+    ///   this traffic, and quietly going direct would answer that question behind the user's back.
+    /// - **Without one**, there is nothing to fall back *from*. The listener comes up and forwards
+    ///   straight to the homeserver, exactly as a direct connection would, and the status says so
+    ///   in those words.
+    private func route(to address: String) async throws -> String {
         guard TunnelSettings.isEnabled() else {
             await stopTunnel()
             return address
@@ -581,8 +609,48 @@ public actor AuthenticationService {
         }
 
         await stopTunnel()
+
+        guard let bridgeKey = TunnelSettings.bridgeKey() else {
+            return await routeLocally(to: upstreamURL, fallingBackTo: address)
+        }
+
         do {
-            let proxy = LocalHTTPProxy(upstream: DirectUpstream(homeserver: upstreamURL),
+            let bridge = try NostrTunnelUpstream(
+                bridgeKey: bridgeKey,
+                relays: TunnelSettings.relays(),
+                keys: try TunnelIdentity(environment: environment).keypair(),
+                homeserver: upstreamURL)
+            // Before the listener, so that the websockets are already opening while the SDK is
+            // still being built: the first request through a cold tunnel is otherwise the one that
+            // waits for three TLS handshakes.
+            await bridge.start()
+
+            let proxy = LocalHTTPProxy(upstream: bridge,
+                                       onDiscovery: { TunnelSettings.listenerStandsIn(for: $0) })
+            let port = try await proxy.start()
+
+            tunnel = proxy
+            bridgeUpstream = bridge
+            tunnelState = .bridged(relays: await bridge.connectedRelays())
+            TunnelSettings.listenerStandsIn(for: upstreamURL)
+            Log.session.info("traffic is going through the bridge")
+            return "http://127.0.0.1:\(port)"
+        } catch {
+            await stopTunnel()
+            tunnelState = .failed(String(describing: error))
+            throw AuthenticationError.bridgeUnavailable(error)
+        }
+    }
+
+    /// The listener with nothing but a direct connection behind it.
+    ///
+    /// Not a tunnel and never described as one. It is what the switch did before there was a
+    /// client side to it, and it stays because it is the honest answer to "switch on, no address":
+    /// it also proves the listener itself is working, which is worth something when the next step
+    /// is to point it at a bridge.
+    private func routeLocally(to upstream: URL, fallingBackTo address: String) async -> String {
+        do {
+            let proxy = LocalHTTPProxy(upstream: DirectUpstream(homeserver: upstream),
                                        onDiscovery: { TunnelSettings.listenerStandsIn(for: $0) })
             let port = try await proxy.start()
             tunnel = proxy
@@ -590,7 +658,7 @@ public actor AuthenticationService {
             // Said before a single request goes through, and said again by `onDiscovery` once
             // `.well-known` names the real host. Nothing may write a loopback address into the
             // Keychain, and this is what it gets written down as instead.
-            TunnelSettings.listenerStandsIn(for: upstreamURL)
+            TunnelSettings.listenerStandsIn(for: upstream)
             return "http://127.0.0.1:\(port)"
         } catch {
             tunnel = nil
@@ -603,7 +671,11 @@ public actor AuthenticationService {
         if let tunnel {
             await tunnel.stop()
         }
+        if let bridgeUpstream {
+            await bridgeUpstream.stop()
+        }
         tunnel = nil
+        bridgeUpstream = nil
         tunnelState = .off
         TunnelSettings.listenerStoppedStandingIn()
     }

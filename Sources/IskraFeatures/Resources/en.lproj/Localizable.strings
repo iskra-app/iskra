@@ -202,12 +202,38 @@
 "connection.status" = "Status";
 "connection.statusDirect" = "Direct";
 "connection.statusLocal" = "Through the local layer";
+"connection.statusBridged" = "Through the bridge, relays: %lld";
 "connection.statusFailed" = "Could not be turned on";
 
-/* With no transport yet the switch gets you past nothing, and saying so plainly beats
-   letting someone decide they are protected. */
-"connection.unfinished" = "Not finished yet";
-"connection.unfinishedBody" = "The bridge itself works, but the app cannot talk to it yet. For now this switch routes traffic through the local layer, and from there it still goes straight to the server — so it does not get you past a block.";
+/* The bridge's address. While the field is empty the switch changes nothing, and that is
+   said here rather than only in the status: this is what somebody is looking at. */
+"connection.address" = "Bridge address";
+"connection.addressPrompt" = "npub1… or 64 hex characters";
+"connection.addressFooter" = "A bridge prints its own key at startup — the line that reads “bridge is listening pubkey=…”. While this is empty the switch gets you nothing: traffic goes straight to the server.";
+"connection.addressBad" = "That does not look like a bridge key";
+"connection.addressSecret" = "That is a secret key. The public one is wanted here — the one that starts with npub.";
+
+"connection.relays" = "Relays";
+"connection.relaysPrompt" = "wss://nos.lol, wss://relay.primal.net";
+"connection.relaysFooter" = "This is where the app and the bridge find each other. Several is not a spare tyre: a request goes out to all of them at once and the answer comes back from whichever was quickest. Leave it empty for the default three.";
+
+"connection.myKey" = "This device's key";
+"connection.myKeyFooter" = "If the bridge is a closed one, add this key to its ALLOWED_PUBKEYS — otherwise it will not hear you at all.";
+"connection.copy" = "Copy";
+"connection.copied" = "Copied";
+
+"connection.check" = "Check the bridge";
+"connection.checking" = "Checking…";
+"connection.checkOK" = "The bridge answered, the server is there — %lld ms";
+"connection.checkNoRelay" = "No relay is answering";
+"connection.checkSilent" = "The bridge is silent. Is it running, and is that the right key?";
+"connection.checkRefused" = "The bridge said no: it does not serve this server";
+"connection.checkFailed" = "No luck: %@";
+
+/* The client side exists, but this is still stage one: one event per request and no sync
+   aggregator. Saying so plainly beats letting someone decide it is finished. */
+"connection.unfinished" = "What is still missing";
+"connection.unfinishedBody" = "Requests already leave as encrypted nostr events and come back the same way. But a long answer from the server does not fit in one event and there is no chunking yet — so this is not enough for everyday messaging. And every request goes the long way round through a relay, which is noticeably slower than a direct connection.";
 
 "connection.sees" = "What the bridge sees";
 "connection.seesBody" = "A bridge unpacks your requests to the server, so it sees your token, which rooms you are in, and the text of messages in unencrypted chats. It cannot read encrypted conversations. This is why the bridge should be your own rather than somebody else's.";
