@@ -4,7 +4,7 @@ import IskraDesign
 /// The app's own icon, fetched from the bundle rather than kept as a second copy in a
 /// resource of its own.
 ///
-/// There is exactly one icon in this project — `iskra.icon`, an Icon Composer document — and
+/// There is exactly one icon in this project — `iskra-spark.icon`, an Icon Composer document — and
 /// it is compiled by `actool` into the app bundle. Adding a PNG beside it so that a screen
 /// could show a picture of the app would be a second icon to keep in step with the first, and
 /// the first one changes.

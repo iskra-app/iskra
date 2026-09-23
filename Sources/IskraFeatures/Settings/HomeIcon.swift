@@ -25,7 +25,9 @@ import UIKit
 /// The raw value is the icon's name in the bundle, which is what `setAlternateIconName` takes
 /// and what `alternateIconName` gives back — so the enum converts in both directions with no
 /// table to keep in step. The one the app ships with has no alternate name at all: `nil` is how
-/// UIKit says "the original", and `spark` is the name for it here.
+/// UIKit says "the original", and `spark` is the name for it here. Its raw value is therefore the
+/// app's own id for it and not a bundle name — the compiled primary is `iskra-spark`, renamed to
+/// shake loose an icon iOS had cached (see `Apps/project.yml`).
 enum HomeIcon: String, CaseIterable, Identifiable, Sendable {
     case spark = "iskra"
     case chrome = "iskra-chrome"

@@ -100,7 +100,7 @@ targets:
       # `type: file` matters: an .icon is a directory on disk, and without this XcodeGen
       # would walk into it and add its insides as loose files instead of handing the
       # bundle to actool whole.
-      - path: ../icons/iskra.icon
+      - path: ../icons/iskra-spark.icon
         type: file
         buildPhase: resources
       # The seven the icon can be changed to, on iPhone and iPad — see `HomeIcon` and
@@ -148,15 +148,20 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: moscow.swag.iskra
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
         TARGETED_DEVICE_FAMILY: "1,2" # iPhone and iPad
-        # ../icons/iskra.icon, an Icon Composer document, named without its extension —
-        # which
-        # is what actool expects. One icon serves both platforms: it carries its own
+        # ../icons/iskra-spark.icon, an Icon Composer document, named without its extension —
+        # which is what actool expects. One icon serves both platforms: it carries its own
         # light, dark and tinted appearances, so there is no set of PNGs to keep in step.
         #
         # This has to be set on the *target*. XcodeGen gives every app target a default
         # of `AppIcon`, and a target setting beats the project-level one, so putting it
         # in the shared `settings.base` above looks right and silently loses.
-        ASSETCATALOG_COMPILER_APPICON_NAME: iskra
+        #
+        # It was called `iskra` until iOS went on showing an *earlier* icon on notifications
+        # long after the home screen had the new one — the bundle held nothing old (checked:
+        # Assets.car and the legacy `CFBundleIconFiles` PNGs are both the current artwork), so
+        # it was iOS's own cache, keyed on the icon's name. A new name is a new icon to it.
+        # Rename it again the same way if the cache ever sticks again.
+        ASSETCATALOG_COMPILER_APPICON_NAME: iskra-spark
         # The seven the app can be changed to. Named the same way — without the extension —
         # and this is the whole of what makes `setAlternateIconName` able to find them:
         # an icon listed in `sources` is merely compiled, and an icon named here is
@@ -402,7 +407,7 @@ targets:
     templates: [Stamped]
     sources:
       - path: Shared
-      - path: ../icons/iskra.icon
+      - path: ../icons/iskra-spark.icon
         type: file
         buildPhase: resources
     dependencies:
@@ -413,7 +418,7 @@ targets:
         PRODUCT_NAME: Iskra
         PRODUCT_BUNDLE_IDENTIFIER: moscow.swag.iskra
         # The same icon as iOS, and set on the target for the same reason. See above.
-        ASSETCATALOG_COMPILER_APPICON_NAME: iskra
+        ASSETCATALOG_COMPILER_APPICON_NAME: iskra-spark
     info:
       path: macOS/Info.plist
       properties:
