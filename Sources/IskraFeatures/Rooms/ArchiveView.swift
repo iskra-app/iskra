@@ -22,9 +22,13 @@ struct ArchiveView: View {
                 Button {
                     onOpen(room.id)
                 } label: {
-                    RoomRow(room: room)
+                    RoomRow(room: room, isTyping: session.roomList.typingRoomIDs.contains(room.id))
                 }
                 .buttonStyle(.plain)
+                // Rules *between* chats, and none above the first or below the last — the
+                // same rule the main list keeps.
+                .separatorsBetweenRowsOnly(isFirst: room.id == session.roomList.archivedRooms.first?.id,
+                                           isLast: room.id == session.roomList.archivedRooms.last?.id)
                 .roomListSwipeActions(room: room,
                                       roomList: session.roomList,
                                       onLeave: { roomToLeave = room })

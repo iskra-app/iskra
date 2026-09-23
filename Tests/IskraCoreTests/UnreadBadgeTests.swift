@@ -38,12 +38,14 @@ struct UnreadBadgeTests {
         #expect(!room.hasUnreadCount)
     }
 
-    @Test("a mention colours the badge red")
+    /// A mention is an "@" beside the badge now, not a red badge — so the badge keeps the room's
+    /// own colour and the mention is a separate fact.
+    @Test("a mention is its own mark, and the badge keeps the room's colour")
     func mention() {
         let room = RoomSummary.preview(unreadCount: 3, mentionCount: 1, unreadMessageCount: 3)
         #expect(room.isMentioned)
         #expect(room.hasUnreadCount)
-        #expect(room.unreadEmphasis == .mention)
+        #expect(room.unreadEmphasis == .ordinary)
     }
 
     /// The three colours, and the order they beat each other in.
@@ -61,13 +63,13 @@ struct UnreadBadgeTests {
     }
 
     /// Silencing a room is a statement about its chatter, not about being named in it — and Matrix
-    /// agrees, because `.m.rule.is_user_mention` fires through a muted room's own rule. So the red
-    /// badge survives the mute, and a room can be grey one day and red the next with nothing
-    /// having been changed.
+    /// agrees, because `.m.rule.is_user_mention` fires through a muted room's own rule. So the
+    /// "@" survives the mute, beside a badge that stays grey.
     @Test("being named in a silenced chat is still being named")
     func aMentionBeatsTheMute() {
         let room = RoomSummary.preview(mentionCount: 1, unreadMessageCount: 4, isMuted: true)
-        #expect(room.unreadEmphasis == .mention)
+        #expect(room.isMentioned)
+        #expect(room.unreadEmphasis == .muted)
     }
 
     /// The one that made this worth a stored field rather than an inference. A muted room has

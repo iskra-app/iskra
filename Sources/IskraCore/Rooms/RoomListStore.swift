@@ -41,6 +41,19 @@ public final class RoomListStore {
     /// friendlier than showing an empty list.
     public private(set) var isLoadingInitialRooms = true
 
+    /// The rooms where somebody other than the user is writing right now — which the list says
+    /// in place of the last message, the way the header of the room says it.
+    ///
+    /// A set of IDs rather than a field on `RoomSummary`, because typing comes and goes a dozen
+    /// times a minute and a summary is rebuilt from `roomInfo()` for every room in the list: the
+    /// two must not be tied together, or every keystroke on the far side of a chat would rebuild
+    /// the whole list.
+    public private(set) var typingRoomIDs: Set<String> = []
+
+    /// One subscription per room in the list. The notices themselves arrive with sliding sync
+    /// whether anybody listens or not; this is only the listening.
+    private var typingHandles: [String: TaskHandle] = [:]
+
     /// The app cannot reach the homeserver, and everything on the screen is what was on the device
     /// already. Written by `syncStateChanged`, which is where the app finds this out.
     ///
@@ -373,6 +386,10 @@ public final class RoomListStore {
         sendQueueHandle?.cancel()
         sendQueueHandle = nil
 
+        typingHandles.values.forEach { $0.cancel() }
+        typingHandles = [:]
+        typingRoomIDs = []
+
         // Before the service is stopped, not after: stopping it is going to move it to a state the
         // observer is watching for, and an observer still listening at that moment would take a
         // deliberate shutdown for a failure and start the whole thing up again on the way out.
@@ -641,12 +658,45 @@ public final class RoomListStore {
         }
 
         guard !Task.isCancelled else { return }
+        watchTyping(in: handles)
         // One list in, two lists out: the archive is everything the user swept aside, the main list
         // is the rest. Both keep the same recency-and-pins order.
         let (active, archived) = Self.partitionArchived(summaries)
         rooms = Self.byRecency(active)
         archivedRooms = Self.byRecency(archived)
         isLoadingInitialRooms = false
+    }
+
+    /// Keeps one typing subscription per room in the list: new rooms are listened to, rooms that
+    /// have left the list are let go of.
+    private func watchTyping(in handles: [Room]) {
+        var current: Set<String> = []
+        let ownUserID = ownUserID
+
+        for room in handles {
+            let roomID = room.id()
+            current.insert(roomID)
+            guard typingHandles[roomID] == nil else { continue }
+
+            typingHandles[roomID] = room.subscribeToTypingNotifications(listener: TypingListener { [weak self] userIDs in
+                // The server echoes our own notice back with everybody else's; that one is not news.
+                let others = userIDs.contains { $0 != ownUserID }
+                Task { @MainActor [weak self] in
+                    guard let self, !self.hasStopped else { return }
+                    if others {
+                        self.typingRoomIDs.insert(roomID)
+                    } else {
+                        self.typingRoomIDs.remove(roomID)
+                    }
+                }
+            })
+        }
+
+        for (roomID, handle) in typingHandles where !current.contains(roomID) {
+            handle.cancel()
+            typingHandles[roomID] = nil
+            typingRoomIDs.remove(roomID)
+        }
     }
 
     /// Splits the summaries into the ones the main list shows and the ones the archive holds. Pulled

@@ -126,6 +126,21 @@ public struct RoomView: View {
     /// is measured from; `placedRows` is where the measuring happens.
     @State private var newestRowID: String?
 
+    /// Whether the typing bubble is on screen — which follows `timeline.typing`, but not
+    /// literally, and that is the cure for the bubble jerking.
+    ///
+    /// Typing notices are a stream of small lies told in good faith: the SDK reports "nobody"
+    /// for a moment between two notices from the same person, and a bubble that obeyed every one
+    /// of them came and went twice a second. So it comes at once, and goes only after
+    /// `typingGrace` of nobody typing. The one exception is a message landing: then the thing it
+    /// promised has arrived, and the bubble is taken away that same instant, with no animation,
+    /// so the message rises into the place it stood instead of appearing under a bubble on its way
+    /// out.
+    @State private var showsTyping = false
+    @State private var typingHide: Task<Void, Never>?
+
+    private static let typingGrace: Duration = .milliseconds(700)
+
     /// Whether the room is *saying* it is fetching history, which is not quite the same as
     /// fetching it — see the spinner. The task is what puts the disc away again.
     @State private var isFetchingHistory = false
@@ -135,6 +150,10 @@ public struct RoomView: View {
     /// "there is more, it is coming", short enough that nobody is kept waiting by it — the page
     /// is already on screen underneath it.
     private static let spinnerRest: Duration = .milliseconds(450)
+
+    /// Off, for now: the disc is hidden while the fetch it reports is reworked. Everything that
+    /// drives it still runs, so turning it back on is this one line.
+    private static let showsHistorySpinner = false
 
     /// A message arrived while the reader was somewhere else in the conversation.
     ///
@@ -146,6 +165,7 @@ public struct RoomView: View {
     /// The colour the user chose. The pill that takes you to a new message is the one thing on the
     /// screen asking to be pressed, so it wears it — the same reason the send button does.
     @Environment(\.accent) private var accent
+    @Environment(\.messageMenu) private var messageMenu
 
     /// A message the room has been asked to go to from *outside* the scrolling view — the pinned
     /// strip, or a search result the room was opened on.
@@ -279,14 +299,20 @@ public struct RoomView: View {
     /// sign-out in `RoomListView` — the act is reported upwards and performed there.
     var onLeave: () -> Void
 
+    /// Closing the conversation without leaving the room — Escape, on a Mac. Reported upwards for
+    /// the same reason `onLeave` is: which room is open is decided in the split view, not here.
+    var onClose: () -> Void
+
     public init(timeline: TimelineStore,
                 makeDetails: @escaping () -> RoomDetailsStore?,
                 openAt: Binding<String?> = .constant(nil),
-                onLeave: @escaping () -> Void) {
+                onLeave: @escaping () -> Void,
+                onClose: @escaping () -> Void = {}) {
         _timeline = State(initialValue: timeline)
         self.makeDetails = makeDetails
         _openAt = openAt
         self.onLeave = onLeave
+        self.onClose = onClose
     }
 
     /// The message this room is being opened *on*, if it is being opened on one — a search result.
@@ -360,15 +386,18 @@ public struct RoomView: View {
                     // allowed because of how little it wraps: a single bubble whose only other
                     // animatable state, the pulse of the dots, carries an `.animation` of its own
                     // further in and therefore wins. Nothing else can be caught by it.
+                    //
+                    // The animation is explicit now, in `setTyping`, rather than a scope here —
+                    // see `showsTyping` for why the bubble no longer follows the store directly.
                     VStack(spacing: 0) {
-                        if !timeline.typing.isEmpty {
+                        if showsTyping {
                             TypingBubble()
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.top, Theme.Spacing.withinRun)
-                                .transition(.arrival)
+                                .transition(.asymmetric(insertion: .arrival,
+                                                        removal: .opacity.animation(.easeOut(duration: Theme.Timing.chrome / 2))))
                         }
                     }
-                    .animation(Theme.Timing.arrival, value: timeline.typing.isEmpty)
 
                     endMarker
                 }
@@ -441,7 +470,7 @@ public struct RoomView: View {
             // is a disc of glass now, clear of the toolbar, on the navigation layer where a
             // floating control belongs.
             .overlay(alignment: .top) {
-                if isFetchingHistory {
+                if Self.showsHistorySpinner, isFetchingHistory {
                     ProgressView()
                         .controlSize(.small)
                         .padding(Theme.Spacing.close)
@@ -614,6 +643,19 @@ public struct RoomView: View {
             // built records its end without a thing moving.
             .onChange(of: timeline.rows.last?.id, initial: true) { _, last in
                 newestRowID = last
+            }
+            // The typing bubble — see `showsTyping`.
+            .onChange(of: timeline.typing.isEmpty, initial: true) { _, isEmpty in
+                setTyping(!isEmpty)
+            }
+            .onChange(of: timeline.rows.last?.id) { _, _ in
+                guard showsTyping, timeline.rows.last?.message?.isOwn == false else { return }
+                typingHide?.cancel()
+                var quietly = Transaction()
+                quietly.disablesAnimations = true
+                withTransaction(quietly) { showsTyping = false }
+                // Somebody else may still be writing; if so, they get the bubble back.
+                if !timeline.typing.isEmpty { setTyping(true) }
             }
             // The store has a conversation: show it. `initial: true` for a room whose store was
             // already open and full before this view existed — there is nothing to wait for, and
@@ -1039,6 +1081,17 @@ public struct RoomView: View {
             guard isAtNewest else { return }
             Task { await timeline.markAsRead() }
         }
+        #if os(macOS)
+        // Escape closes the conversation, the way it closes anything else on a Mac. A key
+        // equivalent rather than `onExitCommand`, because the latter only reaches a view that
+        // holds focus — and the focus is in the composer, which keeps Escape for itself.
+        .background {
+            Button("", action: escape)
+                .keyboardShortcut(.cancelAction)
+                .opacity(0)
+                .accessibilityHidden(true)
+        }
+        #endif
         // Put the app away mid-recording, and the recording does not survive it — the question is
         // only whether the app admits that.
         //
@@ -1116,6 +1169,35 @@ public struct RoomView: View {
     /// Putting a scroll view that is already at its end back at its end costs nothing and is
     /// invisible, so the loop is free to be dumb. The reader touching the conversation cancels
     /// it — see `onScrollPhaseChange`.
+    /// Puts the typing bubble up at once, or takes it down after `typingGrace` — see
+    /// `showsTyping`.
+    private func setTyping(_ isTyping: Bool) {
+        typingHide?.cancel()
+        if isTyping {
+            guard !showsTyping else { return }
+            withAnimation(Theme.Timing.arrival) { showsTyping = true }
+        } else {
+            guard showsTyping else { return }
+            typingHide = Task {
+                try? await Task.sleep(for: Self.typingGrace)
+                guard !Task.isCancelled else { return }
+                withAnimation(Theme.Timing.arrival) { showsTyping = false }
+            }
+        }
+    }
+
+    /// Escape, on a Mac: the innermost thing that is open closes first. A message menu, then an
+    /// answer or an edit being written, and only then the conversation itself.
+    private func escape() {
+        if let messageMenu, messageMenu.presentation != nil {
+            messageMenu.dismiss()
+        } else if composerContext != nil {
+            withAnimation(.smooth(duration: Theme.Timing.chrome)) { composerContext = nil }
+        } else {
+            onClose()
+        }
+    }
+
     private func followEnd() {
         followingEnd?.cancel()
         followsEnd = true
@@ -1516,11 +1598,16 @@ public struct RoomView: View {
             onEdit: { startEditing(message) },
             onTogglePin: { Task { await togglePin(message) } },
             onOpenReply: { eventID in
-                // The quoted message may be far above, and it may not be loaded at all —
-                // `scrollTo` on an ID the list does not hold is a no-op, which is the
-                // right failure: nothing moves, and the user is where they were.
-                withAnimation(.smooth) { scroll.scrollTo(eventID, anchor: .center) }
-                light(eventID)
+                // The quoted message may be far above, and it may not be loaded at all. It used
+                // to be a bare `scrollTo`, which on an ID the list does not hold is a no-op — so
+                // a reply to anything older than the first page did nothing when pressed. It goes
+                // the way a pinned message does now, through `jumpTarget`, which pulls history in
+                // until the message is there to go to.
+                //
+                // And the keyboard goes down: the reader has asked to *read* something, and on a
+                // phone the keyboard is half the screen that message would be shown in.
+                Keyboard.dismiss()
+                jumpTarget = eventID
             },
             onReport: { reason in Task { await timeline.report(messageID: message.id, reason: reason) } }
         )
