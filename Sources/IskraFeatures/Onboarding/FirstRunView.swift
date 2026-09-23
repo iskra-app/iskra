@@ -252,6 +252,20 @@ private struct AppearanceStep: View {
 private struct FacesStep: View {
     let onDone: () -> Void
 
+    var body: some View {
+        OnboardingPage(title: Strings.Onboarding.facesTitle,
+                       explanation: Strings.Onboarding.facesBody,
+                       onContinue: onDone,
+                       onSkip: onDone) {
+            FaceModePicker()
+        }
+    }
+}
+
+/// The question itself — two sample people, the slider and what the chosen stop means — without
+/// the page around it, so that the same picker is asked again under Appearance, word for word.
+struct FaceModePicker: View {
+
     // The App Group's defaults, not the app's own — the notification extension reads these two,
     // and a switch only the app can see is a switch the lock screen disobeys. See `BetaFeatures`.
     @AppStorage(BetaFeatures.blobatarKey, store: BetaFeatures.faceStore)
@@ -277,45 +291,40 @@ private struct FacesStep: View {
     }
 
     var body: some View {
-        OnboardingPage(title: Strings.Onboarding.facesTitle,
-                       explanation: Strings.Onboarding.facesBody,
-                       onContinue: onDone,
-                       onSkip: onDone) {
-            VStack(spacing: Theme.Spacing.generous) {
-                faces
+    VStack(spacing: Theme.Spacing.generous) {
+        faces
 
-                VStack(spacing: Theme.Spacing.close) {
-                    Slider(value: position, in: 0...Double(FaceMode.allCases.count - 1), step: 1)
-                        .accentControl()
-                        .accessibilityLabel(Text(Strings.Onboarding.facesTitle))
-                        .accessibilityValue(Text(Strings.Onboarding.faceMode(mode)))
+        VStack(spacing: Theme.Spacing.close) {
+            Slider(value: position, in: 0...Double(FaceMode.allCases.count - 1), step: 1)
+                .accentControl()
+                .accessibilityLabel(Text(Strings.Onboarding.facesTitle))
+                .accessibilityValue(Text(Strings.Onboarding.faceMode(mode)))
 
-                    // The three stops, named under the track they belong to. The chosen one is
-                    // the only one in full strength, because a slider handle between three
-                    // equally black words does not say which one it has landed on.
-                    HStack(alignment: .top) {
-                        ForEach(FaceMode.allCases) { candidate in
-                            Text(Strings.Onboarding.faceMode(candidate))
-                                .font(.caption)
-                                .multilineTextAlignment(alignment(of: candidate))
-                                .foregroundStyle(candidate == mode ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
-                                .frame(maxWidth: .infinity, alignment: edge(of: candidate))
-                        }
-                    }
-                    .accessibilityHidden(true)
+            // The three stops, named under the track they belong to. The chosen one is
+            // the only one in full strength, because a slider handle between three
+            // equally black words does not say which one it has landed on.
+            HStack(alignment: .top) {
+                ForEach(FaceMode.allCases) { candidate in
+                    Text(Strings.Onboarding.faceMode(candidate))
+                        .font(.caption)
+                        .multilineTextAlignment(alignment(of: candidate))
+                        .foregroundStyle(candidate == mode ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
+                        .frame(maxWidth: .infinity, alignment: edge(of: candidate))
                 }
-
-                Text(Strings.Onboarding.faceModeHelp(mode))
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                    // The sentence changes with the slider, and a sentence that is replaced in
-                    // place reads as the same sentence being corrected.
-                    .id(mode)
-                    .transition(.opacity)
             }
+            .accessibilityHidden(true)
         }
+
+        Text(Strings.Onboarding.faceModeHelp(mode))
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+            // The sentence changes with the slider, and a sentence that is replaced in
+            // place reads as the same sentence being corrected.
+            .id(mode)
+            .transition(.opacity)
+    }
     }
 
     private func alignment(of candidate: FaceMode) -> TextAlignment {

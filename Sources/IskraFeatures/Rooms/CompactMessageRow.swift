@@ -80,6 +80,7 @@ struct CompactMessageRow: View {
 
                 if !message.reactions.isEmpty {
                     reactions
+                        .transition(.reactionsAppear)
                 }
             }
 
@@ -99,6 +100,8 @@ struct CompactMessageRow: View {
                 .allowsHitTesting(false)
         }
         .animation(.smooth(duration: Theme.Timing.reaction * 2), value: isHighlighted)
+        // The emoji, which change the row's height — see `MessageRow`.
+        .animation(.smooth(duration: Theme.Timing.reaction), value: message.reactions.map(\.key))
         // And nothing else — a message that is only *changing* changes at once, here exactly as
         // in the bubbles, and the arrival is the row's own. See `MessageRow`, where the reasoning
         // is written out, and `MessageArrival`.

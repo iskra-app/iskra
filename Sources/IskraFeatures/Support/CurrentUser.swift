@@ -17,4 +17,8 @@ public extension EnvironmentValues {
     /// And the name that user goes by, so a mention written as "@Name" — not as a raw ID — still
     /// lights up when it is aimed at you.
     @Entry var currentUserName: String = ""
+
+    /// And that user's picture, so a group's cluster of faces can include the one person every
+    /// group in the list has in common: the reader.
+    @Entry var currentUserAvatarURL: String? = nil
 }

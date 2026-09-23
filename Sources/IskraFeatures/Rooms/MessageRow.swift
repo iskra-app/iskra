@@ -96,6 +96,7 @@ struct MessageRow: View {
 
             if !message.reactions.isEmpty {
                 reactions
+                    .transition(.reactionsAppear)
             }
         }
         .padding(.top, opensDay ? 0
@@ -118,6 +119,12 @@ struct MessageRow: View {
         // that snapped on and off would be over before the eye arrived from the quote it was
         // pressed on. It fades out on its own — see `RoomView`, which is what puts the light out.
         .animation(.smooth(duration: Theme.Timing.reaction * 2), value: isHighlighted)
+        // The one exception: the emoji under a message. They change the row's *height*, and a
+        // row that jumps taller by a line of pills shoves every message below it at once — the
+        // same shove the reader sees as the conversation twitching. So the pills grow in and out
+        // and the row's height follows them. Scoped to the set of emoji and nothing else, so a
+        // tick or an edit landing in the same pass is not caught by it.
+        .animation(.smooth(duration: Theme.Timing.reaction), value: message.reactions.map(\.key))
         // Nothing else about a message is animated, and that is the rule rather than an
         // omission. A message arrives once; after that it only ever *changes* — a tick turns
         // over when it is read, a reaction lands under it, an edit rewrites it, a redaction
@@ -1009,5 +1016,13 @@ struct PictureBubble: View {
                 // It is scenery. Every press in this bubble belongs to the picture on top of it.
                 .allowsHitTesting(false)
         }
+    }
+}
+
+extension AnyTransition {
+    /// The row of emoji under a message coming and going: it grows from the edge of the bubble
+    /// and fades, while the row's height eases open or shut behind it — see `MessageRow.body`.
+    static var reactionsAppear: AnyTransition {
+        .scale(scale: 0.6, anchor: .top).combined(with: .opacity)
     }
 }

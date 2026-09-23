@@ -93,6 +93,15 @@ struct AppearanceView: View {
                 Text(Strings.Appearance.accent)
             }
 
+            // Who gets a drawn face — the slider the first run asks with, so that the answer given
+            // then can be changed somewhere other than the beta features.
+            Section {
+                FaceModePicker()
+                    .padding(.vertical, Theme.Spacing.close)
+            } header: {
+                Text(Strings.Appearance.avatars)
+            }
+
             Section {
                 wallpaperRow
 
