@@ -205,9 +205,14 @@ struct MessageMenuOverlay: View {
 
         Group {
             if layout.contentHeight < presentation.anchor.height {
+                // As wide as the bubble was, not as the menu is: a scroll view takes the width it
+                // is offered, and offered the column's it would re-wrap the message narrower
+                // than the one it was lifted from.
                 ScrollView(.vertical) { message }
                     .scrollIndicators(.visible)
-                    .frame(height: layout.contentHeight, alignment: .top)
+                    .frame(width: max(layout.width, presentation.anchor.width),
+                           height: layout.contentHeight,
+                           alignment: .top)
                     .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.bubble, style: .continuous))
             } else {
                 message
