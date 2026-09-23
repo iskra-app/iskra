@@ -271,7 +271,8 @@ struct RoomInfoView: View {
                       // In a one-to-one chat the line underneath is the other person's Matrix ID,
                       // which is exactly the string someone opens this screen to copy. A count of
                       // participants is not.
-                      isSubtitleSelectable: details.isOneToOne)
+                      isSubtitleSelectable: details.isOneToOne,
+                      faces: details.kind == .space ? [] : details.faces)
     }
 
     /// Whether there is anything behind a pencil worth opening.

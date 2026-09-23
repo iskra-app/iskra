@@ -193,6 +193,9 @@ public final class RoomDetailsStore {
     /// Nil until the room info has arrived: an empty seed is a valid string and would
     /// draw a creature of its own, so the face would change once, visibly, on load.
     public private(set) var avatarSeed: String?
+    /// A group's few named members, for the cluster at the top of the screen — the same faces the
+    /// row that opened it showed. See `RoomSummary.faces`.
+    public private(set) var faces: [RoomFace] = []
     public private(set) var privacy: PrivacyStatus = .unknown
     /// What this room is — personal chat, group, or space. See `RoomKind`. This is what the
     /// screen should ask when it decides whether to call the room a room: a personal chat with
@@ -435,6 +438,7 @@ public final class RoomDetailsStore {
         // `RoomInfo.pictureURL` — a one-to-one room almost never has an avatar of its own.
         avatarURL = info.pictureURL(besides: ownUserID)
         avatarSeed = info.avatarSeed(besides: ownUserID)
+        faces = info.kind == .group ? info.faces(besides: ownUserID) : []
         privacy = PrivacyStatus(info.encryptionState)
         kind = info.kind
         isOneToOne = info.isOneToOne

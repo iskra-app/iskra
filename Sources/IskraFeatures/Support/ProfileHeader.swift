@@ -1,3 +1,4 @@
+import IskraCore
 import SwiftUI
 import IskraDesign
 
@@ -29,11 +30,14 @@ struct ProfileHeader: View {
     /// A Matrix ID is; "12 participants" is not, and a count that highlights under a long press
     /// is a small piece of nonsense.
     var isSubtitleSelectable = false
+    /// A group's faces, drawn as the same cluster the chat list shows. Empty for a person, and for
+    /// the settings screen, where the header is the user's own.
+    var faces: [RoomFace] = []
 
     var body: some View {
         VStack(spacing: Theme.Spacing.normal) {
-            Avatar(name: name, url: avatarURL, size: Theme.Size.avatarProfile, shape: shape,
-                   seed: seed)
+            RoomAvatar(name: name, url: avatarURL, size: Theme.Size.avatarProfile, shape: shape,
+                       seed: seed, faces: faces)
 
             VStack(spacing: Theme.Spacing.tight) {
                 // A size up from the `.title2` a heading in a form would get, because this is not

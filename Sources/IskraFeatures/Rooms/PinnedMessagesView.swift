@@ -92,7 +92,9 @@ struct PinnedStrip: View {
             .padding(.horizontal, Theme.Spacing.roomy)
             .padding(.vertical, Theme.Spacing.close)
             .frame(maxWidth: .infinity)
-            .navigationGlass(in: .rect(cornerRadius: Theme.Radius.control, style: .continuous))
+            // The card's corner, not a control's: at 12 the strip read as a text field pinned under
+            // the bar rather than as a piece of the conversation lifted out of it.
+            .navigationGlass(in: .rect(cornerRadius: Theme.Radius.bubble, style: .continuous))
             .padding(.horizontal, Theme.Spacing.normal)
             .padding(.bottom, Theme.Spacing.close)
         }

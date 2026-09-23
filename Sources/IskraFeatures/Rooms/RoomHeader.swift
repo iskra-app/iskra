@@ -44,6 +44,8 @@ struct RoomHeader: View {
     let avatarURL: String?
     /// See `TimelineStore.roomAvatarSeed`.
     var avatarSeed: String?
+    /// A group's faces — see `RoomAvatar`, which decides between them and the picture.
+    var faces: [RoomFace] = []
     let privacy: PrivacyStatus
 
     /// The line under the name: how many people are here, or — in a chat with one other
@@ -57,7 +59,7 @@ struct RoomHeader: View {
     var body: some View {
         Button(action: onOpenDetails) {
             HStack(spacing: Theme.Spacing.close) {
-                Avatar(name: name, url: avatarURL, size: Theme.Size.avatarSmall, seed: avatarSeed)
+                RoomAvatar(name: name, url: avatarURL, size: Theme.Size.avatarSmall, seed: avatarSeed, faces: faces)
                 RoomIdentity(name: name, privacy: privacy, subtitle: subtitle, alignment: .leading)
             }
             // A title bar is a crowded place and a long room name will happily eat the
@@ -116,12 +118,13 @@ struct RoomAvatarButton: View {
     let avatarURL: String?
     /// See `TimelineStore.roomAvatarSeed`.
     var avatarSeed: String?
+    var faces: [RoomFace] = []
 
     var onOpenDetails: () -> Void
 
     var body: some View {
         Button(action: onOpenDetails) {
-            Avatar(name: name, url: avatarURL, size: Theme.Size.avatarToolbar, seed: avatarSeed)
+            RoomAvatar(name: name, url: avatarURL, size: Theme.Size.avatarToolbar, seed: avatarSeed, faces: faces)
                 .padding(Theme.Spacing.tight)
                 .navigationGlass(in: .circle)
                 .contentShape(.circle)

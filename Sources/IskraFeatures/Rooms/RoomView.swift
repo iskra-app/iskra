@@ -967,6 +967,7 @@ public struct RoomView: View {
                     RoomAvatarButton(name: timeline.roomName,
                                      avatarURL: timeline.roomAvatarURL,
                                      avatarSeed: timeline.roomAvatarSeed,
+                                     faces: timeline.roomFaces,
                                      onOpenDetails: openDetails)
                 }
                 .sharedBackgroundVisibility(.hidden)
@@ -978,6 +979,7 @@ public struct RoomView: View {
                     RoomHeader(name: timeline.roomName,
                                avatarURL: timeline.roomAvatarURL,
                                avatarSeed: timeline.roomAvatarSeed,
+                               faces: timeline.roomFaces,
                                privacy: timeline.privacy,
                                subtitle: headerSubtitle,
                                onOpenDetails: openDetails)
