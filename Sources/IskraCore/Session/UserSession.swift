@@ -365,6 +365,44 @@ public final class UserSession {
         return true
     }
 
+    /// Sends something the Share extension left in the outbox — a picture, a video or a file — and
+    /// deletes it from the shared folder once the send queue has it. Returns whether it went.
+    ///
+    /// The file goes whether or not the send succeeded: it is the user's picture in the clear in a
+    /// shared container, and a failed send is reported in the room like any other failed send,
+    /// where it can be tried again. Leaving plaintext lying about in case it is wanted is not a
+    /// retry policy.
+    @discardableResult
+    public func send(_ attachment: ChatDirectory.OutboxAttachment, toRoomID roomID: String) async -> Bool {
+        guard let folder = try? ChatDirectory.outboxFolder() else { return false }
+        // `appending(path:)`, because the name carries a folder of its own — see
+        // `OutboxAttachment.filename` — and the whole folder goes with the file.
+        let url = folder.appending(path: attachment.filename)
+        defer {
+            let parent = url.deletingLastPathComponent()
+            try? FileManager.default.removeItem(at: parent.standardizedFileURL == folder.standardizedFileURL ? url : parent)
+        }
+
+        guard FileManager.default.fileExists(atPath: url.path(percentEncoded: false)),
+              let target = timeline(forRoomID: roomID) else { return false }
+        do {
+            try await target.start()
+        } catch {
+            return false
+        }
+
+        switch attachment.kind {
+        case .image:
+            guard let data = try? Data(contentsOf: url) else { return false }
+            await target.send(photo: data, filename: attachment.filename)
+        case .video:
+            await target.send(video: url)
+        case .file:
+            await target.send(file: url)
+        }
+        return true
+    }
+
     /// Fetches media bytes (a photo, a voice message) on demand.
     public func media() -> MediaLoader {
         MediaLoader(client: client)

@@ -61,10 +61,57 @@ public enum ChatDirectory {
     public struct OutboxItem: Codable, Sendable, Equatable {
         public let roomID: String
         public let text: String
-        public init(roomID: String, text: String) {
+        /// Pictures, videos and files handed over by the Share extension — each one a file in
+        /// `outboxFolder()`, which the app sends and then deletes. Empty for everything Shortcuts
+        /// queues, and absent from anything queued by a build that predates it.
+        public let attachments: [OutboxAttachment]
+
+        public init(roomID: String, text: String, attachments: [OutboxAttachment] = []) {
             self.roomID = roomID
             self.text = text
+            self.attachments = attachments
         }
+
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            roomID = try container.decode(String.self, forKey: .roomID)
+            text = try container.decode(String.self, forKey: .text)
+            attachments = try container.decodeIfPresent([OutboxAttachment].self, forKey: .attachments) ?? []
+        }
+    }
+
+    /// One shared thing that is not words.
+    public struct OutboxAttachment: Codable, Sendable, Equatable {
+        public enum Kind: String, Codable, Sendable {
+            case image, video, file
+        }
+
+        public let kind: Kind
+        /// The file's path inside `outboxFolder()` — a folder of its own and the file's original
+        /// name in it, `<uuid>/IMG_0042.HEIC`, so the person it is sent to sees the name it had
+        /// and two files called the same thing cannot overwrite each other. A path and not a URL,
+        /// because the container is not at the same place in the two processes that read it.
+        public let filename: String
+
+        public init(kind: Kind, filename: String) {
+            self.kind = kind
+            self.filename = filename
+        }
+    }
+
+    /// Where the Share extension leaves the files it was given, until the app sends them.
+    ///
+    /// In the App Group because it is the only place both processes can reach. They are the
+    /// user's pictures in the clear for as long as they wait there — the extension cannot encrypt
+    /// them for a room, only the SDK in the app can — so the folder is kept out of backups, and
+    /// every file is deleted the moment its send has been handed to the queue.
+    public static func outboxFolder(environment: AppEnvironment = .default) throws -> URL {
+        var folder = try environment.containerURL().appending(component: "Outbox")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try? folder.setResourceValues(values)
+        return folder
     }
 
     public static func enqueue(_ item: OutboxItem, in defaults: UserDefaults? = sharedDefaults) {

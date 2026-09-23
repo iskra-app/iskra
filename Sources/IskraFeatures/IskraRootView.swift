@@ -305,11 +305,19 @@ public struct IskraRootView: View {
                     // already on screen.
                     .onChange(of: selectedRoomID, initial: true) { _, roomID in
                         PushRouter.shared.visibleRoomID = roomID
+                        // Opening a chat clears its notifications off the device — see
+                        // `DeliveredNotifications`.
+                        if let roomID { DeliveredNotifications.clear(roomID: roomID) }
                     }
                     .onChange(of: scenePhase) { _, phase in
                         // Nothing is "on screen" when the app is not. Without this, going straight
                         // from a conversation into a pocket silences every push from it.
                         PushRouter.shared.visibleRoomID = phase == .active ? selectedRoomID : nil
+                        // And coming back to a chat that was left open is opening it again: what
+                        // arrived for it in the meantime has now been seen.
+                        if phase == .active, let roomID = selectedRoomID {
+                            DeliveredNotifications.clear(roomID: roomID)
+                        }
                     }
             }
         }
@@ -426,6 +434,11 @@ public struct IskraRootView: View {
             selectedRoomID = roomID
         }
         for item in ChatDirectory.drainOutbox() {
+            // What was shared goes first and the words after it — the order a person writing it
+            // by hand would use: the photo, then "look at this".
+            for attachment in item.attachments {
+                await session.send(attachment, toRoomID: item.roomID)
+            }
             await session.sendText(item.text, toRoomID: item.roomID)
         }
     }
