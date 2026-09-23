@@ -8,11 +8,15 @@
 //! Deliberately free of I/O. Nothing here opens a socket, reads the clock or touches the network,
 //! so every rule the protocol has can be pinned by a unit test.
 
+pub mod chunk;
 pub mod crypto;
 pub mod envelope;
+pub mod reassemble;
 
+pub use chunk::chunk_count;
 pub use crypto::{open, seal};
 pub use envelope::{Envelope, HttpRequest, HttpResponse, PROTOCOL_VERSION};
+pub use reassemble::{Accepted, Limits, Reassembler};
 
 use thiserror::Error;
 

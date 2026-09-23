@@ -15,7 +15,7 @@ use std::time::Duration;
 use iskra_tunnel_probe::TunnelClient;
 use nostr_sdk::prelude::Keys;
 use url::Url;
-use wiremock::matchers::{body_string, header, method, path};
+use wiremock::matchers::{body_bytes, body_string, header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 mod common;
@@ -79,6 +79,104 @@ async fn a_post_carries_its_body_and_its_headers_through() {
 
     assert_eq!(response.status, 200);
     assert_eq!(response.body, br#"{"access_token":"x"}"#);
+}
+
+/// A response far too big for one NIP-44 payload, which is where the tunnel used to stop.
+///
+/// 200 KB is nine chunks at the default budget, and every byte of it has to come back in the right
+/// order — this is the test that would catch a chunker and a reassembler that disagree.
+#[tokio::test]
+async fn a_response_larger_than_one_envelope_comes_back_whole() {
+    let harness = Harness::start().await;
+    let body = "x".repeat(200_000);
+    Mock::given(method("GET"))
+        .and(path("/_matrix/client/big"))
+        .respond_with(ResponseTemplate::new(200).set_body_string(body.clone()))
+        .mount(&harness.homeserver)
+        .await;
+
+    let client = harness.client().await;
+    let response = client
+        .request(
+            "GET",
+            "/_matrix/client/big",
+            None,
+            BTreeMap::new(),
+            Vec::new(),
+            TIMEOUT,
+        )
+        .await
+        .expect("an answer");
+
+    assert_eq!(response.status, 200);
+    assert_eq!(response.body.len(), body.len());
+    assert_eq!(response.body, body.as_bytes());
+}
+
+/// And the same in the other direction: a body the *client* cannot fit in one event.
+///
+/// This is what sending a photo looks like from here. `body_bytes` makes wiremock check every
+/// byte, so a reassembly that joined the chunks in the wrong order would not match.
+#[tokio::test]
+async fn a_request_body_larger_than_one_envelope_arrives_whole() {
+    let harness = Harness::start().await;
+    // Not a repeated character: a body of one repeated byte reassembles identically however the
+    // chunks are ordered, which is exactly the bug this should catch.
+    let body: Vec<u8> = (0..150_000u32).map(|i| (i % 251) as u8).collect();
+    Mock::given(method("POST"))
+        .and(path("/_matrix/media/v3/upload"))
+        .and(body_bytes(body.clone()))
+        .respond_with(ResponseTemplate::new(200).set_body_string(r#"{"content_uri":"mxc://x"}"#))
+        .mount(&harness.homeserver)
+        .await;
+
+    let client = harness.client().await;
+    let response = client
+        .request(
+            "POST",
+            "/_matrix/media/v3/upload",
+            None,
+            BTreeMap::new(),
+            body,
+            TIMEOUT,
+        )
+        .await
+        .expect("an answer");
+
+    assert_eq!(response.status, 200);
+}
+
+/// Both ways at once, at the sizes either side of a chunk boundary.
+#[tokio::test]
+async fn bodies_either_side_of_the_chunk_boundary_round_trip() {
+    let harness = Harness::start().await;
+    let chunk = 24 * 1024;
+    let sizes = [0usize, 1, chunk - 1, chunk, chunk + 1, chunk * 2];
+
+    for size in sizes {
+        Mock::given(method("GET"))
+            .and(path(format!("/_matrix/client/size/{size}")))
+            .respond_with(ResponseTemplate::new(200).set_body_string("y".repeat(size)))
+            .mount(&harness.homeserver)
+            .await;
+    }
+
+    let client = harness.client().await;
+    for size in sizes {
+        let response = client
+            .request(
+                "GET",
+                &format!("/_matrix/client/size/{size}"),
+                None,
+                BTreeMap::new(),
+                Vec::new(),
+                TIMEOUT,
+            )
+            .await
+            .unwrap_or_else(|error| panic!("a {size}-byte body: {error}"));
+        assert_eq!(response.status, 200, "size {size}");
+        assert_eq!(response.body.len(), size, "size {size}");
+    }
 }
 
 #[tokio::test]

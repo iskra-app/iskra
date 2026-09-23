@@ -21,9 +21,8 @@ public actor NostrTunnelUpstream: HTTPUpstream {
         case noRelayConnected
         /// The bridge did not answer inside the limit.
         case noAnswer(Duration)
-        /// Stage 1 carries one envelope per message. A bridge that chunks is a newer bridge.
-        case chunkedResponseUnsupported
-        /// The answer decrypted, and was not a well-formed response.
+        /// The answer decrypted, and was not a well-formed response — including an answer too big
+        /// for the ceilings in `TunnelReassembler.Limits`.
         case malformedResponse(String)
     }
 
@@ -37,6 +36,12 @@ public actor NostrTunnelUpstream: HTTPUpstream {
 
     private var homeserver: URL
     private var pool: NostrRelayPool?
+    /// Answers that have not finished arriving.
+    private var partials = TunnelReassembler()
+    /// Body bytes per chunk on the way out. The bridge's `MAX_BODY_CHUNK` decides nothing here —
+    /// the count travels in `total`, so the two sides need not agree on the size, only on the
+    /// arithmetic.
+    private let maxBodyChunk: Int
     /// Who is waiting for which envelope id.
     private var pending: [String: CheckedContinuation<ProxiedResponse, any Error>] = [:]
     /// The timer that gives up on each of them.
@@ -53,8 +58,10 @@ public actor NostrTunnelUpstream: HTTPUpstream {
                 relays: [URL],
                 keys: NostrKeypair,
                 homeserver: URL,
-                limit: Duration = .seconds(90)) throws {
+                limit: Duration = .seconds(90),
+                maxBodyChunk: Int = TunnelChunker.defaultMaxBodyChunk) throws {
         guard bridgeKey.count == 32 else { throw Failure.bridgeAddressUnusable }
+        self.maxBodyChunk = maxBodyChunk
         self.keys = keys
         self.bridgeKey = bridgeKey
         self.bridgeKeyHex = Hex.string(bridgeKey)
@@ -116,27 +123,26 @@ public actor NostrTunnelUpstream: HTTPUpstream {
             headers[name] = value
         }
 
-        let envelope = TunnelEnvelope(id: id,
-                                      seq: 0,
-                                      total: 1,
-                                      method: request.method,
-                                      path: request.target,
-                                      headers: headers,
-                                      status: nil,
-                                      upstream: Self.origin(of: homeserver),
-                                      bodyChunk: request.body.base64EncodedString())
-
-        let event = try seal(envelope)
+        // As many events as the body takes. A photo is not a special case here, it is simply a
+        // request with two hundred chunks in it.
+        let events = try TunnelChunker.envelopes(id: id,
+                                                 method: request.method,
+                                                 path: request.target,
+                                                 headers: headers,
+                                                 upstream: Self.origin(of: homeserver),
+                                                 body: request.body,
+                                                 maxBodyChunk: maxBodyChunk)
+            .map { try seal($0) }
 
         return try await withCheckedThrowingContinuation { continuation in
-            // Registered before the event goes out. The other order is a race the bridge wins
+            // Registered before the events go out. The other order is a race the bridge wins
             // often enough on a fast relay to make the bug look intermittent.
             pending[id] = continuation
             deadlines[id] = Task { [limit] in
                 try? await Task.sleep(for: limit)
                 self.giveUp(on: id)
             }
-            Task { await self.publish(event, for: id) }
+            Task { await self.publish(events, for: id) }
         }
     }
 
@@ -152,12 +158,19 @@ public actor NostrTunnelUpstream: HTTPUpstream {
                                      keys: keys)
     }
 
-    private func publish(_ event: NostrEvent, for id: String) async {
+    /// Publish every chunk of one request.
+    ///
+    /// In order and one at a time, though the order is not what makes it work — the bridge
+    /// reassembles out of order anyway. It is that a relay is a websocket: a hundred `send`s are a
+    /// hundred frames down one connection, not a hundred round trips.
+    private func publish(_ events: [NostrEvent], for id: String) async {
         guard let pool else { return finish(id, with: .failure(Failure.noRelayConnected)) }
-        do {
-            try await pool.publish(event)
-        } catch {
-            finish(id, with: .failure(Failure.noRelayConnected))
+        for event in events {
+            do {
+                try await pool.publish(event)
+            } catch {
+                return finish(id, with: .failure(Failure.noRelayConnected))
+            }
         }
     }
 
@@ -174,19 +187,24 @@ public actor NostrTunnelUpstream: HTTPUpstream {
             return
         }
 
-        guard envelope.total == 1 else {
-            return finish(envelope.id, with: .failure(Failure.chunkedResponseUnsupported))
-        }
-        guard let status = envelope.status else {
-            return finish(envelope.id, with: .failure(Failure.malformedResponse("no status")))
-        }
-        guard let body = try? envelope.body else {
-            return finish(envelope.id, with: .failure(Failure.malformedResponse("body is not base64")))
+        // An answer may arrive in pieces, from several relays, in any order.
+        let head: TunnelEnvelope
+        let body: Data
+        switch partials.accept(envelope, key: envelope.id) {
+        case .complete(let complete, let bytes):
+            (head, body) = (complete, bytes)
+        case .waiting:
+            return
+        case .refused(let reason):
+            return finish(envelope.id, with: .failure(Failure.malformedResponse(reason)))
         }
 
-        finish(envelope.id, with: .success(ProxiedResponse(status: Int(status),
-                                                           headers: envelope.headers ?? [:],
-                                                           body: body)))
+        guard let status = head.status else {
+            return finish(head.id, with: .failure(Failure.malformedResponse("no status")))
+        }
+        finish(head.id, with: .success(ProxiedResponse(status: Int(status),
+                                                       headers: head.headers ?? [:],
+                                                       body: body)))
     }
 
     private func giveUp(on id: String) {
@@ -203,6 +221,9 @@ public actor NostrTunnelUpstream: HTTPUpstream {
     /// for the second time.
     private func finish(_ id: String, with result: Result<ProxiedResponse, any Error>) {
         deadlines.removeValue(forKey: id)?.cancel()
+        // Whatever had arrived of this answer goes with it. Waiting for the reassembler's own TTL
+        // would hold a half-arrived megabyte for a minute after nobody wanted it any more.
+        partials.forget(id)
         guard let waiting = pending.removeValue(forKey: id) else { return }
         waiting.resume(with: result)
     }

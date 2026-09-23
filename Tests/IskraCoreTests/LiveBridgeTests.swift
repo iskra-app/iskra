@@ -33,15 +33,19 @@ struct LiveBridgeTests {
         return parsed.isEmpty ? TunnelSettings.defaultRelays.compactMap(URL.init(string:)) : parsed
     }
 
+    /// A tunnel of its own per test, with a key of its own: the Keychain is not open to an
+    /// unsigned test binary, and a shared key would make the rate limit a shared budget.
+    private func tunnel(limit: Duration = .seconds(30)) throws -> NostrTunnelUpstream {
+        try NostrTunnelUpstream(bridgeKey: Self.bridgeKey,
+                                relays: Self.relays,
+                                keys: try TunnelIdentity(secrets: InMemorySecrets()).keypair(),
+                                homeserver: URL(string: "https://matrix-client.matrix.org")!,
+                                limit: limit)
+    }
+
     /// The whole journey: request → NIP-44 → relay → bridge → matrix.org → back.
     @Test func aRequestGoesOutThroughNostrAndComesBackWithMatrixInIt() async throws {
-        let identity = TunnelIdentity(secrets: InMemorySecrets())
-        let bridge = try NostrTunnelUpstream(
-            bridgeKey: Self.bridgeKey,
-            relays: Self.relays,
-            keys: try identity.keypair(),
-            homeserver: URL(string: "https://matrix-client.matrix.org")!,
-            limit: .seconds(30))
+        let bridge = try tunnel()
 
         await bridge.start()
         defer { Task { await bridge.stop() } }
@@ -55,13 +59,7 @@ struct LiveBridgeTests {
     /// Two at once, which is where a transport with one reader per request comes apart: each
     /// answer has to reach the one caller waiting for it and nobody else.
     @Test func severalRequestsInFlightEachGetTheirOwnAnswer() async throws {
-        let identity = TunnelIdentity(secrets: InMemorySecrets())
-        let bridge = try NostrTunnelUpstream(
-            bridgeKey: Self.bridgeKey,
-            relays: Self.relays,
-            keys: try identity.keypair(),
-            homeserver: URL(string: "https://matrix-client.matrix.org")!,
-            limit: .seconds(30))
+        let bridge = try tunnel()
 
         await bridge.start()
         defer { Task { await bridge.stop() } }
@@ -94,6 +92,58 @@ struct LiveBridgeTests {
             return
         }
         #expect(milliseconds > 0)
+    }
+
+    /// An answer far too big for one event, which is where the tunnel used to stop.
+    ///
+    /// `publicRooms` is the largest thing matrix.org hands a stranger: about 48 KB however high the
+    /// limit is asked for, which is two chunks. Two is enough to prove the pair — the bridge's
+    /// chunker against this side's reassembler, across two languages and a relay that reorders —
+    /// and the sizes where that gets interesting (4 MB, 171 chunks) are the Rust stress suite's
+    /// job, against a homeserver that will answer with as much as it is asked for.
+    @Test func ananswerTooBigForOneEventComesBackWhole() async throws {
+        let bridge = try tunnel(limit: .seconds(60))
+        await bridge.start()
+        defer { Task { await bridge.stop() } }
+
+        let response = try await bridge.send(ProxiedRequest(
+            method: "GET", target: "/_matrix/client/v3/publicRooms?limit=200"))
+
+        #expect(response.status == 200)
+        #expect(response.body.count > TunnelChunker.defaultMaxBodyChunk,
+                "\(response.body.count) bytes is one chunk; this test proves nothing at that size")
+        // Whole, not merely long: the JSON has to parse, which it will not if two chunks changed
+        // places or one went missing in the middle.
+        let parsed = try JSONSerialization.jsonObject(with: response.body) as? [String: Any]
+        #expect(parsed?["chunk"] != nil)
+    }
+
+    /// And the other direction: a request body the client cannot fit in one event.
+    ///
+    /// This is what sending a photo looks like from here. matrix.org answers a login it cannot make
+    /// sense of with a 400, and that is the whole point — a 400 means the bridge reassembled the
+    /// chunks and a homeserver read them. Silence would mean it did not.
+    @Test func arequestTooBigForOneEventReachesTheHomeserver() async throws {
+        let bridge = try tunnel(limit: .seconds(60))
+        await bridge.start()
+        defer { Task { await bridge.stop() } }
+
+        // 100 KB of JSON: five chunks, and valid JSON so that nothing between here and there can
+        // blame the shape of it.
+        let padding = String(repeating: "a", count: 100_000)
+        let body = Data(#"{"type":"m.login.password","identifier":"\#(padding)"}"#.utf8)
+
+        let response = try await bridge.send(ProxiedRequest(
+            method: "POST",
+            target: "/_matrix/client/v3/login",
+            headers: ["content-type": "application/json"],
+            body: body))
+
+        // 400 or 401 — a homeserver's opinion of the login, which it can only have if it read the
+        // body. **Not** 403: that is the bridge's own refusal, and accepting it here would make
+        // this a test that passes when the chunks never left the machine.
+        #expect(response.status == 400 || response.status == 401,
+                "matrix.org said \(response.status)")
     }
 
     /// The thing all of it is for: the **Matrix SDK itself** talking through the tunnel.
