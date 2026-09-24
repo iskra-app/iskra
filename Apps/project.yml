@@ -220,8 +220,17 @@ targets:
         # black bars, and the process shows up as "rb-legacy". Empty is correct here:
         # it means "plain background", and the sign-in screen appears immediately.
         UILaunchScreen: {}
+        # The iPhone list leaves out upside-down, as iPhone apps do. The iPad needs all four, and
+        # needs them in a key of its own: an app that supports iPad multitasking and lists fewer
+        # is refused at upload — "Invalid bundle … you need to include all of the … orientations"
+        # — which nothing before App Store Connect checks, so every local build looks fine.
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         # Written in the first person, because that is who is being asked.
