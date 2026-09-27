@@ -98,7 +98,7 @@ struct MessageMenuOverlay: View {
     /// covered either way, toolbar and composer included: this is a modal moment, and a
     /// composer still crisp at the bottom of a dimmed room is an invitation to type into a menu.
     private var scrim: some View {
-        curtain
+        MenuCurtain()
             .ignoresSafeArea()
             .contentShape(.rect)
             .onTapGesture { close() }
@@ -106,18 +106,6 @@ struct MessageMenuOverlay: View {
             .accessibilityAddTraits(.isButton)
             .accessibilityAction { close() }
             .transition(.opacity)
-    }
-
-    @ViewBuilder
-    private var curtain: some View {
-        #if os(macOS)
-        Rectangle()
-            .fill(Color.black.opacity(Theme.Backdrop.menuScrim))
-        #else
-        Rectangle()
-            .fill(.ultraThinMaterial)
-            .overlay(Color.black.opacity(Theme.Backdrop.menuScrim))
-        #endif
     }
 
     // MARK: - The arrangement
@@ -343,7 +331,8 @@ struct MessageMenuOverlay: View {
 /// has ever used draws it the other way round: the icon first, at a fixed column, so the six
 /// or seven shapes make a vertical strip the eye learns in a day and stops reading after that.
 /// Faster than words, in the one menu people open twenty times an hour.
-private struct MessageMenuRow: View {
+/// Internal rather than private: the chat peek draws its verbs with it too — see `ChatPeek`.
+struct MessageMenuRow: View {
     let action: MessageMenuAction
     let perform: () -> Void
 

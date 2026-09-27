@@ -291,6 +291,23 @@ public final class UserSession {
         return store
     }
 
+    /// A timeline for *looking* at a room without going into it — the chat list's peek.
+    ///
+    /// Always a fresh store, and never the one `timeline(forRoomID:)` hands out, for two reasons.
+    /// The peek stops its store when it closes, and on an iPad the same room may be open in the
+    /// column beside the list: stopping a shared store would freeze the conversation somebody is
+    /// reading. And it is not kept among the recent few, because a glance is not a visit.
+    ///
+    /// Nothing here marks anything read. A `TimelineStore` never sends a receipt on its own —
+    /// `markAsRead()` is only ever called by the room screen — and that is the whole promise the
+    /// peek makes. `DemoBackendTests` holds it to it.
+    public func peekTimeline(forRoomID roomID: String) -> TimelineStore? {
+        guard let room = roomList.room(withID: roomID) ?? (try? client.getRoom(roomId: roomID)) else {
+            return nil
+        }
+        return TimelineStore(room: room, ownUserID: userID)
+    }
+
     /// Moves a conversation to the front of the kept few, and lets the oldest go. See
     /// `recentTimelines`.
     ///

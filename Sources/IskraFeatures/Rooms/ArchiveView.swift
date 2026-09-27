@@ -16,10 +16,15 @@ struct ArchiveView: View {
 
     @State private var roomToLeave: RoomSummary?
 
+    @Environment(\.chatPeek) private var chatPeek
+
     var body: some View {
         List {
             ForEach(session.roomList.archivedRooms) { room in
                 Button {
+                    // The finger that held this row for a peek, coming back up — see
+                    // `ChatPeekPresenter.isPeeking(at:)`.
+                    guard chatPeek?.isPeeking(at: room.id) != true else { return }
                     onOpen(room.id)
                 } label: {
                     RoomRow(room: room, isTyping: session.roomList.typingRoomIDs.contains(room.id))
@@ -32,6 +37,7 @@ struct ArchiveView: View {
                 .roomListSwipeActions(room: room,
                                       roomList: session.roomList,
                                       onLeave: { roomToLeave = room })
+                .chatPeek(room, session: session) { onOpen(room.id) }
             }
         }
         .listStyle(.plain)

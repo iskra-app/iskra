@@ -102,6 +102,12 @@ event id (или переиндексировать комнату), либо в
       по центру; соседние однотипные схлопываются («Аня и ещё двое вошли»).
 - [x] **Аватарки.** Научить `Avatar` грузить картинку через `MediaLoader`
       (`EnvironmentValues.mediaLoader` уже проброшен), с инициалами как заглушкой.
+- [x] **Подглядеть в чат.** Долгое нажатие на чат в списке (на Mac — правый клик → «Подглядеть»)
+      поднимает переписку над затемнённым списком: её можно листать назад в историю, а под ней —
+      «Открыть чат», прочитано/непрочитано, закрепить, в архив. Прочитанным ничего не отмечается:
+      у превью свой `TimelineStore` (`UserSession.peekTimeline`), а `markAsRead()` зовёт только
+      `RoomView`. Своё, а не `.contextMenu(preview:)`: системное превью не принимает касаний и не
+      листается. `ChatPeek.swift`; обещание держит тест в `DemoBackendTests`.
 
 Файлы: `IskraCore/Timeline/{Message,TimelineMapper,TimelineStore}.swift`,
 `IskraFeatures/Rooms/{MessageRow,MessageComposer,RoomView}.swift`, `IskraDesign/Avatar`.

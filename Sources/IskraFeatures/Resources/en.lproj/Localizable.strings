@@ -681,6 +681,14 @@
 "roomList.swipe.leaveConfirm" = "Leave";
 "roomList.swipe.cancel" = "Cancel";
 
+/* The chat preview a long press opens in the chat list: a look inside that marks nothing as read. */
+"roomList.peek.peek" = "Peek";
+"roomList.peek.open" = "Open chat";
+"roomList.peek.markRead" = "Mark as read";
+"roomList.peek.markUnread" = "Mark as unread";
+"roomList.peek.staysUnread" = "Just peeking — nothing gets marked as read";
+"roomList.peek.close" = "Close preview";
+
 /* The archive: the shelf for set-aside chats and the way back to them. */
 "roomList.archive.title" = "Archive";
 "roomList.archive.entry" = "Archive (%lld)";
