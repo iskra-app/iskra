@@ -1,5 +1,6 @@
 //! The nostr half: events in, events out.
 
+use std::num::NonZeroU32;
 use std::sync::{Arc, Mutex as StdMutex};
 use std::time::Instant;
 
@@ -24,10 +25,24 @@ use crate::config::Config;
 use crate::forwarder::Forwarder;
 use crate::ratelimit::RateLimit;
 
+/// How many events one request may spend before the *event* ceiling notices. A request is almost
+/// always one event; an upload at the 8 MB reassembly ceiling is about 340. Sixty-four per request
+/// per minute leaves every honest upload well clear and still bounds the decrypting a stranger can
+/// make the bridge do. See `ratelimit` for why there are two ceilings at all.
+const EVENTS_PER_REQUEST: u32 = 64;
+
+/// The two ceilings, per client key.
+struct Ceilings {
+    /// `RATE_LIMIT_PER_MIN` — requests, charged once each, on whichever chunk arrives first.
+    requests: RateLimit,
+    /// Events, charged before decrypting, when nothing is known yet about what they belong to.
+    events: RateLimit,
+}
+
 pub struct Bridge {
     config: Arc<Config>,
     forwarder: Arc<Forwarder>,
-    limit: Arc<RateLimit>,
+    ceilings: Arc<Ceilings>,
     partials: Partials,
     client: Client,
     /// Taken by `run`. Held here because the order of the two lines that create it matters —
@@ -52,7 +67,12 @@ impl Bridge {
     /// `Ok` here means the relays were accepted, not that any of them answered.
     pub async fn start(config: Config) -> Result<Self> {
         let forwarder = Forwarder::new(config.request_timeout)?;
-        let limit = RateLimit::per_minute(config.rate_limit_per_min);
+        let ceilings = Ceilings {
+            requests: RateLimit::per_minute(config.rate_limit_per_min),
+            events: RateLimit::per_minute(config.rate_limit_per_min.saturating_mul(
+                NonZeroU32::new(EVENTS_PER_REQUEST).expect("a non-zero constant"),
+            )),
+        };
         let client = Client::new(config.keys.clone());
 
         for relay in &config.relays {
@@ -92,7 +112,7 @@ impl Bridge {
         Ok(Self {
             config: Arc::new(config),
             forwarder: Arc::new(forwarder),
-            limit: Arc::new(limit),
+            ceilings: Arc::new(ceilings),
             partials: Arc::new(StdMutex::new(Reassembler::new(Limits::default()))),
             client,
             notifications: Mutex::new(Some(notifications)),
@@ -136,14 +156,14 @@ impl Bridge {
 
             let config = Arc::clone(&self.config);
             let forwarder = Arc::clone(&self.forwarder);
-            let limit = Arc::clone(&self.limit);
+            let ceilings = Arc::clone(&self.ceilings);
             let partials = Arc::clone(&self.partials);
             let client = self.client.clone();
 
             // One task per request: a homeserver that takes thirty seconds to answer one call must
             // not stop the bridge from hearing the next.
             tokio::spawn(async move {
-                if let Err(error) = serve(&config, &forwarder, &limit, &partials, &client, &event).await {
+                if let Err(error) = serve(&config, &forwarder, &ceilings, &partials, &client, &event).await {
                     tracing::warn!(client = %event.pubkey, %error, "request failed");
                 }
             });
@@ -160,7 +180,7 @@ impl Bridge {
 async fn serve(
     config: &Config,
     forwarder: &Forwarder,
-    limit: &RateLimit,
+    ceilings: &Ceilings,
     partials: &Partials,
     client: &Client,
     event: &Event,
@@ -171,8 +191,10 @@ async fn serve(
         tracing::debug!(client = %sender, "not on the allow list");
         return Ok(());
     }
-    if !limit.allow(&sender) {
-        tracing::info!(client = %sender, "rate limited");
+    // Before decrypting, so it can only be silent: without the envelope there is no request id to
+    // answer on. It is set far above anything honest, so silence here means a flood.
+    if !ceilings.events.allow(&sender) {
+        tracing::info!(client = %sender, "too many events");
         return Ok(());
     }
 
@@ -189,9 +211,33 @@ async fn serve(
     // A request may arrive in pieces, from several relays, in any order. Everything up to here
     // happens per *event*; everything below happens once per *message*.
     let key = (sender, envelope.id.clone());
+    let request_id = envelope.id.clone();
+    let now = Instant::now();
     let accepted = {
         let mut reassembler = partials.lock().expect("the reassembler");
-        reassembler.accept(key, envelope, Instant::now())
+        // A request is charged once, on whichever of its chunks arrives first — not once per
+        // chunk, which is how a single photo used to exhaust the minute.
+        let charge = if reassembler.knows(&key) {
+            Ok(())
+        } else {
+            ceilings.requests.check(&sender)
+        };
+        match charge {
+            Ok(()) => Ok(reassembler.accept(key, envelope, now)),
+            Err(wait) => {
+                // And refused as a whole, so that its remaining chunks are dropped quietly rather
+                // than each one being charged, refused and answered again.
+                reassembler.refuse(key, now);
+                Err(wait)
+            }
+        }
+    };
+    let accepted = match accepted {
+        Ok(accepted) => accepted,
+        Err(wait) => {
+            tracing::info!(client = %sender, "rate limited");
+            return answer(config, client, &sender, too_many_requests(request_id, wait)).await;
+        }
     };
     let (head, body) = match accepted {
         Accepted::Complete { head, body } => (head, body),
@@ -274,6 +320,27 @@ async fn serve(
     );
 
     answer(config, client, &sender, response).await
+}
+
+/// A refusal the Matrix SDK knows what to do with.
+///
+/// It used to be silence, and silence is the one answer a bridge must never give: the SDK waited
+/// out its own ninety seconds with nothing to say why. `M_LIMIT_EXCEEDED` with `retry_after_ms` is
+/// what a homeserver says when it rate-limits, so the SDK already backs off and retries on it —
+/// when the ceiling allows, not before and not never.
+fn too_many_requests(id: String, wait: std::time::Duration) -> HttpResponse {
+    let retry_after_ms = wait.as_millis().max(1);
+    let body = format!(
+        r#"{{"errcode":"M_LIMIT_EXCEEDED","error":"The bridge is rate-limiting this device","retry_after_ms":{retry_after_ms}}}"#
+    );
+    HttpResponse {
+        id,
+        status: 429,
+        headers: [("content-type".to_string(), "application/json".to_string())]
+            .into_iter()
+            .collect(),
+        body: body.into_bytes(),
+    }
 }
 
 /// Send one response back to the client that asked, in as many chunks as it takes.

@@ -75,6 +75,11 @@ struct Partial {
 /// having exactly one peer.
 pub struct Reassembler<K: Eq + Hash + Clone> {
     partials: HashMap<K, Partial>,
+    /// Messages already refused, and when. Without this a refusal is not one: the next chunk of
+    /// the same message finds no partial, opens a new one and starts filling it again — so a
+    /// message too large to accept would be accepted, refused, reopened and refused once per
+    /// chunk, and a rate-limited one would be charged and answered once per chunk.
+    refused: HashMap<K, Instant>,
     limits: Limits,
 }
 
@@ -82,12 +87,28 @@ impl<K: Eq + Hash + Clone> Reassembler<K> {
     pub fn new(limits: Limits) -> Self {
         Self {
             partials: HashMap::new(),
+            refused: HashMap::new(),
             limits,
         }
     }
 
     pub fn in_flight(&self) -> usize {
         self.partials.len()
+    }
+
+    /// Whether this message has been seen before — half-arrived, or already refused.
+    ///
+    /// What the bridge asks before charging a chunk to the rate limit: a request is charged once,
+    /// on the first of its chunks to arrive, not once per chunk.
+    pub fn knows(&self, key: &K) -> bool {
+        self.partials.contains_key(key) || self.refused.contains_key(key)
+    }
+
+    /// Refuse a message from outside — the rate limit — so that the rest of its chunks are
+    /// dropped quietly instead of each reopening it.
+    pub fn refuse(&mut self, key: K, now: Instant) {
+        self.partials.remove(&key);
+        bury(&mut self.refused, key, now);
     }
 
     /// Take one chunk.
@@ -99,6 +120,10 @@ impl<K: Eq + Hash + Clone> Reassembler<K> {
             return Accepted::Refused("malformed envelope");
         }
         self.expire(now);
+
+        if self.refused.contains_key(&key) {
+            return Accepted::Refused("refused earlier");
+        }
 
         let body = match envelope.body() {
             Ok(body) => body,
@@ -115,6 +140,7 @@ impl<K: Eq + Hash + Clone> Reassembler<K> {
         }
 
         if envelope.total > self.limits.max_chunks {
+            bury(&mut self.refused, key, now);
             return Accepted::Refused("too many chunks");
         }
 
@@ -126,7 +152,8 @@ impl<K: Eq + Hash + Clone> Reassembler<K> {
                 let partial = entry.get_mut();
                 if partial.total != envelope.total {
                     // The same message id with two different lengths. One of them is a lie.
-                    entry.remove();
+                    let (key, _) = entry.remove_entry();
+                    bury(&mut self.refused, key, now);
                     return Accepted::Refused("total changed mid-message");
                 }
                 let slot = &mut partial.chunks[envelope.seq as usize];
@@ -135,7 +162,8 @@ impl<K: Eq + Hash + Clone> Reassembler<K> {
                     return Accepted::Waiting;
                 }
                 if partial.bytes + body.len() > self.limits.max_bytes {
-                    entry.remove();
+                    let (key, _) = entry.remove_entry();
+                    bury(&mut self.refused, key, now);
                     return Accepted::Refused("message is too large");
                 }
                 partial.bytes += body.len();
@@ -155,9 +183,11 @@ impl<K: Eq + Hash + Clone> Reassembler<K> {
                 if at_capacity {
                     // Refusing the new one rather than evicting an old one: eviction would let
                     // anybody flush a message somebody else was halfway through sending.
+                    bury(&mut self.refused, slot.into_key(), now);
                     return Accepted::Refused("too many messages in flight");
                 }
                 if body.len() > self.limits.max_bytes {
+                    bury(&mut self.refused, slot.into_key(), now);
                     return Accepted::Refused("message is too large");
                 }
                 let mut chunks = vec![None; envelope.total as usize];
@@ -193,12 +223,27 @@ impl<K: Eq + Hash + Clone> Reassembler<K> {
         Accepted::Complete { head, body }
     }
 
-    /// Forget half-arrived messages nobody finished.
+    /// Forget half-arrived messages nobody finished, and refusals old enough to be moot.
     fn expire(&mut self, now: Instant) {
         let ttl = self.limits.ttl;
         self.partials
             .retain(|_, partial| now.duration_since(partial.started) < ttl);
+        self.refused.retain(|_, when| now.duration_since(*when) < ttl);
     }
+}
+
+/// How many refusals are remembered at most. Each is a key and a timestamp; the ceiling is there so
+/// that a stranger with many keys cannot make the list itself the thing that fills memory.
+const MAX_REFUSED: usize = 4096;
+
+/// Remember a refusal. Past the ceiling the whole list goes rather than the oldest entry: losing
+/// refusals only means a refused message may be reopened and refused again, which is the
+/// inefficiency this exists to avoid, not a hole in anything.
+fn bury<K: Eq + Hash>(refused: &mut HashMap<K, Instant>, key: K, now: Instant) {
+    if refused.len() >= MAX_REFUSED {
+        refused.clear();
+    }
+    refused.insert(key, now);
 }
 
 #[cfg(test)]
@@ -394,6 +439,72 @@ mod tests {
             Accepted::Refused("total changed mid-message")
         ));
         assert_eq!(reassembler.in_flight(), 0);
+    }
+
+    /// A refusal is final. Without this the chunk after a refused one finds no partial, opens a
+    /// fresh one and starts filling it — refused, reopened and refused again, once per chunk.
+    #[test]
+    fn the_rest_of_a_refused_message_does_not_reopen_it() {
+        let limits = Limits {
+            max_bytes: 100,
+            ..Limits::default()
+        };
+        let mut reassembler = Reassembler::new(limits);
+        let parts = envelopes(300, 64);
+        let now = Instant::now();
+
+        reassembler.accept("client", parts[0].clone(), now);
+        assert!(matches!(
+            reassembler.accept("client", parts[1].clone(), now),
+            Accepted::Refused("message is too large")
+        ));
+        for envelope in &parts[2..] {
+            assert!(matches!(
+                reassembler.accept("client", envelope.clone(), now),
+                Accepted::Refused("refused earlier")
+            ));
+        }
+        assert_eq!(reassembler.in_flight(), 0);
+    }
+
+    /// The bridge charges a request to the rate limit once, on its first chunk — which needs to
+    /// know whether a chunk is the first of a message or one more of a message already known.
+    #[test]
+    fn a_message_is_known_from_its_first_chunk_until_it_is_done() {
+        let mut reassembler = Reassembler::new(Limits::default());
+        let parts = envelopes(200, 64);
+        let now = Instant::now();
+
+        assert!(!reassembler.knows(&"client"));
+        reassembler.accept("client", parts[0].clone(), now);
+        assert!(reassembler.knows(&"client"));
+        for envelope in &parts[1..] {
+            reassembler.accept("client", envelope.clone(), now);
+        }
+        assert!(!reassembler.knows(&"client"));
+    }
+
+    /// And refused from outside — the rate limit — the rest of the message goes quietly.
+    #[test]
+    fn a_message_refused_from_outside_stays_refused_until_its_time_is_up() {
+        let mut reassembler = Reassembler::new(Limits::default());
+        let parts = envelopes(200, 64);
+        let start = Instant::now();
+
+        reassembler.accept("client", parts[0].clone(), start);
+        reassembler.refuse("client", start);
+        assert_eq!(reassembler.in_flight(), 0);
+        assert!(reassembler.knows(&"client"));
+        assert!(matches!(
+            reassembler.accept("client", parts[1].clone(), start),
+            Accepted::Refused("refused earlier")
+        ));
+
+        let later = start + Duration::from_secs(61);
+        assert!(matches!(
+            reassembler.accept("client", parts[1].clone(), later),
+            Accepted::Waiting
+        ));
     }
 
     #[test]

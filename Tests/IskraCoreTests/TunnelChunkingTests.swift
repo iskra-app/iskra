@@ -193,6 +193,62 @@ struct TunnelChunkingTests {
         #expect(reassembler.inFlight == 0)
     }
 
+    /// A refusal is final. Without this the chunk after a refused one finds no partial, opens a
+    /// fresh one and starts filling it — refused, reopened and refused again, once per chunk.
+    @Test func theRestOfARefusedMessageDoesNotReopenIt() {
+        var reassembler = TunnelReassembler(limits: .init(maxBytes: 100))
+        let envelopes = request(body: counting(300), maxBodyChunk: 64)
+
+        _ = reassembler.accept(envelopes[0], key: "abc")
+        guard case .refused("message is too large") = reassembler.accept(envelopes[1], key: "abc") else {
+            Issue.record("the ceiling was not enforced")
+            return
+        }
+        for envelope in envelopes.dropFirst(2) {
+            guard case .refused(let reason) = reassembler.accept(envelope, key: "abc") else {
+                Issue.record("a later chunk reopened a refused message")
+                return
+            }
+            #expect(reason == "refused earlier")
+        }
+        #expect(reassembler.inFlight == 0)
+    }
+
+    @Test func aMessageIsKnownFromItsFirstChunkUntilItIsDone() {
+        var reassembler = TunnelReassembler()
+        let envelopes = request(body: counting(200), maxBodyChunk: 64)
+
+        #expect(!reassembler.knows("abc"))
+        _ = reassembler.accept(envelopes[0], key: "abc")
+        #expect(reassembler.knows("abc"))
+        for envelope in envelopes.dropFirst() {
+            _ = reassembler.accept(envelope, key: "abc")
+        }
+        #expect(!reassembler.knows("abc"))
+    }
+
+    /// Given up on — the deadline passed, or the answer is in — a chunk arriving late neither
+    /// reopens the message nor sits in memory for a minute; and after a minute it is all forgotten.
+    @Test func aMessageGivenUpOnStaysGoneUntilItsTimeIsUp() {
+        var reassembler = TunnelReassembler()
+        let envelopes = request(body: counting(200), maxBodyChunk: 64)
+        let start = ContinuousClock.now
+
+        _ = reassembler.accept(envelopes[0], key: "abc", now: start)
+        reassembler.forget("abc", now: start)
+        #expect(reassembler.inFlight == 0)
+        guard case .refused("refused earlier") = reassembler.accept(envelopes[1], key: "abc", now: start) else {
+            Issue.record("a late chunk reopened a message already given up on")
+            return
+        }
+
+        guard case .waiting = reassembler.accept(envelopes[1], key: "abc",
+                                                 now: start.advanced(by: .seconds(61))) else {
+            Issue.record("a refusal outlived its time")
+            return
+        }
+    }
+
     @Test func anAnswerReassemblesWithItsStatus() {
         let envelopes = TunnelChunker.envelopes(id: "r",
                                                 status: 206,

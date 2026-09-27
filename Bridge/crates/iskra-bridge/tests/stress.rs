@@ -167,14 +167,16 @@ async fn a_flood_from_one_key_is_cut_off_without_taking_the_bridge_down() {
 
     let flooder = Arc::new(harness.client().await);
     let served = Arc::new(AtomicUsize::new(0));
+    let refused = Arc::new(AtomicUsize::new(0));
 
     let mut workers = Vec::new();
     for _ in 0..10 {
         let flooder = Arc::clone(&flooder);
         let served = Arc::clone(&served);
+        let refused = Arc::clone(&refused);
         workers.push(tokio::spawn(async move {
             for _ in 0..20 {
-                let answered = flooder
+                let status = flooder
                     .request(
                         "GET",
                         "/_matrix/client/versions",
@@ -184,9 +186,16 @@ async fn a_flood_from_one_key_is_cut_off_without_taking_the_bridge_down() {
                         Duration::from_secs(2),
                     )
                     .await
-                    .is_ok();
-                if answered {
-                    served.fetch_add(1, Ordering::Relaxed);
+                    .map(|response| response.status);
+                // A refusal is an answer now — a 429 — so "answered" no longer means "served".
+                match status {
+                    Ok(200) => {
+                        served.fetch_add(1, Ordering::Relaxed);
+                    }
+                    Ok(429) => {
+                        refused.fetch_add(1, Ordering::Relaxed);
+                    }
+                    _ => {}
                 }
             }
         }));
@@ -196,8 +205,13 @@ async fn a_flood_from_one_key_is_cut_off_without_taking_the_bridge_down() {
     }
 
     let served = served.load(Ordering::Relaxed);
-    println!("200 requests attempted under a 30/min ceiling — {served} served");
+    let refused = refused.load(Ordering::Relaxed);
+    println!(
+        "200 requests attempted under a 30/min ceiling — {served} served, {refused} told 429"
+    );
     assert!(served > 0, "the limiter must not refuse everything");
+    // Everything not served was *told* so. Silence would show up as the two not adding up.
+    assert_eq!(served + refused, 200, "some requests got neither an answer nor a refusal");
     assert!(
         served <= 60,
         "the limiter let {served} through under a 30/min ceiling"
