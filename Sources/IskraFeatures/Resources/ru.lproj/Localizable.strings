@@ -376,6 +376,21 @@
 
 "room.attachFile" = "Файл";
 
+/* The choice under the "+" that appears when a photo or video has been copied. */
+"room.pasteImage" = "Вставить фото или видео";
+
+/* Read aloud for a photo waiting in the composer to be sent. */
+"room.attachedPhoto" = "Фото к сообщению";
+
+/* Read aloud for a video waiting in the composer to be sent. */
+"room.attachedVideo" = "Видео к сообщению";
+
+/* The cross on a photo or video waiting in the composer. */
+"room.removeAttachment" = "Убрать из сообщения";
+
+/* Over the room while a photo or video is dragged over it. */
+"room.dropToAttach" = "Отпустите, чтобы прикрепить";
+
 "videoNote.title" = "Видеосообщение";
 
 "videoNote.holdToRecord" = "Держите, чтобы записать, отпустите — отправится. До минуты.";

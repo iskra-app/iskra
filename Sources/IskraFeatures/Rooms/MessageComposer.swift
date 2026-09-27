@@ -111,6 +111,22 @@ struct MessageComposer: View {
     var onChooseFile: () -> Void
     var onChooseLocation: () -> Void = {}
 
+    /// Photos and videos — picked, pasted or dropped into the room — waiting to go with the next
+    /// press of send. See `PendingAttachment` for why they wait at all. The screen owns them,
+    /// because the drop lands on the whole room and not on this bar.
+    var attachments: [PendingAttachment] = []
+    var onRemoveAttachment: (PendingAttachment) -> Void = { _ in }
+
+    /// Reads the clipboard's photos and videos into `attachments`. Asking, not reading: the screen
+    /// does the reading, for the same reason it presents the pickers.
+    var onPasteImage: () -> Void = {}
+
+    /// Whether the clipboard had a photo or video on it when the "+" was opened, which is when
+    /// "Paste" is offered. Looked at then and not continuously: there is no notification
+    /// for the clipboard changing on the Mac, and polling it would be the app watching what the
+    /// user copies.
+    @State private var canPasteImage = false
+
     /// Whether the "+" has opened into its two choices.
     ///
     /// Settable at birth, which is not for the app's benefit — nothing constructs an open
@@ -150,6 +166,9 @@ struct MessageComposer: View {
          onChoosePhoto: @escaping () -> Void,
          onChooseFile: @escaping () -> Void,
          onChooseLocation: @escaping () -> Void = {},
+         attachments: [PendingAttachment] = [],
+         onRemoveAttachment: @escaping (PendingAttachment) -> Void = { _ in },
+         onPasteImage: @escaping () -> Void = {},
          isAttaching: Bool = false,
          locking: LockGesture = LockGesture()) {
         _draft = draft
@@ -168,6 +187,9 @@ struct MessageComposer: View {
         self.onChoosePhoto = onChoosePhoto
         self.onChooseFile = onChooseFile
         self.onChooseLocation = onChooseLocation
+        self.attachments = attachments
+        self.onRemoveAttachment = onRemoveAttachment
+        self.onPasteImage = onPasteImage
         _isAttaching = State(initialValue: isAttaching)
         _locking = State(initialValue: locking)
     }
@@ -187,6 +209,18 @@ struct MessageComposer: View {
         draft.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
+    /// What is waiting, as far as this press of send is concerned. None while editing: an edit
+    /// changes the words of a message already sent and cannot add a photograph to it, so the
+    /// attachments step aside — kept, and back the moment the edit is done or abandoned.
+    private var pendingAttachments: [PendingAttachment] {
+        context?.isEditing == true ? [] : attachments
+    }
+
+    /// Whether there is anything to send: words, or attachments, or both.
+    private var hasSomethingToSend: Bool {
+        !isEmpty || !pendingAttachments.isEmpty
+    }
+
     var body: some View {
         // One container for every piece of glass in the composer. This is what lets the
         // "+" *become* the choices above it rather than have a menu drawn on top of it:
@@ -197,6 +231,10 @@ struct MessageComposer: View {
             VStack(alignment: .leading, spacing: Theme.Spacing.close) {
                 if let context {
                     contextStrip(context)
+                }
+
+                if !pendingAttachments.isEmpty {
+                    attachmentStrip
                 }
 
                 // Bottom-aligned, so the round buttons stay level with the last line of a
@@ -257,7 +295,7 @@ struct MessageComposer: View {
                                isPrimary: true,
                                action: onSend)
                             .disabled(isEmpty)
-                    } else if isEmpty {
+                    } else if !hasSomethingToSend {
                         recordButton
                     } else {
                         button(systemImage: "arrow.up",
@@ -340,7 +378,8 @@ struct MessageComposer: View {
                     .transition(.scale(scale: 0.4, anchor: .bottom).combined(with: .opacity))
             }
         }
-        .animation(.smooth(duration: Theme.Timing.chrome), value: isEmpty)
+        .animation(.smooth(duration: Theme.Timing.chrome), value: hasSomethingToSend)
+        .animation(.smooth(duration: Theme.Timing.chrome), value: pendingAttachments)
         .animation(.smooth(duration: Theme.Timing.chrome), value: context)
         .animation(.smooth(duration: Theme.Timing.chrome), value: locking.isVisible)
         // The phone answering the finger. There is nothing else that can: a hold that has taken
@@ -422,6 +461,66 @@ struct MessageComposer: View {
         // It slides out of the field below it rather than appearing above it, so the eye
         // follows the composer growing instead of noticing a new object.
         .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+
+    // MARK: - Waiting photos and videos
+
+    /// What is waiting to go, in a row above the field, each with a way to take it back.
+    ///
+    /// Part of the composer's own height, like the reply strip, and for the same reason: the
+    /// conversation *should* move up for it, because what is about to be sent is now taller.
+    private var attachmentStrip: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: Theme.Spacing.close) {
+                ForEach(pendingAttachments) { image in
+                    attachmentTile(image)
+                        .transition(.scale(scale: 0.6).combined(with: .opacity))
+                }
+            }
+            .padding(Theme.Spacing.close)
+        }
+        .scrollIndicators(.hidden)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .navigationGlass(in: .rect(cornerRadius: Theme.Radius.bubble, style: .continuous))
+        .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+
+    private func attachmentTile(_ image: PendingAttachment) -> some View {
+        Group {
+            if let preview = image.preview {
+                Image(decorative: preview, scale: 1).resizable().scaledToFill()
+            } else {
+                Color.secondary.opacity(0.2)
+            }
+        }
+        .frame(width: Theme.Size.attachmentTile, height: Theme.Size.attachmentTile)
+        .clipShape(.rect(cornerRadius: Theme.Radius.control, style: .continuous))
+        // A video is told from a photo by the glyph a video has worn everywhere since there were
+        // videos, and nothing else: the still alone is just a photo.
+        .overlay {
+            if image.isVideo {
+                Image(systemName: "play.fill")
+                    .font(.body)
+                    .foregroundStyle(.white)
+                    .shadow(radius: 2)
+            }
+        }
+        .overlay(alignment: .topTrailing) {
+            Button {
+                onRemoveAttachment(image)
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.body)
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(.white, .black.opacity(0.6))
+                    .padding(Theme.Spacing.tight)
+                    .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(Strings.Room.removeAttachment))
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text(image.isVideo ? Strings.Room.attachedVideo : Strings.Room.attachedPhoto))
     }
 
     // MARK: - Recording without typing
@@ -815,6 +914,7 @@ struct MessageComposer: View {
     /// `GlassEffectContainer` and all named in one namespace.
     private var attachButton: some View {
         Button {
+            if !isAttaching { canPasteImage = MediaPasteboard.hasMedia }
             withAnimation(.smooth(duration: 0.3)) {
                 isAttaching.toggle()
             }
@@ -852,6 +952,13 @@ struct MessageComposer: View {
                          label: Strings.Location.attach,
                          id: "location",
                          action: onChooseLocation)
+
+            if canPasteImage {
+                attachOption(systemImage: "doc.on.clipboard",
+                             label: Strings.Room.pasteImage,
+                             id: "paste",
+                             action: onPasteImage)
+            }
         }
     }
 
