@@ -92,6 +92,19 @@ public actor MockHomeserver: HTTPUpstream {
         replyDelay = delay
     }
 
+    /// The event a user's read receipt stands on in a room — for `DemoBackendTests`, which has to see
+    /// that looking at a chat did not move it.
+    func receipt(of user: String, in roomID: String) -> String? {
+        rooms[roomID]?.receipts[user]?.eventID
+    }
+
+    /// Somebody else writes into a room, so that there is something unread in it — for the same
+    /// test, which cannot count on the demo's own unread messages: an earlier test renames the
+    /// account, and a new name is an event from *you* in every room, which reads them all.
+    func say(_ text: String, in roomID: String, from sender: String) {
+        append(roomID, sender: sender, type: "m.room.message", content: ["msgtype": "m.text", "body": text])
+    }
+
     init() {
         let world = MockWorld()
         me = world.me

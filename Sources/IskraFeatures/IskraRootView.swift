@@ -180,6 +180,10 @@ public struct IskraRootView: View {
                     // contents. Put on last, the lifted copy would be the only bubble in the app
                     // with no media loader: a photograph would lift off the page as an empty
                     // rectangle, and only ever in the menu.
+                    // The chat peek, for the same two reasons and on the same side of the
+                    // environment — see `ChatPeek`. Inside the message menu's layer rather than
+                    // over it, which changes nothing today: the card hands its messages no menu.
+                    .chatPeekLayer()
                     .messageMenuLayer()
                     .environment(\.mediaLoader, session.media())
                     // Handed down so a bubble can tell a mention of *you* from a mention of anyone

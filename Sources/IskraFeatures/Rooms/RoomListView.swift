@@ -59,6 +59,9 @@ public struct RoomListView: View {
     /// *now*. See `OfflineBanner`, which is what explains all this on screen.
     @Environment(\.isOffline) private var isOffline
 
+    /// The look inside a chat that a long press on its row opens — see `ChatPeek`.
+    @Environment(\.chatPeek) private var chatPeek
+
     /// The recovery flow, when the banner has been tapped. The banner has one reason to exist now —
     /// the history is locked — so there is nothing to carry into the flow but the fact of the tap.
     @State private var isFixingRecovery = false
@@ -81,7 +84,7 @@ public struct RoomListView: View {
     }
 
     public var body: some View {
-        List(selection: $selectedRoomID) {
+        List(selection: selection) {
             if isSearching {
                 searchResults
             } else if isNativeSidebar {
@@ -209,6 +212,17 @@ public struct RoomListView: View {
         .onChange(of: searchText) { _, query in
             session.search.search(query)
         }
+    }
+
+    /// The selection, less the one tap that is not a choice: the finger that held a row for a peek,
+    /// coming back up off it. See `ChatPeekPresenter.isPeeking(at:)` — let through, it would open
+    /// the chat under the card and read the very messages the peek promised to leave alone.
+    private var selection: Binding<String?> {
+        Binding(get: { selectedRoomID },
+                set: { roomID in
+                    if let roomID, chatPeek?.isPeeking(at: roomID) == true { return }
+                    selectedRoomID = roomID
+                })
     }
 
     private var isSearching: Bool {
@@ -342,6 +356,7 @@ public struct RoomListView: View {
                         .roomListSwipeActions(room: room,
                                               roomList: session.roomList,
                                               onLeave: { roomToLeave = room })
+                        .chatPeek(room, session: session) { selectedRoomID = room.id }
                 }
         }
     }

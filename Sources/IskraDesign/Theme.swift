@@ -138,6 +138,14 @@ public enum Theme {
         /// watching something happen rather than waiting for it. See `Scale.pressedMessage`.
         public static let menuLift: TimeInterval = 0.25
 
+        /// How long a finger stays on a chat in the list before the peek lifts it — see `ChatPeek`.
+        ///
+        /// Longer than `menuLift`, because the two rows are not asking the same question. A
+        /// message is held by somebody who has decided to do something to it; a chat row is
+        /// *tapped* by nearly everyone, nearly every time, and a thumb that is merely slow on its
+        /// way to a tap should open the chat and not a preview of it. The system's own half second.
+        public static let peekLift: TimeInterval = 0.5
+
         /// The bubble coming back up when a press is abandoned — the finger lifted early, or the
         /// press turned into a scroll.
         ///
@@ -749,6 +757,14 @@ public enum Theme {
         /// can and a bent arrow all sit on the same vertical line — they are drawn at different
         /// widths, and left to themselves the words beside them would not line up.
         public static let menuIcon: CGFloat = 26
+
+        /// The chat a long press lifts out of the chat list — see `ChatPeek`.
+        ///
+        /// Ceilings, not sizes. On a phone the screen is smaller than both and the card takes what
+        /// the menu under it leaves; on an iPad or a Mac it stops at roughly a phone's worth of
+        /// conversation, because a peek the size of the window is not a peek, it is the room.
+        public static let peekWidth: CGFloat = 440
+        public static let peekHeight: CGFloat = 640
 
         /// The bar of emoji above the lifted message.
         ///

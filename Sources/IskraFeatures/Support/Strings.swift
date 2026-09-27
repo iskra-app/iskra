@@ -339,6 +339,20 @@ public enum Strings {
             public static let cancel = LocalizedStringResource("roomList.swipe.cancel", bundle: bundle)
         }
 
+        /// The look inside a chat that a long press on its row opens — see `ChatPeek`. Worded as
+        /// menu items rather than as swipe buttons: there is room here for the whole verb.
+        public enum Peek {
+            /// The Mac's way in, from the right-click menu, where there is no long press.
+            public static let peek = LocalizedStringResource("roomList.peek.peek", bundle: bundle)
+            public static let open = LocalizedStringResource("roomList.peek.open", bundle: bundle)
+            public static let markRead = LocalizedStringResource("roomList.peek.markRead", bundle: bundle)
+            public static let markUnread = LocalizedStringResource("roomList.peek.markUnread", bundle: bundle)
+            /// Said under the name of a chat with unread messages in it, because that is the one
+            /// case where somebody might hesitate to look.
+            public static let staysUnread = LocalizedStringResource("roomList.peek.staysUnread", bundle: bundle)
+            public static let close = LocalizedStringResource("roomList.peek.close", bundle: bundle)
+        }
+
         /// The archive: the shelf where swept-aside chats wait, and the way back to them.
         public enum Archive {
             public static let title = LocalizedStringResource("roomList.archive.title", bundle: bundle)

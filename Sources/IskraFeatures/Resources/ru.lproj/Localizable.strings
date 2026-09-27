@@ -677,6 +677,14 @@
 "roomList.swipe.leaveConfirm" = "Выйти";
 "roomList.swipe.cancel" = "Отмена";
 
+/* Предпросмотр чата по долгому нажатию в списке: заглянуть, не отмечая прочитанным. */
+"roomList.peek.peek" = "Подглядеть";
+"roomList.peek.open" = "Открыть чат";
+"roomList.peek.markRead" = "Отметить прочитанным";
+"roomList.peek.markUnread" = "Отметить непрочитанным";
+"roomList.peek.staysUnread" = "Вы только подглядываете — прочитанным не отметится";
+"roomList.peek.close" = "Закрыть предпросмотр";
+
 /* Архив: полка для отложенных чатов и дорога обратно к ним. */
 "roomList.archive.title" = "Архив";
 "roomList.archive.entry" = "Архив (%lld)";

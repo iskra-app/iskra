@@ -157,6 +157,59 @@ struct DemoBackendTests {
         #expect(unrecognized.isEmpty, "\(unrecognized)")
     }
 
+    /// The chat list's peek, held to the one promise it makes: looking is not reading.
+    ///
+    /// Here, through the demo server, because the promise is about what goes over the wire — a
+    /// receipt is a request to the homeserver, and nothing short of a homeserver can say whether
+    /// one was sent. And in this suite rather than one of its own, because the server is one per
+    /// process: two suites driving it at once time each other out. The last step presses "read" on
+    /// purpose and watches the receipt move, so that a test which could not see receipts at all
+    /// would fail there instead of passing everything above it.
+    @Test("peeking at a chat, history included, sends no read receipt")
+    func peekingReadsNothing() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(component: "iskra-peek-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let client = try await DemoBackend.makeClient(data: root.appending(component: "data"),
+                                                      cache: root.appending(component: "cache"),
+                                                      search: root.appending(component: "search"))
+        let session = UserSession(client: client, authentication: AuthenticationService(), isDemo: true)
+        try await session.start()
+        defer { Task { await session.close() } }
+
+        // Миша writes, so there is something to leave unread whatever ran before this.
+        let roomID = "!misha:iskra.demo"
+        let me = "@sasha:iskra.demo"
+        await MockHomeserver.shared.say("Ты тут?", in: roomID, from: "@misha:iskra.demo")
+        #expect(await eventually { session.roomList.rooms.first { $0.id == roomID }?.hasUnread == true })
+        let before = await MockHomeserver.shared.receipt(of: me, in: roomID)
+        #expect(before != nil)
+
+        let peek = try #require(session.peekTimeline(forRoomID: roomID))
+        try await peek.start()
+        #expect(await eventually { peek.hasLoaded && !peek.rows.isEmpty })
+        // And further back, the way scrolling the card does.
+        await peek.loadMoreHistory()
+        // Long enough for anything the opening might have queued to reach the server.
+        try await Task.sleep(for: .seconds(1))
+        peek.stop()
+
+        #expect(await MockHomeserver.shared.receipt(of: me, in: roomID) == before)
+        #expect(session.roomList.rooms.first { $0.id == roomID }?.hasUnread == true)
+
+        // Not a store the room screen would be handed, either — see `peekTimeline(forRoomID:)`.
+        let screen = try #require(session.timeline(forRoomID: roomID))
+        #expect(screen !== peek)
+
+        // The control: reading *does* move it, so the checks above were able to fail.
+        try await screen.start()
+        #expect(await eventually { screen.hasLoaded })
+        await screen.markAsRead()
+        let moved = await eventually(async: { await MockHomeserver.shared.receipt(of: me, in: roomID) != before })
+        #expect(moved)
+        screen.stop()
+    }
+
     private func eventually(seconds: Double = 15, _ condition: () -> Bool) async -> Bool {
         let deadline = Date().addingTimeInterval(seconds)
         while Date() < deadline {
@@ -164,5 +217,14 @@ struct DemoBackendTests {
             try? await Task.sleep(for: .milliseconds(100))
         }
         return condition()
+    }
+
+    private func eventually(seconds: Double = 15, async condition: () async -> Bool) async -> Bool {
+        let deadline = Date().addingTimeInterval(seconds)
+        while Date() < deadline {
+            if await condition() { return true }
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        return await condition()
     }
 }
