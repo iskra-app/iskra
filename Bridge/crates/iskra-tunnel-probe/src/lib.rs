@@ -107,18 +107,22 @@ impl TunnelClient {
             .expect("pending map")
             .insert(id.clone(), tx);
 
-        // As many events as the body takes. The bridge puts them back together; out of order and
-        // duplicated per relay is the normal case, not the exception.
+        // As many events as the body takes, all at once, and **not waited for**. `send_event`
+        // returns when every relay has acknowledged or timed out — ten seconds for one that is
+        // down — so waiting on it, in sequence or even all together, puts a dead relay's timeout
+        // in front of an answer the live relay delivered long ago. The answer is what is waited
+        // for; a send that failed shows up as its absence, and in the log.
         for envelope in request.into_envelopes(DEFAULT_MAX_BODY_CHUNK) {
             let content = seal(self.keys.secret_key(), &self.bridge, &envelope)?;
             let event = EventBuilder::new(Kind::Custom(KIND_REQUEST), content)
                 .tag(Tag::public_key(self.bridge))
                 .sign_with_keys(&self.keys)?;
-
-            if let Err(error) = self.client.send_event(&event).await {
-                self.pending.lock().expect("pending map").remove(&id);
-                return Err(error.into());
-            }
+            let client = self.client.clone();
+            tokio::spawn(async move {
+                if let Err(error) = client.send_event(&event).await {
+                    tracing::warn!(%error, "no relay took a chunk");
+                }
+            });
         }
 
         match tokio::time::timeout(timeout, rx).await {

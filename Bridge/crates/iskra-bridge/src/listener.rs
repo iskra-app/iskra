@@ -10,6 +10,7 @@ use iskra_tunnel_proto::{
 };
 use nostr_sdk::prelude::*;
 use tokio::sync::{broadcast, Mutex};
+use tokio::task::JoinSet;
 
 /// Half-arrived requests, keyed by who is sending and which message it is.
 ///
@@ -289,6 +290,7 @@ async fn answer(
     let id = response.id.clone();
     let envelopes = response.into_envelopes(config.max_body_chunk);
 
+    let mut sealed = Vec::with_capacity(envelopes.len());
     for envelope in &envelopes {
         let content = match seal(config.keys.secret_key(), to, envelope) {
             Ok(content) => content,
@@ -310,11 +312,35 @@ async fn answer(
             }
             Err(error) => return Err(error.into()),
         };
-        // In order, and one at a time. The relay pool sends to every relay at once, so this is not
-        // a round trip per chunk; and the client reassembles out of order anyway.
-        publish(config, client, to, content).await?;
+        sealed.push(content);
     }
-    Ok(())
+
+    // **All at once, never one after another.** `send_event` does not return when the event is on
+    // its way; it returns when *every* relay in the pool has acknowledged it or timed out, and a
+    // relay that is down times out after ten seconds (`WAIT_FOR_OK_TIMEOUT` in nostr-relay-pool).
+    // Sent in sequence, chunk two waited ten seconds for chunk one's dead relay, chunk three
+    // twenty: a 53 KB sync answer took 20.4 s through the bridge and 1 ms without it. A
+    // one-chunk answer never showed it — the client has the event from the live relay long before
+    // the dead one gives up — which is why it survived until a whole session was measured
+    // (`LiveBridgeSessionTests`). The client reassembles out of order, so order buys nothing here.
+    let mut sends = JoinSet::new();
+    for content in sealed {
+        let event = EventBuilder::new(Kind::Custom(KIND_RESPONSE), content)
+            .tag(Tag::public_key(*to))
+            .sign_with_keys(&config.keys)?;
+        let client = client.clone();
+        sends.spawn(async move { client.send_event(&event).await });
+    }
+    let mut first_error = None;
+    while let Some(joined) = sends.join_next().await {
+        if let Ok(Err(error)) = joined {
+            first_error.get_or_insert(error);
+        }
+    }
+    match first_error {
+        Some(error) => Err(error.into()),
+        None => Ok(()),
+    }
 }
 
 /// Publish one sealed event to every relay.
