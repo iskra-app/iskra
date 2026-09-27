@@ -258,9 +258,9 @@ final class BridgeProcess: @unchecked Sendable {
         environment["BRIDGE_NOSTR_PRIVKEY"] = Hex.string(secret)
         environment["RELAY_LIST"] = relays.joined(separator: ",")
         environment["ALLOWED_UPSTREAMS"] = homeserver.absoluteString
-        // A session is dozens of requests in its first seconds, and this is a measurement of the
-        // tunnel, not of the rate limit. What the default would have done is printed below.
-        environment["RATE_LIMIT_PER_MIN"] = "100000"
+        // The default rate limit, deliberately: a session is dozens of requests in its first
+        // seconds, and a default a real session does not fit in is a bridge that works for nobody.
+        environment.removeValue(forKey: "RATE_LIMIT_PER_MIN")
         environment["RUST_LOG"] = "info"
         environment["NO_COLOR"] = "1"
         bridge.process.environment = environment

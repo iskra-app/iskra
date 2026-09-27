@@ -10,6 +10,7 @@ use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 
 use iskra_bridge::upstream::{parse_origin, Allowed, Upstreams};
+use std::num::NonZeroU32;
 use std::time::Duration;
 
 use iskra_tunnel_probe::TunnelClient;
@@ -191,6 +192,139 @@ async fn a_dead_relay_does_not_hold_up_a_chunked_answer() {
         "a chunked answer took {:?} with a dead relay in the list",
         started.elapsed()
     );
+}
+
+/// One request on three relays reaches the homeserver **once**.
+///
+/// Every relay delivers its own copy of an event, and a bridge that served each copy would sign
+/// somebody in three times, as three devices, and upload their keys three times over. Nothing in
+/// the bridge prevents that. What does is nostr-sdk: its default database is a `MemoryDatabase` in
+/// *tracker* mode, which remembers the id of every event it has seen — ephemeral ones included,
+/// though it stores none of them — and a repeat produces no notification.
+///
+/// That is a property of somebody else's default, which is exactly the kind of thing that changes
+/// in a minor version without a word. This pins it: were the tracker to go, this fails rather than
+/// every login through the bridge quietly becoming three.
+#[tokio::test]
+async fn a_request_on_several_relays_reaches_the_homeserver_once() {
+    let harness = Harness::start_on(3, |config| config).await;
+    Mock::given(method("POST"))
+        .and(path("/_matrix/client/v3/login"))
+        .respond_with(ResponseTemplate::new(200).set_body_string(r#"{"device_id":"ONE"}"#))
+        .expect(1)
+        .mount(&harness.homeserver)
+        .await;
+    // And a chunked one, which is where a repeat could also reopen a message already served.
+    let body: Vec<u8> = (0..60_000u32).map(|i| (i % 251) as u8).collect();
+    Mock::given(method("POST"))
+        .and(path("/_matrix/media/v3/upload"))
+        .respond_with(ResponseTemplate::new(200).set_body_string("{}"))
+        .expect(1)
+        .mount(&harness.homeserver)
+        .await;
+
+    let client = harness.client().await;
+    let response = client
+        .request(
+            "POST",
+            "/_matrix/client/v3/login",
+            None,
+            BTreeMap::new(),
+            br#"{"type":"m.login.password"}"#.to_vec(),
+            TIMEOUT,
+        )
+        .await
+        .expect("an answer");
+    assert_eq!(response.status, 200);
+    let response = client
+        .request(
+            "POST",
+            "/_matrix/media/v3/upload",
+            None,
+            BTreeMap::new(),
+            body,
+            TIMEOUT,
+        )
+        .await
+        .expect("an answer");
+    assert_eq!(response.status, 200);
+
+    // Long enough for the slowest relay's copy to have arrived and been dealt with.
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    harness.homeserver.verify().await;
+}
+
+/// A request over the limit is told so — in words the Matrix SDK acts on — instead of being met
+/// with silence.
+///
+/// It used to be silence, and a client can do nothing with silence but wait out its own timeout.
+/// `M_LIMIT_EXCEEDED` with `retry_after_ms` is what a homeserver says when it rate-limits, and the
+/// SDK already backs off on it.
+#[tokio::test]
+async fn a_request_over_the_limit_is_answered_429_not_ignored() {
+    let harness = Harness::start_with(|mut config| {
+        config.rate_limit_per_min = NonZeroU32::new(1).unwrap();
+        config
+    })
+    .await;
+    Mock::given(method("GET"))
+        .respond_with(ResponseTemplate::new(200).set_body_string("{}"))
+        .mount(&harness.homeserver)
+        .await;
+
+    let client = harness.client().await;
+    let ask = || {
+        client.request(
+            "GET",
+            "/_matrix/client/versions",
+            None,
+            BTreeMap::new(),
+            Vec::new(),
+            TIMEOUT,
+        )
+    };
+    assert_eq!(ask().await.expect("the first").status, 200);
+
+    let started = std::time::Instant::now();
+    let refused = ask().await.expect("an answer, not a timeout");
+    assert_eq!(refused.status, 429);
+    assert!(started.elapsed() < Duration::from_secs(5));
+    let body: serde_json::Value = serde_json::from_slice(&refused.body).expect("JSON");
+    assert_eq!(body["errcode"], "M_LIMIT_EXCEEDED");
+    assert!(body["retry_after_ms"].as_u64().unwrap_or(0) > 0);
+}
+
+/// The limit counts requests, not the events they are cut into.
+///
+/// It counted events until chunking made the two different: a 3 MB photo is 128 events, so one
+/// upload spent the whole minute's allowance and the chunks past it were dropped in silence. Here
+/// the limit is five a minute and the upload is nine chunks — one request, and it goes through.
+#[tokio::test]
+async fn a_chunked_upload_is_one_request_to_the_limit() {
+    let harness = Harness::start_with(|mut config| {
+        config.rate_limit_per_min = NonZeroU32::new(5).unwrap();
+        config
+    })
+    .await;
+    Mock::given(method("POST"))
+        .and(path("/_matrix/media/v3/upload"))
+        .respond_with(ResponseTemplate::new(200).set_body_string("{}"))
+        .mount(&harness.homeserver)
+        .await;
+
+    let client = harness.client().await;
+    let response = client
+        .request(
+            "POST",
+            "/_matrix/media/v3/upload",
+            None,
+            BTreeMap::new(),
+            vec![7; 200_000],
+            TIMEOUT,
+        )
+        .await
+        .expect("an answer");
+    assert_eq!(response.status, 200);
 }
 
 /// Both ways at once, at the sizes either side of a chunk boundary.

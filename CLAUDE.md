@@ -199,6 +199,14 @@ Three rules about it fail far from their cause:
   at once and the answer comes from whichever is quickest; `relay.damus.io` answers `503` to the
   connection itself often enough to be the standing example. Duplicates are the price, and
   `NostrRelayPool` drops them by event id.
+- **Nothing in the tunnel waits for a relay to say `OK`.** `NostrRelayPool.publish` hands the event
+  to every open socket and returns; what is waited for is the *answer*. The bridge learnt this the
+  expensive way: nostr-sdk's `send_event` returns only once every relay has acknowledged or timed
+  out — ten seconds for a relay that is down — and chunks sent one after another each waited out the
+  dead relay, so a three-chunk sync answer took twenty seconds and the chat list with it. Waiting
+  for acknowledgements "to be sure" here would bring exactly that back, on the phone.
+  `LiveBridgeSessionTests` is what found it: a whole SDK session through a real bridge, timed
+  request by request against the same session run direct.
 
 `Iskra --probe-bridge [npub] [homeserver]` and the "Check the bridge" button both drive
 `BridgeCheck`, so the terminal and the screen cannot disagree. `LiveBridgeTests` is the end-to-end

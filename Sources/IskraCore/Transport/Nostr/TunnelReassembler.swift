@@ -45,13 +45,27 @@ struct TunnelReassembler {
     }
 
     private var partials: [String: Partial] = [:]
+    /// Messages already refused or given up on, and when. Without this a refusal is not one: the
+    /// next chunk of the same message finds no partial, opens a fresh one and starts filling it —
+    /// refused, reopened and refused again, once per chunk. `iskra-tunnel-proto` keeps the same
+    /// list for the same reason.
+    private var refused: [String: ContinuousClock.Instant] = [:]
     private let limits: Limits
+
+    /// The same ceiling as the Rust side's, for the same reason: a stranger with many message ids
+    /// must not be able to make the list of refusals the thing that fills memory.
+    private static let maxRefused = 4096
 
     init(limits: Limits = Limits()) {
         self.limits = limits
     }
 
     var inFlight: Int { partials.count }
+
+    /// Whether this message has been seen — half-arrived, or already refused.
+    func knows(_ key: String) -> Bool {
+        partials[key] != nil || refused[key] != nil
+    }
 
     /// Take one chunk.
     ///
@@ -63,6 +77,8 @@ struct TunnelReassembler {
         guard let envelope = try? envelope.validated() else { return .refused("malformed envelope") }
         expire(now)
 
+        guard refused[key] == nil else { return .refused("refused earlier") }
+
         guard let body = try? envelope.body else { return .refused("body is not base64") }
 
         // The common case, and the one worth keeping cheap: a whole message in one chunk never
@@ -70,15 +86,22 @@ struct TunnelReassembler {
         if envelope.total == 1 {
             return .complete(head: envelope, body: body)
         }
-        guard envelope.total <= limits.maxChunks else { return .refused("too many chunks") }
+        guard envelope.total <= limits.maxChunks else {
+            bury(key, now)
+            return .refused("too many chunks")
+        }
 
         guard var partial = partials[key] else {
             guard partials.count < limits.maxInFlight else {
                 // Refusing the new one rather than evicting an old one: eviction would let a
                 // stranger flush an answer this device was halfway through receiving.
+                bury(key, now)
                 return .refused("too many messages in flight")
             }
-            guard body.count <= limits.maxBytes else { return .refused("message is too large") }
+            guard body.count <= limits.maxBytes else {
+                bury(key, now)
+                return .refused("message is too large")
+            }
             var chunks = [Data?](repeating: nil, count: Int(envelope.total))
             chunks[Int(envelope.seq)] = body
             partials[key] = Partial(total: envelope.total,
@@ -93,6 +116,7 @@ struct TunnelReassembler {
         guard partial.total == envelope.total else {
             // The same message id with two different lengths. One of them is a lie.
             partials[key] = nil
+            bury(key, now)
             return .refused("total changed mid-message")
         }
         guard partial.chunks[Int(envelope.seq)] == nil else {
@@ -101,6 +125,7 @@ struct TunnelReassembler {
         }
         guard partial.bytes + body.count <= limits.maxBytes else {
             partials[key] = nil
+            bury(key, now)
             return .refused("message is too large")
         }
 
@@ -117,10 +142,20 @@ struct TunnelReassembler {
         return finish(partial)
     }
 
-    /// Give up on one message — what the caller does when its own deadline passes, so that an
-    /// answer nobody is waiting for any more does not sit in memory until the TTL.
-    mutating func forget(_ key: String) {
+    /// Give up on one message — what the caller does once it has its answer, or when its own
+    /// deadline passes — so that an answer nobody is waiting for any more neither sits in memory
+    /// until the TTL nor is reopened by a chunk that arrives late.
+    mutating func forget(_ key: String, now: ContinuousClock.Instant = .now) {
         partials[key] = nil
+        bury(key, now)
+    }
+
+    private mutating func bury(_ key: String, _ now: ContinuousClock.Instant) {
+        // Past the ceiling the whole list goes rather than the oldest entry: losing refusals only
+        // means a refused message may be reopened and refused again, which is the waste this
+        // exists to avoid, not a hole in anything.
+        if refused.count >= Self.maxRefused { refused.removeAll() }
+        refused[key] = now
     }
 
     private func finish(_ partial: Partial) -> Accepted {
@@ -138,5 +173,6 @@ struct TunnelReassembler {
     private mutating func expire(_ now: ContinuousClock.Instant) {
         let ttl = limits.ttl
         partials = partials.filter { now - $0.value.started < ttl }
+        refused = refused.filter { now - $0.value < ttl }
     }
 }
