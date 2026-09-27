@@ -230,10 +230,10 @@
 "connection.checkRefused" = "The bridge said no: it does not serve this server";
 "connection.checkFailed" = "No luck: %@";
 
-/* What is left is the sync aggregator. Saying so plainly beats letting someone decide it is
-   finished. */
-"connection.unfinished" = "What is still missing";
-"connection.unfinishedBody" = "Requests leave as encrypted nostr events and come back the same way, and length is no longer in the way — whatever does not fit in one event travels in several. But every request goes the long way round through a relay, and Matrix is talkative: until the app can receive updates on its own, without asking on every cycle, messaging will be noticeably slower than a direct connection.";
+/* Not "what is unfinished" but what to expect: the numbers come from measuring a whole session
+   through the bridge (Bridge/README.md), and whoever turns the bridge on should know them first. */
+"connection.unfinished" = "What to expect";
+"connection.unfinishedBody" = "Every request goes the long way round through a relay and costs 200–350 ms, so signing in and opening chats for the first time are noticeably slower than a direct connection — a second where it used to be instant. New messages, though, arrive almost as fast as they do directly. Large attachments will get through too, but they are better kept off public relays: for media, give the bridge a relay of its own.";
 
 "connection.sees" = "What the bridge sees";
 "connection.seesBody" = "A bridge unpacks your requests to the server, so it sees your token, which rooms you are in, and the text of messages in unencrypted chats. It cannot read encrypted conversations. This is why the bridge should be your own rather than somebody else's.";

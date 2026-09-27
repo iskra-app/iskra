@@ -146,6 +146,53 @@ async fn a_request_body_larger_than_one_envelope_arrives_whole() {
     assert_eq!(response.status, 200);
 }
 
+/// A dead relay in the list must not stand between the client and a chunked answer.
+///
+/// This is the one `LiveBridgeSessionTests` found: `send_event` waits for *every* relay to say OK,
+/// a relay that is down takes ten seconds to be given up on, and chunks published one after
+/// another each waited out that ten seconds before the next could leave. A 53 KB sync answer took
+/// twenty seconds. Nothing smaller than two chunks ever showed it, because the client has the one
+/// event from the live relay long before the dead one is abandoned.
+///
+/// `ws://127.0.0.1:1` is refused on connect, which leaves nostr-sdk retrying it — exactly the state
+/// `nos.lol` was in, answering `502` to the handshake, when the session was measured.
+#[tokio::test]
+async fn a_dead_relay_does_not_hold_up_a_chunked_answer() {
+    let harness = Harness::start_with(|mut config| {
+        config.relays.push("ws://127.0.0.1:1".into());
+        config
+    })
+    .await;
+    let body = "z".repeat(200_000);
+    Mock::given(method("GET"))
+        .and(path("/_matrix/client/big"))
+        .respond_with(ResponseTemplate::new(200).set_body_string(body.clone()))
+        .mount(&harness.homeserver)
+        .await;
+
+    let client = harness.client().await;
+    let started = std::time::Instant::now();
+    let response = client
+        .request(
+            "GET",
+            "/_matrix/client/big",
+            None,
+            BTreeMap::new(),
+            Vec::new(),
+            TIMEOUT,
+        )
+        .await
+        .expect("an answer");
+
+    assert_eq!(response.body.len(), body.len());
+    // Nine chunks. Sent in sequence behind a dead relay, this is ninety seconds.
+    assert!(
+        started.elapsed() < Duration::from_secs(5),
+        "a chunked answer took {:?} with a dead relay in the list",
+        started.elapsed()
+    );
+}
+
 /// Both ways at once, at the sizes either side of a chunk boundary.
 #[tokio::test]
 async fn bodies_either_side_of_the_chunk_boundary_round_trip() {
