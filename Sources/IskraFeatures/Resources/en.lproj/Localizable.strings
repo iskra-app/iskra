@@ -379,6 +379,21 @@
 
 "room.attachFile" = "File";
 
+/* The choice under the "+" that appears when a photo or video has been copied. */
+"room.pasteImage" = "Paste photo or video";
+
+/* Read aloud for a photo waiting in the composer to be sent. */
+"room.attachedPhoto" = "Photo for the message";
+
+/* Read aloud for a video waiting in the composer to be sent. */
+"room.attachedVideo" = "Video for the message";
+
+/* The cross on a photo or video waiting in the composer. */
+"room.removeAttachment" = "Remove from message";
+
+/* Over the room while a photo or video is dragged over it. */
+"room.dropToAttach" = "Let go to attach";
+
 "videoNote.title" = "Video message";
 
 "videoNote.holdToRecord" = "Hold to record, let go to send. Up to a minute.";

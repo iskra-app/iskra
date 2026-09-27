@@ -58,7 +58,15 @@ public struct RoomView: View {
     @State private var isChoosingPhoto = false
     @State private var isChoosingFile = false
     @State private var isChoosingLocation = false
-    @State private var pickedItem: PhotosPickerItem?
+    @State private var pickedItems: [PhotosPickerItem] = []
+
+    /// Pictures pasted or dropped into the room, waiting in the composer for send. Here and not in
+    /// the composer because a drop lands on the whole room — see `PendingAttachment`.
+    @State private var attachments: [PendingAttachment] = []
+
+    /// Whether a picture is being dragged over the room right now, which is when it says what
+    /// letting go will do.
+    @State private var isDropTargeted = false
 
     /// Whether the conversation has been put where it belongs: on its newest message.
     ///
@@ -881,6 +889,19 @@ public struct RoomView: View {
             }
             .animation(.smooth, value: timeline.canPost)
         }
+        // A picture dragged anywhere onto the room — the conversation, the composer, the header's
+        // underside — lands in the composer. The whole room and not the field, because the field
+        // is a thin strip at the bottom of a window and a drop is aimed at the window.
+        .onDrop(of: PendingAttachment.acceptedTypes, isTargeted: $isDropTargeted) { providers in
+            guard timeline.canPost, PendingAttachment.canLoad(from: providers) else { return false }
+            let dropped = DroppedItems(providers: providers)
+            Task { await attach(from: dropped) }
+            return true
+        }
+        .overlay { dropHighlight }
+        .mediaPaste(isEnabled: timeline.canPost) { items, unreadable in
+            stage(items, unreadable: unreadable)
+        }
         // Over everything, composer included: while the camera is up, the room is the thing
         // being answered rather than the thing being used.
         //
@@ -1021,14 +1042,16 @@ public struct RoomView: View {
             }
         }
         .photosPicker(isPresented: $isChoosingPhoto,
-                      selection: $pickedItem,
+                      selection: $pickedItems,
+                      maxSelectionCount: Self.pickLimit,
+                      selectionBehavior: .ordered,
                       matching: .any(of: [.images, .videos]))
-        .onChange(of: pickedItem) { _, item in
-            guard let item else { return }
-            Task { await sendPicked(item) }
+        .onChange(of: pickedItems) { _, items in
+            guard !items.isEmpty else { return }
+            Task { await stagePicked(items) }
             // Cleared so that picking the same photo twice in a row is two attachments and
             // not one: `onChange` fires on a *change*, and the second pick is not one.
-            pickedItem = nil
+            pickedItems = []
         }
         .fileImporter(isPresented: $isChoosingFile, allowedContentTypes: [.item]) { result in
             guard case let .success(url) = result else { return }
@@ -1346,7 +1369,103 @@ public struct RoomView: View {
                         voice: voiceRecording,
                         onChoosePhoto: { isChoosingPhoto = true },
                         onChooseFile: { isChoosingFile = true },
-                        onChooseLocation: { isChoosingLocation = true })
+                        onChooseLocation: { isChoosingLocation = true },
+                        attachments: attachments,
+                        onRemoveAttachment: { image in attachments.removeAll { $0.id == image.id } },
+                        onPasteImage: { Task { await pasteImages() } })
+    }
+
+    /// What the room looks like while a picture is held over it: an outline, and a sentence saying
+    /// what letting go will do. Content and not glass — it is a mark on the conversation, not a
+    /// control floating over it — and it takes no touches, so it cannot get in the drop's way.
+    @ViewBuilder
+    private var dropHighlight: some View {
+        if isDropTargeted, timeline.canPost {
+            RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                .strokeBorder(accent.color, style: StrokeStyle(lineWidth: 2, dash: [8, 4]))
+                .background(accent.color.opacity(0.08),
+                            in: .rect(cornerRadius: Theme.Radius.card, style: .continuous))
+                .overlay {
+                    Label {
+                        Text(Strings.Room.dropToAttach)
+                    } icon: {
+                        Image(systemName: "photo.badge.plus")
+                    }
+                    .font(.headline)
+                    .foregroundStyle(accent.color)
+                }
+                .padding(Theme.Spacing.normal)
+                .allowsHitTesting(false)
+                .transition(.opacity)
+        }
+    }
+
+    // MARK: - Photos and videos waiting to go
+
+    /// How many the picker lets through at once. Ten is what Matrix clients generally treat as
+    /// an album, and what fits in the composer's row without it becoming a gallery of its own.
+    private static let pickLimit = 10
+
+    private func attach(from dropped: DroppedItems) async {
+        let (items, unreadable) = await PendingAttachment.load(from: dropped.providers)
+        stage(items, unreadable: unreadable)
+    }
+
+    private func pasteImages() async {
+        let (items, unreadable) = await MediaPasteboard.items()
+        stage(items, unreadable: unreadable)
+    }
+
+    /// What the photo picker hands back — into the composer, not straight into the room.
+    ///
+    /// Nothing here fails quietly. It used to: three `guard`s returned on their own, and a photo
+    /// that could not be read produced a tap, a picker, and then nothing at all — no bubble, no
+    /// error, no line in any log. A picked item that will not load still says so on screen.
+    private func stagePicked(_ picked: [PhotosPickerItem]) async {
+        var items: [PendingAttachment] = []
+        var unreadable = 0
+        for item in picked {
+            if let loaded = await PendingAttachment.load(from: item) {
+                items.append(loaded)
+            } else {
+                unreadable += 1
+            }
+        }
+        stage(items, unreadable: unreadable)
+    }
+
+    private func stage(_ items: [PendingAttachment], unreadable: Int) {
+        if unreadable > 0 { problem = .unreadableAttachment }
+        guard !items.isEmpty else { return }
+        withAnimation(.smooth(duration: Theme.Timing.chrome)) {
+            attachments.append(contentsOf: items)
+        }
+    }
+
+    /// One waiting photo or video, into the room.
+    ///
+    /// A photo goes as bytes: no file, so nothing to write, delete, or race. A video still needs
+    /// one, because the duration and the frame that becomes its thumbnail can only be read by
+    /// `AVAsset`, and `AVAsset` reads a URL. That file is plaintext on disk, so it lives exactly as
+    /// long as the send does — gone the moment it returns, which is safe although the send does not
+    /// wait for the upload: the queue copies the file into its own encrypted store as it takes it.
+    /// See `sendVoice`, where the same reasoning is set out at length.
+    private func send(_ item: PendingAttachment, replyingTo replyID: String?) async {
+        guard item.isVideo else {
+            await timeline.send(photo: item.data, filename: item.filename, replyingTo: replyID)
+            return
+        }
+
+        let url = URL.temporaryDirectory.appending(component: item.filename)
+        do {
+            try item.data.write(to: url, options: .atomic)
+        } catch {
+            Log.media.error("the video could not be staged for upload: \(Log.describe(error), privacy: .public)")
+            problem = .unreadableAttachment
+            return
+        }
+        defer { try? FileManager.default.removeItem(at: url) }
+        await timeline.send(video: url, replyingTo: replyID)
     }
 
     private var readOnlyBanner: some View {
@@ -1806,59 +1925,6 @@ public struct RoomView: View {
         }
     }
 
-    /// What the photo picker hands back, and what becomes of it.
-    ///
-    /// Nothing here fails quietly. It used to: three `guard`s returned on their own, and a
-    /// photo that could not be read produced a tap, a picker, and then nothing at all — no
-    /// bubble, no error, no line in any log. That is the state this whole app is written
-    /// against, and it is why a failure to *read* a picture now says so on screen.
-    private func sendPicked(_ item: PhotosPickerItem) async {
-        let data: Data?
-        do {
-            data = try await item.loadTransferable(type: Data.self)
-        } catch {
-            Log.media.error("the photo library would not hand over the item: \(Log.describe(error), privacy: .public)")
-            problem = .unreadableAttachment
-            return
-        }
-
-        guard let data else {
-            Log.media.error("the photo library returned no bytes for the picked item")
-            problem = .unreadableAttachment
-            return
-        }
-
-        let isVideo = item.supportedContentTypes.contains { $0.conforms(to: .movie) }
-        let ext = item.supportedContentTypes.first?.preferredFilenameExtension ?? (isVideo ? "mp4" : "jpg")
-        let filename = "\(UUID().uuidString).\(ext)"
-
-        // A photo goes as bytes: no file, so nothing to write, delete, or race. A video still
-        // needs one, because the duration and the frame that becomes its thumbnail can only
-        // be read by `AVAsset`, and `AVAsset` reads a URL. That file is plaintext on disk, so
-        // it lives exactly as long as the upload does.
-        guard isVideo else {
-            await timeline.send(photo: data, filename: filename, replyingTo: replyID)
-            cancelContext()
-            return
-        }
-
-        let url = URL.temporaryDirectory.appending(component: filename)
-        do {
-            try data.write(to: url, options: .atomic)
-        } catch {
-            Log.media.error("the video could not be staged for upload: \(Log.describe(error), privacy: .public)")
-            problem = .unreadableAttachment
-            return
-        }
-        // Gone as soon as the send returns, and still correct now that the send does not wait for
-        // the upload: the queue copies the file into its own encrypted store as it takes it. See
-        // `sendVoice`, where the same reasoning is set out at length.
-        defer { try? FileManager.default.removeItem(at: url) }
-
-        await timeline.send(video: url, replyingTo: replyID)
-        cancelContext()
-    }
-
     private func sendPickedFile(_ url: URL) async {
         // A file the user picked lives outside our sandbox until we say otherwise.
         let needsScope = url.startAccessingSecurityScopedResource()
@@ -1886,15 +1952,44 @@ public struct RoomView: View {
         // breath: the composer is left exactly as it was, still holding the edit.
         if case .editing = context, text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return }
 
+        // Photos and videos go with anything but an edit, which cannot add one to a message already
+        // sent. They stay waiting through the edit and leave with the next ordinary send.
+        let images: [PendingAttachment] = context?.isEditing == true ? [] : attachments
+        let hasText = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+
+        // Return on an empty box with nothing staged is nothing to send. The button is not on
+        // screen in that state; the keyboard's Return still is.
+        guard hasText || !images.isEmpty || context?.isEditing == true else { return }
+
         draft = ""
         composerContext = nil
+        if !images.isEmpty { attachments = [] }
 
         Task {
+            // Pictures first, then the words: the words are nearly always *about* the pictures, and
+            // read as a caption only if they arrive under them. Not as a Matrix caption — this app
+            // does not put captions on photos (see `Message.editableText`). An answer threads onto
+            // whichever goes first, which is the thing the reader will see beside the quote.
+            var replyingTo: String?
+            if case let .replying(message) = context { replyingTo = message.id }
+            for item in images {
+                await send(item, replyingTo: replyingTo)
+                replyingTo = nil
+            }
+            guard hasText || context?.isEditing == true else {
+                await timeline.clearDraft()
+                return
+            }
+
             switch context {
             case let .editing(message):
                 await timeline.edit(messageID: message.id, text: text)
-            case let .replying(message):
-                await timeline.send(text: text, replyingTo: message.id)
+            case .replying:
+                if let replyingTo {
+                    await timeline.send(text: text, replyingTo: replyingTo)
+                } else {
+                    await timeline.send(text: text)
+                }
             case nil:
                 await timeline.send(text: text)
             }

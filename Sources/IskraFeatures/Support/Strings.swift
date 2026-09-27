@@ -397,6 +397,13 @@ public enum Strings {
         public static let readOnly = LocalizedStringResource("room.readOnly", bundle: bundle)
         public static let attachPhoto = LocalizedStringResource("room.attachPhoto", bundle: bundle)
         public static let attachFile = LocalizedStringResource("room.attachFile", bundle: bundle)
+
+        /// Photos and videos waiting in the composer — see `PendingAttachment`.
+        public static let pasteImage = LocalizedStringResource("room.pasteImage", bundle: bundle)
+        public static let attachedPhoto = LocalizedStringResource("room.attachedPhoto", bundle: bundle)
+        public static let attachedVideo = LocalizedStringResource("room.attachedVideo", bundle: bundle)
+        public static let removeAttachment = LocalizedStringResource("room.removeAttachment", bundle: bundle)
+        public static let dropToAttach = LocalizedStringResource("room.dropToAttach", bundle: bundle)
         public static let sendFailedTitle = LocalizedStringResource("room.sendFailedTitle", bundle: bundle)
 
         /// The picture was chosen and then could not be read — which is a failure *before*

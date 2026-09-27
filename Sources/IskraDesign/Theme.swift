@@ -624,6 +624,10 @@ public enum Theme {
         /// are the same size, so this is one number rather than three.
         public static let composerControl: CGFloat = 44
 
+        /// A pasted or dropped picture waiting in the composer. Big enough to tell one screenshot
+        /// from another at a glance, small enough that four of them are still one row.
+        public static let attachmentTile: CGFloat = 64
+
         /// The search field floating at the bottom of the room list. The same height as
         /// the composer, and for the same reason — it sits where the thumb already is.
         public static let searchField: CGFloat = 44
