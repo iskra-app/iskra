@@ -4,11 +4,16 @@ import SwiftUI
 
 /// Where traffic is sent through a bridge instead of straight at the homeserver.
 ///
-/// The switch and the address take effect on the *next* connection rather than immediately, and
-/// the screen says so by showing what is happening **now** rather than what was chosen: the client
-/// is built once, at sign-in or at launch, and re-pointing a live one is not something the SDK
-/// offers. Which is exactly why the check button is here — it raises a tunnel of its own and asks
-/// the bridge a question, so that "did I paste the right key" is answerable without signing out.
+/// A change here takes effect when the screen is left: the session is closed and restored again,
+/// through `TunnelSettings.changed` and the root view. Not on every keystroke — a session rebuilt
+/// while a key is half pasted is a session rebuilt for nothing — and not *never*, which is what it
+/// used to be: the client is built around its homeserver address and cannot be re-pointed live, so
+/// the switch waited for the next launch, and somebody who turned the bridge on because the direct
+/// route was blocked saw the app stop loading anything until they restarted it.
+///
+/// The status row shows what is happening **now**, not what was chosen; until the change is applied
+/// the screen says it is waiting, and offers to apply it at once — which on the Mac, where settings
+/// can stay open in the sidebar indefinitely, is the only way it would happen.
 struct ConnectionView: View {
     let session: UserSession
 
@@ -21,6 +26,9 @@ struct ConnectionView: View {
     @State private var copied = false
     @State private var checking = false
     @State private var outcome: BridgeCheck.Outcome?
+    /// What the connection was built from when the screen opened. A difference on the way out is
+    /// what asks for the session to be rebuilt.
+    @State private var appeared: TunnelSettings.Snapshot?
 
     var body: some View {
         Form {
@@ -94,6 +102,17 @@ struct ConnectionView: View {
                         .foregroundStyle(.secondary)
                 }
 
+                if isPending {
+                    Text(Strings.Connection.pending)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Button {
+                        apply()
+                    } label: {
+                        Label(Strings.Connection.applyNow, systemImage: "arrow.triangle.2.circlepath")
+                    }
+                }
+
                 Button {
                     check()
                 } label: {
@@ -135,6 +154,25 @@ struct ConnectionView: View {
             status = await session.tunnelStatus()
             myKey = await session.tunnelPublicKey()
         }
+        .onAppear {
+            if appeared == nil { appeared = TunnelSettings.snapshot() }
+        }
+        .onDisappear {
+            if isPending { apply() }
+        }
+    }
+
+    /// Whether what is on screen differs from what the session was built with. Recomputed on every
+    /// edit, because the fields are `@AppStorage` and every edit redraws.
+    private var isPending: Bool {
+        guard let appeared else { return false }
+        _ = (throughBridge, address, relays)
+        return TunnelSettings.snapshot() != appeared
+    }
+
+    private func apply() {
+        appeared = TunnelSettings.snapshot()
+        NotificationCenter.default.post(name: TunnelSettings.changed, object: nil)
     }
 
     /// What is wrong with what has been typed, if anything. Nothing while the field is empty: an

@@ -103,6 +103,17 @@ public actor NostrTunnelUpstream: HTTPUpstream {
         pending.removeAll()
     }
 
+    /// Coming back from the background: check the relays now rather than when a request finds out.
+    /// See `NostrRelayPool.wake`.
+    public func wake() async {
+        await pool?.wake()
+    }
+
+    /// Every relay connection dropped at once, the way a long suspension leaves them. For tests.
+    func severConnections() async {
+        await pool?.sever()
+    }
+
     /// Relays with a live connection, for the settings screen to show.
     public func connectedRelays() async -> Int {
         await pool?.connected.count ?? 0

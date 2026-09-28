@@ -187,7 +187,7 @@ than once, so the head may be last and a duplicate must count once; and everythi
 capped — 512 chunks, 8 MB, 64 messages at a time, 60 seconds each — because on a phone the memory
 being held is somebody's.
 
-Three rules about it fail far from their cause:
+Four rules about it fail far from their cause:
 
 - **With an address filled in, a tunnel that will not come up is a refusal**
   (`AuthenticationError.bridgeUnavailable`), never a quiet direct connection. While there was
@@ -207,6 +207,17 @@ Three rules about it fail far from their cause:
   for acknowledgements "to be sure" here would bring exactly that back, on the phone.
   `LiveBridgeSessionTests` is what found it: a whole SDK session through a real bridge, timed
   request by request against the same session run direct.
+- **The loopback listener does not survive a suspension by itself.** iOS reclaims a suspended
+  app's listening sockets (TN2277), and the SDK knows the homeserver only as
+  `http://127.0.0.1:<that port>` — so after a while in a pocket every request was refused and the
+  app said "no network" while the bridge answered perfectly well. `LocalHTTPProxy` watches its
+  listener for the whole of its life and rebinds on the **same** port when it is lost, and
+  `UserSession.enteredForeground` wakes the tunnels (listener checked, relays pinged, backoff cut
+  short) *before* sync resumes. The same goes for the demo and sign-in servers, which stand behind
+  the same listener. A change of bridge settings is applied the same way a change of account is —
+  the session closed and restored (`TunnelSettings.changed`, answered by the root) — because a
+  client cannot be re-pointed live, and "on the next launch" was an app that stopped loading
+  messages the moment somebody switched the bridge on.
 
 `Iskra --probe-bridge [npub] [homeserver]` and the "Check the bridge" button both drive
 `BridgeCheck`, so the terminal and the screen cannot disagree. `LiveBridgeTests` is the end-to-end

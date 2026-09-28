@@ -199,6 +199,9 @@ public enum Strings {
                                     bundle: bundle)
         }
         public static let statusFailed = LocalizedStringResource("connection.statusFailed", bundle: bundle)
+        /// A change waiting to be applied, and the button that applies it at once.
+        public static let pending = LocalizedStringResource("connection.pending", bundle: bundle)
+        public static let applyNow = LocalizedStringResource("connection.applyNow", bundle: bundle)
 
         // The bridge's address, and this device's own key. The footers carry the two facts a
         // person cannot guess: where the bridge's key is printed, and that a closed bridge has to

@@ -186,6 +186,28 @@ struct NostrTunnelTests {
         #expect(TunnelSettings.bridgeKey(defaults) == nil)
     }
 
+    /// Leaving the Connection screen rebuilds the session only when the connection would really be
+    /// different. Tearing one down to build it again identically is a spinner for nothing.
+    @Test func onlyAChangeThatMattersAsksForAReconnect() throws {
+        let defaults = UserDefaults(suiteName: "snapshot-\(UUID().uuidString)")!
+        let keys = try NostrKeypair.generate()
+        defaults.set(true, forKey: TunnelSettings.enabledKey)
+        defaults.set(Hex.string(keys.publicKey), forKey: TunnelSettings.addressKey)
+        let before = TunnelSettings.snapshot(defaults)
+
+        // The same key as npub, with a stray space; relays emptied back to what the defaults are.
+        defaults.set(" \(keys.npub) ", forKey: TunnelSettings.addressKey)
+        defaults.set("  ", forKey: TunnelSettings.relaysKey)
+        #expect(TunnelSettings.snapshot(defaults) == before)
+
+        defaults.set(false, forKey: TunnelSettings.enabledKey)
+        #expect(TunnelSettings.snapshot(defaults) != before)
+        defaults.set(true, forKey: TunnelSettings.enabledKey)
+
+        defaults.set("wss://relay.example", forKey: TunnelSettings.relaysKey)
+        #expect(TunnelSettings.snapshot(defaults) != before)
+    }
+
     @Test func theOriginIsSchemeHostAndPort() {
         #expect(NostrTunnelUpstream.origin(of: URL(string: "https://matrix.org/_matrix/client")!)
                 == "https://matrix.org")
