@@ -1,22 +1,49 @@
 //! The nostr half: events in, events out.
 
-use std::sync::Arc;
+use std::num::NonZeroU32;
+use std::sync::{Arc, Mutex as StdMutex};
+use std::time::Instant;
 
 use anyhow::Result;
 use iskra_tunnel_proto::{
-    log_path, open, seal, HttpRequest, HttpResponse, ProtoError, KIND_REQUEST, KIND_RESPONSE,
+    log_path, open, seal, Accepted, HttpRequest, HttpResponse, Limits, ProtoError, Reassembler,
+    KIND_REQUEST, KIND_RESPONSE,
 };
 use nostr_sdk::prelude::*;
 use tokio::sync::{broadcast, Mutex};
+use tokio::task::JoinSet;
+
+/// Half-arrived requests, keyed by who is sending and which message it is.
+///
+/// Keyed by **both**, because the message id is chosen by the client: two clients that happen to
+/// pick the same one would otherwise be assembled into each other's requests. A `std` mutex and
+/// not tokio's — accepting a chunk is a memcpy and a hash lookup, and the guard is dropped before
+/// anything is awaited.
+type Partials = Arc<StdMutex<Reassembler<(PublicKey, String)>>>;
 
 use crate::config::Config;
 use crate::forwarder::Forwarder;
 use crate::ratelimit::RateLimit;
 
+/// How many events one request may spend before the *event* ceiling notices. A request is almost
+/// always one event; an upload at the 8 MB reassembly ceiling is about 340. Sixty-four per request
+/// per minute leaves every honest upload well clear and still bounds the decrypting a stranger can
+/// make the bridge do. See `ratelimit` for why there are two ceilings at all.
+const EVENTS_PER_REQUEST: u32 = 64;
+
+/// The two ceilings, per client key.
+struct Ceilings {
+    /// `RATE_LIMIT_PER_MIN` — requests, charged once each, on whichever chunk arrives first.
+    requests: RateLimit,
+    /// Events, charged before decrypting, when nothing is known yet about what they belong to.
+    events: RateLimit,
+}
+
 pub struct Bridge {
     config: Arc<Config>,
     forwarder: Arc<Forwarder>,
-    limit: Arc<RateLimit>,
+    ceilings: Arc<Ceilings>,
+    partials: Partials,
     client: Client,
     /// Taken by `run`. Held here because the order of the two lines that create it matters —
     /// see `start`.
@@ -40,7 +67,12 @@ impl Bridge {
     /// `Ok` here means the relays were accepted, not that any of them answered.
     pub async fn start(config: Config) -> Result<Self> {
         let forwarder = Forwarder::new(config.request_timeout)?;
-        let limit = RateLimit::per_minute(config.rate_limit_per_min);
+        let ceilings = Ceilings {
+            requests: RateLimit::per_minute(config.rate_limit_per_min),
+            events: RateLimit::per_minute(config.rate_limit_per_min.saturating_mul(
+                NonZeroU32::new(EVENTS_PER_REQUEST).expect("a non-zero constant"),
+            )),
+        };
         let client = Client::new(config.keys.clone());
 
         for relay in &config.relays {
@@ -80,7 +112,8 @@ impl Bridge {
         Ok(Self {
             config: Arc::new(config),
             forwarder: Arc::new(forwarder),
-            limit: Arc::new(limit),
+            ceilings: Arc::new(ceilings),
+            partials: Arc::new(StdMutex::new(Reassembler::new(Limits::default()))),
             client,
             notifications: Mutex::new(Some(notifications)),
         })
@@ -123,13 +156,14 @@ impl Bridge {
 
             let config = Arc::clone(&self.config);
             let forwarder = Arc::clone(&self.forwarder);
-            let limit = Arc::clone(&self.limit);
+            let ceilings = Arc::clone(&self.ceilings);
+            let partials = Arc::clone(&self.partials);
             let client = self.client.clone();
 
             // One task per request: a homeserver that takes thirty seconds to answer one call must
             // not stop the bridge from hearing the next.
             tokio::spawn(async move {
-                if let Err(error) = serve(&config, &forwarder, &limit, &client, &event).await {
+                if let Err(error) = serve(&config, &forwarder, &ceilings, &partials, &client, &event).await {
                     tracing::warn!(client = %event.pubkey, %error, "request failed");
                 }
             });
@@ -146,7 +180,8 @@ impl Bridge {
 async fn serve(
     config: &Config,
     forwarder: &Forwarder,
-    limit: &RateLimit,
+    ceilings: &Ceilings,
+    partials: &Partials,
     client: &Client,
     event: &Event,
 ) -> Result<()> {
@@ -156,8 +191,10 @@ async fn serve(
         tracing::debug!(client = %sender, "not on the allow list");
         return Ok(());
     }
-    if !limit.allow(&sender) {
-        tracing::info!(client = %sender, "rate limited");
+    // Before decrypting, so it can only be silent: without the envelope there is no request id to
+    // answer on. It is set far above anything honest, so silence here means a flood.
+    if !ceilings.events.allow(&sender) {
+        tracing::info!(client = %sender, "too many events");
         return Ok(());
     }
 
@@ -171,15 +208,50 @@ async fn serve(
         }
     };
 
-    // Stage 1 carries one chunk. Chunked requests arrive in stage 2; until then a multi-chunk
-    // request is refused rather than half-served.
-    if envelope.total != 1 {
-        tracing::warn!(client = %sender, "chunked requests are not supported yet");
-        return Ok(());
-    }
+    // A request may arrive in pieces, from several relays, in any order. Everything up to here
+    // happens per *event*; everything below happens once per *message*.
+    let key = (sender, envelope.id.clone());
+    let request_id = envelope.id.clone();
+    let now = Instant::now();
+    let accepted = {
+        let mut reassembler = partials.lock().expect("the reassembler");
+        // A request is charged once, on whichever of its chunks arrives first — not once per
+        // chunk, which is how a single photo used to exhaust the minute.
+        let charge = if reassembler.knows(&key) {
+            Ok(())
+        } else {
+            ceilings.requests.check(&sender)
+        };
+        match charge {
+            Ok(()) => Ok(reassembler.accept(key, envelope, now)),
+            Err(wait) => {
+                // And refused as a whole, so that its remaining chunks are dropped quietly rather
+                // than each one being charged, refused and answered again.
+                reassembler.refuse(key, now);
+                Err(wait)
+            }
+        }
+    };
+    let accepted = match accepted {
+        Ok(accepted) => accepted,
+        Err(wait) => {
+            tracing::info!(client = %sender, "rate limited");
+            return answer(config, client, &sender, too_many_requests(request_id, wait)).await;
+        }
+    };
+    let (head, body) = match accepted {
+        Accepted::Complete { head, body } => (head, body),
+        Accepted::Waiting => return Ok(()),
+        Accepted::Refused(reason) => {
+            // Nothing goes back. There is no id to answer on — the head may be the very chunk that
+            // was refused — and a bridge that replied to every malformed chunk would be a way to
+            // make it publish to a relay on demand.
+            tracing::info!(client = %sender, reason, "dropped a chunk");
+            return Ok(());
+        }
+    };
 
-    let body = envelope.body()?;
-    let request = HttpRequest::from_head(&envelope, body)?;
+    let request = HttpRequest::from_head(&head, body)?;
     let request_id = request.id.clone();
     let method = request.method.clone();
     let route = log_path(&request.path);
@@ -205,15 +277,18 @@ async fn serve(
                 reason = refusal.as_str(),
                 "refused"
             );
-            let refusal = HttpResponse {
-                id: request_id,
-                status: 403,
-                headers: Default::default(),
-                body: Vec::new(),
-            }
-            .into_single_envelope();
-            let content = seal(secret, &sender, &refusal)?;
-            return publish(config, client, &sender, content).await;
+            return answer(
+                config,
+                client,
+                &sender,
+                HttpResponse {
+                    id: request_id,
+                    status: 403,
+                    headers: Default::default(),
+                    body: Vec::new(),
+                },
+            )
+            .await;
         }
     };
     let host = upstream.host_str().unwrap_or("?").to_string();
@@ -244,40 +319,98 @@ async fn serve(
         "served"
     );
 
-    let reply = response.into_single_envelope();
-    let content = match seal(secret, &sender, &reply) {
-        Ok(content) => content,
-        // Too big for one NIP-44 payload. Until chunking lands the honest answer is a 502: the
-        // alternative is returning an error here and sending nothing, and silence is the one thing
-        // the bridge may never do — the client would sit out its own timeout with no way to tell a
-        // huge response from a dead bridge.
-        Err(ProtoError::TooLarge(bytes)) => {
-            tracing::warn!(
-                client = %sender,
-                %method,
-                route,
-                bytes,
-                "response does not fit one envelope; answering 502 until chunking lands"
-            );
-            let refusal = HttpResponse {
-                id: reply.id.clone(),
-                status: 502,
-                headers: Default::default(),
-                body: Vec::new(),
-            }
-            .into_single_envelope();
-            seal(secret, &sender, &refusal)?
-        }
-        Err(error) => return Err(error.into()),
-    };
-    publish(config, client, &sender, content).await
+    answer(config, client, &sender, response).await
 }
 
-/// Send one sealed reply back to the client that asked.
+/// A refusal the Matrix SDK knows what to do with.
+///
+/// It used to be silence, and silence is the one answer a bridge must never give: the SDK waited
+/// out its own ninety seconds with nothing to say why. `M_LIMIT_EXCEEDED` with `retry_after_ms` is
+/// what a homeserver says when it rate-limits, so the SDK already backs off and retries on it —
+/// when the ceiling allows, not before and not never.
+fn too_many_requests(id: String, wait: std::time::Duration) -> HttpResponse {
+    let retry_after_ms = wait.as_millis().max(1);
+    let body = format!(
+        r#"{{"errcode":"M_LIMIT_EXCEEDED","error":"The bridge is rate-limiting this device","retry_after_ms":{retry_after_ms}}}"#
+    );
+    HttpResponse {
+        id,
+        status: 429,
+        headers: [("content-type".to_string(), "application/json".to_string())]
+            .into_iter()
+            .collect(),
+        body: body.into_bytes(),
+    }
+}
+
+/// Send one response back to the client that asked, in as many chunks as it takes.
 ///
 /// Extracted because a refusal is as owed an answer as a success is: silence would leave the SDK
 /// waiting out its own timeout with no way to tell "this bridge will not serve that homeserver"
 /// from "this bridge is dead".
+async fn answer(
+    config: &Config,
+    client: &Client,
+    to: &PublicKey,
+    response: HttpResponse,
+) -> Result<()> {
+    let id = response.id.clone();
+    let envelopes = response.into_envelopes(config.max_body_chunk);
+
+    let mut sealed = Vec::with_capacity(envelopes.len());
+    for envelope in &envelopes {
+        let content = match seal(config.keys.secret_key(), to, envelope) {
+            Ok(content) => content,
+            // One chunk of the body always fits; a *head* need not, because the head also carries
+            // the response headers, and a homeserver may send headers longer than the whole chunk
+            // budget. There is nothing to cut there, so the honest answer is the one the client
+            // can act on rather than silence.
+            Err(ProtoError::TooLarge(bytes)) => {
+                tracing::warn!(bytes, "a chunk head does not fit one envelope; answering 502");
+                let refusal = HttpResponse {
+                    id: id.clone(),
+                    status: 502,
+                    headers: Default::default(),
+                    body: Vec::new(),
+                }
+                .into_single_envelope();
+                let content = seal(config.keys.secret_key(), to, &refusal)?;
+                return publish(config, client, to, content).await;
+            }
+            Err(error) => return Err(error.into()),
+        };
+        sealed.push(content);
+    }
+
+    // **All at once, never one after another.** `send_event` does not return when the event is on
+    // its way; it returns when *every* relay in the pool has acknowledged it or timed out, and a
+    // relay that is down times out after ten seconds (`WAIT_FOR_OK_TIMEOUT` in nostr-relay-pool).
+    // Sent in sequence, chunk two waited ten seconds for chunk one's dead relay, chunk three
+    // twenty: a 53 KB sync answer took 20.4 s through the bridge and 1 ms without it. A
+    // one-chunk answer never showed it — the client has the event from the live relay long before
+    // the dead one gives up — which is why it survived until a whole session was measured
+    // (`LiveBridgeSessionTests`). The client reassembles out of order, so order buys nothing here.
+    let mut sends = JoinSet::new();
+    for content in sealed {
+        let event = EventBuilder::new(Kind::Custom(KIND_RESPONSE), content)
+            .tag(Tag::public_key(*to))
+            .sign_with_keys(&config.keys)?;
+        let client = client.clone();
+        sends.spawn(async move { client.send_event(&event).await });
+    }
+    let mut first_error = None;
+    while let Some(joined) = sends.join_next().await {
+        if let Ok(Err(error)) = joined {
+            first_error.get_or_insert(error);
+        }
+    }
+    match first_error {
+        Some(error) => Err(error.into()),
+        None => Ok(()),
+    }
+}
+
+/// Publish one sealed event to every relay.
 async fn publish(
     config: &Config,
     client: &Client,

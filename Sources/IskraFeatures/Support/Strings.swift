@@ -191,7 +191,44 @@ public enum Strings {
         public static let status = LocalizedStringResource("connection.status", bundle: bundle)
         public static let statusDirect = LocalizedStringResource("connection.statusDirect", bundle: bundle)
         public static let statusLocal = LocalizedStringResource("connection.statusLocal", bundle: bundle)
+        public static func statusBridged(_ relays: Int) -> LocalizedStringResource {
+            LocalizedStringResource("connection.statusBridged",
+                                    defaultValue: "Through the bridge, relays: \(relays)",
+                                    bundle: bundle)
+        }
         public static let statusFailed = LocalizedStringResource("connection.statusFailed", bundle: bundle)
+
+        // The bridge's address, and this device's own key. The footers carry the two facts a
+        // person cannot guess: where the bridge's key is printed, and that a closed bridge has to
+        // be told about this device before it will answer it at all.
+        public static let address = LocalizedStringResource("connection.address", bundle: bundle)
+        public static let addressPrompt = LocalizedStringResource("connection.addressPrompt", bundle: bundle)
+        public static let addressFooter = LocalizedStringResource("connection.addressFooter", bundle: bundle)
+        public static let addressBad = LocalizedStringResource("connection.addressBad", bundle: bundle)
+        public static let addressSecret = LocalizedStringResource("connection.addressSecret", bundle: bundle)
+
+        public static let relays = LocalizedStringResource("connection.relays", bundle: bundle)
+        public static let relaysPrompt = LocalizedStringResource("connection.relaysPrompt", bundle: bundle)
+        public static let relaysFooter = LocalizedStringResource("connection.relaysFooter", bundle: bundle)
+
+        public static let myKey = LocalizedStringResource("connection.myKey", bundle: bundle)
+        public static let myKeyFooter = LocalizedStringResource("connection.myKeyFooter", bundle: bundle)
+        public static let copy = LocalizedStringResource("connection.copy", bundle: bundle)
+        public static let copied = LocalizedStringResource("connection.copied", bundle: bundle)
+
+        public static let check = LocalizedStringResource("connection.check", bundle: bundle)
+        public static let checking = LocalizedStringResource("connection.checking", bundle: bundle)
+        public static func checkOK(_ milliseconds: Int) -> LocalizedStringResource {
+            LocalizedStringResource("connection.checkOK",
+                                    defaultValue: "The bridge answered, the server is there — \(milliseconds) ms",
+                                    bundle: bundle)
+        }
+        public static let checkNoRelay = LocalizedStringResource("connection.checkNoRelay", bundle: bundle)
+        public static let checkSilent = LocalizedStringResource("connection.checkSilent", bundle: bundle)
+        public static let checkRefused = LocalizedStringResource("connection.checkRefused", bundle: bundle)
+        public static func checkFailed(_ reason: String) -> LocalizedStringResource {
+            LocalizedStringResource("connection.checkFailed", defaultValue: "No luck: \(reason)", bundle: bundle)
+        }
 
         public static let unfinished = LocalizedStringResource("connection.unfinished", bundle: bundle)
         public static let unfinishedBody = LocalizedStringResource("connection.unfinishedBody", bundle: bundle)

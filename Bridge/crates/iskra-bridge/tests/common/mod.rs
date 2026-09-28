@@ -17,11 +17,14 @@ use url::Url;
 use wiremock::MockServer;
 
 pub struct Harness {
-    _relay: LocalRelay,
+    _relays: Vec<LocalRelay>,
     pub homeserver: MockServer,
     pub bridge: Arc<Bridge>,
     pub bridge_keys: Keys,
+    /// The first relay — what most tests need.
     pub relay_url: String,
+    /// All of them, for the tests about what several relays do to one message.
+    pub relay_urls: Vec<String>,
 }
 
 impl Harness {
@@ -30,18 +33,30 @@ impl Harness {
     }
 
     pub async fn start_with(tweak: impl FnOnce(Config) -> Config) -> Self {
+        Self::start_on(1, tweak).await
+    }
+
+    /// Several relays, bridge and client both on all of them — which is how it runs in life, and
+    /// the only way to see what happens when every relay delivers its own copy of an event.
+    pub async fn start_on(relays: usize, tweak: impl FnOnce(Config) -> Config) -> Self {
         // `RelayBuilder::default()` caps a connection at 60 events a minute, and that default is
         // worth knowing rather than just raising: it is a plausible setting for a real relay, and
         // at 60 events a minute a tunnel that spends two events per request is capped around 30
         // requests a minute. Here it is scaffolding in the way of measuring the bridge, so it goes
         // up — but on public relays it is a real ceiling, and one more reason the sync aggregator
         // matters more than raw request speed.
-        let relay = LocalRelay::new(RelayBuilder::default().rate_limit(RateLimit {
-            max_reqs: 100_000,
-            notes_per_minute: 10_000_000,
-        }));
-        relay.run().await.expect("relay");
-        let relay_url = relay.url().await.to_string();
+        let mut local_relays = Vec::new();
+        let mut relay_urls = Vec::new();
+        for _ in 0..relays.max(1) {
+            let relay = LocalRelay::new(RelayBuilder::default().rate_limit(RateLimit {
+                max_reqs: 100_000,
+                notes_per_minute: 10_000_000,
+            }));
+            relay.run().await.expect("relay");
+            relay_urls.push(relay.url().await.to_string());
+            local_relays.push(relay);
+        }
+        let relay_url = relay_urls[0].clone();
         let homeserver = MockServer::start().await;
         let bridge_keys = Keys::generate();
 
@@ -55,8 +70,8 @@ impl Harness {
             )
             .expect("upstreams"),
             keys: bridge_keys.clone(),
-            relays: vec![relay_url.clone()],
-            client_relays: vec![relay_url.clone()],
+            relays: relay_urls.clone(),
+            client_relays: relay_urls.clone(),
             rate_limit_per_min: NonZeroU32::new(120).unwrap(),
             allowed_pubkeys: None,
             max_body_chunk: iskra_tunnel_proto::DEFAULT_MAX_BODY_CHUNK,
@@ -70,11 +85,12 @@ impl Harness {
         });
 
         Self {
-            _relay: relay,
+            _relays: local_relays,
             homeserver,
             bridge,
             bridge_keys,
             relay_url,
+            relay_urls,
         }
     }
 
@@ -83,11 +99,7 @@ impl Harness {
     }
 
     pub async fn client_with(&self, keys: Keys) -> TunnelClient {
-        TunnelClient::connect(
-            keys,
-            self.bridge.public_key(),
-            std::slice::from_ref(&self.relay_url),
-        )
+        TunnelClient::connect(keys, self.bridge.public_key(), &self.relay_urls)
         .await
         .expect("client connects")
     }
