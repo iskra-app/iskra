@@ -204,6 +204,8 @@
 "connection.statusLocal" = "Through the local layer";
 "connection.statusBridged" = "Through the bridge, relays: %lld";
 "connection.statusFailed" = "Could not be turned on";
+"connection.pending" = "The new settings take effect as soon as you leave this screen: the app reconnects by itself.";
+"connection.applyNow" = "Reconnect now";
 
 /* The bridge's address. While the field is empty the switch changes nothing, and that is
    said here rather than only in the status: this is what somebody is looking at. */

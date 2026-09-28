@@ -363,6 +363,12 @@ public struct IskraRootView: View {
         .onChange(of: mockBackend) { _, _ in
             Task { await switchBackend() }
         }
+        // The bridge, switched on or off or pointed somewhere else, from Settings → Connection. A
+        // client cannot be re-pointed live, so the session is closed and restored again — the same
+        // road as switching accounts, which is what used to need a relaunch.
+        .onReceive(NotificationCenter.default.publisher(for: TunnelSettings.changed)) { _ in
+            Task { await reconnect() }
+        }
         // Another account, asked for from settings or from the menu on the avatar.
         .onChange(of: switcher.requestedAccount) { _, id in
             guard let id else { return }
@@ -698,6 +704,27 @@ public struct IskraRootView: View {
         if case .starting = phase { return }
         await currentSession?.close()
         restart()
+    }
+
+    /// The same account again, over the connection the settings now describe.
+    ///
+    /// The chat that was open stays open: this is a change of route, not of anything the person is
+    /// looking at. On the offline screen — the bridge would not come up, say — it is simply another
+    /// try, which is exactly what somebody who has just fixed the bridge's address wants.
+    private func reconnect() async {
+        switch phase {
+        case .signedIn(let session):
+            // The demo never went through a tunnel; there is nothing to rebuild.
+            guard !session.isDemo else { return }
+            let room = selectedRoomID
+            await session.close()
+            restart()
+            roomAfterSwitch = room
+        case .offline:
+            restart()
+        default:
+            break
+        }
     }
 
     private func restart() {

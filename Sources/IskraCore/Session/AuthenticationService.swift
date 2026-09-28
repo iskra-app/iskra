@@ -787,6 +787,20 @@ public actor AuthenticationService {
         }
     }
 
+    /// Back from the background: every listener raised again if iOS took it, and every bridge's
+    /// relays checked, before the SDK is allowed to find out the hard way.
+    ///
+    /// Both halves were broken by a trip into a pocket, and both looked the same — "no network" —
+    /// while the bridge on the far side answered perfectly well. The listener's socket is reclaimed
+    /// by the system while the app is suspended (see `LocalHTTPProxy.ensureListening`); the relays'
+    /// websockets die with nobody told (see `NostrRelayPool.wake`).
+    public func wakeTunnels() async {
+        for tunnel in tunnels.values {
+            await tunnel.proxy.ensureListening()
+            await tunnel.bridge?.wake()
+        }
+    }
+
     /// One homeserver's listener, and its bridge with it.
     private func stopTunnel(_ key: String) async {
         guard let tunnel = tunnels.removeValue(forKey: key) else { return }
