@@ -615,6 +615,10 @@ public final class UserSession {
     }
 
     public func enteredForeground() async {
+        // The transport first, then sync. In the other order the first sync after a wake is the
+        // request that discovers the listener was reclaimed or the relays hung up, and the SDK
+        // reports "no network" for as long as its own retry takes to come round.
+        if !isDemo { await authentication.wakeTunnels() }
         await roomList.resume()
     }
 

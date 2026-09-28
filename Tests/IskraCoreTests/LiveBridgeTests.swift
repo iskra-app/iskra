@@ -196,6 +196,32 @@ struct LiveBridgeTests {
         #expect(seen.contains { $0.target.hasPrefix("/_matrix/client/versions") })
     }
 
+    /// Back from the background with every relay connection gone, the tunnel answers again at once.
+    ///
+    /// What a pocket does to a phone: the sockets die with nobody told, and the reconnect loops
+    /// are asleep in a backoff that can have climbed to thirty seconds. `wake()` is what the
+    /// session calls on the way back to the front, and after it the first request has to go
+    /// through within seconds — not after a backoff, and not after its own ninety-second limit.
+    @Test func afterEveryConnectionIsLostWakeBringsTheTunnelBack() async throws {
+        let bridge = try tunnel()
+        await bridge.start()
+        defer { Task { await bridge.stop() } }
+
+        let first = try await bridge.send(ProxiedRequest(method: "GET", target: "/_matrix/client/versions"))
+        #expect(first.status == 200)
+
+        await bridge.severConnections()
+        // Long enough for the reconnect loops to have gone to sleep in their backoff.
+        try await Task.sleep(for: .milliseconds(500))
+        await bridge.wake()
+
+        let started = ContinuousClock.now
+        let again = try await bridge.send(ProxiedRequest(method: "GET", target: "/_matrix/client/versions"))
+        let took = started.duration(to: .now)
+        #expect(again.status == 200)
+        #expect(took < .seconds(8), "the first request after waking took \(took)")
+    }
+
     /// A key that is not the bridge's gets silence, not somebody else's traffic.
     @Test func thewrongKeyIsSilence() async throws {
         let stranger = try NostrKeypair.generate()
