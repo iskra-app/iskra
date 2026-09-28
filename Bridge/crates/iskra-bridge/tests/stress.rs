@@ -167,14 +167,16 @@ async fn a_flood_from_one_key_is_cut_off_without_taking_the_bridge_down() {
 
     let flooder = Arc::new(harness.client().await);
     let served = Arc::new(AtomicUsize::new(0));
+    let refused = Arc::new(AtomicUsize::new(0));
 
     let mut workers = Vec::new();
     for _ in 0..10 {
         let flooder = Arc::clone(&flooder);
         let served = Arc::clone(&served);
+        let refused = Arc::clone(&refused);
         workers.push(tokio::spawn(async move {
             for _ in 0..20 {
-                let answered = flooder
+                let status = flooder
                     .request(
                         "GET",
                         "/_matrix/client/versions",
@@ -184,9 +186,16 @@ async fn a_flood_from_one_key_is_cut_off_without_taking_the_bridge_down() {
                         Duration::from_secs(2),
                     )
                     .await
-                    .is_ok();
-                if answered {
-                    served.fetch_add(1, Ordering::Relaxed);
+                    .map(|response| response.status);
+                // A refusal is an answer now — a 429 — so "answered" no longer means "served".
+                match status {
+                    Ok(200) => {
+                        served.fetch_add(1, Ordering::Relaxed);
+                    }
+                    Ok(429) => {
+                        refused.fetch_add(1, Ordering::Relaxed);
+                    }
+                    _ => {}
                 }
             }
         }));
@@ -196,8 +205,13 @@ async fn a_flood_from_one_key_is_cut_off_without_taking_the_bridge_down() {
     }
 
     let served = served.load(Ordering::Relaxed);
-    println!("200 requests attempted under a 30/min ceiling — {served} served");
+    let refused = refused.load(Ordering::Relaxed);
+    println!(
+        "200 requests attempted under a 30/min ceiling — {served} served, {refused} told 429"
+    );
     assert!(served > 0, "the limiter must not refuse everything");
+    // Everything not served was *told* so. Silence would show up as the two not adding up.
+    assert_eq!(served + refused, 200, "some requests got neither an answer nor a refusal");
     assert!(
         served <= 60,
         "the limiter let {served} through under a 30/min ceiling"
@@ -219,43 +233,18 @@ async fn a_flood_from_one_key_is_cut_off_without_taking_the_bridge_down() {
     assert_eq!(response.status, 200);
 }
 
-/// A response too big for one NIP-44 payload must still produce an answer.
+/// Big bodies, in numbers, which is where chunking is either cheap or the whole thing is a toy.
 ///
-/// Silence is the one thing the bridge may never do: the SDK would sit out its own timeout with
-/// nothing on screen to explain it. Until chunking lands this is an honest 502; after chunking it
-/// becomes the real body, and this test changes with it.
+/// Sizes climb past the chunk budget by a lot: 4 MB is 171 events for one answer. What this
+/// watches for is a reassembler whose cost is quadratic in chunks, and a pool that loses one event
+/// in two hundred — either of which is invisible at 200 KB and fatal at four megabytes.
 #[tokio::test(flavor = "multi_thread")]
 #[ignore]
-async fn a_response_too_large_for_one_envelope_still_answers() {
+async fn large_bodies_round_trip_in_both_directions() {
     let harness = Harness::start_with(unlimited).await;
-    Mock::given(method("GET"))
-        .and(path("/_matrix/client/big"))
-        .respond_with(ResponseTemplate::new(200).set_body_string("x".repeat(200_000)))
-        .mount(&harness.homeserver)
-        .await;
+    let sizes = [24 * 1024usize, 200_000, 1024 * 1024, 4 * 1024 * 1024];
 
-    let client = harness.client().await;
-    let response = client
-        .request(
-            "GET",
-            "/_matrix/client/big",
-            None,
-            BTreeMap::new(),
-            Vec::new(),
-            TIMEOUT,
-        )
-        .await
-        .expect("an answer, even a refusal — never silence");
-
-    assert_eq!(response.status, 502);
-}
-
-/// Bodies right up to the edge of what one envelope holds.
-#[tokio::test(flavor = "multi_thread")]
-#[ignore]
-async fn bodies_near_the_chunk_boundary_round_trip() {
-    let harness = Harness::start_with(unlimited).await;
-    for size in [0usize, 1, 1024, 16 * 1024, 24 * 1024] {
+    for size in sizes {
         Mock::given(method("GET"))
             .and(path(format!("/_matrix/client/size/{size}")))
             .respond_with(ResponseTemplate::new(200).set_body_string("y".repeat(size)))
@@ -264,7 +253,8 @@ async fn bodies_near_the_chunk_boundary_round_trip() {
     }
 
     let client = harness.client().await;
-    for size in [0usize, 1, 1024, 16 * 1024, 24 * 1024] {
+    for size in sizes {
+        let started = Instant::now();
         let response = client
             .request(
                 "GET",
@@ -272,14 +262,59 @@ async fn bodies_near_the_chunk_boundary_round_trip() {
                 None,
                 BTreeMap::new(),
                 Vec::new(),
-                TIMEOUT,
+                Duration::from_secs(120),
             )
             .await
             .unwrap_or_else(|error| panic!("a {size}-byte body: {error}"));
         assert_eq!(response.status, 200, "size {size}");
         assert_eq!(response.body.len(), size, "size {size}");
+        println!(
+            "{size:>9} bytes in {:>6} ms ({} chunks)",
+            started.elapsed().as_millis(),
+            size.div_ceil(24 * 1024)
+        );
     }
-    println!("bodies from 0 to 24 KiB all round-trip intact");
+}
+
+/// Several big answers at once, which is the case the in-flight cap is about: each one holds its
+/// chunks in memory until the last arrives, and they must not be assembled into each other.
+#[tokio::test(flavor = "multi_thread")]
+#[ignore]
+async fn several_large_responses_at_once_do_not_mix() {
+    let harness = Harness::start_with(unlimited).await;
+    for letter in ["a", "b", "c", "d"] {
+        Mock::given(method("GET"))
+            .and(path(format!("/_matrix/client/{letter}")))
+            .respond_with(ResponseTemplate::new(200).set_body_string(letter.repeat(300_000)))
+            .mount(&harness.homeserver)
+            .await;
+    }
+
+    let client = std::sync::Arc::new(harness.client().await);
+    let mut tasks = Vec::new();
+    for letter in ["a", "b", "c", "d"] {
+        let client = std::sync::Arc::clone(&client);
+        tasks.push(tokio::spawn(async move {
+            let response = client
+                .request(
+                    "GET",
+                    &format!("/_matrix/client/{letter}"),
+                    None,
+                    BTreeMap::new(),
+                    Vec::new(),
+                    Duration::from_secs(120),
+                )
+                .await
+                .expect("an answer");
+            // Every byte is the letter that was asked for: a chunk of somebody else's answer
+            // landing in this one would show up here and nowhere else.
+            assert_eq!(response.body.len(), 300_000);
+            assert!(response.body.iter().all(|byte| *byte == letter.as_bytes()[0]));
+        }));
+    }
+    for task in tasks {
+        task.await.expect("a task");
+    }
 }
 
 /// Steady traffic for a while, watching for drift: a tunnel that is fine for ten seconds and

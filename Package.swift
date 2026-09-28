@@ -32,14 +32,20 @@ let package = Package(
         .library(name: "IskraFeatures", targets: ["IskraFeatures"])
     ],
     dependencies: [
-        .package(url: "https://github.com/matrix-org/matrix-rust-components-swift.git", exact: "26.06.06")
+        .package(url: "https://github.com/matrix-org/matrix-rust-components-swift.git", exact: "26.06.06"),
+        // secp256k1, for the nostr tunnel and nothing else: NIP-44 needs an ECDH on that curve and
+        // a nostr event needs a BIP-340 signature over it, and CryptoKit has neither — it stops at
+        // the NIST curves. This is libsecp256k1 itself, the same C library bitcoin runs on, not a
+        // reimplementation. Matrix cryptography is untouched by it and stays the Rust SDK's.
+        .package(url: "https://github.com/21-DOT-DEV/swift-secp256k1.git", exact: "0.9.2")
     ],
     targets: [
         // Matrix, sessions, secrets, media. No SwiftUI here.
         .target(
             name: "IskraCore",
             dependencies: [
-                .product(name: "MatrixRustSDK", package: "matrix-rust-components-swift")
+                .product(name: "MatrixRustSDK", package: "matrix-rust-components-swift"),
+                .product(name: "secp256k1", package: "swift-secp256k1")
             ],
             resources: [.process("Resources")]
         ),
@@ -51,7 +57,13 @@ let package = Package(
             dependencies: ["IskraCore", "IskraDesign"],
             resources: [.process("Resources")]
         ),
-        .testTarget(name: "IskraCoreTests", dependencies: ["IskraCore"]),
+        // Carries the NIP-44 vector file published with the NIP, so the tunnel's encryption
+        // can be held to somebody else's arithmetic rather than to its own.
+        .testTarget(
+            name: "IskraCoreTests",
+            dependencies: ["IskraCore"],
+            resources: [.process("Resources")]
+        ),
         // Carries blobatar's own golden fixture, so the port can be held to it.
         .testTarget(
             name: "IskraDesignTests",
