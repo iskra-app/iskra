@@ -72,9 +72,23 @@ public struct PushRegistration: Sendable {
 
     private let client: Client
 
-    init(client: Client) {
+    /// Which account on this device the pushes are for, written into every one of them — see
+    /// `accountKey`. Nil only for a registration nobody on the device could be told apart from.
+    private let accountID: String?
+
+    init(client: Client, accountID: String? = nil) {
         self.client = client
+        self.accountID = accountID
     }
+
+    /// The key, beside `aps`, that names the account a push belongs to.
+    ///
+    /// A Matrix push says which room and which event, and nothing about *whose* — which was fine
+    /// while there was one account, and with two is a push the extension cannot decrypt without
+    /// guessing: two people on one phone can share a room. The value is the account's random session
+    /// ID and never the Matrix ID, so neither the gateway nor Apple learns who is signed in here.
+    /// The gateway sends `default_payload` along untouched, which is what carries it.
+    public static let accountKey = "iskra_account"
 
     /// Registers this device's APNs token with the homeserver.
     ///
@@ -98,7 +112,7 @@ public struct PushRegistration: Sendable {
                 kind: .http(data: HttpPusherData(url: url,
                                                  // No message content, ever. See the note above.
                                                  format: .eventIdOnly,
-                                                 defaultPayload: Self.defaultPayload())),
+                                                 defaultPayload: Self.defaultPayload(accountID: accountID))),
                 appDisplayName: "Iskra",
                 deviceDisplayName: deviceName,
                 profileTag: nil,
@@ -107,11 +121,13 @@ public struct PushRegistration: Sendable {
                 // extension's own words are localized on the device; this is the one sentence the
                 // server writes, and it may as well be in the reader's language.
                 lang: Locale.current.language.languageCode?.identifier ?? "en",
-                // False: replace any pusher already registered for this device rather than adding a
-                // second one. Appending is for a device that wants pushes from two gateways, which
-                // is not a thing this app does — and getting it wrong means every message arriving
-                // twice.
-                append: false
+                // True, and the reason is the second account. The server keys a pusher on the app ID,
+                // the pushkey *and the user*, so this account's own pusher is updated in place either
+                // way — what `false` adds is deleting the pushers other users have with the same
+                // app ID and pushkey. Two accounts on one phone on one homeserver share both, so
+                // `false` meant signing in the second one quietly switched off the first one's
+                // notifications.
+                append: true
             )
         } catch {
             Log.push.error("the server would not take our push token: \(Log.describe(error), privacy: .public)")
@@ -145,8 +161,8 @@ public struct PushRegistration: Sendable {
     /// language: afterwards the sentence lives on a homeserver and is handed to the gateway the
     /// same way for every push that follows. The `lang:` argument above tells the server the same
     /// thing, and this is that promise actually kept.
-    static func defaultPayload() -> String? {
-        let payload: [String: Any] = [
+    static func defaultPayload(accountID: String? = nil) -> String? {
+        var payload: [String: Any] = [
             "aps": [
                 "mutable-content": 1,
                 "alert": [
@@ -155,6 +171,9 @@ public struct PushRegistration: Sendable {
                 ]
             ]
         ]
+        if let accountID {
+            payload[accountKey] = accountID
+        }
 
         guard let data = try? JSONSerialization.data(withJSONObject: payload),
               let json = String(data: data, encoding: .utf8) else {

@@ -85,12 +85,52 @@ struct SettingsView: View {
     /// of coloured symbols is the point rather than noise.
     @Environment(\.accent) private var accent
 
+    /// The other accounts on the device, and the way to add one. See `AccountSwitcher`.
+    @Environment(\.accountSwitcher) private var switcher
+
+    /// Everybody but the account on screen, each a tap away, and "Add account" under them.
+    ///
+    /// Right under the profile, because it is the same question the profile answers — *who* the
+    /// app is being — and the one somebody with two accounts comes here to change most often.
+    private func accounts(_ switcher: AccountSwitcher) -> some View {
+        Section {
+            ForEach(switcher.others) { account in
+                Button {
+                    switcher.switchTo(account.sessionID)
+                } label: {
+                    AccountRow(account: account, unread: switcher.unread[account.sessionID] ?? 0)
+                }
+                .buttonStyle(.plain)
+            }
+            Button {
+                switcher.addAccount()
+            } label: {
+                Label(Strings.Accounts.add, systemImage: "person.crop.circle.badge.plus")
+            }
+        } header: {
+            if switcher.hasSeveral {
+                Text(Strings.Accounts.section)
+            }
+        }
+        .onAppear { switcher.refreshUnread() }
+    }
+
+    /// "Sign out", or — when there is more than one account it could mean — whose.
+    private var signOutTitle: LocalizedStringResource {
+        guard switcher?.hasSeveral == true else { return Strings.Account.signOut }
+        return Strings.Accounts.signOut(of: session.displayName)
+    }
+
     var body: some View {
         Form {
             Section {
                 profile
             }
             .profileHeaderRow()
+
+            if let switcher, switcher.isAvailable {
+                accounts(switcher)
+            }
 
             Section {
                 NavigationLink {
@@ -186,7 +226,7 @@ struct SettingsView: View {
                     // fails, the session is already half torn down and there is nothing here to go
                     // back to — the app goes to the sign-in screen either way.
                     HStack(spacing: Theme.Spacing.close) {
-                        Text(Strings.Account.signOut)
+                        Text(signOutTitle)
                         if isSigningOut {
                             Spacer()
                             ProgressView()

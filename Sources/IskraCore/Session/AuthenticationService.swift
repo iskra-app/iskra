@@ -1,5 +1,6 @@
 import Foundation
 import MatrixRustSDK
+import Synchronization
 
 /// How a given homeserver is willing to let this user sign in.
 ///
@@ -63,6 +64,16 @@ public enum AuthenticationError: Error {
     case bridgeUnavailable(Error)
     /// `startSignIn` was not called, or the flow was abandoned.
     case noSignInInProgress
+    /// The account just signed in to is already on this device.
+    ///
+    /// Refused rather than added twice: two copies of one person would be two devices of theirs on
+    /// one phone, each with its own keys to verify and its own pushes — every message arriving
+    /// twice, from a list that shows the same face two times over.
+    case alreadySignedIn
+    /// The server no longer accepts this account's tokens: somebody ended the session elsewhere,
+    /// or the account is gone. Only ever thrown while restoring, and the one failure that means the
+    /// account itself is over — rather than this launch of it.
+    case sessionEnded
     case invalidCallbackURL
     case sdk(Error)
 }
@@ -77,10 +88,26 @@ public actor AuthenticationService {
 
     /// The local listener the SDK is pointed at while the bridge switch is on. Owned here because
     /// it has to outlive `build()` by the whole life of the session: it *is* the connection.
-    private var tunnel: LocalHTTPProxy?
-    /// The nostr side, when there is one. Held separately from `tunnel` because the listener owns
-    /// it as an `HTTPUpstream` and cannot be asked the things only this knows — how many relays
-    /// are up, and what this device's key is.
+    ///
+    /// One per homeserver, and not one for the app. Adding an account signs in while another is
+    /// open, and a single listener meant the new sign-in stopped the proxy the open account was
+    /// talking through.
+    private var tunnels: [String: Tunnel] = [:]
+
+    /// One listener, what stands behind it, and the settings it was raised with — so that a
+    /// listener raised before the bridge's address changed is replaced rather than reused.
+    private struct Tunnel {
+        let proxy: LocalHTTPProxy
+        /// The nostr side, when there is one. Held beside the listener because the listener owns
+        /// it as an `HTTPUpstream` and cannot be asked the things only this knows — how many relays
+        /// are up, and what this device's key is.
+        let bridge: NostrTunnelUpstream?
+        let bridgeKey: Data?
+        let relays: [URL]
+    }
+
+    /// The bridge of the tunnel raised or reused last — the one the account on screen is using,
+    /// and so the one the settings screen reports on.
     private var bridgeUpstream: NostrTunnelUpstream?
     private var tunnelState: TunnelStatus = .off
 
@@ -90,18 +117,12 @@ public actor AuthenticationService {
     private var pendingOAuth: OAuthAuthorizationData?
     private var pendingSSO: SsoHandler?
 
-    /// What keeps the Keychain current after a token refresh. Built once, here, and handed to
-    /// every `ClientBuilder` this service makes — see `SessionDelegate` for what goes wrong
-    /// without it, which is an app that signs the user out overnight and cannot say why.
-    private let sessionDelegate: SessionDelegate
-
     public init(environment: AppEnvironment = .default,
                 sessionStore: SessionStore? = nil) {
         let store = sessionStore ?? SessionStore(environment: environment)
 
         self.environment = environment
         self.sessionStore = store
-        self.sessionDelegate = SessionDelegate(sessionStore: store)
     }
 
     // MARK: - Restoring
@@ -115,9 +136,47 @@ public actor AuthenticationService {
     /// being given. The rule was kept by everybody except the layer that defines it.
     ///
     /// The client is still built here and still owned by `UserSession`. It simply never surfaces.
-    public func restorePreviousSession() async throws -> UserSession? {
-        guard let client = try await restoreClient() else { return nil }
-        return await UserSession(client: client, authentication: self)
+    ///
+    /// - Parameter id: the account to open, or nil for the one that was on screen last.
+    public func restoreSession(id: String? = nil) async throws -> UserSession? {
+        guard let sessionID = try id ?? sessionStore.activeSessionID(),
+              let client = try await restoreClient(sessionID: sessionID) else { return nil }
+        return await UserSession(client: client, authentication: self, sessionID: sessionID)
+    }
+
+    // MARK: - Accounts
+
+    /// The accounts a live `UserSession` is holding open right now, told to us by the session
+    /// itself — the one thing about an account the Keychain cannot say.
+    private var openSessions: Set<String> = []
+
+    func sessionOpened(_ id: String) { openSessions.insert(id) }
+    func sessionClosed(_ id: String) { openSessions.remove(id) }
+
+    private func isOpen(_ account: AccountRecord) -> Bool {
+        openSessions.contains(account.sessionID)
+    }
+
+    /// Everyone signed in on this device, in the order they were added. Empty when the Keychain
+    /// cannot be read, which to a screen is the same as nobody.
+    public nonisolated func accounts() -> [AccountRecord] {
+        (try? sessionStore.accounts()) ?? []
+    }
+
+    /// The account the app opens on.
+    public nonisolated func activeAccountID() -> String? {
+        try? sessionStore.activeSessionID()
+    }
+
+    /// Makes another account the one the app opens on. The caller closes the old session and
+    /// restores; this only moves the mark.
+    public nonisolated func setActiveAccount(_ sessionID: String) {
+        try? sessionStore.setActive(sessionID)
+    }
+
+    /// What the open account looks like, kept for when it is not open. See `AccountRecord`.
+    public nonisolated func rememberProfile(sessionID: String, displayName: String?, avatarURL: String?) {
+        try? sessionStore.updateProfile(sessionID: sessionID, displayName: displayName, avatarURL: avatarURL)
     }
 
     /// The client itself, for the callers *inside* `IskraCore` that need one: the notification
@@ -133,8 +192,9 @@ public actor AuthenticationService {
     /// The same deadline covers the notification extension, which restores a session too and has
     /// thirty seconds to live before iOS takes the process away. See `PushDecoder`, whose budget
     /// used to start counting only after this had already returned.
-    func restoreClient() async throws -> Client? {
-        guard let stored = try sessionStore.loadSession() else { return nil }
+    func restoreClient(sessionID: String? = nil) async throws -> Client? {
+        let stored = try sessionID.map { try sessionStore.loadSession(id: $0) } ?? sessionStore.loadSession()
+        guard let stored else { return nil }
 
         let builder: ClientBuilder
         do {
@@ -190,7 +250,9 @@ public actor AuthenticationService {
             //
             // A dead token is the opposite, and is left to travel up as itself. It is the one honest
             // reason to ask somebody to sign in again.
-            throw Self.isNetworkFailure(error) ? AuthenticationError.networkUnavailable : error
+            if Self.isNetworkFailure(error) { throw AuthenticationError.networkUnavailable }
+            if Self.isDeadToken(error) { throw AuthenticationError.sessionEnded }
+            throw error
         }
 
         // Write the corrected address back, so a launch with the switch in either position finds a
@@ -231,6 +293,13 @@ public actor AuthenticationService {
         }
 
         return false
+    }
+
+    /// The server's own word that the tokens are no good: `M_UNKNOWN_TOKEN`.
+    private static func isDeadToken(_ error: Error) -> Bool {
+        guard case let .MatrixApi(kind, _, _, _) = error as? ClientError,
+              case .unknownToken = kind else { return false }
+        return true
     }
 
     /// Long enough for a slow network and a large store, short enough that a server which is never
@@ -453,8 +522,7 @@ public actor AuthenticationService {
     /// state: it reads the Keychain and joins paths, touching nothing that sign-in mutates. The
     /// screen that asks for it is built synchronously on a navigation push, and making it `await`
     /// would mean an actor hop for two directory names.
-    nonisolated func storageURLs() -> [StorageKind: URL] {
-        guard let id = (try? sessionStore.loadSession())?.sessionID else { return [:] }
+    nonisolated func storageURLs(sessionID id: String) -> [StorageKind: URL] {
 
         let urls: [StorageKind: URL?] = [
             .session: try? environment.sessionDataURL(forSessionID: id),
@@ -483,9 +551,12 @@ public actor AuthenticationService {
     /// Failures are ignored on purpose. This is housekeeping; a file that will not delete is not a
     /// reason to refuse to start.
     public func sweepOrphanedStores() {
-        let current = (try? sessionStore.loadSession())?.sessionID
-
-        guard let container = try? environment.containerURL() else { return }
+        // Every account's store stays, not just the one on screen. And a Keychain that will not
+        // answer is not a Keychain that said "nobody": that is the one case where deleting
+        // everything would be deleting everybody.
+        guard let accounts = try? sessionStore.accounts(),
+              let container = try? environment.containerURL() else { return }
+        let kept = Set(accounts.map(\.sessionID))
 
         for kind in ["Sessions", "Caches", "Search"] {
             let parent = container.appending(component: kind)
@@ -493,13 +564,15 @@ public actor AuthenticationService {
             let contents = (try? FileManager.default.contentsOfDirectory(at: parent,
                                                                          includingPropertiesForKeys: nil)) ?? []
 
-            for url in contents where url.lastPathComponent != current {
+            for url in contents where !kept.contains(url.lastPathComponent) {
                 try? FileManager.default.removeItem(at: url)
             }
         }
     }
 
     private func discardStore(forSessionID id: String) {
+        // Its keys too: building a client mints the store's passphrase before anybody has signed in.
+        try? sessionStore.discardSecrets(forSessionID: id)
         let urls = [try? environment.sessionDataURL(forSessionID: id),
                     try? environment.sessionCachesURL(forSessionID: id),
                     try? environment.searchIndexURL(forSessionID: id)]
@@ -511,7 +584,7 @@ public actor AuthenticationService {
 
     // MARK: - Signing out
 
-    public func signOut(client: Client) async {
+    public func signOut(client: Client, sessionID: String) async {
         // Ask the server to forget the device first; even if that fails we still
         // destroy everything locally, because a stale device on the server is a far
         // smaller problem than keys left on a device the user thinks is signed out.
@@ -527,8 +600,8 @@ public actor AuthenticationService {
             try await client.logout()
         }
 
-        try? sessionStore.clear(environment: environment)
-        LocalNames.forget()
+        try? sessionStore.remove(sessionID: sessionID, environment: environment)
+        LocalNames.forget(account: sessionID)
     }
 
     /// Long enough for a server that is merely slow, short enough that a server which is never
@@ -545,25 +618,48 @@ public actor AuthenticationService {
     /// Everything local still goes, and that is the part that matters: the keys, the tokens, and
     /// the encrypted store. A session the server has revoked must not leave the room keys sitting
     /// on the disk of a device that can no longer reach the account they belong to.
-    public func forgetSession() {
-        try? sessionStore.clear(environment: environment)
+    public func forgetSession(_ sessionID: String) {
+        try? sessionStore.remove(sessionID: sessionID, environment: environment)
         // The nicknames go too. They are one person's private notes about the people they talk
         // to, kept in the clear, and the next account on this device is somebody else.
-        LocalNames.forget()
+        LocalNames.forget(account: sessionID)
     }
 
     // MARK: - Private
 
     private func persist(client: Client, sessionID: String) async throws -> UserSession {
-        let stored = StoredSession(sessionID: sessionID, session: try client.session())
-        try sessionStore.save(stored)
+        let session = try client.session()
+
+        // The same person a second time. If it is the account that is open right now, this is
+        // "Add account" pointed at yourself: the new device is logged out again on the server, so it
+        // does not sit in their list of sessions as a stranger, and its store goes.
+        //
+        // If it is an account that is *not* open, the old record is the one that goes. That is a
+        // record that could not be opened — its session ended, its store would not decrypt — and
+        // signing in again is exactly how somebody mends it.
+        let existing = accounts().first { $0.userID == session.userId }
+        if let existing, !isOpen(existing) {
+            try? sessionStore.remove(sessionID: existing.sessionID, environment: environment)
+            LocalNames.forget(account: existing.sessionID)
+        } else if existing != nil {
+            _ = try? await withTimeout(Self.logoutTimeout) { try await client.logout() }
+            discardStore(forSessionID: sessionID)
+            pendingClient = nil
+            pendingSessionID = nil
+            pendingOAuth = nil
+            pendingSSO = nil
+            throw AuthenticationError.alreadySignedIn
+        }
+
+        let stored = StoredSession(sessionID: sessionID, session: session)
+        try sessionStore.register(stored)
 
         pendingClient = nil
         pendingSessionID = nil
         pendingOAuth = nil
         pendingSSO = nil
 
-        return await UserSession(client: client, authentication: self)
+        return await UserSession(client: client, authentication: self, sessionID: sessionID)
     }
 
     // MARK: - Bridge
@@ -600,7 +696,7 @@ public actor AuthenticationService {
     ///   in those words.
     private func route(to address: String) async throws -> String {
         guard TunnelSettings.isEnabled() else {
-            await stopTunnel()
+            await stopTunnels()
             return address
         }
         guard let upstreamURL = TunnelSettings.upstreamURL(from: address) else {
@@ -608,35 +704,56 @@ public actor AuthenticationService {
             return address
         }
 
-        await stopTunnel()
-
-        guard let bridgeKey = TunnelSettings.bridgeKey() else {
-            return await routeLocally(to: upstreamURL, fallingBackTo: address)
+        // The listener this homeserver already has, if one is up and was raised with the settings
+        // in force now: another account on the same server is talking through it, and a new one
+        // would pull it out from under them.
+        let key = upstreamURL.absoluteString
+        let bridgeKey = TunnelSettings.bridgeKey()
+        let relays = TunnelSettings.relays()
+        if let existing = tunnels[key] {
+            if existing.bridgeKey == bridgeKey, existing.relays == relays, let port = await existing.proxy.port {
+                bridgeUpstream = existing.bridge
+                if let bridge = existing.bridge {
+                    tunnelState = .bridged(relays: await bridge.connectedRelays())
+                } else {
+                    tunnelState = .routingLocally(port: port)
+                }
+                return "http://127.0.0.1:\(port)"
+            }
+            await stopTunnel(key)
         }
 
+        guard let bridgeKey else {
+            return await routeLocally(to: upstreamURL, key: key, relays: relays, fallingBackTo: address)
+        }
+
+        var raised: NostrTunnelUpstream?
         do {
             let bridge = try NostrTunnelUpstream(
                 bridgeKey: bridgeKey,
-                relays: TunnelSettings.relays(),
+                relays: relays,
                 keys: try TunnelIdentity(environment: environment).keypair(),
                 homeserver: upstreamURL)
+            raised = bridge
             // Before the listener, so that the websockets are already opening while the SDK is
             // still being built: the first request through a cold tunnel is otherwise the one that
             // waits for three TLS handshakes.
             await bridge.start()
 
+            let cell = PortCell()
             let proxy = LocalHTTPProxy(upstream: bridge,
-                                       onDiscovery: { TunnelSettings.listenerStandsIn(for: $0) })
+                                       onDiscovery: { TunnelSettings.listenerStandsIn(for: $0, port: cell.port) })
             let port = try await proxy.start()
+            cell.port = port
 
-            tunnel = proxy
+            tunnels[key] = Tunnel(proxy: proxy, bridge: bridge, bridgeKey: bridgeKey, relays: relays)
             bridgeUpstream = bridge
             tunnelState = .bridged(relays: await bridge.connectedRelays())
-            TunnelSettings.listenerStandsIn(for: upstreamURL)
+            TunnelSettings.listenerStandsIn(for: upstreamURL, port: port)
             Log.session.info("traffic is going through the bridge")
             return "http://127.0.0.1:\(port)"
         } catch {
-            await stopTunnel()
+            await raised?.stop()
             tunnelState = .failed(String(describing: error))
             throw AuthenticationError.bridgeUnavailable(error)
         }
@@ -648,33 +765,44 @@ public actor AuthenticationService {
     /// client side to it, and it stays because it is the honest answer to "switch on, no address":
     /// it also proves the listener itself is working, which is worth something when the next step
     /// is to point it at a bridge.
-    private func routeLocally(to upstream: URL, fallingBackTo address: String) async -> String {
+    private func routeLocally(to upstream: URL, key: String, relays: [URL],
+                              fallingBackTo address: String) async -> String {
         do {
+            let cell = PortCell()
             let proxy = LocalHTTPProxy(upstream: DirectUpstream(homeserver: upstream),
-                                       onDiscovery: { TunnelSettings.listenerStandsIn(for: $0) })
+                                       onDiscovery: { TunnelSettings.listenerStandsIn(for: $0, port: cell.port) })
             let port = try await proxy.start()
-            tunnel = proxy
+            cell.port = port
+            tunnels[key] = Tunnel(proxy: proxy, bridge: nil, bridgeKey: nil, relays: relays)
+            bridgeUpstream = nil
             tunnelState = .routingLocally(port: port)
             // Said before a single request goes through, and said again by `onDiscovery` once
             // `.well-known` names the real host. Nothing may write a loopback address into the
             // Keychain, and this is what it gets written down as instead.
-            TunnelSettings.listenerStandsIn(for: upstream)
+            TunnelSettings.listenerStandsIn(for: upstream, port: port)
             return "http://127.0.0.1:\(port)"
         } catch {
-            tunnel = nil
             tunnelState = .failed(String(describing: error))
             return address
         }
     }
 
-    private func stopTunnel() async {
-        if let tunnel {
-            await tunnel.stop()
+    /// One homeserver's listener, and its bridge with it.
+    private func stopTunnel(_ key: String) async {
+        guard let tunnel = tunnels.removeValue(forKey: key) else { return }
+        await tunnel.proxy.stop()
+        await tunnel.bridge?.stop()
+        if let port = await tunnel.proxy.port {
+            TunnelSettings.listenerStoppedStandingIn(port: port)
         }
-        if let bridgeUpstream {
-            await bridgeUpstream.stop()
+    }
+
+    private func stopTunnels() async {
+        for tunnel in tunnels.values {
+            await tunnel.proxy.stop()
+            await tunnel.bridge?.stop()
         }
-        tunnel = nil
+        tunnels = [:]
         bridgeUpstream = nil
         tunnelState = .off
         TunnelSettings.listenerStoppedStandingIn()
@@ -707,11 +835,12 @@ public actor AuthenticationService {
         // encrypted at rest with a passphrase that exists only in the Keychain.
         let store = SqliteStoreBuilder(dataPath: dataURL.path(percentEncoded: false),
                                        cachePath: cacheURL.path(percentEncoded: false))
-            .passphrase(passphrase: try sessionStore.storePassphrase())
+            .passphrase(passphrase: try sessionStore.storePassphrase(forSessionID: sessionID))
 
-        // Which session the tokens the SDK is about to refresh belong to. Said *before* the
-        // client exists, because the first refresh can happen as early as `restoreSession`.
-        sessionDelegate.willBuildClient(forSessionID: sessionID)
+        // Which session the tokens the SDK is about to refresh belong to — one delegate per client,
+        // fixed before the client exists, because the first refresh can happen as early as
+        // `restoreSession`. See `SessionDelegate`.
+        let sessionDelegate = SessionDelegate(sessionStore: sessionStore, sessionID: sessionID)
 
         return ClientBuilder()
             .sqliteStore(config: store)
@@ -761,7 +890,7 @@ public actor AuthenticationService {
             // The search index is a second copy of every message we can read, so it
             // gets the same treatment rather than being left in the clear.
             .withSearchIndexStore(path: searchURL.path(percentEncoded: false),
-                                  password: try sessionStore.searchIndexPassword())
+                                  password: try sessionStore.searchIndexPassword(forSessionID: sessionID))
             .slidingSyncVersionBuilder(versionBuilder: slidingSync)
     }
 
@@ -796,5 +925,15 @@ public actor AuthenticationService {
         #else
         String(core: CoreStrings.Device.generic)
         #endif
+    }
+}
+
+/// The port a listener was given, for the discovery callback that is written before it is known.
+private final class PortCell: Sendable {
+    private let value = Mutex<UInt16?>(nil)
+
+    var port: UInt16? {
+        get { value.withLock { $0 } }
+        set { value.withLock { $0 = newValue } }
     }
 }

@@ -287,6 +287,7 @@ public struct RoomListView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text(Strings.Account.settings))
+        .accountMenu()
     }
 
     /// A gear, top right, on iPad and Mac. A face reads as *you* — a fine thing to tap on a
@@ -301,6 +302,7 @@ public struct RoomListView: View {
                 .font(.body.weight(.medium))
         }
         .accessibilityLabel(Text(Strings.Account.settings))
+        .accountMenu()
     }
 
     // MARK: - Content

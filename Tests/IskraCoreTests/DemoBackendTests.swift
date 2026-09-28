@@ -98,7 +98,7 @@ struct DemoBackendTests {
         let client = try await DemoBackend.makeClient(data: root.appending(component: "data"),
                                                       cache: root.appending(component: "cache"),
                                                       search: root.appending(component: "search"))
-        let session = UserSession(client: client, authentication: AuthenticationService(), isDemo: true)
+        let session = UserSession(client: client, authentication: AuthenticationService(), sessionID: "demo", isDemo: true)
         try await session.start()
         defer { Task { await session.close() } }
         #expect(await eventually { session.roomList.rooms.count >= 8 })
@@ -173,7 +173,7 @@ struct DemoBackendTests {
         let client = try await DemoBackend.makeClient(data: root.appending(component: "data"),
                                                       cache: root.appending(component: "cache"),
                                                       search: root.appending(component: "search"))
-        let session = UserSession(client: client, authentication: AuthenticationService(), isDemo: true)
+        let session = UserSession(client: client, authentication: AuthenticationService(), sessionID: "demo", isDemo: true)
         try await session.start()
         defer { Task { await session.close() } }
 

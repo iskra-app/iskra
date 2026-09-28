@@ -1,5 +1,4 @@
 import Foundation
-import Synchronization
 import MatrixRustSDK
 
 /// Keeps the Keychain in step with the tokens the SDK is actually using.
@@ -28,44 +27,42 @@ import MatrixRustSDK
 /// Two things about the shape of it are load-bearing:
 ///
 /// - **It is not an actor and not `@MainActor`.** The SDK calls these methods *synchronously*,
-///   from a Rust thread, in the middle of a token refresh. There is nowhere to `await` from. The
-///   mutable state is one string behind a `Mutex`, and `SessionStore` is a `Sendable` value over
+///   from a Rust thread, in the middle of a token refresh. There is nowhere to `await` from. It
+///   holds no mutable state at all, and `SessionStore` is a `Sendable` value over
 ///   the Keychain, which is itself thread-safe.
 ///
 /// - **The session ID survives the round trip.** The SDK's `Session` knows about tokens and knows
 ///   nothing about us: it does not carry the random ID that names this session's three directories
 ///   on disk. Saving a `StoredSession` built from it alone would mint a new ID, and the app would
 ///   come back to an encrypted store it could no longer find — the same data loss as the bug this
-///   fixes, arrived at from the other side. So the ID is remembered here, told to us by
-///   `AuthenticationService` before it builds a client, and written back with every refresh.
+///   fixes, arrived at from the other side. So the ID is remembered here, handed over by
+///   `AuthenticationService` when it builds the client, and written back with every refresh.
+///
+/// **One delegate per client, and it knows its session from birth.** It used to be one delegate for
+/// the whole `AuthenticationService`, told which session it was serving just before each build —
+/// which was the same thing while there was one account, and is a token-swapping machine with two:
+/// the second account's build retargets the delegate, and the first account's next refresh is
+/// written into the second account's record.
 final class SessionDelegate: ClientSessionDelegate {
     private let sessionStore: SessionStore
 
-    /// Which session's directories these tokens belong to. Set before a client is built — on both
-    /// paths, signing in and restoring — and read again on every refresh for the life of the app.
-    private let sessionID = Mutex<String?>(nil)
+    /// Which session's record these tokens belong to, for the life of the client.
+    let sessionID: String
 
-    init(sessionStore: SessionStore) {
+    init(sessionStore: SessionStore, sessionID: String) {
         self.sessionStore = sessionStore
-    }
-
-    /// Told to us by `AuthenticationService`, which is the only thing that knows the ID: on a
-    /// fresh sign-in it has just minted one, and on a restore it has just read one out of the
-    /// Keychain.
-    func willBuildClient(forSessionID id: String) {
-        sessionID.withLock { $0 = id }
+        self.sessionID = sessionID
     }
 
     // MARK: - ClientSessionDelegate
 
     func retrieveSessionFromKeychain(userId: String) throws -> Session {
-        guard let stored = try sessionStore.loadSession() else {
+        guard let stored = try sessionStore.loadSession(id: sessionID) else {
             throw SessionDelegateError.nobodySignedIn
         }
 
-        // The SDK names the user it wants. It is always the one we hold — there is only ever one
-        // session on this device — but agreeing to hand back somebody else's tokens because we
-        // were not asked to check is not a thing to leave lying around in a file about tokens.
+        // The SDK names the user it wants, and with several accounts on the device "somebody's
+        // tokens" is no longer necessarily the right somebody's. Checked, always.
         guard stored.userID == userId else {
             throw SessionDelegateError.wrongUser
         }
@@ -74,18 +71,8 @@ final class SessionDelegate: ClientSessionDelegate {
     }
 
     func saveSessionInKeychain(session: Session) {
-        // The ID we were told, or — for a client somebody built without telling us — the one
-        // already on disk. If there is neither, this is a refresh for a session we have no record
-        // of, and inventing an ID for it would create a second set of directories for a store
-        // that already exists somewhere else.
-        let existing = (try? sessionStore.loadSession())
-        guard let id = sessionID.withLock({ $0 }) ?? existing?.sessionID else {
-            Log.session.error("a token was refreshed for a session with no ID; not saving it")
-            return
-        }
-
         do {
-            try sessionStore.save(StoredSession(sessionID: id, session: session))
+            try sessionStore.save(StoredSession(sessionID: sessionID, session: session))
         } catch {
             // Nothing to do about it here, and nothing the user could do either — but a refresh
             // that failed to land is precisely the thing that will look, tomorrow, like the app

@@ -79,4 +79,94 @@ struct ChatDirectoryTests {
         #expect(drained.map(\.text) == ["привет"])
         #expect(drained.first?.attachments == [])
     }
+
+    // MARK: - More than one account
+
+    @Test("each account replaces only its own chats")
+    func accountsKeepTheirOwnChats() {
+        let defaults = freshDefaults("accounts")
+        ChatDirectory.writeDirectory([ChatDirectoryEntry(id: "!a", name: "Кухня", accountID: "one")],
+                                     account: "one", to: defaults)
+        ChatDirectory.writeDirectory([ChatDirectoryEntry(id: "!a", name: "Кухня", accountID: "two")],
+                                     account: "two", to: defaults)
+        ChatDirectory.writeDirectory([ChatDirectoryEntry(id: "!b", name: "Работа", accountID: "one")],
+                                     account: "one", to: defaults)
+
+        let all = ChatDirectory.directory(from: defaults)
+        #expect(all.filter { $0.accountID == "one" }.map(\.id) == ["!b"])
+        #expect(all.filter { $0.accountID == "two" }.map(\.id) == ["!a"])
+    }
+
+    @Test("a signed-out account leaves the list and the outbox")
+    func forgettingAnAccount() {
+        let defaults = freshDefaults("forget-account")
+        ChatDirectory.writeDirectory([ChatDirectoryEntry(id: "!a", name: "Кухня", accountID: "one")],
+                                     account: "one", to: defaults)
+        ChatDirectory.enqueue(.init(roomID: "!a", text: "привет", accountID: "one"), in: defaults)
+
+        ChatDirectory.forget(account: "one", in: defaults)
+
+        #expect(ChatDirectory.directory(from: defaults).isEmpty)
+        #expect(ChatDirectory.drainOutbox(from: defaults).isEmpty)
+    }
+
+    /// Nothing goes out from the wrong person: an account drains what it sends, and what somebody
+    /// shared into another account's chat waits for that account.
+    @Test("an account sends only its own messages, and the rest wait")
+    func outboxIsDrainedPerAccount() {
+        let defaults = freshDefaults("outbox-accounts")
+        ChatDirectory.enqueue(.init(roomID: "!a", text: "one's", accountID: "one"), in: defaults)
+        ChatDirectory.enqueue(.init(roomID: "!b", text: "two's", accountID: "two"), in: defaults)
+        ChatDirectory.enqueue(.init(roomID: "!c", text: "from before accounts"), in: defaults)
+
+        #expect(ChatDirectory.accountsWaitingToSend(in: defaults) == ["one", "two"])
+
+        let mine = ChatDirectory.drainOutbox(forAccount: "one", from: defaults)
+        #expect(mine.map(\.text) == ["one's", "from before accounts"])
+        #expect(ChatDirectory.accountsWaitingToSend(in: defaults) == ["two"])
+
+        #expect(ChatDirectory.drainOutbox(forAccount: "two", from: defaults).map(\.text) == ["two's"])
+        #expect(ChatDirectory.drainOutbox(from: defaults).isEmpty)
+    }
+
+    @Test("an open request says whose chat it is")
+    func openRequestCarriesTheAccount() {
+        let defaults = freshDefaults("open-account")
+        ChatDirectory.requestOpen(roomID: "!room", accountID: "two", in: defaults)
+
+        let request = ChatDirectory.takePendingOpenRequest(from: defaults)
+        #expect(request == .init(roomID: "!room", accountID: "two"))
+        #expect(ChatDirectory.takePendingOpenRequest(from: defaults) == nil)
+    }
+}
+
+/// The number on the icon, with more than one account adding to it.
+@Suite
+struct UnreadCountsTests {
+    private func freshDefaults(_ name: String) -> UserDefaults? {
+        let suite = "UnreadCountsTests.\(name)"
+        UserDefaults().removePersistentDomain(forName: suite)
+        return UserDefaults(suiteName: suite)
+    }
+
+    /// A push for one account carries that account's count, and used to be written straight onto
+    /// the icon — taking it down to two while the other account had forty waiting.
+    @Test("the icon is every account added together")
+    func theIconIsTheSum() {
+        let defaults = freshDefaults("sum")
+        UnreadCounts.set(40, forAccount: "one", in: defaults)
+        let total = UnreadCounts.set(2, forAccount: "two", in: defaults)
+
+        #expect(total == 42)
+        #expect(UnreadCounts.count(forAccount: "one", in: defaults) == 40)
+    }
+
+    @Test("a signed-out account's count comes off the icon")
+    func forgettingAnAccount() {
+        let defaults = freshDefaults("forget")
+        UnreadCounts.set(40, forAccount: "one", in: defaults)
+        UnreadCounts.set(2, forAccount: "two", in: defaults)
+
+        #expect(UnreadCounts.forget(account: "one", in: defaults) == 2)
+    }
 }

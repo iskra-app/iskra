@@ -34,13 +34,27 @@ public enum AppBadge {
     ///
     /// Failures are logged and nothing else. A badge that would not set is a wrong number on an
     /// icon; an alert about a badge would be a worse thing than the wrong number.
-    public static func update(for rooms: [RoomSummary]) {
-        set(count(for: rooms))
+    ///
+    /// - Parameter account: whose rooms these are. The count is written down as that account's, and
+    ///   the icon shows every account's added together — see `UnreadCounts`. Nil (the demo) shows
+    ///   this list's count alone and writes nothing down.
+    public static func update(for rooms: [RoomSummary], account: String? = nil) {
+        guard let account else {
+            set(count(for: rooms))
+            return
+        }
+        set(UnreadCounts.set(count(for: rooms), forAccount: account))
+    }
+
+    /// One account signed out: its number comes off the icon, everybody else's stays.
+    public static func forget(account: String) {
+        set(UnreadCounts.forget(account: account))
     }
 
     /// Takes the number off, for a sign-out. Left alone it would keep somebody else's unread count
     /// on the icon of an app nobody is signed into.
     public static func clear() {
+        UnreadCounts.forgetAll()
         set(0)
     }
 

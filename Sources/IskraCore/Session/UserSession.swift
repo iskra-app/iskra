@@ -46,8 +46,19 @@ public final class UserSession {
     /// shows a name immediately is better than one that shows a blank while a request
     /// is in flight. `start()` then replaces it with the real display name if there is
     /// one.
-    public private(set) var displayName: String
-    public private(set) var avatarURL: String?
+    public private(set) var displayName: String {
+        didSet { rememberProfile() }
+    }
+    public private(set) var avatarURL: String? {
+        didSet { rememberProfile() }
+    }
+
+    /// Written down for the account switcher, which has to show this account's face while it is
+    /// not open and there is no client to ask. Never for the demo, which is in no list.
+    private func rememberProfile() {
+        guard !isDemo else { return }
+        authentication.rememberProfile(sessionID: sessionID, displayName: displayName, avatarURL: avatarURL)
+    }
 
     /// The name of *this* device, as the rest of the account sees it — and the only true
     /// thing the encryption screen can say about sessions, since the others cannot be
@@ -100,16 +111,23 @@ public final class UserSession {
         return URL(string: known) ?? URL(string: "https://matrix.org")!
     }
 
-    public init(client: Client, authentication: AuthenticationService, isDemo: Bool = false,
-                storageLocations: [StorageKind: URL]? = nil) {
+    /// Which of the accounts on this device this is — the random ID that names its record in the
+    /// Keychain and its three directories on disk. See `SessionStore`.
+    public let sessionID: String
+
+    public init(client: Client, authentication: AuthenticationService, sessionID: String,
+                isDemo: Bool = false, storageLocations: [StorageKind: URL]? = nil) {
         self.client = client
         self.authentication = authentication
+        self.sessionID = sessionID
         self.isDemo = isDemo
         self.storageLocations = storageLocations
         let userID = (try? client.userId()) ?? ""
         self.userID = userID
         self.deviceID = try? client.deviceId()
         self.displayName = Self.localPart(of: userID)
+        // This account's nicknames from now on, not whoever was open before it.
+        LocalNames.use(account: sessionID)
         self.roomList = RoomListStore(client: client)
         self.search = SearchStore(client: client)
         self.blocked = BlockStore(client: client)
@@ -199,6 +217,10 @@ public final class UserSession {
 
     /// Starts the sync loop. Everything else follows from this.
     public func start() async throws {
+        // Said first, so that "Add account" signed in to this same person is refused while this
+        // session is holding the store it would otherwise replace. See `AuthenticationService.persist`.
+        if !isDemo { await authentication.sessionOpened(sessionID) }
+
         // Before the sync loop, not after: the token can be refused by the very first request the
         // loop makes, and a delegate registered afterwards would miss it.
         authErrorHandle = try? client.setDelegate(delegate: AuthErrors { [weak self] in
@@ -257,7 +279,7 @@ public final class UserSession {
         //
         // Never for the demo. The session in the Keychain is somebody's real one.
         guard !isDemo else { return }
-        await authentication.forgetSession()
+        await authentication.forgetSession(sessionID)
     }
 
     /// The user's own name and picture. Failing to fetch either is not an error worth
@@ -473,7 +495,7 @@ public final class UserSession {
 
     /// Telling the homeserver where to send a push. See `PushRegistration`.
     public func pushes() -> PushRegistration {
-        PushRegistration(client: client)
+        PushRegistration(client: client, accountID: sessionID)
     }
 
     /// What the account notifies about by default, for the screen that lets it be changed.
@@ -498,7 +520,7 @@ public final class UserSession {
     /// sync service down and bringing it back up, and the room list is the only thing that holds
     /// one.
     public func storage() -> StorageStore {
-        StorageStore(client: client, roomList: roomList, locations: storageLocations ?? authentication.storageURLs())
+        StorageStore(client: client, roomList: roomList, locations: storageLocations ?? authentication.storageURLs(sessionID: sessionID))
     }
 
     // MARK: - Changing who you are
@@ -573,7 +595,7 @@ public final class UserSession {
         // The demo's store is thrown away when the next demo starts, and the Keychain it would
         // otherwise empty belongs to the real account. See `DemoBackend`.
         guard !isDemo else { return }
-        await authentication.signOut(client: client)
+        await authentication.signOut(client: client, sessionID: sessionID)
     }
 
     /// Stops the session without signing out of anything — for switching between the demo and the
@@ -602,6 +624,7 @@ public final class UserSession {
     /// out — because the store on the disk goes away in both, and a room left open in the detail
     /// column does not know that.
     private func stopEverything() async {
+        if !isDemo { await authentication.sessionClosed(sessionID) }
         verification.stop()
         recovery.stop()
 

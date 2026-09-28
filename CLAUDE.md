@@ -333,6 +333,29 @@ empty: a switch only the app can see is a switch the lock screen silently disobe
 is an empty circle with nothing in any log. `BetaFeatures` itself moved to `IskraCore` for the same
 reason. Everything else in it stays in `.standard`, where a preference of the app's belongs.
 
+### More than one account
+
+Several accounts can be signed in on one device; one is on screen and syncing, the others are
+*closed* (not signed out) and a tap away — `AccountSwitcher`, in settings and on a long press of the
+avatar. Switching is `UserSession.close()` + `setActiveAccount` + the root's ordinary `restore()`.
+
+- **The Keychain is per account.** `accounts` is the index (who, in what order, who is on screen);
+  every account has `session.<id>`, `store-passphrase.<id>` and `search-index-key.<id>`, where `<id>`
+  is the random session ID that also names its directories. **Never `removeAll()` for one account**
+  — that is the first account's sign-out taking the second one's store key with it. A device from
+  before this layout is moved across once by `SessionStore.migrateLegacyIfNeeded`, *keeping* its
+  session ID, so nothing is re-downloaded.
+- **One `SessionDelegate` per client**, fixed to its session ID at build time. A shared one,
+  retargeted before each build, writes one account's refreshed tokens into another's record.
+- **A push says whose it is** — `iskra_account` in `default_payload`, the session ID, never the
+  Matrix ID — and pushers are registered with **`append: true`**, because `false` deletes other
+  users' pushers with the same pushkey. See `docs/PUSH-GATEWAY.md`.
+- **Per-account state in the App Group is keyed by account**: `LocalNames` (`use(account:)`), the
+  chat directory and outbox (`accountID` on every entry), the badge (`UnreadCounts`, the icon is the
+  sum). Appearance is the *device's*: `AppSettings.forget()` runs only when the last account leaves.
+- Adding the account that is open is refused (`alreadySignedIn`); signing in again to one that is
+  not open replaces its record — that is how a broken account is mended.
+
 ## Invariants that are easy to break by accident
 
 **Localization.** No user-facing string appears in a view. Every one is named in a `Strings.swift`

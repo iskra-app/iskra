@@ -76,9 +76,15 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
             return
         }
 
+        // Whose push it is, written into the payload when the pusher was registered — see
+        // `PushRegistration.accountKey`. Absent from a pusher older than that, and then the decoder
+        // works it out.
+        let accountID = payload[PushRegistration.accountKey] as? String
+
         Task {
-            let outcome = await PushDecoder().notification(roomID: roomID, eventID: eventID)
-            deliver(outcome, roomID: roomID)
+            let decoder = PushDecoder()
+            let outcome = await decoder.notification(roomID: roomID, eventID: eventID, accountID: accountID)
+            deliver(outcome, roomID: roomID, accountID: accountID, accountLabel: decoder.accountLabel(for: accountID))
         }
     }
 
@@ -95,13 +101,15 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
 
     // MARK: - Private
 
-    private func deliver(_ outcome: PushOutcome, roomID: String) {
+    private func deliver(_ outcome: PushOutcome, roomID: String, accountID: String?, accountLabel: String?) {
         guard let delivery = pending.withLock({ $0.take() }) else { return }
 
         switch outcome {
         case let .show(notification):
             delivery.handler(content(for: notification,
                                      roomID: roomID,
+                                     accountID: accountID,
+                                     accountLabel: accountLabel,
                                      // Read off the server's own notification, which is the only
                                      // place this number exists — and read here, because the line
                                      // above has already taken `pending` and there is nothing left
@@ -130,11 +138,18 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
 
     private func content(for notification: PushNotification,
                          roomID: String,
+                         accountID: String?,
+                         accountLabel: String?,
                          unread: Int?) -> UNNotificationContent {
         let content = UNMutableNotificationContent()
         content.title = notification.title
-        if let sender = notification.sender {
-            content.subtitle = sender
+        // With more than one account on the phone, which of them it came for — the same message
+        // means something different to the work account and the personal one.
+        switch (notification.sender, accountLabel) {
+        case let (sender?, label?): content.subtitle = "\(sender) · \(label)"
+        case let (sender?, nil): content.subtitle = sender
+        case let (nil, label?): content.subtitle = label
+        case (nil, nil): break
         }
         content.body = notification.body
         content.sound = notification.isNoisy ? .default : nil
@@ -144,7 +159,13 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
         // this process works out, which it could not: it holds one event and has no idea what else
         // is waiting. `nil` means the server offered no number, and then the badge is left exactly
         // as it was rather than cleared. The app recomputes it from the room list when it opens.
-        if let unread { content.badge = NSNumber(value: unread) }
+        //
+        // It is *this account's* count, though, and the icon is everybody's: so it is written down
+        // as this account's and the icon shows all of them added up. See `UnreadCounts`.
+        if let unread {
+            let total = accountID.map { UnreadCounts.set(unread, forAccount: $0) } ?? unread
+            content.badge = NSNumber(value: total)
+        }
 
         // Collapses every push from one conversation into one entry, so a room that gets
         // twenty messages is one line on the lock screen and not twenty.
@@ -153,7 +174,11 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
         // What the app opens to when the notification is tapped. The room, and nothing else —
         // the app already has the conversation. Read by `PushDelegate`, which hands it to
         // `PushRouter`.
-        content.userInfo = ["room_id": roomID]
+        //
+        // And whose room: tapping a notification for the account that is not open opens that one.
+        var info: [String: Any] = ["room_id": roomID]
+        if let accountID { info[PushRegistration.accountKey] = accountID }
+        content.userInfo = info
 
         // And last, the thing that makes it look like a message rather than an app notice: the
         // sender's face, their name in place of ours, its own line in Notification Summary. This

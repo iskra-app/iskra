@@ -14,29 +14,56 @@ import IskraCore
 // IskraFeatures package), so translating them is a follow-up rather than a `Strings` lookup.
 
 /// A chat, as an intent parameter.
+///
+/// Its ID is the room *and whose it is* — `account|room` — because two accounts on one phone can be
+/// in the same room, and "send this to Кухня" has to know which of them is saying it. A shortcut
+/// saved before there could be two holds the bare room ID, and still resolves.
 struct ChatEntity: AppEntity, Identifiable {
     let id: String
     let name: String
+    let roomID: String
+    let accountID: String?
+    /// Shown under the name only when the same device has more than one account to tell apart.
+    let accountName: String?
+
+    init(_ entry: ChatDirectoryEntry, showsAccount: Bool) {
+        self.id = entry.accountID.map { "\($0)|\(entry.id)" } ?? entry.id
+        self.name = entry.name
+        self.roomID = entry.id
+        self.accountID = entry.accountID
+        self.accountName = showsAccount ? entry.accountName : nil
+    }
 
     static var typeDisplayRepresentation: TypeDisplayRepresentation { "Chat" }
     static let defaultQuery = ChatQuery()
 
     var displayRepresentation: DisplayRepresentation {
-        DisplayRepresentation(title: "\(name)")
+        if let accountName {
+            return DisplayRepresentation(title: "\(name)", subtitle: "\(accountName)")
+        }
+        return DisplayRepresentation(title: "\(name)")
     }
 }
 
 /// Resolves chats from the App-Group directory the app maintains — no client, no network.
 struct ChatQuery: EntityQuery {
-    private func entries() -> [ChatDirectoryEntry] { ChatDirectory.directory() }
+    private func entities() -> [ChatEntity] {
+        let entries = ChatDirectory.directory()
+        let showsAccount = Set(entries.compactMap(\.accountID)).count > 1
+        return entries.map { ChatEntity($0, showsAccount: showsAccount) }
+    }
 
     func entities(for identifiers: [ChatEntity.ID]) async throws -> [ChatEntity] {
-        let wanted = Set(identifiers)
-        return entries().filter { wanted.contains($0.id) }.map { ChatEntity(id: $0.id, name: $0.name) }
+        let all = entities()
+        // The composite ID first; a bare room ID — from a shortcut older than accounts — then
+        // takes the first account that has that room.
+        return identifiers.compactMap { id in
+            all.first { $0.id == id } ?? all.first { $0.roomID == id }
+        }
     }
 
     func suggestedEntities() async throws -> [ChatEntity] {
-        entries().map { ChatEntity(id: $0.id, name: $0.name) }
+        entities()
     }
 }
 
@@ -48,7 +75,7 @@ struct OpenChatIntent: AppIntent {
     @Parameter(title: "Chat") var chat: ChatEntity
 
     func perform() async throws -> some IntentResult {
-        ChatDirectory.requestOpen(roomID: chat.id)
+        ChatDirectory.requestOpen(roomID: chat.roomID, accountID: chat.accountID)
         return .result()
     }
 }
@@ -63,9 +90,9 @@ struct SendMessageIntent: AppIntent {
     @Parameter(title: "Message") var message: String
 
     func perform() async throws -> some IntentResult {
-        ChatDirectory.enqueue(.init(roomID: chat.id, text: message))
+        ChatDirectory.enqueue(.init(roomID: chat.roomID, text: message, accountID: chat.accountID))
         // Open the chat too, so the sender can see it land.
-        ChatDirectory.requestOpen(roomID: chat.id)
+        ChatDirectory.requestOpen(roomID: chat.roomID, accountID: chat.accountID)
         return .result()
     }
 }

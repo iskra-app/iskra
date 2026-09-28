@@ -23,10 +23,10 @@ struct LocalNamesTests {
     @Test("a name given is a name given back")
     func roundTrips() {
         let defaults = freshDefaults("roundTrip")
-        LocalNames.set("Мама", for: "!a", in: defaults)
+        LocalNames.set("Мама", for: "!a", account: "test", in: defaults)
 
-        #expect(LocalNames.name(for: "!a", in: defaults) == "Мама")
-        #expect(LocalNames.name(for: "!b", in: defaults) == nil)
+        #expect(LocalNames.name(for: "!a", account: "test", in: defaults) == "Мама")
+        #expect(LocalNames.name(for: "!b", account: "test", in: defaults) == nil)
     }
 
     /// Emptying the field is how the real name comes back — so a blank must not be stored as a
@@ -34,14 +34,14 @@ struct LocalNamesTests {
     @Test("a blank name is an absence, not a name")
     func blankIsAbsence() {
         let defaults = freshDefaults("blank")
-        LocalNames.set("Мама", for: "!a", in: defaults)
+        LocalNames.set("Мама", for: "!a", account: "test", in: defaults)
 
-        LocalNames.set("   ", for: "!a", in: defaults)
-        #expect(LocalNames.name(for: "!a", in: defaults) == nil)
+        LocalNames.set("   ", for: "!a", account: "test", in: defaults)
+        #expect(LocalNames.name(for: "!a", account: "test", in: defaults) == nil)
 
-        LocalNames.set("Мама", for: "!a", in: defaults)
-        LocalNames.set(nil, for: "!a", in: defaults)
-        #expect(LocalNames.name(for: "!a", in: defaults) == nil)
+        LocalNames.set("Мама", for: "!a", account: "test", in: defaults)
+        LocalNames.set(nil, for: "!a", account: "test", in: defaults)
+        #expect(LocalNames.name(for: "!a", account: "test", in: defaults) == nil)
     }
 
     /// A stray space at the end of what was typed is not a different name, and storing one would
@@ -49,8 +49,8 @@ struct LocalNamesTests {
     @Test("the surrounding whitespace is not part of the name")
     func trims() {
         let defaults = freshDefaults("trim")
-        LocalNames.set("  Аня ", for: "!a", in: defaults)
-        #expect(LocalNames.name(for: "!a", in: defaults) == "Аня")
+        LocalNames.set("  Аня ", for: "!a", account: "test", in: defaults)
+        #expect(LocalNames.name(for: "!a", account: "test", in: defaults) == "Аня")
     }
 
     /// The rebuild of the chat list hangs off this notification, so an edit that changes nothing
@@ -71,12 +71,12 @@ struct LocalNamesTests {
         }
         defer { NotificationCenter.default.removeObserver(token) }
 
-        LocalNames.set("Мама", for: roomID, in: defaults)
-        LocalNames.set("Мама", for: roomID, in: defaults)
-        LocalNames.set("Мама ", for: roomID, in: defaults)
+        LocalNames.set("Мама", for: roomID, account: "test", in: defaults)
+        LocalNames.set("Мама", for: roomID, account: "test", in: defaults)
+        LocalNames.set("Мама ", for: roomID, account: "test", in: defaults)
         #expect(announcements.value == 1)
 
-        LocalNames.set(nil, for: roomID, in: defaults)
+        LocalNames.set(nil, for: roomID, account: "test", in: defaults)
         #expect(announcements.value == 2)
     }
 
@@ -98,13 +98,13 @@ struct LocalNamesTests {
     @Test("signing out forgets every one of them")
     func forgetsEverything() {
         let defaults = freshDefaults("forget")
-        LocalNames.set("Мама", for: "!a", in: defaults)
-        LocalNames.set("Аня", for: "!b", in: defaults)
+        LocalNames.set("Мама", for: "!a", account: "test", in: defaults)
+        LocalNames.set("Аня", for: "!b", account: "test", in: defaults)
 
-        LocalNames.forget(in: defaults)
+        LocalNames.forget(account: "test", in: defaults)
 
-        #expect(LocalNames.name(for: "!a", in: defaults) == nil)
-        #expect(LocalNames.name(for: "!b", in: defaults) == nil)
+        #expect(LocalNames.name(for: "!a", account: "test", in: defaults) == nil)
+        #expect(LocalNames.name(for: "!b", account: "test", in: defaults) == nil)
     }
 
     /// The lock screen is the one place a nickname is most wanted and most easily forgotten: the

@@ -76,18 +76,29 @@ public enum TunnelSettings {
     /// A process-wide register rather than a value passed around, because of who needs to read it:
     /// `SessionDelegate.saveSessionInKeychain` is called *synchronously from a Rust thread* in the
     /// middle of a token refresh, has no actor to await and no route back to whoever built the
-    /// client. There is only ever one listener in a process, so one register is the honest shape.
-    private static let standIn = Mutex<String?>(nil)
+    /// client.
+    ///
+    /// Keyed by the listener's port, because there can be more than one listener: every signed-in
+    /// account on its own homeserver has its own, and signing another one in while the first is
+    /// open raises a third. One register for all of them wrote the last homeserver down for every
+    /// account — the loopback address of one account's session swapped for another account's
+    /// server. The entry under no port is what a caller that does not know its port said.
+    private static let standIn = Mutex<[String: String]>([:])
+
+    private static func slot(_ port: UInt16?) -> String { port.map(String.init) ?? "*" }
 
     /// Called when the listener comes up, and again when `.well-known` reveals where the homeserver
     /// really lives — `matrix.org` delegates to `matrix-client.matrix.org`, and it is the second
     /// address that every request after discovery belongs to.
-    public static func listenerStandsIn(for homeserver: URL) {
-        standIn.withLock { $0 = homeserver.absoluteString }
+    public static func listenerStandsIn(for homeserver: URL, port: UInt16? = nil) {
+        standIn.withLock { $0[slot(port)] = homeserver.absoluteString }
     }
 
-    public static func listenerStoppedStandingIn() {
-        standIn.withLock { $0 = nil }
+    /// One listener gone, or — given no port — all of them.
+    public static func listenerStoppedStandingIn(port: UInt16? = nil) {
+        standIn.withLock { table in
+            if let port { table[slot(port)] = nil } else { table.removeAll() }
+        }
     }
 
     /// Whether this address is one of our own listeners rather than a homeserver.
@@ -105,7 +116,8 @@ public enum TunnelSettings {
     /// whether or not the switch is on the next time.
     public static func persistableHomeserver(_ url: String) -> String {
         guard isLoopback(url) else { return url }
-        return standIn.withLock { $0 } ?? url
+        let port = URL(string: url)?.port.flatMap { UInt16(exactly: $0) }
+        return standIn.withLock { $0[slot(port)] ?? $0[slot(nil)] } ?? url
     }
 }
 

@@ -1046,3 +1046,14 @@
 
 "onboarding.faces.picturedName" = "Chloe";
 "onboarding.faces.unpicturedName" = "Tim";
+
+/* More than one account */
+"accounts.section" = "Accounts";
+"accounts.add" = "Add account";
+"accounts.cancel" = "Cancel";
+"accounts.switchHint" = "Switches the app to this account";
+"accounts.current" = "Open now";
+"accounts.unread" = "Unread: %lld";
+"accounts.signOutOf" = "Sign out of %@";
+"session.endedOther.message" = "The server stopped accepting the session for %@ — most likely it was ended from another device. Your other accounts are still here, and you can add this one again.";
+"signIn.problem.alreadySignedIn" = "This account is already on this device — you can switch to it in Settings.";

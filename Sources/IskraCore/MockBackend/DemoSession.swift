@@ -84,7 +84,7 @@ extension AuthenticationService {
         let client = try await withTimeout(.seconds(20)) {
             try await DemoBackend.makeClient(data: data, cache: cache, search: search)
         }
-        return await UserSession(client: client, authentication: self, isDemo: true,
+        return await UserSession(client: client, authentication: self, sessionID: DemoBackend.sessionID, isDemo: true,
                                  storageLocations: [.session: data, .cache: cache, .search: search])
     }
 }

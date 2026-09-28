@@ -1040,3 +1040,14 @@
 
 "onboarding.faces.picturedName" = "Ксения";
 "onboarding.faces.unpicturedName" = "Тимур";
+
+/* Несколько аккаунтов */
+"accounts.section" = "Аккаунты";
+"accounts.add" = "Добавить аккаунт";
+"accounts.cancel" = "Отмена";
+"accounts.switchHint" = "Переключит приложение на этот аккаунт";
+"accounts.current" = "Открыт сейчас";
+"accounts.unread" = "Непрочитанных: %lld";
+"accounts.signOutOf" = "Выйти из %@";
+"session.endedOther.message" = "Сервер перестал принимать сеанс %@ — скорее всего, его завершили с другого устройства. Остальные аккаунты на месте, а этот можно добавить заново.";
+"signIn.problem.alreadySignedIn" = "Этот аккаунт уже есть на устройстве — переключиться на него можно в настройках.";

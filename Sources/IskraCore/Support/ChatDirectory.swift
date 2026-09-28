@@ -8,9 +8,20 @@ public struct ChatDirectoryEntry: Codable, Sendable, Equatable, Identifiable {
     public let id: String
     public let name: String
 
-    public init(id: String, name: String) {
+    /// Whose chat this is, when there is more than one account on the device — the account's
+    /// session ID. Nil in a directory written before there could be two, which then belongs to the
+    /// only account there was.
+    public let accountID: String?
+
+    /// The name of that account, for the share sheet to head a section with. Written down here
+    /// because the share extension has no session to ask.
+    public let accountName: String?
+
+    public init(id: String, name: String, accountID: String? = nil, accountName: String? = nil) {
         self.id = id
         self.name = name
+        self.accountID = accountID
+        self.accountName = accountName
     }
 }
 
@@ -22,6 +33,7 @@ public struct ChatDirectoryEntry: Codable, Sendable, Equatable, Identifiable {
 public enum ChatDirectory {
     private static let directoryKey = "appIntents.chatDirectory"
     private static let pendingOpenKey = "appIntents.pendingOpenRoom"
+    private static let pendingOpenAccountKey = "appIntents.pendingOpenAccount"
     private static let outboxKey = "appIntents.outbox"
 
     /// The App-Group defaults the app and its intents share.
@@ -31,9 +43,32 @@ public enum ChatDirectory {
 
     // MARK: - The directory
 
-    public static func writeDirectory(_ entries: [ChatDirectoryEntry], to defaults: UserDefaults? = sharedDefaults) {
-        guard let data = try? JSONEncoder().encode(entries) else { return }
+    ///
+    /// - Parameter account: whose chats these are. Only that account's entries are replaced, and
+    ///   every other account's stay — the account on screen is the only one whose list is live, and
+    ///   the others' are what they were when they were last open. Nil replaces the whole directory.
+    public static func writeDirectory(_ entries: [ChatDirectoryEntry],
+                                      account: String? = nil,
+                                      to defaults: UserDefaults? = sharedDefaults) {
+        var all = entries
+        if let account {
+            // Entries with no account are from before there could be two, and are the old list of
+            // the account writing now — or of nobody still here. Either way they are replaced.
+            all = directory(from: defaults).filter { $0.accountID != nil && $0.accountID != account } + entries
+        }
+        guard let data = try? JSONEncoder().encode(all) else { return }
         defaults?.set(data, forKey: directoryKey)
+    }
+
+    /// Takes a signed-out account's chats out of Siri's list and the share sheet.
+    public static func forget(account: String, in defaults: UserDefaults? = sharedDefaults) {
+        let kept = directory(from: defaults).filter { $0.accountID != account }
+        guard let data = try? JSONEncoder().encode(kept) else { return }
+        defaults?.set(data, forKey: directoryKey)
+        let outbox = outbox(from: defaults).filter { $0.accountID != account }
+        if let data = try? JSONEncoder().encode(outbox) {
+            defaults?.set(data, forKey: outboxKey)
+        }
     }
 
     public static func directory(from defaults: UserDefaults? = sharedDefaults) -> [ChatDirectoryEntry] {
@@ -45,15 +80,32 @@ public enum ChatDirectory {
 
     // MARK: - Opening a chat
 
-    public static func requestOpen(roomID: String, in defaults: UserDefaults? = sharedDefaults) {
+    public static func requestOpen(roomID: String, accountID: String? = nil,
+                                   in defaults: UserDefaults? = sharedDefaults) {
         defaults?.set(roomID, forKey: pendingOpenKey)
+        if let accountID {
+            defaults?.set(accountID, forKey: pendingOpenAccountKey)
+        } else {
+            defaults?.removeObject(forKey: pendingOpenAccountKey)
+        }
     }
 
-    /// Reads and clears the pending open — so the app acts on it once, not on every foreground.
-    public static func takePendingOpen(from defaults: UserDefaults? = sharedDefaults) -> String? {
+    /// A chat somebody asked to open, and whose it is.
+    public struct OpenRequest: Sendable, Equatable {
+        public let roomID: String
+        public let accountID: String?
+    }
+
+    public static func takePendingOpenRequest(from defaults: UserDefaults? = sharedDefaults) -> OpenRequest? {
         guard let id = defaults?.string(forKey: pendingOpenKey) else { return nil }
+        let account = defaults?.string(forKey: pendingOpenAccountKey)
         defaults?.removeObject(forKey: pendingOpenKey)
-        return id
+        defaults?.removeObject(forKey: pendingOpenAccountKey)
+        return OpenRequest(roomID: id, accountID: account)
+    }
+
+    public static func takePendingOpen(from defaults: UserDefaults? = sharedDefaults) -> String? {
+        takePendingOpenRequest(from: defaults)?.roomID
     }
 
     // MARK: - The send outbox
@@ -65,11 +117,16 @@ public enum ChatDirectory {
         /// `outboxFolder()`, which the app sends and then deletes. Empty for everything Shortcuts
         /// queues, and absent from anything queued by a build that predates it.
         public let attachments: [OutboxAttachment]
+        /// Who sends it. Nil in an item queued before there could be two accounts, which is the
+        /// account on screen's to send.
+        public let accountID: String?
 
-        public init(roomID: String, text: String, attachments: [OutboxAttachment] = []) {
+        public init(roomID: String, text: String, attachments: [OutboxAttachment] = [],
+                    accountID: String? = nil) {
             self.roomID = roomID
             self.text = text
             self.attachments = attachments
+            self.accountID = accountID
         }
 
         public init(from decoder: Decoder) throws {
@@ -77,6 +134,7 @@ public enum ChatDirectory {
             roomID = try container.decode(String.self, forKey: .roomID)
             text = try container.decode(String.self, forKey: .text)
             attachments = try container.decodeIfPresent([OutboxAttachment].self, forKey: .attachments) ?? []
+            accountID = try container.decodeIfPresent(String.self, forKey: .accountID)
         }
     }
 
@@ -130,9 +188,33 @@ public enum ChatDirectory {
     }
 
     /// Reads and clears the outbox — the app sends each item, once.
-    public static func drainOutbox(from defaults: UserDefaults? = sharedDefaults) -> [OutboxItem] {
+    ///
+    /// - Parameter account: take only what this account sends (and what nobody was named for), and
+    ///   leave everybody else's waiting for their own account to be opened. Nil takes everything.
+    public static func drainOutbox(forAccount account: String? = nil,
+                                   from defaults: UserDefaults? = sharedDefaults) -> [OutboxItem] {
         let items = outbox(from: defaults)
-        defaults?.removeObject(forKey: outboxKey)
-        return items
+        guard let account else {
+            defaults?.removeObject(forKey: outboxKey)
+            return items
+        }
+
+        let mine = items.filter { $0.accountID == nil || $0.accountID == account }
+        let others = items.filter { $0.accountID != nil && $0.accountID != account }
+        if others.isEmpty {
+            defaults?.removeObject(forKey: outboxKey)
+        } else if let data = try? JSONEncoder().encode(others) {
+            defaults?.set(data, forKey: outboxKey)
+        }
+        return mine
+    }
+
+    /// The accounts with something waiting in the outbox, in the order it was queued.
+    public static func accountsWaitingToSend(in defaults: UserDefaults? = sharedDefaults) -> [String] {
+        var seen: [String] = []
+        for id in outbox(from: defaults).compactMap(\.accountID) where !seen.contains(id) {
+            seen.append(id)
+        }
+        return seen
     }
 }

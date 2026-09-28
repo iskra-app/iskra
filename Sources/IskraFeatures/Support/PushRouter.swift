@@ -43,15 +43,32 @@ public final class PushRouter {
     private init() {}
 
     /// Somebody tapped a banner. Called by the app delegate.
-    public func tapped(roomID: String) {
+    public func tapped(roomID: String, accountID: String? = nil) {
+        accountToOpen = accountID
         roomToOpen = roomID
+    }
+
+    /// Whose room it is, when the notification said — see `PushRegistration.accountKey`. The root
+    /// switches to that account first when it is not the one on screen.
+    public private(set) var accountToOpen: String?
+
+    /// The account on screen, so that a message in the open conversation of *another* account on
+    /// the device still gets its banner. Two people can be in one room.
+    public var visibleAccountID: String?
+
+    /// The room and whose it is, taken together.
+    public func takeRequest() -> (roomID: String, accountID: String?)? {
+        defer {
+            roomToOpen = nil
+            accountToOpen = nil
+        }
+        return roomToOpen.map { ($0, accountToOpen) }
     }
 
     /// Takes the pending room, if there is one, and forgets it — so that a second foreground does
     /// not reopen a conversation the reader has since navigated away from.
     public func takeRoomToOpen() -> String? {
-        defer { roomToOpen = nil }
-        return roomToOpen
+        takeRequest()?.roomID
     }
 
     /// A push arrived while the app is in front. Returns how to present it.
@@ -59,8 +76,9 @@ public final class PushRouter {
     /// Everything except the room already being open: iOS shows nothing at all by default for a
     /// foreground notification, which would mean somebody reading one chat never learns that
     /// another one has said something.
-    public func presentation(forRoomID roomID: String?) -> UNNotificationPresentationOptions {
-        guard let roomID, roomID == visibleRoomID else { return [.banner, .sound, .list] }
+    public func presentation(forRoomID roomID: String?, accountID: String? = nil) -> UNNotificationPresentationOptions {
+        guard let roomID, roomID == visibleRoomID,
+              accountID == nil || accountID == visibleAccountID else { return [.banner, .sound, .list] }
         // The room is on screen. The message is arriving in the timeline behind the banner, so the
         // banner would be the same sentence twice — and the sound, a second alert for one event.
         return []
