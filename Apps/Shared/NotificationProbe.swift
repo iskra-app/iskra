@@ -57,10 +57,15 @@ enum NotificationProbe {
                 exit(1)
             }
 
-            print("  room  \(roomID)")
-            print("  event \(eventID)")
+            // A third word names the account, as a push from a current pusher would. Without it the
+            // decoder tries the account on screen and then the others — the path an old pusher takes.
+            let accountID = arguments.count > flag + 3 ? arguments[flag + 3] : nil
 
-            switch await decoder.notification(roomID: roomID, eventID: eventID) {
+            print("  room    \(roomID)")
+            print("  event   \(eventID)")
+            print("  account \(accountID ?? "not given")")
+
+            switch await decoder.notification(roomID: roomID, eventID: eventID, accountID: accountID) {
             case let .show(notification):
                 // Deliberately printed, and worth being uneasy about: this is a decrypted
                 // message on a console. It is the user's own message, on the user's own

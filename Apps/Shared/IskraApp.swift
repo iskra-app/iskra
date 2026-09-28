@@ -136,10 +136,12 @@ final class PushDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCen
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
                                             didReceive response: UNNotificationResponse,
                                             withCompletionHandler completionHandler: @escaping () -> Void) {
-        let roomID = response.notification.request.content.userInfo["room_id"] as? String
+        let info = response.notification.request.content.userInfo
+        let roomID = info["room_id"] as? String
+        let accountID = info[PushRegistration.accountKey] as? String
 
         if let roomID {
-            Task { @MainActor in PushRouter.shared.tapped(roomID: roomID) }
+            Task { @MainActor in PushRouter.shared.tapped(roomID: roomID, accountID: accountID) }
         }
 
         // Called straight away rather than from inside the hop: the system is waiting on it, and
@@ -157,7 +159,10 @@ final class PushDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCen
                                             willPresent notification: UNNotification,
                                             withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         let roomID = notification.request.content.userInfo["room_id"] as? String
-        let options = MainActor.assumeIsolated { PushRouter.shared.presentation(forRoomID: roomID) }
+        let accountID = notification.request.content.userInfo[PushRegistration.accountKey] as? String
+        let options = MainActor.assumeIsolated {
+            PushRouter.shared.presentation(forRoomID: roomID, accountID: accountID)
+        }
         completionHandler(options)
     }
 

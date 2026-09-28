@@ -28,7 +28,11 @@ public actor PushDecoder {
     /// somebody has to remember to catch on the one path where forgetting means the user
     /// gets no notification at all. So every way this can fail is a `PushOutcome` instead,
     /// and the caller has to look at it to find out what happened.
-    public func notification(roomID: String, eventID: String) async -> PushOutcome {
+    ///
+    /// - Parameter accountID: whose push this is, from `PushRegistration.accountKey`. Nil for a push
+    ///   from a pusher registered before pushes said so; then the account on screen is tried first
+    ///   and the others after it, until one of them has the event.
+    public func notification(roomID: String, eventID: String, accountID: String? = nil) async -> PushOutcome {
         // The whole thing is bounded, not just the last step of it.
         //
         // The budget used to start counting at `getNotification` — which is to say, *after*
@@ -39,7 +43,7 @@ public actor PushDecoder {
         // "New message" — the exact outcome the budget exists to prevent.
         do {
             return try await withTimeout(Self.budget) {
-                try await self.decrypt(roomID: roomID, eventID: eventID)
+                try await self.decrypt(roomID: roomID, eventID: eventID, accountID: accountID)
             }
         } catch is TimeoutError {
             // Bounded for a harder reason than the rest of the app. Everywhere else a stalled call
@@ -55,31 +59,78 @@ public actor PushDecoder {
     }
 
     /// The work itself, so that one deadline can be drawn around all of it.
-    private func decrypt(roomID: String, eventID: String) async throws -> PushOutcome {
-        let client: Client
-        do {
-            guard let restored = try await AuthenticationService(environment: environment)
-                .restoreClient() else {
-                return .notSignedIn
+    private func decrypt(roomID: String, eventID: String, accountID: String?) async throws -> PushOutcome {
+        let candidates = candidates(for: accountID)
+        guard !candidates.isEmpty else { return .notSignedIn }
+
+        for (index, candidate) in candidates.enumerated() {
+            let isLast = index == candidates.count - 1
+
+            let client: Client
+            do {
+                guard let restored = try await AuthenticationService(environment: environment)
+                    .restoreClient(sessionID: candidate) else {
+                    if isLast { return .notSignedIn }
+                    continue
+                }
+                client = restored
+            } catch {
+                // The overwhelmingly likely cause is `StorageError.appGroupUnavailable` — the
+                // extension has a different bundle ID from the app, so it needs the App Group
+                // and the Keychain group granted to it *separately*, and a profile that forgot
+                // one of them fails here and nowhere else.
+                Log.push.error("the session would not open in this process: \(Log.describe(error), privacy: .public)")
+                if isLast { return .failed(Log.describe(error)) }
+                continue
             }
-            client = restored
-        } catch {
-            // The overwhelmingly likely cause is `StorageError.appGroupUnavailable` — the
-            // extension has a different bundle ID from the app, so it needs the App Group
-            // and the Keychain group granted to it *separately*, and a profile that forgot
-            // one of them fails here and nowhere else.
-            Log.push.error("the session would not open in this process: \(Log.describe(error), privacy: .public)")
-            return .failed(Log.describe(error))
+
+            // The nicknames of the person this push is for, not of whoever the app last had open.
+            LocalNames.use(account: candidate)
+
+            // `.multipleProcesses` is the reason the store lives in an App Group at all. It tells the
+            // SDK that the app may be awake and holding the same SQLite file right now, so the two take
+            // a cross-process lock instead of writing over each other. `.singleProcess` here would be a
+            // database corrupted by a push that arrived while the user happened to have the app open —
+            // rare, silent, and fatal.
+            let notifications = try await client.notificationClient(processSetup: .multipleProcesses)
+            let status = try await notifications.getNotification(roomId: roomID, eventId: eventID)
+
+            // Not this account's event — only possible when the push did not say whose it was.
+            if case .eventNotFound = status, !isLast { continue }
+
+            return try await present(status, roomID: roomID, eventID: eventID,
+                                     client: client, notifications: notifications)
         }
+        return .notSignedIn
+    }
 
-        // `.multipleProcesses` is the reason the store lives in an App Group at all. It tells the
-        // SDK that the app may be awake and holding the same SQLite file right now, so the two take
-        // a cross-process lock instead of writing over each other. `.singleProcess` here would be a
-        // database corrupted by a push that arrived while the user happened to have the app open —
-        // rare, silent, and fatal.
-        let notifications = try await client.notificationClient(processSetup: .multipleProcesses)
-        let status = try await notifications.getNotification(roomId: roomID, eventId: eventID)
+    /// Whose store to open for a push, in the order to try them.
+    private func candidates(for accountID: String?) -> [String] {
+        if let accountID { return [accountID] }
 
+        let store = SessionStore(environment: environment)
+        let active = try? store.activeSessionID()
+        let everybody = (try? store.accounts().map(\.sessionID)) ?? []
+        return (active.map { [$0] } ?? []) + everybody.filter { $0 != active }
+    }
+
+    /// What to call the account a push is for, when there is more than one on the device and the
+    /// reader needs telling which of them it arrived for. Nil with one account: then it goes without
+    /// saying, and a line saying it anyway is a line of noise on every notification.
+    public nonisolated func accountLabel(for accountID: String?) -> String? {
+        guard let accountID,
+              let accounts = try? SessionStore(environment: environment).accounts(),
+              accounts.count > 1,
+              let account = accounts.first(where: { $0.sessionID == accountID }) else { return nil }
+        return account.displayName ?? account.userID
+    }
+
+    /// The found event, made into what is shown.
+    private func present(_ status: NotificationStatus,
+                         roomID: String,
+                         eventID: String,
+                         client: Client,
+                         notifications: NotificationClient) async throws -> PushOutcome {
         // A reaction to somebody else's message is not this reader's news. Checked here rather
         // than in the mapper because answering it takes a second event and a second round trip,
         // and the mapper is a pure function of the one event it is given.

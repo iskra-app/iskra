@@ -35,11 +35,14 @@ final class ShareViewController: UIViewController {
         let picker = SharePickerView(
             shared: shared,
             chats: ChatDirectory.directory(),
-            onSend: { [weak self] roomID in
+            onSend: { [weak self] chat in
                 if !shared.isEmpty {
-                    ChatDirectory.enqueue(.init(roomID: roomID,
+                    // Whose chat it is travels with it: the app sends it from that account, and
+                    // opens that account to do so if another one is on screen.
+                    ChatDirectory.enqueue(.init(roomID: chat.id,
                                                 text: shared.text,
-                                                attachments: shared.attachments.map(\.attachment)))
+                                                attachments: shared.attachments.map(\.attachment),
+                                                accountID: chat.accountID))
                 }
                 self?.finish()
             },
@@ -227,7 +230,7 @@ struct SharedAttachment: Sendable, Identifiable {
 private struct SharePickerView: View {
     let shared: SharedContent
     let chats: [ChatDirectoryEntry]
-    let onSend: (String) -> Void
+    let onSend: (ChatDirectoryEntry) -> Void
     let onCancel: () -> Void
 
     @State private var query = ""
@@ -236,6 +239,16 @@ private struct SharePickerView: View {
         let trimmed = query.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return chats }
         return chats.filter { $0.name.localizedStandardContains(trimmed) }
+    }
+
+    /// The accounts in the directory, in the order their chats appear. `nil` is a directory written
+    /// before there could be two accounts.
+    private var accounts: [String?] {
+        var seen: [String?] = []
+        for chat in chats where !seen.contains(chat.accountID) {
+            seen.append(chat.accountID)
+        }
+        return seen
     }
 
     var body: some View {
@@ -257,12 +270,21 @@ private struct SharePickerView: View {
                     }
                 }
 
-                Section {
-                    ForEach(shownChats) { chat in
-                        Button {
-                            onSend(chat.id)
-                        } label: {
-                            Text(chat.name)
+                // A section per account when there is more than one on the device, headed with its
+                // name — the same room can be in both, and which of them sends it matters.
+                ForEach(accounts, id: \.self) { account in
+                    Section {
+                        ForEach(shownChats.filter { $0.accountID == account }) { chat in
+                            Button {
+                                onSend(chat)
+                            } label: {
+                                Text(chat.name)
+                            }
+                        }
+                    } header: {
+                        if accounts.count > 1,
+                           let name = chats.first(where: { $0.accountID == account })?.accountName {
+                            Text(verbatim: name)
                         }
                     }
                 }

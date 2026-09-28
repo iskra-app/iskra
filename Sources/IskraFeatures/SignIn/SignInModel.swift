@@ -119,6 +119,8 @@ public final class SignInModel {
         do {
             let session = try await authentication.completeSingleSignOn(callbackURL: callback)
             await finish(with: session)
+        } catch AuthenticationError.alreadySignedIn {
+            alreadyOnTheDevice()
         } catch {
             Log.session.error("the server would not finish the sign-in: \(Log.describe(error), privacy: .public)")
             problem = Strings.SignIn.Problem.ssoIncomplete
@@ -134,11 +136,24 @@ public final class SignInModel {
             // The password has done its job; do not keep it in memory a moment longer.
             password = ""
             await finish(with: session)
+        } catch AuthenticationError.alreadySignedIn {
+            isBusy = false
+            password = ""
+            alreadyOnTheDevice()
         } catch {
             isBusy = false
             password = ""
             problem = Strings.SignIn.Problem.badCredentials
         }
+    }
+
+    /// Signed in to somebody who was already here. The attempt is gone — the service logged the
+    /// new device out again — so the screen goes back to the address, saying why.
+    private func alreadyOnTheDevice() {
+        step = .enteringAddress
+        username = ""
+        password = ""
+        problem = Strings.SignIn.Problem.alreadySignedIn
     }
 
     public func startOver() async {

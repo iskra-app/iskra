@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 /// What *you* call somebody, as opposed to what they call themselves.
 ///
@@ -32,7 +33,38 @@ public enum LocalNames {
     /// The whole table, `roomID: name`, under one key. One dictionary rather than a key per room
     /// because the room list asks for *every* room's name on each rebuild, and `UserDefaults`
     /// keeps a decoded value in memory: one lookup that hits a cache beats two hundred that do.
-    private static let key = "rooms.localNames"
+    ///
+    /// One table *per account*, under `rooms.localNames.<sessionID>`. Two people on one phone can
+    /// be in the same room — the same room ID — and one person's «Мама» must not become the other
+    /// one's name for whoever is at the far end.
+    private static let legacyKey = "rooms.localNames"
+
+    /// Whose table is being read: the account on screen in the app, the account a push is for in
+    /// the notification extension. Process-wide, like the table itself, because the six places
+    /// that ask for a name are deep in stores that have no business being handed an account.
+    private static let account = Mutex<String?>(nil)
+
+    /// Says whose nicknames are meant from now on. Called when a session opens.
+    public static func use(account id: String?) {
+        account.withLock { $0 = id }
+    }
+
+    /// The account whose table a call without one reads.
+    public static var currentAccount: String? { account.withLock { $0 } }
+
+    private static func key(for account: String?) -> String {
+        account.map { "\(legacyKey).\($0)" } ?? legacyKey
+    }
+
+    /// Gives the table from before accounts were separate to the account that was signed in then.
+    /// Called once, by the Keychain migration, which is the one thing that knows who that was.
+    public static func adoptLegacyTable(forAccount id: String, in defaults: UserDefaults? = defaults) {
+        guard let legacy = defaults?.dictionary(forKey: legacyKey) else { return }
+        if defaults?.dictionary(forKey: key(for: id)) == nil {
+            defaults?.set(legacy, forKey: key(for: id))
+        }
+        defaults?.removeObject(forKey: legacyKey)
+    }
 
     /// Somebody renamed a chat — or gave a name back. Posted so the screens already on show can
     /// catch up: the room list, the open conversation's header and the info screen each hold a
@@ -54,16 +86,19 @@ public enum LocalNames {
     /// The name this device has been told to use for a chat, or nil to use the one the server
     /// gives. Empty strings never come back out: a name of no characters is an absence, and a
     /// header with nothing in it is worse than a Matrix ID.
-    public static func name(for roomID: String, in defaults: UserDefaults? = defaults) -> String? {
-        guard let stored = table(in: defaults)[roomID] else { return nil }
+    public static func name(for roomID: String,
+                            account: String? = currentAccount,
+                            in defaults: UserDefaults? = defaults) -> String? {
+        guard let stored = table(account: account, in: defaults)[roomID] else { return nil }
         let trimmed = stored.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
     }
 
     /// Whether any chat at all has been renamed. The info screen asks, so that a chat with no
     /// nickname shows the field empty with the real name behind it as a placeholder.
-    static func table(in defaults: UserDefaults? = defaults) -> [String: String] {
-        defaults?.dictionary(forKey: key) as? [String: String] ?? [:]
+    static func table(account: String? = currentAccount,
+                      in defaults: UserDefaults? = defaults) -> [String: String] {
+        defaults?.dictionary(forKey: key(for: account)) as? [String: String] ?? [:]
     }
 
     // MARK: - Writing
@@ -72,10 +107,13 @@ public enum LocalNames {
     ///
     /// Trimmed on the way in, so a stray space is not a rename, and compared before writing: an
     /// edit that changes nothing must not wake every screen in the app.
-    public static func set(_ name: String?, for roomID: String, in defaults: UserDefaults? = defaults) {
+    public static func set(_ name: String?,
+                           for roomID: String,
+                           account: String? = currentAccount,
+                           in defaults: UserDefaults? = defaults) {
         let trimmed = (name ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
 
-        var table = table(in: defaults)
+        var table = table(account: account, in: defaults)
         let previous = table[roomID]
         if trimmed.isEmpty {
             table.removeValue(forKey: roomID)
@@ -84,7 +122,7 @@ public enum LocalNames {
         }
         guard previous != table[roomID] else { return }
 
-        defaults?.set(table, forKey: key)
+        defaults?.set(table, forKey: key(for: account))
         NotificationCenter.default.post(name: didChange, object: nil, userInfo: ["roomID": roomID])
     }
 
@@ -95,8 +133,10 @@ public enum LocalNames {
     /// account signed in on this device is somebody else. They are also keyed by room ID, which
     /// means they would otherwise reattach themselves to rooms a *different* account happens to
     /// share — the same room, the same ID, somebody else's nickname for whoever is in it.
-    public static func forget(in defaults: UserDefaults? = defaults) {
-        defaults?.removeObject(forKey: key)
+    ///
+    /// One account's: the others on the device are still signed in, and their names are theirs.
+    public static func forget(account id: String? = currentAccount, in defaults: UserDefaults? = defaults) {
+        defaults?.removeObject(forKey: key(for: id))
     }
 
     // MARK: - Hearing about it

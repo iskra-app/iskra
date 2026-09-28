@@ -112,4 +112,80 @@ struct MockSignInTests {
         let closed = MockSignIn.configuration(from: ["Iskra", "--mock-signin", "closed"])
         #expect(closed.offersOAuth && !closed.offersRegistration)
     }
+
+    // MARK: - More than one account
+
+    /// Signs in with a password through the model, the way the sheet does.
+    private func signIn(_ username: String,
+                        with authentication: AuthenticationService,
+                        at address: String) async -> (UserSession?, SignInModel) {
+        var signedIn: UserSession?
+        let model = SignInModel(authentication: authentication, address: address) { signedIn = $0 }
+        await model.findServer()
+        model.username = username
+        model.password = "password"
+        await model.signInWithPassword()
+        return (signedIn, model)
+    }
+
+    @Test("a second account is added beside the first, and the first stays signed in")
+    func twoAccounts() async throws {
+        let server = SignInMockServer(configuration: .init(accounts: ["alice": "password", "bob": "password"]))
+        let (proxy, address) = try await server.start()
+        defer { Task { await proxy.stop() } }
+
+        let authentication = authentication()
+        let (alice, _) = await signIn("alice", with: authentication, at: address)
+        let aliceSession = try #require(alice)
+        await authentication.sessionOpened(aliceSession.sessionID)
+
+        let (bob, _) = await signIn("bob", with: authentication, at: address)
+        let bobSession = try #require(bob)
+
+        #expect(authentication.accounts().map(\.userID) == ["@alice:iskra.test", "@bob:iskra.test"])
+        #expect(authentication.activeAccountID() == bobSession.sessionID)
+        #expect(aliceSession.sessionID != bobSession.sessionID)
+
+        // Signing out of one leaves the other exactly where it was.
+        await bobSession.signOut()
+        #expect(authentication.accounts().map(\.userID) == ["@alice:iskra.test"])
+        #expect(authentication.activeAccountID() == aliceSession.sessionID)
+    }
+
+    @Test("adding the account that is open is refused, and says why")
+    func theOpenAccountCannotBeAddedAgain() async throws {
+        let server = SignInMockServer()
+        let (proxy, address) = try await server.start()
+        defer { Task { await proxy.stop() } }
+
+        let authentication = authentication()
+        let (alice, _) = await signIn("alice", with: authentication, at: address)
+        await authentication.sessionOpened(try #require(alice).sessionID)
+
+        let (again, model) = await signIn("alice", with: authentication, at: address)
+
+        #expect(again == nil)
+        #expect(model.problem == Strings.SignIn.Problem.alreadySignedIn)
+        #expect(model.step == .enteringAddress)
+        #expect(authentication.accounts().count == 1)
+    }
+
+    /// An account that could not be opened — its session ended, its store would not decrypt — is
+    /// mended by signing in again, and the broken record makes way rather than refusing it.
+    @Test("signing in again to an account that is not open replaces its old record")
+    func aClosedAccountIsReplaced() async throws {
+        let server = SignInMockServer()
+        let (proxy, address) = try await server.start()
+        defer { Task { await proxy.stop() } }
+
+        let authentication = authentication()
+        let (first, _) = await signIn("alice", with: authentication, at: address)
+        let old = try #require(first).sessionID
+
+        let (second, _) = await signIn("alice", with: authentication, at: address)
+        let new = try #require(second).sessionID
+
+        #expect(old != new)
+        #expect(authentication.accounts().map(\.sessionID) == [new])
+    }
 }

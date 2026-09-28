@@ -108,6 +108,18 @@ public struct IskraRootView: View {
     /// Where `--mock-signin` is listening, once it is. Nil in every ordinary launch.
     @State private var mockAddress: String?
 
+    /// The accounts on the device, handed down so settings and the chat list can offer to switch —
+    /// see `AccountSwitcher`. The root answers what they ask for.
+    @State private var switcher = AccountSwitcher()
+
+    /// A room to open once the switch to another account has landed: the notification that was
+    /// tapped, the Shortcut that asked, was for somebody who was not on screen.
+    @State private var roomAfterSwitch: String?
+
+    /// Set when one of several accounts was ended by its server and the app went on to another.
+    /// Says whose it was, because the screen now shows somebody else and nothing else would.
+    @State private var endedAccountName: String?
+
     public init() {
         // Every scroll view in the app hands touches on immediately, so the press that lifts a
         // message is the length it says it is — see `ScrollTouches`.
@@ -155,7 +167,9 @@ public struct IskraRootView: View {
                 // sign-in seam handing over a session it had not started would have made the first
                 // thing the user sees a spinner over an account nobody was syncing.
                 RecoverySetupView(session: session) {
-                    phase = .decorating(session)
+                    // The colours and the faces belong to the device, not to the account, and a
+                    // second account has nothing new to say about them.
+                    phase = authentication.accounts().count > 1 ? .signedIn(session) : .decorating(session)
                 }
                 .task { try? await session.start() }
 
@@ -192,6 +206,11 @@ public struct IskraRootView: View {
                     .environment(\.currentUserName, session.displayName)
                     .environment(\.currentUserAvatarURL, session.avatarURL)
                     .environment(\.blockStore, session.blocked)
+                    .environment(\.accountSwitcher, switcher)
+                    .task(id: session.sessionID) { reloadAccounts(session) }
+                    // The name and the picture are written down for the switcher as they arrive.
+                    .onChange(of: session.displayName) { reloadAccounts(session) }
+                    .onChange(of: session.avatarURL) { reloadAccounts(session) }
                     .environment(\.forwarding, Forwarding(session: session))
                     // Writing to somebody whose name was pressed in a room's member list, and the
                     // one wire that lets a screen several pushes deep in the conversation column
@@ -226,14 +245,25 @@ public struct IskraRootView: View {
                     // every message it sends waits in a queue for a server that will not have it.
                     .onChange(of: session.wasEndedElsewhere) { _, wasEnded in
                         guard wasEnded else { return }
-                        AppSettings.forget()
-                        // Somebody else's unread count has no business staying on the icon of an
-                        // app nobody is signed into.
-                        AppBadge.clear()
+                        accountLeft(session)
                         selectedRoomID = nil
                         selectedEventID = nil
-                        phase = .signedOut
-                        wasSignedOutRemotely = true
+                        // One of several: the app goes on to the next account and says whose
+                        // session it was. The last one: back to sign-in, as before.
+                        //
+                        // The next one is named here rather than left to the list, because the
+                        // session is still on its way out of the Keychain as this runs — asked now,
+                        // the list would still hold it, and the app would try to open it again.
+                        let next = authentication.accounts().first { $0.sessionID != session.sessionID }
+                        if let next {
+                            authentication.setActiveAccount(next.sessionID)
+                            endedAccountName = session.displayName
+                            restart()
+                        } else {
+                            nobodyLeft()
+                            phase = .signedOut
+                            wasSignedOutRemotely = true
+                        }
                     }
                     // A device of this user's is signing in and asking to be trusted. It is put up
                     // here, at the root, rather than on the encryption screen where the *outgoing*
@@ -280,10 +310,12 @@ public struct IskraRootView: View {
                     .onChange(of: session.roomList.rooms, initial: true) { _, rooms in
                         // Siri's list is the real account's. Made-up chats in it would outlive
                         // the demo and send somebody's dictated message nowhere.
-                        if !session.isDemo { writeChatDirectory(rooms) }
+                        if !session.isDemo { writeChatDirectory(rooms, of: session) }
                         // And the number on the icon, from the same list and at the same moment,
                         // so that reading a chat takes the count down without anybody asking it to.
-                        AppBadge.update(for: rooms)
+                        // This account's number; the icon adds everybody's — see `UnreadCounts`.
+                        AppBadge.update(for: rooms, account: session.isDemo ? nil : session.sessionID)
+                        switcher.refreshUnread()
                     }
                     // Act on what an intent asked for: open the chat it launched us for, and send any
                     // messages it left in the outbox. Once on appear (a cold launch by an intent), and
@@ -309,6 +341,7 @@ public struct IskraRootView: View {
                     // already on screen.
                     .onChange(of: selectedRoomID, initial: true) { _, roomID in
                         PushRouter.shared.visibleRoomID = roomID
+                        PushRouter.shared.visibleAccountID = session.sessionID
                         // Opening a chat clears its notifications off the device — see
                         // `DeliveredNotifications`.
                         if let roomID { DeliveredNotifications.clear(roomID: roomID) }
@@ -329,6 +362,29 @@ public struct IskraRootView: View {
         // The demo switch, flipped in settings, from inside the very session it replaces.
         .onChange(of: mockBackend) { _, _ in
             Task { await switchBackend() }
+        }
+        // Another account, asked for from settings or from the menu on the avatar.
+        .onChange(of: switcher.requestedAccount) { _, id in
+            guard let id else { return }
+            switcher.requestedAccount = nil
+            Task { await switchAccount(to: id) }
+        }
+        // "Add account": the sign-in screen over the app, with the account underneath still open
+        // until the new one is in.
+        .sheet(isPresented: Binding(get: { switcher.isAddingAccount },
+                                    set: { switcher.isAddingAccount = $0 }),
+               onDismiss: { Task { await authentication.cancelSignIn() } }) {
+            AddAccountView(authentication: authentication,
+                           address: MockSignIn.isRequested ? mockAddress ?? "" : "",
+                           onSignedIn: { added($0) },
+                           onCancel: { switcher.isAddingAccount = false })
+        }
+        .alert(Text(Strings.Session.endedTitle),
+               isPresented: Binding(get: { endedAccountName != nil },
+                                    set: { if !$0 { endedAccountName = nil } })) {
+            Button(String(app: Strings.Problem.ok), role: .cancel) {}
+        } message: {
+            Text(Strings.Session.endedOtherMessage(endedAccountName ?? ""))
         }
         .alert(Text(Strings.Session.endedTitle), isPresented: $wasSignedOutRemotely) {
             Button(String(app: Strings.Problem.ok), role: .cancel) {}
@@ -421,11 +477,13 @@ public struct IskraRootView: View {
 
     /// Writes the joined conversations (not spaces, not invitations) into the shared directory the
     /// App Intents read. Names only — nothing an intent needs to fetch.
-    private func writeChatDirectory(_ rooms: [RoomSummary]) {
+    private func writeChatDirectory(_ rooms: [RoomSummary], of session: UserSession) {
         let entries = rooms
             .filter { !$0.isInvitation && !$0.isSpace }
-            .map { ChatDirectoryEntry(id: $0.id, name: $0.name) }
-        ChatDirectory.writeDirectory(entries)
+            .map { ChatDirectoryEntry(id: $0.id, name: $0.name,
+                                      accountID: session.sessionID, accountName: session.displayName) }
+        // This account's part of the list; everybody else's stays as it was.
+        ChatDirectory.writeDirectory(entries, account: session.sessionID)
     }
 
     /// Acts on what a Shortcuts intent left behind: opens the chat it asked for, and sends the
@@ -434,16 +492,31 @@ public struct IskraRootView: View {
     private func handleIntents(_ session: UserSession) async {
         // What Shortcuts left in the outbox is for the real account, and waits for it.
         guard !session.isDemo else { return }
-        if let roomID = ChatDirectory.takePendingOpen() {
-            selectedRoomID = roomID
+        if let request = ChatDirectory.takePendingOpenRequest() {
+            // A chat of another account's: that account first, and the chat once it is open. The
+            // outbox waits for it too, and the second pass through here sends it.
+            if let account = request.accountID, account != session.sessionID, isOnDevice(account) {
+                await switchAccount(to: account, thenOpen: request.roomID)
+                return
+            }
+            selectedRoomID = request.roomID
         }
-        for item in ChatDirectory.drainOutbox() {
+        // Only what this account sends. What was shared into another account's chat waits for
+        // that account — and is the reason to open it, below.
+        for item in ChatDirectory.drainOutbox(forAccount: session.sessionID) {
             // What was shared goes first and the words after it — the order a person writing it
             // by hand would use: the photo, then "look at this".
             for attachment in item.attachments {
                 await session.send(attachment, toRoomID: item.roomID)
             }
             await session.sendText(item.text, toRoomID: item.roomID)
+        }
+
+        // Somebody shared into a chat of an account that is not open, and came back to the app:
+        // open that account, which is what sends it. Nothing goes out from the wrong person, and
+        // nothing sits in the outbox waiting for somebody who never happens to be opened.
+        if let waiting = ChatDirectory.accountsWaitingToSend().first(where: { $0 != session.sessionID && isOnDevice($0) }) {
+            await switchAccount(to: waiting)
         }
     }
 
@@ -453,8 +526,18 @@ public struct IskraRootView: View {
     /// the reader has gone somewhere else themselves — does not drag them back to a chat they have
     /// already left.
     private func openRoomAskedForByANotification() {
-        guard let roomID = PushRouter.shared.takeRoomToOpen() else { return }
-        selectedRoomID = roomID
+        guard let request = PushRouter.shared.takeRequest() else { return }
+
+        // A push for another account on the device: switch to it, then open the room. Not from the
+        // demo, which is not one of the device's accounts and is left by its own switch.
+        if let account = request.accountID,
+           let session = currentSession, !session.isDemo,
+           account != session.sessionID, isOnDevice(account) {
+            Task { await switchAccount(to: account, thenOpen: request.roomID) }
+            return
+        }
+
+        selectedRoomID = request.roomID
         selectedEventID = nil
     }
 
@@ -483,6 +566,7 @@ public struct IskraRootView: View {
         await PushPermission.shared.signingOut(session)
 
         await session.signOut()
+        accountLeft(session)
 
         // And any document handed to another application on the way. `SessionStore.clear` knows
         // about the encrypted store and nothing about a PDF copied out of it in the clear so
@@ -492,11 +576,76 @@ public struct IskraRootView: View {
         FileOpener.sweep()
         #endif
 
-        AppSettings.forget()
-        AppBadge.clear()
         selectedRoomID = nil
         selectedEventID = nil
+
+        // Somebody else is still signed in: the app opens them, and keeps looking the way it did.
+        guard authentication.accounts().isEmpty else {
+            restart()
+            return
+        }
+        nobodyLeft()
         phase = .signedOut
+    }
+
+    /// What goes with one account when it leaves the device, whoever else stays: its chats from
+    /// Siri's list and the share sheet, and its number from the icon.
+    private func accountLeft(_ session: UserSession) {
+        guard !session.isDemo else { return }
+        ChatDirectory.forget(account: session.sessionID)
+        AppBadge.forget(account: session.sessionID)
+    }
+
+    /// The last account has gone. What the app remembers about how it looks goes too — see
+    /// `AppSettings` — because the next person to sign in on this device is somebody else.
+    private func nobodyLeft() {
+        AppSettings.forget()
+        // Somebody else's unread count has no business staying on the icon of an app nobody is
+        // signed into.
+        AppBadge.clear()
+    }
+
+    // MARK: - Accounts
+
+    private func isOnDevice(_ account: String) -> Bool {
+        authentication.accounts().contains { $0.sessionID == account }
+    }
+
+    private func reloadAccounts(_ session: UserSession) {
+        switcher.reload(accounts: authentication.accounts(),
+                        activeID: session.sessionID,
+                        isAvailable: !session.isDemo)
+    }
+
+    /// Puts another account on screen.
+    ///
+    /// The one on screen is *closed*, not signed out — exactly what leaving the demo does — and the
+    /// app starts over on the other, which `restore()` opens because it is now the active one. Its
+    /// store is on the disk and its tokens are in the Keychain, so this is a launch without the
+    /// launch: no network is needed to see its chats.
+    private func switchAccount(to id: String, thenOpen roomID: String? = nil) async {
+        guard let current = currentSession, current.sessionID != id else {
+            if let roomID {
+                selectedRoomID = roomID
+                selectedEventID = nil
+            }
+            return
+        }
+        await current.close()
+        authentication.setActiveAccount(id)
+        roomAfterSwitch = roomID
+        restart()
+    }
+
+    /// Signed in to one more account from the sheet. It becomes the account on screen; the one that
+    /// was there is closed and stays signed in, a tap away.
+    private func added(_ session: UserSession) {
+        switcher.isAddingAccount = false
+        let previous = currentSession
+        selectedRoomID = nil
+        selectedEventID = nil
+        phase = .settingUp(session)
+        Task { await previous?.close() }
     }
 
     /// The launch that could not reach the server.
@@ -680,24 +829,58 @@ public struct IskraRootView: View {
             }
         }
 
-        do {
-            if let session = try await authentication.restorePreviousSession() {
+        // The account on screen last, and then everybody else in the order they were added: one
+        // account that will not open is not a reason to hide the others behind a sign-in screen.
+        let accounts = authentication.accounts()
+        let active = authentication.activeAccountID()
+        let order = (active.map { [$0] } ?? []) + accounts.map(\.sessionID).filter { $0 != active }
+
+        var ended: [String] = []
+
+        for id in order {
+            do {
+                guard let session = try await authentication.restoreSession(id: id) else { continue }
+                authentication.setActiveAccount(id)
                 phase = .signedIn(session)
+                if let roomID = roomAfterSwitch {
+                    roomAfterSwitch = nil
+                    selectedRoomID = roomID
+                }
+                if let name = ended.first { endedAccountName = name }
                 try? await session.start()
                 return
+            } catch AuthenticationError.networkUnavailable {
+                // Never the sign-in screen for this. The account is fine — the tokens are in the
+                // Keychain, the conversations are in the store, and the only thing missing is the
+                // network. Sending somebody to "Sign in" here tells them their account is gone, which
+                // is untrue and frightening, and it is what the app used to do to anybody who opened
+                // it in a tunnel: an empty `catch` treated a lost network and a dead session as one
+                // fact. And the network is the same for every account, so there is no next one to try.
+                phase = .offline
+                return
+            } catch AuthenticationError.bridgeUnavailable {
+                // The same, one step further out: the bridge would not come up, and with an address
+                // filled in the app refuses to go direct (see `route`). The accounts are untouched
+                // and the bridge is the same for every one of them.
+                phase = .offline
+                return
+            } catch AuthenticationError.sessionEnded {
+                // The server has said this account is over, which is the one failure that settles it.
+                let record = accounts.first { $0.sessionID == id }
+                ended.append(record.map(AccountSwitcher.name(of:)) ?? id)
+                await authentication.forgetSession(id)
+                ChatDirectory.forget(account: id)
+                AppBadge.forget(account: id)
+            } catch {
+                // Kept, not forgotten: a store that will not open today is not a reason to destroy it,
+                // and signing in to the same account again replaces the record anyway — see
+                // `AuthenticationService.persist`, which is what mends it.
+                Log.session.error("an account would not open: \(Log.describe(error), privacy: .public)")
             }
-        } catch AuthenticationError.networkUnavailable {
-            // Never the sign-in screen for this. The account is fine — the tokens are in the
-            // Keychain, the conversations are in the store, and the only thing missing is the
-            // network. Sending somebody to "Sign in" here tells them their account is gone, which
-            // is untrue and frightening, and it is what the app used to do to anybody who opened it
-            // in a tunnel: an empty `catch` treated a lost network and a dead session as one fact.
-            phase = .offline
-            return
-        } catch {
-            // A session we cannot restore is a session the user must create again.
-            // Falling through to sign-in is the honest outcome.
         }
+
+        // Nobody opened. A session that cannot be restored is one the user has to sign in to again.
+        wasSignedOutRemotely = !ended.isEmpty
         phase = .signedOut
     }
 }

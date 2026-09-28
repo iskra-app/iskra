@@ -47,4 +47,17 @@ struct PushPayloadTests {
         #expect(!json.contains("event"))
         #expect(!json.contains("sender"))
     }
+
+    /// Two people on one phone can be in the same room, so a push has to say whose it is or the
+    /// extension is left guessing which store to open. It says so with the account's random session
+    /// ID — never the Matrix ID, which would tell the gateway and Apple who is signed in here.
+    @Test("it says whose push it is, without saying who that is")
+    func thePayloadNamesTheAccount() throws {
+        let json = try #require(PushRegistration.defaultPayload(accountID: "3F2A-random"))
+        let object = try JSONSerialization.jsonObject(with: try #require(json.data(using: .utf8)))
+        let payload = try #require(object as? [String: Any])
+
+        #expect(payload[PushRegistration.accountKey] as? String == "3F2A-random")
+        #expect(!json.contains("@"))
+    }
 }

@@ -170,6 +170,8 @@ public enum Strings {
             public static let unreachable = LocalizedStringResource("signIn.problem.unreachable", bundle: bundle)
             public static let ssoIncomplete = LocalizedStringResource("signIn.problem.ssoIncomplete", bundle: bundle)
             public static let badCredentials = LocalizedStringResource("signIn.problem.badCredentials", bundle: bundle)
+            /// Signing in, from "Add account", to somebody who is already on the device.
+            public static let alreadySignedIn = LocalizedStringResource("signIn.problem.alreadySignedIn", bundle: bundle)
         }
     }
 
@@ -990,6 +992,38 @@ public enum Strings {
         public static let offlineTitle = LocalizedStringResource("session.offlineTitle", bundle: bundle)
         public static let offlineMessage = LocalizedStringResource("session.offlineMessage", bundle: bundle)
         public static let tryAgain = LocalizedStringResource("session.tryAgain", bundle: bundle)
+
+        /// The same news as `endedMessage`, about one account of several: the app has gone on to
+        /// another one, and has to say whose session it was and that the rest are fine.
+        public static func endedOtherMessage(_ account: String) -> LocalizedStringResource {
+            LocalizedStringResource("session.endedOther.message",
+                                    defaultValue: "The server stopped accepting the session for \(account).",
+                                    bundle: bundle)
+        }
+    }
+
+    /// More than one account on the device: the list in settings, the menu on the avatar, and
+    /// adding another. See `AccountSwitcher`.
+    public enum Accounts {
+        public static let section = LocalizedStringResource("accounts.section", bundle: bundle)
+        public static let add = LocalizedStringResource("accounts.add", bundle: bundle)
+        /// Backing out of adding one, from the sign-in sheet.
+        public static let cancel = LocalizedStringResource("accounts.cancel", bundle: bundle)
+        /// Read out on a row of another account: what tapping it does.
+        public static let switchHint = LocalizedStringResource("accounts.switchHint", bundle: bundle)
+        /// Read out on the account already open.
+        public static let current = LocalizedStringResource("accounts.current", bundle: bundle)
+
+        /// The count beside a dormant account, read aloud. Written as "Unread: 3" rather than
+        /// "3 unread", so that Russian needs no plural forms for a number that is shown as a digit.
+        public static func unread(_ count: Int) -> LocalizedStringResource {
+            LocalizedStringResource("accounts.unread", defaultValue: "Unread: \(count)", bundle: bundle)
+        }
+
+        /// The sign-out button, once there is more than one account it could mean.
+        public static func signOut(of account: String) -> LocalizedStringResource {
+            LocalizedStringResource("accounts.signOutOf", defaultValue: "Sign out of \(account)", bundle: bundle)
+        }
     }
 
     public enum Account {
