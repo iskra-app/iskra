@@ -27,6 +27,9 @@ public actor LocalHTTPProxy {
     private let onDiscovery: (@Sendable (URL) -> Void)?
     private var listener: NWListener?
     private var boundPort: UInt16?
+    /// Set by `stop()`, and only by it: a listener that ends while this is false was taken away, and
+    /// is raised again. See `ensureListening`.
+    private var stopped = false
 
     /// Requests seen, newest last. Diagnostics for the probe: proof that the SDK really came
     /// through here rather than reaching the homeserver some other way.
@@ -51,8 +54,48 @@ public actor LocalHTTPProxy {
     /// a phone the failure would look like the tunnel being broken.
     @discardableResult
     public func start() async throws -> UInt16 {
+        stopped = false
+        let port = try await bind(port: .any)
+        boundPort = port
+        return port
+    }
+
+    public func stop() {
+        stopped = true
+        let listener = self.listener
+        self.listener = nil
+        listener?.cancel()
+        boundPort = nil
+    }
+
+    /// Make sure the listener is still there, and raise it again on the same port if it is not.
+    ///
+    /// **iOS takes listening sockets away from a suspended app.** It is documented behaviour
+    /// (TN2277, "socket resource reclaim"), and it is invisible from the outside: the app comes back
+    /// from the background, the listener it raised at launch is gone, and the SDK — which knows the
+    /// homeserver only as `http://127.0.0.1:<that port>` — gets its connections refused and reports
+    /// that there is no network. Which is what it did, on a phone, every time the app had been in a
+    /// pocket long enough, while the bridge on the far side answered perfectly well.
+    ///
+    /// The listener's own state handler notices a reclaim when the app wakes and rebinds on its
+    /// own; this is the same thing asked for deliberately, from `UserSession.enteredForeground`,
+    /// *before* sync starts again — so that the first request after a wake is not the one that
+    /// finds the port closed.
+    public func ensureListening() async {
+        guard !stopped, boundPort != nil else { return }
+        if let listener, listener.state == .ready { return }
+        await relisten()
+    }
+
+    /// What a reclaim looks like from the inside: the socket goes without anybody calling `stop()`.
+    /// For tests, which cannot suspend a process to make iOS do it.
+    func simulateReclaim() {
+        listener?.cancel()
+    }
+
+    private func bind(port requested: NWEndpoint.Port) async throws -> UInt16 {
         let parameters = NWParameters.tcp
-        parameters.requiredLocalEndpoint = NWEndpoint.hostPort(host: "127.0.0.1", port: .any)
+        parameters.requiredLocalEndpoint = NWEndpoint.hostPort(host: "127.0.0.1", port: requested)
         parameters.allowLocalEndpointReuse = true
 
         let listener = try NWListener(using: parameters)
@@ -65,11 +108,16 @@ public actor LocalHTTPProxy {
 
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             let resumed = ResumeOnce(continuation)
-            listener.stateUpdateHandler = { state in
+            listener.stateUpdateHandler = { [weak self] state in
                 switch state {
                 case .ready: resumed.succeed()
-                case .failed(let error): resumed.fail(error)
-                case .cancelled: resumed.fail(ProxyError.notStarted)
+                // After `.ready` there is nobody waiting on the continuation, and a failure is not
+                // a failure to start — it is the listener being lost, which used to be ignored
+                // here. That silence was the whole of the "no network after the background" bug.
+                case .failed(let error):
+                    if !resumed.fail(error) { Task { await self?.lost(listener) } }
+                case .cancelled:
+                    if !resumed.fail(ProxyError.notStarted) { Task { await self?.lost(listener) } }
                 default: break
                 }
             }
@@ -77,14 +125,37 @@ public actor LocalHTTPProxy {
         }
 
         guard let port = listener.port?.rawValue else { throw ProxyError.notStarted }
-        boundPort = port
         return port
     }
 
-    public func stop() {
-        listener?.cancel()
+    /// A listener went away without `stop()` being called.
+    private func lost(_ listener: NWListener) async {
+        // Only the current one matters: a listener already replaced, or one cancelled by `stop()`,
+        // reports its own end too, and must not start a second rebind.
+        guard !stopped, listener === self.listener else { return }
+        Log.session.warning("the local listener was lost; raising it again on the same port")
+        await relisten()
+    }
+
+    /// Bind again on the port the SDK already knows. A new port would be no use: the client was
+    /// built with the old one and cannot be told another.
+    private func relisten() async {
+        guard !stopped, let port = boundPort, let nwPort = NWEndpoint.Port(rawValue: port) else { return }
+        let previous = listener
         listener = nil
-        boundPort = nil
+        previous?.cancel()
+
+        // A few tries, because the port can take a moment to be free again after a reclaim.
+        for attempt in 1...5 {
+            guard !stopped else { return }
+            do {
+                _ = try await bind(port: nwPort)
+                return
+            } catch {
+                Log.session.warning("the listener would not come back (try \(attempt)): \(Log.describe(error), privacy: .public)")
+                try? await Task.sleep(for: .milliseconds(200 * attempt))
+            }
+        }
     }
 
     private func accept(_ connection: NWConnection) {
@@ -370,12 +441,16 @@ private final class ResumeOnce<T: Sendable>: @unchecked Sendable {
         pending?.resume(returning: value)
     }
 
-    func fail(_ error: Error) {
+    /// Whether this was the call that resumed — `false` when somebody already had, which is how a
+    /// state handler tells "failed to start" from "failed later".
+    @discardableResult
+    func fail(_ error: Error) -> Bool {
         lock.lock()
         let pending = continuation
         continuation = nil
         lock.unlock()
         pending?.resume(throwing: error)
+        return pending != nil
     }
 }
 

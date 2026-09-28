@@ -52,6 +52,63 @@ struct LocalHTTPProxyTests {
         #expect(upstream.requests.first?.target == "/_matrix/client/versions")
     }
 
+    /// iOS takes a suspended app's listening sockets away (TN2277), and the SDK knows the
+    /// homeserver only as this one port. A listener that did not come back on the *same* port was
+    /// an app that said "no network" after every trip into a pocket, bridge on or off.
+    @Test("a listener taken away comes back on the same port by itself")
+    func reclaimedListenerComesBack() async throws {
+        let upstream = StubUpstream { _ in ProxiedResponse(status: 200, body: Data("{}".utf8)) }
+        let proxy = LocalHTTPProxy(upstream: upstream)
+        let port = try await proxy.start()
+        defer { Task { await proxy.stop() } }
+
+        await proxy.simulateReclaim()
+
+        let url = URL(string: "http://127.0.0.1:\(port)/_matrix/client/versions")!
+        var answered = false
+        for _ in 0..<40 where !answered {
+            if let (_, response) = try? await session().data(from: url),
+               (response as? HTTPURLResponse)?.statusCode == 200 {
+                answered = true
+            } else {
+                try await Task.sleep(for: .milliseconds(50))
+            }
+        }
+        #expect(answered, "nothing was listening on \(port) after the reclaim")
+        #expect(await proxy.port == port)
+    }
+
+    /// And asked for on the way back to the foreground, so the first request after a wake does not
+    /// have to be the one that finds out.
+    @Test("ensureListening raises a lost listener before anybody asks")
+    func ensureListeningRaisesIt() async throws {
+        let upstream = StubUpstream { _ in ProxiedResponse(status: 200, body: Data("{}".utf8)) }
+        let proxy = LocalHTTPProxy(upstream: upstream)
+        let port = try await proxy.start()
+        defer { Task { await proxy.stop() } }
+
+        await proxy.simulateReclaim()
+        await proxy.ensureListening()
+
+        let url = URL(string: "http://127.0.0.1:\(port)/_matrix/client/versions")!
+        let (_, response) = try await session().data(from: url)
+        #expect((response as? HTTPURLResponse)?.statusCode == 200)
+    }
+
+    /// `stop()` is the one way a listener is meant to end, and it must stay ended.
+    @Test("a stopped listener is not raised again")
+    func stoppedStaysStopped() async throws {
+        let upstream = StubUpstream { _ in ProxiedResponse(status: 200, body: Data("{}".utf8)) }
+        let proxy = LocalHTTPProxy(upstream: upstream)
+        let port = try await proxy.start()
+        await proxy.stop()
+        await proxy.ensureListening()
+        try await Task.sleep(for: .milliseconds(300))
+
+        let url = URL(string: "http://127.0.0.1:\(port)/_matrix/client/versions")!
+        #expect((try? await session().data(from: url)) == nil)
+    }
+
     @Test("a query string survives, because the SDK puts real arguments there")
     func queryStringSurvives() async throws {
         let upstream = StubUpstream { _ in ProxiedResponse(status: 200, body: Data("{}".utf8)) }

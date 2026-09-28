@@ -47,6 +47,34 @@ public enum TunnelSettings {
 
     /// Split on commas and newlines, and keep what is actually a relay address.
     ///
+    // MARK: - Applying a change
+
+    /// What a connection is built from, as it would be read at the moment of building.
+    ///
+    /// The *effective* values, not the text in the fields: a space after the key, `npub` pasted over
+    /// the same key in hex, a relay list emptied back to the defaults — none of those changes the
+    /// connection, and none of them should tear a session down to rebuild it identically.
+    public struct Snapshot: Equatable, Sendable {
+        public var enabled: Bool
+        public var bridgeKey: Data?
+        public var relays: [URL]
+    }
+
+    public static func snapshot(_ defaults: UserDefaults = .standard) -> Snapshot {
+        Snapshot(enabled: isEnabled(defaults), bridgeKey: bridgeKey(defaults), relays: relays(defaults))
+    }
+
+    /// Posted when the connection settings have changed in a way the live session has to be rebuilt
+    /// for. The root view answers it — closing the session and restoring it again, which is what a
+    /// relaunch used to be needed for.
+    ///
+    /// Needed at all because a Matrix client is built *around* its homeserver address: with the
+    /// switch on, that address is this app's own listener, and with it off, the homeserver. A live
+    /// client cannot be moved from one to the other, so flipping the switch did nothing until the
+    /// next launch — and in a place where the direct route is blocked, "nothing" was an app that
+    /// stopped loading messages the moment somebody reached for the thing that would fix it.
+    public static let changed = Notification.Name("moscow.swag.iskra.tunnelSettingsChanged")
+
     /// `https://` is dropped rather than corrected. A relay is reached over `wss://`, and quietly
     /// rewriting one scheme into another turns a typo into a relay that merely looks down.
     public static func parseRelays(_ text: String) -> [URL] {
