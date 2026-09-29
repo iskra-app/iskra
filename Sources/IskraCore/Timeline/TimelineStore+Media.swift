@@ -17,12 +17,28 @@ public extension TimelineStore {
     ///
     /// `replyingTo` threads it onto a message, exactly as text does — `UploadParameters` has
     /// carried an `inReplyTo` all along and every send in this file passed nil for it.
-    func send(photo data: Data, filename: String, replyingTo replyID: String? = nil) async {
+    ///
+    /// What goes is the picture and nothing else: where it was taken, when, and on what are taken
+    /// out first — see `MetadataStripper`. A photo that cannot be cleaned is not sent at all.
+    func send(photo original: Data, filename originalName: String, replyingTo replyID: String? = nil) async {
         guard let timeline = liveTimeline else {
             Log.media.error("photo dropped: the room has no live timeline")
             failure = .send
             return
         }
+
+        // Off the main thread: a twelve-megapixel HEIC drawn again is a few hundred milliseconds,
+        // and they are not the room's to spend.
+        let stripped = await Task.detached(priority: .userInitiated) {
+            MetadataStripper.photo(original, filename: originalName)
+        }.value
+        guard let stripped else {
+            Log.media.error("photo refused: its metadata could not be removed")
+            failure = .send
+            return
+        }
+        let data = stripped.data
+        let filename = stripped.filename
 
         let info = MediaMetadata.image(data: data, filename: filename)
         let parameters = UploadParameters(source: .data(bytes: data, filename: filename),
@@ -50,7 +66,11 @@ public extension TimelineStore {
     /// Sends a video. A recorded video note comes through here too — it is an ordinary
     /// `m.video`, and only its shape (square, under a minute) marks it as round. See
     /// `VideoNote` for why it is not tagged with a custom field.
-    func send(video url: URL, replyingTo replyID: String? = nil) async {
+    ///
+    /// What goes is a copy with the location, the camera and the dates taken out — see
+    /// `MetadataStripper`. The copy is plaintext on disk and lives exactly as long as this call:
+    /// the send queue has taken its own copy of the file by the time `sendVideo` returns.
+    func send(video original: URL, replyingTo replyID: String? = nil) async {
         guard let timeline = liveTimeline else {
             // Not a silent return. The user pressed send; if nothing is going to happen, they are
             // entitled to be told — a bare `return` here is the app appearing to swallow a message,
@@ -60,6 +80,16 @@ public extension TimelineStore {
             failure = .send
             return
         }
+
+        let url: URL
+        do {
+            url = try await MetadataStripper.video(at: original)
+        } catch {
+            Log.media.error("video refused: its metadata could not be removed: \(Log.describe(error), privacy: .public)")
+            failure = .send
+            return
+        }
+        defer { MetadataStripper.discard(url) }
 
         let info = await MediaMetadata.video(at: url)
 
