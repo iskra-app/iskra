@@ -6,6 +6,114 @@
 
 ---
 
+## Третий проход — 2026-09-29
+
+Поверх `origin/dev` @ `2233f2a`: 173 коммита и ~43 тыс. строк с прошлого прохода (мост через nostr
+и его Rust-сервис, несколько аккаунтов, share extension, свой push-шлюз, вырезание метаданных,
+демо- и sign-in-серверы, блокировка приложения). Семь параллельных срезов: транспорт (Swift),
+мост (Rust), секреты/сессии/логи, расширения/пуши/медиа, корректность `IskraCore`, UI и
+доступность, архитектура/ТЗ. Находки ниже сведены и дедуплицированы; каждая помечена
+**CONFIRMED** (прочитано в коде) или **PLAUSIBLE** (зависит от поведения SDK/Foundation/таймингов,
+которое из кода не видно — нужна проверка на устройстве или тестом).
+
+**Исходное состояние.** `swift build` — чисто. `swift test` — **339 тестов в 47 сюитах, зелёные.**
+`cargo test` моста — 75 зелёных, `clippy` — 0. **`swiftlint` — 245 нарушений (89 ошибок)**:
+отчёт от 15.07 говорил «ноль», это дрейф двух месяцев (мок-сервер, порт blobatar, тесты NIP-44).
+
+**Статус починки — честно.** Сессия, в которой шёл аудит, упёрлась в ограничения прав
+(`cargo build` и часть правок/чтений были запрещены политикой автодоступа), поэтому починено
+почти ничего. Единственная правка — `Bridge/…/forwarder.rs` (B1, B2, B3, B8 ниже), и она
+**не скомпилирована**: перед мержем нужен `cd Bridge && cargo test`. Начатая починка T1 откачена,
+чтобы не оставить дерево в половинчатом состоянии (настройки читались бы из App Group, а экран
+писал бы в `.standard`). Всё остальное — список работы, отсортированный по серьёзности.
+
+### High
+
+| # | Что | Где | Вердикт |
+|---|---|---|---|
+| **T1** | **Расширение уведомлений ходит к homeserver'у напрямую при включённом мосте.** `TunnelSettings` читает `UserDefaults.standard`, а у `.appex` он свой и пустой → `route(to:)` видит «моста нет» и отдаёт настоящий адрес из Keychain. Каждый пуш — прямое TLS-соединение там, где пользователь включил мост именно потому, что прямой путь заблокирован или прослушивается; экран при этом пишет «Через мост». `--probe-notification` это не ловит (идёт в процессе приложения). Та же ловушка, что `faceStore`. **Починка:** три ключа `transport.*` — в App Group suite (с однократным переносом), `@AppStorage(..., store:)` в `ConnectionView`, `BridgeCheck`, `BridgeProbe`, `AppSettings.forget`; тест, что при пустом `.standard` и флаге в группе `route` не отдаёт прямой URL | `TunnelSettings.swift:15-30`, `ConnectionView.swift:20-22`, `AuthenticationService.swift:697-712`, `PushDecoder.swift:71` | CONFIRMED |
+| **S1** | **Блокировка и шторка приватности не закрывают `.sheet`/`.fullScreenCover`.** Обе — `.overlay` корня, а презентации рисуются выше. Лист с **ключом восстановления** (`SecurityView.swift:152`), полноэкранное фото/видео (`MessageRow.swift:905`), поиск, пересылка, верификация видны в снимке переключателя приложений и доступны за Face ID. **Починка:** на iOS — отдельный `UIWindow` уровня `.alert + 1` для замка и шторки; либо закрывать все презентации при блокировке | `IskraRootView.swift:444-459`, `LockScreen.swift` | CONFIRMED (код); увидеть на устройстве |
+| **B1** | **Мост ходит по редиректам — SSRF и «не веб-прокси» отменены одним заголовком.** reqwest по умолчанию `Policy::limited(10)`, а `resolve` проверял только первый URL. На открытом мосту `302 → http://169.254.169.254/…` или в LAN оператора — тело возвращается клиенту. **Починено (не скомпилировано):** `Policy::none()`, редиректы проходятся вручную, каждый шаг — через тот же `Upstreams::resolve`; не прошедший → 502, **не** 3xx (иначе SDK пошёл бы по ссылке сам, мимо туннеля); `Authorization` снимается при смене origin; `no_proxy()` | `Bridge/crates/iskra-bridge/src/forwarder.rs` | CONFIRMED → 🟡 правка есть, не собрана |
+| **F1c** | **`close()`/`signOut()` во время `UserSession.start()` оставляет живой `SyncService`.** Ни `UserSession.start()`, ни `RoomListStore.start()` не проверяют после `await`, не закрыли ли их. Сценарий: первый запуск висит на `displayName()`, пользователь чинит мост → `reconnect()` строит новый клиент на том же сторе, а старый `start()` просыпается и запускает второй sync — **в том числе напрямую, после того как пользователь выбрал мост.** **Починка:** generation/`closed` в `UserSession`, проверка после каждого `await`; `stop()` отменяет/ждёт стартовый таск (паттерн `TimelineStore.opening`); таймаут на `loadProfile` | `UserSession.swift:219-253`, `RoomListStore.swift:158-262`, `Verification.swift listen()` | CONFIRMED |
+| **E1** | **Имя файла из share sheet не очищается — возможен path traversal с удалением.** `suggestedName` задаёт чужое приложение; в приложении `folder.appending(path:)` понимает `..`, а `defer { removeItem(parent) }` взведён до проверки. `"../../x"` → удаляется корень App Group (сторы всех аккаунтов, общие defaults, `appLock.enabled`). **Починка:** `lastPathComponent` + отказ от `.`/`..`/пустых в расширении; в `UserSession.send(_:)` — проверка, что путь внутри `folder` ровно на два уровня; `defer` после проверки | `ShareViewController.swift:159,211`, `UserSession.swift:435-439` | PLAUSIBLE (зависит от того, кодирует ли `appending(component:)` `/`) |
+| **F2c** | **Файл вложения удаляется раньше, чем SDK его прочитал.** `sendVideo`/`sendFile`/`sendVoiceMessage` синхронны и возвращают join-handle; чтение файла — в порождённой задаче. Swift удаляет файл (или отпускает security scope) сразу после возврата. Под нагрузкой — ENOENT, локального эха нет, никто не делает `join()`: видео/файл/голосовое исчезают молча. Фото не затронуты (`.data`) | `TimelineStore+Media.swift:97`, `UserSession.swift:436`, `RoomView.swift:1467,1594,1932` | PLAUSIBLE |
+| **U1** | **Полноэкранный просмотр фото ломает `tearDown` комнаты.** `fullScreenCover` на iOS вызывает `onDisappear` у презентующего; `RoomView` исключает только детали и закреплённые → `tearDown()`, `hasTornDown = true`, который не сбрасывается. Следующий реальный выход из комнаты не сохраняет черновик, не останавливает таймлайн (класс M5/M15), не отменяет запись | `MessageRow.swift:905`, `RoomView.swift:232,1171,1249` | CONFIRMED (код) / PLAUSIBLE (рантайм) |
+| **U2** | **VoiceOver не может ответить, отреагировать, скопировать, удалить, переслать, закрепить.** Кастомное меню (UIKit long press / правый клик) заменило `.contextMenu`, на котором держался фикс H12; `accessibilityActions` на строке нет. Регресс H12 | `MessageActions.swift:160-186`, `MessageRow.swift:161-165` | CONFIRMED |
+| **X1** | **Смена ключей собеседника (identity change / pin violation) не обрабатывается вовсе** — расхождение с element-x в самом опасном месте. Нет `subscribeToIdentityStatusChanges`, `pin()`/`withdrawVerification()`, щитов сообщений. Застрявшее `identityViolations`/`insecureDevices` сообщение предлагает «проверьте, что это он» и «повторить», но проверить других пользователей в приложении нельзя, а повтор снова застревает. Нет явных `roomKeyRecipientStrategy`/`decryptionSettings` — решает дефолт SDK. **Минимум:** «Отправить всё равно» через `withdrawVerificationAndResend`/`ignoreDeviceTrustAndResend` + честный текст; **полностью:** баннер в комнате с pin/withdraw | `TimelineMapper.swift:620`, `Message.swift:71` | CONFIRMED |
+
+### Medium
+
+| # | Что | Где | Вердикт |
+|---|---|---|---|
+| E2 | macOS: имя присланного файла (задаёт отправитель) становится компонентом пути в `tmp/iskra-open/`, затем `removeItem` + `copyItem` + `NSWorkspace.open` — traversal от **удалённого** отправителя; плюс любой `.command` открывается одним кликом | `FileOpener.swift:87-91` | PLAUSIBLE |
+| E3 | Share sheet и Shortcuts обходят блокировку: видны названия всех чатов всех аккаунтов, можно поставить в очередь сообщение; приложение отправит его при следующем открытии, ещё под замком | `ShareViewController.swift:33-45`, `IskraRootView.swift:323-326,498-521` | CONFIRMED |
+| T2 | Любой локальный процесс роняет приложение: `Transfer-Encoding: chunked` + размер `-1` → `prefix(-1)` → trap | `LocalHTTPProxy.swift:350-371` | CONFIRMED |
+| T3 | Loopback-прокси без лимитов на заголовок/тело/чанки и без таймаутов → OOM/jetsam, slowloris; нет отказа при `Content-Length` + `Transfer-Encoding` | `LocalHTTPProxy.swift:161-191,304-373` | CONFIRMED |
+| T4 | `LocalHTTPProxy.seen` хранит **каждый** запрос целиком (с `Authorization: Bearer`, телом `/login`, загрузками) всю сессию; читают его только тесты | `LocalHTTPProxy.swift:34-36,169,234` | CONFIRMED |
+| T5 | Мост включён, в поле опечатка в `npub` → `bridgeKey() == nil` → `routeLocally` → **напрямую**, статус «Через локальный слой». Нарушает «адрес заполнен → отказ». **Починка:** непустой и неверный адрес → `bridgeUnavailable` | `AuthenticationService.swift:711,725`, `TunnelSettings.swift:25-30` | CONFIRMED |
+| T6 | Дедупликация до проверки подписи: вредный relay шлёт подделку с id настоящего ответа первым → настоящий ответ от здоровых relay отброшен как дубль. Один relay кладёт туннель | `NostrRelayPool.swift:209-215` | CONFIRMED |
+| B2 | Мост: тело ответа upstream без лимита, режется на события и публикуется во все relay. **Починено (не собрано):** потоковое чтение с потолком 8 МБ (`Limits::default().max_bytes`) → 502 | `forwarder.rs` | 🟡 |
+| B3 | Мост: `%error` от reqwest печатает полный URL (id комнат, событий, `pos`) на каждом таймауте — против README. **Починено (не собрано):** `without_url()` + вид ошибки | `forwarder.rs`, `listener.rs:303` | 🟡 |
+| B4 | Мост: нет глобального лимита одновременных запросов; per-key лимиты обходятся бесплатными ключами; `retain_recent()` никогда не вызывается — состояние лимитера растёт | `listener.rs:169`, `ratelimit.rs:50` | CONFIRMED |
+| B5 | Мост: один отправитель занимает все 64 слота реассемблера → чужие многочанковые запросы отвергаются; 64 × 8 МБ = 512 МБ на Raspberry Pi | `reassemble.rs:148,183-187` | CONFIRMED |
+| B6 | Мост: нет проверки `created_at` и долгой защиты от повтора — оператор relay может переиграть старый запрос (`/logout`, `/leave`, `/send`) после рестарта моста | `listener.rs:91`, `reassemble.rs:135-140` | CONFIRMED (нужен вредный relay) |
+| S5 | Незашифрованные копии расшаренных фото/файлов остаются в `<group>/Outbox/` навсегда: `forget(account:)` чистит записи, но не файлы; свайп/убийство share sheet оставляет копии; нет чистки при запуске; гонка read-modify-write между расширением и приложением теряет элемент (F11c) | `ChatDirectory.swift:64-72`, `ShareViewController.swift:31-51,189` | CONFIRMED |
+| S8 | Soft logout обрабатывается как полный: стираются токены, пароль стора и **сам стор** — ключи, не попавшие в бэкап, теряются | `UserSession.swift:265-283,665-667` | CONFIRMED (путь) |
+| S2 | Под замком содержимое остаётся в дереве доступности и фокусе клавиатуры | `LockScreen.swift`, корень | PLAUSIBLE |
+| F3c | Outbox выгребается **до** отправки; если `start()` целевого таймлайна упал (офлайн, не открытый ранее чат) — сообщение и файл пропадают молча | `IskraRootView.swift:512-519`, `UserSession.swift:396-459` | CONFIRMED |
+| F4c | `TimelineStore.open()` не проверяет generation после `addListener`/подписок → живые подписки на остановленном сторе | `TimelineStore.swift:378-395` | CONFIRMED |
+| F5c | `TimelineStore.desynced()` переоткрывает остановленную комнату (нет guard'а N4) | `TimelineStore.swift:1591-1596` | CONFIRMED |
+| F6c | Неудачная очистка поискового индекса оставляет синк остановленным навсегда (`.idle` не перезапускается) | `StorageStore.swift clearSearchIndex()` | CONFIRMED |
+| F7c | Быстрый фон→передний план может оставить синк в `.idle` (гонка pause/resume) | `RoomListStore.swift:331-345` | PLAUSIBLE |
+| F8c | Колбэки SDK доставляются отдельными неупорядоченными `Task` (верификация, состояние синка, блок-лист) — тот же класс, что починен для диффов `AsyncStream` | `RoomListStore.swift:254`, `Verification.swift`, `Account.swift`, `BlockStore` | PLAUSIBLE |
+| U3 | Reduce Motion не учитывается нигде (~150 анимаций, в т. ч. `repeatForever`) | `TypingBubble.swift:66`, `RecordingStrip.swift:88`, … | CONFIRMED |
+| U4 | Подписи прямо на обоях (разделитель дней, служебные строки, время) без подложки — нечитаемо на тёмном фото в светлой теме | `RoomView.swift:2016`, `RoomEventRow.swift:33`, `MessageMarks.swift:25,30` | CONFIRMED |
+| U5 | Белый текст на зелёной кнопке ответа на приглашение ≈ 2.2:1 | `PrimaryAction.swift:130` | CONFIRMED |
+| U6 | «Проверить мост» показывает сырую Swift-ошибку (`URLError(_nsError: …)`) | `BridgeCheck.swift:43,57,64` | CONFIRMED |
+| X2 | NSE строит клиента полным билдером приложения (`autoEnableBackups`/`CrossSigning`, `restoreSession` всех комнат) в 24 МБ; element-x — `setupEncryption: false`, `.systemIsMemoryConstrained()`, `restoreSessionWith(roomLoadSettings: .one(roomId:))` | `AuthenticationService.makeClientBuilder`, `PushDecoder.swift` | CONFIRMED |
+| X3 | NSE: второй `didReceive` вытесняет первый, но таск первого пуша потом `take()`-ает обработчик второго — пуш 2 показывает содержимое пуша 1 | `NotificationService.swift:~40-50,104` | CONFIRMED |
+| X4 | `LocalNames.account` — один на процесс: в NSE два пуша разных аккаунтов параллельно получают чужие локальные имена; в приложении переключение до закрытия старой сессии | `LocalNames.swift:45`, `PushDecoder.swift:88` | CONFIRMED |
+| X5 | Частичный сбой `RoomListStore.start()` «кирпичит» стор: `syncService` присвоен до бросающих вызовов, `guard syncService == nil` блокирует повтор, корень глотает ошибку `try?` — выглядит вошедшим, не синкается | `RoomListStore.swift:159,189` | CONFIRMED |
+| X6 | App Intents не локализованы: заголовки, параметры и фразы Siri — английские литералы, `AppShortcuts.strings` нет — нарушение инварианта локализации | `Apps/Shared/IskraAppIntents.swift:37,72-108` | CONFIRMED |
+| X7 | `IskraRootView` — 913 строк, весь жизненный цикл сессий в View, не тестируется (там же живёт F1c) → вынести `SessionCoordinator` | `IskraRootView.swift` | CONFIRMED |
+| V1 | Жаргон на экране «Подключение»: «relay», «локальный слой», «токен», «hex» — предложены «ретранслятор», «Напрямую — мост не указан», «ключ входа в ваш аккаунт», «ключ из 64 символов» | `Localizable.strings` `connection.*` | CONFIRMED |
+
+### Low
+
+- **Транспорт.** T7 — повтор старых ответов забивает реассемблер клиента (нет проверки, что id в `pending`, и `created_at`). T8 — любой локальный процесс может слать запросы через мост с ключом этого устройства (нет проверки `Host`/секрета; обход закрытого моста), а в `routeLocally` `DirectUpstream` принимает абсолютные URL — локальный открытый прокси. T9 — `DirectUpstream` на `URLSession.shared`: редиректы, общий `URLCache` (незашифрованный `Cache.db`), cookies → нужен `.ephemeral`. T10 — принимаются `ws://` relay. T11/F15c — `stopTunnel` читает порт после `stop()`, запись `standIn` не удаляется; `accept` не проверяет `kind`; `sign` без `auxiliaryRand`; `TunnelIdentity` может молча перевыпустить ключ при гонке app/NSE.
+- **Мост.** B7 — длина `id` конверта не ограничена (до ~260 МБ в `refused`). B8 — `X-Forwarded-For`/`Forwarded`/`X-Real-IP`/`Proxy-*` клиента проходили к homeserver'у (**починено вместе с B1, не собрано**). B9 — пробелы в `is_global` (NAT64 `64:ff9b::/96`, 6to4, `::a.b.c.d`, `fec0::/10`, `0.0.0.0/8`); IPv6-литералы всегда отвергаются из-за скобок. B10 — `run-local.sh` создаёт ключ с umask до `chmod 600` и передаёт его через окружение.
+- **Секреты и сессии.** S3 — на macOS «блокировать сразу» фактически срабатывает только при запуске (переключение приложений — `.inactive`). S4/E6 — заблокированный пуш всё равно показывает подпись аккаунта (`@boris:work.example`). S6 — повторный вход в закрытый аккаунт не чистит его `ChatDirectory`/outbox/`UnreadCounts`. S7/E5 — `INInteraction` (Matrix ID, имя, комната) и доставленные расшифрованные уведомления переживают выход из аккаунта. S9 — гонка NSE/выход может пересоздать `store-passphrase.<id>` удалённого аккаунта; `SessionDelegate.save` может записать токен обратно. S10 — SDK пишет в системный журнал на `.info` в релизе (id комнат/пользователей). S11 — macOS: ключ восстановления в буфере обмена без срока жизни и может уехать через Universal Clipboard. S12 — `--mock-signin`/`--mock-backend` в релизе; мок-сессия регистрирует pusher и чистит бейдж настоящих аккаунтов. S13 — мёртвый `SessionStore.clear(environment:)` с `removeAll()` (опасен при возвращении); CLAUDE.md и `TunnelIdentity.swift:6` всё ещё говорят, что выход вызывает `clear`.
+- **Расширения и медиа.** E7 — NSE качает аватар целиком до проверки размера (24 МБ бюджета) → `getMediaThumbnail`. E8 — share extension получает Keychain access group с токенами, которые ему не нужны. E9 — allow-list метаданных не смотрит на вспомогательные изображения HEIC (глубина, маски, gain map) и встроенные миниатюры — миниатюра может показать необрезанный оригинал. E10 — фото из outbox уходят с именем `"<UUID>/IMG_0042.HEIC"`.
+- **Корректность.** F9c — таймлайны целей пересылки/outbox не останавливаются. F10c — `protectHistory()` без таймаута на экране первого запуска. F12c — `RoomDetailsStore.load()` подписывается после `await` без проверки `stop()`. F13c — повторное «ок» в течение 120 с сразу «съедается» старым эхом. F14c — refill продолжает пагинацию после stop/start. F16c — `startSignIn` не реентерабелен. F17c — узкое окно в `withTimeout`, где отмена не доходит до работы.
+- **UI.** U7 — провал экспорта кружка молча теряет запись. U8 — остатки M19/M24: шеврон закреплённых 16×16, литералы вне `Theme` (`RoomListView.swift:705,709`, `MessageRow.swift:610,627,644,732,962,973`, …). U9 — чтение PNG в `body` у `HomeIcon.preview`, запись обоев на главном потоке. U10 — нет поддержки Increase Contrast. V2–V10 — тексты: мужской род на кнопках («Я сохранил код»), «@room», «личность изменилась», «телефон» на Mac, «Светлое/Тёмное» при «Тема», «Рио-де-Жанейро», «мордочки» vs «Существа», `message.unreadable` винит «вы вошли позже».
+
+- **Архитектура и element-x.** Нет `requestConfig(retryLimit: 3, …)` — SDK не повторяет при rate limit; нет `.withSharePos(enable: true)` — холодный старт заново делает initial sync; `PushPermission` не удаляет pusher при выходе до прихода APNs-токена; `peekTimeline` не останавливается `stopEverything`; четыре публичных init/метода Core с SDK-типами в сигнатуре → `internal`; мёртвые `import MatrixRustSDK` в `SignInProbe.swift`, `BlockStore.isBlocked`, `BridgeCheck.runFromSettings`; `RoomView.body` ≈ 833 строки. Функциональные пробелы ТЗ: лимит 5 закреплённых чатов не применяется и нет их порядка; превью пространства не показывает последнее сообщение активной комнаты.
+- **Скопированного из element-x-ios (AGPL) кода не найдено** — поиск по характерным именам, заголовкам и комментариям пуст; совпадения только в именах, которые задаёт FFI.
+
+### Info
+
+- `aps-environment: development` захардкожен (известно с июля) — TestFlight/App Store не получат пушей.
+- Мост из коробки открыт всем, кто знает npub (`ALLOWED_PUBKEYS` пуст) — стоит предупреждать при старте, как для `*`. Любые HTTP-методы пропускаются; reqwest читал `HTTPS_PROXY` (закрыто `no_proxy()` в правке B1); действия CI закреплены по тегу, а не SHA.
+- Что видит relay: pubkey устройства и моста, тайминги, число чанков и примерный размер — связь «устройство ↔ мост» и профиль активности.
+
+### Проверено и в порядке
+
+Авторизация моста (проверка `event.pubkey` до всего, подписи проверяет nostr-relay-pool, NIP-44 от
+ECDH с отправителем); SSRF-проверка первого URL (`..`, `%2e%2e`, `//host`, origin-сравнение);
+реассемблеры обеих сторон (512 чанков, 8 МБ, 64, 60 с, дубли, голова только в чанке 0); NIP-44 и
+ChaCha20 на Swift против спецификации (HMAC в постоянное время до расшифровки, паддинг, длины,
+вектора целиком); подпись/id событий; ключ устройства в своём Keychain-сервисе; Keychain —
+`AfterFirstUnlockThisDeviceOnly` + data-protection + access group, `synchronizable` нигде, для
+одного аккаунта нет `removeAll()`; миграция legacy; один `SessionDelegate` на клиент;
+`.eventIdOnly` + `append: true` + session ID вместо Matrix ID в пуше; NSE — `.multipleProcesses`,
+без содержимого при ошибке, редактирование под замком; `uploadMedia`/`sendRaw` нигде; все медиа
+через `MediaPreparation`; пробы под `#if DEBUG`; `Log.describe` не пропускает тел; нет ATS-исключений
+и отключённого TLS; Docker — не root, без портов и секретов; строки — `bundle:` на всех 671,
+en/ru совпадают ключ в ключ; нет `.borderedProminent`/`.glassProminent`, стекло только на навигации,
+нет `@Environment(\.dismiss)` в экранах сайдбара.
+
+---
+
 ## Повторный проход — 2026-07-15
 
 Второй, скептический проход поверх уже починенного дерева: четыре параллельных среза
