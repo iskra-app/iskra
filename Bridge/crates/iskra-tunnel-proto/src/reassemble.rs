@@ -96,6 +96,12 @@ impl<K: Eq + Hash + Clone> Reassembler<K> {
         self.partials.len()
     }
 
+    /// How many half-arrived messages match — the bridge asks it per sender, so that one sender
+    /// cannot take every slot `max_in_flight` allows and lock everybody else's uploads out.
+    pub fn in_flight_where(&self, matches: impl Fn(&K) -> bool) -> usize {
+        self.partials.keys().filter(|key| matches(key)).count()
+    }
+
     /// Whether this message has been seen before — half-arrived, or already refused.
     ///
     /// What the bridge asks before charging a chunk to the rate limit: a request is charged once,

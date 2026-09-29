@@ -39,12 +39,13 @@ fi
 # Ключ создаётся один раз и лежит рядом. Он определяет pubkey бриджа — тот самый, который вписывают
 # в клиент, — поэтому пересоздавать его на каждый запуск значило бы менять адрес бриджа при каждом
 # перезапуске.
+#
+# Создаёт его сам мост (BRIDGE_KEY_FILE): сразу с правами 600, без мгновения, когда файл читается
+# всеми, как было с `openssl rand > файл; chmod 600`. И ключ не уходит в окружение процесса, где
+# его видно в /proc/<pid>/environ.
 if [ ! -f "$KEY_FILE" ]; then
-  echo "Ключа нет, создаю $KEY_FILE"
-  openssl rand -hex 32 > "$KEY_FILE"
-  chmod 600 "$KEY_FILE"
+  echo "Ключа нет — мост создаст $KEY_FILE при запуске"
 fi
-BRIDGE_NOSTR_PRIVKEY="$(tr -d '[:space:]' < "$KEY_FILE")"
 
 CARGO_ARGS=(run -q -p iskra-bridge)
 if [ "${RELEASE:-}" = "1" ]; then
@@ -69,7 +70,7 @@ echo
 exec env \
   ALLOWED_UPSTREAMS="$ALLOWED_UPSTREAMS" \
   ${HOMESERVER_URL:+HOMESERVER_URL="$HOMESERVER_URL"} \
-  BRIDGE_NOSTR_PRIVKEY="$BRIDGE_NOSTR_PRIVKEY" \
+  BRIDGE_KEY_FILE="$KEY_FILE" \
   RELAY_LIST="$RELAY_LIST" \
   RATE_LIMIT_PER_MIN="$RATE_LIMIT_PER_MIN" \
   REQUEST_TIMEOUT_SECS="$REQUEST_TIMEOUT_SECS" \

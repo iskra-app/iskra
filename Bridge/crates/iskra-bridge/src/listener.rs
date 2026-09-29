@@ -10,7 +10,7 @@ use iskra_tunnel_proto::{
     KIND_REQUEST, KIND_RESPONSE,
 };
 use nostr_sdk::prelude::*;
-use tokio::sync::{broadcast, Mutex};
+use tokio::sync::{broadcast, Mutex, Semaphore};
 use tokio::task::JoinSet;
 
 /// Half-arrived requests, keyed by who is sending and which message it is.
@@ -30,6 +30,25 @@ use crate::ratelimit::RateLimit;
 /// per minute leaves every honest upload well clear and still bounds the decrypting a stranger can
 /// make the bridge do. See `ratelimit` for why there are two ceilings at all.
 const EVENTS_PER_REQUEST: u32 = 64;
+
+/// Requests being served at once, across every client. The per-key ceilings do not bound this on
+/// an open bridge — nostr keys cost nothing, so a flood can come from a fresh key per event — and
+/// every one of these may hold an upstream connection and up to 8 MB for the whole timeout.
+const MAX_CONCURRENT: usize = 256;
+
+/// Half-arrived messages one client may have at once. `Limits::max_in_flight` is shared by
+/// everybody, and without this one sender opening 64 messages and never finishing them locked
+/// every other client's uploads out for as long as it kept doing so.
+const MAX_IN_FLIGHT_PER_CLIENT: usize = 8;
+
+/// How far an event's `created_at` may be from the bridge's clock. The `since` in the subscription
+/// is only a request to the relay; a hostile one ignores it and replays a request recorded days
+/// ago — a `/leave`, a `/logout` — with the victim's token still in it. Within the window, a
+/// replay is a duplicate event id, and nostr-sdk drops those.
+const MAX_CLOCK_SKEW_SECS: u64 = 120;
+
+/// How often the rate limiters forget clients that have gone quiet.
+const FORGET_QUIET_CLIENTS: std::time::Duration = std::time::Duration::from_secs(60);
 
 /// The two ceilings, per client key.
 struct Ceilings {
@@ -102,6 +121,12 @@ impl Bridge {
         } else {
             tracing::info!(homeservers = ?config.upstreams.listed(), "serving");
         }
+        if config.allowed_pubkeys.is_none() {
+            tracing::warn!(
+                "ALLOWED_PUBKEYS is empty — anyone who knows this bridge's address can use it; \
+                 list your devices' keys to close it"
+            );
+        }
 
         tracing::info!(
             pubkey = %config.keys.public_key(),
@@ -136,8 +161,19 @@ impl Bridge {
             .take()
             .ok_or_else(|| anyhow::anyhow!("run was called twice"))?;
 
+        let serving = Arc::new(Semaphore::new(MAX_CONCURRENT));
+        let mut forget = tokio::time::interval(FORGET_QUIET_CLIENTS);
+
         loop {
-            let notification = match notifications.recv().await {
+            let received = tokio::select! {
+                received = notifications.recv() => received,
+                _ = forget.tick() => {
+                    self.ceilings.requests.retain_recent();
+                    self.ceilings.events.retain_recent();
+                    continue;
+                }
+            };
+            let notification = match received {
                 Ok(notification) => notification,
                 // Lagging is not the end of the bridge, and treating it as one is a trap worth
                 // naming: notifications arrive on a bounded broadcast channel, and the obvious
@@ -157,6 +193,11 @@ impl Bridge {
             if event.kind != Kind::Custom(KIND_REQUEST) {
                 continue;
             }
+            // Dropped rather than answered: answering a flood would be publishing on its behalf.
+            let Ok(permit) = Arc::clone(&serving).try_acquire_owned() else {
+                tracing::warn!("too many requests in flight; dropped one");
+                continue;
+            };
 
             let config = Arc::clone(&self.config);
             let forwarder = Arc::clone(&self.forwarder);
@@ -167,6 +208,7 @@ impl Bridge {
             // One task per request: a homeserver that takes thirty seconds to answer one call must
             // not stop the bridge from hearing the next.
             tokio::spawn(async move {
+                let _permit = permit;
                 if let Err(error) = serve(&config, &forwarder, &ceilings, &partials, &client, &event).await {
                     tracing::warn!(client = %event.pubkey, %error, "request failed");
                 }
@@ -195,6 +237,10 @@ async fn serve(
         tracing::debug!(client = %sender, "not on the allow list");
         return Ok(());
     }
+    if !is_fresh(event.created_at, Timestamp::now()) {
+        tracing::info!(client = %sender, "dropped a stale or future event");
+        return Ok(());
+    }
     // Before decrypting, so it can only be silent: without the envelope there is no request id to
     // answer on. It is set far above anything honest, so silence here means a flood.
     if !ceilings.events.allow(&sender) {
@@ -221,7 +267,17 @@ async fn serve(
         let mut reassembler = partials.lock().expect("the reassembler");
         // A request is charged once, on whichever of its chunks arrives first — not once per
         // chunk, which is how a single photo used to exhaust the minute.
-        let charge = if reassembler.knows(&key) {
+        let known = reassembler.knows(&key);
+        if !known
+            && envelope.total > 1
+            && reassembler.in_flight_where(|(client, _)| *client == sender) >= MAX_IN_FLIGHT_PER_CLIENT
+        {
+            reassembler.refuse(key, now);
+            drop(reassembler);
+            tracing::info!(client = %sender, "too many half-sent messages");
+            return Ok(());
+        }
+        let charge = if known {
             Ok(())
         } else {
             ceilings.requests.check(&sender)
@@ -326,6 +382,11 @@ async fn serve(
     answer(config, client, &sender, response).await
 }
 
+/// Whether an event was made close enough to now to be a request somebody is waiting on.
+fn is_fresh(created_at: Timestamp, now: Timestamp) -> bool {
+    created_at.as_secs().abs_diff(now.as_secs()) <= MAX_CLOCK_SKEW_SECS
+}
+
 /// A refusal the Matrix SDK knows what to do with.
 ///
 /// It used to be silence, and silence is the one answer a bridge must never give: the SDK waited
@@ -426,4 +487,19 @@ async fn publish(
         .sign_with_keys(&config.keys)?;
     client.send_event(&out).await?;
     Ok(())
+}
+
+#[cfg(test)]
+mod freshness {
+    use super::*;
+
+    #[test]
+    fn an_event_from_just_now_is_fresh_and_a_recording_is_not() {
+        let now = Timestamp::from(1_800_000_000);
+        assert!(is_fresh(now, now));
+        assert!(is_fresh(Timestamp::from(now.as_secs() - 60), now));
+        assert!(is_fresh(Timestamp::from(now.as_secs() + 60), now));
+        assert!(!is_fresh(Timestamp::from(now.as_secs() - 3600), now));
+        assert!(!is_fresh(Timestamp::from(now.as_secs() + 3600), now));
+    }
 }

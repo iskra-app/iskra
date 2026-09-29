@@ -15,7 +15,7 @@ pub mod reassemble;
 
 pub use chunk::chunk_count;
 pub use crypto::{open, seal};
-pub use envelope::{Envelope, HttpRequest, HttpResponse, PROTOCOL_VERSION};
+pub use envelope::{Envelope, HttpRequest, HttpResponse, MAX_ID_LEN, PROTOCOL_VERSION};
 pub use reassemble::{Accepted, Limits, Reassembler};
 
 use thiserror::Error;
