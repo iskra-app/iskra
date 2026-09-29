@@ -192,6 +192,22 @@
 
 "settings.storage" = "Storage";
 
+/* Photos and videos: what happens to them before they are sent. */
+"settings.media" = "Photos & videos";
+"media.title" = "Photos & videos";
+"media.stripMetadata" = "Remove metadata";
+"media.stripMetadataHelp" = "Everything but the picture itself is taken out of photos and videos: where they were taken, when, and on which phone. Video messages always go without metadata.";
+"media.stripMetadataOffHelp" = "Photos and videos will go with their location, the time they were taken and the phone model — anyone in the chat can look them up. Video messages still go without metadata.";
+"media.compress" = "Compress photos and videos";
+"media.compression" = "Compression";
+"media.compression.strong" = "Strong";
+"media.compression.balanced" = "Medium";
+"media.compression.light" = "Light";
+"media.compression.strongHelp" = "Photos up to 1280 pixels on the long side, videos up to 540p. Goes out fast even on a bad connection, but fine detail is lost.";
+"media.compression.balancedHelp" = "Photos up to 2048 pixels on the long side, videos up to 720p. On a phone screen you can't tell it from the original, and it's several times smaller.";
+"media.compression.lightHelp" = "Photos up to 4096 pixels on the long side, videos up to 1080p. Almost the original, but the savings are more modest too.";
+"media.compressOffHelp" = "Photos and videos will go at full size — slower, and more data for you and for whoever gets them. Video messages are still compressed.";
+
 "settings.connection" = "Connection";
 
 /* The Connection screen: through a bridge, or straight to the server. */

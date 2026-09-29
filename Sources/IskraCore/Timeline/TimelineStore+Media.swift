@@ -18,8 +18,9 @@ public extension TimelineStore {
     /// `replyingTo` threads it onto a message, exactly as text does — `UploadParameters` has
     /// carried an `inReplyTo` all along and every send in this file passed nil for it.
     ///
-    /// What goes is the picture and nothing else: where it was taken, when, and on what are taken
-    /// out first — see `MetadataStripper`. A photo that cannot be cleaned is not sent at all.
+    /// What goes is what the settings say: compressed, and with where it was taken, when and on
+    /// what taken out — see `MediaSettings` and `MediaPreparation`. A photo the settings want
+    /// stripped and that cannot be is not sent at all.
     func send(photo original: Data, filename originalName: String, replyingTo replyID: String? = nil) async {
         guard let timeline = liveTimeline else {
             Log.media.error("photo dropped: the room has no live timeline")
@@ -29,16 +30,17 @@ public extension TimelineStore {
 
         // Off the main thread: a twelve-megapixel HEIC drawn again is a few hundred milliseconds,
         // and they are not the room's to spend.
-        let stripped = await Task.detached(priority: .userInitiated) {
-            MetadataStripper.photo(original, filename: originalName)
+        let settings = MediaSettings.current()
+        let prepared = await Task.detached(priority: .userInitiated) {
+            MediaPreparation.photo(original, filename: originalName, settings: settings)
         }.value
-        guard let stripped else {
+        guard let prepared else {
             Log.media.error("photo refused: its metadata could not be removed")
             failure = .send
             return
         }
-        let data = stripped.data
-        let filename = stripped.filename
+        let data = prepared.data
+        let filename = prepared.filename
 
         let info = MediaMetadata.image(data: data, filename: filename)
         let parameters = UploadParameters(source: .data(bytes: data, filename: filename),
@@ -67,10 +69,12 @@ public extension TimelineStore {
     /// `m.video`, and only its shape (square, under a minute) marks it as round. See
     /// `VideoNote` for why it is not tagged with a custom field.
     ///
-    /// What goes is a copy with the location, the camera and the dates taken out — see
-    /// `MetadataStripper`. The copy is plaintext on disk and lives exactly as long as this call:
-    /// the send queue has taken its own copy of the file by the time `sendVideo` returns.
-    func send(video original: URL, replyingTo replyID: String? = nil) async {
+    /// What goes is what the settings say — compressed, and with the location, the camera and the
+    /// dates taken out; see `MediaSettings` and `MediaPreparation`. A video note ignores them: it
+    /// is always stripped, and it was compressed when it was recorded (`MediaSettings.videoNote`).
+    /// Any copy made here is plaintext on disk and lives exactly as long as this call: the send
+    /// queue has taken its own copy of the file by the time `sendVideo` returns.
+    func send(video original: URL, asVideoNote: Bool = false, replyingTo replyID: String? = nil) async {
         guard let timeline = liveTimeline else {
             // Not a silent return. The user pressed send; if nothing is going to happen, they are
             // entitled to be told — a bare `return` here is the app appearing to swallow a message,
@@ -81,15 +85,17 @@ public extension TimelineStore {
             return
         }
 
-        let url: URL
+        let prepared: MediaPreparation.Video
         do {
-            url = try await MetadataStripper.video(at: original)
+            prepared = try await MediaPreparation.video(original,
+                                                        settings: asVideoNote ? .videoNote : .current())
         } catch {
             Log.media.error("video refused: its metadata could not be removed: \(Log.describe(error), privacy: .public)")
             failure = .send
             return
         }
-        defer { MetadataStripper.discard(url) }
+        defer { prepared.discard() }
+        let url = prepared.url
 
         let info = await MediaMetadata.video(at: url)
 

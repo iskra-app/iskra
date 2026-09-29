@@ -177,6 +177,14 @@ struct SettingsView: View {
                     Label(Strings.Settings.security, systemImage: "lock.shield")
                 }
 
+                // Before storage: both are about the bytes photos and videos cost, and this one is
+                // the question people come to settings with — "why did it send so big".
+                NavigationLink {
+                    MediaSettingsView()
+                } label: {
+                    Label(Strings.Settings.media, systemImage: "photo.on.rectangle")
+                }
+
                 NavigationLink(value: Destination.storage) {
                     Label(Strings.Settings.storage, systemImage: "internaldrive")
                 }

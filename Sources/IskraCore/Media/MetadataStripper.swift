@@ -24,18 +24,9 @@ import UniformTypeIdentifiers
 /// clean the photo is not sent — a send that fails where the user can see it, and never a picture
 /// that goes out with the one thing they were told it would not carry.
 enum MetadataStripper {
-    struct Photo: Sendable, Equatable {
-        let data: Data
-        /// The name it came with, unless the format had to change — a WebP, which ImageIO can read
-        /// and cannot write, goes as a PNG and is named as one.
-        let filename: String
-    }
-
-    enum Failure: Error {
-        case unreadable
-        case exportFailed
-        case metadataRemained
-    }
+    /// The name it came with, unless the format had to change — a WebP, which ImageIO can read and
+    /// cannot write, goes as a PNG and is named as one.
+    typealias Photo = PhotoFile
 
     // MARK: - Photos
 
@@ -227,57 +218,14 @@ enum MetadataStripper {
         return "\(stem.isEmpty ? UUID().uuidString : stem).\(suffix)"
     }
 
+
     // MARK: - Videos
 
-    /// A copy of the video with only its pictures and its sound in it, in a folder of its own.
-    ///
-    /// The tracks are *moved*, not re-encoded — a passthrough export — so a minute of 4K is a few
-    /// seconds of copying and not a minute of compressing, and the picture is exactly the picture.
-    /// What is left behind: every piece of movie-level metadata (the location, the camera, the
-    /// capture date, the author), every track's own, and every track that is neither picture nor
-    /// sound — the timed metadata an iPhone records beside the video is data about the scene.
-    ///
-    /// The copy keeps the original's name, so the person it goes to sees the name it had, exactly
-    /// as they would have without this; it is in its own folder so two videos called the same thing
-    /// cannot meet. The caller owns it and hands it to `discard` once it has been sent: in an
-    /// encrypted room it is plaintext video sitting in a temporary directory.
+    /// A copy of the video with only its pictures and its sound in it, moved rather than
+    /// re-encoded — see `VideoExport`. A video that is compressed as well is stripped in the same
+    /// pass instead, by `VideoTranscoder`, and never written out twice.
     static func video(at url: URL) async throws -> URL {
-        let asset = AVURLAsset(url: url)
-        let composition = AVMutableComposition()
-
-        for track in try await asset.load(.tracks) where track.mediaType == .video || track.mediaType == .audio {
-            guard let copy = composition.addMutableTrack(withMediaType: track.mediaType,
-                                                          preferredTrackID: kCMPersistentTrackID_Invalid)
-            else { throw Failure.unreadable }
-            let range = try await track.load(.timeRange)
-            try copy.insertTimeRange(range, of: track, at: range.start)
-            // The rotation a phone records a portrait clip with. It is how the video is shown, not
-            // a fact about who shot it, and without it every portrait video arrives on its side.
-            copy.preferredTransform = try await track.load(.preferredTransform)
-        }
-        guard !composition.tracks(withMediaType: .video).isEmpty else { throw Failure.unreadable }
-
-        guard let session = AVAssetExportSession(asset: composition, presetName: AVAssetExportPresetPassthrough)
-        else { throw Failure.exportFailed }
-        session.metadata = []
-        session.metadataItemFilter = .forSharing()
-        session.shouldOptimizeForNetworkUse = true
-
-        let fileType = outputType(for: url, supported: session.supportedFileTypes)
-        let folder = URL.temporaryDirectory.appending(component: UUID().uuidString)
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let stem = url.deletingPathExtension().lastPathComponent
-        let suffix = UTType(fileType.rawValue)?.preferredFilenameExtension ?? url.pathExtension
-        let output = folder.appending(component: "\(stem).\(suffix)")
-
-        do {
-            try await session.export(to: output, as: fileType)
-            guard try await isClean(video: output) else { throw Failure.metadataRemained }
-        } catch {
-            discard(output)
-            throw error
-        }
-        return output
+        try await VideoExport.stripped(url)
     }
 
     /// Whether the file carries nothing but pictures and sound: no metadata on the movie, none on
@@ -298,16 +246,7 @@ enum MetadataStripper {
 
     /// Removes a copy `video(at:)` made, and the folder it was made in.
     static func discard(_ url: URL) {
-        try? FileManager.default.removeItem(at: url.deletingLastPathComponent())
-    }
-
-    /// The container the video came in, when the export can write it — a QuickTime file stays one,
-    /// so a clip that plays today plays tomorrow — and MP4 otherwise.
-    private static func outputType(for url: URL, supported: [AVFileType]) -> AVFileType {
-        let own = UTType(filenameExtension: url.pathExtension).map { AVFileType($0.identifier) }
-        if let own, supported.contains(own) { return own }
-        if supported.contains(.mp4) { return .mp4 }
-        return supported.first ?? .mov
+        VideoExport.discard(url)
     }
 }
 
