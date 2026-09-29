@@ -297,7 +297,7 @@ async fn serve(
     };
     let host = upstream.host_str().unwrap_or("?").to_string();
 
-    let response = match forwarder.forward(request, &upstream).await {
+    let response = match forwarder.forward(request, &upstream, &config.upstreams).await {
         Ok(response) => response,
         Err(error) => {
             tracing::warn!(client = %sender, %method, host, route, %error, "upstream failed");
