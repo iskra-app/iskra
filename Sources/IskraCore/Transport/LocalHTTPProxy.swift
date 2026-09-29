@@ -31,9 +31,15 @@ public actor LocalHTTPProxy {
     /// is raised again. See `ensureListening`.
     private var stopped = false
 
-    /// Requests seen, newest last. Diagnostics for the probe: proof that the SDK really came
-    /// through here rather than reaching the homeserver some other way.
+    /// Requests seen, newest last — the method and the path, nothing else, and only the last few
+    /// hundred. Diagnostics for the probe: proof that the SDK really came through here rather than
+    /// reaching the homeserver some other way.
+    ///
+    /// It used to keep every request whole, for the life of the session: every `Authorization:
+    /// Bearer`, the password in `/login`, every photo uploaded — memory that only grew, and a
+    /// plaintext copy of the token that nothing else needed.
     private var seen: [ProxiedRequest] = []
+    private static let seenLimit = 256
 
     public init(upstream: HTTPUpstream, onDiscovery: (@Sendable (URL) -> Void)? = nil) {
         self.upstream = upstream
@@ -232,7 +238,8 @@ public actor LocalHTTPProxy {
     }
 
     private func record(_ request: ProxiedRequest) {
-        seen.append(request)
+        seen.append(ProxiedRequest(method: request.method, target: request.target))
+        if seen.count > Self.seenLimit { seen.removeFirst(seen.count - Self.seenLimit) }
     }
 }
 
@@ -241,6 +248,18 @@ public actor LocalHTTPProxy {
 /// Keep-alive is not optional here: reqwest pools connections and will send many requests down one
 /// of them, so a server that closes after each response makes every request pay for a new socket.
 private actor HTTPChannel {
+    /// The ceilings on what a connection may make this process hold. The listener is on loopback,
+    /// but loopback is every process on the machine — on a Mac, every user's — and without these an
+    /// endless header or a `Content-Length` of a terabyte was the app growing until the system
+    /// killed it.
+    ///
+    /// The body ceiling is the largest thing this app would ever upload with room to spare —
+    /// Synapse's default upload limit is 50 MB, and a bridge carries at most 8.
+    static let maxHead = 64 * 1024
+    static let maxLine = 8 * 1024
+    static let maxBody = 128 * 1024 * 1024
+    static let idleLimit: Duration = .seconds(120)
+
     private let connection: NWConnection
     private var buffer = Data()
     private var closed = false
@@ -300,13 +319,22 @@ private actor HTTPChannel {
             headers[name] = value
         }
 
-        let body: Data
-        if let length = headers.first(where: { $0.key.lowercased() == "content-length" })?.value,
-           let expected = Int(length), expected > 0 {
-            body = try await read(exactly: expected)
-        } else if headers.contains(where: {
+        let lengths = headers.filter { $0.key.lowercased() == "content-length" }.map(\.value)
+        let chunked = headers.contains {
             $0.key.lowercased() == "transfer-encoding" && $0.value.lowercased().contains("chunked")
-        }) {
+        }
+        // Both at once is the shape of request smuggling, and nothing honest sends it.
+        if chunked, !lengths.isEmpty {
+            throw LocalHTTPProxy.ProxyError.malformedRequest("both Content-Length and chunked")
+        }
+
+        let body: Data
+        if let length = lengths.first {
+            guard let expected = Int(length), expected >= 0, expected <= Self.maxBody else {
+                throw LocalHTTPProxy.ProxyError.malformedRequest("content length")
+            }
+            body = expected > 0 ? try await read(exactly: expected) : Data()
+        } else if chunked {
             body = try await readChunkedBody()
         } else {
             body = Data()
@@ -343,11 +371,16 @@ private actor HTTPChannel {
                 buffer.removeSubrange(buffer.startIndex..<range.upperBound)
                 return Data(head)
             }
+            guard buffer.count <= Self.maxHead else {
+                throw LocalHTTPProxy.ProxyError.malformedRequest("head too large")
+            }
             try await fill()
         }
     }
 
     private func read(exactly count: Int) async throws -> Data {
+        // `prefix` traps on a negative count, and this count is a number off the wire.
+        guard count >= 0 else { throw LocalHTTPProxy.ProxyError.malformedRequest("negative length") }
         while buffer.count < count {
             try await fill()
         }
@@ -361,8 +394,10 @@ private actor HTTPChannel {
         while true {
             let line = try await readLine()
             let size = Int(line.split(separator: ";").first.map(String.init) ?? line, radix: 16)
-            guard let size else {
-                throw LocalHTTPProxy.ProxyError.malformedRequest("chunk size: \(line)")
+            // `Int("-1", radix: 16)` is -1, which is not 0: any process on the machine could send
+            // `-1` as a chunk size and take the app down on `prefix(-1)`.
+            guard let size, size >= 0, body.count + size <= Self.maxBody else {
+                throw LocalHTTPProxy.ProxyError.malformedRequest("chunk size")
             }
             if size == 0 {
                 _ = try? await readLine() // trailing CRLF
@@ -381,12 +416,25 @@ private actor HTTPChannel {
                 buffer.removeSubrange(buffer.startIndex..<range.upperBound)
                 return String(decoding: line, as: UTF8.self)
             }
+            guard buffer.count <= Self.maxLine + Self.maxHead else {
+                throw LocalHTTPProxy.ProxyError.malformedRequest("line too long")
+            }
             try await fill()
         }
     }
 
+    /// One read, bounded by `idleLimit` — silence, not duration: a slow upload keeps sending and
+    /// is never cut off, while a connection that goes quiet is closed. reqwest's pool simply
+    /// opens another, and anything else on the machine that connected and said nothing does not
+    /// get to hold a task and a socket here for ever.
     private func fill() async throws {
-        let chunk: Data = try await withCheckedThrowingContinuation { continuation in
+        let connection = self.connection
+        let chunk = try await withTimeout(Self.idleLimit) { try await Self.receive(from: connection) }
+        buffer.append(chunk)
+    }
+
+    private static func receive(from connection: NWConnection) async throws -> Data {
+        try await withCheckedThrowingContinuation { continuation in
             let resumed = ResumeOnce(continuation)
             connection.receive(minimumIncompleteLength: 1, maximumLength: 64 * 1024) { data, _, isComplete, error in
                 if let error {
@@ -400,7 +448,6 @@ private actor HTTPChannel {
                 }
             }
         }
-        buffer.append(chunk)
     }
 
     private static func reason(for status: Int) -> String {
