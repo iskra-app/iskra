@@ -1,4 +1,5 @@
 import Foundation
+import Network
 import MatrixRustSDK
 import Synchronization
 import Testing
@@ -201,6 +202,43 @@ struct LocalHTTPProxyTests {
 
         let address = await proxy.homeserverURL
         #expect(address == "http://127.0.0.1:\(port)")
+    }
+
+    /// Loopback is every process on the machine. What any of them sends must be refused, never
+    /// trapped on: a chunk size of `-1` used to reach `prefix(-1)` and take the whole app down.
+    @Test("hostile bytes are refused, and the listener keeps answering")
+    func hostileRequestsAreRefused() async throws {
+        let upstream = StubUpstream { _ in ProxiedResponse(status: 200, body: Data("{}".utf8)) }
+        let proxy = LocalHTTPProxy(upstream: upstream)
+        let port = try await proxy.start()
+        defer { Task { await proxy.stop() } }
+
+        for hostile in [
+            "POST /_matrix/x HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n-1\r\n\r\n",
+            "POST /_matrix/x HTTP/1.1\r\nHost: a\r\nContent-Length: 5\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n",
+            "POST /_matrix/x HTTP/1.1\r\nHost: a\r\nContent-Length: 99999999999\r\n\r\n",
+            "POST /_matrix/x HTTP/1.1\r\nHost: a\r\nContent-Length: -3\r\n\r\n",
+        ] {
+            try await Self.sendRaw(hostile, to: port)
+        }
+
+        #expect(upstream.requests.isEmpty)
+        let url = URL(string: "http://127.0.0.1:\(port)/_matrix/client/versions")!
+        let (_, response) = try await session().data(from: url)
+        #expect((response as? HTTPURLResponse)?.statusCode == 200)
+    }
+
+    /// Writes bytes to the listener as they are, reads whatever comes back, and hangs up.
+    private static func sendRaw(_ text: String, to port: UInt16) async throws {
+        let connection = NWConnection(host: "127.0.0.1", port: NWEndpoint.Port(rawValue: port)!, using: .tcp)
+        connection.start(queue: .global())
+        defer { connection.cancel() }
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            connection.send(content: Data(text.utf8), completion: .contentProcessed { _ in
+                continuation.resume()
+            })
+        }
+        try await Task.sleep(for: .milliseconds(200))
     }
 }
 
