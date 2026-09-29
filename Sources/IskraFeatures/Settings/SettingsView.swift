@@ -198,11 +198,9 @@ struct SettingsView: View {
                     }
                 }
 
-                // After the experiments, because it is the one row that changes nothing. The
-                // version stayed in the footer below — a number you glance at should not cost a
-                // tap — and this leads to the rest of the answer: what the app is, the build
-                // details in a form that can be pasted, and the credit the SDK is owed. See
-                // `AboutView`.
+                // After the experiments, because it is the one row that changes nothing. It is
+                // also the only place the version is shown — the screen itself ends at sign-out.
+                // See `AboutView`.
                 NavigationLink {
                     AboutView()
                 } label: {
@@ -234,8 +232,6 @@ struct SettingsView: View {
                     }
                 }
                 .disabled(isSigningOut)
-            } footer: {
-                about
             }
         }
         .formStyle(.grouped)
@@ -308,24 +304,6 @@ struct SettingsView: View {
                       subtitle: session.userID,
                       seed: session.userID,
                       isSubtitleSelectable: true)
-    }
-
-    /// The app saying what it is and which build of it this is.
-    ///
-    /// A footer rather than a row, and centred, because it is not a setting: there is nothing
-    /// here to press. It sits below sign-out — the last thing on the screen, where every other
-    /// app puts it, and where somebody who has come looking for a version number to quote in a
-    /// bug report will look for it. The numbers come from the bundle; see `AppVersion`.
-    private var about: some View {
-        VStack(spacing: Theme.Spacing.tight) {
-            Text(Strings.Settings.appName)
-            Text(Strings.Settings.version(AppVersion.marketing, build: AppVersion.build))
-        }
-        .font(.footnote)
-        .foregroundStyle(.secondary)
-        .frame(maxWidth: .infinity)
-        .padding(.top, Theme.Spacing.roomy)
-        .textSelection(.enabled)
     }
 
 }

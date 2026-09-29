@@ -58,7 +58,7 @@ settings:
 targetTemplates:
   Stamped:
     preBuildScripts:
-      - name: Stamp the build number with the commit count
+      - name: Stamp the build number with the commit count and hash
         # It stamps the *source* Info.plist — the one XcodeGen wrote next to this file — and
         # not the built copy inside the bundle, which is the version of this that does not
         # work. A build phase is the last thing to run, after the app has already been signed,
@@ -88,6 +88,13 @@ targetTemplates:
           commits=$(git -C "$SRCROOT/.." rev-list --count HEAD 2>/dev/null || true)
           [ -n "$commits" ] || exit 0
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $commits" "$SRCROOT/$INFOPLIST_FILE"
+          # And which commit it was, for the About screen (`AppVersion.commit`): the count says
+          # how far along a build is, only the hash says which tree it came from — two branches
+          # reach the same count. Deleted first because `Set` fails on a key that is not there,
+          # and XcodeGen's plist has no placeholder for this one.
+          commit=$(git -C "$SRCROOT/.." rev-parse --short HEAD)
+          /usr/libexec/PlistBuddy -c "Delete :IskraCommit" "$SRCROOT/$INFOPLIST_FILE" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :IskraCommit string $commit" "$SRCROOT/$INFOPLIST_FILE"
 
 targets:
   Iskra (iOS):

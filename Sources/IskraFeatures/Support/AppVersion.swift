@@ -23,4 +23,16 @@ enum AppVersion {
     static var build: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0"
     }
+
+    /// The short hash of the commit the build was made from, stamped by the same build phase
+    /// as the number. `nil` outside a git checkout and under `swift test`, where the row shows
+    /// the number alone rather than a made-up hash.
+    static var commit: String? {
+        Bundle.main.object(forInfoDictionaryKey: "IskraCommit") as? String
+    }
+
+    /// The build as the About screen shows it: `142 (6ab17bd)`, or `142` with no hash to give.
+    static var buildWithCommit: String {
+        commit.map { "\(build) (\($0))" } ?? build
+    }
 }

@@ -1311,60 +1311,38 @@ public enum Strings {
             }
         }
 
-        /// The app's own name, at the foot of the screen. Not the bundle's display name and
-        /// not translated: it is what the app is called, in both languages, and it is here so
-        /// that somebody reporting a bug can say which app they mean.
+        /// The app's own name, under the icon on the About screen. Not the bundle's display name
+        /// and not translated: it is what the app is called, in both languages.
         public static let appName = LocalizedStringResource("settings.appName", bundle: bundle)
-
-        /// And which build of it they are holding. Two numbers, because either alone is
-        /// useless: the version says what the app is, the build says which of the many
-        /// attempts at that version this one is.
-        public static func version(_ version: String, build: String) -> LocalizedStringResource {
-            LocalizedStringResource("settings.version",
-                                    defaultValue: "Version \(version) (\(build))",
-                                    bundle: bundle)
-        }
     }
 
     /// The screen behind the last row of settings: what the app is, which build of it this is,
     /// and whose code it is standing on.
     ///
-    /// The acknowledgements are the part that has to be here rather than in the README. The SDK
-    /// is Apache-2.0, and that licence travels with the binary — so the app itself has to say so
-    /// somewhere a person holding it can read.
+    /// The licences are the part that has to be here rather than in the README. The SDK is
+    /// Apache-2.0 and blobatar is MIT, and both travel with the binary — so the app itself has
+    /// to say so somewhere a person holding it can read. See `LicensesView`.
     public enum About {
         public static let title = LocalizedStringResource("about.title", bundle: bundle)
 
-        /// One sentence under the icon. Says what the app is *and* what it is not, because
-        /// "Matrix client" alone does not distinguish it from the web page in a wrapper.
+        /// One sentence under the icon: what the app is.
         public static let tagline = LocalizedStringResource("about.tagline", bundle: bundle)
 
-        /// The two numbers, this time as a row you can select rather than a line of small print.
+        /// The version people quote, `0.1.0`.
         public static let version = LocalizedStringResource("about.version", bundle: bundle)
-        /// Which machine and which OS — the two lines a bug report is useless without, and the
-        /// two nobody can answer from memory.
+        /// The build number, with the commit it was built from — see `AppVersion.buildWithCommit`.
+        public static let build = LocalizedStringResource("about.build", bundle: bundle)
+        /// Which machine, with the OS in brackets after it — the two facts a bug report is
+        /// useless without, and the two nobody can answer from memory.
         public static let device = LocalizedStringResource("about.device", bundle: bundle)
-        public static let system = LocalizedStringResource("about.system", bundle: bundle)
 
-        /// Copying all of it at once, because the alternative is somebody transcribing a build
-        /// number into a bug report by hand and getting a digit wrong.
-        public static let copy = LocalizedStringResource("about.copy", bundle: bundle)
-        public static let copied = LocalizedStringResource("about.copied", bundle: bundle)
-        public static let copyHelp = LocalizedStringResource("about.copyHelp", bundle: bundle)
-
-        /// The app's own page. A section to itself and above the credits, because it is about
-        /// Iskra rather than about what Iskra is built out of. The address is shown under the
-        /// label rather than hidden behind it: a link whose destination is invisible is one
-        /// nobody presses.
+        /// The app's own page. The address is shown under the label rather than hidden behind
+        /// it: a link whose destination is invisible is one nobody presses.
         public static let website = LocalizedStringResource("about.website", bundle: bundle)
 
-        /// The credits. Each one is a link out, so the name leads somewhere.
-        public static let builtOn = LocalizedStringResource("about.builtOn", bundle: bundle)
-        public static let sdk = LocalizedStringResource("about.sdk", bundle: bundle)
-        public static let sdkLicence = LocalizedStringResource("about.sdkLicence", bundle: bundle)
-        /// `protocol` is a keyword, and the row is about Matrix itself rather than the SDK.
-        public static let protocolName = LocalizedStringResource("about.protocol", bundle: bundle)
-        public static let protocolExplained = LocalizedStringResource("about.protocolExplained", bundle: bundle)
+        /// The row that leads to `LicensesView`, and that screen's title.
+        public static let licences = LocalizedStringResource("about.licences", bundle: bundle)
+        /// Under the list of licences: whose the cryptography is.
         public static let cryptography = LocalizedStringResource("about.cryptography", bundle: bundle)
     }
 
