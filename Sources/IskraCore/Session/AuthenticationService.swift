@@ -699,8 +699,19 @@ public actor AuthenticationService {
             await stopTunnels()
             return address
         }
+        // Something is written in the bridge field and it is not a key — a mistyped `npub`, a
+        // pasted `nsec`. That is a bridge the user meant to use and cannot, and it has to be a
+        // refusal: read as "no address", it went straight to the homeserver with the switch on.
+        let bridgeKey = TunnelSettings.bridgeKey()
+        if bridgeKey == nil, TunnelSettings.hasAddress() {
+            tunnelState = .failed("bad bridge address")
+            throw AuthenticationError.bridgeUnavailable(NostrTunnelUpstream.Failure.bridgeAddressUnusable)
+        }
         guard let upstreamURL = TunnelSettings.upstreamURL(from: address) else {
             tunnelState = .failed("bad address")
+            if bridgeKey != nil {
+                throw AuthenticationError.bridgeUnavailable(NostrTunnelUpstream.Failure.bridgeAddressUnusable)
+            }
             return address
         }
 
@@ -708,7 +719,6 @@ public actor AuthenticationService {
         // in force now: another account on the same server is talking through it, and a new one
         // would pull it out from under them.
         let key = upstreamURL.absoluteString
-        let bridgeKey = TunnelSettings.bridgeKey()
         let relays = TunnelSettings.relays()
         if let existing = tunnels[key] {
             if existing.bridgeKey == bridgeKey, existing.relays == relays, let port = await existing.proxy.port {
