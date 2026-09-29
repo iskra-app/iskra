@@ -30,7 +30,6 @@ enum AppSettings {
         QuickReaction.storageKey,
         Wallpaper.storageKey,
         Wallpaper.dimmingKey,
-        TunnelSettings.enabledKey,
     ] + MediaSettings.keys
 
     @MainActor
@@ -52,6 +51,13 @@ enum AppSettings {
         for flag in BetaFeatures.stores {
             (flag.store ?? defaults).removeObject(forKey: flag.key)
         }
+
+        // The bridge switch lives in the App Group too, for the notification extension's sake —
+        // see `TunnelSettings.store`. Only the switch: the bridge's address and relays are the
+        // device's route to its homeserver, and wiping them on sign-out left the next sign-in
+        // with no way through a network where only the bridge gets out.
+        TunnelSettings.store.removeObject(forKey: TunnelSettings.enabledKey)
+        defaults.removeObject(forKey: TunnelSettings.enabledKey)
 
         // And the one setting that is not a value in `UserDefaults` but a file on the disk: the
         // wallpaper somebody chose from their own photo library. Forgetting the *key* and leaving

@@ -70,7 +70,7 @@ public enum BridgeCheck {
     /// `nil` when there is nothing to check — no address filled in — which the caller shows as its
     /// own thing rather than as a failure.
     public static func runFromSettings(homeserver: URL,
-                                       defaults: UserDefaults = .standard) async -> Outcome? {
+                                       defaults: UserDefaults = TunnelSettings.store) async -> Outcome? {
         guard let key = TunnelSettings.bridgeKey(defaults) else { return nil }
         return await run(bridgeKey: key, relays: TunnelSettings.relays(defaults), homeserver: homeserver)
     }

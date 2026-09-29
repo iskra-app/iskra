@@ -29,7 +29,7 @@ enum BridgeProbe {
     }
 
     static func runAndExit() -> Never {
-        let address = arguments.first ?? UserDefaults.standard.string(forKey: TunnelSettings.addressKey) ?? ""
+        let address = arguments.first ?? TunnelSettings.store.string(forKey: TunnelSettings.addressKey) ?? ""
         let homeserverText = arguments.dropFirst().first ?? "matrix.org"
         let homeserver = TunnelSettings.upstreamURL(from: homeserverText) ?? URL(string: "https://matrix.org")!
         let relays = TunnelSettings.relays()

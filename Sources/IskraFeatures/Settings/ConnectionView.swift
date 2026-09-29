@@ -17,9 +17,9 @@ import SwiftUI
 struct ConnectionView: View {
     let session: UserSession
 
-    @AppStorage(TunnelSettings.enabledKey) private var throughBridge = false
-    @AppStorage(TunnelSettings.addressKey) private var address = ""
-    @AppStorage(TunnelSettings.relaysKey) private var relays = ""
+    @AppStorage(TunnelSettings.enabledKey, store: TunnelSettings.store) private var throughBridge = false
+    @AppStorage(TunnelSettings.addressKey, store: TunnelSettings.store) private var address = ""
+    @AppStorage(TunnelSettings.relaysKey, store: TunnelSettings.store) private var relays = ""
 
     @State private var status: TunnelStatus = .off
     @State private var myKey: String?

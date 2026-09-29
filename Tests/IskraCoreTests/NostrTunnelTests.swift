@@ -186,6 +186,38 @@ struct NostrTunnelTests {
         #expect(TunnelSettings.bridgeKey(defaults) == nil)
     }
 
+    /// A mistyped address is not an empty one. `route` refuses the first and goes local on the
+    /// second, and the two used to look the same — `bridgeKey() == nil` — so a typo went direct.
+    @Test func aMistypedAddressIsStillAnAddress() throws {
+        let defaults = try #require(UserDefaults(suiteName: "address-\(UUID().uuidString)"))
+        #expect(!TunnelSettings.hasAddress(defaults))
+        defaults.set("   ", forKey: TunnelSettings.addressKey)
+        #expect(!TunnelSettings.hasAddress(defaults))
+
+        let keys = try NostrKeypair.generate()
+        defaults.set(String(keys.npub.dropLast(4)), forKey: TunnelSettings.addressKey)
+        #expect(TunnelSettings.hasAddress(defaults))
+        #expect(TunnelSettings.bridgeKey(defaults) == nil)
+    }
+
+    /// The notification extension decides the route from these settings too, and its own
+    /// `.standard` is empty. Kept there, the extension went straight to the homeserver on every
+    /// push with the bridge switched on.
+    @Test func theBridgeSettingsAreReadFromTheAppGroup() throws {
+        let shared = try #require(ChatDirectory.sharedDefaults)
+        let saved = shared.object(forKey: TunnelSettings.enabledKey)
+        defer {
+            if let saved { shared.set(saved, forKey: TunnelSettings.enabledKey) } else {
+                shared.removeObject(forKey: TunnelSettings.enabledKey)
+            }
+        }
+
+        shared.set(true, forKey: TunnelSettings.enabledKey)
+        #expect(TunnelSettings.isEnabled())
+        shared.set(false, forKey: TunnelSettings.enabledKey)
+        #expect(!TunnelSettings.isEnabled())
+    }
+
     /// Leaving the Connection screen rebuilds the session only when the connection would really be
     /// different. Tearing one down to build it again identically is a spinner for nothing.
     @Test func onlyAChangeThatMattersAsksForAReconnect() throws {

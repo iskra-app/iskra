@@ -173,7 +173,9 @@ and `NostrTunnelTests` pins that JSON as text.
 `NostrTunnelUpstream` is an `HTTPUpstream`, which is the whole trick: it stands exactly where
 `DirectUpstream` stands, behind the same `LocalHTTPProxy` that puts the SDK's requests in front of
 us in the clear, and nothing above the transport learns anything. The bridge's address is
-`TunnelSettings.addressKey` in `UserDefaults` (Settings → Connection); this device's own nostr key
+`TunnelSettings.addressKey` in the **App Group's** defaults (`TunnelSettings.store`, Settings →
+Connection) — the notification extension routes by it too, and with it in `.standard` every push
+went straight to the homeserver with the bridge switched on; this device's own nostr key
 is in the Keychain, under a **service of its own** — `SessionStore.clear` empties the session's
 service on sign-out, and a key regenerated there would have to be re-added to every closed bridge
 before the user could sign in again, through the bridge they can no longer reach.
