@@ -2,6 +2,78 @@
 
 Составлена в ходе аудита 2026-07-13 (фаза «разведка»). Сравнение с element-x-ios — в конце файла.
 
+## Состояние на 2026-09-29 (третий проход)
+
+Этот раздел заменяет устаревшие части ниже. **Неверно теперь:** «~18.5 тыс. строк, ~100 файлов»
+(сейчас ~50.8 тыс. строк в 231 файле Sources+Apps, 9.2 тыс. строк тестов в 64 файлах, ~4.3 тыс.
+строк Rust в `Bridge/`); «сеть — целиком Rust SDK, ни одного URLSession» (`DirectUpstream` и
+`NostrRelayPool` — URLSession/WebSocket за `LocalHTTPProxy`); «в Swift ноль криптопримитивов»
+(NIP-44 для туннеля: блок ChaCha20 свой, HKDF/HMAC — CryptoKit, secp256k1 — libsecp256k1;
+**Matrix**-крипта по-прежнему только SDK); однопользовательский раздел Session; «Осталось: Sygnal,
+setPusher» (сделано); таблица сравнения с element-x (C1, H3, H4, H5, M7 закрыты, SAS есть); раздел
+про незакоммиченную работу.
+
+**Таргеты.**
+- SPM: `IskraCore` (MatrixRustSDK 26.06.06 + secp256k1; без SwiftUI) · `IskraDesign` (только
+  SwiftUI, без зависимостей) · `IskraFeatures` (оба). Тесты: `IskraCoreTests`, `IskraDesignTests`
+  (золотая фикстура blobatar), `IskraFeaturesTests`.
+- Xcode (`Apps/project.yml` → xcodegen): Iskra (iOS) встраивает `IskraNotificationService`
+  (IskraCore + IskraDesign) и `IskraShareExtension` (IskraCore); Iskra (macOS) — без расширений.
+  `Apps/Shared`: `IskraApp`, `PushDelegate`, `IskraAppIntents`, `PushFace` (в обоих бандлах),
+  DEBUG-пробы.
+- `Bridge/` — Rust workspace (`iskra-bridge`, `iskra-tunnel-proto`, `iskra-tunnel-probe`),
+  Docker/GHCR: серверная половина Matrix-over-nostr.
+
+**Точки входа.**
+- Приложение: `IskraApp.init` → `SDKLogging.start` (+ DEBUG-пробы `--verify-storage`,
+  `--probe-signin/-devices/-bridge/-notification/-icons`) → `IskraRootView` (машина фаз
+  starting/signedOut/offline/settingUp/decorating/signedIn; restore, переключение аккаунтов, демо,
+  reconnect по `TunnelSettings.changed`).
+- Флаги (в релизе тоже): `--mock-backend` (`MockHomeserver`), `--mock-signin [password|sso|closed|slow]`.
+- NSE: `NotificationService.didReceive` → `PushDecoder` (restoreClient →
+  `notificationClient(.multipleProcesses)` → `getNotification`, бюджет 20 с) → `PushMapper` /
+  `MessagePreview` → `CommunicationNotification` + `PushFace`.
+- Share extension: `ShareViewController` → outbox `ChatDirectory` (App Group) → приложение
+  отправляет при открытии (`UserSession.send(_:toRoomID:)` → `TimelineStore` → `MediaPreparation`).
+- App Intents: OpenChat / SendMessage поверх `ChatDirectory` (без клиента в процессе интента).
+
+**Где что живёт.**
+- FFI — только `IskraCore`. `UserSession` владеет `Client`; сторы (`RoomListStore`,
+  `TimelineStore`, `PinnedStore`, `RoomDetailsStore`, `SpaceStore`, `SearchStore`/`RoomSearchStore`,
+  `BlockStore`, `VerificationStore`, `RecoveryStore`, `NotificationRulesStore`, `StorageStore`)
+  проецируют диффы SDK в value-типы.
+- Сессии и секреты: `AuthenticationService` (actor; единственный `makeClientBuilder`: зашифрованный
+  SQLite + поисковый индекс, `SessionDelegate` на клиент, autoEnable backups/cross-signing,
+  cross-process lock, sliding sync discoverNative→native), `SessionStore` (Keychain по аккаунтам +
+  индекс), `AppEnvironment` (`.shared` / `.standalone` / `.scratch`).
+- Приватность медиа: `MetadataStripper` (allow-list с перечитыванием) + `VideoTranscoder`, в
+  `TimelineStore.send(photo:/video:)`.
+- UI: экраны `IskraFeatures`; `IskraDesign` — `Theme`, `Glass`, `PrimaryAction`, Blobatar.
+
+**Цепочка транспорта.**
+
+```
+SDK (reqwest) → адрес homeserver'а
+  ├─ мост выключен → https://homeserver напрямую
+  └─ включён → http://127.0.0.1:<port> = LocalHTTPProxy (переподнимается на том же порту после suspend)
+       └─ HTTPUpstream:
+            DirectUpstream      (URLSession → homeserver; статус «routingLocally»)
+            NostrTunnelUpstream (конверты NIP-44, TunnelChunker/Reassembler,
+                                 NostrRelayPool → ≥2 relay) → Bridge → homeserver
+            MockHomeserver (демо) / SignInMockServer (вход)
+TunnelSettings.persistableHomeserver не пускает loopback в Keychain.
+```
+
+**Оговорка:** `TunnelSettings` читает `UserDefaults.standard`, поэтому расширение уведомлений
+сейчас ходит напрямую (находка T1).
+
+**Сравнение с element-x-ios (кратко).** Совпадает: один билдер, `setSessionDelegate`,
+`.multiProcess` lock, `enableAllSendQueues`, явный первый fetch таймлайна, NSE с
+`NotificationClient`. Осознанные упрощения: нет threads, `dmRoomDefinition`,
+`enableShareHistoryOnInvite`, MVVM-C. **Пробелы, которые выйдут боком:** нет обработки смены
+ключей собеседника (X1); NSE на полном билдере (X2); нет `requestConfig(retryLimit:)` и
+`.withSharePos`. Скопированного кода (AGPL) не найдено.
+
 Iskra — нативный Matrix-клиент для iPhone, iPad и Mac: один Swift/SwiftUI-код, вся работа с
 протоколом и криптографией — в `matrix-rust-sdk` через UniFFI-биндинги
 (`matrix-org/matrix-rust-components-swift`, upstream, **не** форк `element-hq`, потому что
