@@ -118,7 +118,10 @@ public enum TunnelSettings {
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
             .compactMap { URL(string: $0) }
-            .filter { $0.scheme == "wss" || $0.scheme == "ws" }
+            // `ws://` only to this machine, which is how a relay under test is reached. Anywhere
+            // else it is both keys, the timing and the sizes of every request in clear text on
+            // the network — the content is sealed, the fact of it is not.
+            .filter { $0.scheme == "wss" || ($0.scheme == "ws" && isLoopback($0.absoluteString)) }
     }
 
     /// Turn what the user typed into something to connect to.

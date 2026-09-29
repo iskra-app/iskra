@@ -198,7 +198,7 @@ actor NostrRelayPool {
     /// Relay messages are JSON arrays whose first element names them: `EVENT`, `OK`, `EOSE`,
     /// `NOTICE`, `CLOSED`. Only `EVENT` carries anything; the rest are noted and dropped, because
     /// the tunnel's own answer is the only confirmation that means anything.
-    private func handle(_ message: String, from relay: URL) {
+    func handle(_ message: String, from relay: URL) {
         guard let data = message.data(using: .utf8),
               let array = try? JSONSerialization.jsonObject(with: data) as? [Any],
               let type = array.first as? String
@@ -208,11 +208,16 @@ actor NostrRelayPool {
         case "EVENT":
             guard array.count >= 3, let event = NostrEvent(json: array[2]) else { return }
             guard !seenSet.contains(event.id) else { return }
-            remember(event.id)
+            // Verified *before* it is remembered, so only real ids are ever in `seen`. The other
+            // way round, one hostile relay could send a forgery carrying the id of the bridge's
+            // real answer first: the forgery failed the check, the id was already marked seen,
+            // and the genuine copy from every honest relay was dropped as a duplicate — the
+            // redundancy of three relays undone by one.
             guard event.isAuthentic() else {
                 log.warning("relay served an event that does not verify")
                 return
             }
+            remember(event.id)
             onEvent(event)
         case "NOTICE", "CLOSED":
             // A relay saying no — usually rate limiting. Worth seeing in a log, and never worth

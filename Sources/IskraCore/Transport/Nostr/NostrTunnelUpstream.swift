@@ -198,6 +198,12 @@ public actor NostrTunnelUpstream: HTTPUpstream {
             return
         }
 
+        // Nobody is waiting for it: an answer to a request already answered, or one a relay kept
+        // and is playing back. Dropped before the reassembler sees it — replayed pieces of old
+        // answers used to fill its sixty-four slots, and every real answer bigger than one event
+        // was then refused as "too many in flight".
+        guard pending[envelope.id] != nil else { return }
+
         // An answer may arrive in pieces, from several relays, in any order.
         let head: TunnelEnvelope
         let body: Data
