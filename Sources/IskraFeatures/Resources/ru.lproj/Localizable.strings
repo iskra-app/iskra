@@ -198,9 +198,9 @@
 "media.stripMetadataOffHelp" = "Фото и видео уйдут вместе с геопозицией, временем съёмки и моделью телефона — их сможет посмотреть любой в чате. Кружочки всё равно отправляются без метаданных.";
 "media.compress" = "Сжимать фото и видео";
 "media.compression" = "Степень сжатия";
-"media.compression.strong" = "Сильное";
-"media.compression.balanced" = "Среднее";
-"media.compression.light" = "Лёгкое";
+"media.compression.strong" = "Сильное (540p)";
+"media.compression.balanced" = "Среднее (720p)";
+"media.compression.light" = "Лёгкое (1080p)";
 "media.compression.strongHelp" = "Фото — до 1280 точек по длинной стороне, видео — до 540p. Улетает быстро даже на плохой связи, но мелкие детали теряются.";
 "media.compression.balancedHelp" = "Фото — до 2048 точек по длинной стороне, видео — до 720p. На экране телефона разницы с оригиналом не видно, а весит в разы меньше.";
 "media.compression.lightHelp" = "Фото — до 4096 точек по длинной стороне, видео — до 1080p. Почти оригинал, но и выигрыш в размере скромнее.";
