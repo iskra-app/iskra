@@ -455,6 +455,13 @@ uploads the user's face to the homeserver in the clear. Send ordinary `m.video` 
   using it instead would produce a payload no other nostr implementation could read. `NIP44Tests`
   runs the vector file published with the NIP — every case, including the 65535-byte message —
   which is what makes "the same encryption the bridge speaks" a fact rather than an intention.
+- **A photo or video leaves with its metadata taken out** — GPS, camera, dates, author, and every
+  track that is not picture or sound (`MetadataStripper`, called from `TimelineStore.send(photo:)`
+  and `send(video:)`, which every path — composer, Share outbox, forward, video note — goes
+  through). A new way to send media goes through those two, not around them. The result is read
+  back against an allow-list, and one that is not clean is **not sent**: ImageIO's "copy without
+  metadata" keeps the GPS in a PNG and the capture date in a HEIC, so trusting it is not an option.
+  Files sent *as files* go untouched, on purpose.
 - Nothing logs message content, tokens, passwords, or OAuth callback URLs — a callback URL carries
   the authorization code and is as sensitive as the token it buys.
 
