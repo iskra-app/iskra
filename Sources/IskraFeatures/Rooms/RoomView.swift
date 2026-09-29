@@ -1485,7 +1485,9 @@ public struct RoomView: View {
                               isLocked: $isVideoNoteLocked,
                               lock: lock,
                               onCancel: cancelVideoNote) { url in
-                await timeline.send(video: url, replyingTo: replyID)
+                // A note is always stripped and never compressed a second time, whatever the
+                // settings say — see `MediaSettings.videoNote`.
+                await timeline.send(video: url, asVideoNote: true, replyingTo: replyID)
                 cancelContext()
                 // The same tidying up as cancelling, and `cancel()` is what does it: there is
                 // nothing left to throw away by the time this runs, and what it is being asked

@@ -1235,6 +1235,38 @@ public enum Strings {
         public static let mockBackendHelp = LocalizedStringResource("beta.mockBackendHelp", bundle: bundle)
     }
 
+    /// The photos-and-videos screen — see `MediaSettingsView`.
+    public enum Media {
+        public static let title = LocalizedStringResource("media.title", bundle: bundle)
+
+        public static let stripMetadata = LocalizedStringResource("media.stripMetadata", bundle: bundle)
+        public static let stripMetadataHelp = LocalizedStringResource("media.stripMetadataHelp", bundle: bundle)
+        /// Said only while the switch is off, because that is when there is something to warn about.
+        public static let stripMetadataOffHelp = LocalizedStringResource("media.stripMetadataOffHelp", bundle: bundle)
+
+        public static let compress = LocalizedStringResource("media.compress", bundle: bundle)
+        public static let compression = LocalizedStringResource("media.compression", bundle: bundle)
+        public static let compressOffHelp = LocalizedStringResource("media.compressOffHelp", bundle: bundle)
+
+        public static func compressionLabel(_ level: MediaCompression) -> LocalizedStringResource {
+            switch level {
+            case .strong: LocalizedStringResource("media.compression.strong", bundle: bundle)
+            case .balanced: LocalizedStringResource("media.compression.balanced", bundle: bundle)
+            case .light: LocalizedStringResource("media.compression.light", bundle: bundle)
+            }
+        }
+
+        /// What a step actually does, in numbers — the footer under the picker says it for the step
+        /// that is chosen, so the choice is never a guess between three adjectives.
+        public static func compressionHelp(_ level: MediaCompression) -> LocalizedStringResource {
+            switch level {
+            case .strong: LocalizedStringResource("media.compression.strongHelp", bundle: bundle)
+            case .balanced: LocalizedStringResource("media.compression.balancedHelp", bundle: bundle)
+            case .light: LocalizedStringResource("media.compression.lightHelp", bundle: bundle)
+            }
+        }
+    }
+
     public enum Settings {
         public static let title = LocalizedStringResource("settings.title", bundle: bundle)
 
@@ -1286,6 +1318,8 @@ public enum Strings {
         public static let about = LocalizedStringResource("settings.about", bundle: bundle)
 
         public static let storage = LocalizedStringResource("settings.storage", bundle: bundle)
+        /// What happens to a photo or a video before it is sent — see `Strings.Media`.
+        public static let media = LocalizedStringResource("settings.media", bundle: bundle)
         /// Where the bridge is switched on — see `Strings.Connection`.
         public static let connection = LocalizedStringResource("settings.connection", bundle: bundle)
         public static let moreSoon = LocalizedStringResource("settings.moreSoon", bundle: bundle)

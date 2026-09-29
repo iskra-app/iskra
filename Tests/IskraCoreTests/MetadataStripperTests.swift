@@ -149,7 +149,7 @@ struct MetadataStripperTests {
 // MARK: - Fixtures
 
 /// Pictures and clips carrying what a phone puts in them.
-private enum Fixture {
+enum Fixture {
     static let width = 64
     static let height = 48
     /// "Rotate 90° to be seen the right way up" — what every portrait iPhone photo says.
@@ -161,10 +161,12 @@ private enum Fixture {
     /// Strings that must not survive, each unlikely to turn up in a file by chance.
     static let secrets = ["55.7558", "iPhone 18 Pro", "SN-4242-SECRET", "Alice Liddell", "Tverskaya"]
 
-    static func photo(_ type: UTType, tagged: Bool = true) throws -> Data {
+    static func photo(_ type: UTType, tagged: Bool = true, width: Int = width, height: Int = height,
+                      opaque: Bool = false) throws -> Data {
         let output = NSMutableData()
         let destination = try #require(CGImageDestinationCreateWithData(output, type.identifier as CFString, 1, nil))
-        CGImageDestinationAddImage(destination, try image(), (tagged ? phoneProperties : [:]) as CFDictionary)
+        CGImageDestinationAddImage(destination, try image(width: width, height: height, opaque: opaque),
+                                   (tagged ? phoneProperties : [:]) as CFDictionary)
         try #require(CGImageDestinationFinalize(destination))
         return output as Data
     }
@@ -178,7 +180,8 @@ private enum Fixture {
         var properties = phoneProperties
         properties[kCGImagePropertyGIFDictionary] = [kCGImagePropertyGIFDelayTime: delay]
         for _ in 0..<frames {
-            CGImageDestinationAddImage(destination, try image(), properties as CFDictionary)
+            CGImageDestinationAddImage(destination, try image(width: width, height: height, opaque: false),
+                                       properties as CFDictionary)
         }
         try #require(CGImageDestinationFinalize(destination))
         return output as Data
@@ -215,19 +218,30 @@ private enum Fixture {
         ]
     }
 
-    private static func image() throws -> CGImage {
+    /// Half orange, and at a size worth compressing, a scatter of small squares — so a big picture
+    /// has detail in it and is not a flat colour every encoder squeezes to nothing.
+    private static func image(width: Int, height: Int, opaque: Bool) throws -> CGImage {
+        let alpha = opaque ? CGImageAlphaInfo.noneSkipLast : .premultipliedLast
         let context = try #require(CGContext(data: nil, width: width, height: height, bitsPerComponent: 8,
                                              bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.displayP3)!,
-                                             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+                                             bitmapInfo: alpha.rawValue))
         context.setFillColor(red: 1, green: 0.4, blue: 0, alpha: 1)
         context.fill(CGRect(x: 0, y: 0, width: width / 2, height: height))
+        var seed: UInt64 = 42
+        for _ in 0..<(width * height / 400) {
+            seed = seed &* 6364136223846793005 &+ 1442695040888963407
+            let x = Int(seed >> 33) % width, y = Int(seed >> 13) % height
+            context.setFillColor(red: CGFloat(seed & 0xFF) / 255, green: CGFloat((seed >> 8) & 0xFF) / 255,
+                                 blue: CGFloat((seed >> 16) & 0xFF) / 255, alpha: 1)
+            context.fill(CGRect(x: x, y: y, width: 6, height: 6))
+        }
         return try #require(context.makeImage())
     }
 
     // MARK: Video
 
     /// A one-second clip recorded sideways, with a phone's worth of movie and track metadata.
-    static func video(_ type: AVFileType) async throws -> URL {
+    static func video(_ type: AVFileType, width: Int = width, height: Int = height) async throws -> URL {
         let suffix = type == .mov ? "mov" : "mp4"
         let url = URL.temporaryDirectory.appending(component: "IMG_\(UUID().uuidString).\(suffix)")
         let writer = try AVAssetWriter(outputURL: url, fileType: type)

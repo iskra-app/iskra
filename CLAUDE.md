@@ -455,13 +455,19 @@ uploads the user's face to the homeserver in the clear. Send ordinary `m.video` 
   using it instead would produce a payload no other nostr implementation could read. `NIP44Tests`
   runs the vector file published with the NIP — every case, including the 65535-byte message —
   which is what makes "the same encryption the bridge speaks" a fact rather than an intention.
-- **A photo or video leaves with its metadata taken out** — GPS, camera, dates, author, and every
-  track that is not picture or sound (`MetadataStripper`, called from `TimelineStore.send(photo:)`
-  and `send(video:)`, which every path — composer, Share outbox, forward, video note — goes
-  through). A new way to send media goes through those two, not around them. The result is read
-  back against an allow-list, and one that is not clean is **not sent**: ImageIO's "copy without
+- **A photo or video leaves the way Settings → Photos & videos says** — without its metadata (GPS,
+  camera, dates, author, every track that is not picture or sound) and compressed, both on by
+  default (`MediaSettings`, applied by `MediaPreparation` in `TimelineStore.send(photo:)` and
+  `send(video:)`, which every path — composer, Share outbox, forward, video note — goes through).
+  A new way to send media goes through those two, not around them. **A video note ignores the
+  settings** (`asVideoNote: true` → `MediaSettings.videoNote`): always stripped, and never
+  compressed twice, because `SquareVideoExporter` already did. A stripped result is read back
+  against an allow-list, and one that is not clean is **not sent**: ImageIO's "copy without
   metadata" keeps the GPS in a PNG and the capture date in a HEIC, so trusting it is not an option.
-  Files sent *as files* go untouched, on purpose.
+  Video is compressed by `VideoTranscoder` (reader → writer, explicit bit rate), not by an export
+  preset: a preset whose size a clip already fits passes it through at its own bit rate. Its two
+  tracks are read by **two** `AVAssetReader`s — one reader for both deadlocks against the writer's
+  interleaving, at 0% CPU. Files sent *as files* go untouched, on purpose.
 - Nothing logs message content, tokens, passwords, or OAuth callback URLs — a callback URL carries
   the authorization code and is as sensitive as the token it buys.
 

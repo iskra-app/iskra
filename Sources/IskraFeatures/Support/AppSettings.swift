@@ -31,7 +31,7 @@ enum AppSettings {
         Wallpaper.storageKey,
         Wallpaper.dimmingKey,
         TunnelSettings.enabledKey,
-    ]
+    ] + MediaSettings.keys
 
     @MainActor
     static func forget() {
