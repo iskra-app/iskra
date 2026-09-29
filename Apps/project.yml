@@ -31,7 +31,7 @@ settings:
     # does *not* fall back to these — it writes its own defaults, a literal "1.0" and "1", and
     # the build settings here are simply never read. The app then reports version 1.0 build 1
     # for ever, no matter what is changed here, which is exactly how this was found.
-    MARKETING_VERSION: "0.1.0"
+    MARKETING_VERSION: "0.2.0"
     # The version is written by hand; the build number is not. This value is only what a build
     # with no git repository to count falls back to — see the `Stamped` template below, which
     # overwrites it in the bundle with the number of commits.
