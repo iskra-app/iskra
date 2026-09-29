@@ -143,6 +143,10 @@
 "share.cancel" = "Cancel";
 "share.empty" = "Open Iskra and sign in first — then your chats will show up here.";
 "share.willSendOnOpen" = "It’ll send when you next open Iskra.";
+"share.locked" = "Iskra is locked";
+"share.lockedBody" = "Unlock it and your chats will show up.";
+"share.unlock" = "Unlock";
+"share.unlockReason" = "To share this to Iskra";
 
 /* Room invitations. */
 "roomAction.acceptInviteFailed" = "You couldn’t join the chat. The invitation may have been withdrawn.";

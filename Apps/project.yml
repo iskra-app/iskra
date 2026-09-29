@@ -415,7 +415,9 @@ targets:
       path: ShareExtension/Iskra.entitlements
       properties:
         com.apple.security.application-groups: [group.moscow.swag.iskra]
-        keychain-access-groups: [$(AppIdentifierPrefix)moscow.swag.iskra.shared]
+        # No keychain-access-groups, on purpose. This process parses whatever another app hands
+        # it and never reads a secret; it has no business holding the group with the tokens and
+        # the store passphrases in it.
 
   Iskra (macOS):
     type: application

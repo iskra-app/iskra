@@ -268,6 +268,12 @@ public enum CoreStrings {
         public static let empty = LocalizedStringResource("share.empty", bundle: bundle)
         /// Reassurance that the message is not lost when Iskra is not open: it goes when it opens.
         public static let willSendOnOpen = LocalizedStringResource("share.willSendOnOpen", bundle: bundle)
+        /// The app lock is on: the chat list waits for Face ID, the same as the app does.
+        public static let locked = LocalizedStringResource("share.locked", bundle: bundle)
+        public static let lockedBody = LocalizedStringResource("share.lockedBody", bundle: bundle)
+        public static let unlock = LocalizedStringResource("share.unlock", bundle: bundle)
+        /// Face ID's own line — the system shows it under the prompt.
+        public static let unlockReason = LocalizedStringResource("share.unlockReason", bundle: bundle)
     }
 
     /// Shown in the user's list of signed-in devices, so it is a name, not a model

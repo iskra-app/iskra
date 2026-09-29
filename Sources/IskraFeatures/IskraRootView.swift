@@ -324,6 +324,9 @@ public struct IskraRootView: View {
                     .onChange(of: scenePhase) { _, phase in
                         if phase == .active { Task { await handleIntents(session) } }
                     }
+                    .onChange(of: appLock.isLocked) { _, locked in
+                        if !locked { Task { await handleIntents(session) } }
+                    }
                     // A tapped notification asked for a conversation. It does not go through the
                     // intents slot above: that one lives in the shared defaults because Shortcuts
                     // runs in another process, and a tap does not — it arrives here, on this actor,
@@ -482,8 +485,11 @@ public struct IskraRootView: View {
     /// messages it queued. Draining is one-shot — the reads clear the shared slots — so this is safe
     /// to call on every foreground.
     private func handleIntents(_ session: UserSession) async {
-        // What Shortcuts left in the outbox is for the real account, and waits for it.
-        guard !session.isDemo else { return }
+        // What Shortcuts left in the outbox is for the real account, and waits for it — and for the
+        // owner. Behind the shield nothing is sent and no chat is opened: this used to send what
+        // anybody holding the phone had queued through Shortcuts or the share sheet the moment
+        // the app came to the front, lock or no lock. The unlock runs it again.
+        guard !session.isDemo, !appLock.isLocked else { return }
         if let request = ChatDirectory.takePendingOpenRequest() {
             // A chat of another account's: that account first, and the chat once it is open. The
             // outbox waits for it too, and the second pass through here sends it.
