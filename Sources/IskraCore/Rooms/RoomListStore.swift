@@ -158,7 +158,27 @@ public final class RoomListStore {
     public func start() async throws {
         guard syncService == nil else { return }
         hasStopped = false
+        // Every `await` below is a moment `stop()` can run in — a sign-out, an account switch, the
+        // bridge changed in settings — and `stop()` can only tear down what already exists. This
+        // used to carry on regardless and end in `service.start()`: a sync loop for a session that
+        // had been closed, never stopped, on a client that might go straight to the homeserver
+        // after the user had asked for the bridge. So each step asks whether it is still wanted.
+        let started = generation
+        do {
+            try await startSteps(started)
+        } catch {
+            // Half-built and failed: tear down what exists, so the next `start()` can try again
+            // instead of finding `syncService` set and returning, for ever, having synced nothing.
+            if started == generation { await stop() }
+            throw error
+        }
+    }
 
+    private func isStillWanted(_ started: Int) -> Bool {
+        !hasStopped && started == generation
+    }
+
+    private func startSteps(_ started: Int) async throws {
         // A chat renamed on this device: nothing syncs, so no diff will ever arrive to say the row
         // has changed. The rebuild is the list's own ordinary way of recomputing every summary, and
         // it is debounced, so asking for one here costs a rename exactly one pass over the rooms.
@@ -176,6 +196,7 @@ public final class RoomListStore {
         // SDK's own "the notification settings moved" — it says nothing about which rule, which is
         // all this needs: the set is read again and the list recomputed.
         await watchMuting()
+        guard isStillWanted(started) else { return }
 
         // Offline mode is the SDK's own answer to a network that has gone away, and without it the
         // sync loop treats one as a failure: it reports `.error`, stops, and waits to be restarted.
@@ -186,9 +207,13 @@ public final class RoomListStore {
         // network comes back. `syncStateChanged` below already treats `.offline` as a state to sit
         // in rather than restart out of, which is exactly right: there is nothing to restart into.
         let service = try await client.syncService().withOfflineMode().finish()
+        // Not kept if nobody wants it any more: `stop()` has already been and gone, and would never
+        // know to stop this one.
+        guard isStillWanted(started) else { return }
         syncService = service
 
         let list = try await service.roomListService().allRooms()
+        guard isStillWanted(started) else { return }
         roomList = list
 
         // One ordered queue, for the same reason as the timeline's — see `TimelineStore.open()`,
@@ -212,6 +237,10 @@ public final class RoomListStore {
         }
 
         let result = try await list.entriesWithDynamicAdapters(pageSize: 100, listener: listener)
+        guard isStillWanted(started) else {
+            continuation.finish()
+            return
+        }
         entriesResult = result
         entriesHandle = result.entriesStream()
         // A room you have walked out of is still a room the SDK knows about, and with no filter
@@ -242,7 +271,12 @@ public final class RoomListStore {
                 self?.scheduleRebuild()
             }
         }
-        sendQueueHandle = try await client.subscribeToSendQueueUpdates(listener: sendQueueListener)
+        let queueHandle = try await client.subscribeToSendQueueUpdates(listener: sendQueueListener)
+        guard isStillWanted(started) else {
+            queueHandle.cancel()
+            return
+        }
+        sendQueueHandle = queueHandle
 
         // Nobody was listening to this, and the sync loop is the one thing in the app that *cannot*
         // be allowed to fail quietly. It stops on a network error like any other network client —
@@ -257,6 +291,8 @@ public final class RoomListStore {
             }
         })
 
+        // The one that matters: a loop started after `stop()` is the zombie.
+        guard isStillWanted(started) else { return }
         isPaused = false
         await service.start()
     }
