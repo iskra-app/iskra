@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 import Testing
 @testable import IskraCore
 
@@ -83,6 +84,33 @@ struct NostrTunnelTests {
         #expect(event.pubkey == Hex.string(keys.publicKey))
         #expect(event.id.count == 64)
         #expect(event.sig.count == 128)
+    }
+
+    /// One hostile relay sends a forgery carrying the real answer's id before the real answer
+    /// arrives. The forgery must not count as having seen that id, or every honest relay's copy is
+    /// dropped as a duplicate.
+    @Test func aForgeryDoesNotShadowTheRealEvent() async throws {
+        let keys = try NostrKeypair.generate()
+        let real = try NostrEvent.signed(kind: TunnelKind.response, content: "the answer",
+                                         tags: [], keys: keys)
+        var forged = real
+        forged.content = "not the answer"
+
+        let delivered = Mutex<[String]>([])
+        let pool = NostrRelayPool(relays: [],
+                                  filter: NostrFilter(kinds: [], authors: [], recipients: [], since: 0),
+                                  onEvent: { event in delivered.withLock { $0.append(event.content) } })
+        let relay = try #require(URL(string: "wss://relay.example"))
+        func frame(_ event: NostrEvent) throws -> String {
+            let data = try JSONSerialization.data(withJSONObject: ["EVENT", "sub", event.json])
+            return String(decoding: data, as: UTF8.self)
+        }
+
+        await pool.handle(try frame(forged), from: relay)
+        await pool.handle(try frame(real), from: relay)
+        await pool.handle(try frame(real), from: relay)
+
+        #expect(delivered.withLock { $0 } == ["the answer"])
     }
 
     /// An event whose content has been changed no longer hashes to its id. This is what stops a
