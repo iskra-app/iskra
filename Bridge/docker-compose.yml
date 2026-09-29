@@ -1,0 +1,24 @@
+# Мост Iskra — одной командой.
+#
+#   docker compose up -d
+#   docker compose logs bridge | grep "bridge address"    # адрес, который вписывают в приложение
+#
+# Настройки — в файле .env рядом (образец: .env.example). Без него мост обслуживает matrix.org.
+services:
+  bridge:
+    image: ghcr.io/zhuravlevb/iskra-bridge:${BRIDGE_TAG:-latest}
+    # Собрать образ на месте, а не скачивать: `docker compose up -d --build`.
+    build: .
+    restart: unless-stopped
+    environment:
+      ALLOWED_UPSTREAMS: ${ALLOWED_UPSTREAMS:-matrix.org,matrix-client.matrix.org}
+      ALLOWED_PUBKEYS: ${ALLOWED_PUBKEYS:-}
+      RELAY_LIST: ${RELAY_LIST:-}
+      RATE_LIMIT_PER_MIN: ${RATE_LIMIT_PER_MIN:-}
+    volumes:
+      # Здесь лежит ключ моста, а значит и его адрес. Удалить том — получить новый адрес и
+      # вписывать его заново на всех устройствах.
+      - bridge-data:/data
+
+volumes:
+  bridge-data:
