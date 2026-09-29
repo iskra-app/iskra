@@ -108,6 +108,10 @@ impl Bridge {
             relays = config.relays.len(),
             "bridge is listening"
         );
+        // The line somebody who set the bridge up is actually looking for, in the form the app's
+        // "Bridge address" field expects. `pubkey=` above stays hex for whoever already greps it.
+        let Ok(npub) = config.keys.public_key().to_bech32();
+        tracing::info!("bridge address for Iskra: {npub}");
 
         Ok(Self {
             config: Arc::new(config),
