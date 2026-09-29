@@ -12,6 +12,36 @@ import Testing
 @MainActor
 @Suite("Demo backend", .serialized)
 struct DemoBackendTests {
+    /// `stop()` while `start()` is still on its way: an account switched on a cold launch from a
+    /// push, the bridge changed while the first request hung. `start()` used to carry on and end
+    /// in `service.start()` — a sync loop for a closed session that nothing would ever stop.
+    @Test("a stop during start leaves no sync loop behind")
+    func stopDuringStart() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(component: "iskra-demo-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let client = try await DemoBackend.makeClient(data: root.appending(component: "data"),
+                                                      cache: root.appending(component: "cache"),
+                                                      search: root.appending(component: "search"))
+
+        let list = RoomListStore(client: client)
+        // Let `start()` run up to its first wait on the SDK, *then* stop — the other order is an
+        // ordinary stop followed by an ordinary start.
+        let starting = Task { @MainActor in try await list.start() }
+        await Task.yield()
+        await Task.yield()
+        await list.stop()
+        try? await starting.value
+        #expect(list.currentSyncService == nil)
+
+        try await Task.sleep(for: .seconds(1))
+        #expect(list.currentSyncService == nil)
+
+        // And the store is not wedged by it: the next start is a real one.
+        try await list.start()
+        #expect(list.currentSyncService != nil)
+        await list.stop()
+    }
+
     @Test("signs in, lists the rooms, opens a chat, and gets an answer")
     func endToEnd() async throws {
         let root = FileManager.default.temporaryDirectory.appending(component: "iskra-demo-\(UUID().uuidString)")

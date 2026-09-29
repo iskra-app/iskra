@@ -220,6 +220,11 @@ public final class UserSession {
         // Said first, so that "Add account" signed in to this same person is refused while this
         // session is holding the store it would otherwise replace. See `AuthenticationService.persist`.
         if !isDemo { await authentication.sessionOpened(sessionID) }
+        // Closed while that was being said: say the other thing, so the two arrive in order.
+        guard !closed else {
+            if !isDemo { await authentication.sessionClosed(sessionID) }
+            return
+        }
 
         // Before the sync loop, not after: the token can be refused by the very first request the
         // loop makes, and a delegate registered afterwards would miss it.
@@ -230,11 +235,20 @@ public final class UserSession {
         })
 
         await loadProfile()
+        // Every `await` in here is a moment `close()` or `signOut()` can run in — an account
+        // switch on a cold launch from a push, the bridge changed while the first profile fetch
+        // hung. Carrying on regardless registered listeners and started a sync loop for a session
+        // that had already been closed, on a client nothing would ever stop.
+        guard !closed else { return }
 
         // Before the room list, because it is the only listener in the app that has to be in place
         // for something *other people's devices* do. Everything else here is started so that this
         // device can ask a question; this is started so that it can be asked one.
         await verification.listen()
+        guard !closed else {
+            verification.stop()
+            return
+        }
 
         // Not awaited on the server's behalf — `load()` reads what the SDK already knows and
         // subscribes for the rest. What it knows *now* may well be `.unknown`; the screen that
@@ -627,7 +641,12 @@ public final class UserSession {
     /// Called from both ways out — the user signing out, and the server having already signed them
     /// out — because the store on the disk goes away in both, and a room left open in the detail
     /// column does not know that.
+    /// Set on the way out and never cleared: a session that has been closed is not opened again —
+    /// the root builds a new one. What `start()` checks after every `await`.
+    @ObservationIgnored private var closed = false
+
     private func stopEverything() async {
+        closed = true
         if !isDemo { await authentication.sessionClosed(sessionID) }
         verification.stop()
         recovery.stop()
