@@ -34,6 +34,10 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
     /// weakening something bigger. What makes it true is the `Mutex` — the handler is reached
     /// through the lock, exactly once, and never held anywhere else.
     private struct Delivery: @unchecked Sendable {
+        /// Which push this is. The decrypt for an older push can finish after a newer one has
+        /// displaced it, and without this it took the *newer* push's handler: push 2 showed push
+        /// 1's words, and push 2's own were dropped.
+        let id = UUID()
         let handler: (UNNotificationContent) -> Void
         /// iOS's own words for this push — "New message", or whatever the homeserver put in
         /// the payload. Kept, because it is what goes on screen if we run out of time, and
@@ -53,9 +57,10 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
         // So whatever was in there gets its fallback and is let go of, before the new one takes its
         // place. Showing the server's own "New message" for the older push is the right answer:
         // something did arrive, and we are out of time to say what.
+        let delivery = Delivery(handler: contentHandler, fallback: request.content)
         let displaced = pending.withLock { pending -> Delivery? in
             let previous = pending
-            pending = Delivery(handler: contentHandler, fallback: request.content)
+            pending = delivery
             return previous
         }
 
@@ -84,7 +89,11 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
         Task {
             let decoder = PushDecoder()
             let outcome = await decoder.notification(roomID: roomID, eventID: eventID, accountID: accountID)
-            deliver(outcome, roomID: roomID, accountID: accountID, accountLabel: decoder.accountLabel(for: accountID))
+            // Under the lock the words and the sender are already gone; which of the user's
+            // accounts it came for — "@boris:work.example" — goes with them.
+            let locked = AppLock.isLockedNow(defaults: UserDefaults(suiteName: AppEnvironment.appGroupIdentifier))
+            deliver(outcome, to: delivery.id, roomID: roomID, accountID: accountID,
+                    accountLabel: locked ? nil : decoder.accountLabel(for: accountID))
         }
     }
 
@@ -101,8 +110,14 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
 
     // MARK: - Private
 
-    private func deliver(_ outcome: PushOutcome, roomID: String, accountID: String?, accountLabel: String?) {
-        guard let delivery = pending.withLock({ $0.take() }) else { return }
+    private func deliver(_ outcome: PushOutcome, to id: UUID, roomID: String, accountID: String?,
+                         accountLabel: String?) {
+        // Only our own push. One that was displaced has already been given its fallback.
+        let mine = pending.withLock { pending -> Delivery? in
+            guard pending?.id == id else { return nil }
+            return pending.take()
+        }
+        guard let delivery = mine else { return }
 
         switch outcome {
         case let .show(notification):
