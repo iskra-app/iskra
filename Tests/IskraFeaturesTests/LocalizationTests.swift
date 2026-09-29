@@ -95,11 +95,10 @@ struct LocalizationTests {
         (Strings.Message.Delivery.discard, en: "Delete", ru: "Удалить"),
         (Strings.Settings.title, en: "Settings", ru: "Настройки"),
         // The name is deliberately the same in both — it is what the app is called, not a
-        // word about it. The numbers around it are the part that gets translated.
+        // word about it.
         (Strings.Settings.appName, en: "Iskra App", ru: "Iskra App"),
-        (Strings.Settings.version("0.1.0", build: "1"),
-         en: "Version 0.1.0 (1)",
-         ru: "Версия 0.1.0 (1)"),
+        (Strings.About.build, en: "Build", ru: "Сборка"),
+        (Strings.About.licences, en: "Licences", ru: "Лицензии"),
         (Strings.Account.signOut, en: "Sign out", ru: "Выйти"),
         (Strings.Message.Menu.reply, en: "Reply", ru: "Ответить"),
         (Strings.Message.Menu.edit, en: "Edit", ru: "Изменить"),

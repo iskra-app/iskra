@@ -3,21 +3,14 @@ import IskraDesign
 
 /// What this app is, which build of it you are holding, and whose work it is standing on.
 ///
-/// The version was already at the foot of the settings screen and stays there — a number you
-/// glance at should not cost a tap. This screen is the rest of the answer: the sentence that
-/// says what Iskra is, the build details in a form you can paste into a bug report without
-/// copying them out by hand, and the credit that the code this app leans on is owed.
+/// The screen is the whole answer to "which Iskra is this": the settings screen no longer
+/// carries the version in its footer, so the number lives here and nowhere else. Every row is
+/// selectable, which is what a bug report needs — the three facts it is useless without, in a
+/// form that can be copied one at a time.
 ///
-/// That last section is not decoration. Every line of Matrix and every line of cryptography
-/// here is `matrix-rust-sdk`'s, under Apache-2.0, and a licence that asks to be carried with
-/// the binary needs somewhere in the shipped app that a person can actually reach. This is
-/// that place, which is also why the section is a list of links rather than a paragraph: a
-/// name with no way through to the source is a thank-you, not a notice.
+/// The licences sit one push further in (`LicensesView`) rather than on this screen: they are
+/// a list somebody opens on purpose, not something to scroll past on the way to a version.
 struct AboutView: View {
-    /// Set for a moment after the build details are copied, so the row can say it happened.
-    /// A copy is silent otherwise, and a button that gives back nothing gets pressed twice.
-    @State private var didCopy = false
-
     @Environment(\.accent) private var accent
 
     var body: some View {
@@ -29,43 +22,25 @@ struct AboutView: View {
 
             Section {
                 LabeledContent {
-                    Text(verbatim: "\(AppVersion.marketing) (\(AppVersion.build))")
+                    Text(verbatim: AppVersion.marketing)
                 } label: {
                     Text(Strings.About.version)
                 }
                 .textSelection(.enabled)
 
                 LabeledContent {
-                    Text(verbatim: AboutView.device)
+                    Text(verbatim: AppVersion.buildWithCommit)
                 } label: {
-                    Text(Strings.About.device)
+                    Text(Strings.About.build)
                 }
                 .textSelection(.enabled)
 
                 LabeledContent {
-                    Text(verbatim: AboutView.system)
+                    Text(verbatim: "\(AboutView.device) (\(AboutView.system))")
                 } label: {
-                    Text(Strings.About.system)
+                    Text(Strings.About.device)
                 }
                 .textSelection(.enabled)
-
-                Button {
-                    Clipboard.copy(AboutView.buildDetails)
-                    withAnimation(.smooth(duration: Theme.Timing.reaction)) { didCopy = true }
-                    // And back again, so the row is a button once more. A tick that stays put
-                    // reads as a state the screen is now in rather than as something that just
-                    // happened, and the second copy — after the first paste went astray — then
-                    // looks like it did nothing at all.
-                    Task {
-                        try? await Task.sleep(for: .seconds(2))
-                        withAnimation(.smooth(duration: Theme.Timing.reaction)) { didCopy = false }
-                    }
-                } label: {
-                    Label(didCopy ? Strings.About.copied : Strings.About.copy,
-                          systemImage: didCopy ? "checkmark" : "doc.on.doc")
-                }
-            } footer: {
-                Text(Strings.About.copyHelp)
             }
 
             Section {
@@ -78,32 +53,15 @@ struct AboutView: View {
                         Text(verbatim: "iskra.swag.moscow")
                     }
                 }
-            }
 
-            Section {
-                Link(destination: URL(string: "https://github.com/matrix-org/matrix-rust-sdk")!) {
-                    LabeledContent {
-                        Image(systemName: "arrow.up.right")
-                            .foregroundStyle(.secondary)
-                    } label: {
-                        Text(Strings.About.sdk)
-                        Text(Strings.About.sdkLicence)
-                    }
+                // A closure destination is fine here: `LicensesView` holds nothing but constants,
+                // so building it eagerly costs nothing. And it must not read `dismiss` — this
+                // screen is itself pushed onto the settings stack. See CLAUDE.md.
+                NavigationLink {
+                    LicensesView()
+                } label: {
+                    Text(Strings.About.licences)
                 }
-
-                Link(destination: URL(string: "https://matrix.org")!) {
-                    LabeledContent {
-                        Image(systemName: "arrow.up.right")
-                            .foregroundStyle(.secondary)
-                    } label: {
-                        Text(Strings.About.protocolName)
-                        Text(Strings.About.protocolExplained)
-                    }
-                }
-            } header: {
-                Text(Strings.About.builtOn)
-            } footer: {
-                Text(Strings.About.cryptography)
             }
         }
         .formStyle(.grouped)
@@ -177,13 +135,63 @@ struct AboutView: View {
         let name = String(cString: value)
         return name.isEmpty ? fallback : name
     }
+}
 
-    /// The facts a bug report needs, on one line each, in the order they get asked for.
-    private static var buildDetails: String {
-        """
-        Iskra \(AppVersion.marketing) (\(AppVersion.build))
-        \(device)
-        \(system)
-        """
+/// Whose code ships inside the app, under which licence, and a way through to the text of it.
+///
+/// This is not decoration. Every line of Matrix and every line of Matrix cryptography here is
+/// `matrix-rust-sdk`'s, under Apache-2.0, and the avatars are a port of blobatar, under MIT —
+/// licences that travel with the binary and need somewhere in the shipped app a person can
+/// actually reach. Each row is a link rather than a name, because a name with no way through
+/// to the licence is a thank-you, not a notice.
+struct LicensesView: View {
+    @Environment(\.accent) private var accent
+
+    /// One piece of somebody else's work, and where its licence is published.
+    private struct Credit: Identifiable {
+        let name: String
+        let licence: String
+        let url: URL
+        var id: String { name }
+    }
+
+    /// Names and licence names are not translated — "Apache 2.0" and "MIT" are what the
+    /// licences are called in every language, and the project names are proper nouns.
+    private static let credits: [Credit] = [
+        Credit(name: "matrix-rust-sdk",
+               licence: "Apache 2.0",
+               url: URL(string: "https://github.com/matrix-org/matrix-rust-sdk/blob/main/LICENSE")!),
+        Credit(name: "matrix-rust-components-swift",
+               licence: "Apache 2.0",
+               url: URL(string: "https://github.com/matrix-org/matrix-rust-components-swift/blob/main/LICENSE")!),
+        Credit(name: "swift-secp256k1",
+               licence: "MIT",
+               url: URL(string: "https://github.com/21-DOT-DEV/swift-secp256k1")!),
+        Credit(name: "blobatar",
+               licence: "MIT © 2026 Alain",
+               url: URL(string: "https://blobatar.dev")!),
+    ]
+
+    var body: some View {
+        Form {
+            Section {
+                ForEach(LicensesView.credits) { credit in
+                    Link(destination: credit.url) {
+                        LabeledContent {
+                            Image(systemName: "arrow.up.right")
+                                .foregroundStyle(.secondary)
+                        } label: {
+                            Text(verbatim: credit.name)
+                            Text(verbatim: credit.licence)
+                        }
+                    }
+                }
+            } footer: {
+                Text(Strings.About.cryptography)
+            }
+        }
+        .formStyle(.grouped)
+        .tint(accent.color)
+        .navigationTitle(Text(Strings.About.licences))
     }
 }
