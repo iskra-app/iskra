@@ -225,7 +225,7 @@
    а не только в состоянии: человек смотрит на поле, когда заполняет его. */
 "connection.address" = "Адрес моста";
 "connection.addressPrompt" = "npub1… или 64 знака hex";
-"connection.addressFooter" = "Свой ключ мост печатает при запуске — строка «bridge is listening pubkey=…». Пока поле пустое, переключатель ничего не даёт: трафик идёт к серверу напрямую.";
+"connection.addressFooter" = "Адрес мост печатает при запуске — строка «bridge address for Iskra: npub1…». Пока поле пустое, переключатель ничего не даёт: трафик идёт к серверу напрямую.";
 "connection.addressBad" = "Не похоже на ключ моста";
 "connection.addressSecret" = "Это секретный ключ. Нужен публичный — тот, что начинается с npub.";
 

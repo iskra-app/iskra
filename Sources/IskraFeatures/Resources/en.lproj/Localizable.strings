@@ -227,7 +227,7 @@
    said here rather than only in the status: this is what somebody is looking at. */
 "connection.address" = "Bridge address";
 "connection.addressPrompt" = "npub1… or 64 hex characters";
-"connection.addressFooter" = "A bridge prints its own key at startup — the line that reads “bridge is listening pubkey=…”. While this is empty the switch gets you nothing: traffic goes straight to the server.";
+"connection.addressFooter" = "A bridge prints its address at startup — the line that reads “bridge address for Iskra: npub1…”. While this is empty the switch gets you nothing: traffic goes straight to the server.";
 "connection.addressBad" = "That does not look like a bridge key";
 "connection.addressSecret" = "That is a secret key. The public one is wanted here — the one that starts with npub.";
 

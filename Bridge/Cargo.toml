@@ -10,7 +10,7 @@ members = [
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-repository = "https://github.com/borisz/iskra"
+repository = "https://github.com/zhuravlevb/iskra"
 
 [workspace.dependencies]
 nostr-sdk = { version = "0.44", features = ["nip44"] }
