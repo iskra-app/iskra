@@ -29,7 +29,25 @@ final class ShareViewController: UIViewController {
         Task { await present() }
     }
 
+    /// With the app lock on, nothing is copied and no chat is listed until the owner has proved it
+    /// is them. The share sheet used to be a way round the lock: anyone holding the unlocked phone
+    /// saw every account's chat names and could queue a message, which the app then sent the next
+    /// time it came to the front — still behind its shield.
     private func present() async {
+        let defaults = UserDefaults(suiteName: AppEnvironment.appGroupIdentifier)
+        guard AppLock.isLockedNow(defaults: defaults) else { return await presentPicker() }
+
+        let lock = AppLock(defaults: defaults)
+        show(ShareLockedView(
+            onUnlock: { [weak self] in
+                guard await lock.authenticate(reason: String(localized: CoreStrings.Share.unlockReason)) else { return }
+                await self?.presentPicker()
+            },
+            onCancel: { [weak self] in self?.cancel() }
+        ))
+    }
+
+    private func presentPicker() async {
         let shared = await extractShared()
 
         let picker = SharePickerView(
@@ -52,7 +70,16 @@ final class ShareViewController: UIViewController {
             }
         )
 
-        let host = UIHostingController(rootView: picker)
+        show(picker)
+    }
+
+    private func show(_ screen: some View) {
+        for child in children {
+            child.willMove(toParent: nil)
+            child.view.removeFromSuperview()
+            child.removeFromParent()
+        }
+        let host = UIHostingController(rootView: screen)
         addChild(host)
         host.view.frame = view.bounds
         host.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -223,6 +250,33 @@ struct SharedAttachment: Sendable, Identifiable {
         let (url, path) = try slot(named: name)
         try data.write(to: url, options: .atomic)
         return SharedAttachment(attachment: .init(kind: kind, filename: path), url: url)
+    }
+}
+
+/// What the share sheet shows while Iskra is locked: nothing of the user's, and the one way on.
+private struct ShareLockedView: View {
+    let onUnlock: @MainActor () async -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            ContentUnavailableView {
+                Label { Text(CoreStrings.Share.locked) } icon: { Image(systemName: "lock.fill") }
+            } description: {
+                Text(CoreStrings.Share.lockedBody)
+            } actions: {
+                Button(String(localized: CoreStrings.Share.unlock)) {
+                    Task { await onUnlock() }
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(String(localized: CoreStrings.Share.cancel), action: onCancel)
+                }
+            }
+        }
+        // Asked straight away, as the app's own shield does; the button is the retry.
+        .task { await onUnlock() }
     }
 }
 

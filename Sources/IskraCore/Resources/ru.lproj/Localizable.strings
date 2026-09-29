@@ -146,6 +146,10 @@
 "share.cancel" = "Отмена";
 "share.empty" = "Сначала откройте Iskra и войдите — тогда здесь появятся чаты.";
 "share.willSendOnOpen" = "Отправится, когда вы откроете Iskra.";
+"share.locked" = "Iskra заперта";
+"share.lockedBody" = "Разблокируйте её — и появятся ваши чаты.";
+"share.unlock" = "Разблокировать";
+"share.unlockReason" = "Чтобы отправить это в Iskra";
 
 /* Приглашения в комнату. */
 "roomAction.acceptInviteFailed" = "Не получилось войти в чат. Возможно, приглашение отозвали.";
