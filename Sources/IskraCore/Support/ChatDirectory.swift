@@ -65,9 +65,44 @@ public enum ChatDirectory {
         let kept = directory(from: defaults).filter { $0.accountID != account }
         guard let data = try? JSONEncoder().encode(kept) else { return }
         defaults?.set(data, forKey: directoryKey)
-        let outbox = outbox(from: defaults).filter { $0.accountID != account }
+        let all = outbox(from: defaults)
+        let outbox = all.filter { $0.accountID != account }
         if let data = try? JSONEncoder().encode(outbox) {
             defaults?.set(data, forKey: outboxKey)
+        }
+        // And the files: forgetting the entries and leaving the copies behind left somebody's
+        // photos in the clear in the shared container, after the account they were for had gone.
+        if let folder = try? outboxFolder() {
+            for item in all where item.accountID == account {
+                for attachment in item.attachments {
+                    if let slot = attachment.location(in: folder)?.slot {
+                        try? FileManager.default.removeItem(at: slot)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Throws away every copy in the outbox that no queued item points at and that is older than
+    /// `age` — what a share sheet swiped away, killed for memory, or opened with nothing to send to
+    /// leaves behind. Called at launch.
+    ///
+    /// The age is there for the one copy that is *meant* to be unreferenced: the Share extension
+    /// copies a file the moment it is shown, before the user has picked a chat, and a share sheet
+    /// may be open beside the app on an iPad while it launches.
+    public static func sweepOutbox(olderThan age: TimeInterval = 3600,
+                                   in defaults: UserDefaults? = sharedDefaults, now: Date = .now) {
+        guard let folder = try? outboxFolder() else { return }
+        let referenced = Set(outbox(from: defaults).flatMap(\.attachments).compactMap {
+            $0.location(in: folder)?.slot.lastPathComponent
+        })
+        let slots = (try? FileManager.default.contentsOfDirectory(
+            at: folder, includingPropertiesForKeys: [.creationDateKey])) ?? []
+        for slot in slots where !referenced.contains(slot.lastPathComponent) {
+            let created = (try? slot.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? .distantPast
+            if now.timeIntervalSince(created) > age {
+                try? FileManager.default.removeItem(at: slot)
+            }
         }
     }
 
@@ -154,6 +189,24 @@ public enum ChatDirectory {
         public init(kind: Kind, filename: String) {
             self.kind = kind
             self.filename = filename
+        }
+
+        /// Where the file is, and the folder of its own it sits in — or `nil` if `filename` is
+        /// anything but `<folder>/<name>` directly inside the outbox.
+        ///
+        /// The outbox entry is written by another process, and its name came from another app;
+        /// the folder returned here is what gets *deleted* once the file is sent. So nothing is
+        /// resolved that could climb out: two components, both plain names.
+        public func location(in outbox: URL) -> (file: URL, slot: URL)? {
+            let parts = filename.split(separator: "/", omittingEmptySubsequences: false).map(String.init)
+            guard parts.count == 2, parts.allSatisfy(SafeFilename.isSafe) else { return nil }
+            let slot = outbox.appending(component: parts[0], directoryHint: .isDirectory)
+            return (slot.appending(component: parts[1]), slot)
+        }
+
+        /// The name the file goes out under — its own, without the folder it waited in.
+        public var displayName: String {
+            (filename as NSString).lastPathComponent
         }
     }
 

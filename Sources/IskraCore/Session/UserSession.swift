@@ -429,14 +429,14 @@ public final class UserSession {
     /// retry policy.
     @discardableResult
     public func send(_ attachment: ChatDirectory.OutboxAttachment, toRoomID roomID: String) async -> Bool {
-        guard let folder = try? ChatDirectory.outboxFolder() else { return false }
-        // `appending(path:)`, because the name carries a folder of its own — see
-        // `OutboxAttachment.filename` — and the whole folder goes with the file.
-        let url = folder.appending(path: attachment.filename)
-        defer {
-            let parent = url.deletingLastPathComponent()
-            try? FileManager.default.removeItem(at: parent.standardizedFileURL == folder.standardizedFileURL ? url : parent)
-        }
+        // The name carries a folder of its own — see `OutboxAttachment.filename` — and the whole
+        // folder goes with the file. It is resolved by `location(in:)` and nothing else: it came
+        // from another process and, before that, from another app, and it used to be resolved
+        // with `appending(path:)`, which follows `..` — up to the App Group's root, which the
+        // `defer` below would then have deleted.
+        guard let folder = try? ChatDirectory.outboxFolder(),
+              let (url, slot) = attachment.location(in: folder) else { return false }
+        defer { try? FileManager.default.removeItem(at: slot) }
 
         guard FileManager.default.fileExists(atPath: url.path(percentEncoded: false)),
               let target = timeline(forRoomID: roomID) else { return false }
@@ -449,7 +449,7 @@ public final class UserSession {
         switch attachment.kind {
         case .image:
             guard let data = try? Data(contentsOf: url) else { return false }
-            await target.send(photo: data, filename: attachment.filename)
+            await target.send(photo: data, filename: attachment.displayName)
         case .video:
             await target.send(video: url)
         case .file:

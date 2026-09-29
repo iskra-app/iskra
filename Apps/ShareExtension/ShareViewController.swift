@@ -158,8 +158,10 @@ final class ShareViewController: UIViewController {
         let ext = source.pathExtension.isEmpty ? (type?.preferredFilenameExtension ?? "") : source.pathExtension
         let stem = suggested.map { ($0 as NSString).deletingPathExtension }
             ?? source.deletingPathExtension().lastPathComponent
-        let base = stem.isEmpty ? photoName : stem
-        return ext.isEmpty ? base : "\(base).\(ext)"
+        // The suggestion is the sharing app's to make, and nothing stops it being `../../x`.
+        let base = SafeFilename.make(stem, fallback: photoName)
+        let safeExt = SafeFilename.make(ext, fallback: "")
+        return safeExt.isEmpty ? base : "\(base).\(safeExt)"
     }
 
     nonisolated private static var photoName: String {

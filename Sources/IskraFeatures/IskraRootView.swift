@@ -818,6 +818,9 @@ public struct IskraRootView: View {
         #if os(macOS)
         FileOpener.sweep()
         #endif
+        // And the Share extension's copies that nothing is waiting to send any more — see
+        // `ChatDirectory.sweepOutbox`. They are somebody's photos in the clear in a shared folder.
+        ChatDirectory.sweepOutbox()
 
         // And whatever the last run left in the *container*: encrypted stores belonging to sign-ins
         // that never finished and sessions that have been replaced. They are readable — the
