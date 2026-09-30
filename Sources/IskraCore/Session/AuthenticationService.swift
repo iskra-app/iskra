@@ -192,7 +192,13 @@ public actor AuthenticationService {
     /// The same deadline covers the notification extension, which restores a session too and has
     /// thirty seconds to live before iOS takes the process away. See `PushDecoder`, whose budget
     /// used to start counting only after this had already returned.
-    func restoreClient(sessionID: String? = nil) async throws -> Client? {
+    ///
+    /// - Parameter roomID: given by the notification extension, which has one event in one room to
+    ///   read and 24 MB to read it in. The client is then built small and restored with *that room*
+    ///   loaded rather than every room in the account (`RoomLoadSettings.one`) — the full
+    ///   restore used to be the whole account brought into memory, once per push, in the process
+    ///   iOS kills first.
+    func restoreClient(sessionID: String? = nil, forPushIn roomID: String? = nil) async throws -> Client? {
         let stored = try sessionID.map { try sessionStore.loadSession(id: $0) } ?? sessionStore.loadSession()
         guard let stored else { return nil }
 
@@ -201,7 +207,8 @@ public actor AuthenticationService {
             // `.native`, and not `.discoverNative` as signing in uses: the discovery was done then,
             // and doing it again is the whole reason a launch with no network used to end on the
             // sign-in screen. See `makeClientBuilder`.
-            builder = try makeClientBuilder(sessionID: stored.sessionID, slidingSync: .native)
+            builder = try makeClientBuilder(sessionID: stored.sessionID, forPush: roomID != nil,
+                                            slidingSync: .native)
         } catch {
             throw AuthenticationError.storageUnavailable(error)
         }
@@ -237,7 +244,12 @@ public actor AuthenticationService {
 
                 // Whatever the builder settled on, tokens and all. Handing `restoreSession` the
                 // address out of a poisoned record would put the dead port straight back.
-                try await client.restoreSession(session: stored.with(homeserverURL: client.homeserver()).rustSession)
+                let session = stored.with(homeserverURL: client.homeserver()).rustSession
+                if let roomID {
+                    try await client.restoreSessionWith(session: session, roomLoadSettings: .one(roomId: roomID))
+                } else {
+                    try await client.restoreSession(session: session)
+                }
                 return client
             }
         } catch {
@@ -848,7 +860,7 @@ public actor AuthenticationService {
     ///   .native`). Asking again made `build()` reach the network in the one code path that has no
     ///   business needing it, and so a launch with no network could not get past it — see
     ///   `restoreClient`, which is where that cost the user their conversations.
-    private func makeClientBuilder(sessionID: String,
+    private func makeClientBuilder(sessionID: String, forPush: Bool = false,
                                    slidingSync: SlidingSyncVersionBuilder) throws -> ClientBuilder {
         let dataURL = try environment.sessionDataURL(forSessionID: sessionID)
         let cacheURL = try environment.sessionCachesURL(forSessionID: sessionID)
@@ -899,8 +911,8 @@ public actor AuthenticationService {
             // keep, and minting it behind their back would be a key nobody has written down. This
             // is the other half — the part that has to already be true by the time they think to
             // ask for one.
-            .autoEnableBackups(autoEnableBackups: true)
-            .autoEnableCrossSigning(autoEnableCrossSigning: true)
+            .autoEnableBackups(autoEnableBackups: !forPush)
+            .autoEnableCrossSigning(autoEnableCrossSigning: !forPush)
             // Who gets the keys to what we write — see `EncryptionPolicy`.
             .encryptionPolicy()
             // Two processes, one store. The notification extension opens the same SQLite file the
@@ -921,6 +933,7 @@ public actor AuthenticationService {
             .withSearchIndexStore(path: searchURL.path(percentEncoded: false),
                                   password: try sessionStore.searchIndexPassword(forSessionID: sessionID))
             .slidingSyncVersionBuilder(versionBuilder: slidingSync)
+            .forPushIfNeeded(forPush)
     }
 
     /// What Iskra tells the homeserver it is, when it asks to be let in.
