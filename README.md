@@ -23,10 +23,23 @@ XCFramework. The upstream package publishes a `macos-arm64_x86_64` slice, and th
 single fact is what makes a native Mac build possible rather than a Catalyst
 compromise.
 
-**Deployment target is iOS 26 / macOS 26.** This lets Liquid Glass be used directly,
-with no availability checks scattered through the views. It also matches reality:
-the SDK's prebuilt macOS objects are compiled against the 26.x SDK, and linking them
-into an older deployment target makes the linker complain, correctly.
+**Deployment target is iOS 18 / macOS 15.** Both numbers are set by `Mutex`
+(Synchronization), which the code leans on in eleven places; that is the lowest floor
+reached without rewriting its locks, and iOS 18 runs on every iPhone iOS 17 does
+(XS and XR onwards), so going lower would buy no phones. Below that the cost climbs
+fast: `@Observable` is iOS 17, and the SDK itself stops at iOS 16 / macOS 12.
+
+Liquid Glass is OS 26, and it is still used directly — but only inside
+`IskraDesign/Glass.swift`, which is the one place that checks availability. On the
+older systems it draws the navigation layer the way it was drawn before glass: a
+system material where glass floats, the accent as a solid fill where it is tinted,
+and nothing at all for the effects that only exist between sheets of glass. No view
+checks for OS 26 because of glass.
+
+The Mac build links ~200 warnings that SDK objects were "built for newer macOS version
+(26.5)". They are the C libraries inside the Rust SDK (zstd, the TLS stack), compiled
+without a deployment target of their own, and they call nothing but libc and pthreads —
+checked symbol by symbol. The warning is about the label, not the contents.
 
 **Liquid Glass is confined to the navigation layer.** Apple's guidance is explicit
 that glass belongs on toolbars, controls and floating panels — not on content, and

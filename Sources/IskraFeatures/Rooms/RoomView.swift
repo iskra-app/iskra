@@ -551,7 +551,7 @@ public struct RoomView: View {
             // above its first message and the iPhone did not. A chat has nothing to separate
             // there: the toolbar is already a glass surface, and the rule only fenced the top
             // message off from the name of the person who sent it.
-            .scrollEdgeEffectStyle(.soft, for: .top)
+            .softScrollEdge(for: .top)
             // Reaching the top is the request for older messages — the gesture people
             // already make, rather than a spinner they have to notice. `loadMore` ignores
             // a call while it is already paginating and once the room has no more history,
@@ -1006,7 +1006,7 @@ public struct RoomView: View {
                 // Out of the toolbar's shared glass. A title is the heading of the screen,
                 // not a control hovering over it, and a capsule of glass around these words
                 // says the opposite.
-                .sharedBackgroundVisibility(.hidden)
+                .outsideToolbarGlass()
 
                 // Out of the shared background, and — unlike the title above — *not* because
                 // it should be bare. It carries a glass circle of its own instead, cut to the
@@ -1020,7 +1020,7 @@ public struct RoomView: View {
                                      faces: timeline.roomFaces,
                                      onOpenDetails: openDetails)
                 }
-                .sharedBackgroundVisibility(.hidden)
+                .outsideToolbarGlass()
             } else {
                 // Mac and iPad. Room enough for the picture and the name together, at the
                 // leading edge — lined up with the conversation below rather than floating
@@ -1034,7 +1034,7 @@ public struct RoomView: View {
                                subtitle: headerSubtitle,
                                onOpenDetails: openDetails)
                 }
-                .sharedBackgroundVisibility(.hidden)
+                .outsideToolbarGlass()
             }
         }
         .sheet(isPresented: $isSearchingRoom) {

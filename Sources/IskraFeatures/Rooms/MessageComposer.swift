@@ -227,7 +227,7 @@ struct MessageComposer: View {
         // inside a `GlassEffectContainer`, glass with a `glassEffectID` that appears or
         // disappears is interpolated into its neighbours — the material stretches, splits
         // and merges the way the system's own controls do.
-        GlassEffectContainer(spacing: Theme.Spacing.close) {
+        NavigationGlassGroup(spacing: Theme.Spacing.close) {
             VStack(alignment: .leading, spacing: Theme.Spacing.close) {
                 if let context {
                     contextStrip(context)
@@ -928,7 +928,7 @@ struct MessageComposer: View {
             icon("plus", isPrimary: false, rotation: .degrees(isAttaching ? 45 : 0))
         }
         .buttonStyle(.plain)
-        .glassEffectID("attach", in: glass)
+        .navigationGlassID("attach", in: glass)
         .accessibilityLabel(Text(Strings.Room.attach))
         .accessibilityAddTraits(isAttaching ? .isSelected : [])
     }
@@ -987,7 +987,7 @@ struct MessageComposer: View {
             .contentShape(.capsule)
         }
         .buttonStyle(.plain)
-        .glassEffectID(id, in: glass)
+        .navigationGlassID(id, in: glass)
         // Each choice grows out of the button that produced it, rather than fading in
         // somewhere above it.
         .transition(.scale(scale: 0.1, anchor: .bottomLeading).combined(with: .opacity))

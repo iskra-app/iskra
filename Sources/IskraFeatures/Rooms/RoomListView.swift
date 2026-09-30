@@ -113,7 +113,7 @@ public struct RoomListView: View {
                 ToolbarItem(placement: .navigation) { newConversationMenu }
                 // Its own glass, not the bar's — see `accountButton`.
                 ToolbarItem(placement: .primaryAction) { accountButton }
-                    .sharedBackgroundVisibility(.hidden)
+                    .outsideToolbarGlass()
             }
         }
         // Nothing to remove on iPhone — a collapsed split view never shows the toggle —
