@@ -223,7 +223,7 @@ struct LocalHTTPProxyTests {
         }
 
         #expect(upstream.requests.isEmpty)
-        let url = URL(string: "http://127.0.0.1:\(port)/_matrix/client/versions")!
+        let url = try #require(URL(string: "http://127.0.0.1:\(port)/_matrix/client/versions"))
         let (_, response) = try await session().data(from: url)
         #expect((response as? HTTPURLResponse)?.statusCode == 200)
     }
@@ -231,8 +231,8 @@ struct LocalHTTPProxyTests {
     /// The listener is anybody's on this machine, and what it forwards must stay on the homeserver:
     /// `//elsewhere/x` and `http://elsewhere/x` resolved to *elsewhere* with the app's address on it.
     @Test("a direct upstream goes nowhere but the homeserver")
-    func directUpstreamStaysHome() async {
-        let upstream = DirectUpstream(homeserver: URL(string: "https://matrix.example")!)
+    func directUpstreamStaysHome() async throws {
+        let upstream = DirectUpstream(homeserver: try #require(URL(string: "https://matrix.example")))
         for target in ["//evil.example/_matrix/x", "http://evil.example/_matrix/x",
                        "https://evil.example/x", "_matrix/relative"] {
             await #expect(throws: UpstreamError.self, "\(target)") {
@@ -243,7 +243,8 @@ struct LocalHTTPProxyTests {
 
     /// Writes bytes to the listener as they are, reads whatever comes back, and hangs up.
     private static func sendRaw(_ text: String, to port: UInt16) async throws {
-        let connection = NWConnection(host: "127.0.0.1", port: NWEndpoint.Port(rawValue: port)!, using: .tcp)
+        let connection = NWConnection(host: "127.0.0.1", port: try #require(NWEndpoint.Port(rawValue: port)),
+                                      using: .tcp)
         connection.start(queue: .global())
         defer { connection.cancel() }
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
