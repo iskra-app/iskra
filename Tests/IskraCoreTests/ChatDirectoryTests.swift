@@ -10,16 +10,16 @@ struct ChatDirectoryTests {
     /// A throwaway defaults, so the tests do not touch the real App Group. The suite name is unique
     /// per test — these run in parallel, and a shared suite would let one test's write race another's
     /// read (which it did, once).
-    private func freshDefaults(_ name: String) -> UserDefaults {
+    private func freshDefaults(_ name: String) throws -> UserDefaults {
         let suite = "iskra.tests.chatDirectory.\(name)"
-        let defaults = UserDefaults(suiteName: suite)!
+        let defaults = try #require(UserDefaults(suiteName: suite))
         defaults.removePersistentDomain(forName: suite)
         return defaults
     }
 
     @Test("the directory round-trips")
-    func directoryRoundTrips() {
-        let defaults = freshDefaults("roundTrip")
+    func directoryRoundTrips() throws {
+        let defaults = try freshDefaults("roundTrip")
         let entries = [ChatDirectoryEntry(id: "!a", name: "Кухня"),
                        ChatDirectoryEntry(id: "!b", name: "Работа")]
         ChatDirectory.writeDirectory(entries, to: defaults)
@@ -27,21 +27,21 @@ struct ChatDirectoryTests {
     }
 
     @Test("an empty directory reads as empty, not nil")
-    func emptyDirectory() {
-        #expect(ChatDirectory.directory(from: freshDefaults("empty")).isEmpty)
+    func emptyDirectory() throws {
+        #expect(try ChatDirectory.directory(from: freshDefaults("empty")).isEmpty)
     }
 
     @Test("a pending open is read once, then gone")
-    func pendingOpenIsOneShot() {
-        let defaults = freshDefaults("pendingOpen")
+    func pendingOpenIsOneShot() throws {
+        let defaults = try freshDefaults("pendingOpen")
         ChatDirectory.requestOpen(roomID: "!room", in: defaults)
         #expect(ChatDirectory.takePendingOpen(from: defaults) == "!room")
         #expect(ChatDirectory.takePendingOpen(from: defaults) == nil)
     }
 
     @Test("the outbox accumulates and then drains empty")
-    func outboxDrains() {
-        let defaults = freshDefaults("outbox")
+    func outboxDrains() throws {
+        let defaults = try freshDefaults("outbox")
         ChatDirectory.enqueue(.init(roomID: "!a", text: "one"), in: defaults)
         ChatDirectory.enqueue(.init(roomID: "!b", text: "two"), in: defaults)
 
@@ -55,8 +55,8 @@ struct ChatDirectoryTests {
     /// What the Share extension adds: files alongside the words, which have to come out the other
     /// side exactly as they went in.
     @Test("shared files ride in the outbox with the words")
-    func attachmentsRoundTrip() {
-        let defaults = freshDefaults("attachments")
+    func attachmentsRoundTrip() throws {
+        let defaults = try freshDefaults("attachments")
         let photo = ChatDirectory.OutboxAttachment(kind: .image, filename: "A/IMG_0001.HEIC")
         let file = ChatDirectory.OutboxAttachment(kind: .file, filename: "B/отчёт.pdf")
         ChatDirectory.enqueue(.init(roomID: "!a", text: "смотри", attachments: [photo, file]), in: defaults)
@@ -71,8 +71,8 @@ struct ChatDirectoryTests {
     /// still send rather than be thrown away as unreadable.
     @Test("an outbox from before attachments still drains")
     func oldOutboxStillDecodes() throws {
-        let defaults = freshDefaults("oldOutbox")
-        let old = #"[{"roomID":"!a","text":"привет"}]"#.data(using: .utf8)!
+        let defaults = try freshDefaults("oldOutbox")
+        let old = Data(#"[{"roomID":"!a","text":"привет"}]"#.utf8)
         defaults.set(old, forKey: "appIntents.outbox")
 
         let drained = ChatDirectory.drainOutbox(from: defaults)
@@ -83,8 +83,8 @@ struct ChatDirectoryTests {
     // MARK: - More than one account
 
     @Test("each account replaces only its own chats")
-    func accountsKeepTheirOwnChats() {
-        let defaults = freshDefaults("accounts")
+    func accountsKeepTheirOwnChats() throws {
+        let defaults = try freshDefaults("accounts")
         ChatDirectory.writeDirectory([ChatDirectoryEntry(id: "!a", name: "Кухня", accountID: "one")],
                                      account: "one", to: defaults)
         ChatDirectory.writeDirectory([ChatDirectoryEntry(id: "!a", name: "Кухня", accountID: "two")],
@@ -98,8 +98,8 @@ struct ChatDirectoryTests {
     }
 
     @Test("a signed-out account leaves the list and the outbox")
-    func forgettingAnAccount() {
-        let defaults = freshDefaults("forget-account")
+    func forgettingAnAccount() throws {
+        let defaults = try freshDefaults("forget-account")
         ChatDirectory.writeDirectory([ChatDirectoryEntry(id: "!a", name: "Кухня", accountID: "one")],
                                      account: "one", to: defaults)
         ChatDirectory.enqueue(.init(roomID: "!a", text: "привет", accountID: "one"), in: defaults)
@@ -113,8 +113,8 @@ struct ChatDirectoryTests {
     /// Nothing goes out from the wrong person: an account drains what it sends, and what somebody
     /// shared into another account's chat waits for that account.
     @Test("an account sends only its own messages, and the rest wait")
-    func outboxIsDrainedPerAccount() {
-        let defaults = freshDefaults("outbox-accounts")
+    func outboxIsDrainedPerAccount() throws {
+        let defaults = try freshDefaults("outbox-accounts")
         ChatDirectory.enqueue(.init(roomID: "!a", text: "one's", accountID: "one"), in: defaults)
         ChatDirectory.enqueue(.init(roomID: "!b", text: "two's", accountID: "two"), in: defaults)
         ChatDirectory.enqueue(.init(roomID: "!c", text: "from before accounts"), in: defaults)
@@ -130,8 +130,8 @@ struct ChatDirectoryTests {
     }
 
     @Test("an open request says whose chat it is")
-    func openRequestCarriesTheAccount() {
-        let defaults = freshDefaults("open-account")
+    func openRequestCarriesTheAccount() throws {
+        let defaults = try freshDefaults("open-account")
         ChatDirectory.requestOpen(roomID: "!room", accountID: "two", in: defaults)
 
         let request = ChatDirectory.takePendingOpenRequest(from: defaults)
@@ -152,8 +152,8 @@ struct UnreadCountsTests {
     /// A push for one account carries that account's count, and used to be written straight onto
     /// the icon — taking it down to two while the other account had forty waiting.
     @Test("the icon is every account added together")
-    func theIconIsTheSum() {
-        let defaults = freshDefaults("sum")
+    func theIconIsTheSum() throws {
+        let defaults = try freshDefaults("sum")
         UnreadCounts.set(40, forAccount: "one", in: defaults)
         let total = UnreadCounts.set(2, forAccount: "two", in: defaults)
 
@@ -162,8 +162,8 @@ struct UnreadCountsTests {
     }
 
     @Test("a signed-out account's count comes off the icon")
-    func forgettingAnAccount() {
-        let defaults = freshDefaults("forget")
+    func forgettingAnAccount() throws {
+        let defaults = try freshDefaults("forget")
         UnreadCounts.set(40, forAccount: "one", in: defaults)
         UnreadCounts.set(2, forAccount: "two", in: defaults)
 

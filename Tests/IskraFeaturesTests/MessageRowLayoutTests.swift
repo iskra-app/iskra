@@ -229,7 +229,7 @@ struct MessageRowLayoutTests {
     /// that — how far a bubble may run before the far edge pushes back — would be tested at a
     /// width the app never uses. See `MessageRow.emptyColumn`.
     private func rendered(_ messages: [Message],
-                       @ViewBuilder row: @escaping (Message) -> some View) -> NSImage? {
+                          @ViewBuilder row: @escaping (Message) -> some View) -> NSImage? {
         let view = VStack(spacing: 0) {
             ForEach(messages) { message in
                 row(message)

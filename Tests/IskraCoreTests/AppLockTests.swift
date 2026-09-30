@@ -9,42 +9,42 @@ struct AppLockTests {
     private let now = Date(timeIntervalSinceReferenceDate: 1_000_000)
 
     @Test("a disabled lock never locks")
-    func disabledNeverLocks() {
+    func disabledNeverLocks() throws {
         #expect(!AppLock.shouldLock(enabled: false, lastActive: now, now: now, timeout: .immediately))
         #expect(!AppLock.shouldLock(enabled: false, lastActive: nil, now: now, timeout: .afterFiveMinutes))
     }
 
     @Test("no record of leaving means lock — a cold launch cannot vouch for anyone")
-    func noLastActiveLocks() {
+    func noLastActiveLocks() throws {
         #expect(AppLock.shouldLock(enabled: true, lastActive: nil, now: now, timeout: .afterFiveMinutes))
     }
 
     @Test("immediately locks on any trip away")
-    func immediatelyLocksAtOnce() {
+    func immediatelyLocksAtOnce() throws {
         let aMomentAgo = now.addingTimeInterval(-1)
         #expect(AppLock.shouldLock(enabled: true, lastActive: aMomentAgo, now: now, timeout: .immediately))
     }
 
     @Test("within the grace period it stays open")
-    func withinGraceStaysOpen() {
+    func withinGraceStaysOpen() throws {
         let thirtySecondsAgo = now.addingTimeInterval(-30)
         #expect(!AppLock.shouldLock(enabled: true, lastActive: thirtySecondsAgo, now: now, timeout: .afterMinute))
     }
 
     @Test("past the grace period it locks")
-    func pastGraceLocks() {
+    func pastGraceLocks() throws {
         let twoMinutesAgo = now.addingTimeInterval(-120)
         #expect(AppLock.shouldLock(enabled: true, lastActive: twoMinutesAgo, now: now, timeout: .afterMinute))
     }
 
     @Test("exactly at the boundary locks")
-    func boundaryLocks() {
+    func boundaryLocks() throws {
         let exactlyAMinuteAgo = now.addingTimeInterval(-60)
         #expect(AppLock.shouldLock(enabled: true, lastActive: exactlyAMinuteAgo, now: now, timeout: .afterMinute))
     }
 
     @Test("the five-minute grace holds for four minutes")
-    func fiveMinuteGrace() {
+    func fiveMinuteGrace() throws {
         let fourMinutesAgo = now.addingTimeInterval(-240)
         #expect(!AppLock.shouldLock(enabled: true, lastActive: fourMinutesAgo, now: now, timeout: .afterFiveMinutes))
         let sixMinutesAgo = now.addingTimeInterval(-360)
@@ -61,22 +61,22 @@ struct AppLockSessionTests {
     private let now = Date(timeIntervalSinceReferenceDate: 1_000_000)
 
     /// A throwaway suite each time, so nothing here touches the real settings.
-    private func lock(enabled: Bool = true, timeout: AppLockTimeout = .immediately) -> AppLock {
-        let defaults = UserDefaults(suiteName: "AppLockTests.\(UUID().uuidString)")!
+    private func lock(enabled: Bool = true, timeout: AppLockTimeout = .immediately) throws -> AppLock {
+        let defaults = try #require(UserDefaults(suiteName: "AppLockTests.\(UUID().uuidString)"))
         defaults.set(enabled, forKey: "appLock.enabled")
         defaults.set(timeout.rawValue, forKey: "appLock.timeout")
         return AppLock(defaults: defaults)
     }
 
     @Test("a launch with the lock on starts locked")
-    func launchesLocked() {
-        #expect(lock().isLocked)
-        #expect(!lock(enabled: false).isLocked)
+    func launchesLocked() throws {
+        #expect(try lock().isLocked)
+        #expect(try !lock(enabled: false).isLocked)
     }
 
     @Test("unlocking on a cold launch survives the scene going active again")
-    func unlockDoesNotLoop() {
-        let appLock = lock()
+    func unlockDoesNotLoop() throws {
+        let appLock = try lock()
         // The system's sheet takes the app off screen and hands it straight back, so `.active`
         // arrives with no trip to the background behind it. This is the loop: it used to lock again
         // here, the instant the face was accepted, and then ask for the face again.
@@ -86,8 +86,8 @@ struct AppLockSessionTests {
     }
 
     @Test("coming back from a real trip away still locks")
-    func realTripStillLocks() {
-        let appLock = lock()
+    func realTripStillLocks() throws {
+        let appLock = try lock()
         appLock.didAuthenticate(now: now)
         appLock.enteredBackground(now: now.addingTimeInterval(10))
         appLock.enteredForeground(now: now.addingTimeInterval(20))
@@ -95,8 +95,8 @@ struct AppLockSessionTests {
     }
 
     @Test("a trip inside the grace period does not lock")
-    func graceHolds() {
-        let appLock = lock(timeout: .afterMinute)
+    func graceHolds() throws {
+        let appLock = try lock(timeout: .afterMinute)
         appLock.didAuthenticate(now: now)
         appLock.enteredBackground(now: now.addingTimeInterval(10))
         appLock.enteredForeground(now: now.addingTimeInterval(20))
@@ -104,8 +104,8 @@ struct AppLockSessionTests {
     }
 
     @Test("the same trip away is not counted twice")
-    func tripIsSpentOnUnlock() {
-        let appLock = lock()
+    func tripIsSpentOnUnlock() throws {
+        let appLock = try lock()
         appLock.enteredBackground(now: now)
         appLock.enteredForeground(now: now.addingTimeInterval(5))
         #expect(appLock.isLocked)

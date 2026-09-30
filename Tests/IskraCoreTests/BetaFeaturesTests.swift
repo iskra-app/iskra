@@ -11,9 +11,9 @@ import Testing
 struct BetaFeaturesTests {
     /// A throwaway defaults, one per test — these run in parallel, and the real App Group is the
     /// user's own.
-    private func freshDefaults(_ name: String) -> UserDefaults {
+    private func freshDefaults(_ name: String) throws -> UserDefaults {
         let suite = "iskra.tests.betaFeatures.\(name)"
-        let defaults = UserDefaults(suiteName: suite)!
+        let defaults = try #require(UserDefaults(suiteName: suite))
         defaults.removePersistentDomain(forName: suite)
         return defaults
     }
@@ -27,8 +27,8 @@ struct BetaFeaturesTests {
     /// the second line. A default that drew over a photograph somebody chose would be the app
     /// overruling them, and that stays behind a switch.
     @Test("by default a creature stands in for a missing picture, and only for that")
-    func onByDefault() {
-        let defaults = freshDefaults("default")
+    func onByDefault() throws {
+        let defaults = try freshDefaults("default")
         #expect(BetaFeatures.drawsGeneratedFace(hasPicture: false, in: defaults))
         #expect(BetaFeatures.drawsGeneratedFace(hasPicture: true, in: defaults) == false)
     }
@@ -36,8 +36,8 @@ struct BetaFeaturesTests {
     /// And turning it off is still turning it off — the value written by hand beats the default,
     /// which is the whole of what a default is.
     @Test("switched off, nobody gets a creature")
-    func offWhenAsked() {
-        let defaults = freshDefaults("off")
+    func offWhenAsked() throws {
+        let defaults = try freshDefaults("off")
         defaults.set(false, forKey: BetaFeatures.blobatarKey)
 
         #expect(BetaFeatures.drawsGeneratedFace(hasPicture: false, in: defaults) == false)
@@ -46,8 +46,8 @@ struct BetaFeaturesTests {
 
     /// The ordinary case: a face where there is none, and the photograph left alone where there is.
     @Test("on, a creature stands in only where there is no picture")
-    func standsInForMissingPictures() {
-        let defaults = freshDefaults("on")
+    func standsInForMissingPictures() throws {
+        let defaults = try freshDefaults("on")
         defaults.set(true, forKey: BetaFeatures.blobatarKey)
 
         #expect(BetaFeatures.drawsGeneratedFace(hasPicture: false, in: defaults))
@@ -55,8 +55,8 @@ struct BetaFeaturesTests {
     }
 
     @Test("forced, a creature wins even against a picture")
-    func forcedBeatsAPicture() {
-        let defaults = freshDefaults("forced")
+    func forcedBeatsAPicture() throws {
+        let defaults = try freshDefaults("forced")
         defaults.set(true, forKey: BetaFeatures.blobatarKey)
         defaults.set(true, forKey: BetaFeatures.forceBlobatarKey)
 
@@ -67,8 +67,8 @@ struct BetaFeaturesTests {
     /// second toggle unless the first is on, so this state is only reachable by an old value left
     /// behind — which is exactly when a rule like this earns its keep.
     @Test("forced means nothing while the feature is off")
-    func forcedIsMeaninglessWhenOff() {
-        let defaults = freshDefaults("forcedOff")
+    func forcedIsMeaninglessWhenOff() throws {
+        let defaults = try freshDefaults("forcedOff")
         // Both written by hand: creatures are on by default now, so the state this test is about
         // — forced, over a feature that is off — is only reachable by saying so.
         defaults.set(false, forKey: BetaFeatures.blobatarKey)
@@ -78,9 +78,9 @@ struct BetaFeaturesTests {
     }
 
     @Test("a flag set before the move is carried across, once")
-    func adoptsTheOldValue() {
-        let local = freshDefaults("adopt.local")
-        let shared = freshDefaults("adopt.shared")
+    func adoptsTheOldValue() throws {
+        let local = try freshDefaults("adopt.local")
+        let shared = try freshDefaults("adopt.shared")
         local.set(true, forKey: BetaFeatures.blobatarKey)
 
         BetaFeatures.adoptFaceFlags(from: local, into: shared)
@@ -94,9 +94,9 @@ struct BetaFeaturesTests {
     }
 
     @Test("nothing to carry is nothing to write")
-    func adoptsNothingFromAnEmptyStore() {
-        let local = freshDefaults("adopt.empty.local")
-        let shared = freshDefaults("adopt.empty.shared")
+    func adoptsNothingFromAnEmptyStore() throws {
+        let local = try freshDefaults("adopt.empty.local")
+        let shared = try freshDefaults("adopt.empty.shared")
 
         BetaFeatures.adoptFaceFlags(from: local, into: shared)
         #expect(shared.object(forKey: BetaFeatures.blobatarKey) == nil)

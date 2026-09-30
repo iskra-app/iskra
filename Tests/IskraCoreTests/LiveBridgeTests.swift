@@ -53,7 +53,7 @@ struct LiveBridgeTests {
         let response = try await bridge.send(ProxiedRequest(method: "GET",
                                                             target: "/_matrix/client/versions"))
         #expect(response.status == 200)
-        #expect(String(decoding: response.body, as: UTF8.self).contains("\"versions\""))
+        #expect(String(bytes: response.body, encoding: .utf8)?.contains("\"versions\"") == true)
     }
 
     /// Two at once, which is where a transport with one reader per request comes apart: each

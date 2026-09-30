@@ -17,61 +17,61 @@ struct NIP44Tests {
     // MARK: - The file
 
     struct Vectors: Decodable {
-        struct Root: Decodable { let v2: V2 }
-        struct V2: Decodable { let valid: Valid; let invalid: Invalid }
+        struct Root: Decodable { let v2: Version2 }
+        struct Version2: Decodable { let valid: Valid; let invalid: Invalid }
 
         struct Valid: Decodable {
-            let get_conversation_key: [ConversationKey]
-            let get_message_keys: MessageKeyGroup
-            let calc_padded_len: [[Int]]
-            let encrypt_decrypt: [EncryptDecrypt]
-            let encrypt_decrypt_long_msg: [LongMessage]
+            let getConversationKey: [ConversationKey]
+            let getMessageKeys: MessageKeyGroup
+            let calcPaddedLen: [[Int]]
+            let encryptDecrypt: [EncryptDecrypt]
+            let encryptDecryptLongMsg: [LongMessage]
         }
 
         struct Invalid: Decodable {
-            let encrypt_msg_lengths: [Int]
-            let get_conversation_key: [ConversationKey]
+            let encryptMsgLengths: [Int]
+            let getConversationKey: [ConversationKey]
             let decrypt: [BadPayload]
         }
 
         struct ConversationKey: Decodable {
             let sec1: String
             let pub2: String
-            let conversation_key: String?
+            let conversationKey: String?
         }
 
         struct MessageKeyGroup: Decodable {
-            let conversation_key: String
+            let conversationKey: String
             let keys: [MessageKey]
         }
 
         struct MessageKey: Decodable {
             let nonce: String
-            let chacha_key: String
-            let chacha_nonce: String
-            let hmac_key: String
+            let chachaKey: String
+            let chachaNonce: String
+            let hmacKey: String
         }
 
         struct EncryptDecrypt: Decodable {
             let sec1: String
             let sec2: String
-            let conversation_key: String
+            let conversationKey: String
             let nonce: String
             let plaintext: String
             let payload: String
         }
 
         struct LongMessage: Decodable {
-            let conversation_key: String
+            let conversationKey: String
             let nonce: String
             let pattern: String
             let `repeat`: Int
-            let plaintext_sha256: String
-            let payload_sha256: String
+            let plaintextSha256: String
+            let payloadSha256: String
         }
 
         struct BadPayload: Decodable {
-            let conversation_key: String
+            let conversationKey: String
             let nonce: String
             let plaintext: String
             let payload: String
@@ -79,39 +79,46 @@ struct NIP44Tests {
         }
     }
 
-    static let vectors: Vectors.V2 = {
+    /// The file is snake_case, as the NIP publishes it; the names here are Swift's.
+    static let decoder: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return decoder
+    }()
+
+    static let vectors: Vectors.Version2 = {
         guard let url = Bundle.module.url(forResource: "nip44.vectors", withExtension: "json"),
               let data = try? Data(contentsOf: url),
-              let root = try? JSONDecoder().decode(Vectors.Root.self, from: data)
+              let root = try? Self.decoder.decode(Vectors.Root.self, from: data)
         else { fatalError("the NIP-44 vector file is missing from the test bundle") }
         return root.v2
     }()
 
-    static func bytes(_ hex: String) -> Data { Hex.data(hex)! }
+    static func bytes(_ hex: String) throws -> Data { try #require(Hex.data(hex)) }
 
     // MARK: - Valid
 
     @Test func conversationKeysMatchTheVectors() throws {
-        for vector in Self.vectors.valid.get_conversation_key {
+        for vector in Self.vectors.valid.getConversationKey {
             let key = try NIP44.conversationKey(ourSecret: Self.bytes(vector.sec1),
                                                 theirPublicKey: Self.bytes(vector.pub2))
-            #expect(Hex.string(key) == vector.conversation_key)
+            #expect(Hex.string(key) == vector.conversationKey)
         }
     }
 
     @Test func messageKeysMatchTheVectors() throws {
-        let conversation = Self.bytes(Self.vectors.valid.get_message_keys.conversation_key)
-        for vector in Self.vectors.valid.get_message_keys.keys {
+        let conversation = try Self.bytes(Self.vectors.valid.getMessageKeys.conversationKey)
+        for vector in Self.vectors.valid.getMessageKeys.keys {
             let keys = try NIP44.messageKeys(conversationKey: conversation,
                                              nonce: Self.bytes(vector.nonce))
-            #expect(Hex.string(keys.chachaKey) == vector.chacha_key)
-            #expect(Hex.string(keys.chachaNonce) == vector.chacha_nonce)
-            #expect(Hex.string(keys.hmacKey) == vector.hmac_key)
+            #expect(Hex.string(keys.chachaKey) == vector.chachaKey)
+            #expect(Hex.string(keys.chachaNonce) == vector.chachaNonce)
+            #expect(Hex.string(keys.hmacKey) == vector.hmacKey)
         }
     }
 
-    @Test func paddingClimbsInTheStepsTheSpecSays() {
-        for pair in Self.vectors.valid.calc_padded_len {
+    @Test func paddingClimbsInTheStepsTheSpecSays() throws {
+        for pair in Self.vectors.valid.calcPaddedLen {
             #expect(NIP44.paddedLength(of: pair[0]) == pair[1])
         }
     }
@@ -119,11 +126,11 @@ struct NIP44Tests {
     /// The whole thing, both ways, with the nonce pinned so the payload is reproducible byte for
     /// byte — which is the only way a vector file can check an encryption at all.
     @Test func payloadsMatchByteForByte() throws {
-        for vector in Self.vectors.valid.encrypt_decrypt {
+        for vector in Self.vectors.valid.encryptDecrypt {
             let conversation = try NIP44.conversationKey(
                 ourSecret: Self.bytes(vector.sec1),
                 theirPublicKey: try NostrKeypair(secret: Self.bytes(vector.sec2)).publicKey)
-            #expect(Hex.string(conversation) == vector.conversation_key)
+            #expect(Hex.string(conversation) == vector.conversationKey)
 
             let sealed = try NIP44.encrypt(Data(vector.plaintext.utf8),
                                            conversationKey: conversation,
@@ -131,39 +138,39 @@ struct NIP44Tests {
             #expect(sealed == vector.payload)
 
             let opened = try NIP44.decrypt(vector.payload, conversationKey: conversation)
-            #expect(String(decoding: opened, as: UTF8.self) == vector.plaintext)
+            #expect(String(bytes: opened, encoding: .utf8) == vector.plaintext)
         }
     }
 
     /// Up to 65535 bytes, which is where NIP-44 stops. The chunk budget on both sides of the
     /// tunnel is derived from this number, so a message of exactly this length is not a curiosity.
     @Test func longMessagesSurvive() throws {
-        for vector in Self.vectors.valid.encrypt_decrypt_long_msg {
+        for vector in Self.vectors.valid.encryptDecryptLongMsg {
             let plaintext = String(repeating: vector.pattern, count: vector.repeat)
-            let conversation = Self.bytes(vector.conversation_key)
+            let conversation = try Self.bytes(vector.conversationKey)
             let sealed = try NIP44.encrypt(Data(plaintext.utf8),
                                            conversationKey: conversation,
                                            nonce: Self.bytes(vector.nonce))
-            #expect(sha256Hex(Data(sealed.utf8)) == vector.payload_sha256)
+            #expect(sha256Hex(Data(sealed.utf8)) == vector.payloadSha256)
 
             let opened = try NIP44.decrypt(sealed, conversationKey: conversation)
-            #expect(sha256Hex(opened) == vector.plaintext_sha256)
+            #expect(sha256Hex(opened) == vector.plaintextSha256)
         }
     }
 
     // MARK: - Invalid
 
     @Test func emptyAndOversizedMessagesAreRefused() throws {
-        let conversation = Self.bytes(Self.vectors.valid.get_message_keys.conversation_key)
-        for length in Self.vectors.invalid.encrypt_msg_lengths {
+        let conversation = try Self.bytes(Self.vectors.valid.getMessageKeys.conversationKey)
+        for length in Self.vectors.invalid.encryptMsgLengths {
             #expect(throws: NIP44.Failure.badPlaintextLength(length)) {
                 try NIP44.encrypt(Data(repeating: 0x61, count: length), conversationKey: conversation)
             }
         }
     }
 
-    @Test func keysOffTheCurveAreRefused() {
-        for vector in Self.vectors.invalid.get_conversation_key {
+    @Test func keysOffTheCurveAreRefused() throws {
+        for vector in Self.vectors.invalid.getConversationKey {
             #expect(throws: NIP44.Failure.self) {
                 try NIP44.conversationKey(ourSecret: Self.bytes(vector.sec1),
                                           theirPublicKey: Self.bytes(vector.pub2))
@@ -174,10 +181,10 @@ struct NIP44Tests {
     /// Tampered payloads, wrong keys, invalid base64, unknown versions. Every one of them is an
     /// error and not a plaintext — a decryption that "mostly worked" is the failure mode this
     /// whole section exists to rule out.
-    @Test func badPayloadsAreRefused() {
+    @Test func badPayloadsAreRefused() throws {
         for vector in Self.vectors.invalid.decrypt {
             #expect(throws: NIP44.Failure.self) {
-                try NIP44.decrypt(vector.payload, conversationKey: Self.bytes(vector.conversation_key))
+                try NIP44.decrypt(vector.payload, conversationKey: Self.bytes(vector.conversationKey))
             }
         }
     }

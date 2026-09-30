@@ -12,7 +12,7 @@ struct RichTextTests {
         }
     }
 
-    private func mentions(_ attributed: AttributedString) -> [(text: String, userID: String, isSelf: Bool)] {
+    private func mentions(_ attributed: AttributedString) -> [(text: String, userID: String, isSelf: Bool)] { // swiftlint:disable:this large_tuple
         attributed.runs.compactMap { run in
             guard let userID = run.iskra.mentionUserID else { return nil }
             return (String(attributed[run.range].characters), userID, run.iskra.mentionIsSelf ?? false)

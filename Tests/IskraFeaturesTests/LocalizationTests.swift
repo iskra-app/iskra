@@ -632,7 +632,7 @@ struct LocalizationTests {
     /// in that state actually draws: a slider that showed "creatures for everybody" over an app
     /// showing initials would be lying about the very thing it is for.
     @Test("the face slider names exactly the states the app can be in")
-    func faceModesRoundTrip() {
+    func faceModesRoundTrip() throws {
         for mode in FaceMode.allCases {
             #expect(FaceMode(drawsCreatures: mode.drawsCreatures,
                              overridesPictures: mode.overridesPictures) == mode)
@@ -644,7 +644,7 @@ struct LocalizationTests {
 
         // And the same question `Avatar` and the lock screen ask, answered the same way — the
         // slider is a view of `BetaFeatures`, not a second opinion about it.
-        let defaults = UserDefaults(suiteName: "onboarding.facemode.test")!
+        let defaults = try #require(UserDefaults(suiteName: "onboarding.facemode.test"))
         for mode in FaceMode.allCases {
             defaults.set(mode.drawsCreatures, forKey: BetaFeatures.blobatarKey)
             defaults.set(mode.overridesPictures, forKey: BetaFeatures.forceBlobatarKey)

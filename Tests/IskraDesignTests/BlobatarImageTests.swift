@@ -74,13 +74,14 @@ struct BlobatarImageTests {
         let width = image.width
         let height = image.height
         var bytes = [UInt8](repeating: 0, count: width * height * 4)
+        let space = try #require(CGColorSpace(name: CGColorSpace.sRGB))
         let context = try #require(bytes.withUnsafeMutableBytes { buffer in
             CGContext(data: buffer.baseAddress,
                       width: width,
                       height: height,
                       bitsPerComponent: 8,
                       bytesPerRow: width * 4,
-                      space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                      space: space,
                       bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
         })
         context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
