@@ -105,10 +105,15 @@ public struct AnswerStyle: ButtonStyle {
         case accepting
         case declining
 
+        /// Deeper than the system's `.green` and `.red`, and on purpose: the words on these are
+        /// white, and white on system green is about 2.2:1 — a button whose label half the people
+        /// holding the phone in the sun cannot read. These two hold 4.5:1 or better (about 5.2 and
+        /// 5.7), the line WCAG draws for text this size, and are still the green and the red
+        /// everybody reads as yes and no.
         var color: Color {
             switch self {
-            case .accepting: .green
-            case .declining: .red
+            case .accepting: Color(red: 0.11, green: 0.49, blue: 0.22)
+            case .declining: Color(red: 0.77, green: 0.15, blue: 0.11)
             }
         }
     }
