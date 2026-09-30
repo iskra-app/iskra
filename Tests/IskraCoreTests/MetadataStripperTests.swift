@@ -22,7 +22,8 @@ struct MetadataStripperTests {
         let original = try Fixture.photo(type)
         #expect(!MetadataStripper.isClean(photo: original), "the fixture must carry metadata to begin with")
 
-        let stripped = try #require(MetadataStripper.photo(original, filename: "IMG_0042.\(type.preferredFilenameExtension!)"))
+        let ext = try #require(type.preferredFilenameExtension)
+        let stripped = try #require(MetadataStripper.photo(original, filename: "IMG_0042.\(ext)"))
         #expect(MetadataStripper.isClean(photo: stripped.data))
 
         let properties = try Fixture.properties(of: stripped.data)
@@ -45,7 +46,7 @@ struct MetadataStripperTests {
     @Test("the picture itself survives: size, orientation, colour profile, name",
           arguments: [UTType.jpeg, .heic, .png])
     func pictureSurvives(type: UTType) throws {
-        let name = "IMG_0042.\(type.preferredFilenameExtension!)"
+        let name = "IMG_0042.\(try #require(type.preferredFilenameExtension))"
         let stripped = try #require(MetadataStripper.photo(try Fixture.photo(type), filename: name))
         let properties = try Fixture.properties(of: stripped.data)
 
@@ -250,8 +251,9 @@ enum Fixture {
     /// has detail in it and is not a flat colour every encoder squeezes to nothing.
     private static func image(width: Int, height: Int, opaque: Bool) throws -> CGImage {
         let alpha = opaque ? CGImageAlphaInfo.noneSkipLast : .premultipliedLast
+        let space = try #require(CGColorSpace(name: CGColorSpace.displayP3))
         let context = try #require(CGContext(data: nil, width: width, height: height, bitsPerComponent: 8,
-                                             bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.displayP3)!,
+                                             bytesPerRow: 0, space: space,
                                              bitmapInfo: alpha.rawValue))
         context.setFillColor(red: 1, green: 0.4, blue: 0, alpha: 1)
         context.fill(CGRect(x: 0, y: 0, width: width / 2, height: height))

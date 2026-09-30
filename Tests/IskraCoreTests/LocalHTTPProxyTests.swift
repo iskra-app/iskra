@@ -44,11 +44,11 @@ struct LocalHTTPProxyTests {
         let port = try await proxy.start()
         defer { Task { await proxy.stop() } }
 
-        let url = URL(string: "http://127.0.0.1:\(port)/_matrix/client/versions")!
+        let url = try #require(URL(string: "http://127.0.0.1:\(port)/_matrix/client/versions"))
         let (data, response) = try await session().data(from: url)
 
         #expect((response as? HTTPURLResponse)?.statusCode == 200)
-        #expect(String(decoding: data, as: UTF8.self) == #"{"versions":["v1.11"]}"#)
+        #expect(String(bytes: data, encoding: .utf8) == #"{"versions":["v1.11"]}"#)
         #expect(upstream.requests.first?.method == "GET")
         #expect(upstream.requests.first?.target == "/_matrix/client/versions")
     }
@@ -65,7 +65,7 @@ struct LocalHTTPProxyTests {
 
         await proxy.simulateReclaim()
 
-        let url = URL(string: "http://127.0.0.1:\(port)/_matrix/client/versions")!
+        let url = try #require(URL(string: "http://127.0.0.1:\(port)/_matrix/client/versions"))
         var answered = false
         for _ in 0..<40 where !answered {
             if let (_, response) = try? await session().data(from: url),
@@ -91,7 +91,7 @@ struct LocalHTTPProxyTests {
         await proxy.simulateReclaim()
         await proxy.ensureListening()
 
-        let url = URL(string: "http://127.0.0.1:\(port)/_matrix/client/versions")!
+        let url = try #require(URL(string: "http://127.0.0.1:\(port)/_matrix/client/versions"))
         let (_, response) = try await session().data(from: url)
         #expect((response as? HTTPURLResponse)?.statusCode == 200)
     }
@@ -106,7 +106,7 @@ struct LocalHTTPProxyTests {
         await proxy.ensureListening()
         try await Task.sleep(for: .milliseconds(300))
 
-        let url = URL(string: "http://127.0.0.1:\(port)/_matrix/client/versions")!
+        let url = try #require(URL(string: "http://127.0.0.1:\(port)/_matrix/client/versions"))
         #expect((try? await session().data(from: url)) == nil)
     }
 
@@ -117,7 +117,7 @@ struct LocalHTTPProxyTests {
         let port = try await proxy.start()
         defer { Task { await proxy.stop() } }
 
-        let url = URL(string: "http://127.0.0.1:\(port)/_matrix/client/v3/sync?timeout=30000&since=s1")!
+        let url = try #require(URL(string: "http://127.0.0.1:\(port)/_matrix/client/v3/sync?timeout=30000&since=s1"))
         _ = try await session().data(from: url)
 
         #expect(upstream.requests.first?.target == "/_matrix/client/v3/sync?timeout=30000&since=s1")
@@ -130,7 +130,7 @@ struct LocalHTTPProxyTests {
         let port = try await proxy.start()
         defer { Task { await proxy.stop() } }
 
-        var request = URLRequest(url: URL(string: "http://127.0.0.1:\(port)/_matrix/client/v3/login")!)
+        var request = URLRequest(url: try #require(URL(string: "http://127.0.0.1:\(port)/_matrix/client/v3/login")))
         request.httpMethod = "POST"
         request.setValue("Bearer token", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -152,7 +152,7 @@ struct LocalHTTPProxyTests {
         let port = try await proxy.start()
         defer { Task { await proxy.stop() } }
 
-        let url = URL(string: "http://127.0.0.1:\(port)/nope")!
+        let url = try #require(URL(string: "http://127.0.0.1:\(port)/nope"))
         let (_, response) = try await session().data(from: url)
         #expect((response as? HTTPURLResponse)?.statusCode == 404)
     }
@@ -168,7 +168,7 @@ struct LocalHTTPProxyTests {
 
         let session = session()
         for index in 0..<20 {
-            let url = URL(string: "http://127.0.0.1:\(port)/call/\(index)")!
+            let url = try #require(URL(string: "http://127.0.0.1:\(port)/call/\(index)"))
             let (_, response) = try await session.data(from: url)
             #expect((response as? HTTPURLResponse)?.statusCode == 200)
         }
@@ -183,7 +183,7 @@ struct LocalHTTPProxyTests {
         let port = try await proxy.start()
         defer { Task { await proxy.stop() } }
 
-        var request = URLRequest(url: URL(string: "http://127.0.0.1:\(port)/upload")!)
+        var request = URLRequest(url: try #require(URL(string: "http://127.0.0.1:\(port)/upload")))
         request.httpMethod = "POST"
         request.httpBody = payload
         _ = try await session().data(for: request)
@@ -268,7 +268,7 @@ struct LocalHTTPProxyTests {
 struct SDKThroughProxyTests {
     @Test("the SDK accepts a loopback homeserver and its traffic comes through us")
     func theSDKAcceptsALoopbackHomeserver() async throws {
-        let upstream = DirectUpstream(homeserver: URL(string: "https://matrix-client.matrix.org")!)
+        let upstream = DirectUpstream(homeserver: try #require(URL(string: "https://matrix-client.matrix.org")))
         let proxy = LocalHTTPProxy(upstream: upstream)
         let port = try await proxy.start()
         defer { Task { await proxy.stop() } }
@@ -306,7 +306,7 @@ struct SDKThroughProxyTests {
     /// app still showing a working connection. This pins the fix.
     @Test("discovery is kept inside the tunnel")
     func discoveryStaysInsideTheTunnel() async throws {
-        let upstream = DirectUpstream(homeserver: URL(string: "https://matrix.org")!)
+        let upstream = DirectUpstream(homeserver: try #require(URL(string: "https://matrix.org")))
         let proxy = LocalHTTPProxy(upstream: upstream)
         let port = try await proxy.start()
         defer { Task { await proxy.stop() } }

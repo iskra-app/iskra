@@ -20,10 +20,9 @@ struct BlobatarTests {
 
     /// The three sections, each a list of key/value pairs in file order.
     static let golden: [String: [(key: String, value: String)]] = {
-        let url = Bundle.module.url(
-            forResource: "blobatar-gen2-golden", withExtension: "txt"
-        )!
-        let text = try! String(contentsOf: url, encoding: .utf8)
+        guard let url = Bundle.module.url(forResource: "blobatar-gen2-golden", withExtension: "txt"),
+              let text = try? String(contentsOf: url, encoding: .utf8)
+        else { fatalError("the blobatar fixture is missing from the test bundle") }
 
         var sections: [String: [(key: String, value: String)]] = [:]
         var current = ""
@@ -74,24 +73,24 @@ struct BlobatarTests {
 
     // MARK: - The hash
 
-    @Test func normalizationFoldsWhatAPersonConsidersTheSameName() {
+    @Test func normalizationFoldsWhatAPersonConsidersTheSameName() throws {
         // NFC, so a decomposed "é" is the same person as a precomposed one.
         #expect(BlobatarHash.normalize("cafe\u{0301}") == BlobatarHash.normalize("café"))
         #expect(BlobatarHash.normalize("  @Boris:Matrix.org  ") == "@boris:matrix.org")
     }
 
-    @Test func oneLetterChangesTheWholeCreature() {
+    @Test func oneLetterChangesTheWholeCreature() throws {
         // Avalanche is the point of the murmur3 finalizer: neighbouring seeds must not come out
         // as neighbouring faces.
-        let a = Blobatar.figure(for: "@boris:matrix.org")
-        let b = Blobatar.figure(for: "@borys:matrix.org")
+        let boris = Blobatar.figure(for: "@boris:matrix.org")
+        let borys = Blobatar.figure(for: "@borys:matrix.org")
         #expect(
-            BlobatarPalette.hex(a.palette.head) != BlobatarPalette.hex(b.palette.head)
-                || a.shape != b.shape
+            BlobatarPalette.hex(boris.palette.head) != BlobatarPalette.hex(borys.palette.head)
+                || boris.shape != borys.shape
         )
     }
 
-    @Test func theSameSeedIsTheSameFaceEveryTime() {
+    @Test func theSameSeedIsTheSameFaceEveryTime() throws {
         #expect(
             Blobatar.svg(for: "@boris:matrix.org") == Blobatar.svg(for: "@boris:matrix.org")
         )
@@ -101,13 +100,13 @@ struct BlobatarTests {
 
     /// The band table, over twenty thousand seeds. Catches an edge that moved by a thousandth,
     /// which no handful of examples would.
-    @Test func shapeDistributionMatchesTheFixture() {
+    @Test func shapeDistributionMatchesTheFixture() throws {
         var counts: [String: Int] = [:]
         for i in 0..<20_000 {
             counts[Blobatar.figure(for: "histogram-\(i)").shape, default: 0] += 1
         }
 
-        let expected = Self.golden["histogram"]!
+        let expected = try #require(Self.golden["histogram"])
         #expect(!expected.isEmpty)
         for (shape, count) in expected {
             #expect(counts[shape] == Int(count), "\(shape): \(counts[shape] ?? 0) vs \(count)")
@@ -118,7 +117,7 @@ struct BlobatarTests {
     ///
     /// The expression cases in the fixture are skipped: expressions are a separate layer of
     /// blobatar that this app does not use and this port does not carry.
-    @Test func markupMatchesTheFixture() {
+    @Test func markupMatchesTheFixture() throws {
         // Midpoints of the ten bands, which is how the fixture pins each silhouette.
         let midpoints: [String: Double] = [
             "round": 0.11, "organic": 0.35, "boxy": 0.54, "capsule": 0.65, "nub": 0.745,
@@ -126,7 +125,7 @@ struct BlobatarTests {
         ]
 
         var checked = 0
-        for (label, expected) in Self.golden["markup"]! {
+        for (label, expected) in try #require(Self.golden["markup"]) {
             var seed = "alain"
             var options = Blobatar.Options()
 
@@ -155,9 +154,9 @@ struct BlobatarTests {
     }
 
     /// A thousand seeds, by digest — the broad sweep the fixture exists for.
-    @Test func everySeedInTheFixtureRendersTheSameBytes() {
+    @Test func everySeedInTheFixtureRendersTheSameBytes() throws {
         let expected = Dictionary(
-            uniqueKeysWithValues: Self.golden["hashes"]!.map { ($0.key, $0.value) }
+            uniqueKeysWithValues: try #require(Self.golden["hashes"]).map { ($0.key, $0.value) }
         )
 
         var checked = 0
@@ -170,9 +169,9 @@ struct BlobatarTests {
     }
 
     /// The same thousand-seed corpus again, with each rendering option this port carries.
-    @Test func renderingOptionsMatchTheFixture() {
+    @Test func renderingOptionsMatchTheFixture() throws {
         let expected = Dictionary(
-            uniqueKeysWithValues: Self.golden["hashes"]!.map { ($0.key, $0.value) }
+            uniqueKeysWithValues: try #require(Self.golden["hashes"]).map { ($0.key, $0.value) }
         )
         let cases: [(String, Blobatar.Options)] = [
             ("bg:none", Blobatar.Options(backdrop: .none)),

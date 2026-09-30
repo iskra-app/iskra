@@ -31,11 +31,11 @@ struct TunnelChunkingTests {
         let envelopes = request(body: Data(), maxBodyChunk: 64)
         #expect(envelopes.count == 1)
         #expect(envelopes[0].total == 1)
-        #expect(envelopes[0].bodyChunk == "")
+        #expect(envelopes[0].bodyChunk.isEmpty)
         #expect(try envelopes[0].validated().seq == 0)
     }
 
-    @Test func oneByteMoreThanFitsIsTwoChunks() {
+    @Test func oneByteMoreThanFitsIsTwoChunks() throws {
         #expect(request(body: counting(64), maxBodyChunk: 64).count == 1)
         #expect(request(body: counting(65), maxBodyChunk: 64).count == 2)
         #expect(TunnelChunker.chunkCount(of: 0, maxBodyChunk: 64) == 1)
@@ -90,7 +90,7 @@ struct TunnelChunkingTests {
         return nil
     }
 
-    @Test func chunksInOrderComeBackAsTheBodyThatWentIn() {
+    @Test func chunksInOrderComeBackAsTheBodyThatWentIn() throws {
         let original = counting(1000)
         let accepted = reassemble(request(body: original, maxBodyChunk: 64))
         #expect(body(of: accepted) == original)
@@ -101,13 +101,13 @@ struct TunnelChunkingTests {
 
     /// Relays do not agree on order, so the head is not guaranteed to be first — and a body chunk
     /// that arrives before it must not be dropped for having no status on it.
-    @Test func chunksOutOfOrderAreFineIncludingTheHeadArrivingLast() {
+    @Test func chunksOutOfOrderAreFineIncludingTheHeadArrivingLast() throws {
         let original = counting(300)
         let accepted = reassemble(request(body: original, maxBodyChunk: 64).reversed())
         #expect(body(of: accepted) == original)
     }
 
-    @Test func duplicatesAreNotCountedTwice() {
+    @Test func duplicatesAreNotCountedTwice() throws {
         var reassembler = TunnelReassembler()
         let envelopes = request(body: counting(200), maxBodyChunk: 64)
 
@@ -124,7 +124,7 @@ struct TunnelChunkingTests {
         #expect(reassembler.inFlight == 0)
     }
 
-    @Test func aMessageWithMoreChunksThanAllowedIsRefusedAtTheFirstOne() {
+    @Test func aMessageWithMoreChunksThanAllowedIsRefusedAtTheFirstOne() throws {
         var reassembler = TunnelReassembler(limits: .init(maxChunks: 4))
         let envelopes = request(body: counting(1000), maxBodyChunk: 64)
         guard case .refused(let reason) = reassembler.accept(envelopes[0], key: "abc") else {
@@ -135,7 +135,7 @@ struct TunnelChunkingTests {
         #expect(reassembler.inFlight == 0)
     }
 
-    @Test func aMessageThatGrowsPastTheByteCeilingIsDropped() {
+    @Test func aMessageThatGrowsPastTheByteCeilingIsDropped() throws {
         var reassembler = TunnelReassembler(limits: .init(maxBytes: 100))
         let envelopes = request(body: counting(300), maxBodyChunk: 64)
 
@@ -150,7 +150,7 @@ struct TunnelChunkingTests {
 
     /// Messages begun and never finished are the cheapest attack there is on anything that holds
     /// chunks in memory — and on a phone the memory is somebody's.
-    @Test func aFloodOfUnfinishedMessagesIsRefusedRatherThanHeld() {
+    @Test func aFloodOfUnfinishedMessagesIsRefusedRatherThanHeld() throws {
         var reassembler = TunnelReassembler(limits: .init(maxInFlight: 2))
         let envelopes = request(body: counting(300), maxBodyChunk: 64)
 
@@ -166,7 +166,7 @@ struct TunnelChunkingTests {
 
     /// And the rule that makes that cap survivable: a bridge that goes away mid-answer does not
     /// hold a slot for the life of the app.
-    @Test func halfArrivedMessagesAreForgottenAfterTheirTime() {
+    @Test func halfArrivedMessagesAreForgottenAfterTheirTime() throws {
         var reassembler = TunnelReassembler()
         let envelopes = request(body: counting(300), maxBodyChunk: 64)
         let start = ContinuousClock.now
@@ -178,7 +178,7 @@ struct TunnelChunkingTests {
         #expect(reassembler.inFlight == 1)
     }
 
-    @Test func aTotalThatChangesMidMessageIsALieAndTheMessageGoes() {
+    @Test func aTotalThatChangesMidMessageIsALieAndTheMessageGoes() throws {
         var reassembler = TunnelReassembler()
         let envelopes = request(body: counting(300), maxBodyChunk: 64)
         var liar = envelopes[1]
@@ -195,7 +195,7 @@ struct TunnelChunkingTests {
 
     /// A refusal is final. Without this the chunk after a refused one finds no partial, opens a
     /// fresh one and starts filling it — refused, reopened and refused again, once per chunk.
-    @Test func theRestOfARefusedMessageDoesNotReopenIt() {
+    @Test func theRestOfARefusedMessageDoesNotReopenIt() throws {
         var reassembler = TunnelReassembler(limits: .init(maxBytes: 100))
         let envelopes = request(body: counting(300), maxBodyChunk: 64)
 
@@ -214,7 +214,7 @@ struct TunnelChunkingTests {
         #expect(reassembler.inFlight == 0)
     }
 
-    @Test func aMessageIsKnownFromItsFirstChunkUntilItIsDone() {
+    @Test func aMessageIsKnownFromItsFirstChunkUntilItIsDone() throws {
         var reassembler = TunnelReassembler()
         let envelopes = request(body: counting(200), maxBodyChunk: 64)
 
@@ -229,7 +229,7 @@ struct TunnelChunkingTests {
 
     /// Given up on — the deadline passed, or the answer is in — a chunk arriving late neither
     /// reopens the message nor sits in memory for a minute; and after a minute it is all forgotten.
-    @Test func aMessageGivenUpOnStaysGoneUntilItsTimeIsUp() {
+    @Test func aMessageGivenUpOnStaysGoneUntilItsTimeIsUp() throws {
         var reassembler = TunnelReassembler()
         let envelopes = request(body: counting(200), maxBodyChunk: 64)
         let start = ContinuousClock.now
@@ -249,7 +249,7 @@ struct TunnelChunkingTests {
         }
     }
 
-    @Test func anAnswerReassemblesWithItsStatus() {
+    @Test func anAnswerReassemblesWithItsStatus() throws {
         let envelopes = TunnelChunker.envelopes(id: "r",
                                                 status: 206,
                                                 headers: ["content-type": "image/jpeg"],
@@ -266,7 +266,7 @@ struct TunnelChunkingTests {
 
     /// A megabyte, which is what a photo coming back looks like: 43 chunks, and every byte in the
     /// place it started.
-    @Test func amegabyteSurvivesAtTheRealBudget() {
+    @Test func amegabyteSurvivesAtTheRealBudget() throws {
         let original = counting(1024 * 1024)
         let envelopes = TunnelChunker.envelopes(id: "r", status: 200, headers: [:], body: original)
         #expect(envelopes.count == 43)

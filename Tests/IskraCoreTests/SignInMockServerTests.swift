@@ -12,21 +12,21 @@ private final class Browser: NSObject, URLSessionTaskDelegate {
                     newRequest request: URLRequest) async -> URLRequest? { nil }
 
     /// Fills in the page's form the way a person would and presses its button.
-    func submit(_ page: URL, username: String, password: String) async throws -> (status: Int, location: URL?, body: String) {
+    func submit(_ page: URL, username: String, password: String) async throws -> (status: Int, location: URL?, body: String) { // swiftlint:disable:this large_tuple
         let session = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil)
 
         let (html, _) = try await session.data(from: page)
-        let fields = Self.hiddenFields(in: String(decoding: html, as: UTF8.self))
+        let fields = Self.hiddenFields(in: String(bytes: html, encoding: .utf8) ?? "")
 
-        var approve = URLComponents(url: page, resolvingAgainstBaseURL: false)!
+        var approve = try #require(URLComponents(url: page, resolvingAgainstBaseURL: false))
         approve.path = "/_mock/oauth/approve"
         approve.queryItems = fields.map { URLQueryItem(name: $0.key, value: $0.value) }
             + [URLQueryItem(name: "username", value: username), URLQueryItem(name: "password", value: password)]
 
-        let (data, response) = try await session.data(from: approve.url!)
-        let http = response as! HTTPURLResponse
+        let (data, response) = try await session.data(from: try #require(approve.url))
+        let http = try #require(response as? HTTPURLResponse)
         let location = (http.value(forHTTPHeaderField: "Location")).flatMap(URL.init(string:))
-        return (http.statusCode, location, String(decoding: data, as: UTF8.self))
+        return (http.statusCode, location, String(bytes: data, encoding: .utf8) ?? "")
     }
 
     private static func hiddenFields(in html: String) -> [String: String] {

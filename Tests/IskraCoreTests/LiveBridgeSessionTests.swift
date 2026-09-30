@@ -36,7 +36,7 @@ struct LiveBridgeSessionTests {
         let server = LocalHTTPProxy(upstream: MockHomeserver.shared)
         let serverPort = try await server.start()
         defer { Task { await server.stop() } }
-        let homeserver = URL(string: "http://127.0.0.1:\(serverPort)")!
+        let homeserver = try #require(URL(string: "http://127.0.0.1:\(serverPort)"))
 
         // Baseline: the same listener shape, straight at the server.
         let direct = TimedUpstream(MockHomeserver.shared)
@@ -312,7 +312,7 @@ final class LogBuffer: @unchecked Sendable {
 
     var text: String {
         lock.lock(); defer { lock.unlock() }
-        return String(decoding: data, as: UTF8.self)
+        return String(bytes: data, encoding: .utf8) ?? ""
     }
 }
 
@@ -359,9 +359,9 @@ struct Report: CustomStringConvertible {
         return out
     }
 
-    static func percentile(_ sorted: [Duration], _ p: Double) -> Duration {
+    static func percentile(_ sorted: [Duration], _ fraction: Double) -> Duration {
         guard !sorted.isEmpty else { return .zero }
-        return sorted[min(sorted.count - 1, Int(Double(sorted.count - 1) * p))]
+        return sorted[min(sorted.count - 1, Int(Double(sorted.count - 1) * fraction))]
     }
 
     static func ms(_ duration: Duration) -> String {
