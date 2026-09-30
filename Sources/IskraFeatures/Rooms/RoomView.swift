@@ -2288,6 +2288,7 @@ struct DayDividerView: View {
         Text(Self.label(for: date))
             .font(.caption.weight(.medium))
             .foregroundStyle(.secondary)
+            .wallpaperPlate()
             // Enough air to read as a break in the conversation, and no more. At `roomy` on both
             // sides the date was holding a band of empty screen the height of a message either
             // side of it, so a day with two lines in it looked like a day with a hole in it.
