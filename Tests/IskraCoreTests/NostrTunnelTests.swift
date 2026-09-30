@@ -103,7 +103,7 @@ struct NostrTunnelTests {
         let relay = try #require(URL(string: "wss://relay.example"))
         func frame(_ event: NostrEvent) throws -> String {
             let data = try JSONSerialization.data(withJSONObject: ["EVENT", "sub", event.json])
-            return String(decoding: data, as: UTF8.self)
+            return try #require(String(bytes: data, encoding: .utf8))
         }
 
         await pool.handle(try frame(forged), from: relay)
