@@ -476,6 +476,8 @@ public struct IskraRootView: View {
         // because a colour scheme is not a property of a screen — a sheet or a media viewer left
         // out of it would be the one place the app changed its mind about what time of day it is.
         .preferredColorScheme(appearance.colorScheme)
+        // Reduce Motion, for the whole app at once — see `respectsReduceMotion`.
+        .respectsReduceMotion()
     }
 
     private var isSignedIn: Bool {
