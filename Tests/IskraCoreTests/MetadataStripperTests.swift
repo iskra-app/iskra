@@ -91,6 +91,34 @@ struct MetadataStripperTests {
         #expect(MetadataStripper.photo(clean, filename: "a.png") != nil)
     }
 
+    /// A thumbnail is made when the photo is taken, not when it is cropped — so it can show exactly
+    /// what the crop was for. It was a key without a brace, which the check never looked at.
+    @Test("a photo goes without the thumbnail embedded in it")
+    func embeddedThumbnailIsRemoved() throws {
+        let clean = try Fixture.photo(.heic, tagged: false)
+        let source = try #require(CGImageSourceCreateWithData(clean as CFData, nil))
+        let output = NSMutableData()
+        let destination = try #require(CGImageDestinationCreateWithData(output, UTType.heic.identifier as CFString, 1, nil))
+        CGImageDestinationAddImageFromSource(destination, source, 0,
+                                             [kCGImageDestinationEmbedThumbnail: true] as CFDictionary)
+        #expect(CGImageDestinationFinalize(destination))
+        let withThumbnail = output as Data
+        // Counted the way anybody receiving the file would find it: in the container's contents.
+        let thumbnails = { (data: Data) -> Int in
+            guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+                  let container = CGImageSourceCopyProperties(source, nil) as? [String: Any],
+                  let contents = container[kCGImagePropertyFileContentsDictionary as String] as? [String: Any],
+                  let images = contents[kCGImagePropertyImages as String] as? [[String: Any]]
+            else { return 0 }
+            return images.reduce(0) { $0 + (($1[kCGImagePropertyThumbnailImages as String] as? [Any])?.count ?? 0) }
+        }
+        try #require(thumbnails(withThumbnail) > 0, "ImageIO did not embed a thumbnail to test against")
+
+        #expect(!MetadataStripper.isClean(photo: withThumbnail))
+        let sent = try #require(MetadataStripper.photo(withThumbnail, filename: "a.heic"))
+        #expect(thumbnails(sent.data) == 0)
+    }
+
     @Test("bytes that are not a picture are refused, not sent as they are")
     func garbageIsRefused() {
         #expect(MetadataStripper.photo(Data("not an image".utf8), filename: "a.jpg") == nil)
