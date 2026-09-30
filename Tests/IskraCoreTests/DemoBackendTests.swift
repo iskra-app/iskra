@@ -261,6 +261,44 @@ struct DemoBackendTests {
         #expect(sent, "failed: \(failed)")
     }
 
+    /// The Share outbox, sent: into a room this account knows it all goes and its copy with it;
+    /// into one it does not, the copy goes and nothing comes back to be retried for ever.
+    @Test("what the Share sheet queued is sent, or thrown away when it never can be")
+    func outboxItemsAreSentOrDropped() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(component: "iskra-demo-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let client = try await DemoBackend.makeClient(data: root.appending(component: "data"),
+                                                      cache: root.appending(component: "cache"),
+                                                      search: root.appending(component: "search"))
+        // A container of the test's own: the real App Group is the user's, and an unsigned test
+        // binary is refused it anyway.
+        let environment = AppEnvironment(storage: .scratch(root.appending(component: "container")))
+        let session = UserSession(client: client, authentication: AuthenticationService(environment: environment),
+                                  sessionID: "demo", isDemo: true)
+        try await session.start()
+        defer { Task { await session.close() } }
+        _ = await eventually { session.roomList.room(withID: "!anya:iskra.demo") != nil }
+
+        let outbox = try ChatDirectory.outboxFolder(environment: environment)
+        func queuedCopy() throws -> (ChatDirectory.OutboxAttachment, URL) {
+            let slot = "test-\(UUID().uuidString)"
+            let folder = outbox.appending(component: slot)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try Data(repeating: 0x41, count: 1024).write(to: folder.appending(component: "notes.txt"))
+            return (ChatDirectory.OutboxAttachment(kind: .file, filename: "\(slot)/notes.txt"), folder)
+        }
+
+        let (sent, sentFolder) = try queuedCopy()
+        let item = ChatDirectory.OutboxItem(roomID: "!anya:iskra.demo", text: "вот, смотри", attachments: [sent])
+        #expect(await session.sendQueued(item) == nil)
+        #expect(!FileManager.default.fileExists(atPath: sentFolder.path(percentEncoded: false)))
+
+        let (lost, lostFolder) = try queuedCopy()
+        let nowhere = ChatDirectory.OutboxItem(roomID: "!nobody:iskra.demo", text: "эй", attachments: [lost])
+        #expect(await session.sendQueued(nowhere) == nil)
+        #expect(!FileManager.default.fileExists(atPath: lostFolder.path(percentEncoded: false)))
+    }
+
     /// Somebody's keys changed: they are on the list, by name; the change answered — pinned, or
     /// verified again — takes them off; the account's own identity is not a warning about anyone.
     /// Fed the SDK's own values, because making the demo server re-key a person would mean faking
