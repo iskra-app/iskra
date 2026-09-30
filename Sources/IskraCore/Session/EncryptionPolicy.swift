@@ -25,14 +25,6 @@ enum EncryptionPolicy {
 }
 
 extension ClientBuilder {
-    /// The notification extension's client: told the process it lives in is small — 24 MB, killed
-    /// past it — so the SDK sizes its caches for that, as element-x's extension does. Backups and
-    /// cross-signing are not set up from here either (see `makeClientBuilder`): that is the app's
-    /// work, and starting it from a process with seconds to live is how it gets half done.
-    func forPushIfNeeded(_ forPush: Bool) -> ClientBuilder {
-        forPush ? systemIsMemoryConstrained() : self
-    }
-
     /// The two settings above, applied. One place, so the demo and the real account cannot drift.
     func encryptionPolicy() -> ClientBuilder {
         roomKeyRecipientStrategy(strategy: EncryptionPolicy.recipients)

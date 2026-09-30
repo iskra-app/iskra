@@ -241,7 +241,7 @@ public final class RoomListStore {
         // With it, sync reports `.offline` instead and stays up, reading from the store until the
         // network comes back. `syncStateChanged` below already treats `.offline` as a state to sit
         // in rather than restart out of, which is exactly right: there is nothing to restart into.
-        let service = try await client.syncService().withOfflineMode().finish()
+        let service = try await client.syncService().withOfflineMode().withSharePos(enable: true).finish()
         // Not kept if nobody wants it any more: `stop()` has already been and gone, and would never
         // know to stop this one.
         guard isStillWanted(started) else { return }
