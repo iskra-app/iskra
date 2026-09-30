@@ -220,6 +220,47 @@ struct DemoBackendTests {
         return condition()
     }
 
+    /// A file sent and then deleted at once — which is what every caller does: the Share outbox's
+    /// `defer`, the picked file's security scope, the stripped copy of a video. The send returns
+    /// before the SDK has read the file, and the question is whether the SDK has its own copy by
+    /// then or reads the path later, from a queue task, when the file may already be gone.
+    @Test("a file deleted the moment it is sent still arrives")
+    func fileDeletedAfterSendArrives() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(component: "iskra-demo-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let client = try await DemoBackend.makeClient(data: root.appending(component: "data"),
+                                                      cache: root.appending(component: "cache"),
+                                                      search: root.appending(component: "search"))
+        let list = RoomListStore(client: client)
+        try await list.start()
+        defer { Task { await list.stop() } }
+        _ = await eventually { list.room(withID: "!anya:iskra.demo") != nil }
+        let room = try #require(list.room(withID: "!anya:iskra.demo"))
+        let timeline = TimelineStore(room: room, ownUserID: "@sasha:iskra.demo")
+        try await timeline.start()
+        defer { timeline.stop() }
+
+        let file = root.appending(component: "notes-\(UUID().uuidString.prefix(6)).txt")
+        try Data(repeating: 0x41, count: 64 * 1024).write(to: file)
+        await timeline.send(file: file)
+        try FileManager.default.removeItem(at: file)
+
+        let sent = await eventually(seconds: 10) {
+            timeline.rows.contains { row in
+                guard case let .message(message) = row, message.isOwn,
+                      case let .file(attachment) = message.kind,
+                      attachment.filename == file.lastPathComponent else { return false }
+                return message.delivery == .sent || message.delivery == .read
+            }
+        }
+        let failed = timeline.rows.contains { row in
+            guard case let .message(message) = row, message.isOwn,
+                  case .file = message.kind, case .failed = message.delivery else { return false }
+            return true
+        }
+        #expect(sent, "failed: \(failed)")
+    }
+
     /// Somebody's keys changed: they are on the list, by name; the change answered — pinned, or
     /// verified again — takes them off; the account's own identity is not a warning about anyone.
     /// Fed the SDK's own values, because making the demo server re-key a person would mean faking

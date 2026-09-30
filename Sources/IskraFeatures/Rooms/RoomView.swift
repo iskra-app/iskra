@@ -1625,10 +1625,11 @@ public struct RoomView: View {
         // Safe to delete the moment the send returns, and it is worth knowing *why*, because it
         // stopped being safe for the obvious reason. `send(voice:)` no longer waits for the upload —
         // an attachment goes into the send queue and leaves when the network does — so this file is
-        // no longer being held open by anybody we are waiting on. What makes it safe is the queue
-        // itself: the SDK copies the content into its own encrypted store the instant the attachment
-        // is queued ("the file's content is immediately cached in the EventCacheStore"), before any
-        // upload is attempted. The recording on disk has done its job by then.
+        // no longer being held open by anybody we are waiting on. What makes it safe is that the SDK
+        // is handed the recording's *bytes*, read before `send(voice:)` returns — see
+        // `TimelineStore.owned`. It used to be handed the path, on the belief that the queue copies
+        // the file the instant it is queued; it reads the path later, from a queue task, and a file
+        // deleted here was a voice message that was never sent. The recording has done its job.
         //
         // And it must go. It is a minute of somebody's voice sitting unencrypted in a temporary
         // directory; the copy the queue keeps is inside the encrypted store, and this one is not.
