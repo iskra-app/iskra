@@ -138,4 +138,9 @@ extension EnvironmentValues {
     /// The room's pictures, for the viewer a message opens. Absent outside a conversation — in the
     /// media grid, which has its own list, and in search results, where a photograph is on its own.
     @Entry var roomMedia: RoomMediaSource?
+
+    /// Told when something inside the room covers the whole of it — the photo viewer, on a
+    /// phone — and when it stops. The room goes on existing underneath; see `RoomView.onDisappear`,
+    /// which used to take the cover for the reader leaving and shut the room down behind it.
+    @Entry var coversRoom: @MainActor (Bool) -> Void = { _ in }
 }
