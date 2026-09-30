@@ -1,4 +1,5 @@
 import Foundation
+import MatrixRustSDK
 import Testing
 @testable import IskraCore
 
@@ -217,6 +218,39 @@ struct DemoBackendTests {
             try? await Task.sleep(for: .milliseconds(100))
         }
         return condition()
+    }
+
+    /// Somebody's keys changed: they are on the list, by name; the change answered — pinned, or
+    /// verified again — takes them off; the account's own identity is not a warning about anyone.
+    /// Fed the SDK's own values, because making the demo server re-key a person would mean faking
+    /// cross-signing, and the subscription itself is still started against the real SDK.
+    @Test("a changed identity is a warning, by name, until it is answered")
+    func identityChangesAreListed() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(component: "iskra-demo-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let client = try await DemoBackend.makeClient(data: root.appending(component: "data"),
+                                                      cache: root.appending(component: "cache"),
+                                                      search: root.appending(component: "search"))
+        let list = RoomListStore(client: client)
+        try await list.start()
+        defer { Task { await list.stop() } }
+        _ = await eventually { list.room(withID: "!anya:iskra.demo") != nil }
+        let room = try #require(list.room(withID: "!anya:iskra.demo"))
+
+        let store = IdentityChangesStore(room: room, encryption: client.encryption(), ownUserID: "@sasha:iskra.demo")
+        await store.start()
+        defer { store.stop() }
+        #expect(store.changes.isEmpty)
+
+        await store.apply([IdentityStatusChange(userId: "@anya:iskra.demo", changedTo: .pinViolation),
+                           IdentityStatusChange(userId: "@sasha:iskra.demo", changedTo: .pinViolation)])
+        #expect(store.changes == [IdentityChange(userID: "@anya:iskra.demo", name: "Аня Смирнова", kind: .changed)])
+
+        await store.apply([IdentityStatusChange(userId: "@anya:iskra.demo", changedTo: .verificationViolation)])
+        #expect(store.changes.map(\.kind) == [.changedAfterVerification])
+
+        await store.apply([IdentityStatusChange(userId: "@anya:iskra.demo", changedTo: .pinned)])
+        #expect(store.changes.isEmpty)
     }
 
     /// `stop()` while `start()` is still on its way: an account switched on a cold launch from a
