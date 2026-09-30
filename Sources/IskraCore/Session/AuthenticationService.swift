@@ -814,9 +814,12 @@ public actor AuthenticationService {
     /// One homeserver's listener, and its bridge with it.
     private func stopTunnel(_ key: String) async {
         guard let tunnel = tunnels.removeValue(forKey: key) else { return }
+        // Read before `stop()`, which forgets it: afterwards this was always nil, and the entry
+        // saying which homeserver that port stood in for was never taken down.
+        let port = await tunnel.proxy.port
         await tunnel.proxy.stop()
         await tunnel.bridge?.stop()
-        if let port = await tunnel.proxy.port {
+        if let port {
             TunnelSettings.listenerStoppedStandingIn(port: port)
         }
     }
