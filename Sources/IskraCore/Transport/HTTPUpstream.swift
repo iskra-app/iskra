@@ -62,10 +62,23 @@ public final class DirectUpstream: HTTPUpstream {
     private let base: Mutex<URL>
     private let session: URLSession
 
-    public init(homeserver: URL, session: URLSession = .shared) {
+    public init(homeserver: URL, session: URLSession = DirectUpstream.privateSession) {
         self.base = Mutex(homeserver)
         self.session = session
     }
+
+    /// A session that remembers nothing. `URLSession.shared` has the shared `URLCache` — a
+    /// plaintext `Cache.db` on the disk, holding whatever a homeserver marked cacheable (media from
+    /// unencrypted rooms, avatars, profiles) beside a store that is encrypted at rest on purpose —
+    /// and the shared cookie jar, which a homeserver has no business writing into.
+    public static let privateSession: URLSession = {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.urlCache = nil
+        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+        configuration.httpCookieStorage = nil
+        configuration.httpShouldSetCookies = false
+        return URLSession(configuration: configuration)
+    }()
 
     /// Where requests are going right now.
     public var homeserver: URL { base.withLock { $0 } }
@@ -75,7 +88,14 @@ public final class DirectUpstream: HTTPUpstream {
     }
 
     public func send(_ request: ProxiedRequest) async throws -> ProxiedResponse {
-        guard let url = URL(string: request.target, relativeTo: homeserver) else {
+        // A path, and only a path. `URL(string:relativeTo:)` resolves `//elsewhere/x` and
+        // `http://elsewhere/x` to *elsewhere* — and the listener this sits behind is reachable by
+        // every process on the machine, so that was an open proxy wearing this app's address.
+        let homeserver = self.homeserver
+        guard request.target.hasPrefix("/"), !request.target.hasPrefix("//"),
+              let url = URL(string: request.target, relativeTo: homeserver),
+              url.host() == homeserver.host(), url.port == homeserver.port
+        else {
             throw UpstreamError.badTarget(request.target)
         }
 
@@ -88,7 +108,8 @@ public final class DirectUpstream: HTTPUpstream {
             urlRequest.httpBody = request.body
         }
 
-        let (data, response) = try await session.data(for: urlRequest)
+        let (data, response) = try await session.data(for: urlRequest,
+                                                      delegate: SameHostRedirects(host: homeserver.host()))
         guard let http = response as? HTTPURLResponse else { throw UpstreamError.notHTTP }
 
         var headers: [String: String] = [:]
@@ -117,4 +138,19 @@ public final class DirectUpstream: HTTPUpstream {
     /// `ServerUnreachable("error decoding response body")`, which reads like a network fault and
     /// is nothing of the kind. The body is already decoded; the header describing it must go.
     static let decodedAway: Set<String> = ["content-encoding"]
+}
+
+/// Follows a redirect only while it stays on the homeserver's host. One that leaves is handed
+/// back as the 3xx it was, rather than followed here with the request's `Authorization` still on
+/// it — URLSession does not promise to take a header we set ourselves off a cross-host hop.
+private final class SameHostRedirects: NSObject, URLSessionTaskDelegate, Sendable {
+    private let host: String?
+
+    init(host: String?) { self.host = host }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask,
+                    willPerformHTTPRedirection response: HTTPURLResponse,
+                    newRequest request: URLRequest) async -> URLRequest? {
+        request.url?.host() == host ? request : nil
+    }
 }
