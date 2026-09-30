@@ -257,7 +257,6 @@ enum MetadataStripper {
         return "\(stem.isEmpty ? UUID().uuidString : stem).\(suffix)"
     }
 
-
     // MARK: - Videos
 
     /// A copy of the video with only its pictures and its sound in it, moved rather than
@@ -271,12 +270,15 @@ enum MetadataStripper {
     /// any track, and no track of any other kind.
     static func isClean(video url: URL) async throws -> Bool {
         let asset = AVURLAsset(url: url)
+        // Not `for … where`: the condition awaits, and a `where` clause cannot.
         for format in try await asset.load(.availableMetadataFormats) {
+            // swiftlint:disable:next for_where
             if try await !asset.loadMetadata(for: format).isEmpty { return false }
         }
         for track in try await asset.load(.tracks) {
             guard track.mediaType == .video || track.mediaType == .audio else { return false }
             for format in try await track.load(.availableMetadataFormats) {
+                // swiftlint:disable:next for_where
                 if try await !track.loadMetadata(for: format).isEmpty { return false }
             }
         }

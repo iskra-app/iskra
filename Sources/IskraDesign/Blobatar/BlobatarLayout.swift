@@ -63,6 +63,8 @@ struct BlobatarLayout {
 
     /// The first band the value falls under.
     private static func silhouette(for value: Double) -> BlobatarSilhouette {
+        // blobatar's own expression over a static, non-empty table — kept as the port has it.
+        // swiftlint:disable:next force_unwrapping
         BlobatarSilhouette.bands.first { value < $0.1 }?.0 ?? BlobatarSilhouette.bands.last!.0
     }
 

@@ -382,12 +382,13 @@ public struct IskraRootView: View {
         // until the new one is in.
         .sheet(isPresented: Binding(get: { switcher.isAddingAccount },
                                     set: { switcher.isAddingAccount = $0 }),
-               onDismiss: { Task { await authentication.cancelSignIn() } }) {
+               onDismiss: { Task { await authentication.cancelSignIn() } },
+               content: {
             AddAccountView(authentication: authentication,
                            address: MockSignIn.isRequested ? mockAddress ?? "" : "",
                            onSignedIn: { added($0) },
                            onCancel: { switcher.isAddingAccount = false })
-        }
+        })
         .alert(Text(Strings.Session.endedTitle),
                isPresented: Binding(get: { endedAccountName != nil },
                                     set: { if !$0 { endedAccountName = nil } })) {

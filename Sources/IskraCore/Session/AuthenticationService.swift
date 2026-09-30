@@ -159,23 +159,23 @@ public actor AuthenticationService {
 
     /// Everyone signed in on this device, in the order they were added. Empty when the Keychain
     /// cannot be read, which to a screen is the same as nobody.
-    public nonisolated func accounts() -> [AccountRecord] {
+    nonisolated public func accounts() -> [AccountRecord] {
         (try? sessionStore.accounts()) ?? []
     }
 
     /// The account the app opens on.
-    public nonisolated func activeAccountID() -> String? {
+    nonisolated public func activeAccountID() -> String? {
         try? sessionStore.activeSessionID()
     }
 
     /// Makes another account the one the app opens on. The caller closes the old session and
     /// restores; this only moves the mark.
-    public nonisolated func setActiveAccount(_ sessionID: String) {
+    nonisolated public func setActiveAccount(_ sessionID: String) {
         try? sessionStore.setActive(sessionID)
     }
 
     /// What the open account looks like, kept for when it is not open. See `AccountRecord`.
-    public nonisolated func rememberProfile(sessionID: String, displayName: String?, avatarURL: String?) {
+    nonisolated public func rememberProfile(sessionID: String, displayName: String?, avatarURL: String?) {
         try? sessionStore.updateProfile(sessionID: sessionID, displayName: displayName, avatarURL: avatarURL)
     }
 

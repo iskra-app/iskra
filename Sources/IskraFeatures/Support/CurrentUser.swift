@@ -20,5 +20,5 @@ public extension EnvironmentValues {
 
     /// And that user's picture, so a group's cluster of faces can include the one person every
     /// group in the list has in common: the reader.
-    @Entry var currentUserAvatarURL: String? = nil
+    @Entry var currentUserAvatarURL: String?
 }

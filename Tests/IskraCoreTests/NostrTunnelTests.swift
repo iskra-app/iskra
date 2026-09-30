@@ -183,7 +183,7 @@ struct NostrTunnelTests {
             try envelope.validated()
         }
 
-        envelope = TunnelEnvelope(v: 2, id: "a", seq: 0, total: 1, bodyChunk: "")
+        envelope = TunnelEnvelope(version: 2, id: "a", seq: 0, total: 1, bodyChunk: "")
         #expect(throws: TunnelProtocolError.unsupportedVersion(2)) { try envelope.validated() }
     }
 

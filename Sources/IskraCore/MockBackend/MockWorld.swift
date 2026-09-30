@@ -302,7 +302,7 @@ struct MockWorld {
         var event: JSON = ["event_id": id, "type": type, "sender": sender, "room_id": room,
                            "origin_server_ts": ts, "content": content, "unsigned": [:] as JSON]
         if let key { event["state_key"] = key }
-        for (k, v) in extra { event[k] = v }
+        for (name, value) in extra { event[name] = value }
         rooms[room]?.events.append(event)
         if let key { rooms[room]?.state["\(type)\u{0}\(key)"] = event }
         // A person has read what they wrote.
