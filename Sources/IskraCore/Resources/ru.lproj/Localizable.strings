@@ -67,8 +67,8 @@
 
 /* Why a message is stuck, tapped from the badge beside it. Each names what to do next:
    the user is the only one who can clear these. No cryptography vocabulary. */
-"sendFailure.insecureDevices" = "Кто-то здесь вошёл с устройства, которое вы ещё не подтвердили. Подтвердите его — и сообщение уйдёт.";
-"sendFailure.identityChanged" = "Кто-то в этом чате вошёл с нового места, и его личность изменилась. Убедитесь, что это правда он, — и сообщение уйдёт.";
+"sendFailure.insecureDevices" = "Проверенный вами собеседник вошёл с устройства, которое сам ещё не подтвердил. Если доверяете этому устройству — отправьте всё равно.";
+"sendFailure.identityChanged" = "Ключи шифрования у проверенного вами собеседника сменились. Если уверены, что это тот же человек, — отправьте всё равно.";
 "sendFailure.verificationRequired" = "Подтвердите это устройство, чтобы писать в защищённый чат. Это делается в настройках.";
 "sendFailure.missingMedia" = "Файла больше нет на этом устройстве — отправлять нечего.";
 "sendFailure.unsupportedFileType" = "Такие файлы отправлять нельзя.";

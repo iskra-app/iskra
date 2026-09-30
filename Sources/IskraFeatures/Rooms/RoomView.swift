@@ -51,6 +51,10 @@ public struct RoomView: View {
     @State private var pinned: PinnedStore?
     @State private var isShowingPinned = false
 
+    /// Who here has keys this device does not recognise — see `IdentityChangesStore`. Handed in
+    /// by the session, which stops it on sign-out; started and stopped with the room.
+    @State private var identityChanges: IdentityChangesStore?
+
     /// The two attachment pickers, owned by the screen rather than by the composer that asks
     /// for them. The composer is a `safeAreaInset` floating over this view, and a
     /// presentation put there has already gone missing once (see `MessageComposer`); from
@@ -312,11 +316,13 @@ public struct RoomView: View {
     var onClose: () -> Void
 
     public init(timeline: TimelineStore,
+                identityChanges: IdentityChangesStore? = nil,
                 makeDetails: @escaping () -> RoomDetailsStore?,
                 openAt: Binding<String?> = .constant(nil),
                 onLeave: @escaping () -> Void,
                 onClose: @escaping () -> Void = {}) {
         _timeline = State(initialValue: timeline)
+        _identityChanges = State(initialValue: identityChanges)
         self.makeDetails = makeDetails
         _openAt = openAt
         self.onLeave = onLeave
@@ -918,6 +924,23 @@ public struct RoomView: View {
         // The strip at the top of the room, above the conversation and below the toolbar.
         // Present only when there is something pinned — a room with nothing pinned should not
         // give up a row of its screen to say so.
+        // Somebody's keys changed: above the pinned strip, because it is about who is reading
+        // what you write here, which matters more than what was pinned. One person at a time.
+        .safeAreaInset(edge: .top) {
+            Group {
+                if let identityChanges, let change = identityChanges.changes.first {
+                    IdentityChangeBanner(change: change) {
+                        Task {
+                            do { try await identityChanges.acknowledge(change) } catch {
+                                problem = .identityNotAcknowledged
+                            }
+                        }
+                    }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
+            .animation(.smooth, value: identityChanges?.changes.first?.id)
+        }
         .safeAreaInset(edge: .top) {
             Group {
                 if !timeline.pinnedEventIDs.isEmpty, let pinned {
@@ -1089,6 +1112,9 @@ public struct RoomView: View {
                 draft = saved
             }
 
+            // Before the history: subscribing is quick and fetching the first pages may not be, and
+            // a warning about who is reading this room should not wait on either.
+            await identityChanges?.start()
             try? await timeline.start()
             await timeline.markAsRead()
         }
@@ -1266,6 +1292,7 @@ public struct RoomView: View {
         Task { await timeline.saveDraft(unsent) }
 
         timeline.stop()
+        identityChanges?.stop()
         videoNote.cancel()
         voice.cancel()
         lighting?.cancel()
@@ -1712,6 +1739,11 @@ public struct RoomView: View {
     private func handlers(for message: Message, in scroll: ScrollViewProxy) -> MessageHandlers {
         MessageHandlers(
             onRetry: { Task { await timeline.retrySending(messageID: message.id) } },
+            onSendAnyway: {
+                Task {
+                    do { try await timeline.sendAnyway(messageID: message.id) } catch { problem = .sendAnywayFailed }
+                }
+            },
             onToggleReaction: { emoji in
                 Task { await timeline.toggleReaction(messageID: message.id, key: emoji) }
             },

@@ -62,6 +62,12 @@ public enum Theme {
         public static let circle: CGFloat = .infinity
     }
 
+    public enum Opacity {
+        /// A warning's colour spread under its words — enough to be told apart from an ordinary
+        /// notice at a glance, little enough that the words on it stay the words' own colour.
+        public static let warningWash: Double = 0.14
+    }
+
     public enum Spacing {
         public static let tight: CGFloat = 4
         public static let close: CGFloat = 8

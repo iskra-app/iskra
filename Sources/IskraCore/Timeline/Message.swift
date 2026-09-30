@@ -68,8 +68,24 @@ public enum SendFailure: Sendable, Equatable, CaseIterable {
     /// cannot, an unverified device and a grumpy server can.
     public var canRetry: Bool {
         switch self {
-        case .insecureDevices, .identityChanged, .verificationRequired, .server: true
+        case .verificationRequired, .server: true
+        // Not these two: the send queue stops on them because somebody the user *verified* no
+        // longer checks out, and nothing in this app can verify another person again. Sending
+        // again would stop on the very same thing. `canSendAnyway` is the way on.
+        case .insecureDevices, .identityChanged: false
         case .missingMedia, .unsupportedFileType: false
+        }
+    }
+
+    /// Whether the user can decide to send it regardless — see `TimelineStore.sendAnyway`.
+    ///
+    /// A decision about trust, which is why it is theirs to make and never made for them: it
+    /// withdraws the verification that no longer holds, or trusts the device that nobody
+    /// confirmed, for this person, from now on.
+    public var canSendAnyway: Bool {
+        switch self {
+        case .insecureDevices, .identityChanged: true
+        case .verificationRequired, .server, .missingMedia, .unsupportedFileType: false
         }
     }
 }

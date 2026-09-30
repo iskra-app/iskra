@@ -148,6 +148,7 @@ struct CompactMessageRow: View {
             if case let .failed(failure)? = message.delivery {
                 SendFailureBadge(failure: failure,
                                  onRetry: handlers.onRetry,
+                                 onSendAnyway: handlers.onSendAnyway,
                                  onDiscard: handlers.onDiscard)
             }
 
