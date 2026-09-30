@@ -968,7 +968,7 @@ public actor AuthenticationService {
             .withSearchIndexStore(path: searchURL.path(percentEncoded: false),
                                   password: try sessionStore.searchIndexPassword(forSessionID: sessionID))
             .slidingSyncVersionBuilder(versionBuilder: slidingSync)
-            .forPushIfNeeded(forPush)
+            .tuned(forPush: forPush)
     }
 
     /// What Iskra tells the homeserver it is, when it asks to be let in.
