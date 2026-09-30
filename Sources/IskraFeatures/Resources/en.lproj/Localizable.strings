@@ -58,7 +58,7 @@
 "message.spoken.you" = "You";
 
 /* Shown in place of a message this device has no key for. Must not mention keys or decryption. */
-"message.unreadable" = "This message was sent before you joined, so it can’t be shown.";
+"message.unreadable" = "This message can’t be opened: this device doesn’t have its key.";
 
 "message.unsupported" = "Iskra can’t show this message yet.";
 
@@ -289,7 +289,7 @@
 "storage.measuring" = "Adding it up…";
 
 "storage.session" = "Keys and rooms";
-"storage.session.explained" = "Encryption keys, room state, and messages that have not gone out yet. This is never cleared: without the keys, this phone cannot read the conversations it already has.";
+"storage.session.explained" = "Encryption keys, room state, and messages that have not gone out yet. This is never cleared: without the keys, this device cannot read the conversations it already has.";
 
 "storage.cache" = "Messages and media";
 "storage.cache.explained" = "Downloaded messages, photos and files. They download again when you need them.";
@@ -1044,7 +1044,7 @@
 
 "notifications.mentions" = "Mentions";
 "notifications.mentionsMe" = "When I’m mentioned";
-"notifications.roomMentions" = "When someone writes @room";
+"notifications.roomMentions" = "When someone addresses the whole chat (@room)";
 "notifications.mentionsFooter" = "Mentions reach you even from chats you have silenced. @room wakes everybody at once, so it can be turned off on its own.";
 
 "notifications.other" = "Everything else";
