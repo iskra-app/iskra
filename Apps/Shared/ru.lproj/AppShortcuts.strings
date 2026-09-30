@@ -1,0 +1,5 @@
+/* What Siri listens for. Every phrase has to carry the app's name. Said the way one talks to
+   Siri — «Открой…», not «Открыть…». */
+
+"Open a chat in ${applicationName}" = "Открой чат в ${applicationName}";
+"Send a message with ${applicationName}" = "Напиши сообщение в ${applicationName}";
