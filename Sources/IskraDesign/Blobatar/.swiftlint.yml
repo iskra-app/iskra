@@ -1,0 +1,9 @@
+# The blobatar port. Merged over the root configuration for these files only.
+#
+# The short names (cx, rx, t, r, g, b…) and the colour tuples are blobatar's own, kept so every
+# file here reads line for line beside the original — which is what BlobatarTests holds it to: a
+# thousand seeds byte for byte. Renaming them would make the next comparison with upstream a
+# translation exercise, and a port is only as good as that comparison. Decided 2026-09-30.
+disabled_rules:
+  - identifier_name
+  - large_tuple

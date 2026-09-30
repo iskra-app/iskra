@@ -563,7 +563,6 @@ private extension View {
                                  bottom: Theme.Spacing.sidebarRow,
                                  trailing: Theme.Spacing.tight))
     }
-
 }
 
 /// One conversation in the list. Internal, not private, so the archive screen renders its rows the
@@ -706,7 +705,7 @@ struct RoomRow: View {
                                         .frame(minWidth: Theme.Size.unreadBadge,
                                                minHeight: Theme.Size.unreadBadge)
                                 } else if !room.isMentioned {
-                                    Circle().fill(.clear).frame(width: 10, height: 10)
+                                    Circle().fill(.clear).frame(width: Theme.Size.unreadDot, height: Theme.Size.unreadDot)
                                 }
                             }
                             .background(badgeFill, in: Capsule())

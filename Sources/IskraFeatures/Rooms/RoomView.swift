@@ -796,6 +796,8 @@ public struct RoomView: View {
             // Your own message is the exception, and it is not really an exception: sending one
             // is a request to be where it lands. The composer is at the bottom, so you are
             // answering the newest message by definition.
+            // `last` is used — by `guard let last`, the shorthand SwiftLint does not read as a use.
+            // swiftlint:disable:next unused_closure_parameter
             .onChange(of: timeline.rows.last?.id) { _, last in
                 guard hasAnchored, let last else { return }
 

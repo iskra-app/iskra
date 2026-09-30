@@ -117,7 +117,7 @@ public actor PushDecoder {
     /// What to call the account a push is for, when there is more than one on the device and the
     /// reader needs telling which of them it arrived for. Nil with one account: then it goes without
     /// saying, and a line saying it anyway is a line of noise on every notification.
-    public nonisolated func accountLabel(for accountID: String?) -> String? {
+    nonisolated public func accountLabel(for accountID: String?) -> String? {
         guard let accountID,
               let accounts = try? SessionStore(environment: environment).accounts(),
               accounts.count > 1,

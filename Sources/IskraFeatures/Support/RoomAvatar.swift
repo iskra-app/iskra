@@ -90,7 +90,7 @@ private struct FaceCluster: View {
     /// Two go on a diagonal, which reads as a pair rather than as one circle with something stuck
     /// to it. Three make a triangle with the odd one on top, which is the shape a group of three
     /// is drawn as everywhere and therefore the one nobody has to work out.
-    private var places: [(x: CGFloat, y: CGFloat, fraction: CGFloat)] {
+    private var places: [(x: CGFloat, y: CGFloat, fraction: CGFloat)] { // swiftlint:disable:this large_tuple
         faces.count == 2
             ? [(0.31, 0.33, 0.72), (0.69, 0.67, 0.72)]
             : [(0.5, 0.26, 0.64), (0.26, 0.73, 0.64), (0.74, 0.73, 0.64)]

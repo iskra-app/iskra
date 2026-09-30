@@ -232,7 +232,6 @@ struct MessageRow: View {
             .messageActions(message, isPinned: isPinned, handlers: handlers)
     }
 
-
     // MARK: - Reactions
 
     /// The emoji under the bubble — aligned to the side the message is on, indented past

@@ -81,8 +81,6 @@ public enum TunnelSettings {
         return parsed.isEmpty ? defaultRelays.compactMap(URL.init(string:)) : parsed
     }
 
-    /// Split on commas and newlines, and keep what is actually a relay address.
-    ///
     // MARK: - Applying a change
 
     /// What a connection is built from, as it would be read at the moment of building.
@@ -111,6 +109,8 @@ public enum TunnelSettings {
     /// stopped loading messages the moment somebody reached for the thing that would fix it.
     public static let changed = Notification.Name("moscow.swag.iskra.tunnelSettingsChanged")
 
+    /// Split on commas and newlines, and keep what is actually a relay address.
+    ///
     /// `https://` is dropped rather than corrected. A relay is reached over `wss://`, and quietly
     /// rewriting one scheme into another turns a typo into a relay that merely looks down.
     public static func parseRelays(_ text: String) -> [URL] {
