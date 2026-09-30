@@ -181,7 +181,11 @@ public actor PushDecoder {
         do {
             let data = try await withTimeout(Self.avatarBudget) {
                 let source = try MediaSource.fromUrl(url: url)
-                return try await client.getMediaContent(mediaSource: source)
+                // The server's own resizer, as `MediaLoader.avatar` uses on screen — an avatar is
+                // public by construction. The whole file was fetched before the size check could
+                // refuse it, and a sender with a forty-megabyte avatar put a 24 MB extension over
+                // its limit: killed, and every notification from them a bare "New message".
+                return try await client.getMediaThumbnail(mediaSource: source, width: 256, height: 256)
             }
 
             guard data.count <= Self.avatarLimit else {
