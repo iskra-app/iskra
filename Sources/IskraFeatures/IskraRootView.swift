@@ -458,6 +458,17 @@ public struct IskraRootView: View {
             default: break
             }
         }
+        #if os(macOS)
+        // A Mac app switched away from goes `.inactive` and stays there; `.background` takes a
+        // hidden or minimised window. So "lock immediately" locked only at launch. Leaving the app
+        // is what the Mac calls resigning active.
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
+            appLock.enteredBackground()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            appLock.enteredForeground()
+        }
+        #endif
         .environment(\.accent, accent)
         // And light or dark, if the user asked for either. Applied at the root, above everything,
         // because a colour scheme is not a property of a screen — a sheet or a media viewer left
