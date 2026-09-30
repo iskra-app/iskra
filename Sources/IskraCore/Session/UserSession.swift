@@ -183,6 +183,10 @@ public final class UserSession {
     /// so here is what keeps it out of the view graph.
     @ObservationIgnored private var openTimelines: [String: WeakBox<TimelineStore>] = [:]
 
+    /// The identity watch of every room on screen, for the same two reasons as `openTimelines`:
+    /// one per room, and every one of them stopped on the way out of the account.
+    @ObservationIgnored private var openIdentityChanges: [String: WeakBox<IdentityChangesStore>] = [:]
+
     private struct WeakBox<T: AnyObject> {
         weak var value: T?
     }
@@ -340,6 +344,21 @@ public final class UserSession {
         openTimelines = openTimelines.filter { $0.value.value != nil }
         openTimelines[roomID] = WeakBox(value: store)
 
+        return store
+    }
+
+    /// Who in this room has keys this device does not recognise — see `IdentityChangesStore`.
+    ///
+    /// The one already open, if the room is on screen twice (an iPad's list and detail): two
+    /// subscriptions would each take the warning down on their own, and one of them late.
+    public func identityChanges(forRoomID roomID: String) -> IdentityChangesStore? {
+        if let open = openIdentityChanges[roomID]?.value { return open }
+        guard let room = roomList.room(withID: roomID) ?? (try? client.getRoom(roomId: roomID)) else {
+            return nil
+        }
+        let store = IdentityChangesStore(room: room, encryption: client.encryption(), ownUserID: userID)
+        openIdentityChanges = openIdentityChanges.filter { $0.value.value != nil }
+        openIdentityChanges[roomID] = WeakBox(value: store)
         return store
     }
 
@@ -655,6 +674,10 @@ public final class UserSession {
             box.value?.stop()
         }
         openTimelines = [:]
+        for box in openIdentityChanges.values {
+            box.value?.stop()
+        }
+        openIdentityChanges = [:]
         // The kept conversations go too. They are rooms in a store that is about to be deleted.
         recentTimelines = []
 
