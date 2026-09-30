@@ -235,6 +235,10 @@ public struct RoomView: View {
     /// they can both fire.
     @State private var hasTornDown = false
 
+    /// A photo is open over the whole room — see `EnvironmentValues.coversRoom`. The room is still
+    /// there under it, and must not be shut down because SwiftUI says it has disappeared.
+    @State private var isCoveredByMedia = false
+
     /// Something the *device* refused — the microphone, an unreadable file. It lives here, with the
     /// alert that shows it, and not in the store: see `RoomProblem`.
     @State private var problem: RoomProblem?
@@ -1101,6 +1105,16 @@ public struct RoomView: View {
             }
         }
         .task {
+            // Back on screen, so alive again: whatever put the room down on the way here — a
+            // cover this screen was not told about, a disappearance nobody anticipated — must not
+            // leave the latch set, or the reader's real way out later saves no draft and stops
+            // no timeline. The latch is there to stop two tear-downs of one visit, not every
+            // tear-down after the first.
+            hasTornDown = false
+            // And nothing is over the room if the room is on screen — even if the row that opened
+            // the viewer was taken away while it was open and never got to say it had closed.
+            isCoveredByMedia = false
+
             // Whatever was half-written here last time. Restored *before* the room opens, because
             // it costs nothing and it means the composer is never briefly empty in front of
             // somebody who left a sentence in it.
@@ -1195,9 +1209,10 @@ public struct RoomView: View {
         // is in the room. The flags are the honest signal — we know when we are pushing, because
         // we are the ones who pushed.
         .onDisappear {
-            guard !isShowingDetails, !isShowingPinned else { return }
+            guard !isShowingDetails, !isShowingPinned, !isCoveredByMedia else { return }
             tearDown()
         }
+        .environment(\.coversRoom) { isCoveredByMedia = $0 }
         // Two alerts, because there are two kinds of bad news and they come from different places.
         // The room refusing something is the store's (`TimelineActionFailure`); the device refusing
         // something is this screen's (`RoomProblem`) — see that type for why the second one no

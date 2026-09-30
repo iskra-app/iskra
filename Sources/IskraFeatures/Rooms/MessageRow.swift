@@ -879,6 +879,9 @@ struct PictureBubble: View {
     /// The room's pictures, asked for at the moment one is opened — see `RoomMediaSource`.
     @Environment(\.roomMedia) private var roomMedia
 
+    /// Tells the room the viewer is over it — see `EnvironmentValues.coversRoom`.
+    @Environment(\.coversRoom) private var coversRoom
+
     /// What the viewer was opened on: the whole run of the room's media, and which of them the
     /// finger landed on.
     private struct OpenedMedia: Identifiable {
@@ -927,6 +930,10 @@ struct PictureBubble: View {
                 // system's card behind it would be a grey rectangle showing at the corners.
                 .presentationBackground(.black)
         }
+        // A cover makes the room underneath "disappear" as far as SwiftUI is concerned, and the
+        // room used to take that for the reader leaving: the draft saved, the timeline stopped,
+        // and — worse — a latch left set so that the *real* way out later did none of it.
+        .onChange(of: opened != nil) { _, isOpen in coversRoom(isOpen) }
         #else
         .sheet(item: $opened) { opened in
             MediaPager(items: opened.items, startIndex: opened.index)
