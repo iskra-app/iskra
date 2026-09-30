@@ -47,6 +47,7 @@ struct RoomEventRow: View {
                 return .handled
             })
             .multilineTextAlignment(.center)
+            .wallpaperPlate()
             .padding(.horizontal, Theme.Spacing.normal)
             .padding(.vertical, Theme.Spacing.tight)
             .frame(maxWidth: .infinity)

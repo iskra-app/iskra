@@ -138,3 +138,32 @@ public extension EnvironmentValues {
     /// this, and over a wallpaper it uses an opaque fill instead. See `MessageBubble`.
     @Entry var hasWallpaper: Bool = false
 }
+
+public extension View {
+    /// Something to stand on, for words drawn straight onto the conversation — the date between
+    /// days, a line saying who joined, the time beside a bubble — when the conversation is standing
+    /// on a wallpaper, and nothing when it is not.
+    ///
+    /// The bubbles already knew to go opaque over a wallpaper; these did not, and secondary grey
+    /// over a dark photograph in the light appearance is words nobody can read. A capsule of
+    /// material, the way every messenger with wallpapers does it. A material, not glass: this is
+    /// content, and glass stays on the navigation layer (see `Glass.swift`).
+    func wallpaperPlate() -> some View {
+        modifier(WallpaperPlate())
+    }
+}
+
+private struct WallpaperPlate: ViewModifier {
+    @Environment(\.hasWallpaper) private var hasWallpaper
+
+    func body(content: Content) -> some View {
+        if hasWallpaper {
+            content
+                .padding(.horizontal, Theme.Spacing.close)
+                .padding(.vertical, Theme.Spacing.withinRun)
+                .background(.regularMaterial, in: Capsule())
+        } else {
+            content
+        }
+    }
+}

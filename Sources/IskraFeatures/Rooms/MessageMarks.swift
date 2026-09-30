@@ -49,5 +49,7 @@ struct MessageMarks: View {
         }
         // The clock must never squeeze the message it belongs to.
         .fixedSize()
+        // Grey on somebody's photograph is nothing to read — see `wallpaperPlate`.
+        .wallpaperPlate()
     }
 }

@@ -112,6 +112,41 @@ struct MessageRowLayoutTests {
         #endif
     }
 
+    /// The words drawn straight onto the conversation — the date, the time beside a bubble — over
+    /// a dark picture in the light appearance, which is where grey text used to disappear.
+    @Test("words on a wallpaper stand on something")
+    func wordsOnAWallpaper() throws {
+        let view = VStack(spacing: 0) {
+            DayDividerView(date: Date(timeIntervalSince1970: 1_770_000_000))
+            HStack {
+                MessageMarks(message: message("Как тебе?", isOwn: false, at: 1))
+                Spacer()
+                MessageMarks(message: message("Отлично", isOwn: true, at: 2, delivery: .sent))
+            }
+            .padding()
+        }
+        .frame(width: 390)
+        .padding(.vertical)
+        .background(LinearGradient(colors: [.black, .indigo], startPoint: .top, endPoint: .bottom))
+        .environment(\.hasWallpaper, true)
+        .environment(\.timelineWidth, 390)
+        .environment(\.colorScheme, .light)
+
+        let renderer = ImageRenderer(content: view)
+        renderer.scale = 2
+
+        #if os(macOS)
+        let image = try #require(renderer.nsImage, "the wallpaper rows failed to render at all")
+        #expect(image.size.height > 100)
+
+        guard let directory = outputDirectory else { return }
+        let tiff = try #require(image.tiffRepresentation)
+        let bitmap = try #require(NSBitmapImageRep(data: tiff))
+        let png = try #require(bitmap.representation(using: .png, properties: [:]))
+        try png.write(to: directory.appending(component: "wallpaper-plates.png"))
+        #endif
+    }
+
     /// Both identity banners, in Russian, at a phone's width — the longer language, where a title
     /// that ran out of room would be cut first. And the popover for a message stopped on trust,
     /// which offers "Send anyway" and not "Send again".
