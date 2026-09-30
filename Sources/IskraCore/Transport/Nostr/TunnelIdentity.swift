@@ -3,11 +3,12 @@ import Foundation
 /// This installation's nostr keypair — the return address on the tunnel.
 ///
 /// Kept in the Keychain, and kept in a Keychain **service of its own**, which is the one decision
-/// here worth explaining. Signing out calls `SessionStore.clear`, which empties the session's
-/// service wholesale; a key that lived there would be regenerated on the next launch, and anybody
+/// here worth explaining. The session's service is emptied on the way out — per account by
+/// `SessionStore.remove(sessionID:)`, and wholesale by `SessionStore.clear` — and a key that lived
+/// there would be regenerated on the next launch, and anybody
 /// running a closed bridge (`ALLOWED_PUBKEYS`) would have to add the new one before they could
 /// sign in again — through the bridge they can no longer reach. The bridge's address and relay
-/// list survive a sign-out in `UserDefaults`, and this survives with them.
+/// list survive a sign-out in the App Group's defaults, and this survives with them.
 ///
 /// It is not an identity in any social sense: nobody follows it, it posts nothing, and it exists
 /// only so that the answer to a request can be addressed back to the device that asked.

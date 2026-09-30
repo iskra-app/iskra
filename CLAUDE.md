@@ -176,8 +176,9 @@ us in the clear, and nothing above the transport learns anything. The bridge's a
 `TunnelSettings.addressKey` in the **App Group's** defaults (`TunnelSettings.store`, Settings →
 Connection) — the notification extension routes by it too, and with it in `.standard` every push
 went straight to the homeserver with the bridge switched on; this device's own nostr key
-is in the Keychain, under a **service of its own** — `SessionStore.clear` empties the session's
-service on sign-out, and a key regenerated there would have to be re-added to every closed bridge
+is in the Keychain, under a **service of its own** — the session's service is emptied on the way
+out (`SessionStore.remove(sessionID:)` per account, `SessionStore.clear` for all), and a key
+regenerated there would have to be re-added to every closed bridge
 before the user could sign in again, through the bridge they can no longer reach.
 
 A message longer than 24 KiB travels in several events (`TunnelChunker`, `TunnelReassembler`), and
