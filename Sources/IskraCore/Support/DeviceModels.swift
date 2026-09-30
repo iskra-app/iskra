@@ -73,9 +73,16 @@ enum DeviceModels {
         "iPhone18,3": "iPhone 17",
         "iPhone18,4": "iPhone Air",
         "iPhone18,5": "iPhone 17e",
+        "iPhone19,2": "iPhone 18 Pro",
+        "iPhone19,3": "iPhone 18 Pro Max",
     ]
 
     private static let pads = [
+        "iPad7,12": "iPad (7th generation)",
+        "iPad8,1": "iPad Pro 11-inch (1st generation)",
+        "iPad8,5": "iPad Pro 12.9-inch (3rd generation)",
+        "iPad8,9": "iPad Pro 11-inch (2nd generation)",
+        "iPad8,12": "iPad Pro 12.9-inch (4th generation)",
         "iPad11,1": "iPad mini (5th generation)",
         "iPad11,3": "iPad Air (3rd generation)",
         "iPad11,7": "iPad (8th generation)",
@@ -107,9 +114,11 @@ enum DeviceModels {
     /// these are written by hand. `Mac16,1` is the one entry checked against real hardware
     /// (`system_profiler SPHardwareDataType`); the rest are as good as the person who typed them.
     ///
-    /// Kept to the Apple silicon Macs. The app also runs on the Intel Macs macOS 15 supports, and they
-    /// are left out rather than typed in from memory: with no authority to check them against, an
-    /// Intel entry would be a guess, and an unknown identifier is already sent on as itself.
+    /// Every Mac macOS 15 runs on, Intel included. For the Intel half there *is* an authority, if a
+    /// dated one: macOS carries Apple's own identifier-to-name table at
+    /// `/System/Library/PrivateFrameworks/ServerInformation.framework/Resources/en.lproj/SIMachineAttributes.plist`.
+    /// It stops at 2019 and knows no Apple silicon at all, so it vouches for most of the Intel entries
+    /// and for nothing after them.
     private static let macs = [
         "Mac13,1": "Mac Studio (M1 Max)",
         "Mac13,2": "Mac Studio (M1 Ultra)",
@@ -156,5 +165,26 @@ enum DeviceModels {
         "Macmini9,1": "Mac mini (M1)",
         "iMac21,1": "iMac 24-inch (M1)",
         "iMac21,2": "iMac 24-inch (M1)",
+
+        // The Intel Macs macOS 15 runs on. The ones Apple's own table names are checked against
+        // it; the three families it stops short of (MacBookPro16, MacBookAir9, iMac20) are not.
+        // One identifier covers both years where Apple kept it across a refresh, and the name
+        // says so rather than picking one.
+        "MacBookPro15,1": "MacBook Pro 15-inch (2018-2019)",
+        "MacBookPro15,2": "MacBook Pro 13-inch (2018-2019)",
+        "MacBookPro15,3": "MacBook Pro 15-inch (2018-2019)",
+        "MacBookPro15,4": "MacBook Pro 13-inch (2019)",
+        "MacBookPro16,1": "MacBook Pro 16-inch (2019)",
+        "MacBookPro16,2": "MacBook Pro 13-inch (2020)",
+        "MacBookPro16,3": "MacBook Pro 13-inch (2020)",
+        "MacBookPro16,4": "MacBook Pro 16-inch (2019)",
+        "MacBookAir9,1": "MacBook Air (2020)",
+        "iMac19,1": "iMac 27-inch (2019)",
+        "iMac19,2": "iMac 21.5-inch (2019)",
+        "iMac20,1": "iMac 27-inch (2020)",
+        "iMac20,2": "iMac 27-inch (2020)",
+        "iMacPro1,1": "iMac Pro",
+        "Macmini8,1": "Mac mini (2018)",
+        "MacPro7,1": "Mac Pro (2019)",
     ]
 }
