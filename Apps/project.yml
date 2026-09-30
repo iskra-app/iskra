@@ -12,8 +12,8 @@ options:
   bundleIdPrefix: moscow.swag
   createIntermediateGroups: true
   deploymentTarget:
-    iOS: "26.0"
-    macOS: "26.0"
+    iOS: "18.0"
+    macOS: "15.0"
 
 packages:
   Iskra:
@@ -461,7 +461,7 @@ targets:
         AppIdentifierPrefix: $(AppIdentifierPrefix)
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [en, ru]
-        LSMinimumSystemVersion: "26.0"
+        LSMinimumSystemVersion: "15.0"
         NSCameraUsageDescription: Iskra uses the camera so you can record video messages.
         NSMicrophoneUsageDescription: Iskra uses the microphone so you can record voice messages.
         NSLocationWhenInUseUsageDescription: Iskra uses your location only when you ask it to, to put a map on the place you are.

@@ -107,8 +107,9 @@ enum DeviceModels {
     /// these are written by hand. `Mac16,1` is the one entry checked against real hardware
     /// (`system_profiler SPHardwareDataType`); the rest are as good as the person who typed them.
     ///
-    /// Kept to the Apple silicon Macs on purpose. macOS 26 does not run on anything else, so an Intel
-    /// entry here could only ever be wrong about a machine that cannot run this app.
+    /// Kept to the Apple silicon Macs. The app also runs on the Intel Macs macOS 15 supports, and they
+    /// are left out rather than typed in from memory: with no authority to check them against, an
+    /// Intel entry would be a guess, and an unknown identifier is already sent on as itself.
     private static let macs = [
         "Mac13,1": "Mac Studio (M1 Max)",
         "Mac13,2": "Mac Studio (M1 Ultra)",
