@@ -592,6 +592,8 @@ public struct IskraRootView: View {
         guard !session.isDemo else { return }
         ChatDirectory.forget(account: session.sessionID)
         AppBadge.forget(account: session.sessionID)
+        DeliveredNotifications.clear(account: session.sessionID)
+        CommunicationNotification.forget(account: session.sessionID)
     }
 
     /// The last account has gone. What the app remembers about how it looks goes too — see
@@ -601,6 +603,12 @@ public struct IskraRootView: View {
         // Somebody else's unread count has no business staying on the icon of an app nobody is
         // signed into.
         AppBadge.clear()
+        // Not under `--mock-signin`: its accounts are scratch ones, and "the last of them left"
+        // says nothing about the real account the banners and suggestions belong to.
+        if !MockSignIn.isRequested {
+            DeliveredNotifications.clear(account: nil)
+            CommunicationNotification.forget(account: nil)
+        }
     }
 
     // MARK: - Accounts

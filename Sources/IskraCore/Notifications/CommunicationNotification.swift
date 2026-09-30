@@ -26,12 +26,28 @@ import UserNotifications
 /// there: an app that shows nothing because it could not decorate a notification would be worse
 /// than one that never tried.
 public enum CommunicationNotification {
+    /// Takes back what was donated for this account: its people and its rooms stop turning up in
+    /// Siri's suggestions and the share sheet's top row. `nil` — the last account gone — takes
+    /// back everything, including what was donated before donations were filed by account.
+    public static func forget(account: String?) {
+        if let account {
+            INInteraction.delete(with: account)
+        } else {
+            INInteraction.deleteAll()
+        }
+    }
+
     /// Rewrites a notification as a message from a person, or returns it exactly as it was.
     ///
     /// Never throws and never loses the notification. The picture is the part that can go missing,
     /// and it is the part that matters least.
+    /// - Parameter account: whose push it is — the session ID. The donation is filed under it, so
+    ///   that signing that account out can take its conversations back out of Siri and the share
+    ///   sheet (`forget(account:)`); nothing did, and a signed-out account's people and rooms went
+    ///   on being suggested for good.
     public static func apply(to content: UNNotificationContent,
-                             for notification: PushNotification) -> UNNotificationContent {
+                             for notification: PushNotification,
+                             account: String? = nil) -> UNNotificationContent {
         guard let intent = intent(for: notification) else { return content }
 
         // Donating is what teaches the system that this conversation exists — it is how the room
@@ -40,6 +56,7 @@ public enum CommunicationNotification {
         // is a missing suggestion, not a missing message.
         let interaction = INInteraction(intent: intent, response: nil)
         interaction.direction = .incoming
+        interaction.groupIdentifier = account
         interaction.donate(completion: nil)
 
         do {

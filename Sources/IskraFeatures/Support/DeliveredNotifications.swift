@@ -30,4 +30,22 @@ enum DeliveredNotifications {
             centre.removeDeliveredNotifications(withIdentifiers: identifiers)
         }
     }
+
+    /// An account has left the device: its decrypted banners go with it. They are other people's
+    /// words, in the clear in Notification Center, for an account that is not here any more.
+    /// `nil` — the last account gone — clears every one.
+    static func clear(account: String?) {
+        let centre = UNUserNotificationCenter.current()
+        guard let account else {
+            centre.removeAllDeliveredNotifications()
+            return
+        }
+        Task {
+            let identifiers = await centre.deliveredNotifications()
+                .filter { $0.request.content.userInfo[PushRegistration.accountKey] as? String == account }
+                .map(\.request.identifier)
+            guard !identifiers.isEmpty else { return }
+            centre.removeDeliveredNotifications(withIdentifiers: identifiers)
+        }
+    }
 }

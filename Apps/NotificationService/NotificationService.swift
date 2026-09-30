@@ -203,7 +203,8 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
         // `PushFace` is what fills the circle when the sender has no picture of their own: the app
         // draws a creature for such people, and the lock screen has to draw the same one, in this
         // process, from the same seed.
-        return CommunicationNotification.apply(to: content, for: PushFace.applied(to: notification))
+        return CommunicationNotification.apply(to: content, for: PushFace.applied(to: notification),
+                                               account: accountID)
     }
 }
 
