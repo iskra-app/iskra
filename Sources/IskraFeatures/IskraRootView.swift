@@ -513,13 +513,12 @@ public struct IskraRootView: View {
         }
         // Only what this account sends. What was shared into another account's chat waits for
         // that account — and is the reason to open it, below.
+        // What could not go yet — a chat that would not open, offline — goes back in, and is tried
+        // again the next time the app comes to the front. See `UserSession.sendQueued`.
         for item in ChatDirectory.drainOutbox(forAccount: session.sessionID) {
-            // What was shared goes first and the words after it — the order a person writing it
-            // by hand would use: the photo, then "look at this".
-            for attachment in item.attachments {
-                await session.send(attachment, toRoomID: item.roomID)
+            if let waiting = await session.sendQueued(item) {
+                ChatDirectory.enqueue(waiting)
             }
-            await session.sendText(item.text, toRoomID: item.roomID)
         }
 
         // Somebody shared into a chat of an account that is not open, and came back to the app:
