@@ -711,6 +711,15 @@ public enum Strings {
             /// appearance cannot say out loud.
             public static let addReaction = LocalizedStringResource("message.menu.addReaction", bundle: bundle)
             public static let removeReaction = LocalizedStringResource("message.menu.removeReaction", bundle: bundle)
+            /// The quick reaction, as a VoiceOver action — see `MessageActions.spokenActions`.
+            public static func addQuick(_ emoji: String) -> LocalizedStringResource {
+                LocalizedStringResource("message.menu.addQuick", defaultValue: "React with \(emoji)", bundle: bundle)
+            }
+            public static func removeQuick(_ emoji: String) -> LocalizedStringResource {
+                LocalizedStringResource("message.menu.removeQuick", defaultValue: "Remove \(emoji)", bundle: bundle)
+            }
+            /// Opens the menu with the whole bar of emoji — the one way VoiceOver reaches the rest.
+            public static let moreReactions = LocalizedStringResource("message.menu.moreReactions", bundle: bundle)
 
             /// Flagging somebody else's message to the moderators.
             public static let report = LocalizedStringResource("message.menu.report", bundle: bundle)
