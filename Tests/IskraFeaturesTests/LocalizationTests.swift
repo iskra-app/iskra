@@ -411,11 +411,18 @@ struct LocalizationTests {
     func retryIsOfferedHonestly() {
         #expect(SendFailure.server.canRetry)
         #expect(SendFailure.verificationRequired.canRetry)
-        #expect(SendFailure.insecureDevices.canRetry)
-        #expect(SendFailure.identityChanged.canRetry)
 
         #expect(!SendFailure.missingMedia.canRetry)
         #expect(!SendFailure.unsupportedFileType.canRetry)
+
+        // A verified person who no longer checks out: sending again stops on the same thing,
+        // because nothing in the app can verify them again. "Send anyway" is the way on — and
+        // it is offered nowhere else, since everywhere else it would be trust given for nothing.
+        for failure in SendFailure.allCases {
+            let isTrust = failure == .insecureDevices || failure == .identityChanged
+            #expect(failure.canSendAnyway == isTrust, "\(failure)")
+            if isTrust { #expect(!failure.canRetry, "\(failure)") }
+        }
     }
 
     /// The failure this is really guarding against: a string that resolves to its own

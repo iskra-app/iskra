@@ -42,6 +42,7 @@ public enum DemoBackend {
             .userAgent(userAgent: DeviceDescription.userAgent)
             .autoEnableBackups(autoEnableBackups: true)
             .autoEnableCrossSigning(autoEnableCrossSigning: true)
+            .encryptionPolicy()
             .withSearchIndexStore(path: search.path(percentEncoded: false), password: UUID().uuidString)
             .homeserverUrl(url: homeserver)
             .slidingSyncVersionBuilder(versionBuilder: .native)

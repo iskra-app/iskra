@@ -901,6 +901,8 @@ public actor AuthenticationService {
             // ask for one.
             .autoEnableBackups(autoEnableBackups: true)
             .autoEnableCrossSigning(autoEnableCrossSigning: true)
+            // Who gets the keys to what we write — see `EncryptionPolicy`.
+            .encryptionPolicy()
             // Two processes, one store. The notification extension opens the same SQLite file the
             // app has open — that is the whole design of it — and `notificationClient` was already
             // asking for `.multipleProcesses`, which locks the *crypto* store. It does not lock the

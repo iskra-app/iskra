@@ -899,6 +899,42 @@ public final class TimelineStore {
         _ = try? await handle.abort()
     }
 
+    /// Sends a message the queue stopped on because somebody the user verified no longer checks
+    /// out — having been told so, and having said "send it anyway".
+    ///
+    /// The two ways the SDK offers, one per reason, and each is a real change of trust rather than
+    /// a retry: `withdrawVerificationAndResend` takes back the verification of the people whose
+    /// keys changed (they become merely known, as everybody unverified is), and
+    /// `ignoreDeviceTrustAndResend` trusts the devices their owner never confirmed. Both then send
+    /// the message that was waiting. Throws when the SDK refuses, so the screen can say so.
+    public func sendAnyway(messageID: String) async throws {
+        guard let (handle, wedge) = failedSend(for: messageID) else { return }
+        room.enableSendQueue(enable: true)
+        requeueUnsentReactions()
+        switch wedge {
+        case let .identityViolations(users):
+            try await room.withdrawVerificationAndResend(userIds: users, sendHandle: handle)
+        case let .insecureDevices(devices):
+            try await room.ignoreDeviceTrustAndResend(devices: devices, sendHandle: handle)
+        default:
+            try await handle.tryResend()
+        }
+    }
+
+    /// The handle and the SDK's own reason for a message stuck in the queue — the reason with
+    /// the people and devices in it, which `SendFailure` leaves out because a reader of the chat
+    /// has no use for a list of device IDs.
+    private func failedSend(for messageID: String) -> (SendHandle, QueueWedgeError)? {
+        for item in items {
+            guard let event = item.asEvent(),
+                  TimelineMapper.identifier(for: event.eventOrTransactionId) == messageID,
+                  case let .sendingFailed(error, _) = event.localSendState,
+                  let handle = event.lazyProvider.getSendHandle() else { continue }
+            return (handle, error)
+        }
+        return nil
+    }
+
     /// The SDK's handle on a local echo — the message we sent that never landed. Remote
     /// events have none, which is the SDK's way of saying there is nothing left to retry.
     private func sendHandle(for messageID: String) -> SendHandle? {

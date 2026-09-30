@@ -792,6 +792,7 @@ public struct IskraRootView: View {
                     // would leave the reader pushed onto a conversation that no longer
                     // exists.
                     RoomView(timeline: timeline,
+                             identityChanges: session.identityChanges(forRoomID: roomID),
                              makeDetails: { session.details(forRoomID: roomID) },
                              openAt: $selectedEventID,
                              onLeave: { selectedRoomID = nil },
