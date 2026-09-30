@@ -477,6 +477,9 @@
 
 /* Accessibility hints on a reaction. Say what pressing it will do — the pill itself can't. */
 "message.menu.addReaction" = "Поставить реакцию";
+"message.menu.addQuick" = "Поставить %@";
+"message.menu.removeQuick" = "Убрать %@";
+"message.menu.moreReactions" = "Другие реакции";
 
 "message.menu.removeReaction" = "Убрать свою реакцию";
 

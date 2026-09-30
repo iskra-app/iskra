@@ -173,6 +173,13 @@ struct MessageActions<Content: View>: View {
             }
             #endif
             .simultaneousGesture(doubleTap)
+            // Everything the menu offers, for VoiceOver too — swipe up or down on a message and
+            // the rotor goes through them, as it does in Messages and Mail. The menu used to be the
+            // system's `.contextMenu`, which VoiceOver exposes by itself; since the menu became
+            // ours, a hold that VoiceOver cannot make was the only way in, and replying, reacting
+            // or deleting was out of reach. The same `sections` as the menu, so the two cannot
+            // disagree about what a message allows.
+            .accessibilityActions { spokenActions }
             // The knock that says the reaction went. Without it a double tap on a message
             // whose pill appears a beat later feels like nothing happened.
             .sensoryFeedback(.impact(weight: .medium), trigger: quickTaps)
@@ -290,6 +297,25 @@ struct MessageActions<Content: View>: View {
             content: AnyView(content()),
             sections: sections,
             onReaction: handlers.onToggleReaction))
+    }
+
+    /// The menu, read out: the quick reaction first — it is what a double tap does, and a double
+    /// tap is VoiceOver's own "activate" — then the rest of the emoji behind "More reactions", which
+    /// opens the real menu with its bar, then every verb. The dates are left out: they are facts,
+    /// not things to do, and the menu shows them only as lines to read.
+    @ViewBuilder
+    private var spokenActions: some View {
+        if message.canReact && !isOffline {
+            let isMine = message.reactions.contains { $0.key == quickReaction && $0.isMine }
+            Button(String(app: isMine ? Strings.Message.Menu.removeQuick(quickReaction)
+                                      : Strings.Message.Menu.addQuick(quickReaction))) {
+                handlers.onToggleReaction(quickReaction)
+            }
+            Button(String(app: Strings.Message.Menu.moreReactions)) { open() }
+        }
+        ForEach(sections.flatMap(\.actions).filter { $0.manner != .fact }) { action in
+            Button(String(app: action.title), action: action.perform)
+        }
     }
 
     // MARK: - What the menu offers
