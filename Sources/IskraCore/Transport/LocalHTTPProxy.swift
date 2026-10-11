@@ -49,6 +49,18 @@ public actor LocalHTTPProxy {
     public var port: UInt16? { boundPort }
     public var requestLog: [ProxiedRequest] { seen }
 
+    /// A request of the app's own, sent the way the SDK's are — through whatever stands behind this
+    /// listener, the bridge or a direct connection — without a round trip through the socket.
+    ///
+    /// For the few calls the SDK does not export (`AccountDevices`). Going through the listener's
+    /// *upstream* rather than to the homeserver directly is the whole point: with the bridge on,
+    /// a request that went direct would be the very leak the bridge exists to prevent. And in
+    /// process rather than over `http://127.0.0.1`, because App Transport Security would have its
+    /// say about plain HTTP, and there is nothing on that hop to protect anyway.
+    public func forward(_ request: ProxiedRequest) async throws -> ProxiedResponse {
+        try await upstream.send(request)
+    }
+
     /// The address to hand to `ClientBuilder.homeserverUrl(url:)`.
     public var homeserverURL: String? {
         boundPort.map { "http://127.0.0.1:\($0)" }

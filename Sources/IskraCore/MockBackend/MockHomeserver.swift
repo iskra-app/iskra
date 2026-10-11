@@ -76,6 +76,16 @@ public actor MockHomeserver: HTTPUpstream {
 
     // Keys, which the SDK insists on setting up whether or not anybody encrypts anything.
     var deviceID = "IKSRADEMO"
+    /// The demo account's *other* sessions, for the Devices screen to have something on it — and
+    /// something to end. Removed for good when ended; the server's memory lasts one launch.
+    var otherDevices: [JSON] = [
+        ["device_id": "MACBOOKDEMO", "display_name": "Iskra/1.0 (MacBook Air; macOS 26.0)",
+         "last_seen_ts": Int(Date().addingTimeInterval(-3 * 3600).timeIntervalSince1970 * 1000),
+         "last_seen_ip": "93.184.216.34"],
+        ["device_id": "WEBDEMO", "display_name": "Element Web: Firefox on Linux",
+         "last_seen_ts": Int(Date().addingTimeInterval(-6 * 86_400).timeIntervalSince1970 * 1000),
+         "last_seen_ip": "198.51.100.7"],
+    ]
     var deviceKeys: JSON?
     var crossSigning: [String: JSON] = [:]
     var oneTimeKeys = 0
@@ -222,10 +232,17 @@ public actor MockHomeserver: HTTPUpstream {
         case (_, "presence"):
             return Self.ok(["presence": "online"])
         case ("GET", "devices") where p.count == 1:
-            return Self.ok(["devices": [deviceDescription()]])
+            return Self.ok(["devices": [deviceDescription()] + otherDevices])
         case ("GET", "devices"):
             return Self.ok(deviceDescription())
-        case ("PUT", "devices"), ("DELETE", "devices"), ("POST", "delete_devices"):
+        case ("DELETE", "devices") where p.count == 2:
+            otherDevices.removeAll { $0["device_id"] as? String == p[1] }
+            return Self.ok([:])
+        case ("POST", "delete_devices"):
+            let ended = Set(body["devices"] as? [String] ?? [])
+            otherDevices.removeAll { ended.contains($0["device_id"] as? String ?? "") }
+            return Self.ok([:])
+        case ("PUT", "devices"), ("DELETE", "devices"):
             return Self.ok([:])
         case (_, "keys"):
             return try keysRoute(method, Array(p.dropFirst()), body)

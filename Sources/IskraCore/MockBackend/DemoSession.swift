@@ -63,8 +63,10 @@ actor DemoListener {
     func homeserverURL() async throws -> String {
         if let proxy, let url = await proxy.homeserverURL { return url }
         let proxy = LocalHTTPProxy(upstream: MockHomeserver.shared)
-        try await proxy.start()
+        let port = try await proxy.start()
         self.proxy = proxy
+        // So the app's own requests (`AccountDevices`) reach the demo server as the SDK's do.
+        AuthenticationService.register(standalone: proxy, port: port)
         guard let url = await proxy.homeserverURL else { throw LocalHTTPProxy.ProxyError.notStarted }
         return url
     }

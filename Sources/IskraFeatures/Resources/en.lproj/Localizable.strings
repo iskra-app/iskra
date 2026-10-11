@@ -975,6 +975,26 @@
    Apart they read as five small things; together they are one conversation. */
 "settings.security" = "Security";
 
+/* The settings row and the title of the screen listing every session on the account. */
+"devices.title" = "Devices";
+"devices.thisDevice" = "This device";
+/* Under this device, in place of when it was last seen. */
+"devices.online" = "online";
+"devices.endOthers" = "End all other sessions";
+"devices.endOthersFooter" = "Sign out of your account on every device except this one.";
+"devices.endOthersConfirm" = "End all other sessions?";
+"devices.others" = "Active sessions";
+"devices.noOthers" = "No other sessions — you’re only signed in here.";
+"devices.end" = "End";
+"devices.endConfirm" = "End this session?";
+/* Under the list, when sessions are ended on the server's website (browser sign-in). */
+"devices.managedFooter" = "This account’s sessions are ended on your server’s website — “End” will open it.";
+"devices.passwordTitle" = "Password needed";
+"devices.passwordMessage" = "Your server wants your account password to end the session.";
+"devices.passwordField" = "Password";
+"devices.cancel" = "Cancel";
+"devices.retry" = "Try again";
+
 /* The Notifications screen: what arrives by default, until a particular chat says otherwise.
    Two things have to be said out loud about these rules — they live on the server, so they apply
    to every device at once, and a chat's own setting always wins over them. */

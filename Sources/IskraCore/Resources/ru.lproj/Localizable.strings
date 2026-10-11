@@ -74,6 +74,12 @@
 "sendFailure.unsupportedFileType" = "Такие файлы отправлять нельзя.";
 "sendFailure.server" = "Ваш сервер не принял это сообщение.";
 
+/* Экран «Устройства», когда что-то не вышло. */
+"devices.loadFailed" = "Не получилось загрузить список устройств. Проверьте связь и попробуйте ещё раз.";
+"devices.endFailed" = "Сеанс не завершился. Попробуйте ещё раз.";
+"devices.wrongPassword" = "Пароль не подошёл.";
+"devices.managedElsewhere" = "На этом сервере сеансы завершаются на его сайте.";
+
 /* The strip above a message that answers another one. */
 "reply.loading" = "Загружаем сообщение…";
 "reply.unavailable" = "Сообщение недоступно";

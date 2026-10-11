@@ -1271,6 +1271,26 @@ public enum Strings {
         }
     }
 
+    /// Settings → Devices — see `DevicesView`.
+    public enum Devices {
+        public static let title = LocalizedStringResource("devices.title", bundle: bundle)
+        public static let thisDevice = LocalizedStringResource("devices.thisDevice", bundle: bundle)
+        public static let online = LocalizedStringResource("devices.online", bundle: bundle)
+        public static let endOthers = LocalizedStringResource("devices.endOthers", bundle: bundle)
+        public static let endOthersFooter = LocalizedStringResource("devices.endOthersFooter", bundle: bundle)
+        public static let endOthersConfirm = LocalizedStringResource("devices.endOthersConfirm", bundle: bundle)
+        public static let others = LocalizedStringResource("devices.others", bundle: bundle)
+        public static let noOthers = LocalizedStringResource("devices.noOthers", bundle: bundle)
+        public static let end = LocalizedStringResource("devices.end", bundle: bundle)
+        public static let endConfirm = LocalizedStringResource("devices.endConfirm", bundle: bundle)
+        public static let managedFooter = LocalizedStringResource("devices.managedFooter", bundle: bundle)
+        public static let passwordTitle = LocalizedStringResource("devices.passwordTitle", bundle: bundle)
+        public static let passwordMessage = LocalizedStringResource("devices.passwordMessage", bundle: bundle)
+        public static let passwordField = LocalizedStringResource("devices.passwordField", bundle: bundle)
+        public static let cancel = LocalizedStringResource("devices.cancel", bundle: bundle)
+        public static let retry = LocalizedStringResource("devices.retry", bundle: bundle)
+    }
+
     public enum Settings {
         public static let title = LocalizedStringResource("settings.title", bundle: bundle)
 

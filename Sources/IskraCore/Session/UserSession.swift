@@ -491,6 +491,52 @@ public final class UserSession {
     ///
     /// `nil` when the session was not obtained through OAuth — the metadata this is built from simply
     /// does not exist then — and the screen above answers that by not offering the row at all.
+    /// The account's sessions, for the Devices screen — see `AccountDevices`, which explains why
+    /// this is a request of the app's own and the two rules that make it safe.
+    public func accountDevices() -> AccountDevices? {
+        guard let deviceID else { return nil }
+
+        let client = client
+        let authentication = authentication
+        // Signed in through OAuth: the sessions are the server's to end, on its page.
+        let isManagedByServer = ((try? client.session())?.oauthData) != nil
+
+        @Sendable func authorised(_ request: ProxiedRequest) throws -> ProxiedRequest {
+            var request = request
+            // Read at the moment of sending, never kept: a token the SDK has since refreshed must
+            // not be replaced by the one it had when the screen opened.
+            request.headers["Authorization"] = "Bearer \(try client.session().accessToken)"
+            return request
+        }
+
+        return AccountDevices(
+            userID: userID,
+            currentDeviceID: deviceID,
+            isManagedByServer: isManagedByServer,
+            send: { request in
+                let response = try await authentication.send(try authorised(request),
+                                                             toHomeserver: client.homeserver())
+                guard response.status == 401, Self.isExpiredToken(response.body) else { return response }
+
+                // The token ran out, and only the SDK can refresh it — which it does when one of
+                // *its* requests is refused. So one cheap request of its own, and then once more.
+                _ = try? await client.displayName()
+                return try await authentication.send(try authorised(request),
+                                                     toHomeserver: client.homeserver())
+            },
+            serverPage: { deviceID in
+                let action: AccountManagementAction = deviceID.map { .deviceDelete(deviceId: $0) } ?? .devicesList
+                return (try? await client.accountUrl(action: action)).flatMap { $0 }.flatMap(URL.init(string:))
+            })
+    }
+
+    /// A 401 that means "your token has expired" and not "say your password" — the second is a
+    /// question from User-Interactive Auth and carries flows, not this errcode.
+    nonisolated private static func isExpiredToken(_ body: Data) -> Bool {
+        let json = (try? JSONSerialization.jsonObject(with: body)) as? [String: Any]
+        return json?["errcode"] as? String == "M_UNKNOWN_TOKEN"
+    }
+
     public func deviceManagementURL() async -> URL? {
         do {
             guard let address = try await client.accountUrl(action: .devicesList) else {
