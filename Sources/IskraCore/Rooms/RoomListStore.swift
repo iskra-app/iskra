@@ -63,6 +63,24 @@ public final class RoomListStore {
     /// and nothing anywhere explains why.
     public private(set) var isOffline = false
 
+    /// The list is catching up with the server — "Updating…" in the title, Telegram's. See where it
+    /// is subscribed in `startSteps`.
+    public private(set) var isUpdating = false
+
+    private var syncIndicatorHandle: TaskHandle?
+    private static let updatingShowsAfterMs: UInt32 = 500
+
+    private func syncIndicatorChanged(isUpdating: Bool) {
+        guard !hasStopped else { return }
+        let wasUpdating = self.isUpdating
+        self.isUpdating = isUpdating
+
+        // The catch-up is over: one full pass over the rooms, as a net under the incremental
+        // rebuilds — anything a diff did not mention but a long sync changed (a mute made on another
+        // device, a name) is picked up here. See `scheduleRebuild(only:)`.
+        if wasUpdating, !isUpdating { scheduleRebuild() }
+    }
+
     /// An invitation that would not be accepted or declined. Reported the same way `RoomDetailsStore`
     /// reports a refusal — as a field the screen puts in an alert — rather than thrown, because the
     /// press that caused it happened in a *row of a list*, and there is no call stack there to catch
@@ -203,8 +221,17 @@ public final class RoomListStore {
         // until some unrelated message arrived and happened to rebuild the row. The delegate is the
         // SDK's own "the notification settings moved" — it says nothing about which rule, which is
         // all this needs: the set is read again and the list recomputed.
-        await watchMuting()
-        guard isStillWanted(started) else { return }
+        //
+        // *Beside* the opening, not in front of it. It used to be awaited here, first, and it is a
+        // read of the push rules followed by a question per room that has a rule of its own — all
+        // of it standing between launching the app and the first conversation appearing, for the
+        // sake of the colour of a badge. The list now comes up at once with every badge in the
+        // accent, and the handful of muted ones turn grey a moment later. See `firstPaint`.
+        Task { [weak self] in
+            await self?.watchMuting()
+            guard let self, self.isStillWanted(started) else { return }
+            self.scheduleRebuild()
+        }
 
         // Offline mode is the SDK's own answer to a network that has gone away, and without it the
         // sync loop treats one as a failure: it reports `.error`, stops, and waits to be restarted.
@@ -220,7 +247,24 @@ public final class RoomListStore {
         guard isStillWanted(started) else { return }
         syncService = service
 
-        let list = try await service.roomListService().allRooms()
+        let listService = service.roomListService()
+
+        // "Updating…" in the title while the list is catching up — Telegram's. The SDK keeps this
+        // signal itself (Element X uses the same one): it is up while the room-list sync is setting
+        // up or recovering, which is exactly the stretch after launch, after a trip into a pocket
+        // and after the network comes back when what is on screen may be out of date. Shown only
+        // after half a second, so a catch-up that is over before anyone could read the word never
+        // flashes it.
+        syncIndicatorHandle = listService.syncIndicator(
+            delayBeforeShowingInMs: Self.updatingShowsAfterMs,
+            delayBeforeHidingInMs: 0,
+            listener: SyncIndicatorListener { [weak self] indicator in
+                Task { @MainActor [weak self] in
+                    self?.syncIndicatorChanged(isUpdating: indicator == .show)
+                }
+            })
+
+        let list = try await listService.allRooms()
         guard isStillWanted(started) else { return }
         roomList = list
 
@@ -274,9 +318,10 @@ public final class RoomListStore {
         //
         // The send queue is what knows. Every enqueue, send and failure comes through
         // here, and each one is a reason to look again.
-        let sendQueueListener = SendQueueListener { [weak self] in
+        // Only the room the update is about: a message going out changes one row.
+        let sendQueueListener = SendQueueListener { [weak self] roomID in
             Task { @MainActor [weak self] in
-                self?.scheduleRebuild()
+                self?.scheduleRebuild(only: [roomID])
             }
         }
         let queueHandle = try await client.subscribeToSendQueueUpdates(listener: sendQueueListener)
@@ -481,6 +526,10 @@ public final class RoomListStore {
         syncStateHandle?.cancel()
         syncStateHandle = nil
 
+        syncIndicatorHandle?.cancel()
+        syncIndicatorHandle = nil
+        isUpdating = false
+
         // Bounded, and for the same reason `logout` is: this is on the path out of the account,
         // and the way out of an account must not depend on the network being well. A sync service
         // that will not stop used to hold the whole sign-out, which held the whole app.
@@ -511,6 +560,9 @@ public final class RoomListStore {
         rooms = []
         isLoadingInitialRooms = true
         needsRebuild = false
+        summaryCache = [:]
+        changedRoomIDs = []
+        needsFullRebuild = true
     }
 
     // MARK: - Diff handling
@@ -520,15 +572,23 @@ public final class RoomListStore {
         // store may have just been deleted from under them — see `stop()`.
         guard !hasStopped else { return }
 
+        // The rooms this batch says something about — the only ones whose summaries need asking
+        // for again. See `scheduleRebuild(only:)`.
+        var touched: Set<String> = []
+        func touch(_ rooms: [Room]) { for room in rooms { touched.insert(room.id()) } }
+
         for diff in diffs {
             switch diff {
             case let .append(values):
+                touch(values)
                 orderedRooms.append(contentsOf: values)
             case .clear:
                 orderedRooms.removeAll()
             case let .pushFront(value):
+                touch([value])
                 orderedRooms.insert(value, at: 0)
             case let .pushBack(value):
+                touch([value])
                 orderedRooms.append(value)
             case .popFront:
                 if !orderedRooms.isEmpty { orderedRooms.removeFirst() }
@@ -544,12 +604,14 @@ public final class RoomListStore {
                 guard i <= orderedRooms.count else {
                     return desynced("insert at \(i) of \(orderedRooms.count)")
                 }
+                touch([value])
                 orderedRooms.insert(value, at: i)
             case let .set(index, value):
                 let i = Int(index)
                 guard orderedRooms.indices.contains(i) else {
                     return desynced("set at \(i) of \(orderedRooms.count)")
                 }
+                touch([value])
                 orderedRooms[i] = value
             case let .remove(index):
                 let i = Int(index)
@@ -565,11 +627,12 @@ public final class RoomListStore {
                 orderedRooms.removeSubrange(n...)
 
             case let .reset(values):
+                touch(values)
                 orderedRooms = values
             }
         }
 
-        scheduleRebuild()
+        scheduleRebuild(only: touched)
     }
 
     /// The list is no longer the list the SDK is describing, so it is asked for again.
@@ -608,7 +671,21 @@ public final class RoomListStore {
     /// is running raises a flag rather than a knife. When it finishes, it looks at the flag and
     /// goes round again. Bursts still collapse — a hundred diffs during one rebuild are one more
     /// rebuild, not a hundred — but a rebuild always *finishes*.
-    private func scheduleRebuild() {
+    ///
+    /// `only` narrows it, and that is the second half of keeping the list steady while a sync
+    /// pours in. Every diff used to rebuild *every* summary — a `roomInfo()` and a `latestEvent()`
+    /// per room, in sequence — so on an account with a few hundred chats one new message cost a few
+    /// hundred round trips into Rust, and a busy sync was a list always half a second behind and
+    /// rebuilt again before it caught up. A diff names the rooms it is about; those are asked again,
+    /// and every other row is the summary it already had. With no argument — a rename, a mute, the
+    /// send queue, the end of a catch-up — nothing names a room, and every one is asked.
+    private func scheduleRebuild(only rooms: Set<String>? = nil) {
+        if let rooms {
+            changedRoomIDs.formUnion(rooms)
+        } else {
+            needsFullRebuild = true
+        }
+
         needsRebuild = true
         guard rebuildTask == nil else { return }
 
@@ -630,7 +707,11 @@ public final class RoomListStore {
 
             while let self, self.needsRebuild, !Task.isCancelled, generation == self.generation {
                 self.needsRebuild = false
-                await self.rebuildSummaries()
+                let full = self.needsFullRebuild
+                let changed = self.changedRoomIDs
+                self.needsFullRebuild = false
+                self.changedRoomIDs = []
+                await self.rebuildSummaries(asking: full ? nil : changed)
             }
 
             guard let self, generation == self.generation else { return }
@@ -651,6 +732,21 @@ public final class RoomListStore {
     /// A diff arrived while a rebuild was already running, so another one is owed. See
     /// `scheduleRebuild`.
     private var needsRebuild = false
+
+    /// The summaries as last built, by room ID — nil for a room the list does not show (see
+    /// `RoomSummary.init`). What an incremental rebuild reuses for every room nobody mentioned.
+    private var summaryCache: [String: RoomSummary?] = [:]
+
+    /// The rooms named by diffs since the last rebuild, and whether something that names no room
+    /// asked for all of them. See `scheduleRebuild(only:)`.
+    private var changedRoomIDs: Set<String> = []
+    private var needsFullRebuild = true
+
+    /// How many conversations go on the screen before the rest of them are summarised, the first
+    /// time — a screenful and then some. Telegram opens on the list it had; this is as close as a
+    /// list read room by room out of the SDK can get: the top of it in the time it takes to ask
+    /// thirty rooms, then the rest underneath, out of sight.
+    private static let firstPaint = 30
 
     /// The rooms this account has silenced by name, so the list can draw their badges grey.
     ///
@@ -708,48 +804,87 @@ public final class RoomListStore {
         mutedRoomIDs = muted
     }
 
-    private func rebuildSummaries() async {
+    /// `asking`: the rooms to ask the SDK about again, every other one reusing its summary; nil asks
+    /// about all of them. See `scheduleRebuild(only:)`.
+    private func rebuildSummaries(asking changed: Set<String>?) async {
         let handles = orderedRooms
 
         var summaries: [RoomSummary] = []
         summaries.reserveCapacity(handles.count)
 
+        // Nothing on the screen yet: the first rooms go up as soon as there are enough of them to
+        // fill it, rather than after the last of several hundred has been asked about. That wait was
+        // the "Loading your messages…" screen at every launch — every conversation already in the
+        // store, and none of them shown until all of them had been summarised.
+        var isFirstPaint = rooms.isEmpty && archivedRooms.isEmpty
+
         for room in handles {
             guard !Task.isCancelled else { return }
-            guard let info = try? await room.roomInfo() else { continue }
 
-            var preview: String?
-            var activity: Date?
-
-            switch await room.latestEvent() {
-            case let .remote(timestamp, _, _, _, content):
-                preview = MessagePreview.text(for: content)
-                activity = MessagePreview.date(from: timestamp)
-            case let .local(timestamp, _, _, content, _):
-                preview = MessagePreview.text(for: content)
-                activity = MessagePreview.date(from: timestamp)
-            default:
-                break
-            }
-
-            guard let summary = RoomSummary(info: info,
-                                            ownUserID: ownUserID,
-                                            lastMessage: preview,
-                                            lastActivity: activity,
-                                            isMuted: mutedRoomIDs.contains(info.id)) else {
+            let roomID = room.id()
+            if let changed, !changed.contains(roomID), let cached = summaryCache[roomID] {
+                if let cached { summaries.append(cached) }
                 continue
             }
+
+            guard let summary = await summary(of: room) else {
+                summaryCache[roomID] = .some(nil)
+                continue
+            }
+            summaryCache[roomID] = summary
             summaries.append(summary)
+
+            if isFirstPaint, summaries.count == Self.firstPaint {
+                isFirstPaint = false
+                publish(summaries)
+            }
         }
 
         guard !Task.isCancelled else { return }
         watchTyping(in: handles)
-        // One list in, two lists out: the archive is everything the user swept aside, the main list
-        // is the rest. Both keep the same recency-and-pins order.
+        publish(summaries)
+
+        // Rooms that have left the list take their summaries with them.
+        let present = Set(handles.map { $0.id() })
+        summaryCache = summaryCache.filter { present.contains($0.key) }
+    }
+
+    /// One list in, two lists out: the archive is everything the user swept aside, the main list is
+    /// the rest. Both keep the same recency-and-pins order.
+    private func publish(_ summaries: [RoomSummary]) {
         let (active, archived) = Self.partitionArchived(summaries)
-        rooms = Self.byRecency(active)
-        archivedRooms = Self.byRecency(archived)
+        let sortedActive = Self.byRecency(active)
+        let sortedArchived = Self.byRecency(archived)
+        // Only when something is different. `rooms` is observed by the whole list, and assigning an
+        // equal array still tells every observer it changed.
+        if sortedActive != rooms { rooms = sortedActive }
+        if sortedArchived != archivedRooms { archivedRooms = sortedArchived }
         isLoadingInitialRooms = false
+    }
+
+    /// One room's row, asked of the SDK.
+    private func summary(of room: Room) async -> RoomSummary? {
+        guard let info = try? await room.roomInfo() else { return nil }
+
+        var preview: String?
+        var activity: Date?
+
+        switch await room.latestEvent() {
+        case let .remote(timestamp, _, _, _, content):
+            preview = MessagePreview.text(for: content)
+            activity = MessagePreview.date(from: timestamp)
+        case let .local(timestamp, _, _, content, _):
+            preview = MessagePreview.text(for: content)
+            activity = MessagePreview.date(from: timestamp)
+        default:
+            break
+        }
+
+        return RoomSummary(info: info,
+                           ownUserID: ownUserID,
+                           lastMessage: preview,
+                           lastActivity: activity,
+                           isMuted: mutedRoomIDs.contains(info.id))
     }
 
     /// Keeps one typing subscription per room in the list: new rooms are listened to, rooms that
@@ -977,6 +1112,18 @@ private final class NotificationSettingsWatcher: NotificationSettingsDelegate {
 
 /// Says only that some room's send queue stopped itself. Which room and why are dropped: the
 /// answer is the same call for every room, and the error is the SDK's to report on the message.
+private final class SyncIndicatorListener: RoomListServiceSyncIndicatorListener {
+    private let onIndicator: @Sendable (RoomListServiceSyncIndicator) -> Void
+
+    init(onIndicator: @escaping @Sendable (RoomListServiceSyncIndicator) -> Void) {
+        self.onIndicator = onIndicator
+    }
+
+    func onUpdate(syncIndicator: RoomListServiceSyncIndicator) {
+        onIndicator(syncIndicator)
+    }
+}
+
 private final class SendQueueErrorListener: SendQueueRoomErrorListener {
     private let onError: @Sendable () -> Void
 
@@ -1002,11 +1149,11 @@ private final class EntriesListener: RoomListEntriesListener {
     }
 }
 
-/// Says only that the send queue moved, not how.
+/// Says which room's send queue moved, and not how.
 ///
 /// The update itself is dropped on purpose. Every one of them — enqueued, sent, failed,
-/// cancelled — means the same thing here: some room's newest message is not what we last
-/// thought it was. `rebuildSummaries` then asks the rooms themselves, which is the answer
+/// cancelled — means the same thing here: that room's newest message is not what we last
+/// thought it was. `rebuildSummaries` then asks the room itself, which is the answer
 /// we would have had to go and fetch anyway. Nothing about the message travels across this
 /// hop, which also means nothing non-`Sendable` does.
 /// The sync loop reporting on itself. `SyncServiceState` is a plain enum and already `Sendable`, so
@@ -1024,13 +1171,13 @@ private final class SyncStateObserver: SyncServiceStateObserver {
 }
 
 private final class SendQueueListener: SendQueueRoomUpdateListener {
-    private let onUpdate: @Sendable () -> Void
+    private let onUpdate: @Sendable (String) -> Void
 
-    init(onUpdate: @escaping @Sendable () -> Void) {
+    init(onUpdate: @escaping @Sendable (String) -> Void) {
         self.onUpdate = onUpdate
     }
 
     func onUpdate(roomId: String, update: RoomSendQueueUpdate) {
-        onUpdate()
+        onUpdate(roomId)
     }
 }

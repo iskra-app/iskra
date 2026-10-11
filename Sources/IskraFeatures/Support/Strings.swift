@@ -288,7 +288,10 @@ public enum Strings {
         public static let title = LocalizedStringResource("roomList.title", bundle: bundle)
         public static let searchPrompt = LocalizedStringResource("roomList.searchPrompt", bundle: bundle)
         public static let clearSearch = LocalizedStringResource("roomList.clearSearch", bundle: bundle)
-        public static let loading = LocalizedStringResource("roomList.loading", bundle: bundle)
+        /// The title while the list is catching up, and while there is no network — see
+        /// `RoomListStatus`.
+        public static let updating = LocalizedStringResource("roomList.updating", bundle: bundle)
+        public static let waitingForNetwork = LocalizedStringResource("roomList.waitingForNetwork", bundle: bundle)
         public static let emptyTitle = LocalizedStringResource("roomList.emptyTitle", bundle: bundle)
         public static let emptyMessage = LocalizedStringResource("roomList.emptyMessage", bundle: bundle)
         public static let privateChat = LocalizedStringResource("roomList.privateChat", bundle: bundle)

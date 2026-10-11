@@ -59,6 +59,15 @@ public struct RoomListView: View {
     /// *now*. See `OfflineBanner`, which is what explains all this on screen.
     @Environment(\.isOffline) private var isOffline
 
+    /// Whether the list has been on the screen long enough for its changes to be animated — see the
+    /// `.animation` on the list.
+    @State private var hasSettledList = false
+
+    /// What the title says instead of "Chats", when it says anything else — see `RoomListStatus`.
+    private var listStatus: RoomListStatus? {
+        RoomListStatus(isOffline: isOffline, isUpdating: session.roomList.isUpdating)
+    }
+
     /// The look inside a chat that a long press on its row opens — see `ChatPeek`.
     @Environment(\.chatPeek) private var chatPeek
 
@@ -97,10 +106,27 @@ public struct RoomListView: View {
             }
         }
         .roomListStyle(nativeSidebar: isNativeSidebar)
+        // A chat that has just been written in rises to the top the way Telegram's does — it slides
+        // up past the ones it overtakes, rather than vanishing from its row and reappearing at the
+        // top while every row in between jumps down one. Scoped to the *order* of the list, so a
+        // preview or a badge changing in place is not caught by it; and not until the list has been
+        // on the screen a moment, so the first conversations do not fly in at launch.
+        .animation(hasSettledList ? .smooth(duration: Theme.Timing.chrome * 1.5) : nil,
+                   value: session.roomList.rooms.map(\.id))
+        .onChange(of: session.roomList.rooms.isEmpty, initial: true) { _, isEmpty in
+            guard !isEmpty, !hasSettledList else { return }
+            Task {
+                try? await Task.sleep(for: Theme.Timing.timelineSettles)
+                hasSettledList = true
+            }
+        }
         // An invitation that would not be accepted or declined. The same apology every other
         // refusal in the app gets — see `FailureAlert`.
         .failureAlert(Bindable(session.roomList).failure)
-        .navigationTitle(Text(Strings.RoomList.title))
+        // "Waiting for network…" or "Updating…" in place of the title while the list is not simply
+        // current — Telegram's. In the bar's middle with a spinner on iPhone; in a sidebar, where
+        // the title is plain text, the words alone. See `RoomListStatus`.
+        .navigationTitle(Text(listStatus?.title ?? Strings.RoomList.title))
         // A small title, centred, in the bar itself — not the large scrolling headline
         // SwiftUI would otherwise give this screen. `toolbarTitleDisplayMode` says that
         // on iOS and on the Mac; `navigationBarTitleDisplayMode` would only say it on iOS.
@@ -110,6 +136,7 @@ public struct RoomListView: View {
                 ToolbarItem(placement: .primaryAction) { newConversationMenu }
                 ToolbarItem(placement: .primaryAction) { settingsButton }
             } else {
+                ToolbarItem(placement: .principal) { RoomListTitle(status: listStatus) }
                 ToolbarItem(placement: .navigation) { newConversationMenu }
                 // Its own glass, not the bar's — see `accountButton`.
                 ToolbarItem(placement: .primaryAction) { accountButton }
@@ -145,8 +172,10 @@ public struct RoomListView: View {
                               onDone: { isFixingRecovery = false })
         }
         // And the same again at the top when the network is gone — see `OfflineBanner`, which is an
-        // inset for exactly the reason the search field is one.
-        .offlineBanner()
+        // inset for exactly the reason the search field is one. Only in a sidebar: on iPhone the
+        // title already says "Waiting for network…", and a strip saying it again pushed the first
+        // conversation down for nothing (`RoomListStatus`).
+        .offlineBanner(isSidebar)
         .overlay { emptyState }
         // A real destination on this column's stack, not a view swapped in behind a
         // hand-rolled transition. That is what buys the stock push, the back button and
@@ -492,7 +521,7 @@ public struct RoomListView: View {
             ContentUnavailableView.search(text: searchText)
         } else if !isSearching, session.roomList.rooms.isEmpty {
             if session.roomList.isLoadingInitialRooms {
-                ProgressView { Text(Strings.RoomList.loading) }
+                RoomListSkeleton()
             } else {
                 ContentUnavailableView(String(app: Strings.RoomList.emptyTitle),
                                        systemImage: "bubble.left.and.bubble.right",

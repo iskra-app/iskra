@@ -39,18 +39,21 @@ struct OfflineBanner: View {
 
 extension View {
     /// Puts the strip above this screen while the app is offline, and takes it away when it is not.
-    func offlineBanner() -> some View {
-        modifier(OfflineBannerModifier())
+    /// `isShown` false leaves it out on a screen that says the same thing some other way — the chat
+    /// list on iPhone, whose title does (`RoomListStatus`).
+    func offlineBanner(_ isShown: Bool = true) -> some View {
+        modifier(OfflineBannerModifier(isShown: isShown))
     }
 }
 
 private struct OfflineBannerModifier: ViewModifier {
+    let isShown: Bool
     @Environment(\.isOffline) private var isOffline
 
     func body(content: Content) -> some View {
         content
             .safeAreaInset(edge: .top) {
-                if isOffline {
+                if isShown, isOffline {
                     OfflineBanner()
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }
