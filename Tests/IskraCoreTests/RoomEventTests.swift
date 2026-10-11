@@ -54,7 +54,7 @@ struct RoomEventTests {
     @Test("people are named up to two and counted after that")
     func peopleAreListed() {
         func line(_ names: [String]) -> String {
-            RoomEvent(id: "1", kind: .joined(names), timestamp: .now).text
+            RoomEvent(id: "1", kind: .joined(names.map { RoomEventPerson(stringLiteral: $0) }), timestamp: .now).text
         }
 
         #expect(line(["Аня"]).contains("Аня"))

@@ -227,6 +227,17 @@ public struct RoomView: View {
     @State private var details: RoomDetailsStore?
     @State private var isShowingDetails = false
 
+    /// The person whose page is open, pushed over the room — see `openProfile(_:)`.
+    @State private var profileUserID: String?
+
+    /// Opens a person's page — from their name in a grey line, or their face beside a message.
+    /// The room details are what the page is made of, so they are made here if nothing has yet.
+    private func openProfile(_ userID: String) {
+        if details == nil { details = makeDetails() }
+        guard details != nil else { return }
+        profileUserID = userID
+    }
+
     /// Whether the room has already been put down. See `tearDown()` — there are two ways out and
     /// they can both fire.
     @State private var hasTornDown = false
@@ -539,6 +550,8 @@ public struct RoomView: View {
             .environment(\.timelineWidth, timelineWidth)
             // Where a message of ours starts its journey to its bubble — see `ComposerTravel`.
             .environment(\.composerTextLeading, composerTextLeading)
+            // A name in a grey line, a face beside a message: both go to that person's page.
+            .environment(\.openProfile) { userID in openProfile(userID) }
             // The floating date — see `FloatingDates`. Written only when a date crosses the line, so
             // a scroll costs a couple of updates per day passed, not one per frame.
             .environment(\.floatingDateLine, floatingDateLine)
@@ -1095,6 +1108,13 @@ public struct RoomView: View {
                 PinnedMessagesView(pinned: pinned, isOneToOne: timeline.isOneToOne)
             }
         }
+        // A person's page, from a name in a grey line or a face beside a message — Telegram's. The
+        // same page the member list opens, over the same room details, built on the first press.
+        .navigationDestination(item: $profileUserID) { userID in
+            if let details {
+                RoomMemberProfile(details: details, userID: userID)
+            }
+        }
         .photosPicker(isPresented: $isChoosingPhoto,
                       selection: $pickedItems,
                       maxSelectionCount: Self.pickLimit,
@@ -1223,7 +1243,7 @@ public struct RoomView: View {
         // is in the room. The flags are the honest signal — we know when we are pushing, because
         // we are the ones who pushed.
         .onDisappear {
-            guard !isShowingDetails, !isShowingPinned else { return }
+            guard !isShowingDetails, !isShowingPinned, profileUserID == nil else { return }
             tearDown()
         }
         // Two alerts, because there are two kinds of bad news and they come from different places.

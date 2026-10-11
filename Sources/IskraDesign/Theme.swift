@@ -545,6 +545,9 @@ public enum Theme {
         /// is 48 on a photo, and 48 is also comfortably more than the tap floor below, which
         /// matters because the cross in it is a button.
         public static let uploadRing: CGFloat = 48
+        /// One of the round glass buttons under a person's portrait — `ProfileActionTile`. A size a
+        /// thumb lands on without aiming, with the word under it rather than inside.
+        public static let profileAction: CGFloat = 56
         /// Nothing tappable is ever smaller than this. Apple's floor, and ours.
         public static let minimumTapTarget: CGFloat = 44
 
