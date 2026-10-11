@@ -217,6 +217,14 @@ public enum CoreStrings {
         public static let deleteFailed = LocalizedStringResource("timeline.deleteFailed", bundle: bundle)
     }
 
+    /// What the Devices screen says when it could not do something — see `DevicesActionFailure`.
+    public enum Devices {
+        public static let loadFailed = LocalizedStringResource("devices.loadFailed", bundle: bundle)
+        public static let endFailed = LocalizedStringResource("devices.endFailed", bundle: bundle)
+        public static let wrongPassword = LocalizedStringResource("devices.wrongPassword", bundle: bundle)
+        public static let managedElsewhere = LocalizedStringResource("devices.managedElsewhere", bundle: bundle)
+    }
+
     /// Why a message is stuck. Each one names the thing the user has to do, because these
     /// are failures only they can clear — see `SendFailure`.
     public enum SendFailure {

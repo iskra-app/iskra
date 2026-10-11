@@ -161,6 +161,8 @@ public final class SignInMockServer: HTTPUpstream {
     public func start() async throws -> (proxy: LocalHTTPProxy, address: String) {
         let proxy = LocalHTTPProxy(upstream: self)
         let port = try await proxy.start()
+        // So the app's own requests (`AccountDevices`) reach this server as the SDK's do.
+        AuthenticationService.register(standalone: proxy, port: port)
         let address = "http://127.0.0.1:\(port)"
         base.withLock { $0 = address }
         return (proxy, address)

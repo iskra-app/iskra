@@ -52,6 +52,7 @@ struct SettingsView: View {
         case profile
         case notifications
         case security
+        case devices
         case storage
     }
 
@@ -177,6 +178,15 @@ struct SettingsView: View {
                     Label(Strings.Settings.security, systemImage: "lock.shield")
                 }
 
+                // Every session on the account, Telegram's "Devices" — its own row rather than a
+                // line inside Security, because "where am I signed in" is a question people come to
+                // settings with by itself. Only where there is a device ID to call this one by.
+                if session.deviceID != nil {
+                    NavigationLink(value: Destination.devices) {
+                        Label(Strings.Devices.title, systemImage: "laptopcomputer.and.iphone")
+                    }
+                }
+
                 // Before storage: both are about the bytes photos and videos cost, and this one is
                 // the question people come to settings with — "why did it send so big".
                 NavigationLink {
@@ -261,6 +271,10 @@ struct SettingsView: View {
                              recovery: session.recovery,
                              verification: session.verification,
                              deviceID: session.deviceID)
+            case .devices:
+                if let devices = session.accountDevices() {
+                    DevicesView(store: DevicesStore(source: devices))
+                }
             case .storage:
                 // Built here, on the push, for the same reason as the encryption screen above:
                 // a `NavigationLink` with a destination closure builds it on every pass of this

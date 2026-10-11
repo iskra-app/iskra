@@ -74,6 +74,12 @@
 "sendFailure.unsupportedFileType" = "This kind of file can’t be sent.";
 "sendFailure.server" = "Your server turned this message away.";
 
+/* The Devices screen, when something did not work. */
+"devices.loadFailed" = "Couldn’t load your devices. Check your connection and try again.";
+"devices.endFailed" = "The session didn’t end. Try again.";
+"devices.wrongPassword" = "That password didn’t work.";
+"devices.managedElsewhere" = "On this server, sessions are ended on its website.";
+
 /* The strip above a message that answers another one. */
 "reply.loading" = "Loading the message…";
 "reply.unavailable" = "Message unavailable";

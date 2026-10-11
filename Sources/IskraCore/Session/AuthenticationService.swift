@@ -811,6 +811,41 @@ public actor AuthenticationService {
         }
     }
 
+    /// Sends one request of the app's own to the homeserver *the way the SDK reaches it* — see
+    /// `LocalHTTPProxy.forward`, and `AccountDevices`, which is what needs it.
+    ///
+    /// `homeserver` is the address the client was built with. A loopback address is one of our
+    /// listeners, and the request goes to whatever stands behind it — the bridge, or a direct
+    /// connection when the switch is on with no address. An address with no listener of ours behind
+    /// it is **refused**, never tried directly: that would be the "quiet direct connection" this
+    /// file is careful never to make (see the rule on `bridgeUnavailable`). Anything else is the
+    /// homeserver itself, which is where the SDK is going too.
+    public func send(_ request: ProxiedRequest, toHomeserver homeserver: String) async throws -> ProxiedResponse {
+        guard let url = URL(string: homeserver) else { throw UpstreamError.badTarget(homeserver) }
+
+        if url.host() == "127.0.0.1" || url.host() == "localhost" {
+            for tunnel in tunnels.values where await tunnel.proxy.port == url.port.map(UInt16.init) {
+                return try await tunnel.proxy.forward(request)
+            }
+            if let proxy = Self.standaloneListeners.withLock({ $0[url.port ?? 0] }) {
+                return try await proxy.forward(request)
+            }
+            throw UpstreamError.badTarget(homeserver)
+        }
+
+        return try await DirectUpstream(homeserver: url).send(request)
+    }
+
+    /// Listeners that are not tunnels — the demo server and the sign-in server, which stand behind
+    /// the same `LocalHTTPProxy` with a made-up homeserver as the upstream. Registered by port so
+    /// that `send(_:toHomeserver:)` reaches them the way the SDK does, and the screens built on it
+    /// work in the demo too.
+    public static func register(standalone proxy: LocalHTTPProxy, port: UInt16) {
+        standaloneListeners.withLock { $0[Int(port)] = proxy }
+    }
+
+    private static let standaloneListeners = Mutex<[Int: LocalHTTPProxy]>([:])
+
     /// One homeserver's listener, and its bridge with it.
     private func stopTunnel(_ key: String) async {
         guard let tunnel = tunnels.removeValue(forKey: key) else { return }
