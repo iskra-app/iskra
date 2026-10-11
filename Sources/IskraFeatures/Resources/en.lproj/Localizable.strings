@@ -635,7 +635,6 @@
 "room.sharedMedia" = "Media & files";
 "room.sharedMediaEmptyTitle" = "No media yet";
 "room.sharedMediaEmptyMessage" = "Photos, videos, and files from this chat will show up here.";
-"room.galleryLoadEarlier" = "Show earlier";
 
 /* Spaces and what is inside them. */
 "room.spaceLabel" = "Space";

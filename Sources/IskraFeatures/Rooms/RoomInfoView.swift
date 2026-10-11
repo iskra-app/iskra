@@ -446,10 +446,9 @@ struct RoomInfoView: View {
         case .members:
             members
         case .media:
+            // Edge to edge, Telegram's contact sheet: the month headings keep their own margin.
             RoomMediaGrid(items: photos)
                 .profileHeaderRow()
-                .padding(.horizontal, Theme.Spacing.roomy)
-                .padding(.vertical, Theme.Spacing.close)
             loadEarlier
         case .voice:
             RoomVoiceList(items: voices)
@@ -466,23 +465,18 @@ struct RoomInfoView: View {
         }
     }
 
-    /// Reaching further back, from whichever tab is open. It is the conversation's own pagination,
+    /// Reaching further back, from whichever tab is open — by scrolling to the end of it, the way
+    /// Telegram's shared media does, and not by a button. It is the conversation's own pagination,
     /// so a page fetched here is a page the chat behind does not have to fetch again.
+    ///
+    /// There used to be a "Show earlier" button here, which made the reader do by hand, page by
+    /// page, what the end of a list already asks for: in a room's old history photos are sparse,
+    /// a page of twenty-five events often has none, and the button went on being pressed for
+    /// nothing. See `AutoLoadEarlier`.
     @ViewBuilder
     private var loadEarlier: some View {
-        if let timeline, timeline.canLoadMore {
-            Button {
-                Task { await timeline.loadMore() }
-            } label: {
-                if timeline.isPaginating {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
-                } else {
-                    Text(Strings.Room.galleryLoadEarlier)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                }
-            }
-            .disabled(timeline.isPaginating)
+        if let timeline, timeline.canLoadMore, !timeline.historyIsStranded {
+            AutoLoadEarlier(timeline: timeline)
         }
     }
 
