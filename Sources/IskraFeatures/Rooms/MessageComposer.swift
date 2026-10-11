@@ -57,6 +57,9 @@ struct MessageComposer: View {
     /// are their own and survive.
     var onCancelContext: () -> Void = {}
 
+    /// Where the text begins on the screen, reported as it moves — see `ComposerTravel`.
+    var onTextLeading: (CGFloat) -> Void = { _ in }
+
     var onSend: () -> Void
 
     /// The four moments of a hold on the record button, in video: it began, it ended (send), it
@@ -153,6 +156,7 @@ struct MessageComposer: View {
     init(draft: Binding<String>,
          context: ComposerContext? = nil,
          onCancelContext: @escaping () -> Void = {},
+         onTextLeading: @escaping (CGFloat) -> Void = { _ in },
          onSend: @escaping () -> Void,
          onStartVideoNote: @escaping () -> Void = {},
          onFinishVideoNote: @escaping () -> Void = {},
@@ -174,6 +178,7 @@ struct MessageComposer: View {
         _draft = draft
         self.context = context
         self.onCancelContext = onCancelContext
+        self.onTextLeading = onTextLeading
         self.onSend = onSend
         self.onStartVideoNote = onStartVideoNote
         self.onFinishVideoNote = onFinishVideoNote
@@ -270,6 +275,12 @@ struct MessageComposer: View {
                         TextField(String(app: Strings.Room.composerPlaceholder), text: $draft, axis: .vertical)
                             .transition(.opacity)
                             .textFieldStyle(.plain)
+                            // Where the words start on the screen — the point a sent message
+                            // travels across from. Measured on the bare field, inside its padding,
+                            // so it is the first letter's edge and not the glass around it.
+                            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minX } action: {
+                                onTextLeading($0)
+                            }
                             .lineLimit(1...5)
                             .focused($isFocused)
                             .padding(.horizontal, Theme.Spacing.roomy)

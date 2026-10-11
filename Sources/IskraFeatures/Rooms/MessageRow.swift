@@ -35,7 +35,11 @@ struct MessageRow: View {
     /// arrival — it is the whole room twitching. What this exists for is the one message that
     /// lands in a conversation somebody is already reading: their own, going out, and the answer
     /// coming back. `RoomView` knows which of the two is happening and says so.
-    var arrivesAnimated: Bool = true
+    ///
+    /// False unless said otherwise. An arriving row starts with no height and claims it as it lands
+    /// (`MessageArrival`), so a row built anywhere that never runs the landing — a snapshot, a
+    /// preview — would be built flat. A row arrives only when somebody who knows says it does.
+    var arrivesAnimated: Bool = false
 
     /// Whether the conversation has just jumped *to* this message, and it is briefly lit so that
     /// the eye can find it.
@@ -125,16 +129,16 @@ struct MessageRow: View {
         // and the row's height follows them. Scoped to the set of emoji and nothing else, so a
         // tick or an edit landing in the same pass is not caught by it.
         .animation(.smooth(duration: Theme.Timing.reaction), value: message.reactions.map(\.key))
-        // Nothing else about a message is animated, and that is the rule rather than an
-        // omission. A message arrives once; after that it only ever *changes* — a tick turns
-        // over when it is read, a reaction lands under it, an edit rewrites it, a redaction
-        // replaces it with the grey line. None of those are things the message does, they are
-        // facts becoming true, and a fact that eases into place asks the eye to watch a row
-        // the reader had finished with.
+        // Nothing else about a message is animated *from here*, and that is the rule rather than
+        // an omission. A message arrives once; after that it only ever *changes* — an edit
+        // rewrites it, a redaction replaces it with the grey line. Those are facts becoming true,
+        // and a fact that eases into place asks the eye to watch a row the reader had finished
+        // with. The one small exception carries its own scope: the delivery mark turns over in
+        // place, clock to tick to eye, as Telegram's does — see `DeliveryTick`.
         //
         // The arrival, which is the one thing that does move, is `arrives` below. It is not a
         // `.transition`, and that is the point of it.
-        .arrives(arrivesAnimated)
+        .arrives(arrivesAnimated, outgoing: message.isOwn)
     }
 
     // MARK: - The bubble, and what can be done to it
@@ -229,6 +233,9 @@ struct MessageRow: View {
                        playingDiameter: playingDiameter,
                        onOpenReply: handlers.onOpenReply)
             .uploadProgress(of: message, onCancel: handlers.onDiscard)
+            // One of ours comes across from where it was typed — Telegram's send. See
+            // `ComposerTravel`. On the bubble rather than the row, which spans the screen.
+            .travelsFromComposer(arrivesAnimated && message.isOwn)
             .messageActions(message, isPinned: isPinned, handlers: handlers)
     }
 
@@ -408,28 +415,43 @@ struct DeliveryTick: View {
 
     var body: some View {
         Group {
-            switch status {
-            case .sending:
-                Image(systemName: "clock")
-            case .sent:
-                Image(systemName: "checkmark")
-            case .read where !carriesReadMark:
-                // Read, and the eye below it already said so. Nothing to add.
-                EmptyView()
-            case .read:
-                // A glance, not a second tick: "sent" and "read" as one checkmark and two, or a
-                // checkmark and a ringed checkmark, are the same small mark twice and the eye is
-                // the difference read at a distance.
-                Image(systemName: "eye.fill")
-            case .failed:
-                // Never drawn: `MessageRow` sends failures to `SendFailureBadge`. Progress
-                // is worth a whisper; a message that never left is not.
-                EmptyView()
+            if let symbol {
+                // One image whose symbol changes, rather than a different image per state, so the
+                // change can be *seen*: the clock turns into the tick, and the tick into the eye,
+                // the way Telegram's status turns over in place when a message lands and when it is
+                // read. A different view per state could only blink.
+                Image(systemName: symbol)
+                    .contentTransition(.symbolEffect(.replace))
+                    .transition(.scale(scale: 0.5).combined(with: .opacity))
             }
         }
         .font(.caption2)
         .foregroundStyle(.secondary)
+        // Scoped to the mark and to the symbol it shows, and to nothing else in the row: the rest of
+        // a message that is merely changing still changes at once (see `MessageRow`).
+        .animation(.smooth(duration: Theme.Timing.chrome), value: symbol)
         .accessibilityLabel(Text(label))
+    }
+
+    private var symbol: String? {
+        switch status {
+        case .sending:
+            "clock"
+        case .sent:
+            "checkmark"
+        case .read where !carriesReadMark:
+            // Read, and the eye below it already said so. Nothing to add.
+            nil
+        case .read:
+            // A glance, not a second tick: "sent" and "read" as one checkmark and two, or a
+            // checkmark and a ringed checkmark, are the same small mark twice and the eye is
+            // the difference read at a distance.
+            "eye.fill"
+        case .failed:
+            // Never drawn: `MessageRow` sends failures to `SendFailureBadge`. Progress
+            // is worth a whisper; a message that never left is not.
+            nil
+        }
     }
 
     private var label: LocalizedStringResource {

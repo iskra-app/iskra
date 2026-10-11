@@ -185,6 +185,39 @@ public enum Theme {
         /// reacted to, edited, deleted — changes at once.
         public static let arrival: Animation = .spring(duration: 0.32, bounce: 0.18)
 
+        /// A message opening its place at the foot of the conversation — the whole column moving up
+        /// by its height, and the message coming up from under the composer into the room it made.
+        ///
+        /// Telegram's numbers, taken as they are: `ChatMessageTransitionNode` moves a sent message
+        /// vertically on this bezier over 0.3 s. It starts slowly and then commits — the column is
+        /// seen to *make room* before the message is seen to take it — which is the difference
+        /// between a message arriving and a list being redrawn. See `MessageArrival`.
+        public static let messageMakesRoom: Animation = .timingCurve(0.199, 0.011, 0.279, 0.910,
+                                                                     duration: 0.3)
+
+        /// A message of ours travelling across from the composer to its own side of the screen.
+        ///
+        /// Telegram's horizontal curve for the same transition, deliberately not the vertical one:
+        /// it is fast off the mark and long in the settling, so the words leave the box the instant
+        /// send is pressed and ease into the bubble rather than arriving at both ends at once.
+        public static let messageCrosses: Animation = .timingCurve(0.23, 1, 0.32, 1, duration: 0.3)
+
+        /// Somebody else's message coming up into the space the column has made for it. A fade, and
+        /// a short one — Telegram's 0.2 s — because the movement is the column's; this only keeps
+        /// the bubble from being seen to slide in solid from under the composer.
+        public static let messageAppears: Animation = .easeOut(duration: 0.2)
+
+        /// The date floating over a conversation coming in as the list starts to move — Telegram's
+        /// 0.3 s (`ChatMessageDateHeader.updateFlashing`).
+        public static let floatingDateIn: Animation = .easeOut(duration: 0.3)
+
+        /// …and going once the list has come to rest, a little slower — Telegram's 0.4 s.
+        public static let floatingDateOut: Animation = .easeIn(duration: 0.4)
+
+        /// How long the list has to be still before the floating date goes. Long enough that a
+        /// flick followed by a second flick does not blink it out between them.
+        public static let floatingDateLingers: Duration = .milliseconds(800)
+
         /// How long the conversation stays pinned to its end after a message has landed there.
         ///
         /// A row is not its final height when it is inserted — the picture in it arrives, the

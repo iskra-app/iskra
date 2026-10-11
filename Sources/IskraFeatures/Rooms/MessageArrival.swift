@@ -1,129 +1,198 @@
 import SwiftUI
 import IskraDesign
 
-/// A message rising into place, animated by the row itself.
+/// A message arriving at the foot of the conversation, animated by the row itself — the way
+/// Telegram does it.
 ///
-/// **Why this is not a `.transition`.** SwiftUI plays a transition only when the change that
-/// inserted the view happened inside an animated transaction, so a transition needs an
-/// `.animation` scope around the list to drive it — and an implicit scope animates *every*
-/// animatable value in everything it wraps whenever the one value it watches changes. Around a
-/// conversation that means a delivery tick, a reaction, an edit or a redaction is animated
-/// because something unrelated moved in the same pass. That bug was chased three times under
-/// three different values — the tail of the list, the send queue, the end of the conversation —
-/// and each of them animated the wrong thing, because what a scope watches is never what it
-/// animates.
+/// **What Telegram does.** Its list does not slide a new message in over the others; it *opens a
+/// place* for it. The new item's height goes from nothing to its own over 0.3 s, so every message
+/// above is pushed up together by exactly as much as the newcomer needs, and the newcomer rises
+/// into that gap from under the input field. Somebody else's message fades in as it comes (0.2 s);
+/// one of yours does not fade, it *travels* — out of the text field where the words just were,
+/// across to its own side of the screen, on a curve of its own (`ChatMessageTransitionNode`). The
+/// effect is that nothing on the screen ever jumps: the column moves, smoothly, because something
+/// was added to it.
 ///
-/// A row that animates its own entrance needs no transaction from anybody. The animation here is
-/// scoped to one piece of state in one row, and nothing else in the conversation can be caught
-/// by it. That is the whole design: the list has no animation scope at all, and cannot acquire
-/// one by accident.
+/// **Why the height, here, and why that is not the mistake it used to be.** An earlier version of
+/// this file argued the opposite — that growing the height would make the reader standing halfway up
+/// a busy room watch the conversation drift under them while a message they could not even see
+/// arrived below. That is true, and it is why the growth only ever happens when the reader is *at
+/// the end* (`RoomView` decides — see `PlacedRow.arrives`). There the drift is the point: the end is
+/// where the reader is looking, and the column moving up to make room is the arrival. Anywhere else
+/// the row is simply there, at full height, and `RoomView.held` keeps the reader where they were.
 ///
-/// **Why an offset and not a height.** The row takes its full height the instant it exists and
-/// only its *picture* slides, so the conversation is exactly as tall during the animation as it
-/// is after it. Growing the height over a third of a second would change the content size a
-/// dozen times, and every one of those is a size change the scroll view answers: the reader
-/// standing halfway up a busy room would watch it drift under them while a message they cannot
-/// even see arrives below. See the `held` metrics in `RoomView`.
-///
-/// **Up, from the bottom.** The end of the conversation is at the foot of the screen, so that is
-/// where a new message comes from — out of the composer, settling into the row it now owns.
+/// **Why still not a `.transition`.** Everything the old note said about that stands: a transition
+/// needs an animated transaction around the list, and an animated transaction around a conversation
+/// animates every tick, reaction and edit that happens to land in the same pass. The animation is
+/// still scoped to state inside one row — the fraction of its height it is claiming, how solid it is,
+/// how far across it has come — and nothing outside the row can be caught by it.
 struct MessageArrival: ViewModifier {
-    /// Whether this row is genuinely arriving. False for everything else, and then the row is
-    /// drawn in place, at full strength, and `onAppear` does nothing.
-    ///
-    /// It has to be false for the ordinary case, and not merely "not animated". A `LazyVStack`
-    /// builds a row when it scrolls into view, so a row that animated itself on appearing would
-    /// animate every time the reader scrolled past it. `RoomView` decides — only rows added past
-    /// the end of the conversation are arriving — and it decides while the view is being built,
-    /// which is the only moment early enough to matter.
-    let isArriving: Bool
+    /// How a row comes in. Decided by `RoomView` while the view is being built — see
+    /// `MessageArrivals` — because a `LazyVStack` builds rows as they scroll into view, and a row
+    /// that animated itself on appearing would animate every time the reader scrolled past it.
+    enum Style {
+        /// Already here: history, a refill, a row scrolled back into view.
+        case still
+        /// Somebody else's message: the column makes room and it fades up into it.
+        case incoming
+        /// One of ours: the column makes room and it travels across from the composer.
+        case outgoing
+    }
 
-    /// How far below its place the message starts. Small on purpose: this is a message being put
-    /// down, not one flying in from off-screen.
-    ///
-    /// Shared with `AnyTransition.arrival`, so that the one thing in a conversation that does
-    /// arrive as a *transition* — the typing bubble, which is inserted and removed rather than
-    /// appended — comes up from exactly as far down as a message does.
-    static let rise: CGFloat = 14
+    let style: Style
 
-    /// Where the row is, and how solid — held as state rather than read from `isArriving`,
-    /// because `isArriving` is true for exactly one pass and the animation outlives it.
+    /// How much of its height the row is claiming, from 0 to 1. See `ClaimedHeight`.
     ///
-    /// This is the whole of what went wrong the first time. The modifier branched on
-    /// `isArriving`, so the row was one view while arriving and a different one after — and
-    /// "after" is the *next* pass, a few milliseconds later, once `RoomView` has written down
-    /// where the conversation now ends. SwiftUI duly tore down the animating branch and built
-    /// the plain one in its place, which cancelled the animation before a single frame of it was
-    /// drawn. A message you sent simply appeared, with nothing to show for it.
-    ///
-    /// Seeded at `init` instead. A `@State` initial value is used on the first build and then
-    /// left alone, so the row starts low and clear, lands once, and stays landed no matter what
-    /// the flag does afterwards. One view throughout, and nothing to tear down.
-    @State private var lift: CGFloat
+    /// State, seeded at `init`, and never re-read from `style` — the lesson of the first version of
+    /// this file, which branched on the flag and had the arriving branch torn down a few
+    /// milliseconds later when `RoomView` recorded the new end, cancelling the animation before a
+    /// single frame of it was drawn.
+    @State private var claimed: CGFloat
     @State private var solidity: Double
 
-    init(isArriving: Bool) {
-        self.isArriving = isArriving
-        _lift = State(initialValue: isArriving ? Self.rise : 0)
-        _solidity = State(initialValue: isArriving ? 0 : 1)
+    init(style: Style) {
+        self.style = style
+        _claimed = State(initialValue: style == .still ? 1 : 0)
+        _solidity = State(initialValue: style == .incoming ? 0 : 1)
     }
 
     func body(content: Content) -> some View {
-        content
-            .offset(y: lift)
-            .opacity(solidity)
-            .onAppear {
-                guard isArriving else { return }
-                land()
-            }
+        // The sideways journey of one of ours is not here: it belongs to the *bubble*, not to the
+        // row, because the row is as wide as the screen and its leading edge says nothing about
+        // where the bubble starts. See `ComposerTravel`.
+        ClaimedHeight(fraction: claimed) {
+            content.opacity(solidity)
+        }
+        .onAppear {
+            guard style != .still else { return }
+            land()
+        }
     }
 
-    /// Starts the rise, one frame after the row exists.
+    /// Starts the arrival, one frame after the row exists.
     ///
-    /// The frame is the point. `onAppear` runs inside the same pass that first lays the row out,
-    /// so animating from there gives SwiftUI a view whose initial value it has never drawn — and
-    /// it does the sensible thing with that, which is to collapse the two into a single render
-    /// and put the row straight at its final place. The animation was correct and simply had no
-    /// frames to happen in: a message appeared, fully formed, exactly as though nothing had been
-    /// asked for.
-    ///
-    /// So the row is drawn once where it starts, low and clear, and the landing is asked for
-    /// after that. One frame is all it takes, and one frame is not a delay anybody can see —
-    /// `onAppear` has already put the bubble on screen; this only decides where it is standing
-    /// when the eye arrives.
+    /// The frame is not a delay anybody can see. `onAppear` runs inside the same pass that first lays
+    /// the row out, and an animation asked for from there has no initial value on screen to start
+    /// from — SwiftUI collapses the two into one render and the row simply appears. Drawn once where
+    /// it starts (no height, below the fold), it then has somewhere to move from.
     private func land() {
         Task { @MainActor in
             try? await Task.sleep(for: Theme.Timing.aFrame)
-            withAnimation(Theme.Timing.arrival) {
-                lift = 0
-                solidity = 1
+
+            withAnimation(Theme.Timing.messageMakesRoom) { claimed = 1 }
+
+            if style == .incoming {
+                withAnimation(Theme.Timing.messageAppears) { solidity = 1 }
             }
         }
     }
 }
 
+/// One of our messages travelling across from the composer to its bubble — the sideways half of
+/// Telegram's send animation. Put on the *bubble*, because it is the bubble's leading edge that has
+/// to come from the text field's; the row around it spans the screen.
+///
+/// Measured once, before it moves, in screen coordinates against `composerTextLeading`. An offset
+/// does not change the layout, so writing it from the measurement cannot feed back into the
+/// measurement — `EnvironmentValues.timelineWidth` tells the story of a measurement that *did*.
+struct ComposerTravel: ViewModifier {
+    let isTravelling: Bool
+
+    @State private var across: CGFloat = 0
+    @State private var hasMeasured: Bool
+
+    @Environment(\.composerTextLeading) private var composerTextLeading
+
+    init(isTravelling: Bool) {
+        self.isTravelling = isTravelling
+        _hasMeasured = State(initialValue: !isTravelling)
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minX } action: { minX in
+                guard !hasMeasured else { return }
+                hasMeasured = true
+                guard let composerTextLeading else { return }
+
+                // Only ever leftwards: a bubble of ours sits to the right of where it was typed.
+                // Set without animation, then sent home on the next frame — see `MessageArrival.land`.
+                var still = Transaction()
+                still.disablesAnimations = true
+                withTransaction(still) { across = min(0, composerTextLeading - minX) }
+
+                Task { @MainActor in
+                    try? await Task.sleep(for: Theme.Timing.aFrame)
+                    withAnimation(Theme.Timing.messageCrosses) { across = 0 }
+                }
+            }
+            .offset(x: across)
+    }
+}
+
+/// Lays its one child out at full size and claims only `fraction` of its height from the column.
+///
+/// The child is placed from the *top* of the claimed space, so while the claim is small the rest of
+/// it hangs below — under the composer, off the end of the conversation — and as the claim grows it
+/// rises into view. That is Telegram's arrival, made of two facts: the column is pushed up by the
+/// claim, and the message comes up out of where you type. Animatable, so SwiftUI drives the claim
+/// frame by frame rather than jumping it.
+struct ClaimedHeight: Layout {
+    var fraction: CGFloat
+
+    var animatableData: CGFloat {
+        get { fraction }
+        set { fraction = newValue }
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let child = subviews.first else { return .zero }
+        let size = child.sizeThatFits(ProposedViewSize(width: proposal.width, height: nil))
+        return CGSize(width: size.width, height: size.height * min(1, max(0, fraction)))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews.first?.place(at: bounds.origin,
+                              anchor: .topLeading,
+                              proposal: ProposedViewSize(width: bounds.width, height: nil))
+    }
+}
+
+extension EnvironmentValues {
+    /// The leading edge of the composer's text, in screen coordinates — where a message of ours
+    /// starts its journey across to its bubble. Nil wherever there is no composer (a peek, a
+    /// preview), and then a message of ours simply rises without travelling.
+    @Entry var composerTextLeading: CGFloat?
+}
+
 extension View {
-    /// A message rising into place — see `MessageArrival`, which explains why the one animation
-    /// left in a conversation belongs to the row and not to the list.
-    func arrives(_ isArriving: Bool) -> some View {
-        modifier(MessageArrival(isArriving: isArriving))
+    /// A message arriving — see `MessageArrival`.
+    func arrives(_ isArriving: Bool, outgoing: Bool) -> some View {
+        modifier(MessageArrival(style: !isArriving ? .still : outgoing ? .outgoing : .incoming))
+    }
+
+    /// A bubble of ours coming across from the composer — see `ComposerTravel`.
+    func travelsFromComposer(_ isTravelling: Bool) -> some View {
+        modifier(ComposerTravel(isTravelling: isTravelling))
     }
 }
 
 extension AnyTransition {
-    /// The same arrival, for a view that genuinely is inserted and removed.
+    /// An arrival for a view that genuinely is inserted and removed: the typing bubble.
     ///
-    /// `MessageArrival` exists because rows must *not* be animated by the list — see the long
-    /// note above. The typing bubble is the exception that proves it: it is not a row, it has no
-    /// identity to hold on to, and it leaves again, so there is nothing to carry an entrance of
-    /// its own. It gets a transition instead, driven by an `.animation` scope that wraps the
-    /// bubble and nothing else.
-    ///
-    /// Up and in, down and out, both fading — the same rise and the same `Theme.Timing.arrival`
-    /// spring as a message, because to the eye it is a message that has not been finished yet.
+    /// `MessageArrival` exists because rows must *not* be animated by the list. The typing bubble is
+    /// the exception that proves it: it is not a row, it has no identity to hold on to, and it leaves
+    /// again, so there is nothing to carry an entrance of its own. It gets a transition instead,
+    /// driven by an `.animation` scope that wraps the bubble and nothing else.
     static var arrival: AnyTransition {
         .offset(y: MessageArrival.rise).combined(with: .opacity)
     }
+}
+
+extension MessageArrival {
+    /// How far below its place the typing bubble starts. Small on purpose: it is a message that has
+    /// not been finished yet, put down rather than flown in.
+    static let rise: CGFloat = 14
 }
 
 /// Which rows at the end of a conversation are arriving, and which were merely added to it.

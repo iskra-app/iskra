@@ -42,7 +42,8 @@ struct CompactMessageRow: View {
     var opensDay: Bool = false
 
     /// Whether a message appearing here is arriving *now* — see `MessageRow.arrivesAnimated`.
-    var arrivesAnimated: Bool = true
+    /// False unless said otherwise — see `MessageRow.arrivesAnimated`.
+    var arrivesAnimated: Bool = false
 
     /// Whether the conversation has just jumped *to* this message, and it is briefly lit so
     /// that the eye can find it. Owned by `RoomView` — see `MessageRow.isHighlighted`.
@@ -105,7 +106,10 @@ struct CompactMessageRow: View {
         // And nothing else — a message that is only *changing* changes at once, here exactly as
         // in the bubbles, and the arrival is the row's own. See `MessageRow`, where the reasoning
         // is written out, and `MessageArrival`.
-        .arrives(arrivesAnimated)
+        // Every line starts at the leading edge here, yours included, so nothing has anywhere to
+        // travel *to*: a line of ours simply comes up into its place without fading, as it would in
+        // the bubbles, and somebody else's fades up into it.
+        .arrives(arrivesAnimated, outgoing: message.isOwn)
     }
 
     /// The face over a run, and an empty column of exactly its width under it.

@@ -238,6 +238,20 @@ public struct RoomView: View {
     /// The width the messages have to live in. See `EnvironmentValues.timelineWidth`.
     @State private var timelineWidth: CGFloat = 0
 
+    /// The leading edge of the composer's text, on the screen — reported by `MessageComposer` and
+    /// handed down for `ComposerTravel`. Nil until the composer has been laid out, and in a room the
+    /// account cannot post in, where nothing of ours will ever travel.
+    @State private var composerTextLeading: CGFloat?
+
+    /// The dates above the top of the screen, and so the one to float there — see `FloatingDates`.
+    @State private var floatingDates = FloatingDates()
+    /// Whether the floating date is showing: while the reader is moving the list, and a moment after.
+    @State private var showsFloatingDate = false
+    @State private var floatingDateHide: Task<Void, Never>?
+    /// The line a date has to pass to count as above — the top of what can be seen, plus the date's
+    /// own room. See `EnvironmentValues.floatingDateLine`.
+    @State private var floatingDateLine: CGFloat = 0
+
     /// How the conversation is drawn: bubbles on two sides, or one plain column. Chosen once in
     /// settings and read here, which is the only place in the app that acts on it — see
     /// `MessageLayout` and `messageRow(_:in:)`.
@@ -523,6 +537,16 @@ public struct RoomView: View {
                 timelineWidth = width
             }
             .environment(\.timelineWidth, timelineWidth)
+            // Where a message of ours starts its journey to its bubble — see `ComposerTravel`.
+            .environment(\.composerTextLeading, composerTextLeading)
+            // The floating date — see `FloatingDates`. Written only when a date crosses the line, so
+            // a scroll costs a couple of updates per day passed, not one per frame.
+            .environment(\.floatingDateLine, floatingDateLine)
+            .environment(\.dayPassesTop) { date, isAbove in
+                var dates = floatingDates
+                dates.date(date, isAbove: isAbove)
+                if dates != floatingDates { floatingDates = dates }
+            }
             // The room's pictures, for the viewer a tapped photograph opens — so that it can be
             // swiped through the conversation's media the way the media tab's can. Built once, and
             // not on every pass of this body: see `RoomMediaSource`.
@@ -629,6 +653,7 @@ public struct RoomView: View {
             // So every phase counts except the two that are not the reader: `.idle`, and the
             // `.animating` of a scroll this view asked for itself — including the hold's own.
             .onScrollPhaseChange { _, phase in
+                floatingDateFollows(phase)
                 guard phase != .idle, phase != .animating else { return }
                 isOpening = false
                 // Moving the conversation yourself outranks the room's wish to stay at the end —
@@ -847,6 +872,21 @@ public struct RoomView: View {
             // bottom of a conversation that is still arriving. Built only at the end, it would
             // have to do all of that in front of the reader, which is the thing being cured.
             .opacity(isRevealed ? 1 : 0)
+            // The top of what can be seen, under the title bar — where the floating date sits, and
+            // so the line a date has to pass to be the one floating there.
+            .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                geometry.contentInsets.top
+            } action: { _, top in
+                floatingDateLine = top + Theme.Spacing.roomy
+            }
+            .overlay(alignment: .top) {
+                if showsFloatingDate, let date = floatingDates.current {
+                    FloatingDateLabel(date: date)
+                        .transition(.opacity)
+                        // A new day passing under it changes the words, not the capsule.
+                        .contentTransition(.numericText())
+                }
+            }
             // Over the timeline but *under* the composer, which is a safe-area inset added
             // further down: a placeholder that covered the box you type into would be
             // telling you to say something and hiding the way to say it.
@@ -1368,6 +1408,9 @@ public struct RoomView: View {
         MessageComposer(draft: $draft,
                         context: composerContext,
                         onCancelContext: cancelContext,
+                        onTextLeading: { leading in
+                            if composerTextLeading != leading { composerTextLeading = leading }
+                        },
                         onSend: send,
                         onStartVideoNote: startVideoNote,
                         onFinishVideoNote: finishVideoNote,
@@ -1680,7 +1723,14 @@ public struct RoomView: View {
             let placed = PlacedRow(row: row,
                                    followsEvent: previousWasEvent,
                                    opensDay: previousWasDivider,
-                                   arrives: hasSettled && index >= firstArrival,
+                                   // And only where the reader can see it happen. An arrival opens
+                                   // a place at the foot of the conversation and pushes the column up
+                                   // to make it (`MessageArrival`), which is the arrival when the
+                                   // reader is at the end — and a drift under somebody reading last
+                                   // week's messages. One of ours always counts: sending takes the
+                                   // reader to the end (`followEnd`).
+                                   arrives: hasSettled && index >= firstArrival
+                                       && (isAtNewest || row.message?.isOwn == true),
                                    id: timeline.viewIdentity(of: row))
             if case .event = row { previousWasEvent = true } else { previousWasEvent = false }
             previousWasDivider = row.isDivider
@@ -1755,6 +1805,29 @@ public struct RoomView: View {
     /// The pill that says something was said while you were reading further up, and takes you to
     /// it. Glass, and on the navigation layer where glass belongs: it floats over the conversation
     /// and is not part of it.
+    /// The floating date comes in when the reader moves the list and goes once it has been still for
+    /// a moment — Telegram's rule. Only the reader's own scrolling brings it: a scroll this view asked
+    /// for (`.animating`) is the room putting itself somewhere, not somebody looking for a day.
+    private func floatingDateFollows(_ phase: ScrollPhase) {
+        switch phase {
+        case .interacting, .tracking, .decelerating:
+            floatingDateHide?.cancel()
+            floatingDateHide = nil
+            guard !showsFloatingDate else { return }
+            withAnimation(Theme.Timing.floatingDateIn) { showsFloatingDate = true }
+        case .idle, .animating:
+            guard showsFloatingDate, floatingDateHide == nil else { return }
+            floatingDateHide = Task {
+                try? await Task.sleep(for: Theme.Timing.floatingDateLingers)
+                guard !Task.isCancelled else { return }
+                floatingDateHide = nil
+                withAnimation(Theme.Timing.floatingDateOut) { showsFloatingDate = false }
+            }
+        @unknown default:
+            break
+        }
+    }
+
     private func jumpToNewest() -> some View {
         Button {
             goToNewest()
@@ -2052,7 +2125,23 @@ struct UnreadDividerView: View {
 struct DayDividerView: View {
     let date: Date
 
+    /// Told when this date passes above the top of the conversation, or comes back below it — what
+    /// the floating date over a scrolling room is worked out from. See `FloatingDate`.
+    @Environment(\.dayPassesTop) private var dayPassesTop
+    @Environment(\.floatingDateLine) private var floatingDateLine
+
     var body: some View {
+        label
+            // A Bool, not the position: it changes twice per date per pass of the reader's thumb,
+            // where a position would change every frame and redraw the room with it.
+            .onGeometryChange(for: Bool.self) { proxy in
+                proxy.frame(in: .scrollView).minY < floatingDateLine
+            } action: { isAbove in
+                dayPassesTop?(date, isAbove)
+            }
+    }
+
+    private var label: some View {
         Text(Self.label(for: date))
             .font(.caption.weight(.medium))
             .foregroundStyle(.secondary)
