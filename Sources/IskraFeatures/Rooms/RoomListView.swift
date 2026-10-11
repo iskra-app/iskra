@@ -172,10 +172,10 @@ public struct RoomListView: View {
                               onDone: { isFixingRecovery = false })
         }
         // And the same again at the top when the network is gone — see `OfflineBanner`, which is an
-        // inset for exactly the reason the search field is one. Only in a sidebar: on iPhone the
-        // title already says "Waiting for network…", and a strip saying it again pushed the first
-        // conversation down for nothing (`RoomListStatus`).
-        .offlineBanner(isSidebar)
+        // inset for exactly the reason the search field is one. On every device, iPhone included:
+        // the title's "Waiting for network…" is a word in the bar, and the strip is the thing that
+        // cannot be missed.
+        .offlineBanner()
         .overlay { emptyState }
         // A real destination on this column's stack, not a view swapped in behind a
         // hand-rolled transition. That is what buys the stock push, the back button and
