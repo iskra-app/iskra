@@ -276,6 +276,9 @@ public enum CoreStrings {
         public static let empty = LocalizedStringResource("share.empty", bundle: bundle)
         /// Reassurance that the message is not lost when Iskra is not open: it goes when it opens.
         public static let willSendOnOpen = LocalizedStringResource("share.willSendOnOpen", bundle: bundle)
+        /// The comment line at the foot of the share sheet, and its send button for VoiceOver.
+        public static let comment = LocalizedStringResource("share.comment", bundle: bundle)
+        public static let send = LocalizedStringResource("share.send", bundle: bundle)
         /// The app lock is on: the chat list waits for Face ID, the same as the app does.
         public static let locked = LocalizedStringResource("share.locked", bundle: bundle)
         public static let lockedBody = LocalizedStringResource("share.lockedBody", bundle: bundle)

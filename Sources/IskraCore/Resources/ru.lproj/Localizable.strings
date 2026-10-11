@@ -151,7 +151,9 @@
 "share.title" = "Отправить в…";
 "share.cancel" = "Отмена";
 "share.empty" = "Сначала откройте Iskra и войдите — тогда здесь появятся чаты.";
-"share.willSendOnOpen" = "Отправится, когда вы откроете Iskra.";
+"share.willSendOnOpen" = "Уйдёт сразу — Iskra откроется, чтобы отправить.";
+"share.comment" = "Добавить комментарий…";
+"share.send" = "Отправить";
 "share.locked" = "Iskra заперта";
 "share.lockedBody" = "Разблокируйте её — и появятся ваши чаты.";
 "share.unlock" = "Разблокировать";

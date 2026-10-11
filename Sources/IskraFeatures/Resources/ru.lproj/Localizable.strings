@@ -585,6 +585,8 @@
 "message.forward.title" = "Переслать в…";
 "message.forward.prompt" = "Поиск чата";
 "message.forward.cancel" = "Отмена";
+"message.forward.comment" = "Добавить комментарий…";
+"message.forward.send" = "Отправить";
 "message.menu.block" = "Заблокировать";
 "message.menu.blockConfirm" = "Заблокировать %@?";
 "message.menu.blockConfirmMessage" = "Вы перестанете получать сообщения этого человека. Разблокировать можно в настройках.";

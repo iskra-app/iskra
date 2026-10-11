@@ -382,6 +382,10 @@ targets:
     dependencies:
       - package: Iskra
         product: IskraCore
+      # For the share sheet's grid of faces (`ShareTargetGrid`, `BlobatarView`). Not a concession for
+      # the same reason the notification extension's is not: the target has no dependencies at all.
+      - package: Iskra
+        product: IskraDesign
     settings:
       base:
         PRODUCT_NAME: IskraShareExtension
