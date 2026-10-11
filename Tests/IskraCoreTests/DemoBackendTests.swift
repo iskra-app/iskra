@@ -32,6 +32,16 @@ struct DemoBackendTests {
         let arrived = await eventually { list.rooms.count + list.archivedRooms.count >= 9 }
         #expect(arrived, "rooms: \(list.rooms.map(\.name))")
 
+        // The list goes up as soon as it has rooms in it (`RoomListStore.firstPaint`) and each row
+        // is brought up to date as the sync touches it, so a row's details may land a pass after the
+        // row itself. Waited for rather than read at once — and waited for with a deadline, so a row
+        // the incremental rebuild had left stale for good would still fail here.
+        let caughtUp = await eventually {
+            list.rooms.first { $0.id == "!anya:iskra.demo" }?.hasUnread == true
+                && list.rooms.contains { $0.isInvitation && $0.name.contains("Книжный") }
+        }
+        #expect(caughtUp)
+
         let anya = try #require(list.rooms.first { $0.id == "!anya:iskra.demo" })
         #expect(anya.isDirectMessage)
         #expect(anya.name == "Аня Смирнова")
