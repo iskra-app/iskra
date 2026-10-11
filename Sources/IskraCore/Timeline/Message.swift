@@ -520,12 +520,33 @@ public enum TimelineRow: Sendable, Identifiable, Equatable {
     case message(Message)
     case dayDivider(DayDivider)
     case event(RoomEvent)
+    /// "Unread messages": where the reader left off last time, and everything under it is new.
+    ///
+    /// The SDK's read marker — the account's `m.fully_read` — drawn the way Telegram draws it, as a
+    /// bar across the conversation. It is what a room opens on when there is more new below it than
+    /// fits on a screen, so the reader starts at the first thing they have not seen rather than at
+    /// the last thing anybody said. See `RoomView` and `TimelineStore.markAsRead`, which is careful
+    /// about *when* the marker moves.
+    case unreadDivider
+
+    /// The one identity the bar ever has. There is at most one read marker in a timeline.
+    public static let unreadDividerID = "unread-divider"
 
     public var id: String {
         switch self {
         case let .message(message): message.id
         case let .dayDivider(divider): divider.id
         case let .event(event): event.id
+        case .unreadDivider: Self.unreadDividerID
+        }
+    }
+
+    /// A bar across the conversation — a date, or where the unread begins. Both give the row under
+    /// them its air, so that row does not pay for its own on top.
+    public var isDivider: Bool {
+        switch self {
+        case .dayDivider, .unreadDivider: true
+        case .message, .event: false
         }
     }
 

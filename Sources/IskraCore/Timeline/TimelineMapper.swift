@@ -68,6 +68,11 @@ enum TimelineMapper {
                     rows.append(.dayDivider(DayDivider(id: "divider-\(timestamp)", date: date)))
                     // A date divider breaks the visual grouping.
                     previous = nil
+                } else if case .readMarker = virtual {
+                    // Where the reader left off. A bar across the conversation, so it breaks a run
+                    // the same way a date does. See `TimelineRow.unreadDivider`.
+                    rows.append(.unreadDivider)
+                    previous = nil
                 }
                 continue
             }
@@ -99,7 +104,37 @@ enum TimelineMapper {
             previous = message
         }
 
-        return withoutEmptyDays(withReadPropagated(rows, readUpTo: readPrefix, at: readPrefixAt))
+        // The bar first, then the empty days: a date whose only row was an unearned bar is a date
+        // over nothing, and the second pass is the one that knows what to do about that.
+        return withoutEmptyDays(withUnreadDividerIfEarned(
+            withReadPropagated(rows, readUpTo: readPrefix, at: readPrefixAt)))
+    }
+
+    /// Keeps the "Unread messages" bar only where there is something unread under it.
+    ///
+    /// The SDK places its read marker after the last event the account has read, and this app drops
+    /// most of what the SDK holds — so the bar can end up over nothing but a member joining, or over
+    /// nothing at all. And it can sit over messages that are only *ours*: the marker is the account's
+    /// `m.fully_read`, which moves when a room is left (`TimelineStore.stop`), so a reply written on
+    /// another device lands below it. "Unread" over your own words is the app not knowing who you
+    /// are. Telegram shows the bar only above something somebody else said, and so does this.
+    ///
+    /// Not private: tested directly, for the same reason `withoutEmptyDays` is.
+    static func withUnreadDividerIfEarned(_ rows: [TimelineRow]) -> [TimelineRow] {
+        guard let index = rows.firstIndex(of: .unreadDivider) else { return rows }
+
+        let earned = rows[(index + 1)...].contains { row in
+            guard case let .message(message) = row else { return false }
+            return !message.isOwn
+        }
+
+        var rows = rows
+        rows.remove(at: index)
+        // Only the first: there is one read marker in a timeline, and a second bar would be the
+        // same fact said twice.
+        rows.removeAll { $0 == .unreadDivider }
+        if earned { rows.insert(.unreadDivider, at: index) }
+        return rows
     }
 
     /// Marks your earlier messages read once a later one has been.
