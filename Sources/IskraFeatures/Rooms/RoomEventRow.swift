@@ -57,17 +57,27 @@ struct RoomEventRow: View {
     ///
     /// Found in the finished sentence rather than built into it, because the sentence is composed
     /// in the reader's language (`RoomEvent.text`) and where a name falls in it is that language's
-    /// business. The first occurrence of each name is the one linked — names are long enough, and the
-    /// words around them short enough, that the first is the name.
+    /// business.
+    ///
+    /// **In order, each search starting where the last name ended — and that is a safety rule, not
+    /// tidiness.** Display names are whatever a person types, so they can be made to collide on
+    /// purpose. Linking each name at its *first* occurrence let a newcomer called "Аня", joining
+    /// beside the real Аня, put both links on the same word — the real Аня's name opened the
+    /// impostor's page — and a name that contains another ("Боб" inside "Бобби") could steal part of
+    /// it. Walking forward, every name is linked at its own place in the sentence or not at all, and
+    /// no stretch of text can ever carry somebody else's link. The page it opens shows the Matrix ID,
+    /// which is the part nobody can copy.
     static func linked(_ event: RoomEvent, linking: Bool) -> AttributedString {
         var text = AttributedString(event.text)
         guard linking else { return text }
 
+        var cursor = text.startIndex
         for person in event.people where !person.name.isEmpty {
-            guard let range = text.range(of: person.name),
+            guard let range = text[cursor...].range(of: person.name),
                   let url = link(to: person.userID) else { continue }
             text[range].link = url
             text[range].font = .caption.weight(.semibold)
+            cursor = range.upperBound
         }
         return text
     }
