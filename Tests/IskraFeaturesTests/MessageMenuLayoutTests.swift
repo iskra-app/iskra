@@ -39,6 +39,30 @@ struct MessageMenuLayoutTests {
         return anchor.offsetBy(dx: -region.minX, dy: -region.minY)
     }
 
+    /// The distance the menu springs the message on opening — Telegram's pick-up. Nothing at all
+    /// for a message the menu leaves where it was, on either side of the conversation.
+    @Test func aMessageLeftInPlaceTravelsNowhere() {
+        let theirs = resolve(anchor: CGRect(x: 16, y: 400, width: 220, height: 60))
+        #expect(theirs.lift == .zero)
+
+        // Yours, hanging from the right, wide enough for the menu to sit flush under it.
+        let mine = resolve(anchor: CGRect(x: 393 - 16 - Theme.Size.menuWidth, y: 400,
+                                          width: Theme.Size.menuWidth, height: 60),
+                           isOwn: true)
+        #expect(mine.lift == .zero)
+    }
+
+    /// A message by the composer is lifted to make room for the verbs, and the arrangement starts
+    /// exactly that far down — so it is seen to rise out of the conversation, not to appear above it.
+    @Test func aMessageAtTheBottomTravelsUpByItsLift() {
+        let anchor = CGRect(x: 16, y: 780, width: 220, height: 50)
+        let layout = resolve(anchor: anchor)
+
+        let liftedY = layout.origin.y + bar + MessageMenu.gap
+        #expect(layout.lift.height == local(anchor).minY - liftedY)
+        #expect(layout.lift.height > 0)
+    }
+
     /// The whole point of the lift: a message in the middle of the screen does not move. The bar
     /// of emoji opens in the space above it and the verbs below, and the thing being talked
     /// about stays exactly where the finger left it.
