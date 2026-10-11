@@ -85,7 +85,9 @@
 
 "roomList.emptyTitle" = "Чатов пока нет";
 
-"roomList.loading" = "Загружаем ваши сообщения…";
+/* Заголовок списка чатов вместо «Чаты», пока список догоняет сервер и пока нет сети — как в Telegram. */
+"roomList.updating" = "Обновление…";
+"roomList.waitingForNetwork" = "Ожидание сети…";
 
 /* Accessibility label for the lock icon. The only place encryption is named, and it is named as privacy. */
 "roomList.privateChat" = "Защищённый чат";

@@ -85,7 +85,9 @@
 
 "roomList.emptyTitle" = "No chats yet";
 
-"roomList.loading" = "Catching up on your messages…";
+/* The chat list's title in place of "Chats", while the list catches up and while there is no network. */
+"roomList.updating" = "Updating…";
+"roomList.waitingForNetwork" = "Waiting for network…";
 
 /* Accessibility label for the lock icon. The only place encryption is named, and it is named as privacy. */
 "roomList.privateChat" = "Private chat";
