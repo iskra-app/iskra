@@ -491,6 +491,10 @@ public enum Theme {
         /// generous fit for "23:59" with its padding, and being a little generous is the safe
         /// direction: too small and the circle would shoulder the clock off the screen.
         public static let clockColumn: CGFloat = 56
+        /// The ring over a photo or video of ours that is still going up — `UploadRing`. Telegram's
+        /// is 48 on a photo, and 48 is also comfortably more than the tap floor below, which
+        /// matters because the cross in it is a button.
+        public static let uploadRing: CGFloat = 48
         /// Nothing tappable is ever smaller than this. Apple's floor, and ours.
         public static let minimumTapTarget: CGFloat = 44
 

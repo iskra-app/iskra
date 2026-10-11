@@ -813,6 +813,8 @@ public enum Strings {
             /// The user sees the same word because to them it *is* the same word — but the
             /// two must be free to diverge in translation without dragging each other along.
             public static let discard = LocalizedStringResource("message.delivery.discard", bundle: bundle)
+            /// The cross in the ring over an attachment still going up — see `UploadRing`.
+            public static let cancelUpload = LocalizedStringResource("message.delivery.cancelUpload", bundle: bundle)
         }
 
         /// What VoiceOver reads instead of a bubble it cannot describe.

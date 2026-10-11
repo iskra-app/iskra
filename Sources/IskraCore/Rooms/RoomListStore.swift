@@ -108,6 +108,14 @@ public final class RoomListStore {
     /// Keeps the previews honest about messages that have not left yet — see `start()`.
     private var sendQueueHandle: TaskHandle?
 
+    /// The SDK telling us a room's send queue has stopped itself — see `sendQueueStopped()`.
+    private var sendQueueErrorHandle: TaskHandle?
+
+    /// The restart waiting out its pause, if one is. One for all rooms: `enableAllSendQueues` is
+    /// the call, and two rooms failing in the same second are one network having a bad moment.
+    private var sendQueueRestart: Task<Void, Never>?
+    private var sendQueueRecovery = SendQueueRecovery()
+
     /// The thing that actually keeps the diff stream alive.
     ///
     /// `entriesWithDynamicAdapters` hands back a result, and the result's `entriesStream()` is the
@@ -278,6 +286,15 @@ public final class RoomListStore {
         }
         sendQueueHandle = queueHandle
 
+        // And the queues that stop themselves. A send that fails for a reason that may pass — a
+        // dropped request, a server timing out — disables that room's queue, and the SDK waits to be
+        // told to carry on. See `SendQueueRecovery`, which decides when.
+        sendQueueErrorHandle = client.subscribeToSendQueueStatus(listener: SendQueueErrorListener { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.sendQueueStopped()
+            }
+        })
+
         // Nobody was listening to this, and the sync loop is the one thing in the app that *cannot*
         // be allowed to fail quietly. It stops on a network error like any other network client —
         // and then simply stays stopped. No diff ever arrives again, the room list freezes on
@@ -318,6 +335,11 @@ public final class RoomListStore {
         // written offline sit there after the network is back, and the only cure is to press retry on
         // each one — which reads as an app that lost them.
         if state == .running {
+            // Sooner than any backoff, so the backoff is let go of: the network is back, and the
+            // next failure is a new story.
+            sendQueueRestart?.cancel()
+            sendQueueRestart = nil
+            sendQueueRecovery.reset()
             await client.enableAllSendQueues(enable: true)
         }
 
@@ -353,6 +375,27 @@ public final class RoomListStore {
     }
 
     private static let syncRestartDelay: Duration = .seconds(2)
+
+    /// A room's send queue has stopped itself on a failure that may pass. Start it again — later.
+    ///
+    /// Not while offline: there the sync loop reports the network back and starts every queue at
+    /// once (`syncStateChanged`), and a timer firing into no network would only stop them again and
+    /// lengthen the next pause for nothing. And never two restarts waiting at once — the pause is the
+    /// point, and a second failure arriving inside it is the same bad moment, not a new one.
+    private func sendQueueStopped() {
+        guard !hasStopped, !isOffline, sendQueueRestart == nil else { return }
+
+        let pause = sendQueueRecovery.failed()
+        Log.session.info("a send queue stopped itself; starting it again in \(pause, privacy: .public)")
+
+        sendQueueRestart = Task { [weak self] in
+            try? await Task.sleep(for: pause)
+            guard let self, !Task.isCancelled else { return }
+            self.sendQueueRestart = nil
+            guard !self.hasStopped, !self.isOffline else { return }
+            await self.client.enableAllSendQueues(enable: true)
+        }
+    }
 
     /// The app has gone into the user's pocket.
     ///
@@ -421,6 +464,12 @@ public final class RoomListStore {
 
         sendQueueHandle?.cancel()
         sendQueueHandle = nil
+
+        sendQueueErrorHandle?.cancel()
+        sendQueueErrorHandle = nil
+        sendQueueRestart?.cancel()
+        sendQueueRestart = nil
+        sendQueueRecovery.reset()
 
         typingHandles.values.forEach { $0.cancel() }
         typingHandles = [:]
@@ -923,6 +972,20 @@ private final class NotificationSettingsWatcher: NotificationSettingsDelegate {
 
     func settingsDidChange() {
         onChange()
+    }
+}
+
+/// Says only that some room's send queue stopped itself. Which room and why are dropped: the
+/// answer is the same call for every room, and the error is the SDK's to report on the message.
+private final class SendQueueErrorListener: SendQueueRoomErrorListener {
+    private let onError: @Sendable () -> Void
+
+    init(onError: @escaping @Sendable () -> Void) {
+        self.onError = onError
+    }
+
+    func onError(roomId: String, error: ClientError) {
+        onError()
     }
 }
 

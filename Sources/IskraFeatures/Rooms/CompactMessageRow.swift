@@ -171,6 +171,7 @@ struct CompactMessageRow: View {
                                      style: .plain,
                                      playingDiameter: playingDiameter,
                                      onOpenReply: handlers.onOpenReply)
+            .uploadProgress(of: message, onCancel: handlers.onDiscard)
             .messageActions(message, isPinned: isPinned, handlers: handlers)
 
         if message.hasPressableContent {
