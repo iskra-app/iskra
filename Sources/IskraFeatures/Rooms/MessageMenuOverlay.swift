@@ -64,8 +64,12 @@ struct MessageMenuOverlay: View {
                     ZStack(alignment: .topLeading) {
                         column(presentation, layout: layout)
                             .offset(x: layout.origin.x, y: layout.origin.y)
-                            .transition(.scale(scale: 0.92, anchor: presentation.isOwn ? .topTrailing : .topLeading)
-                                .combined(with: .opacity))
+                            // Picked up, not faded in — Telegram's. The arrangement starts with
+                            // the message exactly where it stood in the conversation and springs to
+                            // where the menu needs it; on closing it springs back into its gap. The
+                            // bar and the verbs carry entrances of their own, out of the message,
+                            // below. See `MessageMenuLayout.lift`.
+                            .transition(.offset(layout.lift))
                     }
                     .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
                     #if os(macOS)
@@ -139,12 +143,18 @@ struct MessageMenuOverlay: View {
                         // most. Slid onto the screen by the same correction as the panel.
                         ReactionBar(width: layout.emojiWidth,
                                     mine: presentation.mine,
+                                    growsFromTrailing: presentation.isOwn,
                                     onPick: { react($0, in: presentation) },
                                     onMore: {
                                         withAnimation(Theme.Timing.menuOpens) { isPickingEmoji = true }
                                     })
                             .offset(x: layout.emojiOffset)
-                            .transition(.scale(scale: 0.9, anchor: .bottom).combined(with: .opacity))
+                            // Unrolled from the message's own corner, as Telegram's is: the capsule
+                            // opens sideways out of the edge the bubble hangs from, and the emoji
+                            // in it pop up one after another from that side (`ReactionBar`).
+                            .transition(.scale(scale: 0.2,
+                                               anchor: presentation.isOwn ? .bottomTrailing : .bottomLeading)
+                                .combined(with: .opacity.animation(Theme.Timing.menuBarFades)))
                     }
                 }
 
@@ -154,8 +164,17 @@ struct MessageMenuOverlay: View {
                 // with no conversation left on it, and the panel is a detour that ends in a
                 // reaction rather than in a menu item.
                 if !isPickingEmoji {
+                    // Grown out of the message's corner, from almost nothing — Telegram scales its
+                    // actions from 0.01 at the edge nearest the bubble and shows them at once (a
+                    // 0.05 s fade), so what the eye follows is the list *unfolding* from the message
+                    // and not a list fading up somewhere near it. Going, it folds back the same way
+                    // and fades with the fold.
                     actions(presentation, layout: layout)
-                        .transition(.opacity.combined(with: .move(edge: .top)))
+                        .transition(.asymmetric(
+                            insertion: .scale(scale: 0.01, anchor: presentation.isOwn ? .topTrailing : .topLeading)
+                                .combined(with: .opacity.animation(Theme.Timing.menuListShows)),
+                            removal: .scale(scale: 0.01, anchor: presentation.isOwn ? .topTrailing : .topLeading)
+                                .combined(with: .opacity)))
                 }
             }
             .frame(width: layout.width,
@@ -395,10 +414,31 @@ private struct MessageMenuRowStyle: ButtonStyle {
 private struct ReactionBar: View {
     let width: CGFloat
     let mine: Set<String>
+    /// Which end the bar unrolls from — the bubble's own edge — and so which emoji pops first.
+    let growsFromTrailing: Bool
     let onPick: (String) -> Void
     let onMore: () -> Void
 
     @Environment(\.accent) private var accent
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// Whether the emoji have popped in. Starts false so each can be seen to arrive.
+    @State private var hasPopped = false
+
+    /// How long after the bar opens one emoji pops in, by how far it is from the end the bar opens
+    /// from. Telegram's rule (`ReactionContextNode.animateIn`): a hair after the bar, then up to
+    /// 0.3 s across the full width — so the row fills like something being laid out, not switched on.
+    private func popDelay(_ index: Int, of count: Int) -> Double {
+        let fromEdge = growsFromTrailing ? count - 1 - index : index
+        return 0.01 + Double(fromEdge) / Double(max(1, count)) * 0.3
+    }
+
+    /// One emoji, or the "+", popping into the bar — see `popDelay`.
+    private func pops(_ view: some View, index: Int, of count: Int) -> some View {
+        view
+            .scaleEffect(hasPopped || reduceMotion ? 1 : 0.01)
+            .animation(Theme.Timing.reactionPops.delay(popDelay(index, of: count)), value: hasPopped)
+    }
 
     /// Seven things in the width of the menu: six emoji and the "+".
     ///
@@ -411,29 +451,44 @@ private struct ReactionBar: View {
     }
 
     var body: some View {
+        let count = QuickReaction.allCases.count + 1
+
         HStack(spacing: 0) {
-            ForEach(QuickReaction.allCases) { reaction in
-                EmojiButton(emoji: reaction.key,
-                            isMine: mine.contains(reaction.key),
-                            size: cell,
-                            accent: accent) { onPick(reaction.key) }
+            ForEach(Array(QuickReaction.allCases.enumerated()), id: \.element) { index, reaction in
+                pops(EmojiButton(emoji: reaction.key,
+                                 isMine: mine.contains(reaction.key),
+                                 size: cell,
+                                 accent: accent) { onPick(reaction.key) },
+                     index: index, of: count)
                     .frame(maxWidth: .infinity)
             }
 
-            Button(action: onMore) {
-                Image(systemName: "plus")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: cell, height: cell)
-                    .background(Circle().fill(.primary.opacity(0.08)))
-                    .contentShape(.circle)
-            }
-            .buttonStyle(.plain)
-            .frame(maxWidth: .infinity)
-            .accessibilityLabel(Text(Strings.Reactions.more))
+            pops(moreButton, index: count - 1, of: count)
+                .frame(maxWidth: .infinity)
         }
         .padding(.horizontal, Theme.Spacing.close)
         .frame(width: width, height: Theme.Size.reactionBar)
         .navigationGlass(in: .capsule)
+        .onAppear {
+            // A frame late, so the emoji are drawn small once and have somewhere to pop *from* —
+            // see `Theme.Timing.aFrame`.
+            Task { @MainActor in
+                try? await Task.sleep(for: Theme.Timing.aFrame)
+                hasPopped = true
+            }
+        }
+    }
+
+    private var moreButton: some View {
+        Button(action: onMore) {
+            Image(systemName: "plus")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: cell, height: cell)
+                .background(Circle().fill(.primary.opacity(0.08)))
+                .contentShape(.circle)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(Strings.Reactions.more))
     }
 }

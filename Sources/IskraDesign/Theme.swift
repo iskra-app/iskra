@@ -159,7 +159,24 @@ public enum Theme {
         /// The menu arriving: the bubble rising off the page, the bar and the list opening
         /// around it. A spring, because the lift is the one moment in a conversation where the
         /// app is *picking something up*, and things that are picked up have weight.
-        public static let menuOpens: Animation = .spring(response: 0.34, dampingFraction: 0.78)
+        ///
+        /// Telegram's length: its context menu runs every part of the opening on one 0.42 s
+        /// spring (`ContextControllerExtractedPresentationNode`), heavily damped — the menu lands,
+        /// it does not wobble — and so does this one.
+        public static let menuOpens: Animation = .spring(duration: 0.42, bounce: 0.12)
+
+        /// The verbs becoming visible as they unfold out of the message: almost at once. Telegram
+        /// fades its actions in over 0.05 s, so the eye follows the *unfolding* and never watches a
+        /// list fade up.
+        public static let menuListShows: Animation = .linear(duration: 0.05)
+
+        /// The bar of emoji becoming visible as it unrolls — Telegram's 0.15 s.
+        public static let menuBarFades: Animation = .easeOut(duration: 0.15)
+
+        /// One emoji popping into the bar, Telegram's 0.4 s spring from almost nothing, with a
+        /// little bounce: these are the most pressable things in the app, and they are allowed to
+        /// say so as they arrive. Staggered by the bar — see `ReactionBar.popDelay`.
+        public static let reactionPops: Animation = .spring(duration: 0.4, bounce: 0.3)
 
         /// Reactions arriving and leaving.
         public static let reaction: TimeInterval = 0.25

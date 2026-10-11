@@ -195,6 +195,17 @@ struct MessageMenuLayout: Equatable {
     /// on an iPhone SE with a tall message above it is a real arrangement, not a hypothetical.
     var listMaxHeight: CGFloat
 
+    /// How far the lifted message is from where it stood in the conversation — the distance the
+    /// whole arrangement travels on its way in and back on its way out.
+    ///
+    /// Telegram does not fade a menu up over the message it is about; it *picks the message up*:
+    /// the bubble leaves its place in the list and springs to wherever the menu needs it, the verbs
+    /// growing out of its corner as it goes, and on closing it springs back down into the gap it
+    /// left. Most of the time this is nothing at all — the menu puts the message exactly where it
+    /// was — and it is a real distance only for a message near the top or bottom of the screen,
+    /// which is exactly the one that otherwise appeared to jump.
+    var lift: CGSize = .zero
+
     /// A message is never given less height than this. Past it the window onto the message is too
     /// small to read through,
     /// and an unreadable message with a menu under it is worse than a menu that scrolls.
@@ -254,12 +265,21 @@ struct MessageMenuLayout: Equatable {
         let furthestEmojiX = max(margin, container.width - margin - emojiWidth)
         let emojiX = min(max(wantedEmojiX, margin), furthestEmojiX)
 
+        // Where the lifted message ends up, against where it was. It sits under the bar when there
+        // is one (and the gap after it), and it hangs from its own edge of the column — its right if
+        // it is yours, its left if it is not — so that is the edge measured.
+        let liftedY = y + (aboveHeight > 0 ? aboveHeight + gap : 0)
+        let liftedEdge = isOwn ? x + width : x
+        let anchorEdge = isOwn ? anchor.maxX : anchor.minX
+
         return MessageMenuLayout(origin: CGPoint(x: x, y: y),
                                  width: width,
                                  emojiWidth: emojiWidth,
                                  emojiOffset: emojiX - wantedEmojiX,
                                  contentHeight: contentHeight,
-                                 listMaxHeight: listMaxHeight)
+                                 listMaxHeight: listMaxHeight,
+                                 lift: CGSize(width: anchorEdge - liftedEdge,
+                                              height: anchor.minY - liftedY))
     }
 }
 
