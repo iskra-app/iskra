@@ -4,6 +4,7 @@ import Testing
 @testable import IskraFeatures
 
 /// Names in the grey lines go to the people they name — Telegram's "Alice joined the group".
+@MainActor
 @Suite("Room event links")
 struct RoomEventLinkTests {
     private func links(in text: AttributedString) -> [String: String] {
@@ -24,6 +25,33 @@ struct RoomEventLinkTests {
         let found = links(in: RoomEventRow.linked(event, linking: true))
         #expect(found["Аня"] == "@anya:example.org")
         #expect(found["Борис"] == "@boris:example.org")
+    }
+
+    /// Display names are chosen by the people wearing them, so two can be made to match. Each link
+    /// must land on its own word — the real Аня's name must never open the other Аня's page.
+    @Test("two people with one name each keep their own link")
+    func impostorCannotTakeTheName() {
+        let event = RoomEvent(id: "4",
+                              kind: .joined([RoomEventPerson(userID: "@real:example.org", name: "Аня"),
+                                             RoomEventPerson(userID: "@fake:example.org", name: "Аня")]),
+                              timestamp: .now)
+        let text = RoomEventRow.linked(event, linking: true)
+        let ids = text.runs.compactMap { run in run.link.flatMap(RoomEventRow.userID(in:)) }
+        #expect(ids == ["@real:example.org", "@fake:example.org"])
+    }
+
+    @Test("a name inside another name does not take part of it")
+    func nestedNames() {
+        let event = RoomEvent(id: "5",
+                              kind: .joined([RoomEventPerson(userID: "@bobby:example.org", name: "Бобби"),
+                                             RoomEventPerson(userID: "@bob:example.org", name: "Боб")]),
+                              timestamp: .now)
+        let text = RoomEventRow.linked(event, linking: true)
+        for run in text.runs {
+            guard let id = run.link.flatMap(RoomEventRow.userID(in:)) else { continue }
+            let word = String(text[run.range].characters)
+            #expect((word == "Бобби" && id == "@bobby:example.org") || (word == "Боб" && id == "@bob:example.org"))
+        }
     }
 
     @Test("a rename links the new name to whoever renamed themselves")
