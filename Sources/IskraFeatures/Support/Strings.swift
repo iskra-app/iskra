@@ -752,6 +752,9 @@ public enum Strings {
             public static let title = LocalizedStringResource("message.forward.title", bundle: bundle)
             public static let prompt = LocalizedStringResource("message.forward.prompt", bundle: bundle)
             public static let cancel = LocalizedStringResource("message.forward.cancel", bundle: bundle)
+            /// The comment line and the send button at the foot of the share sheet.
+            public static let comment = LocalizedStringResource("message.forward.comment", bundle: bundle)
+            public static let send = LocalizedStringResource("message.forward.send", bundle: bundle)
         }
 
         /// A link in a message, and the question asked before it opens. The address itself is the

@@ -487,7 +487,8 @@ public struct IskraRootView: View {
         let entries = rooms
             .filter { !$0.isInvitation && !$0.isSpace }
             .map { ChatDirectoryEntry(id: $0.id, name: $0.name,
-                                      accountID: session.sessionID, accountName: session.displayName) }
+                                      accountID: session.sessionID, accountName: session.displayName,
+                                      avatarSeed: $0.avatarSeed) }
         // This account's part of the list; everybody else's stays as it was.
         ChatDirectory.writeDirectory(entries, account: session.sessionID)
     }

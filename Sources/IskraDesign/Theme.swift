@@ -548,6 +548,8 @@ public enum Theme {
         /// One of the round glass buttons under a person's portrait — `ProfileActionTile`. A size a
         /// thumb lands on without aiming, with the word under it rather than inside.
         public static let profileAction: CGFloat = 56
+        /// A chat's face in the share sheet's grid — four to a row on a phone, Telegram's size.
+        public static let shareFace: CGFloat = 60
         /// Nothing tappable is ever smaller than this. Apple's floor, and ours.
         public static let minimumTapTarget: CGFloat = 44
 

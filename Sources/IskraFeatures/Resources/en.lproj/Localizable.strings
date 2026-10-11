@@ -588,6 +588,8 @@
 "message.forward.title" = "Forward to…";
 "message.forward.prompt" = "Search chats";
 "message.forward.cancel" = "Cancel";
+"message.forward.comment" = "Add a comment…";
+"message.forward.send" = "Send";
 "message.menu.block" = "Block";
 "message.menu.blockConfirm" = "Block %@?";
 "message.menu.blockConfirmMessage" = "You’ll stop receiving this person’s messages. You can unblock them in settings.";

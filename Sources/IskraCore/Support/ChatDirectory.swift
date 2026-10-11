@@ -17,11 +17,19 @@ public struct ChatDirectoryEntry: Codable, Sendable, Equatable, Identifiable {
     /// because the share extension has no session to ask.
     public let accountName: String?
 
-    public init(id: String, name: String, accountID: String? = nil, accountName: String? = nil) {
+    /// What the chat's stand-in face is drawn from — `RoomSummary.avatarSeed`, the other person's ID
+    /// in a personal chat. For the share sheet's grid, which draws the same creature the chat list
+    /// does: the extension cannot fetch a picture (that takes the account's token, and it runs no
+    /// session), but it can draw a face from a seed. Nil in a directory written before it was kept.
+    public let avatarSeed: String?
+
+    public init(id: String, name: String, accountID: String? = nil, accountName: String? = nil,
+                avatarSeed: String? = nil) {
         self.id = id
         self.name = name
         self.accountID = accountID
         self.accountName = accountName
+        self.avatarSeed = avatarSeed
     }
 }
 

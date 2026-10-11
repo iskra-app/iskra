@@ -148,7 +148,9 @@
 "share.title" = "Send to…";
 "share.cancel" = "Cancel";
 "share.empty" = "Open Iskra and sign in first — then your chats will show up here.";
-"share.willSendOnOpen" = "It’ll send when you next open Iskra.";
+"share.willSendOnOpen" = "It goes right away — Iskra opens to send it.";
+"share.comment" = "Add a comment…";
+"share.send" = "Send";
 "share.locked" = "Iskra is locked";
 "share.lockedBody" = "Unlock it and your chats will show up.";
 "share.unlock" = "Unlock";
