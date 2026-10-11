@@ -394,7 +394,7 @@ private struct ChatPeekCard: View {
                                    opensDay: previousWasDivider,
                                    id: timeline.viewIdentity(of: row))
             if case .event = row { previousWasEvent = true } else { previousWasEvent = false }
-            if case .dayDivider = row { previousWasDivider = true } else { previousWasDivider = false }
+            previousWasDivider = row.isDivider
             return placed
         }
     }
@@ -406,6 +406,8 @@ private struct ChatPeekCard: View {
         switch placed.row {
         case let .dayDivider(divider):
             DayDividerView(date: divider.date)
+        case .unreadDivider:
+            UnreadDividerView()
         case let .event(event):
             RoomEventRow(event: event, followsEvent: placed.followsEvent, opensDay: placed.opensDay)
         case let .message(message):

@@ -799,6 +799,9 @@
 /* The pill at the foot of a room when a message arrives while you are reading further up. */
 "room.jumpToNewest" = "New messages";
 
+/* The bar across the conversation: what you have not read yet starts here. */
+"room.unreadMessages" = "Unread messages";
+
 /* A room invitation: who asked, and the two answers. */
 "roomList.invite.from" = "%@ invites you";
 "roomList.invite.unattributed" = "You have been invited";

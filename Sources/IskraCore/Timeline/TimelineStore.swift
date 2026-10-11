@@ -634,6 +634,10 @@ public final class TimelineStore {
         generation += 1
         opening = nil
 
+        // Putting the room down is leaving it — for the info screen, for the pocket, for another
+        // room — and leaving is when the bar moves. See `hasReadToEnd`.
+        moveReadMarkerIfRead()
+
         // The second timeline over this room goes down with the first. Nothing else was ever going
         // to do it: the pinned store is handed to a view, and a view has no idea that the account
         // it belongs to is being signed out from three screens away.
@@ -1240,8 +1244,28 @@ public final class TimelineStore {
     /// outlives being read — so a room marked unread on purpose, then opened and read to the
     /// bottom, went on wearing its badge with nothing in it left to read.
     public func markAsRead() async {
+        hasReadToEnd = true
         try? await room.markAsRead(receiptType: .read)
         try? await room.setUnreadFlag(newValue: false)
+    }
+
+    /// Whether the reader got to the end of the conversation while it was open, which is what
+    /// moves the "Unread messages" bar — on the way *out*. See `TimelineRow.unreadDivider`.
+    ///
+    /// Two markers, and they are not the same thing. The read receipt (`.read`) tells the others
+    /// how far you have got, and goes the moment you have got there. The fully-read marker
+    /// (`.fullyRead`) is the account's own note of where to put the bar next time — and if it moved
+    /// the moment you reached the end, the SDK would take the bar away under the reader's eyes, and
+    /// the conversation would jump by its height while they were reading what it pointed at.
+    /// Telegram keeps the bar for the whole visit and drops it on the next one. So does this.
+    private var hasReadToEnd = false
+
+    /// The reader is leaving having read it all: the bar goes to the end, for next time.
+    private func moveReadMarkerIfRead() {
+        guard hasReadToEnd else { return }
+        hasReadToEnd = false
+        let room = room
+        Task { try? await room.markAsRead(receiptType: .fullyRead) }
     }
 
     // MARK: - Drafts

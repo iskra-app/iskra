@@ -704,6 +704,20 @@ public struct RoomView: View {
                 if let openAt {
                     jumpTarget = openAt
                     self.openAt = nil
+                } else if timeline.rows.contains(.unreadDivider) {
+                    // …and otherwise on the first thing the reader has not seen, the way Telegram
+                    // opens a chat: the "Unread messages" bar at the top of the screen and the new
+                    // messages under it, rather than the last of them and the rest above, to be
+                    // scrolled back up to and read in the wrong direction. Where everything new fits
+                    // on one screen, the scroll view stops at the end of the conversation by itself,
+                    // which is the right answer there too.
+                    //
+                    // The hold on the end is let go of, because this *is* the reader's place now —
+                    // left on, it would haul the room straight back down on the next batch. And the
+                    // move is made on the next pass, after the anchor above has landed, for the reason
+                    // `jumpTarget` waits for the same thing.
+                    isOpening = false
+                    Task { scroll.scrollTo(TimelineRow.unreadDividerID, anchor: .top) }
                 }
             }
             // A search hit in a room that is *already* open. On iPhone this never arises: going back
@@ -1619,6 +1633,8 @@ public struct RoomView: View {
         switch row {
         case let .dayDivider(divider):
             DayDividerView(date: divider.date)
+        case .unreadDivider:
+            UnreadDividerView()
         case let .event(event):
             RoomEventRow(event: event, followsEvent: followsEvent, opensDay: opensDay)
         case let .message(message):
@@ -1667,7 +1683,7 @@ public struct RoomView: View {
                                    arrives: hasSettled && index >= firstArrival,
                                    id: timeline.viewIdentity(of: row))
             if case .event = row { previousWasEvent = true } else { previousWasEvent = false }
-            if case .dayDivider = row { previousWasDivider = true } else { previousWasDivider = false }
+            previousWasDivider = row.isDivider
             return placed
         }
     }
@@ -2008,6 +2024,30 @@ public struct RoomView: View {
 // privacy in a popover. It is now a plain glyph inside `RoomHeader` — a button inside a
 // button is ambiguous to the eye and a mess for VoiceOver — and the sentence it used to
 // show has a row to itself on `RoomInfoView`, one press away.
+
+/// "Unread messages" — the bar across the conversation where the reader left off. See
+/// `TimelineRow.unreadDivider`.
+///
+/// A band the width of the screen rather than a word in the middle of it, the way Telegram draws
+/// it, because it is not a date and must not be read as one: a date is a quiet label that is always
+/// there, and this is the one line in the room that says *start here*. Faint, and not the accent —
+/// the accent is what the reader can press, and this is somewhere to look.
+struct UnreadDividerView: View {
+    var body: some View {
+        Text(Strings.Room.unreadMessages)
+            .font(.caption.weight(.medium))
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, Theme.Spacing.tight)
+            .background(.secondary.opacity(Theme.Backdrop.wash))
+            // Out to the edges of the screen, past the margin the conversation keeps — a bar that
+            // stopped where the bubbles stop would be one more shape in a column of them.
+            .padding(.horizontal, -Theme.Spacing.normal)
+            .padding(.top, Theme.Spacing.roomy)
+            .padding(.bottom, Theme.Spacing.close)
+            .accessibilityAddTraits(.isHeader)
+    }
+}
 
 struct DayDividerView: View {
     let date: Date

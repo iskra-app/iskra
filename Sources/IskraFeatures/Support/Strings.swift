@@ -414,6 +414,8 @@ public enum Strings {
         /// — so something has to say that there is a bottom to go to. One without the other would
         /// be worse than either: the old behaviour at least told you a message had come.
         public static let jumpToNewest = LocalizedStringResource("room.jumpToNewest", bundle: bundle)
+        /// The bar where the reader left off — see `UnreadDividerView`.
+        public static let unreadMessages = LocalizedStringResource("room.unreadMessages", bundle: bundle)
 
         /// The round button in the corner that takes you to the bottom of a room you have read a
         /// long way up. Read aloud only — the arrow in it is the whole of what it says on screen.
