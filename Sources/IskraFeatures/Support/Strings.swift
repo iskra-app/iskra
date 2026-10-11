@@ -508,7 +508,6 @@ public enum Strings {
         public static let sharedMedia = LocalizedStringResource("room.sharedMedia", bundle: bundle)
         public static let sharedMediaEmptyTitle = LocalizedStringResource("room.sharedMediaEmptyTitle", bundle: bundle)
         public static let sharedMediaEmptyMessage = LocalizedStringResource("room.sharedMediaEmptyMessage", bundle: bundle)
-        public static let galleryLoadEarlier = LocalizedStringResource("room.galleryLoadEarlier", bundle: bundle)
 
         /// Spaces — «пространства» — the rooms grouped inside one, and the empty state of a space with
         /// nothing in it yet. The word is the plain one, never "space" the Matrix jargon.

@@ -632,7 +632,6 @@
 "room.sharedMedia" = "Медиа и файлы";
 "room.sharedMediaEmptyTitle" = "Здесь пока нет медиа";
 "room.sharedMediaEmptyMessage" = "Фото, видео и файлы из этого чата появятся здесь.";
-"room.galleryLoadEarlier" = "Показать более раннее";
 
 /* Пространства и их содержимое. */
 "room.spaceLabel" = "Пространство";
