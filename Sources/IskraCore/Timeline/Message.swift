@@ -405,11 +405,25 @@ public struct RoomEvent: Sendable, Identifiable, Equatable {
     public let id: String
     public let kind: RoomEventKind
     public let timestamp: Date
+    /// Who did it, where the line names them by something other than a member list — a person
+    /// renaming themselves. See `people`.
+    public let actorID: String?
 
-    public init(id: String, kind: RoomEventKind, timestamp: Date) {
+    public init(id: String, kind: RoomEventKind, timestamp: Date, actorID: String? = nil) {
         self.id = id
         self.kind = kind
         self.timestamp = timestamp
+        self.actorID = actorID
+    }
+
+    /// The people this line names, each with the Matrix ID behind the name — what makes a name in
+    /// the grey line something to press, the way Telegram's are: "Аня joined" goes to Аня.
+    public var people: [RoomEventPerson] {
+        if let people = kind.people { return people }
+        if case let .renamedThemselves(_, to) = kind, let actorID {
+            return [RoomEventPerson(userID: actorID, name: to)]
+        }
+        return []
     }
 
     /// The line, in the reader's language.
@@ -441,13 +455,32 @@ public struct RoomEvent: Sendable, Identifiable, Equatable {
     /// you want to know who they both were. Three or more become the first name and a count,
     /// because a grey line listing eleven people is not a line, it is a paragraph, and nobody
     /// reads it.
-    private static func list(_ names: [String]) -> String {
-        switch names.count {
+    private static func list(_ people: [RoomEventPerson]) -> String {
+        let names = people.map(\.name)
+        return switch names.count {
         case 0: ""
         case 1: names[0]
         case 2: String(core: CoreStrings.RoomEvent.pair(names[0], names[1]))
         default: String(core: CoreStrings.RoomEvent.others(names[0], names.count - 1))
         }
+    }
+}
+
+/// One person named in a room event: the name the line says, and the Matrix ID it stands for.
+///
+/// A string literal makes one whose ID *is* the name, which is what a test that only cares about the
+/// sentence wants to write.
+public struct RoomEventPerson: Sendable, Hashable, ExpressibleByStringLiteral {
+    public let userID: String
+    public let name: String
+
+    public init(userID: String, name: String) {
+        self.userID = userID
+        self.name = name
+    }
+
+    public init(stringLiteral value: String) {
+        self.init(userID: value, name: value)
     }
 }
 
@@ -457,13 +490,13 @@ public struct RoomEvent: Sendable, Identifiable, Equatable {
 /// collapsed into one line, and collapsing sentences is not something you can do to sentences.
 /// See `RoomEventKind.merged(with:)`.
 public enum RoomEventKind: Sendable, Equatable {
-    /// Somebody, or several somebodies, arrived. The names are display names where the room
-    /// knew one and Matrix IDs where it did not.
-    case joined([String])
-    case left([String])
-    case invited([String])
-    case removed([String])
-    case banned([String])
+    /// Somebody, or several somebodies, arrived. Each is named by their display name where the
+    /// room knew one and their Matrix ID where it did not — and carries the ID either way.
+    case joined([RoomEventPerson])
+    case left([RoomEventPerson])
+    case invited([RoomEventPerson])
+    case removed([RoomEventPerson])
+    case banned([RoomEventPerson])
 
     /// Somebody changed the name they go by.
     case renamedThemselves(from: String, to: String)
@@ -477,7 +510,7 @@ public enum RoomEventKind: Sendable, Equatable {
 
     /// The people named, for the shapes that name people. Nil for the rest, which is what
     /// lets `merged(with:)` refuse to pool two lines that have nobody to pool.
-    public var people: [String]? {
+    public var people: [RoomEventPerson]? {
         switch self {
         case let .joined(names), let .left(names), let .invited(names),
              let .removed(names), let .banned(names):
@@ -496,7 +529,8 @@ public enum RoomEventKind: Sendable, Equatable {
     public func merged(with other: RoomEventKind) -> RoomEventKind? {
         guard let mine = people, let theirs = other.people else { return nil }
 
-        let combined = mine + theirs.filter { !mine.contains($0) }
+        // The same *person*, by ID: two people who both call themselves Аня are two people.
+        let combined = mine + theirs.filter { person in !mine.contains { $0.userID == person.userID } }
 
         switch (self, other) {
         case (.joined, .joined): return .joined(combined)

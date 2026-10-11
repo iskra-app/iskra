@@ -977,6 +977,15 @@
    Apart they read as five small things; together they are one conversation. */
 "settings.security" = "Security";
 
+/* The round buttons under a person's portrait. */
+"profile.message" = "Message";
+"profile.share" = "Share";
+"profile.copyID" = "Copy";
+/* The label beside a person's Matrix address on their profile. */
+"profile.matrixID" = "Matrix ID";
+"profile.loading" = "Loading profile…";
+"profile.notInRoom" = "This person isn’t in the chat.";
+
 /* The settings row and the title of the screen listing every session on the account. */
 "devices.title" = "Devices";
 "devices.thisDevice" = "This device";

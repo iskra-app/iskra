@@ -29,14 +29,67 @@ struct RoomEventRow: View {
     /// see `MessageRow.opensDay`.
     var opensDay: Bool = false
 
+    /// Where a pressed name goes — the person's page. Nil outside a room (a peek), and then the
+    /// names are only words.
+    @Environment(\.openProfile) private var openProfile
+
     var body: some View {
-        Text(event.text)
+        Text(Self.linked(event, linking: openProfile != nil))
             .font(.caption)
             .foregroundStyle(.secondary)
+            // The names are the room's people, not links out of the app: drawn as the line's own
+            // grey, only heavier, the way Telegram draws them — and pressing one opens the page of
+            // the person it names rather than a browser.
+            .tint(.secondary)
+            .environment(\.openURL, OpenURLAction { url in
+                guard let userID = Self.userID(in: url) else { return .systemAction }
+                openProfile?(userID)
+                return .handled
+            })
             .multilineTextAlignment(.center)
             .padding(.horizontal, Theme.Spacing.normal)
             .padding(.vertical, Theme.Spacing.tight)
             .frame(maxWidth: .infinity)
             .padding(.top, followsEvent || opensDay ? 0 : Theme.Spacing.betweenSenders)
     }
+
+    /// The sentence, with every name in it that belongs to a person made into a link to them.
+    ///
+    /// Found in the finished sentence rather than built into it, because the sentence is composed
+    /// in the reader's language (`RoomEvent.text`) and where a name falls in it is that language's
+    /// business. The first occurrence of each name is the one linked — names are long enough, and the
+    /// words around them short enough, that the first is the name.
+    static func linked(_ event: RoomEvent, linking: Bool) -> AttributedString {
+        var text = AttributedString(event.text)
+        guard linking else { return text }
+
+        for person in event.people where !person.name.isEmpty {
+            guard let range = text.range(of: person.name),
+                  let url = link(to: person.userID) else { continue }
+            text[range].link = url
+            text[range].font = .caption.weight(.semibold)
+        }
+        return text
+    }
+
+    /// A link that only this row understands: `iskra-person:` and the Matrix ID.
+    static func link(to userID: String) -> URL? {
+        var components = URLComponents()
+        components.scheme = scheme
+        components.path = userID
+        return components.url
+    }
+
+    static func userID(in url: URL) -> String? {
+        guard url.scheme == scheme else { return nil }
+        return URLComponents(url: url, resolvingAgainstBaseURL: false)?.path
+    }
+
+    private static let scheme = "iskra-person"
+}
+
+extension EnvironmentValues {
+    /// Opens a person's page, by Matrix ID — set by the room, read by anything in it that names
+    /// somebody: a grey line, a face beside a message.
+    @Entry var openProfile: ((String) -> Void)?
 }

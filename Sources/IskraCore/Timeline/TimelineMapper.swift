@@ -337,7 +337,8 @@ enum TimelineMapper {
 
         return RoomEvent(id: identifier(for: event.eventOrTransactionId),
                          kind: kind,
-                         timestamp: MessagePreview.date(from: event.timestamp))
+                         timestamp: MessagePreview.date(from: event.timestamp),
+                         actorID: event.sender)
     }
 
     private static func roomEventKind(from content: TimelineItemContent, sender: String) -> RoomEventKind? {
@@ -346,7 +347,7 @@ enum TimelineMapper {
             // The name the room knows them by, and their Matrix ID when it knows none. A line
             // reading "@alice:matrix.org joined" is worse than nothing to nobody: it is exactly
             // what somebody without a display name looks like everywhere else in the app.
-            let who = userDisplayName ?? userId
+            let who = RoomEventPerson(userID: userId, name: userDisplayName ?? userId)
 
             return switch change {
             case .joined, .invitationAccepted, .knockAccepted: .joined([who])

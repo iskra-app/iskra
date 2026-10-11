@@ -1274,6 +1274,18 @@ public enum Strings {
         }
     }
 
+    /// A person's page — see `MemberProfileView`.
+    public enum Profile {
+        public static let message = LocalizedStringResource("profile.message", bundle: bundle)
+        public static let share = LocalizedStringResource("profile.share", bundle: bundle)
+        public static let copyID = LocalizedStringResource("profile.copyID", bundle: bundle)
+        public static let matrixID = LocalizedStringResource("profile.matrixID", bundle: bundle)
+        /// While the room's member list is still being fetched for a profile opened from the chat.
+        public static let loading = LocalizedStringResource("profile.loading", bundle: bundle)
+        /// The person has left the room, or was never in it.
+        public static let notInRoom = LocalizedStringResource("profile.notInRoom", bundle: bundle)
+    }
+
     /// Settings → Devices — see `DevicesView`.
     public enum Devices {
         public static let title = LocalizedStringResource("devices.title", bundle: bundle)

@@ -53,6 +53,9 @@ struct MessageRow: View {
     /// The wash that lights a message the conversation has just jumped to.
     @Environment(\.accent) private var accent
 
+    /// Where a pressed face goes — the sender's page. See `EnvironmentValues.openProfile`.
+    @Environment(\.openProfile) private var openProfile
+
     /// How wide the conversation is, measured by `RoomView` and handed down. A playing video
     /// note grows to fill it.
     ///
@@ -186,8 +189,13 @@ struct MessageRow: View {
                 if message.isContinuation {
                     Color.clear.frame(width: avatarSize)
                 } else {
+                    // Pressing a face goes to the person — Telegram's. A button only where a room
+                    // is there to open the page; in a peek it is a picture.
                     Avatar(name: message.senderName, url: message.senderAvatarURL,
                            size: Theme.Size.avatarSmall, seed: message.senderID)
+                        .contentShape(.circle)
+                        .onTapGesture { openProfile?(message.senderID) }
+                        .accessibilityAddTraits(openProfile == nil ? [] : .isButton)
                 }
             }
 
@@ -197,6 +205,7 @@ struct MessageRow: View {
                         .font(.caption.weight(.medium))
                         .foregroundStyle(.secondary)
                         .padding(.leading, Theme.Spacing.close)
+                        .onTapGesture { openProfile?(message.senderID) }
                 }
 
                 if case let .failed(failure)? = message.delivery {
