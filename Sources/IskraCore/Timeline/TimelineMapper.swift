@@ -262,7 +262,17 @@ enum TimelineMapper {
                        reactions: unsent.applied(to: reactions(from: event.content, ownUserID: ownUserID),
                                                  messageID: id),
                        deletedAt: kind == .deleted ? redaction(of: event) : nil,
-                       mentionedUserIDs: mentionedUserIDs(from: event.content))
+                       mentionedUserIDs: mentionedUserIDs(from: event.content),
+                       uploadProgress: event.isOwn ? uploadProgress(of: event.localSendState) : nil)
+    }
+
+    /// How far an attachment of ours has got on its way up — see `Message.uploadProgress`.
+    ///
+    /// Nil until the SDK has a total to divide by: a ring that starts at an invented zero and then
+    /// leaps is worse than one that appears when there is something true to draw.
+    static func uploadProgress(of state: EventSendState?) -> Double? {
+        guard case let .notSentYet(upload?)? = state, upload.progress.total > 0 else { return nil }
+        return min(1, Double(upload.progress.current) / Double(upload.progress.total))
     }
 
     /// The IDs an event says it mentions — its `m.mentions` set. Only message events carry them;
@@ -585,9 +595,24 @@ enum TimelineMapper {
         switch event.localSendState {
         case .notSentYet:
             return .sending
-        case let .sendingFailed(error, _):
-            // The SDK's `isRecoverable` is dropped on purpose: it describes what the *queue*
-            // did, not whether the user can get the message moving. See `SendFailure.canRetry`.
+        case .sendingFailed(_, isRecoverable: true):
+            // Still on its way, and that is the truth rather than a kindness. A recoverable failure
+            // is the SDK saying the request did not get through — the network went, the server timed
+            // out — and that it has *paused the room's queue* rather than given up on the message.
+            // Nothing about the message is wrong. The queue is started again when sync comes back
+            // and, while sync is running, on a backoff of its own (`SendQueueRecovery`), and the
+            // message goes with it.
+            //
+            // It used to be drawn as a failure, which is the one thing Telegram is careful never to
+            // do: write a message in a lift and it sits there with a clock until there is a network,
+            // and then it goes. Here it got the red badge — about a message that was going to be sent
+            // anyway, a few seconds later, with nobody pressing anything. And people did press:
+            // "Send again" on a message already going, "Discard" on one that would have gone.
+            return .sending
+        case let .sendingFailed(error, isRecoverable: false):
+            // Parked: the queue has stepped round this one message and will not try it again by
+            // itself. That is a real failure, and its reason is the fix — `SendFailure.canRetry`
+            // says which of them a second press can clear.
             return .failed(reason(for: error))
         case .sent, .none:
             // Sent, and possibly read. A receipt from anyone but us means read.

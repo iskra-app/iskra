@@ -263,6 +263,16 @@ public struct Message: Sendable, Identifiable, Equatable {
     /// would otherwise take the mark off a conversation that has plainly been read.
     public var carriesReadMark: Bool = false
 
+    /// How much of an attachment has gone up, from 0 to 1, while it is still going up.
+    ///
+    /// Nil for everything that is not an upload in progress — every text, every message of
+    /// somebody else's, every attachment that has finished. The SDK reports it on the local echo
+    /// (`EventSendState.notSentYet(progress:)`), and the bubble draws it as a ring over the picture
+    /// with a cross in it, the way Telegram does: a photo that sits with a clock beside it for a
+    /// minute on a slow network looks exactly like a photo that is stuck, and a ring that moves is
+    /// the difference.
+    public var uploadProgress: Double?
+
     public init(id: String,
                 kind: MessageKind,
                 senderID: String,
@@ -278,7 +288,8 @@ public struct Message: Sendable, Identifiable, Equatable {
                 deletedAt: Date? = nil,
                 mentionedUserIDs: [String] = [],
                 isContinuation: Bool = false,
-                carriesReadMark: Bool = false) {
+                carriesReadMark: Bool = false,
+                uploadProgress: Double? = nil) {
         self.id = id
         self.kind = kind
         self.senderID = senderID
@@ -295,6 +306,7 @@ public struct Message: Sendable, Identifiable, Equatable {
         self.mentionedUserIDs = mentionedUserIDs
         self.isContinuation = isContinuation
         self.carriesReadMark = carriesReadMark
+        self.uploadProgress = uploadProgress
     }
 
     /// Whether the message has been taken back.

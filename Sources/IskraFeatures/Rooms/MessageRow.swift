@@ -228,6 +228,7 @@ struct MessageRow: View {
                        style: style,
                        playingDiameter: playingDiameter,
                        onOpenReply: handlers.onOpenReply)
+            .uploadProgress(of: message, onCancel: handlers.onDiscard)
             .messageActions(message, isPinned: isPinned, handlers: handlers)
     }
 

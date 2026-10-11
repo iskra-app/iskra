@@ -9,6 +9,9 @@
 
 "message.deleted" = "Message deleted";
 
+/* VoiceOver: the cross in the ring over a photo or file that is still uploading. */
+"message.delivery.cancelUpload" = "Cancel sending";
+
 /* Names the red badge beside a message. Deliberately does not promise a retry: most of
    these failures wait on the user, and the reason that follows says so. */
 "message.delivery.failed" = "Not sent";

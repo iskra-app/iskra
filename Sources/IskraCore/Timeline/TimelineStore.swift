@@ -989,8 +989,14 @@ public final class TimelineStore {
     /// to whatever the queue choked on, which may well be somebody's message. It does not
     /// matter. A send error stops the room's queue dead, and the queue is first-in-first-out —
     /// so whatever the error was about, a reaction still waiting behind it is going nowhere.
+    ///
+    /// Except a *recoverable* one. That is the queue pausing on a failure that may pass — the
+    /// network, a server timing out — and it is started again by itself (`SendQueueRecovery`), the
+    /// reactions behind it with it. Taking the pills off then would be wrong twice: the reaction is
+    /// on its way, and when it lands the pill would stay hidden, subtracted by `unsentReactions`
+    /// from a reaction everybody else in the room can see. Like a message, it waits with the queue.
     private func handle(sendQueueUpdate update: RoomSendQueueUpdate) {
-        guard case .sendError = update else { return }
+        guard case .sendError(_, _, isRecoverable: false) = update else { return }
         reactionsDidFail()
     }
 
