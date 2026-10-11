@@ -818,8 +818,16 @@ public final class RoomListStore {
         // store, and none of them shown until all of them had been summarised.
         var isFirstPaint = rooms.isEmpty && archivedRooms.isEmpty
 
+        // The run of the list this rebuild belongs to. Every write below comes after an await into
+        // the SDK, and the account can be closed in the middle of one — signed out, switched away
+        // from. `stop()` empties `rooms` precisely so that one account's chats are never left on the
+        // screen of the next; a rebuild that woke up afterwards and published the thirty it had
+        // gathered would put them straight back. So nothing is written once the run has moved on.
+        let generation = self.generation
+        func isCurrent() -> Bool { !Task.isCancelled && !hasStopped && generation == self.generation }
+
         for room in handles {
-            guard !Task.isCancelled else { return }
+            guard isCurrent() else { return }
 
             let roomID = room.id()
             if let changed, !changed.contains(roomID), let cached = summaryCache[roomID] {
@@ -827,7 +835,10 @@ public final class RoomListStore {
                 continue
             }
 
-            guard let summary = await summary(of: room) else {
+            let built = await summary(of: room)
+            guard isCurrent() else { return }
+
+            guard let summary = built else {
                 summaryCache[roomID] = .some(nil)
                 continue
             }
@@ -840,7 +851,7 @@ public final class RoomListStore {
             }
         }
 
-        guard !Task.isCancelled else { return }
+        guard isCurrent() else { return }
         watchTyping(in: handles)
         publish(summaries)
 
