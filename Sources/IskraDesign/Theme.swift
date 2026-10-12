@@ -139,9 +139,9 @@ public enum Theme {
         ///
         /// A quarter of a second is the number that is actually about the gesture rather than
         /// about a bug behind it. Half the system's wait, so it still reads as quick; long enough
-        /// that holding is a decision. And now that the wait is real, it is *shown* — the bubble
-        /// sinks through exactly this long and arrives at the lift, so the quarter second is spent
-        /// watching something happen rather than waiting for it. See `Scale.pressedMessage`.
+        /// that holding is a decision. Nothing is drawn during it: the bubble used to sink through
+        /// this quarter second as a countdown, and a message that changes shape under a finger is
+        /// exactly what the menu must not show.
         public static let menuLift: TimeInterval = 0.25
 
         /// How long a finger stays on a chat in the list before the peek lifts it — see `ChatPeek`.
@@ -152,24 +152,25 @@ public enum Theme {
         /// way to a tap should open the chat and not a preview of it. The system's own half second.
         public static let peekLift: TimeInterval = 0.5
 
-        /// The bubble coming back up when a press is abandoned — the finger lifted early, or the
-        /// press turned into a scroll.
-        ///
-        /// A spring with some bounce in it, which is the one place in this app a bounce is right:
-        /// the message was pushed and let go, and a thing let go comes back past where it started.
-        /// The sink itself is not a spring — it is a plain ease-out lasting exactly `menuLift`,
-        /// because it is a progress bar wearing a better costume and a progress bar must not
-        /// overshoot the thing it is measuring.
-        public static let menuReleases: Animation = .spring(response: 0.3, dampingFraction: 0.55)
-
         /// The menu arriving: the bubble rising off the page, the bar and the list opening
         /// around it. A spring, because the lift is the one moment in a conversation where the
         /// app is *picking something up*, and things that are picked up have weight.
         ///
-        /// Telegram's length: its context menu runs every part of the opening on one 0.42 s
-        /// spring (`ContextControllerExtractedPresentationNode`), heavily damped — the menu lands,
-        /// it does not wobble — and so does this one.
-        public static let menuOpens: Animation = .spring(duration: 0.42, bounce: 0.12)
+        /// Telegram's spring, number for number. Its context menu runs every part of the opening on
+        /// one `CASpringAnimation` (`ContextControllerExtractedPresentationNode`): mass 5, stiffness
+        /// 900, damping 104 — a damping ratio of 0.775 — and then *played faster*, squeezed from its
+        /// natural settling time of 0.741 s into 0.42 s. Squeezing a spring in time is the same as
+        /// making it stiffer at the same ratio: it comes out as a response of 0.265 s.
+        ///
+        /// This used to be `.spring(duration: 0.42, bounce: 0.12)`, which reads as the same
+        /// thing and is not: SwiftUI's `duration` is the *response*, not the time to settle, so it
+        /// was a spring more than half as slow again as Telegram's — and with less damping. The
+        /// message drifted up into the menu where Telegram's snaps into it and lands.
+        public static let menuOpens: Animation = .spring(response: 0.265, dampingFraction: 0.775)
+
+        /// And the menu going away: no spring at all. Telegram puts a message back on a plain
+        /// 0.2 s ease-in-ease-out — a thing being put down is not thrown.
+        public static let menuCloses: Animation = .easeInOut(duration: 0.2)
 
         /// The verbs becoming visible as they unfold out of the message: almost at once. Telegram
         /// fades its actions in over 0.05 s, so the eye follows the *unfolding* and never watches a
@@ -362,20 +363,9 @@ public enum Theme {
         public static let greeting: Duration = .seconds(3)
     }
 
-    /// Things drawn smaller than they are, as feedback. There is exactly one so far, and it has a
-    /// name here for the same reason every spacing does: the next view to squeeze something under a
-    /// finger should squeeze it by the same amount.
+    /// Things drawn at another size than they are, as feedback — named here for the same reason
+    /// every spacing is.
     public enum Scale {
-        /// How far a message gives under a finger on its way into the menu.
-        ///
-        /// Deeper than the 0.97 a button gives (`View.pressed(_:)`), and deliberately: a button's
-        /// squeeze says "heard you" about a press that is already over, while this one is a
-        /// *countdown* — it starts when the finger lands and finishes exactly as the menu lifts, so
-        /// the wait has something to look at. At 0.97 that journey is invisible; at 0.94 it reads
-        /// as the message being picked up, and it is still far from the cartoon squash that a
-        /// deeper number would give a wall of text.
-        public static let pressedMessage: CGFloat = 0.94
-
         /// How far the first run's preview bubble swells when a new accent lands on it.
         ///
         /// Four percent, and upward. It is the smallest movement that is still seen on a bubble

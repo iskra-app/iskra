@@ -124,15 +124,38 @@ final class MessageMenuPresenter {
     /// optional that was already non-nil.
     private(set) var lifts = 0
 
+    /// The message that is out of its place in the conversation — the one whose row is drawn
+    /// empty, because it is in the menu.
+    ///
+    /// Not the same as `presentation?.id`, and the difference is the landing. Telegram does not lay
+    /// a copy of the message over the original; it *takes the message out* of the list, and the
+    /// list has a gap where it was until it comes back. Here the thing in the menu is a second
+    /// drawing of the same message (SwiftUI cannot move one view between two parents), so the
+    /// original is hidden while it is away — and hidden for exactly as long as the trip home
+    /// takes, not merely while the menu is open. Shown again the moment the menu closed, it would
+    /// stand in its place while the copy was still flying back to it: two of the same message for
+    /// a third of a second, which is the very thing this is here to stop.
+    private(set) var liftedID: String?
+
     func present(_ presentation: MessageMenuPresentation) {
         guard self.presentation?.id != presentation.id else { return }
         lifts += 1
+        // Without animation: the row empties in the same frame the copy appears over it, so there
+        // is never a frame with both and never one with neither.
+        liftedID = presentation.id
         withAnimation(Theme.Timing.menuOpens) { self.presentation = presentation }
     }
 
     func dismiss() {
         guard presentation != nil else { return }
-        withAnimation(.smooth(duration: Theme.Timing.chrome)) { presentation = nil }
+        withAnimation(Theme.Timing.menuCloses) {
+            presentation = nil
+        } completion: { [weak self] in
+            // Only if nothing else has been lifted in the meantime — a second message pressed
+            // while the first was still on its way home owns the gap now.
+            guard let self, self.presentation == nil else { return }
+            self.liftedID = nil
+        }
     }
 }
 
