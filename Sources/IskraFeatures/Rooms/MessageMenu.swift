@@ -153,6 +153,10 @@ final class MessageMenuPresenter {
     /// be quietly not run.
     private(set) var isOut = false
 
+    /// Whether what is *on* the menu's glass — the emoji, the verbs — has appeared. A beat after
+    /// `isOut`, so the glass opens empty and is then filled: see `Theme.Timing.menuFills`.
+    private(set) var isFilled = false
+
     /// Whether the message is on its way home — the menu is still drawn, but it is going.
     private var isClosing = false
 
@@ -169,6 +173,7 @@ final class MessageMenuPresenter {
         withTransaction(still) {
             liftedID = presentation.id
             isOut = false
+            isFilled = false
             self.presentation = presentation
         }
 
@@ -179,6 +184,11 @@ final class MessageMenuPresenter {
             try? await Task.sleep(for: Theme.Timing.aFrame)
             guard let self, self.presentation?.id == id, !self.isClosing else { return }
             withAnimation(Theme.Timing.menuOpens) { self.isOut = true }
+
+            // And once the glass is mostly open, what goes on it.
+            try? await Task.sleep(for: Theme.Timing.menuFills)
+            guard self.presentation?.id == id, !self.isClosing else { return }
+            withAnimation(Theme.Timing.menuContentShows) { self.isFilled = true }
         }
     }
 
@@ -189,6 +199,7 @@ final class MessageMenuPresenter {
 
         withAnimation(Theme.Timing.menuCloses) {
             isOut = false
+            isFilled = false
         } completion: { [weak self] in
             // Only if nothing else has been lifted in the meantime — a second message pressed
             // while the first was still on its way home owns the menu, and the gap, now.

@@ -177,6 +177,20 @@ public enum Theme {
         /// list fade up.
         public static let menuListShows: Animation = .linear(duration: 0.05)
 
+        /// How far into the flight the menu's glass is left empty before what is on it appears.
+        ///
+        /// The capsule and the panel arrive first, as shapes — glass growing out of the message's
+        /// corner with nothing on it yet — and the emoji and the verbs land on them once they have
+        /// mostly opened. Both at once is a menu that *scales its words*: six lines of text
+        /// swelling from a dot read as the list being zoomed, and an emoji at a tenth of its size
+        /// is a smudge. Empty glass growing reads as a surface opening, and then there is
+        /// something on it. Most of the way through the opening spring's response, which is when
+        /// the glass is nearly its full size.
+        public static let menuFills: Duration = .milliseconds(150)
+
+        /// What is on the glass appearing, once it is there — quick, it is only being shown.
+        public static let menuContentShows: Animation = .easeOut(duration: 0.15)
+
         /// The bar of emoji becoming visible as it unrolls — Telegram's 0.15 s.
         public static let menuBarFades: Animation = .easeOut(duration: 0.15)
 
