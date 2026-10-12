@@ -382,12 +382,13 @@ public struct IskraRootView: View {
         // until the new one is in.
         .sheet(isPresented: Binding(get: { switcher.isAddingAccount },
                                     set: { switcher.isAddingAccount = $0 }),
-               onDismiss: { Task { await authentication.cancelSignIn() } }) {
+               onDismiss: { Task { await authentication.cancelSignIn() } },
+               content: {
             AddAccountView(authentication: authentication,
                            address: MockSignIn.isRequested ? mockAddress ?? "" : "",
                            onSignedIn: { added($0) },
                            onCancel: { switcher.isAddingAccount = false })
-        }
+        })
         .alert(Text(Strings.Session.endedTitle),
                isPresented: Binding(get: { endedAccountName != nil },
                                     set: { if !$0 { endedAccountName = nil } })) {
@@ -513,13 +514,12 @@ public struct IskraRootView: View {
         }
         // Only what this account sends. What was shared into another account's chat waits for
         // that account — and is the reason to open it, below.
+        // What could not go yet — a chat that would not open, offline — goes back in, and is tried
+        // again the next time the app comes to the front. See `UserSession.sendQueued`.
         for item in ChatDirectory.drainOutbox(forAccount: session.sessionID) {
-            // What was shared goes first and the words after it — the order a person writing it
-            // by hand would use: the photo, then "look at this".
-            for attachment in item.attachments {
-                await session.send(attachment, toRoomID: item.roomID)
+            if let waiting = await session.sendQueued(item) {
+                ChatDirectory.enqueue(waiting)
             }
-            await session.sendText(item.text, toRoomID: item.roomID)
         }
 
         // Somebody shared into a chat of an account that is not open, and came back to the app:
@@ -793,6 +793,7 @@ public struct IskraRootView: View {
                     // would leave the reader pushed onto a conversation that no longer
                     // exists.
                     RoomView(timeline: timeline,
+                             identityChanges: session.identityChanges(forRoomID: roomID),
                              makeDetails: { session.details(forRoomID: roomID) },
                              openAt: $selectedEventID,
                              onLeave: { selectedRoomID = nil },

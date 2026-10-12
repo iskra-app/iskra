@@ -62,6 +62,12 @@ public enum Theme {
         public static let circle: CGFloat = .infinity
     }
 
+    public enum Opacity {
+        /// A warning's colour spread under its words — enough to be told apart from an ordinary
+        /// notice at a glance, little enough that the words on it stay the words' own colour.
+        public static let warningWash: Double = 0.14
+    }
+
     public enum Spacing {
         public static let tight: CGFloat = 4
         public static let close: CGFloat = 8
@@ -481,6 +487,10 @@ public enum Theme {
         /// The height of the unread badge in the chat list, and the width of the "@" beside it —
         /// one number, so the circle and the capsule stand exactly level.
         public static let unreadBadge: CGFloat = 20
+        /// The dot that says "unread" with no number to show. Off the four-point grid, and kept
+        /// there: it is the size the list has always drawn, moved here from a literal in the row
+        /// rather than redesigned in passing.
+        public static let unreadDot: CGFloat = 10
         public static let avatarSmall: CGFloat = 28
         /// A picture that *is* a button in the title bar: the chat's, at the end of a room's
         /// bar, and the user's own at the end of the room list's.
@@ -929,7 +939,6 @@ public extension ShapeStyle where Self == Color {
         Color.primary.opacity(0.16)
     }
 }
-
 
 public extension Color {
     /// One colour for the light appearance and another for the dark one.

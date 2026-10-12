@@ -411,6 +411,26 @@ public enum Strings {
     }
 
     public enum Room {
+        /// Somebody in the room has new keys — see `IdentityChangeBanner`. Written so that no name
+        /// has to be declined and nobody's gender guessed: the name stands alone before a colon.
+        public enum Identity {
+            public static func changedTitle(_ name: String) -> LocalizedStringResource {
+                LocalizedStringResource("room.identity.changedTitle", defaultValue: "\(name): new encryption keys",
+                                        bundle: bundle)
+            }
+            public static let changedBody = LocalizedStringResource("room.identity.changedBody", bundle: bundle)
+            public static let understood = LocalizedStringResource("room.identity.understood", bundle: bundle)
+            public static func violationTitle(_ name: String) -> LocalizedStringResource {
+                LocalizedStringResource("room.identity.violationTitle",
+                                        defaultValue: "\(name): keys no longer match the ones you verified",
+                                        bundle: bundle)
+            }
+            public static let violationBody = LocalizedStringResource("room.identity.violationBody", bundle: bundle)
+            /// Takes back a verification that no longer holds. Not "OK": it changes something.
+            public static let withdraw = LocalizedStringResource("room.identity.withdraw", bundle: bundle)
+            public static let failed = LocalizedStringResource("room.identity.failed", bundle: bundle)
+        }
+
         /// The button that appears when a message arrives while you are reading further up.
         ///
         /// It exists because the conversation no longer drags you to the bottom against your will
@@ -695,6 +715,15 @@ public enum Strings {
             /// appearance cannot say out loud.
             public static let addReaction = LocalizedStringResource("message.menu.addReaction", bundle: bundle)
             public static let removeReaction = LocalizedStringResource("message.menu.removeReaction", bundle: bundle)
+            /// The quick reaction, as a VoiceOver action — see `MessageActions.spokenActions`.
+            public static func addQuick(_ emoji: String) -> LocalizedStringResource {
+                LocalizedStringResource("message.menu.addQuick", defaultValue: "React with \(emoji)", bundle: bundle)
+            }
+            public static func removeQuick(_ emoji: String) -> LocalizedStringResource {
+                LocalizedStringResource("message.menu.removeQuick", defaultValue: "Remove \(emoji)", bundle: bundle)
+            }
+            /// Opens the menu with the whole bar of emoji — the one way VoiceOver reaches the rest.
+            public static let moreReactions = LocalizedStringResource("message.menu.moreReactions", bundle: bundle)
 
             /// Flagging somebody else's message to the moderators.
             public static let report = LocalizedStringResource("message.menu.report", bundle: bundle)
@@ -814,6 +843,10 @@ public enum Strings {
             public static let failed = LocalizedStringResource("message.delivery.failed", bundle: bundle)
             /// Offered only where trying again can actually work — see `SendFailure.canRetry`.
             public static let sendAgain = LocalizedStringResource("message.delivery.sendAgain", bundle: bundle)
+            /// Offered where the queue stopped because a verified person no longer checks out —
+            /// see `SendFailure.canSendAnyway`. A decision, and worded as one.
+            public static let sendAnyway = LocalizedStringResource("message.delivery.sendAnyway", bundle: bundle)
+            public static let sendAnywayFailed = LocalizedStringResource("message.delivery.sendAnywayFailed", bundle: bundle)
             /// Throws the message out of the send queue. Its own word rather than
             /// `Menu.delete`, even though both read "Удалить": that one redacts an event the
             /// whole room has already seen, this one drops a message nobody ever received.

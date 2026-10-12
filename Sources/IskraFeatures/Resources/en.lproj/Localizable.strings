@@ -484,6 +484,9 @@
 
 /* Accessibility hints on a reaction. Say what pressing it will do — the pill itself can't. */
 "message.menu.addReaction" = "Add a reaction";
+"message.menu.addQuick" = "React with %@";
+"message.menu.removeQuick" = "Remove %@";
+"message.menu.moreReactions" = "More reactions";
 
 "message.menu.removeReaction" = "Remove your reaction";
 
@@ -1067,6 +1070,15 @@
    so there is a way straight past them. */
 "onboarding.skip" = "Skip";
 
+"room.identity.changedTitle" = "%@: new encryption keys";
+"room.identity.changedBody" = "Messages to this person are now encrypted with new keys. That usually happens after signing in on a new phone. If you weren’t expecting it, check with them in person.";
+"room.identity.understood" = "Got it";
+"room.identity.violationTitle" = "%@: keys no longer match the ones you verified";
+"room.identity.violationBody" = "You verified this person, but the keys have changed since. Until you’re sure it’s still them, don’t write anything important.";
+"room.identity.withdraw" = "Remove verification";
+"room.identity.failed" = "That didn’t work. Check your connection and try again.";
+"message.delivery.sendAnyway" = "Send anyway";
+"message.delivery.sendAnywayFailed" = "The message still hasn’t gone. Check your connection and try again.";
 "onboarding.greeting" = "Hello, %@!";
 "onboarding.greetingNameless" = "Hello!";
 

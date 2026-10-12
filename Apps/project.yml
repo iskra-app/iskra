@@ -12,8 +12,8 @@ options:
   bundleIdPrefix: moscow.swag
   createIntermediateGroups: true
   deploymentTarget:
-    iOS: "26.0"
-    macOS: "26.0"
+    iOS: "18.0"
+    macOS: "15.0"
 
 packages:
   Iskra:
@@ -104,6 +104,10 @@ targets:
     scheme: {}
     sources:
       - path: Shared
+      # The privacy manifest App Store Connect refuses an upload without. The extensions carry
+      # their own, in their own folders, each true of its own bundle.
+      - path: Privacy/PrivacyInfo.xcprivacy
+        buildPhase: resources
       # `type: file` matters: an .icon is a directory on disk, and without this XcodeGen
       # would walk into it and add its insides as loose files instead of handing the
       # bundle to actool whole.
@@ -178,6 +182,17 @@ targets:
         # the icon the app launches with, and every alternate resolves to nothing: the
         # call succeeds, the icon does not change, and there is nothing in any log.
         ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: YES
+        # Which APNs the device token lives in — see `aps-environment` below. Development for
+        # everything built to run here (`run.sh` and `device.sh` both build Debug), production
+        # for the archive that goes to TestFlight and the App Store. It has to follow the build
+        # configuration, because `PushRegistration.appID` does (`#if DEBUG` → the gateway's
+        # sandbox entry, otherwise production): a production build with a sandbox entitlement
+        # is a token Sygnal sends into the wrong APNs, and every push silently goes nowhere.
+      configs:
+        Debug:
+          APS_ENVIRONMENT: development
+        Release:
+          APS_ENVIRONMENT: production
     entitlements:
       path: iOS/Iskra.entitlements
       properties:
@@ -197,7 +212,7 @@ targets:
         # ignores provisioning and will happily hide that from you.
         com.apple.security.application-groups: [group.moscow.swag.iskra]
         keychain-access-groups: [$(AppIdentifierPrefix)moscow.swag.iskra.shared]
-        aps-environment: development
+        aps-environment: $(APS_ENVIRONMENT)
         # What makes a message from a person look like a message from a person: their avatar in
         # a circle, their name where the app's name would be, a place of their own in
         # Notification Summary, and a way past a Focus that is letting people through. See
@@ -450,7 +465,7 @@ targets:
         AppIdentifierPrefix: $(AppIdentifierPrefix)
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [en, ru]
-        LSMinimumSystemVersion: "26.0"
+        LSMinimumSystemVersion: "15.0"
         NSCameraUsageDescription: Iskra uses the camera so you can record video messages.
         NSMicrophoneUsageDescription: Iskra uses the microphone so you can record voice messages.
         NSLocationWhenInUseUsageDescription: Iskra uses your location only when you ask it to, to put a map on the place you are.

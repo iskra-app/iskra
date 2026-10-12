@@ -80,7 +80,7 @@ Iskra — нативный Matrix-клиент для iPhone, iPad и Mac: од�
 только upstream публикует macOS-слайс XCFramework).
 
 ~18.5 тыс. строк Swift, ~100 файлов. Swift 6, strict concurrency = complete,
-deployment target iOS 26 / macOS 26.
+deployment target iOS 18 / macOS 15 (Liquid Glass — только через `IskraDesign/Glass.swift`).
 
 ## Слои и правило зависимостей
 

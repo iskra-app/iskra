@@ -67,8 +67,8 @@
 
 /* Why a message is stuck, tapped from the badge beside it. Each names what to do next:
    the user is the only one who can clear these. No cryptography vocabulary. */
-"sendFailure.insecureDevices" = "Someone here is signed in on a device you haven’t verified yet. Verify it, and this message will go.";
-"sendFailure.identityChanged" = "Someone in this chat signed in somewhere new, so their identity changed. Check it’s really them, and this message will go.";
+"sendFailure.insecureDevices" = "Someone you verified is signed in on a device they haven’t confirmed yet. If you trust that device, send it anyway.";
+"sendFailure.identityChanged" = "The encryption keys of someone you verified have changed. If you’re sure it’s still the same person, send it anyway.";
 "sendFailure.verificationRequired" = "Verify this device before sending to a private chat. Open Settings to do it.";
 "sendFailure.missingMedia" = "The file is no longer on this device, so there is nothing left to send.";
 "sendFailure.unsupportedFileType" = "This kind of file can’t be sent.";

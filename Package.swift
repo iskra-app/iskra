@@ -16,15 +16,22 @@ let package = Package(
     // Every user-facing string lives in a String Catalog, never in a view. English is
     // the source language; Russian is a full translation, not a fallback.
     defaultLocalization: "en",
-    // OS 26 across the board. This buys Liquid Glass without a single availability
-    // check, and it also matches reality: the Rust SDK's prebuilt macOS objects are
-    // compiled against the 26.x SDK, so linking them into an older deployment target
-    // is something the linker rightly complains about.
-    // Spelled as strings because `.v26` does not exist in this tools version's
-    // PackageDescription yet.
+    // iOS 18 / macOS 15, and neither number is a preference: `Mutex` (Synchronization) is
+    // what sets both, and it is the lowest floor the code reaches without rewriting its
+    // locks. iOS 18 runs on everything iOS 17 does, so going lower would buy no phones.
+    //
+    // Liquid Glass is OS 26 and is reached only through `IskraDesign` (`Glass.swift`),
+    // which draws a material in its place on older systems — a view never checks.
+    //
+    // The linker says ~200 times that SDK objects were "built for newer macOS version
+    // (26.5)". They are the C libraries vendored into the Rust SDK (zstd, the TLS stack),
+    // compiled without a deployment target of their own, and what they call is libc and
+    // pthreads — nothing a macOS 15 lacks. The warning is the label, not the contents.
+    //
+    // Spelled as strings to match the tools version's PackageDescription.
     platforms: [
-        .iOS("26.0"),
-        .macOS("26.0")
+        .iOS("18.0"),
+        .macOS("15.0")
     ],
     products: [
         .library(name: "IskraCore", targets: ["IskraCore"]),

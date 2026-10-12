@@ -72,8 +72,9 @@ public extension TimelineStore {
     /// What goes is what the settings say — compressed, and with the location, the camera and the
     /// dates taken out; see `MediaSettings` and `MediaPreparation`. A video note ignores them: it
     /// is always stripped, and it was compressed when it was recorded (`MediaSettings.videoNote`).
-    /// Any copy made here is plaintext on disk and lives exactly as long as this call: the send
-    /// queue has taken its own copy of the file by the time `sendVideo` returns.
+    /// Any copy made here is plaintext on disk and lives exactly as long as this call — which is
+    /// safe only because the SDK is handed the *bytes*, not the path (see `owned`): it reads a
+    /// path later, from its queue, by which time the copy is gone.
     func send(video original: URL, asVideoNote: Bool = false, replyingTo replyID: String? = nil) async {
         guard let timeline = liveTimeline else {
             // Not a silent return. The user pressed send; if nothing is going to happen, they are
@@ -107,7 +108,12 @@ public extension TimelineStore {
             Log.media.error("sending a video with no sound in it")
         }
 
-        let parameters = UploadParameters(source: .file(filename: url.path(percentEncoded: false)),
+        guard let source = try? Self.owned(url) else {
+            Log.media.error("nothing was sent: the file could not be read")
+            failure = .send
+            return
+        }
+        let parameters = UploadParameters(source: source,
                                           caption: nil,
                                           formattedCaption: nil,
                                           mentions: nil,
@@ -157,7 +163,12 @@ public extension TimelineStore {
             return
         }
 
-        let parameters = UploadParameters(source: .file(filename: url.path(percentEncoded: false)),
+        guard let source = try? Self.owned(url) else {
+            Log.media.error("nothing was sent: the file could not be read")
+            failure = .send
+            return
+        }
+        let parameters = UploadParameters(source: source,
                                           caption: nil,
                                           formattedCaption: nil,
                                           mentions: nil,
@@ -185,7 +196,12 @@ public extension TimelineStore {
             return
         }
 
-        let parameters = UploadParameters(source: .file(filename: url.path(percentEncoded: false)),
+        guard let source = try? Self.owned(url) else {
+            Log.media.error("nothing was sent: the file could not be read")
+            failure = .send
+            return
+        }
+        let parameters = UploadParameters(source: source,
                                           caption: nil,
                                           formattedCaption: nil,
                                           mentions: nil,
@@ -248,6 +264,22 @@ public extension TimelineStore {
     private static let locationZoom: UInt8 = 15
 
     // MARK: - Private
+
+    /// The file, as bytes the SDK owns from this moment — not as a path it will read later.
+    ///
+    /// `.file(filename:)` looked like the SDK taking the file, and was the SDK taking *the name
+    /// of* the file: `sendFile` and its siblings return at once and read the path afterwards, in a
+    /// task of the send queue's. Every caller deletes the file the moment the send returns — the
+    /// stripped copy of a video, the Share outbox's copy, a picked file's security scope — so by
+    /// the time the queue looked, there was nothing there, no local echo was ever made, and the
+    /// video or the file simply did not exist. `DemoBackendTests` sends a file, deletes it at once,
+    /// and waits for it to arrive, which is what it now does.
+    ///
+    /// Mapped rather than read where the system allows, so a large file is not copied once more
+    /// on its way into the SDK than it has to be.
+    private static func owned(_ url: URL) throws -> UploadSource {
+        .data(bytes: try Data(contentsOf: url, options: .mappedIfSafe), filename: url.lastPathComponent)
+    }
 
     /// Every send goes through here, and what it does *not* do is the whole of it: it does not wait
     /// for the attachment to reach the server.

@@ -482,6 +482,9 @@
 
 /* Accessibility hints on a reaction. Say what pressing it will do — the pill itself can't. */
 "message.menu.addReaction" = "Поставить реакцию";
+"message.menu.addQuick" = "Поставить %@";
+"message.menu.removeQuick" = "Убрать %@";
+"message.menu.moreReactions" = "Другие реакции";
 
 "message.menu.removeReaction" = "Убрать свою реакцию";
 
@@ -1062,6 +1065,15 @@
 /* Оба экрана после входа спрашивают про вкус, а не про дело, — поэтому мимо них есть дорога. */
 "onboarding.skip" = "Пропустить";
 
+"room.identity.changedTitle" = "%@: новые ключи шифрования";
+"room.identity.changedBody" = "Сообщения этому человеку теперь шифруются новыми ключами. Обычно так бывает после входа на новом телефоне. Если вы этого не ждали — уточните лично.";
+"room.identity.understood" = "Понятно";
+"room.identity.violationTitle" = "%@: ключи не совпадают с проверенными";
+"room.identity.violationBody" = "Вы проверяли этого собеседника, но с тех пор ключи сменились. Пока не убедитесь, что это тот же человек, не пишите ничего важного.";
+"room.identity.withdraw" = "Снять отметку о проверке";
+"room.identity.failed" = "Не получилось. Проверьте связь и попробуйте ещё раз.";
+"message.delivery.sendAnyway" = "Отправить всё равно";
+"message.delivery.sendAnywayFailed" = "Сообщение всё ещё не ушло. Проверьте связь и попробуйте ещё раз.";
 "onboarding.greeting" = "Привет, %@!";
 "onboarding.greetingNameless" = "Привет!";
 

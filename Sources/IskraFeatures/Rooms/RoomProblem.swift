@@ -23,12 +23,22 @@ enum RoomProblem: String, CaseIterable, ActionFailure {
     /// a photo that would not decode. Nothing was uploaded, and nothing was sent.
     case unreadableAttachment
 
+    /// "Send anyway" was pressed and the SDK refused — the message is still stuck, and saying so
+    /// is better than a badge that quietly stays red.
+    case sendAnywayFailed
+
+    /// "Got it" on a changed identity did not take, so the warning is still up — and will be
+    /// back on the next launch if the screen pretended otherwise.
+    case identityNotAcknowledged
+
     var id: String { rawValue }
 
     var explanation: LocalizedStringResource {
         switch self {
         case .microphone: Strings.Voice.needsMicrophone
         case .unreadableAttachment: Strings.Room.attachmentUnreadable
+        case .sendAnywayFailed: Strings.Message.Delivery.sendAnywayFailed
+        case .identityNotAcknowledged: Strings.Room.Identity.failed
         }
     }
 }

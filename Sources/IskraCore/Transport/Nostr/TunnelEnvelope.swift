@@ -16,7 +16,8 @@ struct TunnelEnvelope: Codable, Equatable {
     /// its length is memory whoever sent it chooses; ours is a UUID.
     static let maxIDLength = 64
 
-    var v: UInt8 = TunnelEnvelope.protocolVersion
+    /// `v` on the wire, as the Rust side spells it — see `CodingKeys`.
+    var version: UInt8 = TunnelEnvelope.protocolVersion
     var id: String
     var seq: UInt32
     var total: UInt32
@@ -32,7 +33,8 @@ struct TunnelEnvelope: Codable, Equatable {
     var bodyChunk: String
 
     enum CodingKeys: String, CodingKey {
-        case v, id, seq, total, method, path, headers, status, upstream
+        case version = "v"
+        case id, seq, total, method, path, headers, status, upstream
         case bodyChunk = "body_chunk"
     }
 
@@ -40,7 +42,7 @@ struct TunnelEnvelope: Codable, Equatable {
     ///
     /// What arrives from a relay arrives from anybody, so this runs on everything inbound.
     func validated() throws -> TunnelEnvelope {
-        guard v == Self.protocolVersion else { throw TunnelProtocolError.unsupportedVersion(v) }
+        guard version == Self.protocolVersion else { throw TunnelProtocolError.unsupportedVersion(version) }
         guard total > 0 else { throw TunnelProtocolError.malformed("total is zero") }
         guard seq < total else { throw TunnelProtocolError.malformed("seq is past total") }
         guard !id.isEmpty else { throw TunnelProtocolError.malformed("id is empty") }

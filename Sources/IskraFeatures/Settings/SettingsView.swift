@@ -327,5 +327,4 @@ struct SettingsView: View {
                       seed: session.userID,
                       isSubtitleSelectable: true)
     }
-
 }

@@ -183,6 +183,10 @@ public final class UserSession {
     /// so here is what keeps it out of the view graph.
     @ObservationIgnored private var openTimelines: [String: WeakBox<TimelineStore>] = [:]
 
+    /// The identity watch of every room on screen, for the same two reasons as `openTimelines`:
+    /// one per room, and every one of them stopped on the way out of the account.
+    @ObservationIgnored private var openIdentityChanges: [String: WeakBox<IdentityChangesStore>] = [:]
+
     private struct WeakBox<T: AnyObject> {
         weak var value: T?
     }
@@ -343,6 +347,21 @@ public final class UserSession {
         return store
     }
 
+    /// Who in this room has keys this device does not recognise — see `IdentityChangesStore`.
+    ///
+    /// The one already open, if the room is on screen twice (an iPad's list and detail): two
+    /// subscriptions would each take the warning down on their own, and one of them late.
+    public func identityChanges(forRoomID roomID: String) -> IdentityChangesStore? {
+        if let open = openIdentityChanges[roomID]?.value { return open }
+        guard let room = roomList.room(withID: roomID) ?? (try? client.getRoom(roomId: roomID)) else {
+            return nil
+        }
+        let store = IdentityChangesStore(room: room, encryption: client.encryption(), ownUserID: userID)
+        openIdentityChanges = openIdentityChanges.filter { $0.value.value != nil }
+        openIdentityChanges[roomID] = WeakBox(value: store)
+        return store
+    }
+
     /// A timeline for *looking* at a room without going into it — the chat list's peek.
     ///
     /// Always a fresh store, and never the one `timeline(forRoomID:)` hands out, for two reasons.
@@ -434,42 +453,97 @@ public final class UserSession {
         return true
     }
 
-    /// Sends something the Share extension left in the outbox — a picture, a video or a file — and
-    /// deletes it from the shared folder once the send queue has it. Returns whether it went.
+    /// What became of one thing from the outbox.
+    public enum OutboxSend: Sendable, Equatable {
+        /// In the room's send queue — encrypted, persistent, and the queue's to deliver from here.
+        case sent
+        /// Not now — the room would not open (offline, and never opened on this device; a store
+        /// that stalled). It goes back in the outbox and is tried the next time the app comes up.
+        case later
+        /// Never: the file is gone, or the room is not one this account knows. Nothing to keep.
+        case impossible
+    }
+
+    /// Sends one item the Share extension or Shortcuts left in the outbox, and hands back what
+    /// could not go yet — to be put back, not thrown away.
     ///
-    /// The file goes whether or not the send succeeded: it is the user's picture in the clear in a
-    /// shared container, and a failed send is reported in the room like any other failed send,
-    /// where it can be tried again. Leaving plaintext lying about in case it is wanted is not a
-    /// retry policy.
-    @discardableResult
-    public func send(_ attachment: ChatDirectory.OutboxAttachment, toRoomID roomID: String) async -> Bool {
+    /// The outbox used to be emptied *before* anything was sent, and a send that could not open
+    /// its room — offline, into a chat never opened on this device — simply returned false to a
+    /// caller that did not look. The photo, the text, the file were gone without a word, when the
+    /// room's own send queue would have held them until the network came back.
+    ///
+    /// The words wait for the pictures, as they always have: the photo first and "look at this"
+    /// after it, so a text is never sent ahead of an attachment that is still waiting.
+    public func sendQueued(_ item: ChatDirectory.OutboxItem) async -> ChatDirectory.OutboxItem? {
+        // A room this account does not know — left, or never joined — is not a room to wait for.
+        // Its copies go, and nothing comes back: an item queued for it would otherwise be retried
+        // on every launch for ever.
+        guard timeline(forRoomID: item.roomID) != nil else {
+            // `send` finds no room either, and throws each copy away on its way to saying so.
+            for attachment in item.attachments {
+                _ = await send(attachment, toRoomID: item.roomID)
+            }
+            return nil
+        }
+
+        var waiting: [ChatDirectory.OutboxAttachment] = []
+        for attachment in item.attachments where await send(attachment, toRoomID: item.roomID) == .later {
+            waiting.append(attachment)
+        }
+
+        var text = item.text
+        let hasWords = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        if hasWords, waiting.isEmpty, await sendText(text, toRoomID: item.roomID) {
+            text = ""
+        } else if !hasWords {
+            text = ""
+        }
+
+        guard !waiting.isEmpty || !text.isEmpty else { return nil }
+        return ChatDirectory.OutboxItem(roomID: item.roomID, text: text, attachments: waiting,
+                                        accountID: item.accountID)
+    }
+
+    /// Sends something the Share extension left in the outbox — a picture, a video or a file.
+    ///
+    /// The copy is deleted once the send queue has it, and when it can never be sent — it is the
+    /// user's picture in the clear in a shared container. But *only* then: a send that merely has
+    /// to wait keeps its file, or waiting would be losing it.
+    public func send(_ attachment: ChatDirectory.OutboxAttachment, toRoomID roomID: String) async -> OutboxSend {
         // The name carries a folder of its own — see `OutboxAttachment.filename` — and the whole
         // folder goes with the file. It is resolved by `location(in:)` and nothing else: it came
         // from another process and, before that, from another app, and it used to be resolved
-        // with `appending(path:)`, which follows `..` — up to the App Group's root, which the
-        // `defer` below would then have deleted.
-        guard let folder = try? ChatDirectory.outboxFolder(),
-              let (url, slot) = attachment.location(in: folder) else { return false }
-        defer { try? FileManager.default.removeItem(at: slot) }
+        // with `appending(path:)`, which follows `..` — up to the App Group's root.
+        guard let folder = try? ChatDirectory.outboxFolder(environment: authentication.environment),
+              let (url, slot) = attachment.location(in: folder) else { return .impossible }
+        let discard = { try? FileManager.default.removeItem(at: slot) }
 
         guard FileManager.default.fileExists(atPath: url.path(percentEncoded: false)),
-              let target = timeline(forRoomID: roomID) else { return false }
+              let target = timeline(forRoomID: roomID) else {
+            discard()
+            return .impossible
+        }
         do {
             try await target.start()
         } catch {
-            return false
+            return .later
         }
 
         switch attachment.kind {
         case .image:
-            guard let data = try? Data(contentsOf: url) else { return false }
+            guard let data = try? Data(contentsOf: url) else {
+                discard()
+                return .impossible
+            }
             await target.send(photo: data, filename: attachment.displayName)
         case .video:
             await target.send(video: url)
         case .file:
             await target.send(file: url)
         }
-        return true
+        // Safe the moment the send returns: the SDK was handed the bytes — see `TimelineStore.owned`.
+        discard()
+        return .sent
     }
 
     /// Fetches media bytes (a photo, a voice message) on demand.
@@ -701,6 +775,10 @@ public final class UserSession {
             box.value?.stop()
         }
         openTimelines = [:]
+        for box in openIdentityChanges.values {
+            box.value?.stop()
+        }
+        openIdentityChanges = [:]
         // The kept conversations go too. They are rooms in a store that is about to be deleted.
         recentTimelines = []
 

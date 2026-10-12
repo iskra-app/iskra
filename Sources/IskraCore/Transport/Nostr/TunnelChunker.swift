@@ -19,6 +19,8 @@ public enum TunnelChunker {
     /// `total` rather than being inferred.
     public static let defaultMaxBodyChunk = 24 * 1024
 
+    // The parameters of `chunk.rs`'s own function, one for one — see `TunnelChunkingTests`.
+    // swiftlint:disable:next function_parameter_count
     static func envelopes(id: String,
                           method: String,
                           path: String,

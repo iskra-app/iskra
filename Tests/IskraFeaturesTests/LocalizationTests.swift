@@ -411,11 +411,18 @@ struct LocalizationTests {
     func retryIsOfferedHonestly() {
         #expect(SendFailure.server.canRetry)
         #expect(SendFailure.verificationRequired.canRetry)
-        #expect(SendFailure.insecureDevices.canRetry)
-        #expect(SendFailure.identityChanged.canRetry)
 
         #expect(!SendFailure.missingMedia.canRetry)
         #expect(!SendFailure.unsupportedFileType.canRetry)
+
+        // A verified person who no longer checks out: sending again stops on the same thing,
+        // because nothing in the app can verify them again. "Send anyway" is the way on — and
+        // it is offered nowhere else, since everywhere else it would be trust given for nothing.
+        for failure in SendFailure.allCases {
+            let isTrust = failure == .insecureDevices || failure == .identityChanged
+            #expect(failure.canSendAnyway == isTrust, "\(failure)")
+            if isTrust { #expect(!failure.canRetry, "\(failure)") }
+        }
     }
 
     /// The failure this is really guarding against: a string that resolves to its own
@@ -625,7 +632,7 @@ struct LocalizationTests {
     /// in that state actually draws: a slider that showed "creatures for everybody" over an app
     /// showing initials would be lying about the very thing it is for.
     @Test("the face slider names exactly the states the app can be in")
-    func faceModesRoundTrip() {
+    func faceModesRoundTrip() throws {
         for mode in FaceMode.allCases {
             #expect(FaceMode(drawsCreatures: mode.drawsCreatures,
                              overridesPictures: mode.overridesPictures) == mode)
@@ -637,7 +644,7 @@ struct LocalizationTests {
 
         // And the same question `Avatar` and the lock screen ask, answered the same way — the
         // slider is a view of `BetaFeatures`, not a second opinion about it.
-        let defaults = UserDefaults(suiteName: "onboarding.facemode.test")!
+        let defaults = try #require(UserDefaults(suiteName: "onboarding.facemode.test"))
         for mode in FaceMode.allCases {
             defaults.set(mode.drawsCreatures, forKey: BetaFeatures.blobatarKey)
             defaults.set(mode.overridesPictures, forKey: BetaFeatures.forceBlobatarKey)

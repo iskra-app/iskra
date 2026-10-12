@@ -118,7 +118,7 @@ private struct PasteKeyCatcher: NSViewRepresentable {
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
-            window == nil ? stop() : start()
+            if window == nil { stop() } else { start() }
         }
 
         private func start() {

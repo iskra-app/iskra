@@ -218,6 +218,7 @@ struct MessageRow: View {
                     HStack(alignment: .center, spacing: Theme.Spacing.close) {
                         SendFailureBadge(failure: failure,
                                          onRetry: handlers.onRetry,
+                                         onSendAnyway: handlers.onSendAnyway,
                                          onDiscard: handlers.onDiscard)
                         actionableContent
                     }
@@ -247,7 +248,6 @@ struct MessageRow: View {
             .travelsFromComposer(arrivesAnimated && message.isOwn)
             .messageActions(message, isPinned: isPinned, handlers: handlers)
     }
-
 
     // MARK: - Reactions
 
@@ -486,6 +486,9 @@ struct SendFailureBadge: View {
     /// `SendFailure.canRetry`.
     let onRetry: () -> Void
 
+    /// Sends it past a verification that no longer holds — see `SendFailure.canSendAnyway`.
+    var onSendAnyway: () -> Void = {}
+
     /// Throws the message away. Always offered, because it always works.
     let onDiscard: () -> Void
 
@@ -517,13 +520,16 @@ struct SendFailureBadge: View {
         }
         .buttonStyle(.plain)
         .popover(isPresented: $isShowingReason) {
-            SendFailureReason(failure: failure) {
+            SendFailureReason(failure: failure, onRetry: {
                 isShowingReason = false
                 onRetry()
-            } onDiscard: {
+            }, onSendAnyway: {
+                isShowingReason = false
+                onSendAnyway()
+            }, onDiscard: {
                 isShowingReason = false
                 onDiscard()
-            }
+            })
             // Without this an iPhone turns the popover into a half-height sheet, which is
             // a whole ceremony for one sentence.
             .presentationCompactAdaptation(.popover)
@@ -544,6 +550,7 @@ struct SendFailureBadge: View {
 struct SendFailureReason: View {
     let failure: SendFailure
     let onRetry: () -> Void
+    var onSendAnyway: () -> Void = {}
     let onDiscard: () -> Void
 
     var body: some View {
@@ -567,6 +574,17 @@ struct SendFailureReason: View {
                 if failure.canRetry {
                     Button(action: onRetry) {
                         Label(Strings.Message.Delivery.sendAgain, systemImage: "arrow.clockwise")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.primaryAction)
+                }
+
+                // In place of "Send again" where sending again would stop on the same thing: a
+                // person the user verified no longer checks out. The sentence above says what
+                // pressing this means; the button only says what it does.
+                if failure.canSendAnyway {
+                    Button(action: onSendAnyway) {
+                        Label(Strings.Message.Delivery.sendAnyway, systemImage: "paperplane")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.primaryAction)
@@ -892,6 +910,9 @@ struct PictureBubble: View {
     /// The room's pictures, asked for at the moment one is opened — see `RoomMediaSource`.
     @Environment(\.roomMedia) private var roomMedia
 
+    /// Tells the room the viewer is over it — see `EnvironmentValues.coversRoom`.
+    @Environment(\.coversRoom) private var coversRoom
+
     /// What the viewer was opened on: the whole run of the room's media, and which of them the
     /// finger landed on.
     private struct OpenedMedia: Identifiable {
@@ -940,6 +961,10 @@ struct PictureBubble: View {
                 // system's card behind it would be a grey rectangle showing at the corners.
                 .presentationBackground(.black)
         }
+        // A cover makes the room underneath "disappear" as far as SwiftUI is concerned, and the
+        // room used to take that for the reader leaving: the draft saved, the timeline stopped,
+        // and — worse — a latch left set so that the *real* way out later did none of it.
+        .onChange(of: opened != nil) { _, isOpen in coversRoom(isOpen) }
         #else
         .sheet(item: $opened) { opened in
             MediaPager(items: opened.items, startIndex: opened.index)

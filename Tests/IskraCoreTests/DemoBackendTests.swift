@@ -1,4 +1,5 @@
 import Foundation
+import MatrixRustSDK
 import Testing
 @testable import IskraCore
 
@@ -227,6 +228,118 @@ struct DemoBackendTests {
             try? await Task.sleep(for: .milliseconds(100))
         }
         return condition()
+    }
+
+    /// A file sent and then deleted at once — which is what every caller does: the Share outbox's
+    /// `defer`, the picked file's security scope, the stripped copy of a video. The send returns
+    /// before the SDK has read the file, and the question is whether the SDK has its own copy by
+    /// then or reads the path later, from a queue task, when the file may already be gone.
+    @Test("a file deleted the moment it is sent still arrives")
+    func fileDeletedAfterSendArrives() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(component: "iskra-demo-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let client = try await DemoBackend.makeClient(data: root.appending(component: "data"),
+                                                      cache: root.appending(component: "cache"),
+                                                      search: root.appending(component: "search"))
+        let list = RoomListStore(client: client)
+        try await list.start()
+        defer { Task { await list.stop() } }
+        _ = await eventually { list.room(withID: "!anya:iskra.demo") != nil }
+        let room = try #require(list.room(withID: "!anya:iskra.demo"))
+        let timeline = TimelineStore(room: room, ownUserID: "@sasha:iskra.demo")
+        try await timeline.start()
+        defer { timeline.stop() }
+
+        let file = root.appending(component: "notes-\(UUID().uuidString.prefix(6)).txt")
+        try Data(repeating: 0x41, count: 64 * 1024).write(to: file)
+        await timeline.send(file: file)
+        try FileManager.default.removeItem(at: file)
+
+        let sent = await eventually(seconds: 10) {
+            timeline.rows.contains { row in
+                guard case let .message(message) = row, message.isOwn,
+                      case let .file(attachment) = message.kind,
+                      attachment.filename == file.lastPathComponent else { return false }
+                return message.delivery == .sent || message.delivery == .read
+            }
+        }
+        let failed = timeline.rows.contains { row in
+            guard case let .message(message) = row, message.isOwn,
+                  case .file = message.kind, case .failed = message.delivery else { return false }
+            return true
+        }
+        #expect(sent, "failed: \(failed)")
+    }
+
+    /// The Share outbox, sent: into a room this account knows it all goes and its copy with it;
+    /// into one it does not, the copy goes and nothing comes back to be retried for ever.
+    @Test("what the Share sheet queued is sent, or thrown away when it never can be")
+    func outboxItemsAreSentOrDropped() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(component: "iskra-demo-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let client = try await DemoBackend.makeClient(data: root.appending(component: "data"),
+                                                      cache: root.appending(component: "cache"),
+                                                      search: root.appending(component: "search"))
+        // A container of the test's own: the real App Group is the user's, and an unsigned test
+        // binary is refused it anyway.
+        let environment = AppEnvironment(storage: .scratch(root.appending(component: "container")))
+        let session = UserSession(client: client, authentication: AuthenticationService(environment: environment),
+                                  sessionID: "demo", isDemo: true)
+        try await session.start()
+        defer { Task { await session.close() } }
+        _ = await eventually { session.roomList.room(withID: "!anya:iskra.demo") != nil }
+
+        let outbox = try ChatDirectory.outboxFolder(environment: environment)
+        func queuedCopy() throws -> (ChatDirectory.OutboxAttachment, URL) {
+            let slot = "test-\(UUID().uuidString)"
+            let folder = outbox.appending(component: slot)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try Data(repeating: 0x41, count: 1024).write(to: folder.appending(component: "notes.txt"))
+            return (ChatDirectory.OutboxAttachment(kind: .file, filename: "\(slot)/notes.txt"), folder)
+        }
+
+        let (sent, sentFolder) = try queuedCopy()
+        let item = ChatDirectory.OutboxItem(roomID: "!anya:iskra.demo", text: "вот, смотри", attachments: [sent])
+        #expect(await session.sendQueued(item) == nil)
+        #expect(!FileManager.default.fileExists(atPath: sentFolder.path(percentEncoded: false)))
+
+        let (lost, lostFolder) = try queuedCopy()
+        let nowhere = ChatDirectory.OutboxItem(roomID: "!nobody:iskra.demo", text: "эй", attachments: [lost])
+        #expect(await session.sendQueued(nowhere) == nil)
+        #expect(!FileManager.default.fileExists(atPath: lostFolder.path(percentEncoded: false)))
+    }
+
+    /// Somebody's keys changed: they are on the list, by name; the change answered — pinned, or
+    /// verified again — takes them off; the account's own identity is not a warning about anyone.
+    /// Fed the SDK's own values, because making the demo server re-key a person would mean faking
+    /// cross-signing, and the subscription itself is still started against the real SDK.
+    @Test("a changed identity is a warning, by name, until it is answered")
+    func identityChangesAreListed() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(component: "iskra-demo-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let client = try await DemoBackend.makeClient(data: root.appending(component: "data"),
+                                                      cache: root.appending(component: "cache"),
+                                                      search: root.appending(component: "search"))
+        let list = RoomListStore(client: client)
+        try await list.start()
+        defer { Task { await list.stop() } }
+        _ = await eventually { list.room(withID: "!anya:iskra.demo") != nil }
+        let room = try #require(list.room(withID: "!anya:iskra.demo"))
+
+        let store = IdentityChangesStore(room: room, encryption: client.encryption(), ownUserID: "@sasha:iskra.demo")
+        await store.start()
+        defer { store.stop() }
+        #expect(store.changes.isEmpty)
+
+        await store.apply([IdentityStatusChange(userId: "@anya:iskra.demo", changedTo: .pinViolation),
+                           IdentityStatusChange(userId: "@sasha:iskra.demo", changedTo: .pinViolation)])
+        #expect(store.changes == [IdentityChange(userID: "@anya:iskra.demo", name: "Аня Смирнова", kind: .changed)])
+
+        await store.apply([IdentityStatusChange(userId: "@anya:iskra.demo", changedTo: .verificationViolation)])
+        #expect(store.changes.map(\.kind) == [.changedAfterVerification])
+
+        await store.apply([IdentityStatusChange(userId: "@anya:iskra.demo", changedTo: .pinned)])
+        #expect(store.changes.isEmpty)
     }
 
     /// `stop()` while `start()` is still on its way: an account switched on a cold launch from a

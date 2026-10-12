@@ -90,15 +90,15 @@ struct RecoverySetupView: View {
         // It is the system's close button and not a hand-drawn "×" any more. It used to be an `Image`
         // inside a `.plain` button with no label of any kind, which VoiceOver announces as "button":
         // the one control on the screen whose entire job is to be the way out, and it could not say
-        // so. `role: .close` buys the standard look, the standard placement and the standard label,
+        // so. `role: .leaving` (`.close` from OS 26) buys the standard look, the standard placement and the standard label,
         // in every language, without this file naming any of them.
         .overlay(alignment: .topTrailing) {
             if let onCancel, canLeave {
-                Button(role: .close, action: onCancel) {
+                Button(role: .leaving, action: onCancel) {
                     Label(String(app: Strings.Recovery.close), systemImage: "xmark")
                         .labelStyle(.iconOnly)
                 }
-                .buttonStyle(.glass)
+                .navigationGlassButton()
                 .controlSize(.large)
                 .padding(Theme.Spacing.close)
             }
@@ -225,7 +225,7 @@ struct RecoverySetupView: View {
                 Text(Strings.Recovery.approveCancel)
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.glass)
+            .navigationGlassButton()
             .controlSize(.large)
             .frame(maxWidth: .infinity)
         }
@@ -277,7 +277,7 @@ struct RecoverySetupView: View {
                 Text(Strings.Recovery.haveCode)
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.glass)
+            .navigationGlassButton()
             .controlSize(.large)
 
             Button {
@@ -287,7 +287,7 @@ struct RecoverySetupView: View {
                 Text(Strings.Recovery.otherDevice)
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.glass)
+            .navigationGlassButton()
             .controlSize(.large)
 
             // The quiet third way out, for the person for whom neither of the two above is true. It

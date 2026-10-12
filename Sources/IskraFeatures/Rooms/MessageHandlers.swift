@@ -25,6 +25,10 @@ struct MessageHandlers {
     /// a failure the SDK called recoverable.
     var onRetry: () -> Void = {}
 
+    /// Sends it past a verification that no longer holds, having been told — see
+    /// `TimelineStore.sendAnyway`. Offered only where `SendFailure.canSendAnyway`.
+    var onSendAnyway: () -> Void = {}
+
     /// Adds an emoji, or takes it back if it is already ours. One callback for both,
     /// because a reaction is a toggle — see `TimelineStore.toggleReaction`.
     var onToggleReaction: (String) -> Void = { _ in }
