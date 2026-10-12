@@ -195,6 +195,9 @@ struct MockWorld {
         at(room, 60 * 3)
         formatted(room, kostya, "Список на релиз:\n1. Иконки\n2. Демо-режим\n3. Перевод",
                   "<p>Список на релиз:</p><ol><li>Иконки</li><li>Демо-режим</li><li>Перевод</li></ol>")
+        formatted(room, lena, "> Сначала сделай, потом сделай красиво\nА чем кончится сериал — спойлер",
+                  "<blockquote><p>Сначала сделай, потом сделай <u>красиво</u></p></blockquote>"
+                      + "<p>А чем кончится сериал — <span data-mx-spoiler>все выживут</span></p>")
         let question = mention(room, dima, name: "Саша", "Саша, глянешь мой PR? Там немного, честно")
         reply(room, lena, to: question, "Я уже посмотрела, там всё хорошо 👍")
         text(room, anya, "Ссылка на макеты: https://matrix.org")

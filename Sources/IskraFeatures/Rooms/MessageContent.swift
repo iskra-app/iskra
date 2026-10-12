@@ -46,6 +46,11 @@ struct MessageContent: View {
     /// one that should hold the question about it.
     @State private var linkToConfirm: URL?
 
+    /// The spoilers in this message somebody has tapped open, by their number in it — see
+    /// `MatrixHTML` and `paintedBody`. Not kept: a spoiler scrolled away and back is hidden again,
+    /// which is how Telegram's behave.
+    @State private var revealedSpoilers: Set<Int> = []
+
     /// Which way a stack of things — a quote and the picture under it — lines up. Read off the
     /// style rather than off `isOwn`, which comes to the same thing and says why: only a message
     /// dressed as the reader's own is anchored to the far edge. Grey ones and plain ones both
@@ -212,6 +217,12 @@ struct MessageContent: View {
         Text(paintedBody(body))
             .tint(accent.color)
             .environment(\.openURL, OpenURLAction { url in
+                // A hidden spoiler is drawn as a link to itself, so that the tap which reveals it
+                // is the text's own and not a gesture fighting the bubble's. See `paintedBody`.
+                if url.scheme == Self.spoilerScheme, let number = Int(url.host() ?? "") {
+                    withAnimation(.smooth(duration: Theme.Timing.reaction)) { _ = revealedSpoilers.insert(number) }
+                    return .handled
+                }
                 linkToConfirm = url
                 return .handled
             })
@@ -219,6 +230,7 @@ struct MessageContent: View {
 
     private func paintedBody(_ body: String) -> AttributedString {
         var attributed = RichText.attributed(body: body,
+                                             formattedBody: message.formattedBody,
                                              mentionedUserIDs: Set(message.mentionedUserIDs),
                                              displayNames: currentUserID.isEmpty ? [:] : [currentUserID: currentUserName],
                                              ownUserID: currentUserID.isEmpty ? nil : currentUserID)
@@ -246,6 +258,46 @@ struct MessageContent: View {
                 attributed[range].backgroundColor = accent.color.opacity(0.16)
             }
         }
+
+        paintFormatting(&attributed)
         return attributed
+    }
+
+    /// The scheme a hidden spoiler's tap arrives under. Never leaves this view.
+    private static let spoilerScheme = "iskra-spoiler"
+
+    /// What `MatrixHTML` marked and `Text` has no word for: underline, quotes, headings, spoilers.
+    /// Bold, italic, strikethrough and code arrive as Foundation's own intents, which `Text` draws.
+    private func paintFormatting(_ attributed: inout AttributedString) {
+        let runs = attributed.runs.map { run in
+            (run.range, run.iskra.underline ?? false, run.iskra.quote ?? false,
+             run.iskra.heading, run.iskra.spoiler)
+        }
+        // Back to front, because a hidden spoiler's words are replaced by dots of a different
+        // length — and that would move every range after it.
+        for (range, underline, quote, heading, spoiler) in runs.reversed() {
+            if underline {
+                attributed[range].underlineStyle = .single
+            }
+            if quote {
+                attributed[range].foregroundColor = .secondary
+            }
+            if let heading {
+                attributed[range].font = heading <= 2 ? .title3.weight(.bold) : .headline
+            }
+            if let spoiler {
+                if revealedSpoilers.contains(spoiler) {
+                    attributed[range].backgroundColor = Color.secondary.opacity(Theme.Backdrop.wash)
+                } else {
+                    // Dots for the words — Telegram's speckle, in a character — so nothing of the
+                    // secret is on screen until it is asked for, whatever colour links are drawn in.
+                    let length = attributed[range].characters.count
+                    var dots = AttributedString(String(repeating: "⠿", count: max(1, length)))
+                    dots.link = URL(string: "\(Self.spoilerScheme)://\(spoiler)")
+                    dots.foregroundColor = .secondary
+                    attributed.replaceSubrange(range, with: dots)
+                }
+            }
+        }
     }
 }

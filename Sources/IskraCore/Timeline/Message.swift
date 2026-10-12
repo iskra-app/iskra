@@ -291,6 +291,11 @@ public struct Message: Sendable, Identifiable, Equatable {
     /// up a name in the text (and to know when that name is *yours*), which is why it travels as
     /// plain IDs rather than as pre-rendered markup: the bubble does the painting, from this.
     public let mentionedUserIDs: [String]
+    /// The message's HTML, for a text, emote or notice that carries some — bold, links, lists,
+    /// quotes. Kept as the sender wrote it and drawn by `MatrixHTML` in the bubble, for the same
+    /// reason the plain body is kept as a `String`: cheap to diff, and nothing in the model layer
+    /// holds an `AttributedString`. Nil for a plain message, which is drawn from `kind` as ever.
+    public var formattedBody: String?
     /// Grouped under one avatar with the message above it, iMessage-style.
     public var isContinuation: Bool = false
     /// The one message that wears the "read" mark on behalf of all of them.
@@ -331,6 +336,7 @@ public struct Message: Sendable, Identifiable, Equatable {
                 reactions: [MessageReaction],
                 deletedAt: Date? = nil,
                 mentionedUserIDs: [String] = [],
+                formattedBody: String? = nil,
                 isContinuation: Bool = false,
                 carriesReadMark: Bool = false,
                 uploadProgress: Double? = nil) {
@@ -348,6 +354,7 @@ public struct Message: Sendable, Identifiable, Equatable {
         self.reactions = reactions
         self.deletedAt = deletedAt
         self.mentionedUserIDs = mentionedUserIDs
+        self.formattedBody = formattedBody
         self.isContinuation = isContinuation
         self.carriesReadMark = carriesReadMark
         self.uploadProgress = uploadProgress

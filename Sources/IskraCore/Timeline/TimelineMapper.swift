@@ -302,6 +302,7 @@ enum TimelineMapper {
                                                  messageID: id, ownUserID: ownUserID),
                        deletedAt: kind == .deleted ? redaction(of: event) : nil,
                        mentionedUserIDs: mentionedUserIDs(from: event.content),
+                       formattedBody: formattedBody(from: event.content),
                        uploadProgress: event.isOwn ? uploadProgress(of: event.localSendState) : nil)
     }
 
@@ -528,6 +529,20 @@ enum TimelineMapper {
         default:
             return .unsupported
         }
+    }
+
+    /// The HTML a text, emote or notice carries beside its plain body, when it carries HTML.
+    private static func formattedBody(from content: TimelineItemContent) -> String? {
+        guard case let .msgLike(msgLike) = content, case let .message(message) = msgLike.kind else { return nil }
+        let formatted: FormattedBody?
+        switch message.msgType {
+        case let .text(content): formatted = content.formatted
+        case let .emote(content): formatted = content.formatted
+        case let .notice(content): formatted = content.formatted
+        default: formatted = nil
+        }
+        guard let formatted, case .html = formatted.format else { return nil }
+        return formatted.body
     }
 
     private static func kind(from message: MessageContent) -> MessageKind {
