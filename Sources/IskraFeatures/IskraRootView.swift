@@ -206,6 +206,7 @@ public struct IskraRootView: View {
                     .environment(\.currentUserName, session.displayName)
                     .environment(\.currentUserAvatarURL, session.avatarURL)
                     .environment(\.blockStore, session.blocked)
+                    .environment(\.stickers, session.stickers)
                     .environment(\.accountSwitcher, switcher)
                     .task(id: session.sessionID) { reloadAccounts(session) }
                     // The name and the picture are written down for the switcher as they arrive.

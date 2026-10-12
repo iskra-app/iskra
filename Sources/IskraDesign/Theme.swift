@@ -543,6 +543,13 @@ public enum Theme {
         /// poster.
         public static let sticker: CGFloat = 160
 
+        /// One sticker in the sheet that sends them: four across on a phone with room between,
+        /// and big enough to tell one face from another without opening it.
+        public static let stickerCell: CGFloat = 72
+
+        /// A pack's picture in the row of tabs along the top of that sheet.
+        public static let stickerTab: CGFloat = 32
+
         /// How much bigger a video note gets while it plays, where it is not simply filling
         /// the screen — a Mac or an iPad. Twice: enough to be watched from across a desk,
         /// small enough to still be a message in a conversation.

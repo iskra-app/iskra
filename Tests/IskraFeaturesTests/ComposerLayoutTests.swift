@@ -24,6 +24,15 @@ struct ComposerLayoutTests {
         try render(draft: "Hey, are you around?", named: "composer-typing")
     }
 
+    /// The sticker button, inside the field at its end — and the field still a field: one line
+    /// tall when empty, wrapping before it reaches the face rather than running under it.
+    @Test("the sticker button sits inside the field without crowding it")
+    func stickerButtonInsideTheField() throws {
+        try render(draft: "", named: "composer-stickers", offersStickers: true)
+        try render(draft: "A longer message that has to wrap before it reaches the sticker button at the end",
+                   named: "composer-stickers-typing", offersStickers: true)
+    }
+
     /// The attach menu open, with room above the composer for it to open *into*.
     ///
     /// The choices used to be drawn straight over the text field and the buttons — a menu
@@ -55,11 +64,13 @@ struct ComposerLayoutTests {
     private func render(draft: String,
                         named name: String,
                         isAttaching: Bool = false,
+                        offersStickers: Bool = false,
                         locking: LockGesture = LockGesture()) throws {
         let view = MessageComposer(draft: .constant(draft),
                                    onSend: {},
                                    onChoosePhoto: {},
                                    onChooseFile: {},
+                                   onChooseSticker: offersStickers ? {} : nil,
                                    isAttaching: isAttaching,
                                    locking: locking)
             .frame(width: 420)

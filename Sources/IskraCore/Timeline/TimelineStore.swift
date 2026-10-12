@@ -781,6 +781,40 @@ public final class TimelineStore {
         }
     }
 
+    /// Sends a sticker from a pack — see `Sticker`.
+    ///
+    /// `Room.sendRaw` and not the timeline, because the timeline has no call for it: it sends
+    /// messages, attachments, locations and polls, and an `m.sticker` is none of those. Raw is
+    /// still encrypted in an encrypted room — the SDK seals any event type the same way — and
+    /// nothing is uploaded, because the picture is already on the server and the event only points
+    /// at it.
+    ///
+    /// What raw does *not* get is the send queue, and the difference shows in one place: offline.
+    /// A typed message waits on disk for the network; a sticker is refused at once and the failure
+    /// is said. Pretending it was queued would be a sticker that silently never arrives.
+    public func send(sticker: Sticker, replyingTo replyID: String? = nil) async {
+        let eventID = replyID.flatMap { eventID(for: $0) }
+        let content = sticker.eventContent(replyingTo: eventID)
+
+        guard let data = try? JSONSerialization.data(withJSONObject: content) else {
+            failure = .sticker
+            return
+        }
+        let json = String(decoding: data, as: UTF8.self)
+
+        stopTellingThemWeType()
+
+        do {
+            let room = room
+            try await withTimeout(Self.sdkTimeout) {
+                try await room.sendRaw(eventType: "m.sticker", content: json)
+            }
+        } catch {
+            Log.media.error("could not send a sticker: \(Log.describe(error), privacy: .public)")
+            failure = .sticker
+        }
+    }
+
     /// Gives up on a stand-in that nothing ever came to replace.
     ///
     /// Nothing is said about it and nothing is lost: the message is in the SDK's encrypted send

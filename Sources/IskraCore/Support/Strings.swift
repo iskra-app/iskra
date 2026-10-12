@@ -187,6 +187,7 @@ public enum CoreStrings {
 
     public enum Timeline {
         public static let sendFailed = LocalizedStringResource("timeline.sendFailed", bundle: bundle)
+        public static let stickerFailed = LocalizedStringResource("timeline.stickerFailed", bundle: bundle)
         /// An edit that did not go through. Its own sentence, because the user is looking at
         /// their message still saying the old thing and needs to know that is what happened —
         /// not that a *new* message failed to send.
@@ -215,6 +216,12 @@ public enum CoreStrings {
         /// deletion that silently did not happen is the worst possible outcome: the user
         /// believes a message is gone when everyone else can still read it.
         public static let deleteFailed = LocalizedStringResource("timeline.deleteFailed", bundle: bundle)
+    }
+
+    /// The account's own sticker pack, refusing a change — see `StickerFailure`.
+    public enum Stickers {
+        public static let addFailed = LocalizedStringResource("stickers.addFailed", bundle: bundle)
+        public static let removeFailed = LocalizedStringResource("stickers.removeFailed", bundle: bundle)
     }
 
     /// What the Devices screen says when it could not do something — see `DevicesActionFailure`.

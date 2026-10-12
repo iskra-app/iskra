@@ -114,6 +114,11 @@ struct MessageComposer: View {
     var onChooseFile: () -> Void
     var onChooseLocation: () -> Void = {}
 
+    /// Asking for the sticker sheet — presented by the screen, like the pickers above. Nil leaves
+    /// the button out: a room this account cannot post to has no use for it, and neither has a
+    /// composer drawn on its own for a test.
+    var onChooseSticker: (() -> Void)?
+
     /// Photos and videos — picked, pasted or dropped into the room — waiting to go with the next
     /// press of send. See `PendingAttachment` for why they wait at all. The screen owns them,
     /// because the drop lands on the whole room and not on this bar.
@@ -170,6 +175,7 @@ struct MessageComposer: View {
          onChoosePhoto: @escaping () -> Void,
          onChooseFile: @escaping () -> Void,
          onChooseLocation: @escaping () -> Void = {},
+         onChooseSticker: (() -> Void)? = nil,
          attachments: [PendingAttachment] = [],
          onRemoveAttachment: @escaping (PendingAttachment) -> Void = { _ in },
          onPasteImage: @escaping () -> Void = {},
@@ -192,6 +198,7 @@ struct MessageComposer: View {
         self.onChoosePhoto = onChoosePhoto
         self.onChooseFile = onChooseFile
         self.onChooseLocation = onChooseLocation
+        self.onChooseSticker = onChooseSticker
         self.attachments = attachments
         self.onRemoveAttachment = onRemoveAttachment
         self.onPasteImage = onPasteImage
@@ -275,24 +282,36 @@ struct MessageComposer: View {
                             // it does with it.
                             .transition(.scale(scale: 0.94).combined(with: .opacity))
                     } else {
-                        TextField(String(app: Strings.Room.composerPlaceholder), text: $draft,
-                                  selection: $selection, axis: .vertical)
-                            .transition(.opacity)
-                            .textFieldStyle(.plain)
-                            // Where the words start on the screen — the point a sent message
-                            // travels across from. Measured on the bare field, inside its padding,
-                            // so it is the first letter's edge and not the glass around it.
-                            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minX } action: {
-                                onTextLeading($0)
+                        // The sticker button sits *inside* the field, at its trailing end, as
+                        // Telegram's does — not as a fourth circle in the row, which would take its
+                        // width out of the line being typed on every message to offer something
+                        // sent on a few.
+                        HStack(alignment: .bottom, spacing: 0) {
+                            TextField(String(app: Strings.Room.composerPlaceholder), text: $draft,
+                                      selection: $selection, axis: .vertical)
+                                .textFieldStyle(.plain)
+                                // Where the words start on the screen — the point a sent message
+                                // travels across from. Measured on the bare field, inside its
+                                // padding, so it is the first letter's edge and not the glass
+                                // around it.
+                                .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minX } action: {
+                                    onTextLeading($0)
+                                }
+                                .lineLimit(1...5)
+                                .focused($isFocused)
+                                .padding(.leading, Theme.Spacing.roomy)
+                                .padding(.trailing, offersStickers ? 0 : Theme.Spacing.roomy)
+                                .padding(.vertical, Theme.Spacing.normal)
+                                .frame(minHeight: control)
+                                // Return or ⌘-Return, by Settings → Chats — see `ComposerReturnKey`.
+                                .composerReturnKey(text: $draft, selection: $selection, send: onSend)
+
+                            if offersStickers, let onChooseSticker {
+                                stickerButton(onChooseSticker)
                             }
-                            .lineLimit(1...5)
-                            .focused($isFocused)
-                            .padding(.horizontal, Theme.Spacing.roomy)
-                            .padding(.vertical, Theme.Spacing.normal)
-                            .frame(minHeight: control)
-                            .navigationGlass(in: .rect(cornerRadius: Theme.Radius.bubble, style: .continuous))
-                            // Return or ⌘-Return, by Settings → Chats — see `ComposerReturnKey`.
-                            .composerReturnKey(text: $draft, selection: $selection, send: onSend)
+                        }
+                        .transition(.opacity)
+                        .navigationGlass(in: .rect(cornerRadius: Theme.Radius.bubble, style: .continuous))
                     }
 
                     // With nothing typed, there is one button where the send button sits, and it
@@ -429,6 +448,29 @@ struct MessageComposer: View {
         .onChange(of: isFocused) { _, focused in
             if focused { close() }
         }
+    }
+
+    /// Whether the field carries the sticker button. Not while editing: an edit changes the words
+    /// of a message already sent, and a sticker is not words.
+    private var offersStickers: Bool {
+        onChooseSticker != nil && context?.isEditing != true
+    }
+
+    /// The face at the end of the field. Quiet — secondary, no glass of its own — because it is
+    /// part of the field and not a control standing beside it.
+    private func stickerButton(_ open: @escaping () -> Void) -> some View {
+        Button {
+            close()
+            open()
+        } label: {
+            Image(systemName: "face.smiling")
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .frame(width: control, height: control)
+                .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(Strings.Stickers.open))
     }
 
     // MARK: - Answering and changing

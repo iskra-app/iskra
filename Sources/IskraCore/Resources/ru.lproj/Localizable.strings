@@ -59,6 +59,15 @@
 /* Shown when a message could not be sent. The SDK retries, so this reassures rather than alarms. */
 "timeline.sendFailed" = "Сообщение не отправилось. Попробуем ещё раз автоматически.";
 
+/* A sticker that did not go. Unlike a message, it is not retried. */
+"timeline.stickerFailed" = "Стикер не отправился. Проверьте связь и попробуйте ещё раз.";
+
+/* The account's sticker pack would not take a new sticker. */
+"stickers.addFailed" = "Не получилось добавить стикер. Попробуйте ещё раз.";
+
+/* The account's sticker pack would not let a sticker go. */
+"stickers.removeFailed" = "Не получилось убрать стикер. Попробуйте ещё раз.";
+
 /* Shown when an emoji reaction could not be sent. Must not say "message" — nothing the user wrote is at stake. */
 "timeline.reactionFailed" = "Реакция не отправилась. Попробуйте ещё раз.";
 

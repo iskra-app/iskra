@@ -62,6 +62,7 @@ public struct RoomView: View {
     @State private var isChoosingPhoto = false
     @State private var isChoosingFile = false
     @State private var isChoosingLocation = false
+    @State private var isChoosingSticker = false
     @State private var pickedItems: [PhotosPickerItem] = []
 
     /// Pictures pasted or dropped into the room, waiting in the composer for send. Here and not in
@@ -178,6 +179,9 @@ public struct RoomView: View {
     /// screen asking to be pressed, so it wears it — the same reason the send button does.
     @Environment(\.accent) private var accent
     @Environment(\.messageMenu) private var messageMenu
+
+    /// The account's stickers — see `StickerPicker`. Nil only where no session put one up.
+    @Environment(\.stickers) private var stickers
 
     /// A message the room has been asked to go to from *outside* the scrolling view — the pinned
     /// strip, or a search result the room was opened on.
@@ -1195,6 +1199,21 @@ public struct RoomView: View {
             guard case let .success(url) = result else { return }
             Task { await sendPickedFile(url) }
         }
+        .sheet(isPresented: $isChoosingSticker) {
+            StickerPicker(roomID: timeline.roomID) { sticker in
+                // Read now, before `cancelContext` clears it: the sticker answers what was being
+                // answered when the sheet was opened.
+                let reply = replyID
+                cancelContext()
+                Task {
+                    await timeline.send(sticker: sticker, replyingTo: reply)
+                    if timeline.failure == nil { await stickers?.used(sticker) }
+                }
+            }
+            // Here as well as on the room: an alert hung on a screen *under* a sheet is never
+            // shown, and adding a sticker from the sheet is one of the two ways to need it.
+            .failureAlert(stickerFailure)
+        }
         .sheet(isPresented: $isChoosingLocation) {
             LocationPicker { location in
                 await timeline.send(location: location, replyingTo: replyID)
@@ -1331,6 +1350,10 @@ public struct RoomView: View {
         // be seven lines of hand-rolled `.alert` doing, slightly differently, what three other
         // screens already had a modifier for.
         .failureAlert($timeline.failure)
+        .failureAlert(stickerFailure)
+        // So that a sticker's menu knows whether it is already yours. Once a session, and from
+        // the SDK's store — see `StickerLibrary.prepare`.
+        .task { await stickers?.prepare() }
         .failureAlert($problem)
     }
 
@@ -1534,6 +1557,7 @@ public struct RoomView: View {
                         onChoosePhoto: { isChoosingPhoto = true },
                         onChooseFile: { isChoosingFile = true },
                         onChooseLocation: { isChoosingLocation = true },
+                        onChooseSticker: stickers == nil ? nil : { isChoosingSticker = true },
                         attachments: attachments,
                         onRemoveAttachment: { image in attachments.removeAll { $0.id == image.id } },
                         onPasteImage: { Task { await pasteImages() } })
@@ -2092,6 +2116,11 @@ public struct RoomView: View {
     /// nothing. An *edit* is not a reply, which is why this is not simply "the context's
     /// message": starting an edit and then sending a photo must not quietly attach the photo
     /// as an answer to the message being edited.
+    /// The sticker library's refusals, as the shared alert takes them.
+    private var stickerFailure: Binding<StickerFailure?> {
+        Binding(get: { stickers?.failure }, set: { stickers?.failure = $0 })
+    }
+
     private var replyID: String? {
         guard case let .replying(message)? = composerContext else { return nil }
         return message.id
