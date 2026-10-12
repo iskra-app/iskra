@@ -51,17 +51,12 @@ struct MessageActions<Content: View>: View {
     @MainActor
     private final class Anchor {
         var rect: CGRect = .zero
-    }
 
-    /// Whether a finger is currently down on the message, which the bubble answers by giving
-    /// very slightly under it. The whole of the feedback that the press is being *counted* —
-    /// without it the moment before the lift is a moment of nothing.
-    ///
-    /// `@GestureState` rather than `@State`, and that is not a style choice: gesture state resets
-    /// itself the instant the gesture ends, *including* when it ends by failing. A press released
-    /// early, or one that turns into a scroll, leaves nothing behind — where a plain flag would
-    /// need a callback that does not fire on failure, and a bubble could be left sitting at 97%.
-    @State private var isPressing = false
+        /// Everything the conversation tells this message about how to draw itself — whether
+        /// there is a wallpaper behind it, how wide the room is, the reader's text size — kept
+        /// so the copy the menu lifts can be told the same. See `EnvironmentTap`.
+        var environment: EnvironmentValues?
+    }
 
     /// Guarding a redaction behind a confirmation, because it cannot be undone and every
     /// other item in that menu can.
@@ -146,14 +141,15 @@ struct MessageActions<Content: View>: View {
             .onGeometryChange(for: CGRect.self) { proxy in
                 proxy.frame(in: .named(MessageMenu.space))
             } action: { anchor.rect = $0 }
-            // The wait, made visible. The bubble sinks over exactly the length of the press and
-            // arrives at the bottom as the menu takes over, so a held finger is watching something
-            // happen instead of waiting for it — and a press abandoned halfway springs back, which
-            // is how the app says "that wasn't long enough" without anything appearing to explain
-            // it. See `Theme.Scale.pressedMessage` and `Theme.Timing.menuReleases`.
-            .scaleEffect(isPressing ? Theme.Scale.pressedMessage : 1)
-            .animation(isPressing ? .easeOut(duration: Theme.Timing.menuLift) : Theme.Timing.menuReleases,
-                       value: isPressing)
+            // And the environment it is drawn in, for the same reason and in the same box.
+            .background { EnvironmentTap { [anchor] in anchor.environment = $0 } }
+            // Nothing happens to the bubble under a held finger — no sinking, no squeeze. It used
+            // to give under the press as a countdown to the lift, and what that actually said was
+            // that the message changes shape when touched; the one thing a message being picked up
+            // must not do is stop looking like itself. The knock of the lift is the feedback.
+            // Gone from its place while it is in the menu — picked up, not copied. See
+            // `MessageMenuPresenter.liftedID`.
+            .modifier(LeavesGapWhileLifted(id: message.id))
             // The hold and the double tap, each simultaneous with everything else on the screen —
             // see `hold` and `doubleTap`, where the three attempts it took to get there are
             // written down. The single tap still lands underneath, so a photograph still opens and
@@ -168,14 +164,12 @@ struct MessageActions<Content: View>: View {
             #if os(iOS)
             .overlay {
                 MessageHold(duration: Theme.Timing.menuLift,
-                            onPressingChanged: { isPressing = $0 },
+                            onPressingChanged: { _ in },
                             onHold: open)
             }
             #else
             .onLongPressGesture(minimumDuration: Theme.Timing.menuLift) {
                 open()
-            } onPressingChanged: { pressing in
-                isPressing = pressing
             }
             #endif
             .simultaneousGesture(doubleTap)
@@ -305,9 +299,35 @@ struct MessageActions<Content: View>: View {
             isOwn: message.isOwn,
             canReact: message.canReact && !isOffline,
             mine: Set(message.reactions.filter(\.isMine).map(\.key)),
-            content: AnyView(content()),
+            content: AnyView(lifted),
             sections: sections,
             onReaction: handlers.onToggleReaction))
+    }
+
+    /// The message as the menu draws it: the same view, in the same environment.
+    ///
+    /// The menu is drawn above the whole app, and the conversation's environment does not reach
+    /// up there — so a copy built from `content()` alone was a *different-looking* message: an
+    /// opaque bubble where the room has a wallpaper (`hasWallpaper` is set by the room, not by the
+    /// app), and whatever else the room tells its rows. It changed colour the instant it left the
+    /// page, which is precisely what Telegram's never does. Handing it the row's own environment,
+    /// whole, is what makes the thing in the menu the message rather than a likeness of it.
+    ///
+    /// Less one value: where the composer is. A message that has just been sent travels in from
+    /// there (`ComposerTravel`), and a copy that inherited that would fly across the screen a
+    /// second time the moment it was pressed.
+    ///
+    /// Both exceptions — and the page under the bubble, `bubbleIsLifted` — are written *into* the
+    /// captured environment, not laid over it with modifiers of their own. `.environment(\.self,)`
+    /// is the modifier nearest the content and so the last word: anything set outside it is
+    /// overwritten by the row's own values, which is how the first version of this shipped with
+    /// a lifted bubble that was still see-through.
+    private var lifted: some View {
+        var environment = anchor.environment ?? EnvironmentValues()
+        environment.composerTextLeading = nil
+        environment.bubbleIsLifted = true
+        return content()
+            .environment(\.self, environment)
     }
 
     /// The menu, read out: the quick reaction first — it is what a double tap does, and a double
@@ -689,5 +709,41 @@ extension View {
                       dragsToward: HorizontalEdge,
                       onReply: @escaping () -> Void) -> some View {
         modifier(SwipeToReply(message: message, dragsToward: dragsToward, onReply: onReply))
+    }
+}
+
+/// Keeps the environment a message is drawn in, so the menu can draw its copy in the same one.
+///
+/// A view of its own, behind the message, so that it is *this* body that re-runs when the
+/// environment changes and not the message's — the box is written, nothing is redrawn.
+private struct EnvironmentTap: View {
+    let keep: (EnvironmentValues) -> Void
+    @Environment(\.self) private var environment
+
+    var body: some View {
+        // A write from a body, and harmless only because of where it goes: into a box SwiftUI is
+        // not watching, so it changes nothing on screen and cannot start another pass. See
+        // `MessageActions.anchor`.
+        keep(environment)
+        return Color.clear
+    }
+}
+
+/// Empties a message's place in the conversation while the message itself is up in the menu.
+///
+/// A modifier that reads the presenter, rather than the row reading it, so that opening a menu
+/// re-runs this small body on every message on screen and not every message's bubble.
+private struct LeavesGapWhileLifted: ViewModifier {
+    let id: String
+
+    @Environment(\.messageMenu) private var menu
+
+    func body(content: Content) -> some View {
+        let isAway = menu?.liftedID == id
+        content
+            .opacity(isAway ? 0 : 1)
+            // Never faded: the gap opens in the frame the copy appears, and closes in the frame it
+            // lands — a fade either way is a moment with two messages, or with none.
+            .animation(nil, value: isAway)
     }
 }

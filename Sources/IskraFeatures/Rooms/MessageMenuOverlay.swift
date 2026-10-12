@@ -188,44 +188,52 @@ struct MessageMenuOverlay: View {
 
     /// The message, exactly where it was, and now the only sharp thing on screen.
     ///
-    /// Given *at least* the room it had in the conversation and never less, which is a
-    /// correction to how this was first written. It used to be pinned to the exact width it had
-    /// been measured at, on the reasoning that an identical width means identical line breaks;
-    /// what it actually meant was a bubble handed the tightest proposal it could still satisfy,
-    /// which is the one proposal where a rounded point either way costs a line — and the lifted
-    /// message came out narrower than the one underneath it, with its last line cut off. A
-    /// maximum can only ever be looser than what the row proposed, so nothing wraps that did not
-    /// wrap before, and a short message still sizes to its own words.
+    /// The same shape, the same colours, the same lines: what the eye follows out of the list
+    /// has to be recognisably the thing that was pressed, and Telegram's menu never so much as
+    /// re-wraps it. Three things used to change on the way up and none of them does now:
     ///
-    /// Its height is left alone for the same reason — unless it is taller than the screen has
-    /// room for. Then it is given the height `MessageMenuLayout` allows and *scrolls* in it, at
-    /// full size. It used to be scaled down to fit instead, and a scaled page of text is a page
-    /// of text too small to read; the long message is often the very one somebody opened the
-    /// menu to copy a piece of, or to read again before answering.
+    /// - **The width.** It was offered the wider of itself and the menu — and a message that
+    ///   sizes to what it is offered (a voice message, a reply with its quote) came out stretched
+    ///   to the menu's 240 points the moment it was lifted, while one wider than the menu was
+    ///   squeezed to it. It is given its own width now, plus a point, as a fixed frame. Not exactly its own: that is the tightest proposal it can still satisfy, where a
+    ///   rounding either way costs a line, and the lifted message once came out with its last line
+    ///   cut off. A point more can only ever be looser than what the row gave it, so nothing wraps
+    ///   that did not wrap before, and nothing is wide enough to un-wrap.
+    /// - **The background.** The bubble's fill depends on the room's wallpaper, which the room
+    ///   says and the app does not — see `MessageActions.lifted`, which brings the room's
+    ///   environment along. And with no wallpaper the fill is a translucent tint, which over the
+    ///   curtain is see-through; the lifted bubble carries the page under it (`bubbleIsLifted`).
+    /// - **A shadow.** Gone. The scrim already sets the message apart, and a bubble that grows a
+    ///   shadow as it is picked up is a bubble that changed.
+    ///
+    /// Its height is left alone — unless it is taller than the screen has room for. Then it is
+    /// given the height `MessageMenuLayout` allows and *scrolls* in it, at full size. It used to
+    /// be scaled down to fit instead, and a scaled page of text is a page of text too small to
+    /// read; the long message is often the very one somebody opened the menu to copy a piece of.
     @ViewBuilder
     private func lifted(_ presentation: MessageMenuPresentation,
                         layout: MessageMenuLayout) -> some View {
         let alignment: Alignment = presentation.isOwn ? .trailing : .leading
+        let width = presentation.anchor.width + 1
+        // A *fixed* width, not a maximum. The column around it is the menu's 240 points wide, and
+        // a maximum is clamped by what the parent offers — so a message wider than the menu was
+        // squeezed to 240 and re-wrapped narrower than the one in the conversation. A fixed frame
+        // offers its own width whatever it is offered; a message wider than the column overhangs
+        // it on the side away from its anchored edge, which is where it hung in the conversation.
         let message = presentation.content
             .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: max(layout.width, presentation.anchor.width), alignment: alignment)
+            .frame(width: width, alignment: alignment)
 
         Group {
             if layout.contentHeight < presentation.anchor.height {
-                // As wide as the bubble was, not as the menu is: a scroll view takes the width it
-                // is offered, and offered the column's it would re-wrap the message narrower
-                // than the one it was lifted from.
                 ScrollView(.vertical) { message }
                     .scrollIndicators(.visible)
-                    .frame(width: max(layout.width, presentation.anchor.width),
-                           height: layout.contentHeight,
-                           alignment: .top)
+                    .frame(width: width, height: layout.contentHeight, alignment: .top)
                     .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.bubble, style: .continuous))
             } else {
                 message
             }
         }
-        .shadow(color: .black.opacity(Theme.Backdrop.wash), radius: Theme.Spacing.normal, y: Theme.Spacing.tight)
         // It is a copy of something that is still in the list underneath, so VoiceOver is
         // told about it once — by the menu — and not twice.
         .accessibilityHidden(true)

@@ -65,6 +65,10 @@ struct MessageBubble: ViewModifier {
     /// hierarchical fill and an opaque one — see `EnvironmentValues.hasWallpaper`.
     @Environment(\.hasWallpaper) private var hasWallpaper
 
+    /// Whether this bubble has been lifted off the page it was drawn on — see
+    /// `EnvironmentValues.bubbleIsLifted`.
+    @Environment(\.bubbleIsLifted) private var isLifted
+
     /// Wider than the padding above and below, so the words sit in the middle of the
     /// bubble rather than pressed against its rounded sides — the corners eat into
     /// the left and right edges in a way they do not eat into the top and bottom.
@@ -89,6 +93,8 @@ struct MessageBubble: ViewModifier {
             .padding(.vertical, vertical)
             .foregroundStyle(style == .own ? accent.onBubble : AnyShapeStyle(.primary))
             .background(fill, in: shape)
+            // The page, under the fill, when there is no page — see `bubbleIsLifted`.
+            .background(isLifted && style != .plain ? Color.page : Color.clear, in: shape)
             // Lets a long-press menu and drag preview take the bubble's shape rather
             // than a rectangle around it.
             //
@@ -200,5 +206,34 @@ public extension View {
             .contentShape(shape)
             .padding(.horizontal, isPlain ? -Theme.Spacing.roomy : 0)
             .padding(.vertical, isPlain ? -Theme.Spacing.normal : 0)
+    }
+}
+
+public extension EnvironmentValues {
+    /// Whether the bubble being drawn has been picked up off the conversation — the copy the
+    /// message menu lifts over a darkened, blurred room.
+    ///
+    /// A bubble's fill is not a colour, it is a *tint*: five percent of the foreground for
+    /// somebody else's message, sixteen for your own on the colourless theme. On the page that is
+    /// a grey; lifted over the menu's curtain it is five percent of the curtain, and the bubble
+    /// that was grey a moment ago is suddenly see-through. So a lifted bubble carries the page
+    /// with it, underneath the tint, and comes out exactly the colour it was. Over a wallpaper the
+    /// fills are opaque already and the page underneath them changes nothing.
+    @Entry var bubbleIsLifted: Bool = false
+}
+
+private extension Color {
+    /// The page a conversation is drawn on when it has no wallpaper — the system's own
+    /// background, named as a colour rather than reached through `ShapeStyle.background`. That
+    /// one resolves through the environment's `backgroundStyle`, and the whole point of the page
+    /// under a lifted bubble is that it is opaque whatever the environment around it says.
+    static var page: Color {
+        #if canImport(UIKit)
+        Color(uiColor: .systemBackground)
+        #elseif canImport(AppKit)
+        Color(nsColor: .windowBackgroundColor)
+        #else
+        .white
+        #endif
     }
 }
