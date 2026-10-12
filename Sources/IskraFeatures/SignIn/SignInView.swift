@@ -202,7 +202,7 @@ public struct SignInView: View {
                     } label: {
                         busyLabel(Strings.SignIn.createAccount)
                     }
-                    .buttonStyle(.glass)
+                    .navigationGlassButton()
                     .controlSize(.large)
                     .frame(maxWidth: .infinity)
                     .disabled(model.isBusy)
@@ -280,7 +280,7 @@ public struct SignInView: View {
         if prominent {
             button.buttonStyle(.glassAction)
         } else {
-            button.buttonStyle(.glass)
+            button.navigationGlassButton()
         }
     }
 

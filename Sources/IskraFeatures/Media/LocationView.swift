@@ -58,9 +58,16 @@ struct LocationBubble: View {
     private static let span: CLLocationDistance = 500
 
     private func openInMaps() {
-        let item = MKMapItem(location: CLLocation(latitude: location.latitude,
+        let item: MKMapItem
+        // OS 26 replaced the placemark with a location and an address; the placemark is what
+        // there is on iOS 18 and macOS 15, and it opens the same pin.
+        if #available(iOS 26, macOS 26, *) {
+            item = MKMapItem(location: CLLocation(latitude: location.latitude,
                                                   longitude: location.longitude),
                              address: nil)
+        } else {
+            item = MKMapItem(placemark: MKPlacemark(coordinate: coordinate))
+        }
         item.name = location.name ?? String(app: Strings.Location.title)
         item.openInMaps()
     }

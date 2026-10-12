@@ -77,6 +77,8 @@ enum ChaCha20 {
         return out
     }
 
+    // RFC 8439 §2.1's own names — the state and its four indices — kept so it checks against the text.
+    // swiftlint:disable:next identifier_name
     private static func quarterRound(_ s: inout [UInt32], _ a: Int, _ b: Int, _ c: Int, _ d: Int) {
         s[a] = s[a] &+ s[b]; s[d] = rotate(s[d] ^ s[a], 16)
         s[c] = s[c] &+ s[d]; s[b] = rotate(s[b] ^ s[c], 12)

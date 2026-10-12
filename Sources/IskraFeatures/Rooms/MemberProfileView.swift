@@ -179,7 +179,7 @@ struct MemberProfileView: View {
     private var actionTiles: some View {
         // One container for the circles, so neighbouring glass is drawn as glass beside glass and
         // not as three panes muddling where they nearly touch — see `Glass.swift`.
-        GlassEffectContainer(spacing: Theme.Spacing.close) {
+        NavigationGlassGroup(spacing: Theme.Spacing.close) {
             tileRow
         }
         .padding(.vertical, Theme.Spacing.close)

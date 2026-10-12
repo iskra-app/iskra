@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Iskra, the app. What App Store Connect refuses an upload without: every "required reason" API
+  the app calls, and why. Nothing is tracked and nothing is collected by us — messages go to the
+  user's own homeserver, encrypted, and the only server of ours is the push gateway, which sees a
+  device token and an event id and nothing a person wrote.
+
+  UserDefaults: the app's own settings (CA92.1), and the App Group's, shared with its two
+  extensions — lock state, the chat directory, the bridge settings (1C8F.1).
+  File timestamps: the Share outbox is swept by creation date (ChatDirectory.sweepOutbox), and the
+  encrypted store stats its own files — all inside the app's container or its App Group (C617.1).
+-->
+<plist version="1.0">
+<dict>
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>CA92.1</string>
+				<string>1C8F.1</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>C617.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

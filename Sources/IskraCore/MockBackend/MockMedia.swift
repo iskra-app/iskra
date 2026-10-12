@@ -37,9 +37,9 @@ enum MockMedia {
         let count = Int(Double(rate) * seconds)
         var samples = [Int16](repeating: 0, count: count)
         for i in 0..<count {
-            let t = Double(i) / Double(rate)
-            let envelope = (sin(t * 2.3) * 0.5 + 0.5) * min(1, t * 8) * min(1, (seconds - t) * 8)
-            let tone = sin(2 * .pi * 220 * t) * 0.6 + sin(2 * .pi * 330 * t) * 0.4
+            let time = Double(i) / Double(rate)
+            let envelope = (sin(time * 2.3) * 0.5 + 0.5) * min(1, time * 8) * min(1, (seconds - time) * 8)
+            let tone = sin(2 * .pi * 220 * time) * 0.6 + sin(2 * .pi * 330 * time) * 0.4
             samples[i] = Int16(max(-1, min(1, tone * envelope * 0.5)) * Double(Int16.max))
         }
 
@@ -56,8 +56,8 @@ enum MockMedia {
 
         // The same envelope, sampled into the 0…1024 bars a voice message carries.
         let waveform = (0..<48).map { bar -> Int in
-            let t = seconds * Double(bar) / 48
-            return Int((sin(t * 2.3) * 0.5 + 0.5) * 900 + 100)
+            let time = seconds * Double(bar) / 48
+            return Int((sin(time * 2.3) * 0.5 + 0.5) * 900 + 100)
         }
         return (data, waveform)
     }
@@ -66,8 +66,8 @@ enum MockMedia {
 
     private static func render(width: Int, height: Int,
                                draw: (CGContext, CGSize) -> Void) -> Data {
-        let space = CGColorSpace(name: CGColorSpace.sRGB)!
-        guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8,
+        guard let space = CGColorSpace(name: CGColorSpace.sRGB),
+              let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8,
                                       bytesPerRow: 0, space: space,
                                       bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else {
             return Data()
@@ -89,6 +89,8 @@ enum MockMedia {
         context.drawLinearGradient(gradient, start: .zero, end: CGPoint(x: 0, y: size.height), options: [])
     }
 
+    // A drawing call: where the hills stand, how high, how far along, and what colour.
+    // swiftlint:disable:next function_parameter_count
     private static func hills(_ context: CGContext, _ size: CGSize, base: Double, amplitude: Double,
                               phase: Double, fill: CGColor) {
         let path = CGMutablePath()
@@ -108,18 +110,19 @@ enum MockMedia {
     /// HSB, since that is the space in which "the same picture, another colour" is one number.
     private static func color(_ hue: Double, _ saturation: Double, _ brightness: Double,
                               alpha: Double = 1) -> CGColor {
-        let h = (hue.truncatingRemainder(dividingBy: 1) + 1).truncatingRemainder(dividingBy: 1) * 6
-        let c = brightness * saturation
-        let x = c * (1 - abs(h.truncatingRemainder(dividingBy: 2) - 1))
-        let m = brightness - c
-        let (r, g, b): (Double, Double, Double) = switch Int(h) {
-        case 0: (c, x, 0)
-        case 1: (x, c, 0)
-        case 2: (0, c, x)
-        case 3: (0, x, c)
-        case 4: (x, 0, c)
-        default: (c, 0, x)
+        let sector = (hue.truncatingRemainder(dividingBy: 1) + 1).truncatingRemainder(dividingBy: 1) * 6
+        let chroma = brightness * saturation
+        let second = chroma * (1 - abs(sector.truncatingRemainder(dividingBy: 2) - 1))
+        let floor = brightness - chroma
+        // swiftlint:disable:next large_tuple
+        let (red, green, blue): (Double, Double, Double) = switch Int(sector) {
+        case 0: (chroma, second, 0)
+        case 1: (second, chroma, 0)
+        case 2: (0, chroma, second)
+        case 3: (0, second, chroma)
+        case 4: (second, 0, chroma)
+        default: (chroma, 0, second)
         }
-        return CGColor(srgbRed: r + m, green: g + m, blue: b + m, alpha: alpha)
+        return CGColor(srgbRed: red + floor, green: green + floor, blue: blue + floor, alpha: alpha)
     }
 }

@@ -98,7 +98,7 @@ public final class SignInMockServer: HTTPUpstream {
                 deviceKeys[owner]?[keyID] = merged(device)
                 return
             }
-            for (kind, key) in crossSigning[owner] ?? [:] where String(decoding: key, as: UTF8.self).contains(keyID) {
+            for (kind, key) in crossSigning[owner] ?? [:] where String(bytes: key, encoding: .utf8)?.contains(keyID) == true {
                 crossSigning[owner]?[kind] = merged(key)
             }
         }
@@ -106,6 +106,8 @@ public final class SignInMockServer: HTTPUpstream {
         /// The answer to `/keys/query`, for the users asked about.
         func query(_ users: [String]) -> Data {
             var devices: [String: Any] = [:]
+            // "master" is the Matrix spec's own word — `master_keys` in the answer this builds.
+            // swiftlint:disable:next inclusive_language
             var masters: [String: Any] = [:]
             var selfSigning: [String: Any] = [:]
             var userSigning: [String: Any] = [:]
@@ -573,7 +575,7 @@ public final class SignInMockServer: HTTPUpstream {
             .map { #"<input type="hidden" name="\#(Self.escape($0.key))" value="\#(Self.escape($0.value))">"# }
             .joined(separator: "\n")
 
-        let suggestion = flow == .register ? "" : (configuration.accounts.keys.sorted().first ?? "")
+        let suggestion = flow == .register ? "" : (configuration.accounts.keys.min() ?? "")
         let note = problem.map { #"<p class="problem">\#(Self.escape($0))</p>"# } ?? ""
 
         let html = """
@@ -653,13 +655,13 @@ public final class SignInMockServer: HTTPUpstream {
     }
 
     private static func form(_ body: Data) -> [String: String] {
-        let text = String(decoding: body, as: UTF8.self).replacingOccurrences(of: "+", with: " ")
+        let text = (String(bytes: body, encoding: .utf8) ?? "").replacingOccurrences(of: "+", with: " ")
         return split("/?" + text).query
     }
 
     private static func mint(prefix: String, length: Int) -> String {
         let alphabet = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-        return prefix + String((0..<length).map { _ in alphabet.randomElement()! })
+        return prefix + String((0..<length).map { _ in alphabet.randomElement() ?? "A" })
     }
 
     private static func escape(_ text: String) -> String {

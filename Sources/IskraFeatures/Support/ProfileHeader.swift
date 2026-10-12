@@ -137,7 +137,7 @@ private struct ProfileScreen: ViewModifier {
             .navigationTitle(Text(verbatim: ""))
             .toolbarTitleDisplayMode(.inline)
             .toolbarBackgroundVisibility(isPastPortrait ? .automatic : .hidden, for: .navigationBar)
-            .scrollEdgeEffectHidden(!isPastPortrait, for: .top)
+            .scrollEdgeHidden(!isPastPortrait, for: .top)
             // The grouped form's own opening gap, which sits between the bar and the first row
             // and would put the portrait back below the buttons.
             .contentMargins(.top, 0, for: .scrollContent)

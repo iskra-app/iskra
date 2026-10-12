@@ -66,7 +66,7 @@ struct MessageMenuLayoutTests {
     /// The whole point of the lift: a message in the middle of the screen does not move. The bar
     /// of emoji opens in the space above it and the verbs below, and the thing being talked
     /// about stays exactly where the finger left it.
-    @Test func aMessageInTheMiddleStaysWhereItIs() {
+    @Test func aMessageInTheMiddleStaysWhereItIs() throws {
         let anchor = CGRect(x: 16, y: 400, width: 220, height: 60)
         let layout = resolve(anchor: anchor)
 
@@ -77,7 +77,7 @@ struct MessageMenuLayoutTests {
 
     /// A message down by the composer has no room under it, so the whole arrangement comes up
     /// far enough for the last verb to clear the home indicator — and no further.
-    @Test func aMessageAtTheBottomIsLiftedJustEnough() {
+    @Test func aMessageAtTheBottomIsLiftedJustEnough() throws {
         let layout = resolve(anchor: CGRect(x: 16, y: 780, width: 220, height: 50))
 
         let columnHeight = bar + MessageMenu.gap + 50 + MessageMenu.gap + list
@@ -93,7 +93,7 @@ struct MessageMenuLayoutTests {
     /// and not pressed. The cause was a safe area reported as zero by a reader that had been
     /// told to ignore it — so what is checked here is the arithmetic, and what fixed the app was
     /// handing that arithmetic a region somebody had actually measured. See `MessageMenuOverlay`.
-    @Test func aMessageAtTheTopOpensBelowTheIsland() {
+    @Test func aMessageAtTheTopOpensBelowTheIsland() throws {
         let layout = resolve(anchor: CGRect(x: 16, y: 70, width: 220, height: 50))
 
         #expect(layout.origin.y == MessageMenu.margin)
@@ -102,7 +102,7 @@ struct MessageMenuLayoutTests {
 
     /// And one the conversation has scrolled up *behind* the island — an anchor whose top is
     /// above the region entirely — is treated the same way rather than followed off the screen.
-    @Test func aMessageBehindTheIslandDoesNotDragTheMenuUpWithIt() {
+    @Test func aMessageBehindTheIslandDoesNotDragTheMenuUpWithIt() throws {
         let layout = resolve(anchor: CGRect(x: 16, y: 20, width: 220, height: 50))
 
         #expect(layout.origin.y == MessageMenu.margin)
@@ -110,7 +110,7 @@ struct MessageMenuLayoutTests {
 
     /// Your own message hangs from the right-hand edge, so the menu opens from the right-hand
     /// edge. Anything else reads as a menu belonging to the screen rather than to the message.
-    @Test func yourOwnMessageOpensUnderItsTrailingEdge() {
+    @Test func yourOwnMessageOpensUnderItsTrailingEdge() throws {
         let anchor = CGRect(x: 150, y: 300, width: 200, height: 44)
         let layout = resolve(anchor: anchor, isOwn: true)
 
@@ -119,7 +119,7 @@ struct MessageMenuLayoutTests {
 
     /// Somebody else's opens under its leading edge — unless the list is wider than the room
     /// left to the right of it, in which case it is the margin that wins.
-    @Test func aMenuNeverHangsOffTheEdgeOfTheScreen() {
+    @Test func aMenuNeverHangsOffTheEdgeOfTheScreen() throws {
         let layout = resolve(anchor: CGRect(x: 300, y: 300, width: 80, height: 44))
 
         #expect(layout.origin.x >= MessageMenu.margin)
@@ -129,7 +129,7 @@ struct MessageMenuLayoutTests {
     /// A very long message is what gives way, and it gives *first* — it scrolls: the bar and the verbs are a
     /// fixed cost, and a photograph that pushed them off the screen would leave a menu with no
     /// menu in it.
-    @Test func aTallMessageGivesWayBeforeTheMenuDoes() {
+    @Test func aTallMessageGivesWayBeforeTheMenuDoes() throws {
         let layout = resolve(anchor: CGRect(x: 16, y: 100, width: 260, height: 700))
 
         #expect(layout.contentHeight < 700)
@@ -141,7 +141,7 @@ struct MessageMenuLayoutTests {
 
     /// But only so far. Past a couple of lines the lifted message stops being the message and
     /// starts being a smudge, so it stops giving and the list begins to scroll instead.
-    @Test func aShortScreenScrollsTheListRatherThanCrushingTheMessage() {
+    @Test func aShortScreenScrollsTheListRatherThanCrushingTheMessage() throws {
         let short = CGRect(x: 0, y: 59, width: 393, height: 420)
         let layout = resolve(anchor: CGRect(x: 16, y: 100, width: 260, height: 600),
                              region: short,
@@ -155,7 +155,7 @@ struct MessageMenuLayoutTests {
 
     /// On a narrow window the list is the window's width less its margins, not its own idea of
     /// how wide a menu should be.
-    @Test func aNarrowWindowNarrowsTheMenu() {
+    @Test func aNarrowWindowNarrowsTheMenu() throws {
         let narrow = CGRect(x: 0, y: 0, width: 240, height: 600)
         let layout = resolve(anchor: CGRect(x: 16, y: 200, width: 180, height: 44), region: narrow)
 
@@ -166,7 +166,7 @@ struct MessageMenuLayoutTests {
     /// width everywhere, so the verbs are in the same place on every message; the picture is
     /// still lifted at its own size, which is the part that has to be true of the message and
     /// not of the list under it.
-    @Test func aWideMessageLeavesTheMenuAlone() {
+    @Test func aWideMessageLeavesTheMenuAlone() throws {
         let pad = CGRect(x: 0, y: 24, width: 1024, height: 1366)
         let layout = resolve(anchor: CGRect(x: 40, y: 400, width: 420, height: 300), region: pad)
 
@@ -174,7 +174,7 @@ struct MessageMenuLayoutTests {
     }
 
     /// And a short one does not narrow it either — the two ends of the same rule.
-    @Test func aShortMessageLeavesTheMenuAlone() {
+    @Test func aShortMessageLeavesTheMenuAlone() throws {
         let layout = resolve(anchor: CGRect(x: 16, y: 400, width: 48, height: 36))
 
         #expect(layout.width == Theme.Size.menuWidth)
@@ -185,7 +185,7 @@ struct MessageMenuLayoutTests {
     /// The panel behind the "+" is a grid and not a column of words, so it is half again as
     /// wide as the menu — and it still hangs from the edge the message hangs from. See
     /// `Theme.Size.emojiPanelWidth`.
-    @Test func theEmojiPanelIsWiderThanTheMenuAndHangsFromTheSameEdge() {
+    @Test func theEmojiPanelIsWiderThanTheMenuAndHangsFromTheSameEdge() throws {
         let anchor = CGRect(x: 16, y: 300, width: 200, height: 44)
         let layout = resolve(anchor: anchor)
 
@@ -196,7 +196,7 @@ struct MessageMenuLayoutTests {
     }
 
     /// And on your own message, which hangs from the right, it grows to the left.
-    @Test func theEmojiPanelOnYourOwnMessageGrowsInwards() {
+    @Test func theEmojiPanelOnYourOwnMessageGrowsInwards() throws {
         let anchor = CGRect(x: 150, y: 300, width: 200, height: 44)
         let layout = resolve(anchor: anchor, isOwn: true)
 
@@ -210,7 +210,7 @@ struct MessageMenuLayoutTests {
     /// Without the correction this is a grid of emoji with its last two columns past the edge of
     /// the phone — the sort of thing that is obvious on one screen size and invisible on the one
     /// it was built on.
-    @Test func theEmojiPanelIsSlidBackOntoTheScreen() {
+    @Test func theEmojiPanelIsSlidBackOntoTheScreen() throws {
         let narrow = CGRect(x: 0, y: 59, width: 320, height: 700)
         let layout = resolve(anchor: CGRect(x: 60, y: 300, width: 200, height: 44), region: narrow)
 
@@ -222,7 +222,7 @@ struct MessageMenuLayoutTests {
     /// On a screen narrower than the panel wants to be, it is simply as wide as there is room
     /// for. A panel that insisted on 360 points would be a grid nobody could reach the last
     /// column of.
-    @Test func theEmojiPanelNeverOutgrowsTheScreen() {
+    @Test func theEmojiPanelNeverOutgrowsTheScreen() throws {
         let narrow = CGRect(x: 0, y: 59, width: 320, height: 700)
         let layout = resolve(anchor: CGRect(x: 16, y: 300, width: 200, height: 44), region: narrow)
 
@@ -232,24 +232,24 @@ struct MessageMenuLayoutTests {
 
 /// The short list of emoji behind the "+" — see `RecentEmoji`.
 struct RecentEmojiTests {
-    @Test func theLatestComesFirst() {
+    @Test func theLatestComesFirst() throws {
         let stored = RecentEmoji.adding("🎉", to: RecentEmoji.adding("👍", to: ""))
         #expect(RecentEmoji.list(from: stored) == ["🎉", "👍"])
     }
 
     /// Sending the same emoji again moves it to the front rather than putting it in twice —
     /// otherwise a person with one favourite would have a "recent" list of nothing else.
-    @Test func sendingOneAgainMovesItRatherThanRepeatingIt() {
+    @Test func sendingOneAgainMovesItRatherThanRepeatingIt() throws {
         var stored = ""
         for emoji in ["👍", "🎉", "👍"] { stored = RecentEmoji.adding(emoji, to: stored) }
 
         #expect(RecentEmoji.list(from: stored) == ["👍", "🎉"])
     }
 
-    @Test func theListStopsAtItsLimit() {
+    @Test func theListStopsAtItsLimit() throws {
         var stored = ""
         for index in 0..<(RecentEmoji.limit + 10) {
-            stored = RecentEmoji.adding(String(UnicodeScalar(0x1F600 + index)!), to: stored)
+            stored = RecentEmoji.adding(String(try #require(UnicodeScalar(0x1F600 + index))), to: stored)
         }
 
         #expect(RecentEmoji.list(from: stored).count == RecentEmoji.limit)

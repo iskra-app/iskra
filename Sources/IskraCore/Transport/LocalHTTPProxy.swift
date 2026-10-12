@@ -426,7 +426,7 @@ private actor HTTPChannel {
             if let range = buffer.range(of: terminator) {
                 let line = Data(buffer[buffer.startIndex..<range.lowerBound])
                 buffer.removeSubrange(buffer.startIndex..<range.upperBound)
-                return String(decoding: line, as: UTF8.self)
+                return String(bytes: line, encoding: .utf8) ?? ""
             }
             guard buffer.count <= Self.maxLine + Self.maxHead else {
                 throw LocalHTTPProxy.ProxyError.malformedRequest("line too long")

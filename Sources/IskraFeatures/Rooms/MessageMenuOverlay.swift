@@ -121,7 +121,7 @@ struct MessageMenuOverlay: View {
 
         // One container for both sheets of glass, which is what keeps them from stacking into
         // soup where they nearly touch — see `IskraDesign/Glass.swift`.
-        GlassEffectContainer(spacing: MessageMenu.gap) {
+        NavigationGlassGroup(spacing: MessageMenu.gap) {
             VStack(alignment: alignment, spacing: MessageMenu.gap) {
                 if presentation.canReact {
                     if isPickingEmoji {

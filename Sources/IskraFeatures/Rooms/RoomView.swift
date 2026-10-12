@@ -51,6 +51,10 @@ public struct RoomView: View {
     @State private var pinned: PinnedStore?
     @State private var isShowingPinned = false
 
+    /// Who here has keys this device does not recognise — see `IdentityChangesStore`. Handed in
+    /// by the session, which stops it on sign-out; started and stopped with the room.
+    @State private var identityChanges: IdentityChangesStore?
+
     /// The two attachment pickers, owned by the screen rather than by the composer that asks
     /// for them. The composer is a `safeAreaInset` floating over this view, and a
     /// presentation put there has already gone missing once (see `MessageComposer`); from
@@ -242,6 +246,10 @@ public struct RoomView: View {
     /// they can both fire.
     @State private var hasTornDown = false
 
+    /// A photo is open over the whole room — see `EnvironmentValues.coversRoom`. The room is still
+    /// there under it, and must not be shut down because SwiftUI says it has disappeared.
+    @State private var isCoveredByMedia = false
+
     /// Something the *device* refused — the microphone, an unreadable file. It lives here, with the
     /// alert that shows it, and not in the store: see `RoomProblem`.
     @State private var problem: RoomProblem?
@@ -337,11 +345,13 @@ public struct RoomView: View {
     var onClose: () -> Void
 
     public init(timeline: TimelineStore,
+                identityChanges: IdentityChangesStore? = nil,
                 makeDetails: @escaping () -> RoomDetailsStore?,
                 openAt: Binding<String?> = .constant(nil),
                 onLeave: @escaping () -> Void,
                 onClose: @escaping () -> Void = {}) {
         _timeline = State(initialValue: timeline)
+        _identityChanges = State(initialValue: identityChanges)
         self.makeDetails = makeDetails
         _openAt = openAt
         self.onLeave = onLeave
@@ -578,7 +588,7 @@ public struct RoomView: View {
             // above its first message and the iPhone did not. A chat has nothing to separate
             // there: the toolbar is already a glass surface, and the rule only fenced the top
             // message off from the name of the person who sent it.
-            .scrollEdgeEffectStyle(.soft, for: .top)
+            .softScrollEdge(for: .top)
             // Reaching the top is the request for older messages — the gesture people
             // already make, rather than a spinner they have to notice. `loadMore` ignores
             // a call while it is already paginating and once the room has no more history,
@@ -838,6 +848,8 @@ public struct RoomView: View {
             // Your own message is the exception, and it is not really an exception: sending one
             // is a request to be where it lands. The composer is at the bottom, so you are
             // answering the newest message by definition.
+            // `last` is used — by `guard let last`, the shorthand SwiftLint does not read as a use.
+            // swiftlint:disable:next unused_closure_parameter
             .onChange(of: timeline.rows.last?.id) { _, last in
                 guard hasAnchored, let last else { return }
 
@@ -985,6 +997,23 @@ public struct RoomView: View {
         // The strip at the top of the room, above the conversation and below the toolbar.
         // Present only when there is something pinned — a room with nothing pinned should not
         // give up a row of its screen to say so.
+        // Somebody's keys changed: above the pinned strip, because it is about who is reading
+        // what you write here, which matters more than what was pinned. One person at a time.
+        .safeAreaInset(edge: .top) {
+            Group {
+                if let identityChanges, let change = identityChanges.changes.first {
+                    IdentityChangeBanner(change: change) {
+                        Task {
+                            do { try await identityChanges.acknowledge(change) } catch {
+                                problem = .identityNotAcknowledged
+                            }
+                        }
+                    }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
+            .animation(.smooth, value: identityChanges?.changes.first?.id)
+        }
         .safeAreaInset(edge: .top) {
             Group {
                 if !timeline.pinnedEventIDs.isEmpty, let pinned {
@@ -1044,7 +1073,7 @@ public struct RoomView: View {
                 // Out of the toolbar's shared glass. A title is the heading of the screen,
                 // not a control hovering over it, and a capsule of glass around these words
                 // says the opposite.
-                .sharedBackgroundVisibility(.hidden)
+                .outsideToolbarGlass()
 
                 // Out of the shared background, and — unlike the title above — *not* because
                 // it should be bare. It carries a glass circle of its own instead, cut to the
@@ -1058,7 +1087,7 @@ public struct RoomView: View {
                                      faces: timeline.roomFaces,
                                      onOpenDetails: openDetails)
                 }
-                .sharedBackgroundVisibility(.hidden)
+                .outsideToolbarGlass()
             } else {
                 // Mac and iPad. Room enough for the picture and the name together, at the
                 // leading edge — lined up with the conversation below rather than floating
@@ -1072,7 +1101,7 @@ public struct RoomView: View {
                                subtitle: headerSubtitle,
                                onOpenDetails: openDetails)
                 }
-                .sharedBackgroundVisibility(.hidden)
+                .outsideToolbarGlass()
             }
         }
         .sheet(isPresented: $isSearchingRoom) {
@@ -1152,6 +1181,16 @@ public struct RoomView: View {
             }
         }
         .task {
+            // Back on screen, so alive again: whatever put the room down on the way here — a
+            // cover this screen was not told about, a disappearance nobody anticipated — must not
+            // leave the latch set, or the reader's real way out later saves no draft and stops
+            // no timeline. The latch is there to stop two tear-downs of one visit, not every
+            // tear-down after the first.
+            hasTornDown = false
+            // And nothing is over the room if the room is on screen — even if the row that opened
+            // the viewer was taken away while it was open and never got to say it had closed.
+            isCoveredByMedia = false
+
             // Whatever was half-written here last time. Restored *before* the room opens, because
             // it costs nothing and it means the composer is never briefly empty in front of
             // somebody who left a sentence in it.
@@ -1163,6 +1202,9 @@ public struct RoomView: View {
                 draft = saved
             }
 
+            // Before the history: subscribing is quick and fetching the first pages may not be, and
+            // a warning about who is reading this room should not wait on either.
+            await identityChanges?.start()
             try? await timeline.start()
             await timeline.markAsRead()
         }
@@ -1243,9 +1285,10 @@ public struct RoomView: View {
         // is in the room. The flags are the honest signal — we know when we are pushing, because
         // we are the ones who pushed.
         .onDisappear {
-            guard !isShowingDetails, !isShowingPinned, profileUserID == nil else { return }
+            guard !isShowingDetails, !isShowingPinned, profileUserID == nil, !isCoveredByMedia else { return }
             tearDown()
         }
+        .environment(\.coversRoom) { isCoveredByMedia = $0 }
         // Two alerts, because there are two kinds of bad news and they come from different places.
         // The room refusing something is the store's (`TimelineActionFailure`); the device refusing
         // something is this screen's (`RoomProblem`) — see that type for why the second one no
@@ -1340,6 +1383,7 @@ public struct RoomView: View {
         Task { await timeline.saveDraft(unsent) }
 
         timeline.stop()
+        identityChanges?.stop()
         videoNote.cancel()
         voice.cancel()
         lighting?.cancel()
@@ -1660,10 +1704,11 @@ public struct RoomView: View {
         // Safe to delete the moment the send returns, and it is worth knowing *why*, because it
         // stopped being safe for the obvious reason. `send(voice:)` no longer waits for the upload —
         // an attachment goes into the send queue and leaves when the network does — so this file is
-        // no longer being held open by anybody we are waiting on. What makes it safe is the queue
-        // itself: the SDK copies the content into its own encrypted store the instant the attachment
-        // is queued ("the file's content is immediately cached in the EventCacheStore"), before any
-        // upload is attempted. The recording on disk has done its job by then.
+        // no longer being held open by anybody we are waiting on. What makes it safe is that the SDK
+        // is handed the recording's *bytes*, read before `send(voice:)` returns — see
+        // `TimelineStore.owned`. It used to be handed the path, on the belief that the queue copies
+        // the file the instant it is queued; it reads the path later, from a queue task, and a file
+        // deleted here was a voice message that was never sent. The recording has done its job.
         //
         // And it must go. It is a minute of somebody's voice sitting unencrypted in a temporary
         // directory; the copy the queue keeps is inside the encrypted store, and this one is not.
@@ -1798,6 +1843,11 @@ public struct RoomView: View {
     private func handlers(for message: Message, in scroll: ScrollViewProxy) -> MessageHandlers {
         MessageHandlers(
             onRetry: { Task { await timeline.retrySending(messageID: message.id) } },
+            onSendAnyway: {
+                Task {
+                    do { try await timeline.sendAnyway(messageID: message.id) } catch { problem = .sendAnywayFailed }
+                }
+            },
             onToggleReaction: { emoji in
                 Task { await timeline.toggleReaction(messageID: message.id, key: emoji) }
             },

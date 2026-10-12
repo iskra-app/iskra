@@ -169,8 +169,8 @@ public actor MockHomeserver: HTTPUpstream {
         guard path[1] == "client" else { return nil }
         if path.count == 3, path[2] == "versions" { return Self.ok(Self.versions) }
 
-        let p = Array(path.dropFirst(3))   // after `/_matrix/client/<version>/`
-        let head = p.first ?? ""
+        let segments = Array(path.dropFirst(3))   // after `/_matrix/client/<version>/`
+        let head = segments.first ?? ""
 
         switch (method, head) {
         case ("GET", "login"):
@@ -192,31 +192,31 @@ public actor MockHomeserver: HTTPUpstream {
                             "device_id": deviceID, "home_server": Self.serverName])
         case ("POST", "logout"):
             return Self.ok([:])
-        case ("GET", "account") where p.count > 1 && p[1] == "whoami":
+        case ("GET", "account") where segments.count > 1 && segments[1] == "whoami":
             return Self.ok(["user_id": me, "device_id": deviceID])
-        case ("GET", "account") where p.count > 1 && p[1] == "3pid":
+        case ("GET", "account") where segments.count > 1 && segments[1] == "3pid":
             return Self.ok(["threepids": []])
         case ("GET", "capabilities"):
             return Self.ok(["capabilities": ["m.change_password": ["enabled": false],
                                              "m.set_displayname": ["enabled": true],
                                              "m.set_avatar_url": ["enabled": true]]])
-        case (_, "org.matrix.simplified_msc3575") where p.last == "sync":
+        case (_, "org.matrix.simplified_msc3575") where segments.last == "sync":
             return try await slidingSync(query, body)
         case (_, "sync"):
             return try await slidingSync(query, body)
-        case (_, "rooms") where p.count >= 3:
-            return try await roomRoute(method, p[1], Array(p.dropFirst(2)), query, body)
+        case (_, "rooms") where segments.count >= 3:
+            return try await roomRoute(method, segments[1], Array(segments.dropFirst(2)), query, body)
         case ("POST", "join"), ("POST", "knock"):
-            guard p.count > 1 else { break }
-            return try join(p[1])
+            guard segments.count > 1 else { break }
+            return try join(segments[1])
         case ("POST", "createRoom"):
             return try createRoom(body)
         case ("GET", "joined_rooms"):
             return Self.ok(["joined_rooms": rooms.keys.filter { membership(of: me, in: $0) == "join" }])
-        case (_, "profile") where p.count > 1:
-            return try profileRoute(method, p, body)
-        case (_, "user") where p.count > 2:
-            return try userRoute(method, Array(p.dropFirst(2)), body)
+        case (_, "profile") where segments.count > 1:
+            return try profileRoute(method, segments, body)
+        case (_, "user") where segments.count > 2:
+            return try userRoute(method, Array(segments.dropFirst(2)), body)
         case ("POST", "user_directory"):
             return searchDirectory(body)
         case (_, "publicRooms"):
@@ -224,19 +224,19 @@ public actor MockHomeserver: HTTPUpstream {
         case ("GET", "directory"):
             return Self.error(404, "M_NOT_FOUND", "Room alias not found")
         case (_, "pushrules"):
-            return try pushRules(method, Array(p.dropFirst()), body)
+            return try pushRules(method, Array(segments.dropFirst()), body)
         case ("GET", "pushers"):
             return Self.ok(["pushers": []])
         case ("POST", "pushers"):
             return Self.ok([:])
         case (_, "presence"):
             return Self.ok(["presence": "online"])
-        case ("GET", "devices") where p.count == 1:
+        case ("GET", "devices") where segments.count == 1:
             return Self.ok(["devices": [deviceDescription()] + otherDevices])
         case ("GET", "devices"):
             return Self.ok(deviceDescription())
-        case ("DELETE", "devices") where p.count == 2:
-            otherDevices.removeAll { $0["device_id"] as? String == p[1] }
+        case ("DELETE", "devices") where segments.count == 2:
+            otherDevices.removeAll { $0["device_id"] as? String == segments[1] }
             return Self.ok([:])
         case ("POST", "delete_devices"):
             let ended = Set(body["devices"] as? [String] ?? [])
@@ -245,9 +245,9 @@ public actor MockHomeserver: HTTPUpstream {
         case ("PUT", "devices"), ("DELETE", "devices"):
             return Self.ok([:])
         case (_, "keys"):
-            return try keysRoute(method, Array(p.dropFirst()), body)
+            return try keysRoute(method, Array(segments.dropFirst()), body)
         case (_, "room_keys"):
-            return try roomKeysRoute(method, Array(p.dropFirst()), query, body)
+            return try roomKeysRoute(method, Array(segments.dropFirst()), query, body)
         case ("PUT", "sendToDevice"):
             return Self.ok([:])
         case ("GET", "thirdparty"):
@@ -265,7 +265,7 @@ public actor MockHomeserver: HTTPUpstream {
     private func slidingSync(_ query: [String: String], _ body: JSON) async throws -> ProxiedResponse {
         let position = query["pos"].flatMap(Int.init)
         let since = position.flatMap { positions[$0] } ?? Snapshot()
-        let isFirst = position == nil || positions[position!] == nil
+        let isFirst = position.map { positions[$0] == nil } ?? true
         let timeout = query["timeout"].flatMap(Int.init).map { min($0, 30_000) } ?? (isFirst ? 0 : 5_000)
         let limit = Self.timelineLimit(in: body)
 
@@ -309,7 +309,8 @@ public actor MockHomeserver: HTTPUpstream {
         return min(50, max(10, limits.max() ?? 10))
     }
 
-    private func syncDelta(since: Snapshot, limit: Int) -> (JSON, Snapshot, Bool) {
+    /// The rooms to send, the state they leave the connection in, and whether anything moved.
+    private func syncDelta(since: Snapshot, limit: Int) -> (JSON, Snapshot, Bool) { // swiftlint:disable:this large_tuple
         var snapshot = since
         var roomsOut: JSON = [:]
         var roomData: JSON = [:]
@@ -397,8 +398,8 @@ public actor MockHomeserver: HTTPUpstream {
                       "m.room.join_rules", "m.room.canonical_alias"]
         var stripped = room.state.values
             .filter { wanted.contains($0["type"] as? String ?? "") }
-            .map { ["type": $0["type"]!, "state_key": $0["state_key"]!, "content": $0["content"]!,
-                    "sender": $0["sender"]!] as JSON }
+            .map { ["type": $0["type"] ?? NSNull(), "state_key": $0["state_key"] ?? NSNull(), "content": $0["content"] ?? NSNull(),
+                    "sender": $0["sender"] ?? NSNull()] as JSON }
         if let own = room.state["m.room.member\u{0}\(me)"] {
             stripped.append(own)
         }
@@ -495,7 +496,7 @@ public actor MockHomeserver: HTTPUpstream {
         rooms[roomID]?.events.append(event)
         if let stateKey { rooms[roomID]?.state["\(type)\u{0}\(stateKey)"] = event }
         // Your own message is one you have read.
-        if sender == me { rooms[roomID]?.receipts[me] = (eventID, event["origin_server_ts"] as! Int) }
+        if sender == me { rooms[roomID]?.receipts[me] = (eventID, event["origin_server_ts"] as? Int ?? 0) }
         touch(roomID)
         return eventID
     }
@@ -540,7 +541,7 @@ public actor MockHomeserver: HTTPUpstream {
             try? await Task.sleep(for: delay)
             self.setTyping(roomID, responder, false)
             self.append(roomID, sender: responder, type: "m.room.message",
-                              content: ["msgtype": "m.text", "body": MockWorld.replies.randomElement()!])
+                              content: ["msgtype": "m.text", "body": MockWorld.replies.randomElement() ?? "🙂"])
         }
     }
 
@@ -581,45 +582,45 @@ public actor MockHomeserver: HTTPUpstream {
     // MARK: - Rooms
 
     // swiftlint:disable:next cyclomatic_complexity function_body_length
-    private func roomRoute(_ method: String, _ roomID: String, _ p: [String], _ query: [String: String],
+    private func roomRoute(_ method: String, _ roomID: String, _ segments: [String], _ query: [String: String],
                            _ body: JSON) async throws -> ProxiedResponse? {
-        let action = p[0]
+        let action = segments[0]
         if action == "join", method == "POST" { return try join(roomID) }
         if action == "hierarchy" { return try hierarchy(roomID) }
-        guard rooms[roomID] != nil else { throw Failure(404, "M_NOT_FOUND", "Unknown room") }
+        guard let room = rooms[roomID] else { throw Failure(404, "M_NOT_FOUND", "Unknown room") }
 
         switch (method, action) {
-        case ("PUT", "send") where p.count >= 3:
-            return Self.ok(sendMessage(roomID, type: p[1], txn: p[2], content: body))
+        case ("PUT", "send") where segments.count >= 3:
+            return Self.ok(sendMessage(roomID, type: segments[1], txn: segments[2], content: body))
 
-        case ("PUT", "redact") where p.count >= 3:
-            let key = "\(roomID)/\(p[2])"
+        case ("PUT", "redact") where segments.count >= 3:
+            let key = "\(roomID)/\(segments[2])"
             if let existing = sentTransactions[key] { return Self.ok(["event_id": existing]) }
-            var content: JSON = ["redacts": p[1]]
+            var content: JSON = ["redacts": segments[1]]
             if let reason = body["reason"] { content["reason"] = reason }
-            redactInPlace(roomID, p[1])
+            redactInPlace(roomID, segments[1])
             let id = append(roomID, sender: me, type: "m.room.redaction", content: content,
-                            transactionID: p[2], extra: ["redacts": p[1]])
+                            transactionID: segments[2], extra: ["redacts": segments[1]])
             sentTransactions[key] = id
             return Self.ok(["event_id": id])
 
-        case ("PUT", "state") where p.count >= 2:
-            let stateKey = p.count > 2 ? p[2] : ""
-            return Self.ok(["event_id": append(roomID, sender: me, type: p[1], content: body, stateKey: stateKey)])
+        case ("PUT", "state") where segments.count >= 2:
+            let stateKey = segments.count > 2 ? segments[2] : ""
+            return Self.ok(["event_id": append(roomID, sender: me, type: segments[1], content: body, stateKey: stateKey)])
 
-        case ("GET", "state") where p.count == 1:
-            return Self.okArray(Array(rooms[roomID]!.state.values))
+        case ("GET", "state") where segments.count == 1:
+            return Self.okArray(Array(room.state.values))
 
         case ("GET", "state"):
-            let stateKey = p.count > 2 ? p[2] : ""
-            guard let event = rooms[roomID]!.state["\(p[1])\u{0}\(stateKey)"] else {
+            let stateKey = segments.count > 2 ? segments[2] : ""
+            guard let event = room.state["\(segments[1])\u{0}\(stateKey)"] else {
                 throw Failure(404, "M_NOT_FOUND", "Event not found")
             }
             return Self.ok(event["content"] as? JSON ?? [:])
 
         case ("GET", "members"):
             let excluded = query["not_membership"]
-            let members = rooms[roomID]!.state.values.filter {
+            let members = room.state.values.filter {
                 $0["type"] as? String == "m.room.member"
                     && (excluded == nil || ($0["content"] as? JSON)?["membership"] as? String != excluded)
             }
@@ -627,7 +628,7 @@ public actor MockHomeserver: HTTPUpstream {
 
         case ("GET", "joined_members"):
             var joined: JSON = [:]
-            for event in rooms[roomID]!.state.values where event["type"] as? String == "m.room.member" {
+            for event in room.state.values where event["type"] as? String == "m.room.member" {
                 let content = event["content"] as? JSON ?? [:]
                 guard content["membership"] as? String == "join", let user = event["state_key"] as? String else { continue }
                 joined[user] = ["display_name": content["displayname"] ?? NSNull(),
@@ -638,27 +639,27 @@ public actor MockHomeserver: HTTPUpstream {
         case ("GET", "messages"):
             return Self.ok(messages(roomID, query))
 
-        case ("GET", "event") where p.count > 1:
-            guard let event = rooms[roomID]!.events.first(where: { $0["event_id"] as? String == p[1] }) else {
+        case ("GET", "event") where segments.count > 1:
+            guard let event = room.events.first(where: { $0["event_id"] as? String == segments[1] }) else {
                 throw Failure(404, "M_NOT_FOUND", "Event not found")
             }
             return Self.ok(event)
 
-        case ("GET", "context") where p.count > 1:
-            return Self.ok(try context(roomID, p[1], limit: query["limit"].flatMap(Int.init) ?? 10))
+        case ("GET", "context") where segments.count > 1:
+            return Self.ok(try context(roomID, segments[1], limit: query["limit"].flatMap(Int.init) ?? 10))
 
-        case ("GET", "relations") where p.count > 1:
-            let related = rooms[roomID]!.events.filter {
-                (($0["content"] as? JSON)?["m.relates_to"] as? JSON)?["event_id"] as? String == p[1]
-                    && (p.count < 3 || (($0["content"] as? JSON)?["m.relates_to"] as? JSON)?["rel_type"] as? String == p[2])
+        case ("GET", "relations") where segments.count > 1:
+            let related = room.events.filter {
+                (($0["content"] as? JSON)?["m.relates_to"] as? JSON)?["event_id"] as? String == segments[1]
+                    && (segments.count < 3 || (($0["content"] as? JSON)?["m.relates_to"] as? JSON)?["rel_type"] as? String == segments[2])
             }
             return Self.ok(["chunk": Array(related.reversed())])
 
         case ("GET", "threads"):
             return Self.ok(["chunk": []])
 
-        case ("POST", "receipt") where p.count >= 3:
-            read(roomID, by: me, upTo: p[2])
+        case ("POST", "receipt") where segments.count >= 3:
+            read(roomID, by: me, upTo: segments[2])
             return Self.ok([:])
 
         case ("POST", "read_markers"):
@@ -703,12 +704,12 @@ public actor MockHomeserver: HTTPUpstream {
 
         case ("GET", "timestamp_to_event"):
             let ts = query["ts"].flatMap(Int.init) ?? 0
-            let events = rooms[roomID]!.events
+            let events = room.events
             let hit = query["dir"] == "b"
                 ? events.last { ($0["origin_server_ts"] as? Int ?? 0) <= ts }
                 : events.first { ($0["origin_server_ts"] as? Int ?? 0) >= ts }
             guard let hit else { throw Failure(404, "M_NOT_FOUND") }
-            return Self.ok(["event_id": hit["event_id"]!, "origin_server_ts": hit["origin_server_ts"]!])
+            return Self.ok(["event_id": hit["event_id"] ?? NSNull(), "origin_server_ts": hit["origin_server_ts"] ?? NSNull()])
 
         default:
             return nil
@@ -717,7 +718,7 @@ public actor MockHomeserver: HTTPUpstream {
 
     /// History, older first in the token and newest first in the chunk, as `/messages` returns it.
     private func messages(_ roomID: String, _ query: [String: String]) -> JSON {
-        let events = rooms[roomID]!.events
+        guard let events = rooms[roomID]?.events else { return ["chunk": [], "state": []] }
         let limit = min(100, query["limit"].flatMap(Int.init) ?? 10)
         let from = query["from"].flatMap { Int($0.dropFirst()) } ?? events.count
         let clamped = max(0, min(from, events.count))
@@ -734,7 +735,8 @@ public actor MockHomeserver: HTTPUpstream {
     }
 
     private func context(_ roomID: String, _ eventID: String, limit: Int) throws -> JSON {
-        let events = rooms[roomID]!.events
+        guard let room = rooms[roomID] else { throw Failure(404, "M_NOT_FOUND", "Unknown room") }
+        let events = room.events
         guard let index = events.firstIndex(where: { $0["event_id"] as? String == eventID }) else {
             throw Failure(404, "M_NOT_FOUND", "Event not found")
         }
@@ -744,15 +746,15 @@ public actor MockHomeserver: HTTPUpstream {
                 "events_before": Array(events[before..<index].reversed()),
                 "events_after": Array(events[(index + 1)..<after]),
                 "start": "t\(before)", "end": "t\(after)",
-                "state": Array(rooms[roomID]!.state.values)]
+                "state": Array(room.state.values)]
     }
 
     private func redactInPlace(_ roomID: String, _ eventID: String) {
         guard let index = rooms[roomID]?.events.firstIndex(where: { $0["event_id"] as? String == eventID }) else { return }
-        rooms[roomID]!.events[index]["content"] = [:] as JSON
-        rooms[roomID]!.events[index]["unsigned"] = ["redacted_because": ["type": "m.room.redaction",
-                                                                        "sender": me,
-                                                                        "content": ["redacts": eventID]]]
+        rooms[roomID]?.events[index]["content"] = [:] as JSON
+        rooms[roomID]?.events[index]["unsigned"] = ["redacted_because": ["type": "m.room.redaction",
+                                                                         "sender": me,
+                                                                         "content": ["redacts": eventID]]]
     }
 
     private func invite(_ user: String, to roomID: String) {
@@ -831,8 +833,8 @@ public actor MockHomeserver: HTTPUpstream {
                            "guest_can_join": false,
                            "join_rule": state("m.room.join_rules", "join_rule") ?? "invite",
                            "children_state": children.map {
-                               ["type": "m.space.child", "state_key": $0["state_key"]!, "content": $0["content"]!,
-                                "sender": $0["sender"]!, "origin_server_ts": $0["origin_server_ts"]!] as JSON
+                               ["type": "m.space.child", "state_key": $0["state_key"] ?? NSNull(), "content": $0["content"] ?? NSNull(),
+                                "sender": $0["sender"] ?? NSNull(), "origin_server_ts": $0["origin_server_ts"] ?? NSNull()] as JSON
                            }]
         if let name = state("m.room.name", "name") { entry["name"] = name }
         if let topic = state("m.room.topic", "topic") { entry["topic"] = topic }
@@ -862,13 +864,13 @@ public actor MockHomeserver: HTTPUpstream {
 
     // MARK: - Profiles and account data
 
-    private func profileRoute(_ method: String, _ p: [String], _ body: JSON) throws -> ProxiedResponse {
-        let user = p[1]
+    private func profileRoute(_ method: String, _ segments: [String], _ body: JSON) throws -> ProxiedResponse {
+        let user = segments[1]
         guard var profile = profiles[user] else { throw Failure(404, "M_NOT_FOUND", "Profile not found") }
 
-        if method == "PUT", p.count > 2, user == me {
-            if p[2] == "displayname" { profile.name = body["displayname"] as? String ?? profile.name }
-            if p[2] == "avatar_url" { profile.avatar = (body["avatar_url"] as? String).flatMap { $0.isEmpty ? nil : $0 } }
+        if method == "PUT", segments.count > 2, user == me {
+            if segments[2] == "displayname" { profile.name = body["displayname"] as? String ?? profile.name }
+            if segments[2] == "avatar_url" { profile.avatar = (body["avatar_url"] as? String).flatMap { $0.isEmpty ? nil : $0 } }
             profiles[user] = profile
             // A new name is news in every room you are in, as it is on a real server.
             for id in rooms.keys where membership(of: me, in: id) == "join" {
@@ -878,45 +880,45 @@ public actor MockHomeserver: HTTPUpstream {
         }
 
         var answer: JSON = [:]
-        if p.count < 3 || p[2] == "displayname" { answer["displayname"] = profile.name }
-        if p.count < 3 || p[2] == "avatar_url", let avatar = profile.avatar { answer["avatar_url"] = avatar }
+        if segments.count < 3 || segments[2] == "displayname" { answer["displayname"] = profile.name }
+        if segments.count < 3 || segments[2] == "avatar_url", let avatar = profile.avatar { answer["avatar_url"] = avatar }
         return Self.ok(answer)
     }
 
     /// `/user/{me}/…`: account data, room account data, tags and filters.
-    private func userRoute(_ method: String, _ p: [String], _ body: JSON) throws -> ProxiedResponse? {
-        switch (method, p.first ?? "") {
+    private func userRoute(_ method: String, _ segments: [String], _ body: JSON) throws -> ProxiedResponse? {
+        switch (method, segments.first ?? "") {
         case ("POST", "filter"):
             return Self.ok(["filter_id": "1"])
-        case ("GET", "account_data") where p.count > 1:
-            guard let content = globalAccountData[p[1]] else { throw Failure(404, "M_NOT_FOUND", "Account data not found") }
+        case ("GET", "account_data") where segments.count > 1:
+            guard let content = globalAccountData[segments[1]] else { throw Failure(404, "M_NOT_FOUND", "Account data not found") }
             return Self.ok(content)
-        case ("PUT", "account_data") where p.count > 1:
-            globalAccountData[p[1]] = body
+        case ("PUT", "account_data") where segments.count > 1:
+            globalAccountData[segments[1]] = body
             touchAccountData()
             return Self.ok([:])
-        case (_, "rooms") where p.count >= 3:
-            let roomID = p[1]
-            guard rooms[roomID] != nil else { throw Failure(404, "M_NOT_FOUND") }
-            if p[2] == "tags" {
-                var tags = (rooms[roomID]!.accountData["m.tag"]?["tags"] as? JSON) ?? [:]
+        case (_, "rooms") where segments.count >= 3:
+            let roomID = segments[1]
+            guard let room = rooms[roomID] else { throw Failure(404, "M_NOT_FOUND") }
+            if segments[2] == "tags" {
+                var tags = (room.accountData["m.tag"]?["tags"] as? JSON) ?? [:]
                 switch method {
                 case "GET": return Self.ok(["tags": tags])
-                case "PUT" where p.count > 3: tags[p[3]] = body
-                case "DELETE" where p.count > 3: tags[p[3]] = nil
+                case "PUT" where segments.count > 3: tags[segments[3]] = body
+                case "DELETE" where segments.count > 3: tags[segments[3]] = nil
                 default: break
                 }
-                rooms[roomID]!.accountData["m.tag"] = ["tags": tags]
+                rooms[roomID]?.accountData["m.tag"] = ["tags": tags]
                 touch(roomID)
                 return Self.ok([:])
             }
-            if p[2] == "account_data", p.count > 3 {
+            if segments[2] == "account_data", segments.count > 3 {
                 if method == "PUT" {
-                    rooms[roomID]!.accountData[p[3]] = body
+                    rooms[roomID]?.accountData[segments[3]] = body
                     touch(roomID)
                     return Self.ok([:])
                 }
-                guard let content = rooms[roomID]!.accountData[p[3]] else { throw Failure(404, "M_NOT_FOUND") }
+                guard let content = room.accountData[segments[3]] else { throw Failure(404, "M_NOT_FOUND") }
                 return Self.ok(content)
             }
             return nil
@@ -930,11 +932,11 @@ public actor MockHomeserver: HTTPUpstream {
 
     /// Push rules live in account data, as they do on a real server, so a change made here
     /// arrives back through sync — which is where the SDK's notification settings read them.
-    private func pushRules(_ method: String, _ p: [String], _ body: JSON) throws -> ProxiedResponse {
+    private func pushRules(_ method: String, _ segments: [String], _ body: JSON) throws -> ProxiedResponse {
         var rules = globalAccountData["m.push_rules"] ?? MockWorld.pushRules(for: me)
-        guard p.count >= 3 else { return Self.ok(rules) }
-        let kind = p[1]
-        let ruleID = p[2]
+        guard segments.count >= 3 else { return Self.ok(rules) }
+        let kind = segments[1]
+        let ruleID = segments[2]
         var global = rules["global"] as? JSON ?? [:]
         var list = global[kind] as? [JSON] ?? []
         let index = list.firstIndex { $0["rule_id"] as? String == ruleID }
@@ -942,13 +944,13 @@ public actor MockHomeserver: HTTPUpstream {
         switch method {
         case "GET":
             guard let index else { throw Failure(404, "M_NOT_FOUND") }
-            if p.count > 3 { return Self.ok([p[3]: list[index][p[3]] ?? NSNull()]) }
+            if segments.count > 3 { return Self.ok([segments[3]: list[index][segments[3]] ?? NSNull()]) }
             return Self.ok(list[index])
         case "DELETE":
             if let index { list.remove(at: index) }
-        case "PUT" where p.count > 3:
+        case "PUT" where segments.count > 3:
             guard let index else { throw Failure(404, "M_NOT_FOUND") }
-            list[index][p[3]] = body[p[3]]
+            list[index][segments[3]] = body[segments[3]]
         case "PUT":
             var rule = body
             rule["rule_id"] = ruleID
@@ -973,8 +975,8 @@ public actor MockHomeserver: HTTPUpstream {
 
     // MARK: - Keys
 
-    private func keysRoute(_ method: String, _ p: [String], _ body: JSON) throws -> ProxiedResponse? {
-        switch p.first ?? "" {
+    private func keysRoute(_ method: String, _ segments: [String], _ body: JSON) throws -> ProxiedResponse? {
+        switch segments.first ?? "" {
         case "upload":
             if let keys = body["device_keys"] as? JSON { deviceKeys = keys }
             oneTimeKeys += (body["one_time_keys"] as? JSON)?.count ?? 0
@@ -1011,6 +1013,8 @@ public actor MockHomeserver: HTTPUpstream {
             for case let (keyID, signed as JSON) in (body[me] as? JSON) ?? [:] {
                 if keyID == deviceID, let existing = deviceKeys {
                     deviceKeys = Self.mergeSignatures(existing, signed)
+                // "master" is the Matrix spec's name for the cross-signing root key.
+                // swiftlint:disable:next inclusive_language
                 } else if let master = crossSigning["master"],
                           (master["keys"] as? JSON)?.keys.contains("ed25519:\(keyID)") == true {
                     crossSigning["master"] = Self.mergeSignatures(master, signed)
@@ -1035,9 +1039,9 @@ public actor MockHomeserver: HTTPUpstream {
         return target
     }
 
-    private func roomKeysRoute(_ method: String, _ p: [String], _ query: [String: String],
+    private func roomKeysRoute(_ method: String, _ segments: [String], _ query: [String: String],
                                _ body: JSON) throws -> ProxiedResponse? {
-        switch (method, p.first ?? "") {
+        switch (method, segments.first ?? "") {
         case ("GET", "version"):
             guard var backup else { throw Failure(404, "M_NOT_FOUND", "No current backup version") }
             backup["count"] = backupKeys
@@ -1068,9 +1072,9 @@ public actor MockHomeserver: HTTPUpstream {
 
     // MARK: - Media
 
-    private func mediaRoute(_ method: String, _ p: [String], _ query: [String: String],
+    private func mediaRoute(_ method: String, _ segments: [String], _ query: [String: String],
                             _ raw: ProxiedRequest) throws -> ProxiedResponse? {
-        switch (method, p.first ?? "") {
+        switch (method, segments.first ?? "") {
         case ("GET", "config"):
             return Self.ok(["m.upload.size": 100 * 1024 * 1024])
         case ("POST", "upload"):
@@ -1079,7 +1083,7 @@ public actor MockHomeserver: HTTPUpstream {
             media[id] = (raw.body, mime)
             return Self.ok(["content_uri": "mxc://\(Self.serverName)/\(id)"])
         case ("GET", "download"), ("GET", "thumbnail"):
-            guard p.count >= 3, let file = media[p[2]] else { throw Failure(404, "M_NOT_FOUND", "Not found") }
+            guard segments.count >= 3, let file = media[segments[2]] else { throw Failure(404, "M_NOT_FOUND", "Not found") }
             return ProxiedResponse(status: 200, headers: ["Content-Type": file.mime], body: file.data)
         case ("GET", "preview_url"):
             return Self.ok([:])
@@ -1111,7 +1115,7 @@ public actor MockHomeserver: HTTPUpstream {
         }
         // A trailing slash is an empty last segment. Dropped: where it means something — the empty
         // state key in `state/m.room.name/` — a missing key already reads as the empty one.
-        return (path.last == "" ? Array(path.dropLast()) : Array(path), query)
+        return (path.last?.isEmpty == true ? Array(path.dropLast()) : Array(path), query)
     }
 
     static func ok(_ body: JSON) -> ProxiedResponse {

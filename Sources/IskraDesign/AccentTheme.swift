@@ -106,7 +106,7 @@ public enum AccentTheme: String, CaseIterable, Identifiable, Sendable {
     /// the accent itself.
     public func control(in scheme: ColorScheme) -> Color {
         switch self {
-        case .mono: scheme == .dark ? Color.white.opacity(0.38) : Color.black.opacity(0.72)
+        case .mono: if scheme == .dark { Color.white.opacity(0.38) } else { Color.black.opacity(0.72) }
         default: color
         }
     }

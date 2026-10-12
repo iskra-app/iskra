@@ -10,10 +10,11 @@ import MatrixRustSDK
 enum PushMapper {
     static func outcome(for status: NotificationStatus,
                         roomID: String,
-                        eventID: String) -> PushOutcome {
+                        eventID: String,
+                        account: String? = nil) -> PushOutcome {
         switch status {
         case let .event(item):
-            return outcome(for: item, roomID: roomID, eventID: eventID)
+            return outcome(for: item, roomID: roomID, eventID: eventID, account: account)
 
         case .eventFilteredOut:
             return .silence(.filteredOut)
@@ -32,7 +33,8 @@ enum PushMapper {
 
     static func outcome(for item: NotificationItem,
                         roomID: String,
-                        eventID: String) -> PushOutcome {
+                        eventID: String,
+                        account: String? = nil) -> PushOutcome {
         let room = item.roomInfo
         let senderName = item.senderInfo.displayName ?? ""
         let isNoisy = item.isNoisy ?? false
@@ -65,7 +67,7 @@ enum PushMapper {
                 return .silence(.notWorthWaking)
             }
 
-            let localName = LocalNames.name(for: roomID)
+            let localName = LocalNames.name(for: roomID, account: account ?? LocalNames.currentAccount)
             let who = attribution(roomName: roomName,
                                   senderName: senderName,
                                   isDirect: room.isDm,

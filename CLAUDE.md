@@ -428,8 +428,17 @@ otherwise empty pushed `Form` is enough to reproduce it.
 `IskraDesign/Theme.swift`, all multiples of 4, corners `.continuous`. A view that hard-codes
 `.padding(12)` is a bug waiting to drift.
 
-**Deployment target is iOS 26 / macOS 26.** This is what allows Liquid Glass with no availability
-checks, and it matches the SDK's prebuilt macOS objects, which are compiled against the 26.x SDK.
+**Deployment target is iOS 18 / macOS 15**, set by `Mutex`. Liquid Glass and everything else that
+is OS 26 (`.buttonStyle(.glass)`, `GlassEffectContainer`, `glassEffectID`,
+`sharedBackgroundVisibility`, the scroll edge effect, `role: .close`) is reached **only** through
+`IskraDesign/Glass.swift` — `.navigationGlass()`, `.navigationGlassButton()`, `NavigationGlassGroup`,
+`.navigationGlassID`, `.outsideToolbarGlass()`, `.softScrollEdge`, `.scrollEdgeHidden`,
+`ButtonRole.leaving` — which is the one file that says `#available(iOS 26, macOS 26, *)` and decides
+what the older systems draw instead. Calling the system's glass API from a view compiles only
+inside an availability check, so the build itself refuses the shortcut. Any other OS 26 API
+takes an `#available` where it is used, with the iOS 18 path next to it (`LocationView.openInMaps`).
+The ~200 linker warnings about SDK objects "built for newer macOS version (26.5)" on the Mac are
+expected: vendored C code with no deployment target of its own, calling only libc and pthreads.
 
 **Round video messages are recognised by shape, not by a flag** (`IskraCore/Media/VideoNote.swift`).
 Exactly square, ≤60 s. Tagging them with a custom field would mean `Client.uploadMedia` +
