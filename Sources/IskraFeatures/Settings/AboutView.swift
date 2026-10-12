@@ -58,6 +58,16 @@ struct AboutView: View {
                     }
                 }
 
+                Link(destination: URL(string: "https://github.com/iskra-app/iskra")!) {
+                    LabeledContent {
+                        Image(systemName: "arrow.up.right")
+                            .foregroundStyle(.secondary)
+                    } label: {
+                        Text(Strings.About.sourceCode)
+                        Text(verbatim: "github.com/iskra-app/iskra")
+                    }
+                }
+
                 // A closure destination is fine here: `LicensesView` holds nothing but constants,
                 // so building it eagerly costs nothing. And it must not read `dismiss` — this
                 // screen is itself pushed onto the settings stack. See CLAUDE.md.
