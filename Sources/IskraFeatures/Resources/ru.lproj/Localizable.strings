@@ -1159,3 +1159,8 @@
 
 /* Кто поставил реакции: вкладка «все». */
 "message.menu.reactorsAll" = "Все %lld";
+
+/* Просмотрщик медиа: счётчик и перемотка видео. */
+"message.media.counter" = "%lld из %lld";
+"message.media.skipBack" = "Назад на 15 секунд";
+"message.media.skipForward" = "Вперёд на 15 секунд";

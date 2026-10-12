@@ -1164,3 +1164,8 @@
 
 /* Who reacted: the "everybody" tab. */
 "message.menu.reactorsAll" = "All %lld";
+
+/* Media viewer: the counter and video skipping. */
+"message.media.counter" = "%lld of %lld";
+"message.media.skipBack" = "Back 15 seconds";
+"message.media.skipForward" = "Forward 15 seconds";

@@ -31,7 +31,7 @@ struct MediaItem: Identifiable, Equatable {
     let sender: String
     let timestamp: Date
 
-    /// Whether the viewer should play it rather than show it — the one thing `MediaViewer` and the
+    /// Whether the viewer should play it rather than show it — the one thing the gallery and the
     /// grid's corner badge both need to know.
     var isVideo: Bool { kind == .video || kind == .videoNote }
 
@@ -71,34 +71,6 @@ struct MediaItem: Identifiable, Equatable {
 struct OpenedIndex: Identifiable {
     let value: Int
     var id: Int { value }
-}
-
-/// The full-screen viewer, swipeable across a room's pictures and videos — Telegram's horizontal
-/// paging. Each page is the same `MediaViewer` a single tap opens, so zoom, share, save and
-/// drag-to-dismiss all come along; the page swipe is the one thing added on top.
-struct MediaPager: View {
-    let items: [MediaItem]
-    @State var index: Int
-
-    init(items: [MediaItem], startIndex: Int) {
-        self.items = items
-        _index = State(initialValue: startIndex)
-    }
-
-    var body: some View {
-        TabView(selection: $index) {
-            ForEach(Array(items.enumerated()), id: \.element.id) { offset, item in
-                MediaViewer(attachment: item.attachment,
-                            isVideo: item.isVideo,
-                            sender: item.sender,
-                            timestamp: item.timestamp)
-                    .tag(offset)
-            }
-        }
-        #if os(iOS)
-        .tabViewStyle(.page(indexDisplayMode: .never))
-        #endif
-    }
 }
 
 /// Everything in this room worth opening full-screen, asked for at the moment somebody opens one.

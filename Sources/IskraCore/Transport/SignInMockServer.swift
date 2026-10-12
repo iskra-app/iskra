@@ -285,6 +285,12 @@ public final class SignInMockServer: HTTPUpstream {
             }
         }
 
+        // Presence, which the app sets itself on start (`UserSession.applyPresence`). Nobody here to
+        // tell, so it is simply taken.
+        if path.contains("/presence/"), path.hasSuffix("/status") {
+            return method == "PUT" ? .json([:]) : .json(["presence": "online"])
+        }
+
         if path.hasSuffix("/keys/upload") {
             if let user, let device = json["device_keys"] as? [String: Any],
                let id = device["device_id"] as? String,

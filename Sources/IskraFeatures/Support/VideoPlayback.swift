@@ -123,14 +123,24 @@ final class VideoPlayback: SpeakerClaimant {
 /// controls, uses `VideoPlayer` instead.
 struct VideoSurface {
     let player: AVPlayer
+    /// Fill the frame and crop, as a video note's circle wants — or fit inside it, as the media
+    /// viewer does, so nothing the sender filmed is cut away.
+    var fills = true
+
+    var gravity: AVLayerVideoGravity { fills ? .resizeAspectFill : .resizeAspect }
 }
 
 #if os(macOS)
 extension VideoSurface: NSViewRepresentable {
-    func makeNSView(context: Context) -> PlayerHostView { PlayerHostView(player: player) }
+    func makeNSView(context: Context) -> PlayerHostView {
+        let view = PlayerHostView(player: player)
+        view.playerLayer.videoGravity = gravity
+        return view
+    }
 
     func updateNSView(_ view: PlayerHostView, context: Context) {
         view.playerLayer.player = player
+        view.playerLayer.videoGravity = gravity
     }
 }
 
@@ -151,10 +161,15 @@ final class PlayerHostView: NSView {
 }
 #else
 extension VideoSurface: UIViewRepresentable {
-    func makeUIView(context: Context) -> PlayerHostView { PlayerHostView(player: player) }
+    func makeUIView(context: Context) -> PlayerHostView {
+        let view = PlayerHostView(player: player)
+        view.playerLayer.videoGravity = gravity
+        return view
+    }
 
     func updateUIView(_ view: PlayerHostView, context: Context) {
         view.playerLayer.player = player
+        view.playerLayer.videoGravity = gravity
     }
 }
 
@@ -198,6 +213,5 @@ extension PlayerHostView {
     ]
 }
 
-// `VideoViewer` used to live here — a black sheet with `AVKit`'s controls in it. It is now
-// `MediaViewer`, which does the same for a video and the same again for a photo, and can share
-// and save either: the two screens were the same screen with one of them missing half its job.
+// `VideoViewer` used to live here — a black sheet with `AVKit`'s controls in it. A video opened
+// full-screen is now a page of the media gallery (`MediaPager`), with controls of its own.
