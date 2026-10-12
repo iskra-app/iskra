@@ -236,7 +236,7 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         AppIdentifierPrefix: $(AppIdentifierPrefix)
         CFBundleDevelopmentRegion: en
-        CFBundleLocalizations: [en, ru]
+        CFBundleLocalizations: [en, ru, de, es, fr, ja, zh-Hans]
         # An empty UILaunchScreen is what tells iOS the app is built for modern
         # displays. Without it the app is letterboxed into a legacy-sized box with
         # black bars, and the process shows up as "rb-legacy". Empty is correct here:
@@ -347,7 +347,7 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleDevelopmentRegion: en
-        CFBundleLocalizations: [en, ru]
+        CFBundleLocalizations: [en, ru, de, es, fr, ja, zh-Hans]
         # Load-bearing, and the single easiest thing here to leave out.
         #
         # `AppEnvironment.keychainAccessGroup` reads this key out of `Bundle.main` to build
@@ -412,7 +412,7 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleDevelopmentRegion: en
-        CFBundleLocalizations: [en, ru]
+        CFBundleLocalizations: [en, ru, de, es, fr, ja, zh-Hans]
         # Load-bearing for the same reason as in the notification extension: `Bundle.main` here is
         # this extension's bundle, and `AppEnvironment.keychainAccessGroup` reads the prefix out of it.
         AppIdentifierPrefix: $(AppIdentifierPrefix)
@@ -464,7 +464,7 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         AppIdentifierPrefix: $(AppIdentifierPrefix)
         CFBundleDevelopmentRegion: en
-        CFBundleLocalizations: [en, ru]
+        CFBundleLocalizations: [en, ru, de, es, fr, ja, zh-Hans]
         LSMinimumSystemVersion: "15.0"
         NSCameraUsageDescription: Iskra uses the camera so you can record video messages.
         NSMicrophoneUsageDescription: Iskra uses the microphone so you can record voice messages.
