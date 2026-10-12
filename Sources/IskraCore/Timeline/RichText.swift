@@ -40,6 +40,25 @@ public enum RichText {
         return attributed
     }
 
+    /// The same, from the message's HTML when it has some — `MatrixHTML` draws the formatting, and
+    /// then mentions and bare addresses are found in the words exactly as they are in a plain body.
+    /// Falls back to the plain body when the HTML has nothing in it worth drawing.
+    public static func attributed(body: String,
+                                  formattedBody: String?,
+                                  mentionedUserIDs: Set<String> = [],
+                                  displayNames: [String: String] = [:],
+                                  ownUserID: String? = nil) -> AttributedString {
+        guard let formattedBody, var attributed = MatrixHTML.attributed(formattedBody, ownUserID: ownUserID) else {
+            return Self.attributed(body: body, mentionedUserIDs: mentionedUserIDs,
+                                   displayNames: displayNames, ownUserID: ownUserID)
+        }
+        let text = String(attributed.characters)
+        applyMentions(to: &attributed, body: text, mentionedUserIDs: mentionedUserIDs,
+                      displayNames: displayNames, ownUserID: ownUserID)
+        applyLinks(to: &attributed, body: text)
+        return attributed
+    }
+
     // MARK: - Links
 
     /// The one detector, built once. `NSDataDetector` is not cheap to spin up, and it is not
@@ -78,6 +97,9 @@ public enum RichText {
             // Skip anything sitting on top of a mention — the "matrix.org" inside "@alice:matrix.org"
             // is part of a name, not a link the user meant to post.
             if attributed[range].runs.contains(where: { $0.iskra.mentionUserID != nil }) { continue }
+            // Or already a link — the sender's own `<a>`, whose words may well be an address that
+            // is not where it goes. Theirs wins; the confirmation shows where it really leads.
+            if attributed[range].runs.contains(where: { $0.link != nil }) { continue }
             attributed[range].link = url
         }
     }
@@ -163,6 +185,10 @@ public extension AttributeScopes {
     struct IskraScope: AttributeScope {
         public let mentionUserID: MentionUserIDAttribute
         public let mentionIsSelf: MentionIsSelfAttribute
+        public let underline: UnderlineAttribute
+        public let spoiler: SpoilerAttribute
+        public let quote: QuoteAttribute
+        public let heading: HeadingAttribute
     }
 
     var iskra: IskraScope.Type { IskraScope.self }
