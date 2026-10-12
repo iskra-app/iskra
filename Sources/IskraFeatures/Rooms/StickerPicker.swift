@@ -134,6 +134,7 @@ struct StickerPicker: View {
 
     private func name(of pack: StickerPack) -> Text {
         if pack.isMine { return Text(Strings.Stickers.mine) }
+        if pack.isBuiltIn { return Text(Strings.Stickers.builtIn) }
         if let name = pack.name { return Text(name) }
         return Text(Strings.Stickers.roomPack)
     }

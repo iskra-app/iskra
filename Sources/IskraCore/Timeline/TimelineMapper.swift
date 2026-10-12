@@ -555,15 +555,20 @@ enum TimelineMapper {
             return .notice(content.body)
 
         case let .image(content):
-            return .image(Attachment(source: content.source,
-                                     thumbnailSource: content.info?.thumbnailSource,
-                                     filename: content.filename,
-                                     caption: content.caption,
-                                     width: content.info?.width.map(Int.init),
-                                     height: content.info?.height.map(Int.init),
-                                     duration: nil,
-                                     mimeType: content.info?.mimetype,
-                                     blurhash: content.info?.blurhash))
+            let attachment = Attachment(source: content.source,
+                                        thumbnailSource: content.info?.thumbnailSource,
+                                        filename: content.filename,
+                                        caption: content.caption,
+                                        width: content.info?.width.map(Int.init),
+                                        height: content.info?.height.map(Int.init),
+                                        duration: nil,
+                                        mimeType: content.info?.mimetype,
+                                        blurhash: content.info?.blurhash)
+            // A WebP is a sticker however it came: in an encrypted room this app sends one as an
+            // encrypted image, because a real `m.sticker` would go up unencrypted — see
+            // `StickerPicture`.
+            return StickerPicture.isSticker(mimeType: content.info?.mimetype) ? .sticker(attachment)
+                                                                              : .image(attachment)
 
         case let .video(content):
             let attachment = Attachment(source: content.source,

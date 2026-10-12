@@ -957,6 +957,8 @@ public enum Strings {
         public static let mine = LocalizedStringResource("stickers.mine", bundle: bundle)
         /// A room's pack that did not say what it is called.
         public static let roomPack = LocalizedStringResource("stickers.roomPack", bundle: bundle)
+        /// The pack the app comes with — see `StickerArt`.
+        public static let builtIn = LocalizedStringResource("stickers.builtIn", bundle: bundle)
         public static let emptyTitle = LocalizedStringResource("stickers.empty.title", bundle: bundle)
         /// Says how to get the first one, because the sheet itself has no way to.
         public static let emptyMessage = LocalizedStringResource("stickers.empty.message", bundle: bundle)

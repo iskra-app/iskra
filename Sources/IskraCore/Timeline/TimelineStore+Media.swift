@@ -21,10 +21,27 @@ public extension TimelineStore {
     /// What goes is what the settings say: compressed, and with where it was taken, when and on
     /// what taken out — see `MediaSettings` and `MediaPreparation`. A photo the settings want
     /// stripped and that cannot be is not sent at all.
+    ///
+    /// Except a WebP, which is a sticker and goes as one — see `StickerPicture`. Here, because
+    /// every way a picture leaves (picker, paste, drop, the Share outbox, forward) comes through
+    /// this one call.
     func send(photo original: Data, filename originalName: String, replyingTo replyID: String? = nil) async {
         guard let timeline = liveTimeline else {
             Log.media.error("photo dropped: the room has no live timeline")
             failure = .send
+            return
+        }
+
+        let sticker = await Task.detached(priority: .userInitiated) { StickerPicture.prepare(original) }.value
+        switch sticker {
+        case .notASticker:
+            break
+        case .refused:
+            Log.media.error("sticker refused: its metadata could not be removed")
+            failure = .sticker
+            return
+        case let .ready(picture):
+            await send(stickerPicture: picture, through: timeline, replyingTo: replyID)
             return
         }
 
@@ -303,6 +320,53 @@ public extension TimelineStore {
     ///
     /// What is logged is the *error*, never the attachment: a `RoomError` says "the file was
     /// too large" or "the server said no", and none of it is the picture.
+    /// A WebP, as a sticker: an `m.sticker` where the room is not encrypted, an encrypted
+    /// `m.image` of type `image/webp` where it is — see `StickerPicture` for why both.
+    private func send(stickerPicture picture: StickerPicture, through timeline: Timeline,
+                      replyingTo replyID: String?) async {
+        if let uploadMedia, await isKnownUnencrypted() {
+            do {
+                let url = try await withTimeout(Self.stickerUploadTimeout) {
+                    try await uploadMedia(picture.mimeType, picture.data)
+                }
+                let sticker = Sticker(url: url,
+                                      shortcode: "",
+                                      body: String(core: CoreStrings.Preview.sticker),
+                                      width: picture.width,
+                                      height: picture.height,
+                                      mimeType: picture.mimeType,
+                                      size: picture.data.count)
+                await send(sticker: sticker, replyingTo: replyID)
+            } catch {
+                Log.media.error("could not upload a sticker: \(Log.describe(error), privacy: .public)")
+                failure = .sticker
+            }
+            return
+        }
+
+        let info = MediaMetadata.image(data: picture.data, filename: picture.filename)
+        let parameters = UploadParameters(source: .data(bytes: picture.data, filename: picture.filename),
+                                          caption: nil,
+                                          formattedCaption: nil,
+                                          mentions: nil,
+                                          inReplyTo: replyID.flatMap { eventID(for: $0) })
+        let imageInfo = ImageInfo(height: info.height,
+                                  width: info.width,
+                                  mimetype: picture.mimeType,
+                                  size: info.size,
+                                  thumbnailInfo: nil,
+                                  thumbnailSource: nil,
+                                  blurhash: info.blurhash,
+                                  isAnimated: picture.isAnimated)
+        upload {
+            try timeline.sendImage(params: parameters, thumbnailSource: nil, imageInfo: imageInfo)
+        }
+    }
+
+    /// A sticker is tens of kilobytes, but it may be going through the bridge, where one request
+    /// is several relay round trips.
+    private static var stickerUploadTimeout: Duration { .seconds(60) }
+
     private func upload(_ start: () throws -> SendAttachmentJoinHandle) {
         do {
             _ = try start()

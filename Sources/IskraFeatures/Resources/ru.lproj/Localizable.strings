@@ -677,6 +677,9 @@
 /* A room's sticker pack that has no name of its own. */
 "stickers.roomPack" = "Стикеры чата";
 
+/* The sticker pack the app comes with: round faces, a heart and a star. */
+"stickers.builtIn" = "Искорки";
+
 /* The sticker sheet with nothing in it. */
 "stickers.empty.title" = "Пока нет стикеров";
 "stickers.empty.message" = "Понравился стикер в чате? Нажмите на него и подержите — и выберите «Добавить в мои стикеры».";
