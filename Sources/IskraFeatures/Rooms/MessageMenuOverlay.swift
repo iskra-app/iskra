@@ -146,6 +146,7 @@ struct MessageMenuOverlay: View {
                         ReactionBar(width: layout.emojiWidth,
                                     mine: presentation.mine,
                                     growsFromTrailing: presentation.isOwn,
+                                    isFilled: presenter.isFilled,
                                     onPick: { react($0, in: presentation) },
                                     onMore: {
                                         withAnimation(Theme.Timing.menuOpens) { isPickingEmoji = true }
@@ -275,6 +276,11 @@ struct MessageMenuOverlay: View {
             // as the whole panel lighting up.
             .padding(.vertical, Self.listPadding)
             .padding(.horizontal, Self.listInset)
+            // The verbs land on the glass once it has opened, not with it — see
+            // `Theme.Timing.menuFills`. The panel itself is drawn from the first frame.
+            .opacity(presenter.isFilled ? 1 : 0)
+            .animation(presenter.isFilled ? Theme.Timing.menuContentShows : Theme.Timing.menuCloses,
+                       value: presenter.isFilled)
         }
         .scrollBounceBehavior(.basedOnSize)
         .frame(width: layout.width)
@@ -435,17 +441,18 @@ private struct ReactionBar: View {
     let mine: Set<String>
     /// Which end the bar unrolls from — the bubble's own edge — and so which emoji pops first.
     let growsFromTrailing: Bool
+    /// Whether the emoji are on the capsule yet. The capsule opens empty and they pop onto it
+    /// once it has — see `MessageMenuPresenter.isFilled`.
+    let isFilled: Bool
     let onPick: (String) -> Void
     let onMore: () -> Void
 
     @Environment(\.accent) private var accent
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// Whether the emoji have popped in. Starts false so each can be seen to arrive.
-    @State private var hasPopped = false
-
     /// How long after the bar opens one emoji pops in, by how far it is from the end the bar opens
-    /// from. Telegram's rule (`ReactionContextNode.animateIn`): a hair after the bar, then up to
+    /// from, counted from the moment the capsule has opened (`isFilled`). Telegram's spacing
+    /// (`ReactionContextNode.animateIn`): a hair after the first, then up to
     /// 0.3 s across the full width — so the row fills like something being laid out, not switched on.
     private func popDelay(_ index: Int, of count: Int) -> Double {
         let fromEdge = growsFromTrailing ? count - 1 - index : index
@@ -455,8 +462,11 @@ private struct ReactionBar: View {
     /// One emoji, or the "+", popping into the bar — see `popDelay`.
     private func pops(_ view: some View, index: Int, of count: Int) -> some View {
         view
-            .scaleEffect(hasPopped || reduceMotion ? 1 : 0.01)
-            .animation(Theme.Timing.reactionPops.delay(popDelay(index, of: count)), value: hasPopped)
+            .scaleEffect(isFilled || reduceMotion ? 1 : 0.01)
+            .opacity(isFilled ? 1 : 0)
+            // Popping on, one after another; going, all at once with the glass.
+            .animation(isFilled ? Theme.Timing.reactionPops.delay(popDelay(index, of: count)) : Theme.Timing.menuCloses,
+                       value: isFilled)
     }
 
     /// Seven things in the width of the menu: six emoji and the "+".
@@ -488,14 +498,6 @@ private struct ReactionBar: View {
         .padding(.horizontal, Theme.Spacing.close)
         .frame(width: width, height: Theme.Size.reactionBar)
         .navigationGlass(in: .capsule)
-        .onAppear {
-            // A frame late, so the emoji are drawn small once and have somewhere to pop *from* —
-            // see `Theme.Timing.aFrame`.
-            Task { @MainActor in
-                try? await Task.sleep(for: Theme.Timing.aFrame)
-                hasPopped = true
-            }
-        }
     }
 
     private var moreButton: some View {
