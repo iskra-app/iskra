@@ -1,5 +1,6 @@
 import Foundation
 import MatrixRustSDK
+import Synchronization
 import Testing
 @testable import IskraCore
 
@@ -437,8 +438,36 @@ struct DemoBackendTests {
 
         // And the store is not wedged by it: the next start is a real one.
         try await list.start()
-        #expect(list.currentSyncService != nil)
+        let service = try #require(list.currentSyncService)
+
+        // Into a pocket and straight back out, faster than the SDK can stop: the resume used to
+        // start the loop before the pause's stop had landed, and the stop then won — `.idle`, with
+        // nothing that would ever start it again.
+        let states = SyncStates()
+        let watching = service.state(listener: states)
+        defer { watching.cancel() }
+        // The observer says nothing until the loop changes, so a slow round first — which is
+        // also the ordinary pocket and back, and has to keep working.
+        await list.pause()
+        #expect(await eventually(seconds: 5) { states.last == .idle })
+        await list.resume()
+        #expect(await eventually(seconds: 5) { states.last == .running })
+
+        let pausing = Task { @MainActor in await list.pause() }
+        await Task.yield()
+        await list.resume()
+        await pausing.value
+        try await Task.sleep(for: .milliseconds(500))
+        #expect(states.last == .running, "\(states.all)")
+
         await list.stop()
+    }
+
+    private final class SyncStates: SyncServiceStateObserver, Sendable {
+        private let seen = Mutex<[SyncServiceState]>([])
+        var last: SyncServiceState? { seen.withLock { $0.last } }
+        var all: [SyncServiceState] { seen.withLock { $0 } }
+        func onUpdate(state: SyncServiceState) { seen.withLock { $0.append(state) } }
     }
 
     private func eventually(seconds: Double = 15, async condition: () async -> Bool) async -> Bool {
