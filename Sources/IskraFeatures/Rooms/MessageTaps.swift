@@ -57,10 +57,7 @@ final class MessageTaps {
     func single(_ action: @escaping () -> Void) {
         // A press that has just opened the menu spends the whole touch, and the finger coming off
         // it is not a tap on the picture underneath — see `suppress`.
-        if Date.now < suppressedUntil {
-            suppressedUntil = .distantPast
-            return
-        }
+        if wasSpentByPress() { return }
 
         pending?.cancel()
         pending = Task { [interval = Self.interval] in
@@ -68,6 +65,20 @@ final class MessageTaps {
             guard !Task.isCancelled else { return }
             action()
         }
+    }
+
+    /// Whether the tap arriving now is only the finger coming off a press that opened the menu —
+    /// and if so, it is used up: the next one is a real tap.
+    ///
+    /// For the taps that do not wait for a second one, and so cannot go through `single`: a link
+    /// in the text, a spoiler, the quote above an answer. Each of those used to answer the hold
+    /// as well as the menu did — hold a reply and the menu opened *and* the conversation jumped
+    /// to the message it quoted, because a tap gesture ends on the finger lifting, however long
+    /// the finger was down.
+    func wasSpentByPress() -> Bool {
+        guard Date.now < suppressedUntil else { return false }
+        suppressedUntil = .distantPast
+        return true
     }
 
     /// The second tap arrived; whatever the first one was about to do, it was not that.

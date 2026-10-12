@@ -34,6 +34,9 @@ struct ReplyQuote: View {
 
     @Environment(\.accent) private var accent
 
+    /// The message's tap arbiter, when the quote is inside one — see `MessageTaps`.
+    @Environment(\.messageTaps) private var taps
+
     var body: some View {
         HStack(spacing: Theme.Spacing.close) {
             // The bar is what says "this is somebody else's words, quoted" — the oldest
@@ -64,7 +67,12 @@ struct ReplyQuote: View {
         .frame(maxWidth: Theme.Size.quote, alignment: .leading)
         .fixedSize(horizontal: false, vertical: true)
         .contentShape(.rect)
-        .onTapGesture { onOpen?() }
+        .onTapGesture {
+            // Not the end of a hold that opened the menu — see `MessageTaps.wasSpentByPress`.
+            // Outside a conversation there is no arbiter and a tap is only ever a tap.
+            guard taps?.wasSpentByPress() != true else { return }
+            onOpen?()
+        }
         .accessibilityElement(children: .combine)
         // Not a literal the linter should catch: every word here is already localised — the label
         // is `String(app:)` and the quoted line is the message's own text. What is between them is

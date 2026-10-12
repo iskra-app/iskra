@@ -61,15 +61,16 @@ struct MessageMenuOverlay: View {
                         aboveHeight: aboveHeight(for: presentation),
                         listHeight: listHeight(for: presentation))
 
+                    // Picked up, not faded in — Telegram's. The arrangement is first drawn with the
+                    // message exactly where it stood in the conversation, and springs from there to
+                    // where the menu needs it; on closing it springs back into its gap. The bar and
+                    // the verbs unfold out of the message on the same value, below. See
+                    // `MessageMenuLayout.lift` and `MessageMenuPresenter.isOut`.
+                    let away = presenter.isOut ? CGSize.zero : layout.lift
+
                     ZStack(alignment: .topLeading) {
                         column(presentation, layout: layout)
-                            .offset(x: layout.origin.x, y: layout.origin.y)
-                            // Picked up, not faded in — Telegram's. The arrangement starts with
-                            // the message exactly where it stood in the conversation and springs to
-                            // where the menu needs it; on closing it springs back into its gap. The
-                            // bar and the verbs carry entrances of their own, out of the message,
-                            // below. See `MessageMenuLayout.lift`.
-                            .transition(.offset(layout.lift))
+                            .offset(x: layout.origin.x + away.width, y: layout.origin.y + away.height)
                     }
                     .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
                     #if os(macOS)
@@ -109,7 +110,8 @@ struct MessageMenuOverlay: View {
             .accessibilityLabel(Text(Strings.Message.Menu.close))
             .accessibilityAddTraits(.isButton)
             .accessibilityAction { close() }
-            .transition(.opacity)
+            // Darkening on the same spring the message rises on, and clearing as it lands.
+            .opacity(presenter.isOut ? 1 : 0)
     }
 
     // MARK: - The arrangement
@@ -152,9 +154,12 @@ struct MessageMenuOverlay: View {
                             // Unrolled from the message's own corner, as Telegram's is: the capsule
                             // opens sideways out of the edge the bubble hangs from, and the emoji
                             // in it pop up one after another from that side (`ReactionBar`).
-                            .transition(.scale(scale: 0.2,
-                                               anchor: presentation.isOwn ? .bottomTrailing : .bottomLeading)
-                                .combined(with: .opacity.animation(Theme.Timing.menuBarFades)))
+                            .opacity(presenter.isOut ? 1 : 0)
+                            .animation(presenter.isOut ? Theme.Timing.menuBarFades : Theme.Timing.menuCloses,
+                                       value: presenter.isOut)
+                            .scaleEffect(presenter.isOut ? 1 : 0.2,
+                                         anchor: presentation.isOwn ? .bottomTrailing : .bottomLeading)
+                            .transition(.scale(scale: 0.9, anchor: .bottom).combined(with: .opacity))
                     }
                 }
 
@@ -170,6 +175,12 @@ struct MessageMenuOverlay: View {
                     // and not a list fading up somewhere near it. Going, it folds back the same way
                     // and fades with the fold.
                     actions(presentation, layout: layout)
+                        .opacity(presenter.isOut ? 1 : 0)
+                        .animation(presenter.isOut ? Theme.Timing.menuListShows : Theme.Timing.menuCloses,
+                                   value: presenter.isOut)
+                        .scaleEffect(presenter.isOut ? 1 : 0.01,
+                                     anchor: presentation.isOwn ? .topTrailing : .topLeading)
+                        // And standing aside for the emoji panel and back, while the menu is open.
                         .transition(.asymmetric(
                             insertion: .scale(scale: 0.01, anchor: presentation.isOwn ? .topTrailing : .topLeading)
                                 .combined(with: .opacity.animation(Theme.Timing.menuListShows)),

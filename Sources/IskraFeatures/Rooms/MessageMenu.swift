@@ -137,23 +137,64 @@ final class MessageMenuPresenter {
     /// a third of a second, which is the very thing this is here to stop.
     private(set) var liftedID: String?
 
+    /// Whether the message has *arrived* in the menu — the one number the whole flight runs on.
+    ///
+    /// False, the overlay draws the arrangement with the message standing exactly where it stood
+    /// in the conversation: the bar folded into its corner, the verbs folded into theirs, the
+    /// curtain clear. True, everything is where the menu wants it. Opening is two steps: the menu
+    /// appears in the first state, and a frame later this is sprung to true; closing springs it
+    /// back, and only when the message has landed is the presentation let go.
+    ///
+    /// It used to be a `.transition` on the arrangement, and a transition is a promise SwiftUI
+    /// keeps only for the view that is actually inserted. Here that view was a container *around*
+    /// the arrangement, the transition sat on its child, and SwiftUI quietly did not run it — so
+    /// the menu simply appeared, with the message already at its destination: no flight at all,
+    /// which is the whole of what Telegram's menu is. A plain value being animated has nothing to
+    /// be quietly not run.
+    private(set) var isOut = false
+
+    /// Whether the message is on its way home — the menu is still drawn, but it is going.
+    private var isClosing = false
+
     func present(_ presentation: MessageMenuPresentation) {
-        guard self.presentation?.id != presentation.id else { return }
+        guard self.presentation?.id != presentation.id || isClosing else { return }
         lifts += 1
-        // Without animation: the row empties in the same frame the copy appears over it, so there
-        // is never a frame with both and never one with neither.
-        liftedID = presentation.id
-        withAnimation(Theme.Timing.menuOpens) { self.presentation = presentation }
+        isClosing = false
+
+        // All of it without animation: the row empties in the same frame the copy appears over
+        // it, standing exactly in its place, so there is never a frame with both and never one
+        // with neither.
+        var still = Transaction()
+        still.disablesAnimations = true
+        withTransaction(still) {
+            liftedID = presentation.id
+            isOut = false
+            self.presentation = presentation
+        }
+
+        // And then it flies — a frame later, so that the place it flies *from* has been drawn
+        // once. Set in the same frame, SwiftUI would see only the destination.
+        let id = presentation.id
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: Theme.Timing.aFrame)
+            guard let self, self.presentation?.id == id, !self.isClosing else { return }
+            withAnimation(Theme.Timing.menuOpens) { self.isOut = true }
+        }
     }
 
     func dismiss() {
-        guard presentation != nil else { return }
+        guard presentation != nil, !isClosing else { return }
+        isClosing = true
+        let id = presentation?.id
+
         withAnimation(Theme.Timing.menuCloses) {
-            presentation = nil
+            isOut = false
         } completion: { [weak self] in
             // Only if nothing else has been lifted in the meantime — a second message pressed
-            // while the first was still on its way home owns the gap now.
-            guard let self, self.presentation == nil else { return }
+            // while the first was still on its way home owns the menu, and the gap, now.
+            guard let self, self.isClosing, self.presentation?.id == id else { return }
+            self.isClosing = false
+            self.presentation = nil
             self.liftedID = nil
         }
     }
