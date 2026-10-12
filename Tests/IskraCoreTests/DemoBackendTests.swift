@@ -242,18 +242,21 @@ struct DemoBackendTests {
         let library = session.stickers
         let loaded = await eventually(async: {
             await library.load(roomID: devID)
-            return library.packs.count == 2
+            return library.packs.count == 3
         })
         #expect(loaded, "\(library.packs.map { ($0.name, $0.stickers.count) })")
         #expect(library.packs.first?.isMine == true)
         #expect(library.packs.first?.stickers.count == 4)
-        #expect(library.packs.last?.name == "Искра")
+        #expect(library.packs.dropFirst().first?.name == "Искра")
+        // And the app's own, last, uploaded to the demo server on this first opening.
+        #expect(library.packs.last?.isBuiltIn == true)
+        #expect(library.packs.last?.stickers.count == StickerArt.allCases.count)
 
         // Sent from the room's pack, it comes back as a sticker with its description.
         let timeline = try #require(session.timeline(forRoomID: devID))
         try await timeline.start()
         defer { timeline.stop() }
-        let sticker = try #require(library.packs.last?.stickers.first { $0.body == "😎" })
+        let sticker = try #require(library.packs.first { $0.name == "Искра" }?.stickers.first { $0.body == "😎" })
         await timeline.send(sticker: sticker)
         #expect(timeline.failure == nil)
         let arrived = await eventually {
@@ -283,6 +286,41 @@ struct DemoBackendTests {
         #expect(library.failure == nil)
         #expect(library.isMine(theirs.url))
         #expect(library.packs.first?.stickers.count == 5)
+
+        let unrecognized = await MockHomeserver.shared.unrecognized
+        #expect(unrecognized.isEmpty, "\(unrecognized)")
+    }
+
+    /// A WebP picked as a photo goes as a sticker. The demo's rooms are not encrypted, so this is
+    /// the `m.sticker` way — uploaded, pointed at, and plain enough for anybody to keep.
+    @Test("a WebP sent as a photo arrives as a sticker")
+    func webPIsASticker() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(component: "iskra-webp-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let client = try await DemoBackend.makeClient(data: root.appending(component: "data"),
+                                                      cache: root.appending(component: "cache"),
+                                                      search: root.appending(component: "search"))
+        let session = UserSession(client: client, authentication: AuthenticationService(), sessionID: "demo", isDemo: true)
+        try await session.start()
+        defer { Task { await session.close() } }
+        let devID = "!iskra-dev:iskra.demo"
+        _ = await eventually { session.roomList.rooms.contains { $0.id == devID } }
+
+        let timeline = try #require(session.timeline(forRoomID: devID))
+        try await timeline.start()
+        defer { timeline.stop() }
+
+        await timeline.send(photo: StickerFixtures.webP, filename: "IMG_0001.webp")
+        #expect(timeline.failure == nil)
+        let arrived = await eventually {
+            timeline.rows.contains { row in
+                guard case let .message(message) = row, message.isOwn,
+                      case let .sticker(attachment) = message.kind else { return false }
+                return attachment.mimeType == "image/webp" && attachment.asSticker != nil
+            }
+        }
+        #expect(arrived)
 
         let unrecognized = await MockHomeserver.shared.unrecognized
         #expect(unrecognized.isEmpty, "\(unrecognized)")

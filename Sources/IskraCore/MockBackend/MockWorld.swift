@@ -25,7 +25,7 @@ struct MockWorld {
 
     /// The demo's stickers, drawn once and pointed at from the packs and the conversations alike —
     /// as image entries in the MSC2545 shape, by name.
-    private var stickers: [MockMedia.StickerArt: JSON] = [:]
+    private var stickers: [StickerArt: JSON] = [:]
 
     private let now = Int(Date().timeIntervalSince1970 * 1000)
     private var counter = 0
@@ -430,29 +430,22 @@ struct MockWorld {
     }
 
     private mutating func drawStickers() {
-        struct Look { let art: MockMedia.StickerArt, body: String, hue: Double }
-        let looks = [
-            Look(art: .happy, body: "😊", hue: 0.14), Look(art: .love, body: "😍", hue: 0.08),
-            Look(art: .wink, body: "😉", hue: 0.16), Look(art: .sleepy, body: "😴", hue: 0.6),
-            Look(art: .surprised, body: "😮", hue: 0.5), Look(art: .cool, body: "😎", hue: 0.1),
-            Look(art: .heart, body: "❤️", hue: 0.98), Look(art: .star, body: "⭐", hue: 0.13)
-        ]
-        for look in looks {
-            let (art, body, hue) = (look.art, look.body, look.hue)
-            let data = MockMedia.sticker(art, hue: hue)
-            stickers[art] = ["url": store(data, mime: "image/png"), "body": body,
-                             "info": ["w": 256, "h": 256, "mimetype": "image/png", "size": data.count]]
+        for art in StickerArt.allCases {
+            let data = art.png()
+            stickers[art] = ["url": store(data, mime: "image/png"), "body": art.emoji,
+                             "info": ["w": StickerArt.side, "h": StickerArt.side, "mimetype": "image/png",
+                                      "size": data.count]]
         }
     }
 
     /// Image entries by shortcode, for a pack's `images`.
-    private func pack(_ arts: [MockMedia.StickerArt]) -> JSON {
+    private func pack(_ arts: [StickerArt]) -> JSON {
         var images: JSON = [:]
         for art in arts { images[art.rawValue] = stickers[art] }
         return images
     }
 
-    private mutating func sticker(_ room: String, _ sender: String, _ art: MockMedia.StickerArt) {
+    private mutating func sticker(_ room: String, _ sender: String, _ art: StickerArt) {
         guard let image = stickers[art] else { return }
         event(room, sender, "m.sticker", ["body": image["body"] ?? "", "url": image["url"] ?? "",
                                           "info": image["info"] ?? [:]])

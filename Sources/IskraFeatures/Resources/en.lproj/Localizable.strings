@@ -680,6 +680,9 @@
 /* A room's sticker pack that has no name of its own. */
 "stickers.roomPack" = "Chat stickers";
 
+/* The sticker pack the app comes with: round faces, a heart and a star. */
+"stickers.builtIn" = "Sparks";
+
 /* The sticker sheet with nothing in it. */
 "stickers.empty.title" = "No stickers yet";
 "stickers.empty.message" = "Like a sticker in a chat? Touch and hold it, then choose “Add to my stickers”.";

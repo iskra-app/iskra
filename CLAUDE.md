@@ -471,7 +471,10 @@ uploads the user's face to the homeserver in the clear. Send ordinary `m.video` 
   camera, dates, author, every track that is not picture or sound) and compressed, both on by
   default (`MediaSettings`, applied by `MediaPreparation` in `TimelineStore.send(photo:)` and
   `send(video:)`, which every path — composer, Share outbox, forward, video note — goes through).
-  A new way to send media goes through those two, not around them. **A video note ignores the
+  A new way to send media goes through those two, not around them. **A WebP is the one photo
+  that skips compression** — it is a sticker (`StickerPicture`), always stripped, never squeezed —
+  and in an *encrypted* room it goes as an encrypted `m.image`, never as an `m.sticker`, because
+  `uploadMedia` would put it on the server in the clear. **A video note ignores the
   settings** (`asVideoNote: true` → `MediaSettings.videoNote`): always stripped, and never
   compressed twice, because `SquareVideoExporter` already did. A stripped result is read back
   against an allow-list, and one that is not clean is **not sent**: ImageIO's "copy without

@@ -90,6 +90,8 @@ public struct StickerPack: Identifiable, Sendable, Equatable {
         case mine
         /// `im.ponies.room_emotes` with this state key, in this room.
         case room(roomID: String, stateKey: String)
+        /// The app's own — see `StickerArt`. Uploaded by this account and read by nobody else.
+        case builtIn
     }
 
     public let origin: Origin
@@ -98,6 +100,7 @@ public struct StickerPack: Identifiable, Sendable, Equatable {
         switch origin {
         case .mine: "mine"
         case let .room(roomID, stateKey): "\(roomID)/\(stateKey)"
+        case .builtIn: "builtin"
         }
     }
 
@@ -111,6 +114,8 @@ public struct StickerPack: Identifiable, Sendable, Equatable {
     public let stickers: [Sticker]
 
     public var isMine: Bool { origin == .mine }
+
+    public var isBuiltIn: Bool { origin == .builtIn }
 
     public init(origin: Origin, name: String?, iconURL: String?, stickers: [Sticker]) {
         self.origin = origin

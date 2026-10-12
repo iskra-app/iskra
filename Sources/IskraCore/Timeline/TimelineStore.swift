@@ -126,6 +126,12 @@ public final class TimelineStore {
     private let ownUserID: String
     private var timeline: Timeline?
 
+    /// `Client.uploadMedia`, handed down by the session: bytes onto the homeserver as they are,
+    /// **unencrypted**. Used for one thing — a WebP sent as an `m.sticker` into a room that is not
+    /// encrypted (see `StickerPicture`). Nil where nobody set it, and then a WebP goes the
+    /// encrypted way, which is right in every room.
+    @ObservationIgnored var uploadMedia: (@Sendable (_ mimeType: String, _ data: Data) async throws -> String)?
+
     /// The SDK timeline, for the media-sending extension in `TimelineStore+Media`.
     /// Nil until `start()` has run.
     var liveTimeline: Timeline? { timeline }
@@ -842,6 +848,17 @@ public final class TimelineStore {
             Log.media.error("could not send a sticker: \(Log.describe(error), privacy: .public)")
             failure = .sticker
         }
+    }
+
+    /// Whether the room is known *not* to be encrypted — asked of the server, not of the last
+    /// sync, when it has to be. Anything short of a definite "no" is an encrypted room: this is
+    /// what decides whether a picture may leave unencrypted (`StickerPicture`), and "probably not
+    /// encrypted" is not an answer to that.
+    func isKnownUnencrypted() async -> Bool {
+        let room = room
+        let state = try? await withTimeout(Self.sdkTimeout) { try await room.latestEncryptionState() }
+        guard let state, case .notEncrypted = state else { return false }
+        return true
     }
 
     /// Gives up on a stand-in that nothing ever came to replace.

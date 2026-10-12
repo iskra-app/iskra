@@ -12,6 +12,9 @@ import Observation
 ///   the rooms that publish them.
 /// - **the open room's own pack**, if it has one under the empty state key — which is how a
 ///   community hands its stickers to everybody in it without asking anyone to subscribe.
+/// - **the app's own**, "Искорки" (`StickerArt`), so that a sheet opened for the first time has
+///   something in it. Drawn on the device, uploaded once per account, and remembered in account
+///   data — see `builtInPack()`.
 ///
 /// The account data comes from the SDK, which has it from sync and answers from its store. Room
 /// state does not: the FFI has no call for reading one state event, so it is
@@ -45,6 +48,7 @@ public final class StickerLibrary {
     private let readAccountData: @Sendable (String) async throws -> String?
     private let writeAccountData: @Sendable (String, String) async throws -> Void
     private let send: @Sendable (ProxiedRequest) async throws -> ProxiedResponse
+    private let upload: (@Sendable (_ mimeType: String, _ data: Data) async throws -> String)?
 
     /// How many stickers the recent row keeps. Two rows of the sheet on a phone.
     nonisolated static let recentLimit = 16
@@ -57,12 +61,21 @@ public final class StickerLibrary {
     /// hold the account's own stickers off the screen.
     nonisolated static let timeout: Duration = .seconds(10)
 
+    /// Where the app's own stickers were uploaded to, by shortcode — an MSC2545 pack in shape, so
+    /// that it reads like one, but under a type of the app's own: it is not a pack anybody should
+    /// find in Element's list of their emoji.
+    nonisolated static let builtInType = "moscow.swag.iskra.builtin_stickers"
+
+    /// `upload` is `Client.uploadMedia`. Without it there is no built-in pack: its pictures have
+    /// to be on the server before anybody can be sent one.
     init(readAccountData: @escaping @Sendable (String) async throws -> String?,
          writeAccountData: @escaping @Sendable (String, String) async throws -> Void,
-         send: @escaping @Sendable (ProxiedRequest) async throws -> ProxiedResponse) {
+         send: @escaping @Sendable (ProxiedRequest) async throws -> ProxiedResponse,
+         upload: (@Sendable (_ mimeType: String, _ data: Data) async throws -> String)? = nil) {
         self.readAccountData = readAccountData
         self.writeAccountData = writeAccountData
         self.send = send
+        self.upload = upload
     }
 
     // MARK: - Reading
@@ -108,6 +121,12 @@ public final class StickerLibrary {
 
         let recentContent = await object(ofAccountData: Self.recentType) ?? [:]
         recent = Self.recent(in: recentContent)
+
+        // Last, and after the others are on screen: the first time, this is a dozen uploads.
+        if let builtIn = await builtInPack(), !builtIn.stickers.isEmpty {
+            packs.removeAll { $0.isBuiltIn }
+            packs.append(builtIn)
+        }
     }
 
     /// Reads the account's own pack, once — what a sticker's menu needs to offer "add" or "remove"
@@ -178,6 +197,72 @@ public final class StickerLibrary {
     nonisolated static func recent(in content: [String: Any]) -> [Sticker] {
         let images = content["images"] as? [[String: Any]] ?? []
         return images.compactMap { ImagePack.sticker(from: $0, shortcode: "") }
+    }
+
+    // MARK: - The app's own
+
+    /// The built-in pack, once it has been made this session. A pack that came out empty — no
+    /// network, the first time — is not kept, so the next opening of the sheet tries again.
+    @ObservationIgnored private var builtIn: Task<StickerPack?, Never>?
+
+    /// The app's own stickers, with the URLs they live at on this account's homeserver.
+    ///
+    /// The first time an account opens the sheet, each drawing is uploaded — `uploadMedia`, so in
+    /// the clear, which is right for a picture every copy of the app draws the same — and where
+    /// they went is written to `builtInType`. Every later time, on any of the account's devices,
+    /// they are read from there and nothing is uploaded. Whatever fails to upload is simply left
+    /// out of the pack and tried again next session.
+    private func builtInPack() async -> StickerPack? {
+        if let builtIn, let pack = await builtIn.value { return pack }
+        let task = Task { await self.makeBuiltInPack() }
+        builtIn = task
+        let pack = await task.value
+        if pack?.stickers.isEmpty ?? true { builtIn = nil }
+        return pack
+    }
+
+    private func makeBuiltInPack() async -> StickerPack? {
+        guard let upload else { return nil }
+
+        let stored = await object(ofAccountData: Self.builtInType) ?? [:]
+        let current = stored["version"] as? Int == StickerArt.version
+        var images = current ? stored["images"] as? [String: Any] ?? [:] : [:]
+
+        let missing = StickerArt.allCases.filter { (images[$0.rawValue] as? [String: Any])?["url"] == nil }
+        if !missing.isEmpty {
+            let uploaded = await withTaskGroup(of: (art: StickerArt, url: String, size: Int)?.self) { group in
+                for art in missing {
+                    group.addTask {
+                        let data = art.png()
+                        guard !data.isEmpty,
+                              let url = try? await withTimeout(Self.timeout, operation: { try await upload("image/png", data) })
+                        else { return nil }
+                        return (art, url, data.count)
+                    }
+                }
+                var uploaded = [(art: StickerArt, url: String, size: Int)]()
+                for await result in group {
+                    if let result { uploaded.append(result) }
+                }
+                return uploaded
+            }
+            for (art, url, size) in uploaded {
+                let info: [String: Any] = ["w": StickerArt.side, "h": StickerArt.side, "mimetype": "image/png", "size": size]
+                images[art.rawValue] = ["url": url, "body": art.emoji, "usage": ["sticker"], "info": info]
+            }
+            if !uploaded.isEmpty {
+                try? await write(["version": StickerArt.version,
+                                  "pack": ["usage": ["sticker"]],
+                                  "images": images],
+                                 as: Self.builtInType)
+            }
+        }
+
+        // In the order they are drawn in, not by shortcode: the happy face first.
+        let stickers = StickerArt.allCases.compactMap { art in
+            (images[art.rawValue] as? [String: Any]).flatMap { ImagePack.sticker(from: $0, shortcode: art.rawValue) }
+        }
+        return StickerPack(origin: .builtIn, name: nil, iconURL: nil, stickers: stickers)
     }
 
     // MARK: - Underneath

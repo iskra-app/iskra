@@ -285,8 +285,9 @@ struct MessageComposer: View {
                         // The sticker button sits *inside* the field, at its trailing end, as
                         // Telegram's does — not as a fourth circle in the row, which would take its
                         // width out of the line being typed on every message to offer something
-                        // sent on a few.
-                        HStack(alignment: .bottom, spacing: 0) {
+                        // sent on a few. Centred on the field, at any number of lines: it belongs
+                        // to the field, not to the last line of what is being typed.
+                        HStack(alignment: .center, spacing: 0) {
                             TextField(String(app: Strings.Room.composerPlaceholder), text: $draft,
                                       selection: $selection, axis: .vertical)
                                 .textFieldStyle(.plain)

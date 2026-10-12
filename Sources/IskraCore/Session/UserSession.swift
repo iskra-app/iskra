@@ -141,7 +141,10 @@ public final class UserSession {
         self.stickers = StickerLibrary(
             readAccountData: { [client] type in try await client.accountData(eventType: type) },
             writeAccountData: { [client] type, content in try await client.setAccountData(eventType: type, content: content) },
-            send: sender)
+            send: sender,
+            upload: { [client] mimeType, data in
+                try await client.uploadMedia(mimeType: mimeType, data: data, progressWatcher: nil)
+            })
     }
 
     /// The server has stopped accepting this session, and nobody on this device asked it to.
@@ -348,6 +351,9 @@ public final class UserSession {
         }
 
         let store = TimelineStore(room: room, ownUserID: userID)
+        store.uploadMedia = { [client] mimeType, data in
+            try await client.uploadMedia(mimeType: mimeType, data: data, progressWatcher: nil)
+        }
 
         keep(store)
 
