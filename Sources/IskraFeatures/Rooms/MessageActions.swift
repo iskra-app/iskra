@@ -403,8 +403,11 @@ struct MessageActions<Content: View>: View {
                                              systemImage: isMine ? "minus.circle" : "plus.circle",
                                              perform: {
                                                  Task {
-                                                     if isMine { await stickers.remove(sticker) }
-                                                     else { await stickers.add(sticker) }
+                                                     if isMine {
+                                                         await stickers.remove(sticker)
+                                                     } else {
+                                                         await stickers.add(sticker)
+                                                     }
                                                  }
                                              }))
         }

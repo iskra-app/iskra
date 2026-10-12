@@ -58,7 +58,7 @@ public struct ShareTargetGrid<Item: Identifiable, Face: View>: View {
                                         .font(.system(size: 22, weight: .semibold))
                                         .symbolRenderingMode(.palette)
                                         .foregroundStyle(.white, accent.color)
-                                        .background(Circle().fill(.background).padding(2))
+                                        .background(Circle().fill(.background).padding(Theme.Spacing.withinRun))
                                         .transition(.scale.combined(with: .opacity))
                                 }
                             }

@@ -220,7 +220,7 @@ public enum MatrixHTML {
                 breakBlock()
                 let depth = max(0, lists.count - 1)
                 let indent = String(repeating: "    ", count: depth)
-                if let number = lists.last ?? nil {
+                if let last = lists.last, let number = last {
                     appendRaw("\(indent)\(number). ")
                     lists[lists.count - 1] = min(number + 1, Self.maximumListNumber)
                 } else {

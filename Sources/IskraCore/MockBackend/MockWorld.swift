@@ -430,11 +430,15 @@ struct MockWorld {
     }
 
     private mutating func drawStickers() {
-        let looks: [(MockMedia.StickerArt, String, Double)] = [
-            (.happy, "😊", 0.14), (.love, "😍", 0.08), (.wink, "😉", 0.16), (.sleepy, "😴", 0.6),
-            (.surprised, "😮", 0.5), (.cool, "😎", 0.1), (.heart, "❤️", 0.98), (.star, "⭐", 0.13),
+        struct Look { let art: MockMedia.StickerArt, body: String, hue: Double }
+        let looks = [
+            Look(art: .happy, body: "😊", hue: 0.14), Look(art: .love, body: "😍", hue: 0.08),
+            Look(art: .wink, body: "😉", hue: 0.16), Look(art: .sleepy, body: "😴", hue: 0.6),
+            Look(art: .surprised, body: "😮", hue: 0.5), Look(art: .cool, body: "😎", hue: 0.1),
+            Look(art: .heart, body: "❤️", hue: 0.98), Look(art: .star, body: "⭐", hue: 0.13)
         ]
-        for (art, body, hue) in looks {
+        for look in looks {
+            let (art, body, hue) = (look.art, look.body, look.hue)
             let data = MockMedia.sticker(art, hue: hue)
             stickers[art] = ["url": store(data, mime: "image/png"), "body": body,
                              "info": ["w": 256, "h": 256, "mimetype": "image/png", "size": data.count]]

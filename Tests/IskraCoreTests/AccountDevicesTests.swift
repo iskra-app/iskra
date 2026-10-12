@@ -9,7 +9,7 @@ import Testing
 @Suite("Account devices")
 struct AccountDevicesTests {
     private func json(_ object: Any) -> Data {
-        try! JSONSerialization.data(withJSONObject: object)
+        (try? JSONSerialization.data(withJSONObject: object)) ?? Data()
     }
 
     @Test("this device first, then the rest by how recently they were seen")

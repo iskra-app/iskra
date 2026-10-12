@@ -70,13 +70,13 @@ struct ReactorsSheet: View {
     private var tabs: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: Theme.Spacing.close) {
-                chip(isSelected: filter == nil, action: { filter = nil }) {
+                chip(isSelected: filter == nil, action: { filter = nil }, label: {
                     Text(Strings.Message.Menu.reactorsAll(total))
-                }
+                })
                 ForEach(reactions) { reaction in
-                    chip(isSelected: filter == reaction.key, action: { filter = reaction.key }) {
+                    chip(isSelected: filter == reaction.key, action: { filter = reaction.key }, label: {
                         Text(verbatim: "\(reaction.key) \(reaction.count)")
-                    }
+                    })
                 }
             }
             .padding(.horizontal, Theme.Spacing.roomy)

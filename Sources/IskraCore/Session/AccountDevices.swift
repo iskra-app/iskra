@@ -34,16 +34,17 @@ public enum DevicePlatform: Sendable, Equatable {
 
     init(name: String?) {
         let name = (name ?? "").lowercased()
-        func has(_ words: String...) -> Bool { words.contains { name.contains($0) } }
-
-        if has("iphone") { self = .iPhone }
-        else if has("ipad") { self = .iPad }
-        else if has("android") { self = .android }
-        else if has("firefox", "chrome", "safari", "edge", "browser", " web") { self = .web }
-        else if has("macbook", "imac", "mac mini", "mac studio", "macos", "mac pro") { self = .mac }
-        else if has("windows", "linux") { self = .desktop }
-        else if has("ios") { self = .iPhone }
-        else { self = .unknown }
+        // In order: the first that matches wins, so "ios" comes after everything it is inside of.
+        let byWords: [(DevicePlatform, [String])] = [
+            (.iPhone, ["iphone"]),
+            (.iPad, ["ipad"]),
+            (.android, ["android"]),
+            (.web, ["firefox", "chrome", "safari", "edge", "browser", " web"]),
+            (.mac, ["macbook", "imac", "mac mini", "mac studio", "macos", "mac pro"]),
+            (.desktop, ["windows", "linux"]),
+            (.iPhone, ["ios"])
+        ]
+        self = byWords.first { _, words in words.contains { name.contains($0) } }?.0 ?? .unknown
     }
 }
 

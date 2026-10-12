@@ -808,7 +808,10 @@ public final class TimelineStore {
             failure = .sticker
             return
         }
-        let json = String(decoding: data, as: UTF8.self)
+        guard let json = String(bytes: data, encoding: .utf8) else {
+            failure = .sticker
+            return
+        }
 
         stopTellingThemWeType()
 
@@ -1008,8 +1011,8 @@ public final class TimelineStore {
         for reaction in message.reactions {
             for userID in reaction.senders {
                 if names[userID] == nil {
-                    let name = (try? await room.memberDisplayName(userId: userID)) ?? nil
-                    let avatar = (try? await room.memberAvatarUrl(userId: userID)) ?? nil
+                    let name = (try? await room.memberDisplayName(userId: userID))
+                    let avatar = (try? await room.memberAvatarUrl(userId: userID))
                     names[userID] = (name ?? userID, avatar)
                 }
                 let (name, avatar) = names[userID] ?? (userID, nil)
