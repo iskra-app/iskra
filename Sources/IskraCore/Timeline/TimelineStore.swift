@@ -382,7 +382,15 @@ public final class TimelineStore {
             }
         }
 
-        listenerHandle = await timeline.addListener(listener: listener)
+        // Each subscription below is an await, and a `stop()` inside one has already run by the
+        // time the handle comes back — finding nothing to cancel. Kept, the handle would go on
+        // feeding a room nobody is reading, so it is taken straight back down instead.
+        let listening = await timeline.addListener(listener: listener)
+        guard generation == self.generation else {
+            listening.cancel()
+            return
+        }
+        listenerHandle = listening
 
         // What tells us a reaction never made it. `RoomSendQueueUpdate` is `Sendable` — unlike
         // the timeline's diffs — so it crosses the hop from the Rust callback thread on its own.
@@ -391,7 +399,12 @@ public final class TimelineStore {
                 self?.handle(sendQueueUpdate: update)
             }
         }
-        sendQueueHandle = try? await room.subscribeToSendQueueUpdates(listener: queueListener)
+        let queueHandle = try? await room.subscribeToSendQueueUpdates(listener: queueListener)
+        guard generation == self.generation else {
+            queueHandle?.cancel()
+            return
+        }
+        sendQueueHandle = queueHandle
 
         // Who is typing. `[String]` is `Sendable`, so it crosses from the Rust callback thread on
         // its own — no `UnsafeTransfer` needed, unlike the timeline's diffs.
@@ -517,7 +530,12 @@ public final class TimelineStore {
         // has finished by the time we look again, so the next turn fetches — but a loop whose
         // termination depends on that reasoning being right is a loop that hangs the moment it is
         // not.
-        while latestRows.count < minimumRows,
+        //
+        // And it is the opening's loop, or the refill's: once the reader has left, every further
+        // turn would be a page of the *next* opening's timeline, paid for out of this one's budget.
+        let generation = self.generation
+        while generation == self.generation,
+              latestRows.count < minimumRows,
               canLoadMore,
               fetched < maximumPages,
               waited < maximumPages {
@@ -1726,11 +1744,16 @@ public final class TimelineStore {
         Log.rooms.error("Timeline out of step with the SDK: \(what, privacy: .public). Reading the room again.")
         assertionFailure("Timeline desynchronised: \(what)")
 
+        // Only the room that went out of step is read again. The reader may have left it between
+        // the bad diff and this task getting to run, and a `stop()` then `start()` here would open
+        // a conversation nobody is looking at — with a live sync behind it.
+        let generation = self.generation
         Task { @MainActor [weak self] in
             guard let self else { return }
+            defer { isResyncing = false }
+            guard generation == self.generation else { return }
             stop()
             try? await start()
-            isResyncing = false
         }
     }
 
