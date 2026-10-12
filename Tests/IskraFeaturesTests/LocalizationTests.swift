@@ -245,6 +245,30 @@ struct LocalizationTests {
         }
     }
 
+    /// German, Spanish, French, Japanese and Chinese are in beta: a few dozen of the most visible
+    /// strings, and English for the rest. What has to hold is the second half — a string nobody
+    /// has translated yet reads in English, never as its key. That English is *written into* each
+    /// beta `.lproj`: a key missing from the file does not fall back to `en`, it shows as itself.
+    @Test("beta languages translate what they have and fall back to English for the rest")
+    func betaLanguagesFallBackToEnglish() {
+        let translated: [String: String] = [
+            "de": "Einstellungen", "es": "Ajustes", "fr": "Réglages", "ja": "設定", "zh-Hans": "设置"
+        ]
+        for (language, settings) in translated {
+            var title = Strings.Settings.title
+            title.locale = Locale(identifier: language)
+            #expect(String(localized: title) == settings)
+
+            var untranslated = Strings.Room.administrator
+            untranslated.locale = Locale(identifier: language)
+            #expect(String(localized: untranslated) == "Administrator", "\(language)")
+
+            var share = CoreStrings.Share.title
+            share.locale = Locale(identifier: language)
+            #expect(!String(localized: share).hasPrefix("share."), "\(language)")
+        }
+    }
+
     @Test("core strings resolve in English and in Russian")
     func coreStringsAreTranslated() {
         var protected = CoreStrings.Privacy.protected
