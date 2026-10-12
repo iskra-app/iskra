@@ -81,13 +81,25 @@ public enum MatrixHTML {
             self.ownUserID = ownUserID
         }
 
+        static let maximumDepth = 64
+        static let maximumListNumber = 1_000_000
+
         mutating func run(_ html: String) {
             var index = html.startIndex
             var text = ""
 
+            // Linear, and that is a promise kept against the sender. A `<` is answered by looking
+            // for its `>` — and if there is none, there will be none for any later `<` either, so
+            // the rest is words and the search is not made again. Asking afresh at every `<` was a
+            // rescan to the end of the message per bracket: a 64 KB body of them, quadratic.
+            var tagsPossible = true
             while index < html.endIndex {
                 let character = html[index]
-                if character == "<", let close = html[index...].firstIndex(of: ">") {
+                if character == "<", tagsPossible {
+                    guard let close = html[index...].firstIndex(of: ">") else {
+                        tagsPossible = false
+                        continue
+                    }
                     if !text.isEmpty {
                         append(text: Self.decodeEntities(text))
                         text = ""
@@ -151,7 +163,10 @@ public enum MatrixHTML {
                 break
             }
 
-            guard !selfClosing else { return }
+            // Past this depth nothing new is opened — its words still come through, unstyled.
+            // Every run of text walks the stack, so an unbounded one is quadratic in a sender's
+            // hands; no message anybody wrote nests sixty-four deep.
+            guard !selfClosing, stack.count < Self.maximumDepth else { return }
 
             var element = Element(name: name)
             switch name {
@@ -198,14 +213,16 @@ public enum MatrixHTML {
                 lists.append(nil)
             case "ol":
                 breakBlock()
-                lists.append(Int(attributes["start"] ?? "") ?? 1)
+                // Clamped: the sender writes `start`, and `Int.max` plus one is a trap, not a number.
+                let start = Int(attributes["start"] ?? "") ?? 1
+                lists.append(min(max(start, 0), Self.maximumListNumber))
             case "li":
                 breakBlock()
                 let depth = max(0, lists.count - 1)
                 let indent = String(repeating: "    ", count: depth)
                 if let number = lists.last ?? nil {
                     appendRaw("\(indent)\(number). ")
-                    lists[lists.count - 1] = number + 1
+                    lists[lists.count - 1] = min(number + 1, Self.maximumListNumber)
                 } else {
                     appendRaw("\(indent)• ")
                 }
@@ -301,11 +318,10 @@ public enum MatrixHTML {
             // A trailing space before the break is not part of anything.
             if last == " " { output.characters.removeLast() }
             if output.characters.last != "\n" { appendRaw("\n") }
-            if blank {
-                let characters = output.characters
-                let endsBlank = characters.count >= 2
-                    && characters[characters.index(characters.endIndex, offsetBy: -2)] == "\n"
-                if !endsBlank { appendRaw("\n") }
+            // The last two characters, not a count of all of them — `count` on an attributed
+            // string walks it, and a message of a thousand paragraphs would walk it a thousand times.
+            if blank, Array(output.characters.suffix(2)) != ["\n", "\n"] {
+                appendRaw("\n")
             }
         }
 

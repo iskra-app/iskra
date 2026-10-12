@@ -61,6 +61,9 @@ public enum RichText {
 
     // MARK: - Links
 
+    /// How many links, and how many sightings of one mention, a single message gets marked.
+    static let linkLimit = 256
+
     /// The one detector, built once. `NSDataDetector` is not cheap to spin up, and it is not
     /// mutable state — the same instance is safe to reuse across calls and threads.
     private static let linkDetector: NSDataDetector? =
@@ -89,7 +92,10 @@ public enum RichText {
     static func applyLinks(to attributed: inout AttributedString, body: String) {
         guard let linkDetector, !body.isEmpty else { return }
         let full = NSRange(body.startIndex..., in: body)
-        for match in linkDetector.matches(in: body, options: [], range: full) {
+        // At most `linkLimit` of them: each costs a walk of the text to find its place, and a
+        // message is somebody else's to fill with ten thousand addresses. Nobody reads past a few
+        // hundred links in one bubble, and the rest stay words.
+        for match in linkDetector.matches(in: body, options: [], range: full).prefix(linkLimit) {
             guard let url = match.url,
                   let stringRange = Range(match.range, in: body),
                   let range = attributedRange(for: stringRange, in: body, attributed: attributed)
@@ -136,7 +142,10 @@ public enum RichText {
                              userID: String,
                              isSelf: Bool) {
         var searchStart = body.startIndex
-        while let found = body.range(of: token, range: searchStart..<body.endIndex) {
+        var marked = 0
+        // Capped for the same reason as links — see `linkLimit`.
+        while marked < linkLimit, let found = body.range(of: token, range: searchStart..<body.endIndex) {
+            marked += 1
             if let range = attributedRange(for: found, in: body, attributed: attributed) {
                 attributed[range].iskra.mentionUserID = userID
                 attributed[range].iskra.mentionIsSelf = isSelf

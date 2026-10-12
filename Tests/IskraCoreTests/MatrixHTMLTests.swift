@@ -115,4 +115,36 @@ struct MatrixHTMLTests {
         let range = try #require(attributed.range(of: "https://example.com"))
         #expect(attributed[range].link == URL(string: "https://example.com"))
     }
+
+    // MARK: - What a sender can throw at it
+
+    @Test("a list starting at Int.max does not trap")
+    func hugeListStart() {
+        #expect(text("<ol start=\"9223372036854775807\"><li>a</li><li>b</li></ol>") != nil)
+        #expect(text("<ol start=\"-5\"><li>a</li></ol>") == "0. a")
+    }
+
+    @Test("a body of brackets with no closing one is words, and quick")
+    func unclosedBrackets() {
+        let html = String(repeating: "<", count: 60_000) + " end"
+        let started = ContinuousClock.now
+        #expect(text(html)?.hasSuffix("end") == true)
+        #expect(ContinuousClock.now - started < .seconds(2))
+    }
+
+    @Test("absurd nesting keeps its words and finishes")
+    func deepNesting() {
+        let html = String(repeating: "<b>", count: 5_000) + "deep" + String(repeating: "</b>", count: 5_000)
+        let started = ContinuousClock.now
+        #expect(text(html) == "deep")
+        #expect(ContinuousClock.now - started < .seconds(2))
+    }
+
+    @Test("a thousand paragraphs finish quickly")
+    func manyParagraphs() {
+        let html = String(repeating: "<p>x</p>", count: 4_000)
+        let started = ContinuousClock.now
+        #expect(text(html)?.hasPrefix("x\n\nx") == true)
+        #expect(ContinuousClock.now - started < .seconds(2))
+    }
 }
