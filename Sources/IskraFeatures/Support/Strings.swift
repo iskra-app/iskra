@@ -1298,6 +1298,26 @@ public enum Strings {
             }
         }
 
+        /// The button on a picture that automatic download left alone.
+        public static let download = LocalizedStringResource("media.download", bundle: bundle)
+        public static let autoDownload = LocalizedStringResource("media.autoDownload", bundle: bundle)
+
+        public static func autoDownloadLabel(_ choice: MediaAutoDownload) -> LocalizedStringResource {
+            switch choice {
+            case .always: LocalizedStringResource("media.autoDownload.always", bundle: bundle)
+            case .wifi: LocalizedStringResource("media.autoDownload.wifi", bundle: bundle)
+            case .never: LocalizedStringResource("media.autoDownload.never", bundle: bundle)
+            }
+        }
+
+        public static func autoDownloadHelp(_ choice: MediaAutoDownload) -> LocalizedStringResource {
+            switch choice {
+            case .always: LocalizedStringResource("media.autoDownload.alwaysHelp", bundle: bundle)
+            case .wifi: LocalizedStringResource("media.autoDownload.wifiHelp", bundle: bundle)
+            case .never: LocalizedStringResource("media.autoDownload.neverHelp", bundle: bundle)
+            }
+        }
+
         /// What a step actually does, in numbers — the footer under the picker says it for the step
         /// that is chosen, so the choice is never a guess between three adjectives.
         public static func compressionHelp(_ level: MediaCompression) -> LocalizedStringResource {
@@ -1307,6 +1327,33 @@ public enum Strings {
             case .light: LocalizedStringResource("media.compression.lightHelp", bundle: bundle)
             }
         }
+    }
+
+    /// Settings → Privacy — see `PrivacyView`.
+    public enum Privacy {
+        public static let title = LocalizedStringResource("privacy.title", bundle: bundle)
+        public static let hidePresence = LocalizedStringResource("privacy.hidePresence", bundle: bundle)
+        public static let hidePresenceHelp = LocalizedStringResource("privacy.hidePresenceHelp", bundle: bundle)
+        public static let hideTyping = LocalizedStringResource("privacy.hideTyping", bundle: bundle)
+        public static let hideTypingHelp = LocalizedStringResource("privacy.hideTypingHelp", bundle: bundle)
+    }
+
+    /// Settings → Chats — see `ChatSettingsView`.
+    public enum Chats {
+        public static let title = LocalizedStringResource("chats.title", bundle: bundle)
+        public static let serviceSection = LocalizedStringResource("chats.serviceSection", bundle: bundle)
+        public static let hideNameChanges = LocalizedStringResource("chats.hideNameChanges", bundle: bundle)
+        public static let hideMembershipChanges = LocalizedStringResource("chats.hideMembershipChanges", bundle: bundle)
+        public static let serviceHelp = LocalizedStringResource("chats.serviceHelp", bundle: bundle)
+        public static let keyboardSection = LocalizedStringResource("chats.keyboardSection", bundle: bundle)
+        public static let commandReturn = LocalizedStringResource("chats.commandReturn", bundle: bundle)
+        public static let commandReturnOnHelp = LocalizedStringResource("chats.commandReturnOnHelp", bundle: bundle)
+        public static let commandReturnOffHelp = LocalizedStringResource("chats.commandReturnOffHelp", bundle: bundle)
+        public static let shareSection = LocalizedStringResource("chats.shareSection", bundle: bundle)
+        public static let shareAccount = LocalizedStringResource("chats.shareAccount", bundle: bundle)
+        public static let shareActive = LocalizedStringResource("chats.shareActive", bundle: bundle)
+        public static let shareAll = LocalizedStringResource("chats.shareAll", bundle: bundle)
+        public static let shareHelp = LocalizedStringResource("chats.shareHelp", bundle: bundle)
     }
 
     /// A person's page — see `MemberProfileView`.
@@ -1352,6 +1399,10 @@ public enum Strings {
         /// The notifications screen, which for a long time was a greyed-out row promising one.
         /// See `NotificationsView`.
         public static let notifications = LocalizedStringResource("settings.notifications", bundle: bundle)
+
+        /// See `ChatSettingsView` and `PrivacyView`.
+        public static let chats = LocalizedStringResource("settings.chats", bundle: bundle)
+        public static let privacy = LocalizedStringResource("settings.privacy", bundle: bundle)
 
         /// What used to be called "Encryption", and was too narrow a name for what was already
         /// on it. The screen has always answered "who can get at this" rather than "is this

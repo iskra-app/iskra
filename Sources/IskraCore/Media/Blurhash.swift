@@ -21,7 +21,7 @@ import ImageIO
 /// over the image in linear light, packed into base83. Written here from the specification
 /// rather than lifted from a library, so nothing new joins the dependency list for eighty
 /// lines of arithmetic.
-enum Blurhash {
+public enum Blurhash {
     /// How many terms of the transform are kept. Four by three is what every Matrix client
     /// uses and it is what the format was tuned for: enough to show where the light and the
     /// faces are, not enough to show what they are.
@@ -123,6 +123,72 @@ enum Blurhash {
             result.append(base83[digit])
         }
         return result
+    }
+
+    // MARK: - Unpacking
+
+    /// The blur itself, drawn small — what a bubble shows while its picture is not being fetched
+    /// (automatic download off) or not yet here. Nil for a hash that does not parse.
+    ///
+    /// Small on purpose: there are at most nine by nine terms in a hash, and a 32-point image of
+    /// them, scaled up by the view, is indistinguishable from a full-size one at a fraction of the
+    /// arithmetic.
+    public static func decode(_ hash: String, width: Int = 32, height: Int = 32) -> CGImage? {
+        let characters = Array(hash)
+        guard characters.count >= 6, width > 0, height > 0,
+              let sizeFlag = decode83(characters[0..<1]),
+              let quantisedMaximum = decode83(characters[1..<2]) else { return nil }
+
+        let countY = sizeFlag / 9 + 1
+        let countX = sizeFlag % 9 + 1
+        guard characters.count == 4 + 2 * countX * countY,
+              let dc = decode83(characters[2..<6]) else { return nil }
+
+        let maximum = Double(quantisedMaximum + 1) / 166
+        var colours = [(linear(Double(dc >> 16) / 255),
+                        linear(Double((dc >> 8) & 255) / 255),
+                        linear(Double(dc & 255) / 255))]
+        for i in 1..<(countX * countY) {
+            guard let ac = decode83(characters[(4 + i * 2)..<(6 + i * 2)]) else { return nil }
+            func unquantise(_ q: Int) -> Double { signPow((Double(q) - 9) / 9, 2) * maximum }
+            colours.append((unquantise(ac / (19 * 19)), unquantise((ac / 19) % 19), unquantise(ac % 19)))
+        }
+
+        var bytes = [UInt8](repeating: 255, count: width * height * 4)
+        for y in 0..<height {
+            for x in 0..<width {
+                var r = 0.0, g = 0.0, b = 0.0
+                for j in 0..<countY {
+                    let basisY = cos(Double.pi * Double(y * j) / Double(height))
+                    for i in 0..<countX {
+                        let basis = cos(Double.pi * Double(x * i) / Double(width)) * basisY
+                        let colour = colours[i + j * countX]
+                        r += colour.0 * basis
+                        g += colour.1 * basis
+                        b += colour.2 * basis
+                    }
+                }
+                let offset = 4 * (y * width + x)
+                bytes[offset] = UInt8(sRGB(r))
+                bytes[offset + 1] = UInt8(sRGB(g))
+                bytes[offset + 2] = UInt8(sRGB(b))
+            }
+        }
+
+        guard let provider = CGDataProvider(data: Data(bytes) as CFData) else { return nil }
+        return CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32,
+                       bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                       bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipLast.rawValue),
+                       provider: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent)
+    }
+
+    private static func decode83(_ characters: ArraySlice<Character>) -> Int? {
+        var value = 0
+        for character in characters {
+            guard let digit = base83.firstIndex(of: character) else { return nil }
+            value = value * 83 + digit
+        }
+        return value
     }
 
     // MARK: - Light

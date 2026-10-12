@@ -267,6 +267,10 @@ public final class UserSession {
             await self?.connectivityChanged(offline: offline)
         }
 
+        // Not awaited: whether the server hears "online" or "offline" first is not worth the chat
+        // list waiting for. See `applyPresence`.
+        Task { [weak self] in await self?.applyPresence() }
+
         try await roomList.start()
     }
 
@@ -571,9 +575,25 @@ public final class UserSession {
         guard let deviceID else { return nil }
 
         let client = client
-        let authentication = authentication
         // Signed in through OAuth: the sessions are the server's to end, on its page.
         let isManagedByServer = ((try? client.session())?.oauthData) != nil
+
+        return AccountDevices(
+            userID: userID,
+            currentDeviceID: deviceID,
+            isManagedByServer: isManagedByServer,
+            send: authorisedSender(),
+            serverPage: { deviceID in
+                let action: AccountManagementAction = deviceID.map { .deviceDelete(deviceId: $0) } ?? .devicesList
+                return (try? await client.accountUrl(action: action)).flatMap { $0 }.flatMap(URL.init(string:))
+            })
+    }
+
+    /// One request of the app's own with the account's token on it, sent the way the SDK's are —
+    /// see `AccountDevices`, which explains why, and the two rules that make it safe.
+    private func authorisedSender() -> @Sendable (ProxiedRequest) async throws -> ProxiedResponse {
+        let client = client
+        let authentication = authentication
 
         @Sendable func authorised(_ request: ProxiedRequest) throws -> ProxiedRequest {
             var request = request
@@ -583,25 +603,37 @@ public final class UserSession {
             return request
         }
 
-        return AccountDevices(
-            userID: userID,
-            currentDeviceID: deviceID,
-            isManagedByServer: isManagedByServer,
-            send: { request in
-                let response = try await authentication.send(try authorised(request),
-                                                             toHomeserver: client.homeserver())
-                guard response.status == 401, Self.isExpiredToken(response.body) else { return response }
+        return { request in
+            let response = try await authentication.send(try authorised(request),
+                                                         toHomeserver: client.homeserver())
+            guard response.status == 401, Self.isExpiredToken(response.body) else { return response }
 
-                // The token ran out, and only the SDK can refresh it — which it does when one of
-                // *its* requests is refused. So one cheap request of its own, and then once more.
-                _ = try? await client.displayName()
-                return try await authentication.send(try authorised(request),
-                                                     toHomeserver: client.homeserver())
-            },
-            serverPage: { deviceID in
-                let action: AccountManagementAction = deviceID.map { .deviceDelete(deviceId: $0) } ?? .devicesList
-                return (try? await client.accountUrl(action: action)).flatMap { $0 }.flatMap(URL.init(string:))
-            })
+            // The token ran out, and only the SDK can refresh it — which it does when one of
+            // *its* requests is refused. So one cheap request of its own, and then once more.
+            _ = try? await client.displayName()
+            return try await authentication.send(try authorised(request),
+                                                 toHomeserver: client.homeserver())
+        }
+    }
+
+    /// Tells the homeserver whether this account is online — or, with last seen hidden in
+    /// Settings → Privacy, that it is not, whatever it is doing.
+    ///
+    /// The FFI has no presence call, so this is `PUT /presence/{userId}/status` of the app's own,
+    /// through the same listener as everything else. Said on start and on every return to the
+    /// foreground, because a server that counts a sync as "online" will have moved it back, and
+    /// once more whenever the switch moves. A server with presence turned off answers 403 or 404
+    /// and there is nothing to hide there anyway, so the answer is not looked at.
+    public func applyPresence() async {
+        guard !isDemo, !closed else { return }
+        let hidden = PrivacySettings.hidesPresence()
+        let body = (try? JSONSerialization.data(withJSONObject: ["presence": hidden ? "offline" : "online"])) ?? Data()
+        let user = userID.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed.subtracting(["/", ":"])) ?? userID
+        let request = ProxiedRequest(method: "PUT",
+                                     target: "/_matrix/client/v3/presence/\(user)/status",
+                                     headers: ["Content-Type": "application/json"],
+                                     body: body)
+        _ = try? await authorisedSender()(request)
     }
 
     /// A 401 that means "your token has expired" and not "say your password" — the second is a
@@ -754,6 +786,7 @@ public final class UserSession {
         // reports "no network" for as long as its own retry takes to come round.
         if !isDemo { await authentication.wakeTunnels() }
         await roomList.resume()
+        await applyPresence()
     }
 
     /// Everything this session handed out that is still listening to the SDK.

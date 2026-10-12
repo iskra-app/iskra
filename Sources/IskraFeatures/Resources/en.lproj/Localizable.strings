@@ -1113,3 +1113,38 @@
 "accounts.signOutOf" = "Sign out of %@";
 "session.endedOther.message" = "The server stopped accepting the session for %@ — most likely it was ended from another device. Your other accounts are still here, and you can add this one again.";
 "signIn.problem.alreadySignedIn" = "This account is already on this device — you can switch to it in Settings.";
+
+/* Settings → Chats: service lines, the Return key, the account in the Share menu. */
+"settings.chats" = "Chats";
+"chats.title" = "Chats";
+"chats.serviceSection" = "Service messages";
+"chats.hideNameChanges" = "Hide name changes";
+"chats.hideMembershipChanges" = "Hide joins and leaves";
+"chats.serviceHelp" = "The grey lines about who changed their name and who joined, left or was invited. A new chat name or photo is always shown.";
+"chats.keyboardSection" = "Keyboard";
+"chats.commandReturn" = "Send with ⌘ + Return";
+"chats.commandReturnOnHelp" = "Return starts a new line, ⌘ + Return sends.";
+"chats.commandReturnOffHelp" = "Return sends, Shift + Return starts a new line.";
+"chats.shareSection" = "Share menu";
+"chats.shareAccount" = "Account";
+"chats.shareActive" = "Active";
+"chats.shareAll" = "All";
+"chats.shareHelp" = "Whose chats to offer when you share something from another app. “Active” is the one open in Iskra right now.";
+
+/* Settings → Privacy. */
+"settings.privacy" = "Privacy";
+"privacy.title" = "Privacy";
+"privacy.hidePresence" = "Hide last seen";
+"privacy.hidePresenceHelp" = "You will appear offline to everyone, whatever you are doing, and nobody will know when you were last here. Some servers never share this at all, so there is nothing to hide there.";
+"privacy.hideTyping" = "Hide “typing…”";
+"privacy.hideTypingHelp" = "Others will not see that you are writing. You still see when they are.";
+
+/* Photos & videos: auto-download. */
+"media.download" = "Download";
+"media.autoDownload" = "Auto-download";
+"media.autoDownload.always" = "Always";
+"media.autoDownload.wifi" = "Wi-Fi only";
+"media.autoDownload.never" = "Never";
+"media.autoDownload.alwaysHelp" = "Photos, videos and video messages in chats download by themselves as soon as they appear on screen.";
+"media.autoDownload.wifiHelp" = "On mobile data and in Low Data Mode, photos and videos do not download by themselves: you see a blurred outline and a download button instead.";
+"media.autoDownload.neverHelp" = "Photos and videos download only when you tap the download button or open them. Avatars and stickers always do.";

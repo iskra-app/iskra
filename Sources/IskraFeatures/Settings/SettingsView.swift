@@ -167,6 +167,14 @@ struct SettingsView: View {
                 // registration behind it, and a `NavigationLink` with a destination *closure*
                 // builds its destination eagerly on every pass of this body. See
                 // `navigationDestination`, which is where it is actually made.
+                // How conversations behave rather than how they look: the grey lines, the Return
+                // key, the share sheet's account. See `ChatSettingsView`.
+                NavigationLink {
+                    ChatSettingsView()
+                } label: {
+                    Label(Strings.Settings.chats, systemImage: "bubble.left.and.bubble.right")
+                }
+
                 NavigationLink(value: Destination.notifications) {
                     Label(Strings.Settings.notifications, systemImage: "bell")
                 }
@@ -174,6 +182,14 @@ struct SettingsView: View {
                 // A shield rather than a padlock, and that is the rename saying itself in the
                 // margin: a padlock is a picture of encryption, and this screen is no longer only
                 // about encryption. See `SecurityView`.
+                // What others learn without your writing anything — see `PrivacyView`. Beside
+                // Security, which is the question next to it: who can *read* what you write.
+                NavigationLink {
+                    PrivacyView(session: session)
+                } label: {
+                    Label(Strings.Settings.privacy, systemImage: "hand.raised.circle")
+                }
+
                 NavigationLink(value: Destination.security) {
                     Label(Strings.Settings.security, systemImage: "lock.shield")
                 }

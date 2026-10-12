@@ -14,9 +14,24 @@ struct MediaSettingsView: View {
     @AppStorage(MediaSettings.stripsMetadataKey) private var stripsMetadata = MediaSettings.stripsMetadataByDefault
     @AppStorage(MediaSettings.compressesKey) private var compresses = MediaSettings.compressesByDefault
     @AppStorage(MediaSettings.compressionKey) private var compression = MediaSettings.compressionByDefault
+    @AppStorage(MediaSettings.autoDownloadKey) private var autoDownload = MediaSettings.autoDownloadByDefault
 
     var body: some View {
         Form {
+            // First, because it is the one about what *arrives* — and the one people come to this
+            // screen with on a roaming tariff.
+            Section {
+                Picker(selection: $autoDownload.animation(.smooth(duration: Theme.Timing.reaction))) {
+                    ForEach(MediaAutoDownload.allCases) { choice in
+                        Text(Strings.Media.autoDownloadLabel(choice)).tag(choice)
+                    }
+                } label: {
+                    Label(Strings.Media.autoDownload, systemImage: "arrow.down.circle")
+                }
+            } footer: {
+                Text(Strings.Media.autoDownloadHelp(autoDownload))
+            }
+
             Section {
                 Toggle(isOn: $stripsMetadata.animation(.smooth(duration: Theme.Timing.reaction))) {
                     Label(Strings.Media.stripMetadata, systemImage: "location.slash")

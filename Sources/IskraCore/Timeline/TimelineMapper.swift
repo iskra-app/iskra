@@ -32,7 +32,8 @@ enum TimelineMapper {
     /// reporting them as though they had, so they are subtracted here — see `UnsentReactions`.
     static func rows(from items: [TimelineItem],
                      ownUserID: String,
-                     unsent: UnsentReactions = UnsentReactions()) -> [TimelineRow] {
+                     unsent: UnsentReactions = UnsentReactions(),
+                     hiding hidden: ServiceEventSettings = ServiceEventSettings()) -> [TimelineRow] {
         var rows: [TimelineRow] = []
         rows.reserveCapacity(items.count)
 
@@ -83,6 +84,9 @@ enum TimelineMapper {
             // grey line — and it may not go in at all, because two people joining one after
             // the other is one line and not two. See `append`.
             if let roomEvent = roomEvent(from: event) {
+                // Switched off in Settings → Chats: dropped like any event this app never shows, so
+                // it neither breaks a run of messages nor keeps an empty day's header alive.
+                if hidden.hides(roomEvent.kind) { continue }
                 append(roomEvent, to: &rows)
                 // A note across the conversation breaks a run of messages: the one below it
                 // is no longer "the same person still talking".
