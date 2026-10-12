@@ -660,6 +660,15 @@ public enum Theme {
         /// size of the spinner it starts out showing.
         public static let viewer: CGFloat = 480
 
+        /// The black between two pages of the media viewer while one slides over the next —
+        /// Telegram's gallery leaves a gap, so two photographs never touch edge to edge.
+        public static let galleryPageGap: CGFloat = 20
+
+        /// The strip of little pictures along the foot of the viewer: a tile, and the wider one
+        /// the current picture gets, so the strip says where in the room you are.
+        public static let galleryThumbnail = CGSize(width: 28, height: 40)
+        public static let galleryThumbnailCurrent: CGFloat = 56
+
         /// The sheet that shows the recovery key, once and never again. Fixed rather than
         /// flexible because of the Mac, where a sheet is as wide as it is allowed to be and
         /// a key allowed to stretch across it stops being a thing you can read back one

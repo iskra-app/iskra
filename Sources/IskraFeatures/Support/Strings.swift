@@ -842,6 +842,14 @@ public enum Strings {
             /// The video would not come down. Said on the bubble, not in an alert — there is
             /// nothing to do about it but press it again.
             public static let loadFailed = LocalizedStringResource("message.media.loadFailed", bundle: bundle)
+
+            /// "3 of 12" — where in the room's pictures the gallery is.
+            public static func counter(_ position: Int, _ total: Int) -> LocalizedStringResource {
+                LocalizedStringResource("message.media.counter", defaultValue: "\(position) of \(total)", bundle: bundle)
+            }
+            /// A video's fifteen seconds back and forward, said aloud.
+            public static let skipBack = LocalizedStringResource("message.media.skipBack", bundle: bundle)
+            public static let skipForward = LocalizedStringResource("message.media.skipForward", bundle: bundle)
         }
 
         public enum Delivery {

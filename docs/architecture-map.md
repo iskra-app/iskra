@@ -256,7 +256,7 @@ SDK-типы не выходят за пределы `IskraCore`: наружу �
   реакции, контекстное меню, ретрай), `RoomInfoView`, `PinnedMessagesView`,
   `NewConversationView`, `RoomHeader`, `ReplyQuote`, `RoomEventRow`, `RoomSearchField`,
   `RecordingStrip`.
-- `Media/` — `MediaViewer` (зум/пан/шаринг/сохранение), `AudioPlayback`, `VideoPlayback`,
+- `Media/` — `MediaGallery` (`MediaPager`: листание, зум/пан, шаринг/сохранение, свои контролы видео, лента миниатюр), `AudioPlayback`, `VideoPlayback`,
   `FileOpener` (QuickLook / NSWorkspace), `LocationView`+`LocationPicker`, `VoiceRecorder`.
 - `VideoNote/` — `VideoNoteRecorder` (AVCaptureSession, фронталка по умолчанию, переворот,
   зеркалится только превью), `VideoNoteComposer` (шторка с камерой, hold/lock/cancel).

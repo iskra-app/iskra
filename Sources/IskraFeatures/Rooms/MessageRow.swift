@@ -891,7 +891,7 @@ struct PictureBubble: View {
     /// Who sent it and when — carried through the bubble to the viewer, which puts them at the
     /// top of the screen. A photo opened full-screen has none of what the timeline was saying
     /// around it: no side of the conversation, no name above it, no clock beside it. See
-    /// `MediaViewer`.
+    /// `MediaPager`.
     let sender: String
     let timestamp: Date
 
