@@ -37,6 +37,10 @@ struct MessageContent: View {
     @Environment(\.currentUserID) private var currentUserID
     @Environment(\.currentUserName) private var currentUserName
 
+    /// The row's tap arbiter, so a hold that opened the menu does not also open a link — see
+    /// `messageText`.
+    @Environment(\.messageTaps) private var taps
+
     /// A link the user tapped, held while they are asked whether they really mean to open it. A
     /// message can say one thing and link to another — "our shared album" pointing at a phishing
     /// page — so the address is shown in full, and nothing opens until they say so.
@@ -217,6 +221,9 @@ struct MessageContent: View {
         Text(paintedBody(body))
             .tint(accent.color)
             .environment(\.openURL, OpenURLAction { url in
+                // The finger coming off a hold that opened the menu is not a tap on the link it
+                // happened to be resting on — see `MessageTaps.wasSpentByPress`.
+                if taps?.wasSpentByPress() == true { return .handled }
                 // A hidden spoiler is drawn as a link to itself, so that the tap which reveals it
                 // is the text's own and not a gesture fighting the bubble's. See `paintedBody`.
                 if url.scheme == Self.spoilerScheme, let number = Int(url.host() ?? "") {
