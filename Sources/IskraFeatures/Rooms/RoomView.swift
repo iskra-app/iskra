@@ -293,7 +293,17 @@ public struct RoomView: View {
     /// are not looking at — the one place the bottom anchor has to be overruled, and the only
     /// thing this view moves the scroll view *in points* for. Everything else it does through the
     /// `ScrollViewReader`, which speaks in rows.
+    ///
+    /// **It expires**, and that is the cure for the timeline jumping in the middle of a scroll. It
+    /// used to be cleared only by the conversation growing — and a change of the last row does not
+    /// always grow it: the SDK's echo taking over from our own bubble changes the last ID and not
+    /// the height, and so does a deletion. The note then sat there, and the next time the content
+    /// grew for any reason — the reader scrolling up and a page of history landing — the reader
+    /// was put back where they had been when that message arrived, mid-flick. So it is good for
+    /// `Timing.placeIsHeld` and no longer, and it is dropped the moment the reader moves the list
+    /// or history starts to arrive: either way the place it remembers is not theirs any more.
     @State private var held: ScrollMetrics?
+    @State private var heldSince: ContinuousClock.Instant?
 
     @State private var scrollPosition = ScrollPosition()
 
@@ -543,6 +553,10 @@ public struct RoomView: View {
                 spinnerRest?.cancel()
 
                 guard !isPaginating else {
+                    // History grows the conversation from the top, and a noted place is measured
+                    // from the top: putting it back after a page lands would be wrong by a page.
+                    held = nil
+                    heldSince = nil
                     withAnimation(.smooth) { isFetchingHistory = true }
                     return
                 }
@@ -663,8 +677,13 @@ public struct RoomView: View {
                     return
                 }
 
+                if let since = heldSince, ContinuousClock.now - since > Theme.Timing.placeIsHeld {
+                    held = nil
+                    heldSince = nil
+                }
                 guard let place = held, metrics.contentHeight > place.contentHeight else { return }
                 held = nil
+                heldSince = nil
                 scrollPosition.scrollTo(y: place.offset)
             }
             // Moving the conversation is what says the reader wants it left where they put it.
@@ -684,6 +703,10 @@ public struct RoomView: View {
                 floatingDateFollows(phase)
                 guard phase != .idle, phase != .animating else { return }
                 isOpening = false
+                // The reader has the list now; a place noted for them a moment ago is not where
+                // they are going. See `held`.
+                held = nil
+                heldSince = nil
                 // Moving the conversation yourself outranks the room's wish to stay at the end —
                 // the same rule the opening hold follows, and for the same reason. See
                 // `followsEnd`.
@@ -842,6 +865,10 @@ public struct RoomView: View {
                 guard atNewest else { return }
                 Task { await timeline.markAsRead() }
 
+                // Back at the end: the typing bubble catches up with whatever happened while the
+                // reader was away from it. See `setTyping`.
+                setTyping(!timeline.typing.isEmpty)
+
                 guard hasUnseenBelow else { return }
                 withAnimation(.smooth) { hasUnseenBelow = false }
             }
@@ -873,6 +900,7 @@ public struct RoomView: View {
                     // arriving row is laid out — `onChange` runs on the change, not on the frame
                     // it produces — so this is the conversation as it was without it.
                     held = metrics
+                    heldSince = .now
                     return
                 }
 
@@ -1320,8 +1348,16 @@ public struct RoomView: View {
     /// it — see `onScrollPhaseChange`.
     /// Puts the typing bubble up at once, or takes it down after `typingGrace` — see
     /// `showsTyping`.
+    ///
+    /// Only while the reader is at the end. The bubble is the last thing in the conversation, and
+    /// the scroll view holds the conversation's *bottom* still when its size changes — so a bubble
+    /// coming or going below somebody reading further up moved everything they were reading by its
+    /// height: the timeline jumped every time somebody in the room started or stopped typing.
+    /// Up there the header already says who is writing; the bubble catches up when the reader comes
+    /// back down (see the `isAtNewest` observer).
     private func setTyping(_ isTyping: Bool) {
         typingHide?.cancel()
+        guard isAtNewest else { return }
         if isTyping {
             guard !showsTyping else { return }
             withAnimation(Theme.Timing.arrival) { showsTyping = true }
