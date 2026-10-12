@@ -753,7 +753,8 @@ public final class TimelineStore {
         // already emptied and a conversation that has not changed. The app appears to have
         // swallowed what they wrote. So the bubble is ours until the real one arrives; see
         // `PendingSends`, which also explains how the two are told apart.
-        let pendingID = pending.add(text: trimmed, replyingTo: replyID)
+        let shown = Set(rows.compactMap { $0.message?.isOwn == true ? $0.message?.id : nil })
+        let pendingID = pending.add(text: trimmed, replyingTo: replyID, alreadyShown: shown)
         rebuildRows()
         forgetPending(pendingID, after: PendingSends.lifetime)
 
