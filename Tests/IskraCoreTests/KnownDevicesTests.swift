@@ -14,8 +14,8 @@ struct KnownDevicesTests {
         return KnownDevices(defaults: defaults)
     }
 
-    private func device(_ id: String, current: Bool = false) -> AccountDevice {
-        AccountDevice(id: id, name: nil, lastSeenIP: nil, lastSeenAt: nil, isCurrent: current)
+    private func device(_ id: String, name: String? = nil, current: Bool = false) -> AccountDevice {
+        AccountDevice(id: id, name: name, lastSeenIP: nil, lastSeenAt: nil, isCurrent: current)
     }
 
     @Test("the first look asks about nothing and remembers everything")
@@ -35,7 +35,7 @@ struct KnownDevicesTests {
         #expect(known.newSessions(in: list, account: "A").map(\.id) == ["STRANGER"])
         #expect(known.newSessions(in: list, account: "A").map(\.id) == ["STRANGER"])
 
-        known.confirm("STRANGER", for: "A")
+        known.confirm(device("STRANGER"), for: "A")
         #expect(known.newSessions(in: list, account: "A").isEmpty)
     }
 
@@ -56,5 +56,14 @@ struct KnownDevicesTests {
         known.forget(account: "A")
         #expect(known.newSessions(in: [device("Z")], account: "A").isEmpty)
         #expect(known.newSessions(in: [device("Y"), device("W")], account: "B").map(\.id) == ["W"])
+    }
+
+    @Test("a known ID with a different name is new — a client chooses its own device ID")
+    func reusedIDIsNew() throws {
+        let known = try fresh("reused")
+        _ = known.newSessions(in: [device("ME", current: true), device("PHONE", name: "Iskra (iPhone)")], account: "A")
+
+        let list = [device("ME", current: true), device("PHONE", name: "Element Web: Firefox")]
+        #expect(known.newSessions(in: list, account: "A").map(\.id) == ["PHONE"])
     }
 }

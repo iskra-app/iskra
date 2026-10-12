@@ -9,9 +9,20 @@ import Observation
 /// and compared with the IDs written down here. The first read for an account writes everything down
 /// and asks nothing — the sessions somebody already had before this existed are not news.
 ///
-/// Kept per account, in `UserDefaults.standard`: a list of device IDs is not a secret (the server
-/// hands it to every session of the account), and it belongs to this device's memory of the account,
-/// not to the account.
+/// A session is remembered by its ID **and** its name, not by the ID alone. Matrix lets a client
+/// choose its own `device_id` at login, and logging in with an ID that already exists replaces that
+/// session — so somebody with the password who reused a known ID would otherwise walk in unasked.
+/// They would have to reuse the name as well now, and the person whose session they replaced is
+/// signed out on that device, which is noticed. A session the person renames is asked about again,
+/// which is the right side to err on.
+///
+/// What this cannot see is a session that was already there on the first look — that is the price
+/// of not crying wolf over every device somebody had before the banner existed. The Devices screen
+/// lists them all.
+///
+/// Kept per account, in `UserDefaults.standard`: device IDs and names are not secrets (the server
+/// hands them to every session of the account), and they belong to this device's memory of the
+/// account, not to the account.
 public struct KnownDevices {
     public static let storageKey = "devices.known"
 
@@ -21,7 +32,7 @@ public struct KnownDevices {
         self.defaults = defaults
     }
 
-    /// The IDs known for this account, or nil if it has never been looked at.
+    /// The sessions known for this account, or nil if it has never been looked at.
     func known(for account: String) -> Set<String>? {
         guard let all = defaults.dictionary(forKey: Self.storageKey) as? [String: [String]],
               let ids = all[account] else { return nil }
@@ -41,22 +52,27 @@ public struct KnownDevices {
         defaults.set(all, forKey: Self.storageKey)
     }
 
+    /// How a session is remembered: its ID and its name together — see the type's note.
+    static func fingerprint(_ device: AccountDevice) -> String {
+        device.id + "\u{1F}" + (device.name ?? "")
+    }
+
     /// What to ask about, given the list the server sent: every session that is not this one and
     /// is not known. Writes down the answer to "what exists" as it goes — a session that has gone
     /// is forgotten, and on the very first look everything is known and nothing is asked.
     func newSessions(in devices: [AccountDevice], account: String) -> [AccountDevice] {
-        let listed = Set(devices.map(\.id))
+        let listed = Set(devices.map(Self.fingerprint))
         guard let known = known(for: account) else {
             set(listed, for: account)
             return []
         }
         let stillThere = known.intersection(listed)
         if stillThere != known { set(stillThere, for: account) }
-        return devices.filter { !$0.isCurrent && !stillThere.contains($0.id) }
+        return devices.filter { !$0.isCurrent && !stillThere.contains(Self.fingerprint($0)) }
     }
 
-    func confirm(_ id: String, for account: String) {
-        set((known(for: account) ?? []).union([id]), for: account)
+    func confirm(_ device: AccountDevice, for account: String) {
+        set((known(for: account) ?? []).union([Self.fingerprint(device)]), for: account)
     }
 }
 
@@ -91,7 +107,8 @@ public final class NewSignInsStore {
     }
 
     public func confirm(_ id: String) {
-        known.confirm(id, for: account)
+        guard let device = sessions.first(where: { $0.id == id }) else { return }
+        known.confirm(device, for: account)
         sessions.removeAll { $0.id == id }
     }
 
