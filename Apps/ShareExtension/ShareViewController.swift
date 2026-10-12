@@ -53,7 +53,7 @@ final class ShareViewController: UIViewController {
 
         let picker = SharePickerView(
             shared: shared,
-            chats: ChatDirectory.directory(),
+            chats: ChatDirectory.shareDirectory(),
             onSend: { [weak self] chats, comment in
                 Self.enqueue(shared, comment: comment, to: chats)
                 // Straight on to the app, which sends what is in the outbox the moment it is active

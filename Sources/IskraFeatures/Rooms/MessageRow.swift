@@ -639,7 +639,7 @@ struct VideoNoteView: View {
             if let player = playback.player {
                 VideoSurface(player: player)
             } else {
-                MediaThumbnail(attachment: attachment, size: 400)
+                MediaThumbnail(attachment: attachment, size: 400, obeysAutoDownload: true)
             }
         }
         // It grows while it plays and settles back when it ends. The frame is animated, not
@@ -997,7 +997,7 @@ struct PictureBubble: View {
     /// The picture itself, sharp, sitting on the blur of itself. It keeps the image it fetched,
     /// which is the one `backdrop` blurs — see there.
     private var picture: some View {
-        MediaThumbnail(attachment: attachment, onLoad: { loaded = $0 })
+        MediaThumbnail(attachment: attachment, onLoad: { loaded = $0 }, obeysAutoDownload: true)
             .aspectRatio(aspectRatio, contentMode: .fit)
             .frame(maxWidth: Theme.Size.picture)
                 // Half the *timeline's* height, not half the screen's: on a Mac the window

@@ -276,6 +276,11 @@ public struct RoomView: View {
     /// `MessageLayout` and `messageRow(_:in:)`.
     @AppStorage(MessageLayout.storageKey) private var messageLayout: MessageLayout = .default
 
+    /// Which grey lines the conversation leaves out — Settings → Chats. Watched only so the room on
+    /// screen follows a change at once; `TimelineStore` reads the settings itself.
+    @AppStorage(ServiceEventSettings.hidesNameChangesKey) private var hidesNameChanges = false
+    @AppStorage(ServiceEventSettings.hidesMembershipChangesKey) private var hidesMembershipChanges = false
+
     /// How tall the conversation is and how far into it the reader has come.
     private struct ScrollMetrics: Equatable {
         let contentHeight: CGFloat
@@ -1035,6 +1040,8 @@ public struct RoomView: View {
         // and because somebody reading a conversation should not have to go back to the list to find
         // out why nothing new is arriving in it. See `OfflineBanner`.
         .offlineBanner()
+        .onChange(of: hidesNameChanges) { timeline.serviceEventSettingsChanged() }
+        .onChange(of: hidesMembershipChanges) { timeline.serviceEventSettingsChanged() }
         // Opened the first time the room reports anything pinned, and kept afterwards. A room
         // with nothing pinned never opens a second timeline at all.
         .onChange(of: timeline.pinnedEventIDs.isEmpty, initial: true) { _, isEmpty in

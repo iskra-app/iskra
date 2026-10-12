@@ -201,6 +201,9 @@ struct MessageComposer: View {
 
     @FocusState private var isFocused: Bool
 
+    /// Where the cursor is in the field — for a newline put in by hand, see `ComposerReturnKey`.
+    @State private var selection: TextSelection?
+
     @Environment(\.accent) private var accent
 
     /// Which way round the mono accent's label goes — see the foreground in `icon`.
@@ -272,7 +275,8 @@ struct MessageComposer: View {
                             // it does with it.
                             .transition(.scale(scale: 0.94).combined(with: .opacity))
                     } else {
-                        TextField(String(app: Strings.Room.composerPlaceholder), text: $draft, axis: .vertical)
+                        TextField(String(app: Strings.Room.composerPlaceholder), text: $draft,
+                                  selection: $selection, axis: .vertical)
                             .transition(.opacity)
                             .textFieldStyle(.plain)
                             // Where the words start on the screen — the point a sent message
@@ -287,7 +291,8 @@ struct MessageComposer: View {
                             .padding(.vertical, Theme.Spacing.normal)
                             .frame(minHeight: control)
                             .navigationGlass(in: .rect(cornerRadius: Theme.Radius.bubble, style: .continuous))
-                            .onSubmit(onSend)
+                            // Return or ⌘-Return, by Settings → Chats — see `ComposerReturnKey`.
+                            .composerReturnKey(text: $draft, selection: $selection, send: onSend)
                     }
 
                     // With nothing typed, there is one button where the send button sits, and it
@@ -313,6 +318,11 @@ struct MessageComposer: View {
                                label: Strings.Room.send,
                                isPrimary: true,
                                action: onSend)
+                            #if os(iOS)
+                            // ⌘-Return on an iPad keyboard. On a Mac the field's own key handler
+                            // takes it, and a shortcut here as well would send twice.
+                            .keyboardShortcut(.return, modifiers: .command)
+                            #endif
                     }
                 }
             }

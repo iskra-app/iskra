@@ -121,6 +121,78 @@ public enum ChatDirectory {
         return entries
     }
 
+    // MARK: - Whose chats the share sheet shows
+
+    /// Which account the share sheet offers chats from — Settings → Chats.
+    public enum ShareAccount: Sendable, Equatable, Hashable {
+        /// Whoever is on screen in the app right now. The default: sharing is nearly always "to
+        /// the person I was just talking to", and they are in the account that is open.
+        case active
+        /// One account, always, whichever is open — the work account for a work phone's Share.
+        case account(String)
+        /// Every account, a block each — how the sheet behaved before there was a choice.
+        case all
+
+        init(stored: String?) {
+            switch stored {
+            case nil, "", Self.activeValue: self = .active
+            case Self.allValue: self = .all
+            case let id?: self = .account(id)
+            }
+        }
+
+        var stored: String {
+            switch self {
+            case .active: Self.activeValue
+            case .all: Self.allValue
+            case let .account(id): id
+            }
+        }
+
+        private static let activeValue = "active"
+        private static let allValue = "all"
+    }
+
+    private static let shareAccountKey = "share.account"
+    private static let activeAccountKey = "accounts.active"
+
+    public static func shareAccount(in defaults: UserDefaults? = sharedDefaults) -> ShareAccount {
+        ShareAccount(stored: defaults?.string(forKey: shareAccountKey))
+    }
+
+    public static func setShareAccount(_ choice: ShareAccount, in defaults: UserDefaults? = sharedDefaults) {
+        defaults?.set(choice.stored, forKey: shareAccountKey)
+    }
+
+    /// The account on screen, written down for the share extension — which has no session, and no
+    /// business reading the Keychain's account index to find out who is open.
+    public static func recordActiveAccount(_ sessionID: String, in defaults: UserDefaults? = sharedDefaults) {
+        defaults?.set(sessionID, forKey: activeAccountKey)
+    }
+
+    /// The chats the share sheet lists, by the choice above.
+    ///
+    /// A choice that no longer points anywhere — the account it named was signed out, or nothing
+    /// has said yet who is active — falls back to the next widest answer rather than to an empty
+    /// sheet: the chosen account becomes the active one, and an unknown active one becomes all.
+    public static func shareDirectory(from defaults: UserDefaults? = sharedDefaults) -> [ChatDirectoryEntry] {
+        let all = directory(from: defaults)
+        let accounts = Set(all.map(\.accountID))
+        guard accounts.count > 1 else { return all }
+
+        func only(_ account: String?) -> [ChatDirectoryEntry]? {
+            guard let account, accounts.contains(account) else { return nil }
+            return all.filter { $0.accountID == account }
+        }
+        let active = only(defaults?.string(forKey: activeAccountKey))
+
+        switch shareAccount(in: defaults) {
+        case .all: return all
+        case .active: return active ?? all
+        case let .account(id): return only(id) ?? active ?? all
+        }
+    }
+
     // MARK: - Opening a chat
 
     public static func requestOpen(roomID: String, accountID: String? = nil,

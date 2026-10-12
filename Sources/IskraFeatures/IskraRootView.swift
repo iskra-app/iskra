@@ -492,6 +492,8 @@ public struct IskraRootView: View {
                                       avatarSeed: $0.avatarSeed) }
         // This account's part of the list; everybody else's stays as it was.
         ChatDirectory.writeDirectory(entries, account: session.sessionID)
+        // And whose list is live: the share sheet's "active account" is this one.
+        ChatDirectory.recordActiveAccount(session.sessionID)
     }
 
     /// Acts on what a Shortcuts intent left behind: opens the chat it asked for, and sends the

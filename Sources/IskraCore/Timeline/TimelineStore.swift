@@ -1379,6 +1379,8 @@ public final class TimelineStore {
     /// leaves the other person watching "Аня печатает…" for as long as the server's own timeout —
     /// while Аня has put her phone down mid-word and gone to lunch.
     public func typed() {
+        // Hidden in Settings → Privacy: nothing is sent, and so there is nothing to take back.
+        guard !PrivacySettings.hidesTyping() else { return }
         typingStopper?.cancel()
 
         if !isTellingThemWeType {
@@ -1679,8 +1681,15 @@ public final class TimelineStore {
     /// stays on the screen, and the rebuilt one is published when it is at least as complete as
     /// what it replaces — same rows, same identities, same scroll position, and the deleted
     /// message quietly becomes "message deleted" in place.
+    /// Settings → Chats changed which grey lines are shown; the conversation on screen follows at
+    /// once rather than on its next diff.
+    public func serviceEventSettingsChanged() {
+        rebuildRows()
+    }
+
     private func rebuildRows() {
-        var built = TimelineMapper.rows(from: items, ownUserID: ownUserID, unsent: unsentReactions)
+        var built = TimelineMapper.rows(from: items, ownUserID: ownUserID, unsent: unsentReactions,
+                                        hiding: ServiceEventSettings.current())
 
         // The messages we have sent and not yet been shown, added to the end of the conversation —
         // and dropped again the moment the SDK's own echo of one turns up among the rows above.

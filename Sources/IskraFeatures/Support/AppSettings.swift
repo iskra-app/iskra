@@ -30,7 +30,8 @@ enum AppSettings {
         QuickReaction.storageKey,
         Wallpaper.storageKey,
         Wallpaper.dimmingKey,
-    ] + MediaSettings.keys
+        ComposerReturnKey.sendsWithCommandReturnKey,
+    ] + MediaSettings.keys + PrivacySettings.keys + ServiceEventSettings.keys
 
     @MainActor
     static func forget() {
