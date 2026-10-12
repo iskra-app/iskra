@@ -93,14 +93,17 @@ struct AppearanceView: View {
                 Text(Strings.Appearance.accent)
             }
 
-            // Who gets a drawn face — the slider the first run asks with, so that the answer given
-            // then can be changed somewhere other than the beta features.
-            Section {
-                FaceModePicker()
-                    .padding(.vertical, Theme.Spacing.close)
-            } header: {
-                Text(Strings.Appearance.avatars)
+            // iPhone and iPad only, and not drawn at all where the device forbids it.
+            // `setAlternateIconName` is UIKit's and AppKit has no equivalent — see `HomeIcon`.
+            #if os(iOS)
+            if HomeIcons.areSupported {
+                Section {
+                    HomeIconPicker()
+                } header: {
+                    Text(Strings.Settings.appIcon)
+                }
             }
+            #endif
 
             Section {
                 wallpaperRow

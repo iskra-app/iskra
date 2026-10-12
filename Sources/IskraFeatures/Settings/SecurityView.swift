@@ -11,33 +11,43 @@ import IskraDesign
 /// `HistoryProtection` and not `RecoveryState`, and why the word "key" only appears where the user
 /// has to physically handle one.
 ///
-/// Three more things were asking halves of the same question from three separate rows on the
-/// settings root — the other devices signed into this account, the Face ID lock on the app, and
-/// whether traffic goes through a bridge that can see it. Scattered, each read as a small
-/// preference; gathered here, under a name that covers them, they read as one subject. So the
-/// screen has five sections and one heading, and the heading is "Security".
+/// More things were asking halves of the same question from separate rows on the settings root —
+/// the other devices signed into this account, who is blocked, what others can see of you, the
+/// Face ID lock on the app, and whether traffic goes through a bridge that can see it. Scattered,
+/// each read as a small preference; gathered here, under a name that covers them, they read as one
+/// subject.
+///
+/// The order goes from what most needs attention to what can least be undone: whether the history
+/// is safe, and this device if it is not yet trusted; then who else is in the account and who is
+/// kept out of it; what others see of you; the lock and the bridge; and last, in red, the button
+/// that throws the old recovery code away.
 ///
 /// The recovery key itself is shown exactly once, in a sheet with no way to dismiss it except the
 /// button that says the user has saved it. That is not an interaction pattern anyone enjoys,
 /// and it is the correct one: a recovery key the user swiped away is a recovery key they do
 /// not have, and they find that out months later, from a screen that cannot help them.
 struct SecurityView: View {
-    /// The session, which this screen needs for two of the things it has taken in: the bridge
-    /// screen is built over it, and the address of the account's own devices page is asked of it.
+    /// The session, which this screen needs for what it has taken in: the bridge screen is built
+    /// over it, the device list and the blocked list are asked of it, and the presence switch is
+    /// told to it.
     let session: UserSession
 
     /// The app lock, put up by the root. Nil only where the root has not — never in the real app.
     /// It used to be read by `SettingsView`, which drew the switch itself.
     @Environment(\.appLock) private var appLock
 
-    /// Where this account's devices are managed — on the server's own page, because there is
-    /// nowhere in this app they could be. Resolved once, on appearance; `nil` means the session
-    /// did not come through OAuth and there is no such page, and then the row is not drawn at all.
-    ///
-    /// Resolved *here* now rather than being handed down from settings. The row and the sentence
-    /// in `otherDevices` that depends on whether the row exists are on the same screen at last, so
-    /// the fact does not have to travel between two of them.
-    @State private var devicesURL: URL?
+    /// What others learn without your writing anything — moved here from a screen of their own.
+    /// Typing is read on the next keystroke; presence is told to the server the moment the switch
+    /// moves, because "hide when I was last here" that takes effect next time is a switch that did
+    /// not work today.
+    @AppStorage(PrivacySettings.hidesPresenceKey) private var hidesPresence = PrivacySettings.hidesPresenceByDefault
+    @AppStorage(PrivacySettings.hidesTypingKey) private var hidesTyping = PrivacySettings.hidesTypingByDefault
+
+    /// The device list, built on the push and not on every pass of this body — see `SettingsView`'s
+    /// destinations, which is where it lived before.
+    private enum Destination: Hashable {
+        case devices
+    }
 
     /// The session's, not this screen's — a plain `let`, exactly like `verification` below.
     ///
@@ -46,11 +56,6 @@ struct SecurityView: View {
     /// that was never saved, and a banner cannot ask a question that only settings knows the answer
     /// to. State that everything needs cannot belong to one screen.
     let recovery: RecoveryStore
-
-    /// The one true thing this screen can say about sessions — see the footer, and
-    /// `ROADMAP.md`, stage 6. Optional because a client with no device ID is a thing to say
-    /// nothing about rather than an empty line under a heading.
-    let deviceID: String?
 
     /// What is being typed into the field, when the key is being typed rather than made.
     @State private var typedKey = ""
@@ -73,17 +78,29 @@ struct SecurityView: View {
 
     init(session: UserSession,
          recovery: RecoveryStore,
-         verification: VerificationStore,
-         deviceID: String?) {
+         verification: VerificationStore) {
         self.session = session
         self.recovery = recovery
         self.verification = verification
-        self.deviceID = deviceID
     }
 
     var body: some View {
         Form {
             state
+
+            if !recovery.isDeviceVerified {
+                thisDevice
+            }
+
+            people
+
+            privacy
+
+            if let appLock {
+                lockSection(appLock)
+            }
+
+            bridge
 
             if recovery.protection == .on {
                 Section {
@@ -93,7 +110,9 @@ struct SecurityView: View {
                     // old code would stop working; a footer is not a question, and people press
                     // buttons without reading footers. Settings is the only place a code is minted
                     // deliberately now, so this dialog is the only place the question is asked.
-                    Button {
+                    //
+                    // Red, and last on the screen: it is the one thing here that cannot be undone.
+                    Button(role: .destructive) {
                         isMintingNewCode = true
                     } label: {
                         working(Strings.Encryption.newKey)
@@ -103,23 +122,21 @@ struct SecurityView: View {
                     Text(Strings.Encryption.newKeyHelp)
                 }
             }
-
-            thisDevice
-
-            otherDevicesSection
-
-            if let appLock {
-                lockSection(appLock)
-            }
-
-            bridge
         }
         .formStyle(.grouped)
         .navigationTitle(Text(Strings.Settings.security))
         .toolbarTitleDisplayMode(.inline)
-        // Cheap: the SDK builds this out of OAuth metadata it has already cached, without going to
-        // the network. It is still async, so it cannot be read straight out of `body`.
-        .task { devicesURL = await session.deviceManagementURL() }
+        .onChange(of: hidesPresence) {
+            Task { await session.applyPresence() }
+        }
+        .navigationDestination(for: Destination.self) { destination in
+            switch destination {
+            case .devices:
+                if let devices = session.accountDevices() {
+                    DevicesView(store: DevicesStore(source: devices))
+                }
+            }
+        }
         // Neither store is stopped here any more, and neither is started here. Both belong to the
         // session and outlive this screen — `load()` is called once, when the session starts. Tearing
         // either down on the way out would unhook a listener the rest of the app is reading: the
@@ -236,99 +253,77 @@ struct SecurityView: View {
         }
     }
 
-    /// This device, named the way the account names it, and whether the account trusts it.
+    /// This device, while the account does not yet trust it — and the way to make it.
     ///
-    /// One device, not a list, and the footer says why rather than leaving a suspiciously
-    /// short list to speak for itself.
+    /// Drawn only then. Once it is verified there is nothing to do about it, and a green "Verified"
+    /// row with the device's ID beside it was a fact nobody came to this screen for.
+    ///
+    /// The button is the point. For a long time it did not exist while the rest of the app
+    /// cheerfully told people to come here and verify: a message that would not send said "verify
+    /// this device — it's done in settings", and settings said "Not verified" and offered nothing.
     private var thisDevice: some View {
         Section {
-            if let deviceID {
-                LabeledContent {
-                    Text(deviceID)
-                        .font(.body.monospaced())
-                        .textSelection(.enabled)
-                } label: {
-                    Text(Strings.Encryption.thisDevice)
-                }
-            }
-
             Label {
-                Text(recovery.isDeviceVerified
-                     ? Strings.Encryption.deviceVerified
-                     : Strings.Encryption.deviceUnverified)
+                Text(Strings.Encryption.deviceUnverified)
             } icon: {
-                Image(systemName: recovery.isDeviceVerified ? "checkmark.seal.fill" : "seal")
-                    .foregroundStyle(recovery.isDeviceVerified ? .green : .secondary)
+                Image(systemName: "seal")
+                    .foregroundStyle(.secondary)
             }
 
-            // And, if it is not verified, the way to verify it — which for a long time did not
-            // exist while the rest of the app cheerfully told people to come here and do it. A
-            // message that would not send said "verify this device — it's done in settings", and
-            // settings said "Not verified" and offered nothing. The instruction led to a wall.
-            if !recovery.isDeviceVerified {
-                Button {
-                    isVerifying = true
-                    Task { await verification.start() }
-                } label: {
-                    working(Strings.Verification.verify, isWorking: verification.isWorking)
-                }
-                .disabled(verification.isWorking)
+            Button {
+                isVerifying = true
+                Task { await verification.start() }
+            } label: {
+                working(Strings.Verification.verify, isWorking: verification.isWorking)
             }
+            .disabled(verification.isWorking)
         } footer: {
-            Text(otherDevices)
+            Text(Strings.Verification.why)
         }
     }
 
-    /// The sentence under this device, once it is trusted and there is nothing left to do about it.
+    /// Who else is in this account, and who is kept out of your conversations.
     ///
-    /// Which of two sentences it is depends on whether the "My devices" row below exists, because
-    /// it used to simply assert that it did — and on a session signed in with a password there is
-    /// no such row, so the app was citing a section of its own settings that was not there. The row
-    /// only appears where the server hands over an account page, which it only does for a session
-    /// obtained through the browser; everywhere else the honest answer is the older one, which is
-    /// that the other devices are the server's business and not ours.
-    private var otherDevices: LocalizedStringResource {
-        guard recovery.isDeviceVerified else { return Strings.Verification.why }
-        return devicesURL != nil ? Strings.Encryption.otherDevicesHere
-                                 : Strings.Encryption.otherDevices
+    /// The devices are the account's sessions, Telegram's "Devices" — only where there is a device
+    /// ID to call this one by. Both rows used to sit on the settings root.
+    private var people: some View {
+        Section {
+            if session.deviceID != nil {
+                NavigationLink(value: Destination.devices) {
+                    Label(Strings.Devices.title, systemImage: "laptopcomputer.and.iphone")
+                }
+            }
+
+            NavigationLink {
+                BlockedUsersView(store: session.blocked)
+            } label: {
+                Label(Strings.Settings.blocked, systemImage: "hand.raised")
+            }
+        }
     }
 
-    /// The devices, which live somewhere else — and the row is only here when there is somewhere
-    /// else for it to lead to.
-    ///
-    /// There is no native list and there is not going to be one. The Rust SDK has `devices()` and
-    /// `delete_devices()`; the FFI deliberately exports neither, and on a homeserver running the
-    /// authentication service the endpoint that deletes a device answers 404 — it is gone, not
-    /// guarded. What the SDK *does* hand over is the address of the page that can do it, opened
-    /// with the session the user already has, which is Element X's answer to the same wall.
-    ///
-    /// `deviceManagementURL()` is nil when the session was not obtained through OAuth, and then
-    /// this section simply is not drawn. A row that led nowhere would be worse than no row: it
-    /// would be the app claiming it could do something it cannot.
-    ///
-    /// It sat on the settings root until now, one section above a section about encryption, which
-    /// put "this device" and "my other devices" on two different screens.
+    /// What other people learn about you without your writing anything: that you are here, and
+    /// that you are typing — the two things a Matrix server actually tells others.
     @ViewBuilder
-    private var otherDevicesSection: some View {
-        if let devicesURL {
-            Section {
-                // Opened in the app's own browser rather than thrown to Safari, and that is what
-                // carries the sign-in across: the same `ASWebAuthenticationSession` that signed
-                // the user in shares its cookies, so the server's page recognises them and does
-                // not ask them to sign in again to see their own devices.
-                Button {
-                    Task { await WebAuthentication.approve(url: devicesURL) }
-                } label: {
-                    LabeledContent {
-                        Image(systemName: "arrow.up.forward.app")
-                            .foregroundStyle(.secondary)
-                    } label: {
-                        Label(Strings.Settings.devices, systemImage: "laptopcomputer.and.iphone")
-                    }
-                }
-            } footer: {
-                Text(Strings.Settings.devicesHelp)
+    private var privacy: some View {
+        Section {
+            Toggle(isOn: $hidesPresence) {
+                Label(Strings.Privacy.hidePresence, systemImage: "clock.badge.xmark")
             }
+            .accentControl()
+        } header: {
+            Text(Strings.Privacy.title)
+        } footer: {
+            Text(Strings.Privacy.hidePresenceHelp)
+        }
+
+        Section {
+            Toggle(isOn: $hidesTyping) {
+                Label(Strings.Privacy.hideTyping, systemImage: "ellipsis.bubble")
+            }
+            .accentControl()
+        } footer: {
+            Text(Strings.Privacy.hideTypingHelp)
         }
     }
 

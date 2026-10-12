@@ -14,7 +14,7 @@ import IskraDesign
 /// and this screen must not draw a second one. Inside a sidebar it does not, and this
 /// screen must — see `showsBackButton`.
 ///
-/// Five rows, and the shape of them is the point. This screen used to be a list of everything the
+/// Eight rows, and the shape of them is the point. This screen used to be a list of everything the
 /// app could be told, in the order the features happened to be built: appearance, reactions,
 /// encryption, storage, connection, blocked, a greyed-out notifications row, then a lock section,
 /// then a devices section. Nine things, several of which were halves of each other — the devices
@@ -22,9 +22,10 @@ import IskraDesign
 /// "Connection" that decides who can read your traffic sat two rows from the word "Encryption".
 ///
 /// So they are gathered by the question they answer rather than by what they happen to be.
-/// Appearance took the quick reaction, which is a choice about how a conversation looks and had no
-/// business being a screen of its own. Security took the devices, the Face ID lock and the bridge.
-/// Notifications stopped being a promise and became a screen — see `NotificationsView`.
+/// Appearance took the app icon and Security took the devices, the blocked list, the privacy
+/// switches, the Face ID lock and the bridge. The beta features have no row at all — they are
+/// three taps on the spark in About. Notifications stopped being a promise and became a screen —
+/// see `NotificationsView`.
 ///
 /// Signing out is the one thing on this screen that cannot be undone, so it is last and it
 /// is red.
@@ -52,7 +53,6 @@ struct SettingsView: View {
         case profile
         case notifications
         case security
-        case devices
         case storage
     }
 
@@ -149,19 +149,6 @@ struct SettingsView: View {
                     Label(Strings.Settings.reactions, systemImage: "face.smiling")
                 }
 
-                // iPhone and iPad only, and not drawn at all where the device forbids it.
-                // `setAlternateIconName` is UIKit's and AppKit has no equivalent, so on a Mac
-                // this row would lead to a screen that could only explain itself — see `HomeIcon`.
-                #if os(iOS)
-                if HomeIcons.areSupported {
-                    NavigationLink {
-                        HomeIconView()
-                    } label: {
-                        Label(Strings.Settings.appIcon, systemImage: "app.badge")
-                    }
-                }
-                #endif
-
                 // Value-based, like the two below and for the same reason: `notificationRules()`
                 // builds a store holding an SDK `NotificationSettings` with a listener
                 // registration behind it, and a `NavigationLink` with a destination *closure*
@@ -181,26 +168,10 @@ struct SettingsView: View {
 
                 // A shield rather than a padlock, and that is the rename saying itself in the
                 // margin: a padlock is a picture of encryption, and this screen is no longer only
-                // about encryption. See `SecurityView`.
-                // What others learn without your writing anything — see `PrivacyView`. Beside
-                // Security, which is the question next to it: who can *read* what you write.
-                NavigationLink {
-                    PrivacyView(session: session)
-                } label: {
-                    Label(Strings.Settings.privacy, systemImage: "hand.raised.circle")
-                }
-
+                // about encryption. It took the devices, the blocked list and the privacy
+                // switches too — see `SecurityView`.
                 NavigationLink(value: Destination.security) {
                     Label(Strings.Settings.security, systemImage: "lock.shield")
-                }
-
-                // Every session on the account, Telegram's "Devices" — its own row rather than a
-                // line inside Security, because "where am I signed in" is a question people come to
-                // settings with by itself. Only where there is a device ID to call this one by.
-                if session.deviceID != nil {
-                    NavigationLink(value: Destination.devices) {
-                        Label(Strings.Devices.title, systemImage: "laptopcomputer.and.iphone")
-                    }
                 }
 
                 // Before storage: both are about the bytes photos and videos cost, and this one is
@@ -215,33 +186,14 @@ struct SettingsView: View {
                     Label(Strings.Settings.storage, systemImage: "internaldrive")
                 }
 
-                NavigationLink {
-                    BlockedUsersView(store: session.blocked)
-                } label: {
-                    Label(Strings.Settings.blocked, systemImage: "hand.raised")
-                }
-
-                // Last in the section, and only where there is something behind it: on iPhone the
-                // one experiment on offer is about a sidebar that does not exist there. A row that
-                // leads to an empty screen is worse than no row — see `BetaFeatures.hasAnything`.
-                if BetaFeatures.hasAnything {
-                    NavigationLink {
-                        BetaView()
-                    } label: {
-                        Label(Strings.Settings.beta, systemImage: "flask")
-                    }
-                }
-
-                // After the experiments, because it is the one row that changes nothing. It is
-                // also the only place the version is shown — the screen itself ends at sign-out.
-                // See `AboutView`.
+                // Last, because it is the one row that changes nothing. It is also the only place
+                // the version is shown, and the only way to the beta features — three taps on the
+                // spark there. See `AboutView`.
                 NavigationLink {
                     AboutView()
                 } label: {
                     Label(Strings.Settings.about, systemImage: "info.circle")
                 }
-            } footer: {
-                Text(Strings.Settings.moreSoon)
             }
 
             Section {
@@ -285,12 +237,7 @@ struct SettingsView: View {
             case .security:
                 SecurityView(session: session,
                              recovery: session.recovery,
-                             verification: session.verification,
-                             deviceID: session.deviceID)
-            case .devices:
-                if let devices = session.accountDevices() {
-                    DevicesView(store: DevicesStore(source: devices))
-                }
+                             verification: session.verification)
             case .storage:
                 // Built here, on the push, for the same reason as the encryption screen above:
                 // a `NavigationLink` with a destination closure builds it on every pass of this
