@@ -28,6 +28,12 @@ struct PendingSends: Equatable, Sendable {
         /// The message being answered, for a reply. A message ID, as everywhere else above the SDK.
         let replyingTo: String?
         let sentAt: Date
+        /// The user's own messages already on the screen when send was pressed. None of them can
+        /// be the echo of this one — they were there before it was written — and without this a
+        /// second "ок" sent within two minutes of the first was retired against the *first* one's
+        /// row the moment it was added: no bubble when send was pressed, and the old message's
+        /// row given the new one's identity.
+        let predates: Set<String>
     }
 
     private(set) var all: [Pending] = []
@@ -37,11 +43,13 @@ struct PendingSends: Equatable, Sendable {
     /// Puts a message on the screen. Returns the ID it was given, so the send that follows can
     /// take it back off again if the SDK refuses it outright.
     @discardableResult
-    mutating func add(text: String, replyingTo: String?, at sentAt: Date = .now) -> String {
+    mutating func add(text: String, replyingTo: String?, at sentAt: Date = .now,
+                      alreadyShown: Set<String> = []) -> String {
         let pending = Pending(id: "pending-\(UUID().uuidString)",
                               text: text,
                               replyingTo: replyingTo,
-                              sentAt: sentAt)
+                              sentAt: sentAt,
+                              predates: alreadyShown)
         all.append(pending)
         return pending.id
     }
@@ -96,10 +104,14 @@ struct PendingSends: Equatable, Sendable {
         }
 
         var taken: [String: String] = [:]
+        var used: Set<String> = []
         all.removeAll { pending in
-            guard var waiting = echoes[pending.text], !waiting.isEmpty else { return false }
-            taken[waiting.removeFirst()] = pending.id
-            echoes[pending.text] = waiting
+            // The first echo of these words that is neither spoken for nor older than this send.
+            guard let echo = echoes[pending.text]?.first(where: {
+                !used.contains($0) && !pending.predates.contains($0)
+            }) else { return false }
+            used.insert(echo)
+            taken[echo] = pending.id
             return true
         }
         return taken
