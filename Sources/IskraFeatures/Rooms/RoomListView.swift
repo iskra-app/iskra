@@ -162,6 +162,10 @@ public struct RoomListView: View {
                 isFixingRecovery = true
             }
         }
+        // A session this device has not seen before — "was this you?". Under the recovery banner,
+        // because it is the same kind of interruption, and somebody in the account who should not
+        // be is worth it. See `NewSignInBanner`.
+        .newSignIns(for: session)
         .sheet(isPresented: $isFixingRecovery) {
             // With a way out, unlike the copy of this the root puts up after signing in. There it is
             // a gate; here it is a sheet somebody opened out of curiosity about a banner, and a

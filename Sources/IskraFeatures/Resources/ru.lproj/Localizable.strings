@@ -1143,3 +1143,16 @@
 "media.autoDownload.alwaysHelp" = "Фото, видео и кружочки в чатах загружаются сами, как только появляются на экране.";
 "media.autoDownload.wifiHelp" = "В мобильной сети и в режиме экономии трафика фото и видео сами не загружаются: вместо них — размытый силуэт и кнопка загрузки.";
 "media.autoDownload.neverHelp" = "Фото и видео загружаются, только когда нажмёте на кнопку загрузки или откроете их. Аватарки и стикеры — всегда.";
+
+/* Карточка сеанса и плашка о новом входе. */
+"devices.application" = "Приложение";
+"devices.lastSeen" = "Последняя активность";
+"devices.ipAddress" = "IP-адрес";
+"devices.deviceID" = "ID устройства";
+"devices.unknown" = "неизвестно";
+"devices.endSession" = "Завершить сеанс";
+"devices.done" = "Готово";
+"devices.newSignInTitle" = "Новый вход в аккаунт";
+"devices.newSignInMore" = "и ещё %lld";
+"devices.newSignInYes" = "Да, это я";
+"devices.newSignInNo" = "Это не я";
