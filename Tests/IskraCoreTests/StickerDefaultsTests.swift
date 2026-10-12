@@ -28,6 +28,48 @@ struct StickerPictureTests {
         #expect(!picture.isAnimated)
     }
 
+    /// The one-pixel picture in the extended format, carrying an `EXIF` chunk and an `XMP ` chunk
+    /// with somebody's whereabouts in them — whether or not ImageIO would ever show them.
+    private var webPWithMetadata: Data {
+        func chunk(_ name: String, _ payload: [UInt8]) -> [UInt8] {
+            var bytes = Array(name.utf8) + withUnsafeBytes(of: UInt32(payload.count).littleEndian, Array.init) + payload
+            if payload.count.isMultiple(of: 2) == false { bytes.append(0) }
+            return bytes
+        }
+        let simple = [UInt8](StickerFixtures.webP)
+        let picture = Array(simple[12...])                        // the VP8L chunk, as it is
+        let header = chunk("VP8X", [0x0C, 0, 0, 0, 0, 0, 0, 0, 0, 0]) // EXIF and XMP announced, 1×1
+        let exif = chunk("EXIF", Array("GPS 55.7558 37.6173 secret".utf8))
+        let xmp = chunk("XMP ", Array("<x:xmpmeta>secret</x:xmpmeta>".utf8))
+        let body = Array("WEBP".utf8) + header + picture + exif + xmp
+        return Data(Array("RIFF".utf8) + withUnsafeBytes(of: UInt32(body.count).littleEndian, Array.init) + body)
+    }
+
+    @Test("EXIF and XMP never leave inside a WebP, whatever ImageIO makes of them")
+    func metadataIsCutOut() throws {
+        guard case let .ready(picture) = StickerPicture.prepare(webPWithMetadata) else {
+            Issue.record("a WebP with metadata was not sent at all")
+            return
+        }
+        #expect(picture.data.range(of: Data("secret".utf8)) == nil)
+        #expect(picture.data.range(of: Data("EXIF".utf8)) == nil)
+        #expect(picture.data.range(of: Data("XMP ".utf8)) == nil)
+        #expect(picture.width == 1 && picture.height == 1)
+
+        // Still a WebP, still one pixel, and its header no longer promises what was taken out.
+        #expect(picture.mimeType == "image/webp")
+        let flags = try #require(picture.data.range(of: Data("VP8X".utf8))).upperBound + 4
+        #expect(picture.data[flags] & 0x0C == 0)
+        let source = try #require(CGImageSourceCreateWithData(picture.data as CFData, nil))
+        #expect(CGImageSourceCreateImageAtIndex(source, 0, nil) != nil)
+    }
+
+    @Test("a WebP cut off half way is refused, not sent as it came")
+    func malformed() {
+        let cut = StickerFixtures.webP.prefix(StickerFixtures.webP.count - 4)
+        #expect(StickerPicture.pictureOnly(Data(cut)) == nil)
+    }
+
     @Test("anything else is a photo — whatever its name says")
     func notWebP() {
         #expect(StickerPicture.prepare(StickerArt.happy.png()) == .notASticker)

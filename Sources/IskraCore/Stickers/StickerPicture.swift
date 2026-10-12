@@ -22,8 +22,8 @@ import UniformTypeIdentifiers
 ///
 /// The compression settings do not apply — a sticker is already small, and a sticker squeezed
 /// into a JPEG is a sticker on a black square. Stripping always does, as it does for a video note:
-/// the bytes go untouched only if `MetadataStripper.isClean` says there is nothing in them but the
-/// picture, and otherwise they are redrawn — as a PNG, because ImageIO cannot write WebP — and if
+/// the container is cut down to the chunks the picture is made of (`pictureOnly`), that is held to
+/// `MetadataStripper.isClean`, and anything that still fails it is redrawn — as a PNG, because ImageIO cannot write WebP — and if
 /// even that is not clean the sticker is not sent.
 struct StickerPicture: Sendable, Equatable {
     let data: Data
@@ -60,8 +60,11 @@ struct StickerPicture: Sendable, Equatable {
     static func prepare(_ data: Data) -> Preparation {
         guard isWebP(data) else { return .notASticker }
 
-        if MetadataStripper.isClean(photo: data) {
-            return describe(data, mimeType: webPMimeType).map(Preparation.ready) ?? .refused
+        // Two checks and not one, because the second alone is not enough: `isClean` sees only what
+        // ImageIO chooses to surface, and an `EXIF` or `XMP ` chunk it does not surface would pass
+        // it and go out byte for byte. So the container is cut down to the picture first.
+        if let picture = pictureOnly(data), MetadataStripper.isClean(photo: picture) {
+            return describe(picture, mimeType: webPMimeType).map(Preparation.ready) ?? .refused
         }
         guard let stripped = MetadataStripper.photo(data, filename: "sticker.webp") else { return .refused }
         let mimeType = MediaMetadata.mimeType(ofFilename: stripped.filename) ?? "image/png"
@@ -72,6 +75,48 @@ struct StickerPicture: Sendable, Equatable {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil),
               let type = CGImageSourceGetType(source) as String? else { return false }
         return type == UTType.webP.identifier
+    }
+
+    /// The chunks a WebP's picture is made of. Everything else — `EXIF`, `XMP `, and anything
+    /// nobody has thought of yet — is left behind: an allow-list, as `MetadataStripper`'s is.
+    /// The colour profile stays, as it does for every other photo.
+    private static let pictureChunks: Set<String> = ["VP8 ", "VP8L", "VP8X", "ALPH", "ANIM", "ANMF", "ICCP"]
+
+    /// The WebP with only `pictureChunks` in it, and its header saying no more than it carries.
+    /// Nil for a file that is not well-formed RIFF — refused, not sent as it came.
+    static func pictureOnly(_ data: Data) -> Data? {
+        let bytes = [UInt8](data)
+        guard bytes.count >= 12,
+              bytes[0..<4].elementsEqual("RIFF".utf8), bytes[8..<12].elementsEqual("WEBP".utf8) else { return nil }
+
+        func size(at offset: Int) -> Int {
+            Int(bytes[offset]) | Int(bytes[offset + 1]) << 8 | Int(bytes[offset + 2]) << 16 | Int(bytes[offset + 3]) << 24
+        }
+
+        var kept = [UInt8]()
+        var offset = 12
+        while offset < bytes.count {
+            guard offset + 8 <= bytes.count else { return nil }
+            let name = String(decoding: bytes[offset..<offset + 4], as: UTF8.self)
+            let length = size(at: offset + 4)
+            let end = offset + 8 + length + (length & 1)
+            guard length >= 0, offset + 8 + length <= bytes.count else { return nil }
+            if pictureChunks.contains(name) {
+                var chunk = Array(bytes[offset..<min(end, bytes.count)])
+                if length & 1 == 1, chunk.count < 8 + length + 1 { chunk.append(0) }
+                // VP8X's flags announce EXIF (0x08) and XMP (0x04); neither is there any more.
+                if name == "VP8X", length >= 1 { chunk[8] &= ~UInt8(0x0C) }
+                kept += chunk
+            }
+            offset = end
+        }
+
+        let riffSize = UInt32(4 + kept.count)
+        var output = Array("RIFF".utf8)
+        output += withUnsafeBytes(of: riffSize.littleEndian, Array.init)
+        output += Array("WEBP".utf8)
+        output += kept
+        return Data(output)
     }
 
     private static func describe(_ data: Data, mimeType: String) -> StickerPicture? {
