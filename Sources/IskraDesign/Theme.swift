@@ -249,6 +249,12 @@ public enum Theme {
         /// want to scroll away. See `RoomView.followsEnd`.
         public static let endIsHeld: Duration = .milliseconds(700)
 
+        /// How long the reader's place, noted when a message lands below them, may still be put
+        /// back. The message makes the conversation taller within a frame or two; a note older than
+        /// this is about a moment that has passed, and putting it back moves the reader somewhere
+        /// they no longer are. See `RoomView.held`.
+        public static let placeIsHeld: Duration = .milliseconds(600)
+
         /// How often the end is asked for again while it is being held. See
         /// `Timing.endIsHeld` and `RoomView.followEnd()`.
         public static let endIsCheckedEvery: Duration = .milliseconds(50)
