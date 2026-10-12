@@ -186,7 +186,15 @@ public final class StorageStore {
         await roomList.currentSyncService?.stop()
 
         if let index = locations[.search] {
-            try FileManager.default.removeItem(at: index)
+            do {
+                try FileManager.default.removeItem(at: index)
+            } catch {
+                // Nothing was cleared, so nothing is owed a new client — and `onCleared`, which
+                // would have brought sync back with one, is not coming. The loop stopped above is
+                // restarted here, or the chat list stays frozen until the app is killed.
+                await roomList.currentSyncService?.start()
+                throw error
+            }
         }
 
         await measure()
