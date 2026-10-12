@@ -188,18 +188,28 @@ struct StorageView: View {
     }
 
     private func row(for amount: StorageAmount) -> some View {
-        LabeledContent {
-            Text(size(amount.bytes))
-                .monospacedDigit()
-        } label: {
-            // The symbol wears the band's colour, which is what makes the bar above legible
-            // without a key of its own: the row *is* the key.
+        // The symbol wears the band's colour, which is what makes the bar above legible without a
+        // key of its own: the row *is* the key. The second line is one short phrase — what the
+        // thing is for — and not the paragraph it used to be. The size sits level with the name,
+        // not centred against both lines.
+        HStack(alignment: .firstTextBaseline) {
             Label {
-                Text(name(of: amount.kind))
+                VStack(alignment: .leading, spacing: Theme.Spacing.withinRun) {
+                    Text(name(of: amount.kind))
+                    Text(explanation(of: amount.kind))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
             } icon: {
                 Image(systemName: symbol(of: amount.kind))
                     .foregroundStyle(colour(of: amount.kind))
             }
+
+            Spacer(minLength: Theme.Spacing.close)
+
+            Text(size(amount.bytes))
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -235,6 +245,14 @@ struct StorageView: View {
         case .session: Strings.Storage.session
         case .cache: Strings.Storage.cache
         case .search: Strings.Storage.search
+        }
+    }
+
+    private func explanation(of kind: StorageKind) -> LocalizedStringResource {
+        switch kind {
+        case .session: Strings.Storage.sessionExplained
+        case .cache: Strings.Storage.cacheExplained
+        case .search: Strings.Storage.searchExplained
         }
     }
 
