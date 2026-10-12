@@ -605,6 +605,7 @@ public struct IskraRootView: View {
     private func accountLeft(_ session: UserSession) {
         guard !session.isDemo else { return }
         ChatDirectory.forget(account: session.sessionID)
+        KnownDevices().forget(account: session.sessionID)
         AppBadge.forget(account: session.sessionID)
         DeliveredNotifications.clear(account: session.sessionID)
         CommunicationNotification.forget(account: session.sessionID)
@@ -915,6 +916,7 @@ public struct IskraRootView: View {
                 ended.append(record.map(AccountSwitcher.name(of:)) ?? id)
                 await authentication.forgetSession(id)
                 ChatDirectory.forget(account: id)
+                KnownDevices().forget(account: id)
                 AppBadge.forget(account: id)
             } catch {
                 // Kept, not forgotten: a store that will not open today is not a reason to destroy it,

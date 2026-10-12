@@ -1386,6 +1386,23 @@ public enum Strings {
         public static let passwordField = LocalizedStringResource("devices.passwordField", bundle: bundle)
         public static let cancel = LocalizedStringResource("devices.cancel", bundle: bundle)
         public static let retry = LocalizedStringResource("devices.retry", bundle: bundle)
+
+        /// The card for one session — see `DeviceDetailSheet`.
+        public static let application = LocalizedStringResource("devices.application", bundle: bundle)
+        public static let lastSeen = LocalizedStringResource("devices.lastSeen", bundle: bundle)
+        public static let ipAddress = LocalizedStringResource("devices.ipAddress", bundle: bundle)
+        public static let deviceID = LocalizedStringResource("devices.deviceID", bundle: bundle)
+        public static let unknown = LocalizedStringResource("devices.unknown", bundle: bundle)
+        public static let endSession = LocalizedStringResource("devices.endSession", bundle: bundle)
+        public static let done = LocalizedStringResource("devices.done", bundle: bundle)
+
+        /// The banner at the top of the chat list — see `NewSignInBanner`.
+        public static let newSignInTitle = LocalizedStringResource("devices.newSignInTitle", bundle: bundle)
+        public static func newSignInMore(_ count: Int) -> LocalizedStringResource {
+            LocalizedStringResource("devices.newSignInMore", defaultValue: "and \(count) more", bundle: bundle)
+        }
+        public static let newSignInYes = LocalizedStringResource("devices.newSignInYes", bundle: bundle)
+        public static let newSignInNo = LocalizedStringResource("devices.newSignInNo", bundle: bundle)
     }
 
     public enum Settings {

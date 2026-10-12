@@ -4,7 +4,8 @@ import IskraDesign
 
 /// Settings → Devices, the way Telegram has it: this device at the top, a red button that signs
 /// every other one out, and below it every other session on the account — what it is, what it runs,
-/// where it was last seen and when — each one a swipe or a tap away from being ended.
+/// where it was last seen and when — each one a swipe away from being ended, and a tap away from a
+/// card with everything the server knows about it (`DeviceDetailSheet`).
 ///
 /// The list is the server's (`AccountDevices`), fetched through the same road the SDK uses, the
 /// bridge included. Ending a session asks the server; where the server wants the account's password
@@ -19,16 +20,20 @@ struct DevicesView: View {
 
     @Environment(\.accent) private var accent
 
-    /// The one session a tap or a swipe has asked to end, waiting on "End?".
-    @State private var confirming: AccountDevice?
+    /// The session opened up in a sheet — a tap on its row. See `DeviceDetailSheet`.
+    @State private var inspecting: AccountDevice?
     @State private var isConfirmingOthers = false
-    @State private var password = ""
 
     var body: some View {
         Form {
             if let current = store.current {
                 Section {
-                    DeviceRow(device: current, isEnding: false)
+                    Button {
+                        inspecting = current
+                    } label: {
+                        DeviceRow(device: current, isEnding: false)
+                    }
+                    .buttonStyle(.plain)
 
                     if !store.others.isEmpty {
                         Button(role: .destructive) {
@@ -56,7 +61,7 @@ struct DevicesView: View {
 
                     ForEach(store.others) { device in
                         Button {
-                            confirming = device
+                            inspecting = device
                         } label: {
                             DeviceRow(device: device, isEnding: store.ending.contains(device.id))
                         }
@@ -104,22 +109,6 @@ struct DevicesView: View {
         .navigationTitle(Text(Strings.Devices.title))
         .task { await store.load() }
         .refreshable { await store.load() }
-        .failureAlert($store.failure)
-        // One session.
-        .confirmationDialog(Text(Strings.Devices.endConfirm),
-                            isPresented: Binding(get: { confirming != nil },
-                                                 set: { if !$0 { confirming = nil } }),
-                            titleVisibility: .visible,
-                            presenting: confirming) { device in
-            Button(role: .destructive) {
-                Task { await store.end([device.id]) }
-            } label: {
-                Text(Strings.Devices.end)
-            }
-            Button(role: .cancel) {} label: { Text(Strings.Devices.cancel) }
-        } message: { device in
-            Text(verbatim: device.title)
-        }
         // All of them.
         .confirmationDialog(Text(Strings.Devices.endOthersConfirm),
                             isPresented: $isConfirmingOthers,
@@ -131,45 +120,16 @@ struct DevicesView: View {
             }
             Button(role: .cancel) {} label: { Text(Strings.Devices.cancel) }
         }
-        // The server wants the password first — Matrix's User-Interactive Auth.
-        .alert(Text(Strings.Devices.passwordTitle),
-               isPresented: Binding(get: { store.awaitingPassword != nil },
-                                    set: { if !$0 { store.awaitingPassword = nil } })) {
-            SecureField(String(app: Strings.Devices.passwordField), text: $password)
-                .textContentType(.password)
-            Button(role: .cancel) {
-                password = ""
-            } label: {
-                Text(Strings.Devices.cancel)
-            }
-            Button {
-                let ids = store.awaitingPassword ?? []
-                let typed = password
-                password = ""
-                Task { await store.end(ids, password: typed) }
-            } label: {
-                Text(Strings.Devices.end)
-            }
-        } message: {
-            Text(Strings.Devices.passwordMessage)
-        }
-        // The server's own page, for an account whose sessions are ended there. Read the list again
-        // when it closes: whatever was done on the page is the server's news, and this is where it
-        // is shown.
-        .onChange(of: store.pageToOpen) { _, page in
-            guard let page else { return }
-            Task {
-                await WebAuthentication.approve(url: page)
-                store.pageToOpen = nil
-                await store.load()
-            }
+        .endingSessions(store)
+        .sheet(item: $inspecting) { device in
+            DeviceDetailSheet(device: device, store: store)
         }
     }
 }
 
 /// One session: what it is, what it runs, and where and when it was last seen — Telegram's three
 /// lines beside a coloured tile.
-private struct DeviceRow: View {
+struct DeviceRow: View {
     let device: AccountDevice
     let isEnding: Bool
 
@@ -228,7 +188,7 @@ private struct DeviceRow: View {
     }
 }
 
-private extension DevicePlatform {
+extension DevicePlatform {
     var symbol: String {
         switch self {
         case .iPhone: "iphone"
