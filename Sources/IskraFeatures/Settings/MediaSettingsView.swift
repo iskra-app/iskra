@@ -9,8 +9,8 @@ import SwiftUI
 /// read by `TimelineStore` at the moment of sending — so there is no "done", and the next photo
 /// already goes the new way. Video notes are outside all of it (`MediaSettings.videoNote`).
 ///
-/// No footers: the switches are named for what they do — "Send without metadata" — and a sentence
-/// under each repeated the name at greater length.
+/// One footer, under auto-download. The switches below it are named for what they do — "Send
+/// without metadata" — and a sentence under each repeated the name at greater length.
 struct MediaSettingsView: View {
     @AppStorage(MediaSettings.stripsMetadataKey) private var stripsMetadata = MediaSettings.stripsMetadataByDefault
     @AppStorage(MediaSettings.compressesKey) private var compresses = MediaSettings.compressesByDefault
@@ -29,6 +29,10 @@ struct MediaSettingsView: View {
                 } label: {
                     Label(Strings.Media.autoDownload, systemImage: "arrow.down.circle")
                 }
+            } footer: {
+                // The one footer kept: "Wi-Fi only" does not say what is shown instead, and the
+                // answer — a blurred outline and a button — is worth knowing before choosing it.
+                Text(Strings.Media.autoDownloadHelp(autoDownload))
             }
 
             Section {

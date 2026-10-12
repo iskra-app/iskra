@@ -1329,6 +1329,14 @@ public enum Strings {
             case .never: LocalizedStringResource("media.autoDownload.never", bundle: bundle)
             }
         }
+
+        public static func autoDownloadHelp(_ choice: MediaAutoDownload) -> LocalizedStringResource {
+            switch choice {
+            case .always: LocalizedStringResource("media.autoDownload.alwaysHelp", bundle: bundle)
+            case .wifi: LocalizedStringResource("media.autoDownload.wifiHelp", bundle: bundle)
+            case .never: LocalizedStringResource("media.autoDownload.neverHelp", bundle: bundle)
+            }
+        }
     }
 
     /// Settings → Security → Privacy — see `SecurityView`.
@@ -1521,8 +1529,11 @@ public enum Strings {
         public static let measuring = LocalizedStringResource("storage.measuring", bundle: bundle)
 
         public static let session = LocalizedStringResource("storage.session", bundle: bundle)
+        public static let sessionExplained = LocalizedStringResource("storage.session.explained", bundle: bundle)
         public static let cache = LocalizedStringResource("storage.cache", bundle: bundle)
+        public static let cacheExplained = LocalizedStringResource("storage.cache.explained", bundle: bundle)
         public static let search = LocalizedStringResource("storage.search", bundle: bundle)
+        public static let searchExplained = LocalizedStringResource("storage.search.explained", bundle: bundle)
 
         public static let clear = LocalizedStringResource("storage.clear", bundle: bundle)
         public static let clearing = LocalizedStringResource("storage.clearing", bundle: bundle)
@@ -1633,7 +1644,6 @@ public enum Strings {
 
         /// What lies behind a conversation — see `Wallpaper`.
         public static let wallpaper = LocalizedStringResource("appearance.wallpaper", bundle: bundle)
-        public static let wallpaperFooter = LocalizedStringResource("appearance.wallpaperFooter", bundle: bundle)
         public static let wallpaperDimming = LocalizedStringResource("appearance.wallpaperDimming", bundle: bundle)
         public static let wallpaperChoose = LocalizedStringResource("appearance.wallpaperChoose", bundle: bundle)
 

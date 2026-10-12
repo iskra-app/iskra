@@ -276,10 +276,13 @@
 "storage.measuring" = "Adding it up…";
 
 "storage.session" = "Keys and rooms";
+"storage.session.explained" = "Encryption keys. Without them, old messages won’t open.";
 
 "storage.cache" = "Messages and media";
+"storage.cache.explained" = "Downloads. They come back when needed.";
 
 "storage.search" = "Search index";
+"storage.search.explained" = "For searching your messages right on the device.";
 
 "storage.clear" = "Clear cache";
 "storage.clearing" = "Clearing…";
@@ -530,9 +533,6 @@
    of the user's own. */
 "appearance.wallpaper" = "Wallpaper";
 
-/* Under the row of wallpapers. It says two things at once: the wallpaper is the same in every
-   conversation, and a chosen photograph stays on this device — nobody else ever sees it. */
-"appearance.wallpaperFooter" = "The wallpaper is the same in every conversation. Your photo stays on this device and is never sent anywhere.";
 
 /* The slider under the wallpapers: how far to take the picture down so that messages read on it. */
 "appearance.wallpaperDimming" = "Dimming";
@@ -1137,6 +1137,9 @@
 "media.autoDownload.always" = "Always";
 "media.autoDownload.wifi" = "Wi-Fi only";
 "media.autoDownload.never" = "Never";
+"media.autoDownload.alwaysHelp" = "Photos, videos and video messages in chats download by themselves as soon as they appear on screen.";
+"media.autoDownload.wifiHelp" = "On mobile data and in Low Data Mode, photos and videos do not download by themselves: you see a blurred outline and a download button instead.";
+"media.autoDownload.neverHelp" = "Photos and videos download only when you tap the download button or open them. Avatars and stickers always do.";
 
 /* The session card and the new sign-in banner. */
 "devices.application" = "App";

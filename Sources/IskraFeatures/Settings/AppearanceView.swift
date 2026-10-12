@@ -113,8 +113,6 @@ struct AppearanceView: View {
                 }
             } header: {
                 Text(Strings.Appearance.wallpaper)
-            } footer: {
-                Text(Strings.Appearance.wallpaperFooter)
             }
         }
         .formStyle(.grouped)
