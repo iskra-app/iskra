@@ -318,6 +318,7 @@
 /* The app's own page. The address shows under the label — nobody presses a link whose
    destination is invisible. */
 "about.website" = "Iskra online";
+"about.sourceCode" = "Source code";
 
 /* The row that leads to the list of licences, and that screen's title. They are not politeness:
    Apache 2.0 and MIT travel with the binary, so a person holding the app has to be able to read
@@ -682,8 +683,6 @@
 /* Running a room. Shown only to whoever the room allows to do it. */
 "room.manage.namePlaceholder" = "Chat name";
 "room.manage.topicPlaceholder" = "What this chat is about";
-"room.manage.changePicture" = "Choose a picture";
-"room.manage.removePicture" = "Remove the picture";
 "room.manage.openToAnyone" = "Open chat";
 "room.manage.openToAnyoneHelp" = "Anyone who finds this chat can join it. Otherwise, by invitation only.";
 "room.manage.invite" = "Invite";
@@ -750,12 +749,18 @@
 
 /* The profile: name and picture. */
 "account.namePlaceholder" = "Your name";
-"account.changePicture" = "Change picture";
-"account.removePicture" = "Remove picture";
 "account.edit" = "Edit";
 "account.editTitle" = "Your profile";
 "account.nameHeader" = "Name";
 "account.editOffline" = "Your profile can’t be changed offline — there’s no server to tell.";
+"account.nameChangeNotice" = "Everyone you chat with will hear about a new name — a note appears in every chat you share.";
+"account.usernameHeader" = "Username";
+"account.usernameFixed" = "Your username is chosen once, when the account is created. It can’t be changed — not here, not anywhere.";
+
+/* The menu on a picture that can be changed: in your profile and in a chat. */
+"picture.edit" = "Change picture";
+"picture.change" = "Change";
+"picture.remove" = "Remove";
 "room.manage.edit" = "Edit";
 "room.manage.editTitle" = "Edit chat";
 "room.manage.nameHeader" = "Name";

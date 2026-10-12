@@ -21,6 +21,22 @@ enum AvatarShape {
     case roundedSquare
 }
 
+/// The outline of an avatar of either shape, at whatever size it is drawn. A space's corners are
+/// rounded at a fixed fraction of its size, so the square scales with the face and never turns
+/// into a sharp-cornered tile at the large accessibility sizes.
+struct AvatarOutline: Shape {
+    let shape: AvatarShape
+
+    func path(in rect: CGRect) -> Path {
+        switch shape {
+        case .circle:
+            Circle().path(in: rect)
+        case .roundedSquare:
+            RoundedRectangle(cornerRadius: rect.width * 0.28, style: .continuous).path(in: rect)
+        }
+    }
+}
+
 struct Avatar: View {
     let name: String
     /// The `mxc://` URL the homeserver gives out beside the name. Nil for the very many
@@ -52,15 +68,8 @@ struct Avatar: View {
     /// What is actually drawn, as opposed to what the caller asked for.
     private var diameter: CGFloat { size * textScale }
 
-    /// The outline, as a type-erased `Shape` so the fill and the clip agree without branching twice.
-    /// A space's corners are rounded at a fixed fraction of its size, so the square scales with the
-    /// face and never turns into a sharp-cornered tile at the large accessibility sizes.
-    private var outline: AnyShape {
-        switch shape {
-        case .circle: AnyShape(Circle())
-        case .roundedSquare: AnyShape(RoundedRectangle(cornerRadius: diameter * 0.28, style: .continuous))
-        }
-    }
+    /// The outline, one `Shape` so the fill and the clip agree.
+    private var outline: AvatarOutline { AvatarOutline(shape: shape) }
 
     /// Whether a creature is standing in here, rather than a letter or a photograph.
     ///

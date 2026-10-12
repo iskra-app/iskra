@@ -604,8 +604,6 @@ public enum Strings {
             public static let deleteChatHelp = LocalizedStringResource("room.manage.deleteChatHelp", bundle: bundle)
             public static let topicPlaceholder = LocalizedStringResource("room.manage.topicPlaceholder", bundle: bundle)
 
-            public static let changePicture = LocalizedStringResource("room.manage.changePicture", bundle: bundle)
-            public static let removePicture = LocalizedStringResource("room.manage.removePicture", bundle: bundle)
 
             /// Who may walk in. The switch is the plain-language half of the join rules —
             /// the protocol's other answers (knocking, restricted to a space) are not
@@ -1117,8 +1115,6 @@ public enum Strings {
         /// an invitation rather than as a label — the row has no label, because the thing
         /// you are looking at is your own name.
         public static let namePlaceholder = LocalizedStringResource("account.namePlaceholder", bundle: bundle)
-        public static let changePicture = LocalizedStringResource("account.changePicture", bundle: bundle)
-        public static let removePicture = LocalizedStringResource("account.removePicture", bundle: bundle)
 
         /// The pencil in the corner of settings, and the screen it opens.
         ///
@@ -1135,6 +1131,20 @@ public enum Strings {
         public static let nameHeader = LocalizedStringResource("account.nameHeader", bundle: bundle)
         /// Why the field will not take anything at the moment.
         public static let editOffline = LocalizedStringResource("account.editOffline", bundle: bundle)
+        /// Under the name: a new one is announced in every chat the account is in.
+        public static let nameChangeNotice = LocalizedStringResource("account.nameChangeNotice", bundle: bundle)
+        /// Over the Matrix ID on the same screen, and the greyed field's placeholder.
+        public static let usernameHeader = LocalizedStringResource("account.usernameHeader", bundle: bundle)
+        /// Under it: why the field is grey.
+        public static let usernameFixed = LocalizedStringResource("account.usernameFixed", bundle: bundle)
+    }
+
+    /// The menu on a picture that can be changed — a profile's or a room's. See `EditableAvatar`.
+    public enum Picture {
+        /// What VoiceOver calls the picture, since its pencil has no words on it.
+        public static let edit = LocalizedStringResource("picture.edit", bundle: bundle)
+        public static let change = LocalizedStringResource("picture.change", bundle: bundle)
+        public static let remove = LocalizedStringResource("picture.remove", bundle: bundle)
     }
 
     /// Getting your messages back: the screen between signing in and the conversations, and the
@@ -1511,6 +1521,8 @@ public enum Strings {
         /// The app's own page. The address is shown under the label rather than hidden behind
         /// it: a link whose destination is invisible is one nobody presses.
         public static let website = LocalizedStringResource("about.website", bundle: bundle)
+        /// Where the code is. Shown with its address for the same reason as `website`.
+        public static let sourceCode = LocalizedStringResource("about.sourceCode", bundle: bundle)
 
         /// The row that leads to `LicensesView`, and that screen's title.
         public static let licences = LocalizedStringResource("about.licences", bundle: bundle)

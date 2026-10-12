@@ -173,34 +173,18 @@ struct RoomEditView: View {
         }
     }
 
-    /// The picture, and the two things that can be done to it spelled out underneath rather
-    /// than hidden in a menu on the image.
+    /// The picture, dimmed under a pencil — tapping it offers to change it or remove it.
     private var picture: some View {
-        VStack(spacing: Theme.Spacing.normal) {
-            Avatar(name: details.name, url: details.avatarURL, size: Theme.Size.avatarProfile,
-                   seed: details.kind == .space ? nil : details.avatarSeed)
-
-            VStack(spacing: Theme.Spacing.close) {
-                Button {
-                    isChoosingPicture = true
-                } label: {
-                    Text(Strings.Room.Manage.changePicture)
-                }
-                .disabled(isOffline)
-
-                if details.avatarURL != nil {
-                    Button(role: .destructive) {
-                        Task { await details.removePicture() }
-                    } label: {
-                        Text(Strings.Room.Manage.removePicture)
-                    }
-                    .disabled(isOffline)
-                }
-            }
-            .font(.callout)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, Theme.Spacing.roomy)
+        EditableAvatar(name: details.name,
+                       url: details.avatarURL,
+                       shape: details.kind == .space ? .roundedSquare : .circle,
+                       seed: details.kind == .space ? nil : details.avatarSeed,
+                       canRemove: details.avatarURL != nil,
+                       onChange: { isChoosingPicture = true },
+                       onRemove: { Task { await details.removePicture() } })
+            .disabled(isOffline)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, Theme.Spacing.roomy)
     }
 
     private func setPicture(_ item: PhotosPickerItem) async {

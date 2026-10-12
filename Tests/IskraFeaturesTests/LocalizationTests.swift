@@ -123,7 +123,7 @@ struct LocalizationTests {
         (Strings.Room.Manage.alerts(.muted), en: "Off", ru: "Выключены"),
         (Strings.Room.Manage.alerts(.mentions), en: "Mentions only", ru: "Только упоминания"),
         (Strings.Account.namePlaceholder, en: "Your name", ru: "Ваше имя"),
-        (Strings.Account.changePicture, en: "Change picture", ru: "Изменить фото"),
+        (Strings.Picture.change, en: "Change", ru: "Изменить"),
         (Strings.Settings.encryption, en: "Encryption", ru: "Шифрование"),
         (Strings.Encryption.protect, en: "Protect my messages", ru: "Защитить переписку"),
         (Strings.Encryption.restore, en: "Bring my messages back", ru: "Восстановить переписку"),
