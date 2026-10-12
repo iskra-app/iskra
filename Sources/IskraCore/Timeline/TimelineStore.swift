@@ -369,9 +369,16 @@ public final class TimelineStore {
             continuation.yield(UnsafeTransfer(value: batch))
         }
 
+        // Guarded on the generation, because finishing the stream is not emptying it. `stop()`
+        // finishes it and cancels this task, and an `AsyncStream` that has been finished still
+        // hands over every batch already buffered — so the old timeline's last diffs arrived after
+        // `stop()` had emptied `items`, addressed a list of zero, and tripped `desynced`. It took
+        // somebody leaving a room while messages were landing in it; a sent sticker's echo, with
+        // the room closed straight after, is what `DemoBackendTests` caught it with.
         diffTask = Task { @MainActor [weak self] in
             for await batch in diffs {
-                self?.apply(diffs: batch.value)
+                guard let self, generation == self.generation else { return }
+                self.apply(diffs: batch.value)
             }
         }
 
