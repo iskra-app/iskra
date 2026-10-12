@@ -97,7 +97,7 @@ struct StickerPicture: Sendable, Equatable {
         var offset = 12
         while offset < bytes.count {
             guard offset + 8 <= bytes.count else { return nil }
-            let name = String(decoding: bytes[offset..<offset + 4], as: UTF8.self)
+            let name = String(bytes: bytes[offset..<offset + 4], encoding: .ascii) ?? ""
             let length = size(at: offset + 4)
             let end = offset + 8 + length + (length & 1)
             guard length >= 0, offset + 8 + length <= bytes.count else { return nil }
