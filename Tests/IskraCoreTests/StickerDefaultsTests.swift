@@ -10,7 +10,7 @@ import MatrixRustSDK
 /// be made in the test.
 enum StickerFixtures {
     /// One pixel, lossless.
-    static let webP = Data(base64Encoded: "UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==")!
+    static let webP = Data(base64Encoded: "UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==") ?? Data()
 }
 
 @Suite("WebP as a sticker")
