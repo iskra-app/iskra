@@ -160,6 +160,17 @@ public final class RoomListStore {
     /// the thing that had just been deliberately stopped.
     private var isPaused = false
 
+    /// The pause or resume being carried out, so the next one waits its turn behind it.
+    ///
+    /// Both are an await on the SDK, and a pocket and back in quick succession used to run them
+    /// side by side: the resume's `start()` returned first, the pause's `stop()` landed after it,
+    /// and the loop was left `.idle` with `isPaused` false — which the observer below takes for a
+    /// loop at rest, not one that died, so nothing ever started it again.
+    private var syncTransition: Task<Void, Never>?
+
+    /// What the last transition actually did to the loop, as opposed to what was last asked for.
+    private var isSyncAsleep = false
+
     /// The room handles, in the order the SDK says they should appear.
     private var orderedRooms: [Room] = []
 
@@ -356,6 +367,7 @@ public final class RoomListStore {
         // The one that matters: a loop started after `stop()` is the zombie.
         guard isStillWanted(started) else { return }
         isPaused = false
+        isSyncAsleep = false
         await service.start()
     }
 
@@ -453,19 +465,36 @@ public final class RoomListStore {
     /// Not called on the Mac. A Mac app that is not in front is still an app the user expects to be
     /// receiving messages, and there is no extension racing it for the file.
     public func pause() async {
-        guard !hasStopped, let syncService else { return }
+        guard !hasStopped, syncService != nil else { return }
 
         isPaused = true
-        await syncService.stop()
+        await settleSync()
     }
 
     /// And back out of it. `start()` on the service, not on this store: the listeners, the streams
     /// and the room handles were never taken down, only the loop that feeds them.
     public func resume() async {
-        guard !hasStopped, isPaused, let syncService else { return }
+        guard !hasStopped, isPaused, syncService != nil else { return }
 
         isPaused = false
-        await syncService.start()
+        await settleSync()
+    }
+
+    /// Brings the loop to whatever `isPaused` says *now*, after every earlier transition has
+    /// finished. Asked twice in a row it does the work once; asked to pause and resume before
+    /// either has run, it does nothing at all — the loop is already where both requests end.
+    private func settleSync() async {
+        let previous = syncTransition
+        let task = Task { @MainActor [weak self] in
+            await previous?.value
+            guard let self, !self.hasStopped, let service = self.syncService,
+                  self.isSyncAsleep != self.isPaused else { return }
+            let asleep = self.isPaused
+            self.isSyncAsleep = asleep
+            if asleep { await service.stop() } else { await service.start() }
+        }
+        syncTransition = task
+        await task.value
     }
 
     /// Shuts the list down, and means it.
