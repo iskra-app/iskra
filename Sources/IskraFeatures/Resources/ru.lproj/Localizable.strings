@@ -663,6 +663,28 @@
 "voice.needsMicrophone" = "Разрешите доступ к микрофону, чтобы записывать голосовые";
 
 /* Sending a place. */
+/* The sticker sheet's title, and the composer button that opens it. */
+"stickers.title" = "Стикеры";
+"stickers.open" = "Стикеры";
+"stickers.close" = "Закрыть";
+
+/* The row of stickers sent last. */
+"stickers.recent" = "Недавние";
+
+/* The account's own sticker pack — the one stickers are added to. */
+"stickers.mine" = "Мои стикеры";
+
+/* A room's sticker pack that has no name of its own. */
+"stickers.roomPack" = "Стикеры чата";
+
+/* The sticker sheet with nothing in it. */
+"stickers.empty.title" = "Пока нет стикеров";
+"stickers.empty.message" = "Понравился стикер в чате? Нажмите на него и подержите — и выберите «Добавить в мои стикеры».";
+
+/* In a sticker's menu: put it into, or take it out of, the account's own pack. */
+"stickers.add" = "Добавить в мои стикеры";
+"stickers.remove" = "Убрать из моих стикеров";
+
 "location.title" = "Геопозиция";
 "location.send" = "Отправить";
 "location.cancel" = "Отмена";

@@ -221,6 +221,72 @@ struct DemoBackendTests {
         screen.stop()
     }
 
+    /// Stickers through the real SDK: the account's pack from account data, the room's from its
+    /// state over the app's own request, a sent one arriving as a sticker, and a received one added.
+    @Test("stickers: packs are read, one is sent, and one somebody sent is added")
+    func stickers() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(component: "iskra-stickers-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let client = try await DemoBackend.makeClient(data: root.appending(component: "data"),
+                                                      cache: root.appending(component: "cache"),
+                                                      search: root.appending(component: "search"))
+        let session = UserSession(client: client, authentication: AuthenticationService(), sessionID: "demo", isDemo: true)
+        try await session.start()
+        defer { Task { await session.close() } }
+        let devID = "!iskra-dev:iskra.demo"
+        _ = await eventually { session.roomList.rooms.contains { $0.id == devID } }
+
+        // The account data arrives with sync, so the first load may come before it does.
+        let library = session.stickers
+        let loaded = await eventually(async: {
+            await library.load(roomID: devID)
+            return library.packs.count == 2
+        })
+        #expect(loaded, "\(library.packs.map { ($0.name, $0.stickers.count) })")
+        #expect(library.packs.first?.isMine == true)
+        #expect(library.packs.first?.stickers.count == 4)
+        #expect(library.packs.last?.name == "Искра")
+
+        // Sent from the room's pack, it comes back as a sticker with its description.
+        let timeline = try #require(session.timeline(forRoomID: devID))
+        try await timeline.start()
+        defer { timeline.stop() }
+        let sticker = try #require(library.packs.last?.stickers.first { $0.body == "😎" })
+        await timeline.send(sticker: sticker)
+        #expect(timeline.failure == nil)
+        let arrived = await eventually {
+            timeline.rows.contains { row in
+                guard case let .message(message) = row, message.isOwn,
+                      case let .sticker(attachment) = message.kind else { return false }
+                return attachment.mediaID == sticker.url && attachment.caption == "😎"
+            }
+        }
+        #expect(arrived)
+
+        // Миша's sticker is the room pack's and not ours — until it is added.
+        let misha = try #require(session.timeline(forRoomID: "!misha:iskra.demo"))
+        try await misha.start()
+        defer { misha.stop() }
+        var received: IskraCore.Attachment?
+        _ = await eventually {
+            received = misha.rows.lazy.compactMap { row -> IskraCore.Attachment? in
+                guard case let .message(message) = row, case let .sticker(attachment) = message.kind else { return nil }
+                return attachment
+            }.first
+            return received != nil
+        }
+        let theirs = try #require(received?.asSticker)
+        #expect(!library.isMine(theirs.url))
+        await library.add(theirs)
+        #expect(library.failure == nil)
+        #expect(library.isMine(theirs.url))
+        #expect(library.packs.first?.stickers.count == 5)
+
+        let unrecognized = await MockHomeserver.shared.unrecognized
+        #expect(unrecognized.isEmpty, "\(unrecognized)")
+    }
+
     private func eventually(seconds: Double = 15, _ condition: () -> Bool) async -> Bool {
         let deadline = Date().addingTimeInterval(seconds)
         while Date() < deadline {

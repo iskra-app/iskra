@@ -18,6 +18,10 @@ public final class UserSession {
     /// keeps it in step — none of which can wait for one screen to be open. See `BlockStore`.
     public let blocked: BlockStore
 
+    /// The stickers this account can send — see `StickerLibrary`. The session's and not a room's,
+    /// because "my stickers" and the recent row are the same in every conversation.
+    public let stickers: StickerLibrary
+
     /// Proving devices are yours, in both directions — see `VerificationStore`.
     ///
     /// Owned by the session and not made on demand like the stores below it, and the difference is
@@ -133,6 +137,11 @@ public final class UserSession {
         self.blocked = BlockStore(client: client)
         self.verification = VerificationStore(client: client, ownUserID: userID)
         self.recovery = RecoveryStore(encryption: client.encryption())
+        let sender = Self.authorisedSender(client: client, authentication: authentication)
+        self.stickers = StickerLibrary(
+            readAccountData: { [client] type in try await client.accountData(eventType: type) },
+            writeAccountData: { [client] type, content in try await client.setAccountData(eventType: type, content: content) },
+            send: sender)
     }
 
     /// The server has stopped accepting this session, and nobody on this device asked it to.
@@ -592,9 +601,13 @@ public final class UserSession {
     /// One request of the app's own with the account's token on it, sent the way the SDK's are —
     /// see `AccountDevices`, which explains why, and the two rules that make it safe.
     private func authorisedSender() -> @Sendable (ProxiedRequest) async throws -> ProxiedResponse {
-        let client = client
-        let authentication = authentication
+        Self.authorisedSender(client: client, authentication: authentication)
+    }
 
+    /// The same, for a store built in `init`, before there is a `self` to ask.
+    private static func authorisedSender(client: Client,
+                                         authentication: AuthenticationService)
+        -> @Sendable (ProxiedRequest) async throws -> ProxiedResponse {
         @Sendable func authorised(_ request: ProxiedRequest) throws -> ProxiedRequest {
             var request = request
             // Read at the moment of sending, never kept: a token the SDK has since refreshed must

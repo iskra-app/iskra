@@ -666,6 +666,28 @@
 "voice.needsMicrophone" = "Allow access to the microphone to record voice messages";
 
 /* Sending a place. */
+/* The sticker sheet's title, and the composer button that opens it. */
+"stickers.title" = "Stickers";
+"stickers.open" = "Stickers";
+"stickers.close" = "Close";
+
+/* The row of stickers sent last. */
+"stickers.recent" = "Recent";
+
+/* The account's own sticker pack — the one stickers are added to. */
+"stickers.mine" = "My stickers";
+
+/* A room's sticker pack that has no name of its own. */
+"stickers.roomPack" = "Chat stickers";
+
+/* The sticker sheet with nothing in it. */
+"stickers.empty.title" = "No stickers yet";
+"stickers.empty.message" = "Like a sticker in a chat? Touch and hold it, then choose “Add to my stickers”.";
+
+/* In a sticker's menu: put it into, or take it out of, the account's own pack. */
+"stickers.add" = "Add to my stickers";
+"stickers.remove" = "Remove from my stickers";
+
 "location.title" = "Location";
 "location.send" = "Send";
 "location.cancel" = "Cancel";

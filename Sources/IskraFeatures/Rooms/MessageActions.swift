@@ -98,6 +98,9 @@ struct MessageActions<Content: View>: View {
     /// The forward capability, for sending this message into another room.
     @Environment(\.forwarding) private var forwarding
 
+    /// The account's stickers, for keeping a sticker somebody sent.
+    @Environment(\.stickers) private var stickers
+
     /// The menu itself, which lives above the whole app — see `messageMenuLayer()`.
     @Environment(\.messageMenu) private var menu
 
@@ -388,6 +391,22 @@ struct MessageActions<Content: View>: View {
             actions.append(MessageMenuAction(title: Strings.Message.Menu.forward,
                                              systemImage: "arrowshape.turn.up.right",
                                              perform: { isForwarding = true }))
+        }
+
+        // A sticker can be kept — put in the account's own pack, which nothing is uploaded for:
+        // the pack points at the picture the event already points at. Only a plain one: see
+        // `Attachment.asSticker`, which is nil for an encrypted file nobody could draw from a pack.
+        if case let .sticker(attachment) = message.kind, let stickers, !isOffline,
+           let sticker = attachment.asSticker {
+            let isMine = stickers.isMine(sticker.url)
+            actions.append(MessageMenuAction(title: isMine ? Strings.Stickers.remove : Strings.Stickers.add,
+                                             systemImage: isMine ? "minus.circle" : "plus.circle",
+                                             perform: {
+                                                 Task {
+                                                     if isMine { await stickers.remove(sticker) }
+                                                     else { await stickers.add(sticker) }
+                                                 }
+                                             }))
         }
 
         // Pinning names an event, so it is offered on the same messages a reply is: one the

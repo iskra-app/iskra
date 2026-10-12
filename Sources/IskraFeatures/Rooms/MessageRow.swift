@@ -824,6 +824,9 @@ struct VoiceMessageView: View {
 struct StickerView: View {
     let attachment: Attachment
 
+    /// The longest edge. The timeline's size unless the sticker sheet or its tabs ask for less.
+    var side: CGFloat = Theme.Size.sticker
+
     @Environment(\.mediaLoader) private var loader
 
     @State private var image: Image?
@@ -835,11 +838,11 @@ struct StickerView: View {
     /// sent no dimensions is assumed square, which is what almost all of them are.
     private var size: CGSize {
         let ratio = CGFloat(attachment.aspectRatio ?? 1)
-        guard ratio > 0 else { return CGSize(width: Theme.Size.sticker, height: Theme.Size.sticker) }
+        guard ratio > 0 else { return CGSize(width: side, height: side) }
 
         return ratio >= 1
-            ? CGSize(width: Theme.Size.sticker, height: Theme.Size.sticker / ratio)
-            : CGSize(width: Theme.Size.sticker * ratio, height: Theme.Size.sticker)
+            ? CGSize(width: side, height: side / ratio)
+            : CGSize(width: side * ratio, height: side)
     }
 
     var body: some View {

@@ -946,6 +946,24 @@ public enum Strings {
         public static let attach = LocalizedStringResource("location.attach", bundle: bundle)
     }
 
+    /// The sticker sheet, the button that opens it, and adding a sticker from a conversation.
+    public enum Stickers {
+        public static let title = LocalizedStringResource("stickers.title", bundle: bundle)
+        /// The button in the composer's field, as VoiceOver says it.
+        public static let open = LocalizedStringResource("stickers.open", bundle: bundle)
+        public static let close = LocalizedStringResource("stickers.close", bundle: bundle)
+        public static let recent = LocalizedStringResource("stickers.recent", bundle: bundle)
+        /// The account's own pack — the one a sticker is added to.
+        public static let mine = LocalizedStringResource("stickers.mine", bundle: bundle)
+        /// A room's pack that did not say what it is called.
+        public static let roomPack = LocalizedStringResource("stickers.roomPack", bundle: bundle)
+        public static let emptyTitle = LocalizedStringResource("stickers.empty.title", bundle: bundle)
+        /// Says how to get the first one, because the sheet itself has no way to.
+        public static let emptyMessage = LocalizedStringResource("stickers.empty.message", bundle: bundle)
+        public static let add = LocalizedStringResource("stickers.add", bundle: bundle)
+        public static let remove = LocalizedStringResource("stickers.remove", bundle: bundle)
+    }
+
     /// The apology every screen shares — see `View.failureAlert`, which is the only thing
     /// that says them. They were `Room.ok` and `Room.Manage.failedTitle` until the account
     /// screens started refusing things too, and a settings alert reaching into the room's
