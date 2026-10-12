@@ -115,7 +115,7 @@ targets:
         type: file
         buildPhase: resources
       # The seven the icon can be changed to, on iPhone and iPad — see `HomeIcon` and
-      # `HomeIconView`. Each is listed here with `type: file` for the same reason the one
+      # `HomeIconPicker`. Each is listed here with `type: file` for the same reason the one
       # above is.
       #
       # They ship on iOS only, and not out of tidiness: `setAlternateIconName` is

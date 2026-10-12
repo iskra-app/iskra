@@ -7,9 +7,10 @@ import SwiftUI
 ///
 /// Written straight to `@AppStorage`, under the keys and defaults `MediaSettings` spells out, and
 /// read by `TimelineStore` at the moment of sending — so there is no "done", and the next photo
-/// already goes the new way. Video notes are outside all of it (`MediaSettings.videoNote`), and
-/// both footers say so, because a switch that visibly does not apply to one kind of message is a
-/// switch somebody will otherwise think is broken.
+/// already goes the new way. Video notes are outside all of it (`MediaSettings.videoNote`).
+///
+/// No footers: the switches are named for what they do — "Send without metadata" — and a sentence
+/// under each repeated the name at greater length.
 struct MediaSettingsView: View {
     @AppStorage(MediaSettings.stripsMetadataKey) private var stripsMetadata = MediaSettings.stripsMetadataByDefault
     @AppStorage(MediaSettings.compressesKey) private var compresses = MediaSettings.compressesByDefault
@@ -28,8 +29,6 @@ struct MediaSettingsView: View {
                 } label: {
                     Label(Strings.Media.autoDownload, systemImage: "arrow.down.circle")
                 }
-            } footer: {
-                Text(Strings.Media.autoDownloadHelp(autoDownload))
             }
 
             Section {
@@ -37,8 +36,6 @@ struct MediaSettingsView: View {
                     Label(Strings.Media.stripMetadata, systemImage: "location.slash")
                 }
                 .accentControl()
-            } footer: {
-                Text(stripsMetadata ? Strings.Media.stripMetadataHelp : Strings.Media.stripMetadataOffHelp)
             }
 
             Section {
@@ -58,8 +55,6 @@ struct MediaSettingsView: View {
                         Label(Strings.Media.compression, systemImage: "slider.horizontal.3")
                     }
                 }
-            } footer: {
-                Text(compresses ? Strings.Media.compressionHelp(compression) : Strings.Media.compressOffHelp)
             }
         }
         .formStyle(.grouped)

@@ -260,7 +260,6 @@ public enum Strings {
         public static let mentions = LocalizedStringResource("notifications.mentions", bundle: bundle)
         public static let mentionsMe = LocalizedStringResource("notifications.mentionsMe", bundle: bundle)
         public static let roomMentions = LocalizedStringResource("notifications.roomMentions", bundle: bundle)
-        public static let mentionsFooter = LocalizedStringResource("notifications.mentionsFooter", bundle: bundle)
 
         public static let other = LocalizedStringResource("notifications.other", bundle: bundle)
         public static let invitations = LocalizedStringResource("notifications.invitations", bundle: bundle)
@@ -1277,18 +1276,7 @@ public enum Strings {
         public static let keyCopied = LocalizedStringResource("encryption.keyCopied", bundle: bundle)
         public static let saved = LocalizedStringResource("encryption.saved", bundle: bundle)
 
-        public static let thisDevice = LocalizedStringResource("encryption.thisDevice", bundle: bundle)
-        public static let deviceVerified = LocalizedStringResource("encryption.deviceVerified", bundle: bundle)
         public static let deviceUnverified = LocalizedStringResource("encryption.deviceUnverified", bundle: bundle)
-        /// Why this screen lists one device and not all of them. The honest sentence — see
-        /// `ROADMAP.md`, stage 6.
-        /// What to say about the *other* devices, and there are two answers because there are two
-        /// worlds. On a server that hands over an account page there is a "My devices" row to point
-        /// at; on one that does not, there is no such row — and a footer that cited it anyway would
-        /// send the reader hunting through settings for a section that is not there. Which is
-        /// precisely what it did, until somebody went looking.
-        public static let otherDevicesHere = LocalizedStringResource("encryption.otherDevicesHere", bundle: bundle)
-        public static let otherDevices = LocalizedStringResource("encryption.otherDevices", bundle: bundle)
     }
 
     /// The screen where the unfinished things are switched on — see `BetaView`.
@@ -1318,13 +1306,9 @@ public enum Strings {
         public static let title = LocalizedStringResource("media.title", bundle: bundle)
 
         public static let stripMetadata = LocalizedStringResource("media.stripMetadata", bundle: bundle)
-        public static let stripMetadataHelp = LocalizedStringResource("media.stripMetadataHelp", bundle: bundle)
-        /// Said only while the switch is off, because that is when there is something to warn about.
-        public static let stripMetadataOffHelp = LocalizedStringResource("media.stripMetadataOffHelp", bundle: bundle)
 
         public static let compress = LocalizedStringResource("media.compress", bundle: bundle)
         public static let compression = LocalizedStringResource("media.compression", bundle: bundle)
-        public static let compressOffHelp = LocalizedStringResource("media.compressOffHelp", bundle: bundle)
 
         public static func compressionLabel(_ level: MediaCompression) -> LocalizedStringResource {
             switch level {
@@ -1345,27 +1329,9 @@ public enum Strings {
             case .never: LocalizedStringResource("media.autoDownload.never", bundle: bundle)
             }
         }
-
-        public static func autoDownloadHelp(_ choice: MediaAutoDownload) -> LocalizedStringResource {
-            switch choice {
-            case .always: LocalizedStringResource("media.autoDownload.alwaysHelp", bundle: bundle)
-            case .wifi: LocalizedStringResource("media.autoDownload.wifiHelp", bundle: bundle)
-            case .never: LocalizedStringResource("media.autoDownload.neverHelp", bundle: bundle)
-            }
-        }
-
-        /// What a step actually does, in numbers — the footer under the picker says it for the step
-        /// that is chosen, so the choice is never a guess between three adjectives.
-        public static func compressionHelp(_ level: MediaCompression) -> LocalizedStringResource {
-            switch level {
-            case .strong: LocalizedStringResource("media.compression.strongHelp", bundle: bundle)
-            case .balanced: LocalizedStringResource("media.compression.balancedHelp", bundle: bundle)
-            case .light: LocalizedStringResource("media.compression.lightHelp", bundle: bundle)
-            }
-        }
     }
 
-    /// Settings → Privacy — see `PrivacyView`.
+    /// Settings → Security → Privacy — see `SecurityView`.
     public enum Privacy {
         public static let title = LocalizedStringResource("privacy.title", bundle: bundle)
         public static let hidePresence = LocalizedStringResource("privacy.hidePresence", bundle: bundle)
@@ -1453,9 +1419,8 @@ public enum Strings {
         /// See `NotificationsView`.
         public static let notifications = LocalizedStringResource("settings.notifications", bundle: bundle)
 
-        /// See `ChatSettingsView` and `PrivacyView`.
+        /// See `ChatSettingsView` and `SecurityView`.
         public static let chats = LocalizedStringResource("settings.chats", bundle: bundle)
-        public static let privacy = LocalizedStringResource("settings.privacy", bundle: bundle)
 
         /// What used to be called "Encryption", and was too narrow a name for what was already
         /// on it. The screen has always answered "who can get at this" rather than "is this
@@ -1469,14 +1434,6 @@ public enum Strings {
         /// that was misnamed.
         public static let encryption = LocalizedStringResource("settings.encryption", bundle: bundle)
 
-        /// The row that leads out of the app entirely, to the server's own page — because there is
-        /// no native list of devices to lead to instead. The FFI does not export one, and on a
-        /// server running the authentication service the endpoint that would delete a device is
-        /// gone rather than merely guarded. A link to the page that *can* do it is the honest
-        /// answer; a screen that listed nothing would be a dishonest one.
-        public static let devices = LocalizedStringResource("settings.devices", bundle: bundle)
-        public static let devicesHelp = LocalizedStringResource("settings.devicesHelp", bundle: bundle)
-
         public static let appearance = LocalizedStringResource("settings.appearance", bundle: bundle)
 
         /// The row that leads to the emoji a double tap leaves — see `ReactionsView`. A screen of
@@ -1484,13 +1441,9 @@ public enum Strings {
         /// app looks like, and it is the word people come looking for.
         public static let reactions = LocalizedStringResource("settings.reactions", bundle: bundle)
 
-        /// The row that leads to the six icons — see `HomeIconView`. iPhone and iPad only, and
+        /// The row that leads to the six icons — see `HomeIconPicker`. iPhone and iPad only, and
         /// the row is not drawn elsewhere, so this string is never read on a Mac.
         public static let appIcon = LocalizedStringResource("settings.appIcon", bundle: bundle)
-
-        /// The row that leads to the things that are not finished. Shown only where there is
-        /// something behind it — see `BetaFeatures.hasAnything`.
-        public static let beta = LocalizedStringResource("settings.beta", bundle: bundle)
 
         /// The last row, and the only one that changes nothing — see `Strings.About`.
         public static let about = LocalizedStringResource("settings.about", bundle: bundle)
@@ -1500,7 +1453,6 @@ public enum Strings {
         public static let media = LocalizedStringResource("settings.media", bundle: bundle)
         /// Where the bridge is switched on — see `Strings.Connection`.
         public static let connection = LocalizedStringResource("settings.connection", bundle: bundle)
-        public static let moreSoon = LocalizedStringResource("settings.moreSoon", bundle: bundle)
 
         /// The blocked-people screen, reached from settings.
         public static let blocked = LocalizedStringResource("settings.blocked", bundle: bundle)
@@ -1569,11 +1521,8 @@ public enum Strings {
         public static let measuring = LocalizedStringResource("storage.measuring", bundle: bundle)
 
         public static let session = LocalizedStringResource("storage.session", bundle: bundle)
-        public static let sessionExplained = LocalizedStringResource("storage.session.explained", bundle: bundle)
         public static let cache = LocalizedStringResource("storage.cache", bundle: bundle)
-        public static let cacheExplained = LocalizedStringResource("storage.cache.explained", bundle: bundle)
         public static let search = LocalizedStringResource("storage.search", bundle: bundle)
-        public static let searchExplained = LocalizedStringResource("storage.search.explained", bundle: bundle)
 
         public static let clear = LocalizedStringResource("storage.clear", bundle: bundle)
         public static let clearing = LocalizedStringResource("storage.clearing", bundle: bundle)
@@ -1622,14 +1571,13 @@ public enum Strings {
         public static let symbols = LocalizedStringResource("reactions.symbols", bundle: bundle)
     }
 
-    /// Choosing which icon the app wears on the home screen — see `HomeIconView`.
+    /// Choosing which icon the app wears on the home screen — see `HomeIconPicker`.
     ///
     /// The names are the one part of this the tiles cannot say for themselves. They are things
     /// rather than colours — хром, гранат, хвоя — because "dark grey" is a description and a
     /// name is something you can ask somebody for. The rest name what the picture *is*, because
     /// that is the whole of what sets them apart: «Ретро», «Буквы», «Ч/б».
     public enum HomeIcon {
-        public static let help = LocalizedStringResource("appIcon.help", bundle: bundle)
 
         /// When the system refuses. It does on a device where alternate icons are switched off
         /// by a management profile, and there is nothing the app can do about it beyond saying

@@ -80,10 +80,6 @@ struct DevicesView: View {
                     }
                 } header: {
                     Text(Strings.Devices.others)
-                } footer: {
-                    if store.isManagedByServer {
-                        Text(Strings.Devices.managedFooter)
-                    }
                 }
             } else if store.isLoading {
                 Section {

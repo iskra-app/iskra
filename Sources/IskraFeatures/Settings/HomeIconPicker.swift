@@ -2,23 +2,17 @@
 import SwiftUI
 import IskraDesign
 
-/// Choosing which icon the app wears on the home screen.
+/// Choosing which icon the app wears on the home screen — a grid that lives in a section of
+/// `AppearanceView`, not a screen of its own. It was one, behind an "Icon" row on the settings
+/// root; an icon is a choice about how the app looks, and it sits with the others now.
 ///
-/// Eight tiles and nothing else, laid out like the colour swatches on the appearance screen and
-/// for the same reason: what is being chosen *is* a picture, so it is shown rather than named in
-/// a menu. The names are still there, under each tile, because unlike a colour an icon does have
-/// a name worth reading.
-///
-/// Two things here are the system's and not ours, and both are worth knowing before the first
-/// tap. Changing the icon shows an alert saying it has changed — iOS's own, unsuppressable — so
-/// the footer says it is coming, and an alert that was expected reads as confirmation rather
-/// than as something having gone wrong. And the change is not instant everywhere: the home
-/// screen updates, while the icon in the app switcher and in Spotlight can take a moment to
-/// catch up.
+/// Eight tiles, laid out like the colour swatches above it and for the same reason: what is being
+/// chosen *is* a picture, so it is shown rather than named in a menu. The names are still there,
+/// under each tile, because unlike a colour an icon does have a name worth reading.
 ///
 /// There is no undo and none is needed — the icon the app ships with is the first tile, always
 /// there, and going back to it is one tap.
-struct HomeIconView: View {
+struct HomeIconPicker: View {
     /// What is in force, drawn straight out of storage.
     ///
     /// It used to be `@State`, filled from UIKit in `onAppear`. That is the shape of the bug it
@@ -44,21 +38,12 @@ struct HomeIconView: View {
     }
 
     var body: some View {
-        Form {
-            Section {
-                LazyVGrid(columns: columns, spacing: Theme.Spacing.roomy) {
-                    ForEach(HomeIcon.allCases) { candidate in
-                        tile(candidate)
-                    }
-                }
-                .padding(.vertical, Theme.Spacing.close)
-            } footer: {
-                Text(Strings.HomeIcon.help)
+        LazyVGrid(columns: columns, spacing: Theme.Spacing.roomy) {
+            ForEach(HomeIcon.allCases) { candidate in
+                tile(candidate)
             }
         }
-        .formStyle(.grouped)
-        .navigationTitle(Text(Strings.Settings.appIcon))
-        .toolbarTitleDisplayMode(.inline)
+        .padding(.vertical, Theme.Spacing.close)
         // Only for the case the note cannot cover — a reinstall, or an icon set by a build that
         // kept no note. It writes the same key the ring reads, so there is nothing to assign.
         .onAppear { HomeIcons.reconcile() }
@@ -76,8 +61,12 @@ struct HomeIconView: View {
             }
             .buttonStyle(.plain)
 
+            // One line, whatever the name. «Рио-де-Жанейро» used to wrap onto a second one and push
+            // its tile out of line with the rest of the row; it shrinks to the column instead.
             Text(Strings.HomeIcon.name(candidate))
                 .font(.caption)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
                 .foregroundStyle(candidate == icon ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
         }
         .accessibilityElement(children: .combine)
@@ -96,7 +85,12 @@ struct HomeIconView: View {
     /// put over the whole thing all survive, which the drawn tile never had.
     private func artwork(_ candidate: HomeIcon) -> some View {
         let side = Theme.Size.appIconTile
-        let shape = RoundedRectangle(cornerRadius: Theme.Radius.appIcon(side: side), style: .continuous)
+        let radius = Theme.Radius.appIcon(side: side)
+        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        // The ring stands `tight` off the tile, so its corner is the tile's plus that gap. With
+        // the tile's own radius it was a tighter curve than the corner inside it, and the gap
+        // between them swelled at every corner.
+        let ring = RoundedRectangle(cornerRadius: radius + Theme.Spacing.tight, style: .continuous)
 
         return Group {
             if let preview = candidate.preview {
@@ -116,7 +110,7 @@ struct HomeIconView: View {
                 // as an edge the artwork happens to have — the same device the colour swatches
                 // use, and for the same reason: the black-and-white icon on a white sheet would
                 // otherwise be an invisible choice.
-                shape
+                ring
                     .strokeBorder(candidate == icon ? AnyShapeStyle(accent.color) : AnyShapeStyle(.quaternary),
                                   lineWidth: candidate == icon ? Theme.Border.thick : Theme.Border.hairline)
                     .padding(-Theme.Spacing.tight)

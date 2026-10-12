@@ -137,14 +137,10 @@
 
 /* The settings row that leads to the emoji a double tap leaves. One word, and it is the one
    people go looking for. */
-"settings.reactions" = "Reactions";
+"settings.reactions" = "Stickers & reactions";
 
 /* The settings row that leads to the app's icon. iPhone and iPad only. */
 "settings.appIcon" = "Icon";
-
-/* Under the six tiles. It warns about the system alert, which is coming whatever we do and is
-   better expected than met. */
-"appIcon.help" = "The icon on your home screen. The system will say once that it has changed — that is meant to happen. The app switcher and search catch up a moment later.";
 
 /* When the system refuses, which it does where a management profile forbids alternate icons. */
 "appIcon.failed" = "The icon could not be changed. It looks like this device does not allow it.";
@@ -160,9 +156,6 @@
 "appIcon.blackWhite" = "B/w";
 "appIcon.retro" = "Retro";
 "appIcon.letters" = "Letters";
-/* The settings row that leads to the unfinished things. See `BetaFeatures`. */
-"settings.beta" = "Beta features";
-
 "beta.title" = "Beta features";
 
 /* Said once at the top of the screen, so that every switch below it is read as an offer
@@ -200,18 +193,12 @@
 /* Photos and videos: what happens to them before they are sent. */
 "settings.media" = "Photos & videos";
 "media.title" = "Photos & videos";
-"media.stripMetadata" = "Remove metadata";
-"media.stripMetadataHelp" = "Everything but the picture itself is taken out of photos and videos: where they were taken, when, and on which phone. Video messages always go without metadata.";
-"media.stripMetadataOffHelp" = "Photos and videos will go with their location, the time they were taken and the phone model — anyone in the chat can look them up. Video messages still go without metadata.";
+"media.stripMetadata" = "Send without metadata";
 "media.compress" = "Compress photos and videos";
 "media.compression" = "Compression";
 "media.compression.strong" = "Strong (540p)";
 "media.compression.balanced" = "Medium (720p)";
 "media.compression.light" = "Light (1080p)";
-"media.compression.strongHelp" = "Photos up to 1280 pixels on the long side, videos up to 540p. Goes out fast even on a bad connection, but fine detail is lost.";
-"media.compression.balancedHelp" = "Photos up to 2048 pixels on the long side, videos up to 720p. On a phone screen you can't tell it from the original, and it's several times smaller.";
-"media.compression.lightHelp" = "Photos up to 4096 pixels on the long side, videos up to 1080p. Almost the original, but the savings are more modest too.";
-"media.compressOffHelp" = "Photos and videos will go at full size — slower, and more data for you and for whoever gets them. Video messages are still compressed.";
 
 "settings.connection" = "Connection";
 
@@ -289,13 +276,10 @@
 "storage.measuring" = "Adding it up…";
 
 "storage.session" = "Keys and rooms";
-"storage.session.explained" = "Encryption keys, room state, and messages that have not gone out yet. This is never cleared: without the keys, this device cannot read the conversations it already has.";
 
 "storage.cache" = "Messages and media";
-"storage.cache.explained" = "Downloaded messages, photos and files. They download again when you need them.";
 
 "storage.search" = "Search index";
-"storage.search.explained" = "A copy of your messages for search to read: search runs on the device, and your query never reaches the server. Cleared along with the cache.";
 
 "storage.clear" = "Clear cache";
 "storage.clearing" = "Clearing…";
@@ -309,9 +293,6 @@
 "storage.search.confirm.title" = "Clear search index?";
 "storage.search.confirm.body" = "The app will reload. For a while search will not find everything — the index fills again as you read. Your messages and photos stay where they are.";
 "storage.search.failed" = "The index could not be cleared. Try again.";
-
-/* Explains why the settings above it are greyed out. Says what will happen, not what is missing. */
-"settings.moreSoon" = "More settings are on the way.";
 
 /* The last row of settings, the way through to the About screen. */
 "settings.about" = "About Iskra";
@@ -807,7 +788,7 @@
 "encryption.keyPlaceholder" = "Recovery code";
 "encryption.restore" = "Bring my messages back";
 
-"encryption.newKey" = "Create a new code";
+"encryption.newKey" = "Create a new recovery code";
 "encryption.newKeyHelp" = "The old code will stop working. Worth doing if it ended up somewhere it shouldn’t have.";
 
 "encryption.saveKey" = "Save your code";
@@ -816,17 +797,7 @@
 "encryption.keyCopied" = "Copied";
 "encryption.saved" = "I’ve saved the code";
 
-"encryption.thisDevice" = "This device";
-"encryption.deviceVerified" = "Verified";
 "encryption.deviceUnverified" = "New device";
-/* Two footers under "this device", and which one is true is the server's to decide.
-   The first is for when the "My devices" row exists. The second is for when it does not,
-   because the session was not obtained through a browser and the server has no account page
-   we can reach. Sending somebody to a section they will not find is worse than sending them
-   nowhere at all. */
-"encryption.otherDevicesHere" = "Your other devices are under “My devices”.";
-"encryption.otherDevices" = "Iskra can’t show your other devices. To end a session on another device, go to your server’s website.";
-
 /* The pill at the foot of a room when a message arrives while you are reading further up. */
 "room.jumpToNewest" = "New messages";
 
@@ -973,8 +944,6 @@
 "recovery.banner.hint" = "Opens recovery setup";
 "recovery.close" = "Close";
 
-"settings.devices" = "My devices";
-"settings.devicesHelp" = "The list of your devices, and signing out of them, lives on your server’s website — where you signed in.";
 
 /* The button appears only where the server itself says it can make accounts. */
 "signIn.createAccount" = "Create an account";
@@ -1043,17 +1012,16 @@
 "notifications.defaults" = "By default";
 "notifications.direct" = "Personal chats";
 "notifications.groups" = "Groups";
-"notifications.defaultsFooter" = "These are account rules: they apply on every device you are signed in on. If a chat has its own notification setting, that one wins.";
+"notifications.defaultsFooter" = "A chat’s own notification settings take priority over the defaults.";
 
 "notifications.mentions" = "Mentions";
 "notifications.mentionsMe" = "When I’m mentioned";
 "notifications.roomMentions" = "When someone addresses the whole chat (@room)";
-"notifications.mentionsFooter" = "Mentions reach you even from chats you have silenced. @room wakes everybody at once, so it can be turned off on its own.";
 
 "notifications.other" = "Everything else";
 "notifications.invitations" = "Chat invitations";
 "notifications.calls" = "Calls";
-"notifications.otherFooter" = "There are no calls in Iskra yet, but the rule belongs to the account: another app signed into it can ring.";
+"notifications.otherFooter" = "There are no calls in Iskra yet, but people can still call you from other apps.";
 
 "notifications.system" = "Permission";
 "notifications.systemOn" = "The system lets notifications through";
@@ -1157,12 +1125,11 @@
 "chats.shareHelp" = "Whose chats to offer when you share something from another app. “Active” is the one open in Iskra right now.";
 
 /* Settings → Privacy. */
-"settings.privacy" = "Privacy";
 "privacy.title" = "Privacy";
 "privacy.hidePresence" = "Hide last seen";
-"privacy.hidePresenceHelp" = "You will appear offline to everyone, whatever you are doing, and nobody will know when you were last here. Some servers never share this at all, so there is nothing to hide there.";
+"privacy.hidePresenceHelp" = "Other people won’t see when you were last online.";
 "privacy.hideTyping" = "Hide “typing…”";
-"privacy.hideTypingHelp" = "Others will not see that you are writing. You still see when they are.";
+"privacy.hideTypingHelp" = "Other people won’t see when you are typing.";
 
 /* Photos & videos: auto-download. */
 "media.download" = "Download";
@@ -1170,9 +1137,6 @@
 "media.autoDownload.always" = "Always";
 "media.autoDownload.wifi" = "Wi-Fi only";
 "media.autoDownload.never" = "Never";
-"media.autoDownload.alwaysHelp" = "Photos, videos and video messages in chats download by themselves as soon as they appear on screen.";
-"media.autoDownload.wifiHelp" = "On mobile data and in Low Data Mode, photos and videos do not download by themselves: you see a blurred outline and a download button instead.";
-"media.autoDownload.neverHelp" = "Photos and videos download only when you tap the download button or open them. Avatars and stickers always do.";
 
 /* The session card and the new sign-in banner. */
 "devices.application" = "App";
