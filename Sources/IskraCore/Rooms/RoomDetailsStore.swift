@@ -242,6 +242,11 @@ public final class RoomDetailsStore {
     /// `stop()`, and see `load()` for why this screen needs one at all.
     private var infoHandle: TaskHandle?
 
+    /// Which showing of the screen `load()` is working for. `stop()` moves it on, and a load that
+    /// wakes from an await to find it moved subscribes to nothing: the screen it was loading for
+    /// has closed, and a subscription made now would have nobody left to cancel it.
+    private var generation = 0
+
     /// Notification rules belong to the account, not to the room — a muted room is a fact
     /// about this user's devices, and the room never hears about it. So this comes from the
     /// `Client`, which is why the store is built by `UserSession`.
@@ -306,7 +311,10 @@ public final class RoomDetailsStore {
         // Five `try?` in a row used to make all of that indistinguishable from a room that is
         // genuinely quiet, with no failure recorded anywhere — while the field for exactly that
         // (`failure`) and the alert that shows it both already existed, three lines up.
-        guard await loadInfo() else {
+        let generation = self.generation
+        let succeeded = await loadInfo()
+        guard generation == self.generation else { return }
+        guard succeeded else {
             isLoadingMembers = false
             didFailToLoad = true
             failure = .load
@@ -330,13 +338,16 @@ public final class RoomDetailsStore {
         })
 
         if let cached = try? await room.membersNoSync() {
+            guard generation == self.generation else { return }
             apply(Self.summaries(from: cached))
         }
 
         if let fresh = try? await room.members() {
+            guard generation == self.generation else { return }
             apply(Self.summaries(from: fresh))
         }
 
+        guard generation == self.generation else { return }
         isLoadingMembers = false
 
         await loadPermissions()
@@ -451,6 +462,7 @@ public final class RoomDetailsStore {
     /// so this is not tidiness, it is the difference between a listener that ends with the screen
     /// and one that runs until the account is signed out.
     public func stop() {
+        generation += 1
         infoHandle?.cancel()
         infoHandle = nil
     }
