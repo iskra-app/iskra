@@ -54,7 +54,8 @@ struct UnsentReactions: Equatable, Sendable {
     /// Only our own vote is removed. Other people's reactions with the same emoji are theirs and
     /// really are on the server: a pill that reads "👍 2" when two other people pressed it and we
     /// failed to becomes "👍 2" — not empty, and not "👍 3".
-    func applied(to reactions: [MessageReaction], messageID: String) -> [MessageReaction] {
+    func applied(to reactions: [MessageReaction], messageID: String,
+                 ownUserID: String? = nil) -> [MessageReaction] {
         guard let keys = keysByMessage[messageID], !keys.isEmpty else { return reactions }
 
         return reactions.compactMap { reaction in
@@ -62,7 +63,8 @@ struct UnsentReactions: Equatable, Sendable {
 
             let remaining = reaction.count - 1
             guard remaining > 0 else { return nil }
-            return MessageReaction(key: reaction.key, count: remaining, isMine: false)
+            return MessageReaction(key: reaction.key, count: remaining, isMine: false,
+                                   senders: reaction.senders.filter { $0 != ownUserID })
         }
     }
 }

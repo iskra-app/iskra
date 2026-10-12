@@ -190,8 +190,36 @@ public struct MessageReaction: Sendable, Identifiable, Equatable {
     public let key: String
     public let count: Int
     public let isMine: Bool
+    /// Who left it, by Matrix ID, earliest first — for "who reacted" in a group's message menu.
+    /// IDs only: names are the room's to give, and are asked for when somebody opens the list
+    /// (`TimelineStore.reactors(of:)`), not for every pill in every row.
+    public let senders: [String]
+
+    public init(key: String, count: Int, isMine: Bool, senders: [String] = []) {
+        self.key = key
+        self.count = count
+        self.isMine = isMine
+        self.senders = senders
+    }
 
     public var id: String { key }
+}
+
+/// One person's reaction, named — a line in the "who reacted" list.
+public struct Reactor: Sendable, Identifiable, Equatable {
+    public let key: String
+    public let userID: String
+    public let name: String
+    public let avatarURL: String?
+
+    public var id: String { key + "|" + userID }
+
+    public init(key: String, userID: String, name: String, avatarURL: String?) {
+        self.key = key
+        self.userID = userID
+        self.name = name
+        self.avatarURL = avatarURL
+    }
 }
 
 /// The message a reply is answering, boiled down to what fits in a strip.

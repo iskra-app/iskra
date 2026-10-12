@@ -1161,3 +1161,6 @@
 "devices.newSignInMore" = "and %lld more";
 "devices.newSignInYes" = "Yes, it was me";
 "devices.newSignInNo" = "It wasn’t me";
+
+/* Who reacted: the "everybody" tab. */
+"message.menu.reactorsAll" = "All %lld";
