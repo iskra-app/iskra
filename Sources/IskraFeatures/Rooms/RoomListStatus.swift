@@ -14,9 +14,13 @@ enum RoomListStatus: Equatable {
     case updating
 
     init?(isOffline: Bool, isUpdating: Bool) {
-        if isOffline { self = .waitingForNetwork }
-        else if isUpdating { self = .updating }
-        else { return nil }
+        if isOffline {
+            self = .waitingForNetwork
+        } else if isUpdating {
+            self = .updating
+        } else {
+            return nil
+        }
     }
 
     var title: LocalizedStringResource {

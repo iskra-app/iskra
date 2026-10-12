@@ -179,6 +179,9 @@ struct DeviceRow: View {
             let ip = device.lastSeenIP.map { Text(verbatim: $0) }
             let when = device.lastSeenAt.map { Text($0, format: .relative(presentation: .named)) }
             switch (ip, when) {
+            // Both halves are already Text — an address and a localised date; only the dot
+            // between them is written here, and it is punctuation, not a sentence.
+            // swiftlint:disable:next literal_string_in_view
             case let (ip?, when?): Text("\(ip) · \(when)")
             case let (ip?, nil): ip
             case let (nil, when?): when

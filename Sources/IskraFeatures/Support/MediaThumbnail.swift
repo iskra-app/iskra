@@ -77,7 +77,6 @@ struct MediaThumbnail: View {
     /// different size is a different entry. The picture is already in hand; this passes it over.
     var onLoad: (Image) -> Void = { _ in }
 
-
     /// Whether this one waits for Settings → Photos & videos → Auto-download. Only the pictures in
     /// a conversation do; a grid somebody opened to look at pictures has already been asked.
     var obeysAutoDownload = false

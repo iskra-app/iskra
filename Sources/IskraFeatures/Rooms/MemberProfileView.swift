@@ -198,10 +198,12 @@ struct MemberProfileView: View {
                 .disabled(isOpening || (isOffline && existingChat == nil))
             }
 
-            ShareLink(item: Self.link(to: member.id)) {
-                ProfileActionTileLabel(title: Strings.Profile.share, systemImage: "square.and.arrow.up")
+            if let link = Self.link(to: member.id) {
+                ShareLink(item: link) {
+                    ProfileActionTileLabel(title: Strings.Profile.share, systemImage: "square.and.arrow.up")
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
 
             // The ID is what people open a profile to take away with them. The destructive acts stay
             // where Telegram keeps them, in red at the foot of the page, rather than behind a tile.
@@ -228,11 +230,10 @@ struct MemberProfileView: View {
 
     /// The person's address as a link anybody can open in any Matrix client — `matrix.to`, the
     /// protocol's own way of pointing at a person, and what Telegram's "share contact" is here.
-    static func link(to userID: String) -> URL {
+    static func link(to userID: String) -> URL? {
         let escaped = userID.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? userID
-        return URL(string: "https://matrix.to/#/\(escaped)")!
+        return URL(string: "https://matrix.to/#/\(escaped)")
     }
-
 
     private func write() async {
         guard let personalChats, !isOpening else { return }

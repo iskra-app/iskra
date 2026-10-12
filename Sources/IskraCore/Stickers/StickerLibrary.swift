@@ -241,7 +241,7 @@ public final class StickerLibrary {
 
     private func write(_ content: [String: Any], as type: String) async throws {
         let data = try JSONSerialization.data(withJSONObject: content)
-        let text = String(decoding: data, as: UTF8.self)
+        let text = String(bytes: data, encoding: .utf8) ?? "{}"
         let write = writeAccountData
         try await withTimeout(Self.timeout) { try await write(type, text) }
     }

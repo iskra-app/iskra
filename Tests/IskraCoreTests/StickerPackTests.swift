@@ -145,7 +145,7 @@ struct StickerPackTests {
     func pathSegments() {
         #expect(StickerLibrary.pathSegment("!abc:example.org") == "%21abc%3Aexample.org")
         #expect(StickerLibrary.pathSegment("a/b c") == "a%2Fb%20c")
-        #expect(StickerLibrary.pathSegment("") == "")
+        #expect(StickerLibrary.pathSegment("").isEmpty)
     }
 }
 
@@ -159,8 +159,8 @@ struct StickerLibraryTests {
         let requests = Mutex<[String]>([])
     }
 
-    private func library(_ account: Account, roomPacks: [String: [String: Any]] = [:]) -> StickerLibrary {
-        let packs = roomPacks.mapValues { try! JSONSerialization.data(withJSONObject: $0) }
+    private func library(_ account: Account, roomPacks: [String: [String: Any]] = [:]) throws -> StickerLibrary {
+        let packs = try roomPacks.mapValues { try JSONSerialization.data(withJSONObject: $0) }
         return StickerLibrary(
             readAccountData: { type in account.data.withLock { $0[type] } },
             writeAccountData: { type, content in account.data.withLock { $0[type] = content } },
@@ -171,20 +171,20 @@ struct StickerLibraryTests {
             })
     }
 
-    private func store(_ object: Any, as type: String, in account: Account) {
-        let text = String(decoding: try! JSONSerialization.data(withJSONObject: object), as: UTF8.self)
+    private func store(_ object: Any, as type: String, in account: Account) throws {
+        let text = try #require(String(bytes: JSONSerialization.data(withJSONObject: object), encoding: .utf8))
         account.data.withLock { $0[type] = text }
     }
 
     @Test("the account's pack first, then the room's, then subscriptions; empty packs left out")
-    func order() async {
+    func order() async throws {
         let account = Account()
-        store(["images": ["cat": ["url": "mxc://x/cat"]]], as: ImagePack.userType, in: account)
-        store(["rooms": ["!sub:x": ["": [:]], "!empty:x": ["": [:]]]], as: ImagePack.subscriptionsType, in: account)
+        try store(["images": ["cat": ["url": "mxc://x/cat"]]], as: ImagePack.userType, in: account)
+        try store(["rooms": ["!sub:x": ["": [:]], "!empty:x": ["": [:]]]], as: ImagePack.subscriptionsType, in: account)
 
         let roomTarget = "/_matrix/client/v3/rooms/%21here%3Ax/state/im.ponies.room_emotes/"
         let subTarget = "/_matrix/client/v3/rooms/%21sub%3Ax/state/im.ponies.room_emotes/"
-        let library = library(account, roomPacks: [
+        let library = try library(account, roomPacks: [
             roomTarget: ["pack": ["display_name": "Здесь"], "images": ["a": ["url": "mxc://x/a"]]],
             subTarget: ["pack": ["display_name": "Подписка"], "images": ["b": ["url": "mxc://x/b"]]],
         ])
@@ -200,9 +200,9 @@ struct StickerLibraryTests {
     @Test("adding writes the sticker into the account's pack, next to what was there")
     func adding() async throws {
         let account = Account()
-        store(["images": ["party": ["url": "mxc://x/party", "usage": ["emoticon"]]]],
+        try store(["images": ["party": ["url": "mxc://x/party", "usage": ["emoticon"]]]],
               as: ImagePack.userType, in: account)
-        let library = library(account)
+        let library = try library(account)
         await library.load(roomID: nil)
         #expect(library.packs.isEmpty)
 
@@ -245,7 +245,7 @@ struct StickerLibraryTests {
     }
 
     @Test("a pack that cannot be read is not overwritten by an add")
-    func unreadablePackIsNotWiped() async {
+    func unreadablePackIsNotWiped() async throws {
         let account = Account()
         let library = StickerLibrary(
             readAccountData: { _ in throw StickerFailure.add },
@@ -259,14 +259,14 @@ struct StickerLibraryTests {
     }
 
     @Test("a sent sticker goes to the front of the recent row, in the account")
-    func recent() async {
+    func recent() async throws {
         let account = Account()
-        let library = library(account)
+        let library = try library(account)
         await library.used(Sticker(url: "mxc://x/a", shortcode: "", body: "a"))
         await library.used(Sticker(url: "mxc://x/b", shortcode: "", body: "b"))
         #expect(library.recent.map(\.url) == ["mxc://x/b", "mxc://x/a"])
 
-        let reread = self.library(account)
+        let reread = try self.library(account)
         await reread.load(roomID: nil)
         #expect(reread.recent.map(\.url) == ["mxc://x/b", "mxc://x/a"])
     }

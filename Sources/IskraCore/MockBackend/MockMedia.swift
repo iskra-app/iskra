@@ -40,7 +40,7 @@ enum MockMedia {
     /// photograph — the transparency is what the timeline has to keep, and a demo sticker on a
     /// white square would hide the one bug worth looking for.
     static func sticker(_ art: StickerArt, hue: Double) -> Data {
-        render(width: 256, height: 256) { context, size in
+        render(width: 256, height: 256) { context, _ in
             let fill = color(hue, 0.55, 0.98)
             let ink = color(hue, 0.7, 0.35)
             context.setLineWidth(8)
@@ -188,18 +188,18 @@ enum MockMedia {
 
     private static func heart(in rect: CGRect) -> CGPath {
         let path = CGMutablePath()
-        let (x, y, w, h) = (rect.minX, rect.minY, rect.width, rect.height)
-        path.move(to: CGPoint(x: x + w / 2, y: y))
-        path.addCurve(to: CGPoint(x: x, y: y + h * 0.7),
-                      control1: CGPoint(x: x + w * 0.2, y: y + h * 0.25),
-                      control2: CGPoint(x: x, y: y + h * 0.45))
-        path.addArc(center: CGPoint(x: x + w * 0.25, y: y + h * 0.72), radius: w * 0.25,
+        let (x, y, width, height) = (rect.minX, rect.minY, rect.width, rect.height)
+        path.move(to: CGPoint(x: x + width / 2, y: y))
+        path.addCurve(to: CGPoint(x: x, y: y + height * 0.7),
+                      control1: CGPoint(x: x + width * 0.2, y: y + height * 0.25),
+                      control2: CGPoint(x: x, y: y + height * 0.45))
+        path.addArc(center: CGPoint(x: x + width * 0.25, y: y + height * 0.72), radius: width * 0.25,
                     startAngle: .pi, endAngle: 0, clockwise: true)
-        path.addArc(center: CGPoint(x: x + w * 0.75, y: y + h * 0.72), radius: w * 0.25,
+        path.addArc(center: CGPoint(x: x + width * 0.75, y: y + height * 0.72), radius: width * 0.25,
                     startAngle: .pi, endAngle: 0, clockwise: true)
-        path.addCurve(to: CGPoint(x: x + w / 2, y: y),
-                      control1: CGPoint(x: x + w, y: y + h * 0.45),
-                      control2: CGPoint(x: x + w * 0.8, y: y + h * 0.25))
+        path.addCurve(to: CGPoint(x: x + width / 2, y: y),
+                      control1: CGPoint(x: x + width, y: y + height * 0.45),
+                      control2: CGPoint(x: x + width * 0.8, y: y + height * 0.25))
         path.closeSubpath()
         return path
     }
