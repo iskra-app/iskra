@@ -299,7 +299,7 @@ enum TimelineMapper {
                        isEdited: isEdited(event.content),
                        replyTo: replyPreview(from: event.content),
                        reactions: unsent.applied(to: reactions(from: event.content, ownUserID: ownUserID),
-                                                 messageID: id),
+                                                 messageID: id, ownUserID: ownUserID),
                        deletedAt: kind == .deleted ? redaction(of: event) : nil,
                        mentionedUserIDs: mentionedUserIDs(from: event.content),
                        uploadProgress: event.isOwn ? uploadProgress(of: event.localSendState) : nil)
@@ -491,7 +491,8 @@ enum TimelineMapper {
             .map { reaction in
                 MessageReaction(key: reaction.key,
                                 count: reaction.senders.count,
-                                isMine: reaction.senders.contains { $0.senderId == ownUserID })
+                                isMine: reaction.senders.contains { $0.senderId == ownUserID },
+                                senders: reaction.senders.sorted { $0.timestamp < $1.timestamp }.map(\.senderId))
             }
     }
 

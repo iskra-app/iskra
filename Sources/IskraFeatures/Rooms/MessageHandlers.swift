@@ -1,4 +1,5 @@
 import Foundation
+import IskraCore
 
 /// Everything a row can ask the conversation to do, in one parcel.
 ///
@@ -58,4 +59,8 @@ struct MessageHandlers {
     /// Reports this message to the moderators, carrying the user's reason. Only `RoomView`
     /// holds the store that can send it, so the reason is handed upward.
     var onReport: (String) -> Void = { _ in }
+
+    /// Who reacted, named — for the "N reactions" line in a group's menu. Nil in a personal chat,
+    /// and nil means the line is not offered. See `ReactorsSheet`.
+    var loadReactors: (() async -> [Reactor])?
 }

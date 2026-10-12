@@ -76,6 +76,9 @@ struct MessageActions<Content: View>: View {
     /// Whether the room picker for forwarding is up.
     @State private var isForwarding = false
 
+    /// Whether "who reacted" is up — see `ReactorsSheet`.
+    @State private var isShowingReactors = false
+
     /// Which of the two taps this message's finger turned out to be — see `MessageTaps`.
     @State private var taps = MessageTaps()
 
@@ -210,6 +213,11 @@ struct MessageActions<Content: View>: View {
                     ForwardPicker(message: message, forwarding: forwarding)
                 }
             }
+            .sheet(isPresented: $isShowingReactors) {
+                if let load = handlers.loadReactors {
+                    ReactorsSheet(reactions: message.reactions, load: load)
+                }
+            }
             .confirmationDialog(Text(Strings.Message.Menu.blockConfirm(message.senderName)),
                                 isPresented: $isConfirmingBlock,
                                 titleVisibility: .visible) {
@@ -335,10 +343,22 @@ struct MessageActions<Content: View>: View {
     /// 👍 hanging under the words "message deleted" — see `Message.canReact`, which the store
     /// enforces as well.
     private var sections: [MessageMenuSection] {
-        [MessageMenuSection(actions: doing),
+        [MessageMenuSection(actions: reacted),
+         MessageMenuSection(actions: doing),
          MessageMenuSection(actions: reporting),
          MessageMenuSection(actions: facts)]
             .filter { !$0.actions.isEmpty }
+    }
+
+    /// "5 reactions", above everything else in a group: who left what is the one question a pill
+    /// of numbers cannot answer. Not in a personal chat, where there are two people and the pill
+    /// already says which of them it was — `loadReactors` is nil there.
+    private var reacted: [MessageMenuAction] {
+        let count = message.reactions.reduce(0) { $0 + $1.count }
+        guard handlers.loadReactors != nil, count > 0 else { return [] }
+        return [MessageMenuAction(title: Strings.Message.Menu.reactors(count),
+                                  systemImage: "face.smiling",
+                                  perform: { isShowingReactors = true })]
     }
 
     private var doing: [MessageMenuAction] {

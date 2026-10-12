@@ -699,6 +699,14 @@ public enum Strings {
 
         /// The long press (right-click, on a Mac) on a message.
         public enum Menu {
+            /// "5 reactions" — the line that opens who reacted, and the title of that list.
+            public static func reactors(_ count: Int) -> LocalizedStringResource {
+                LocalizedStringResource("message.menu.reactors", defaultValue: "\(count) reactions", bundle: bundle)
+            }
+            /// The "everybody" tab in that list, with the total.
+            public static func reactorsAll(_ count: Int) -> LocalizedStringResource {
+                LocalizedStringResource("message.menu.reactorsAll", defaultValue: "All \(count)", bundle: bundle)
+            }
             public static let copy = LocalizedStringResource("message.menu.copy", bundle: bundle)
             public static let reply = LocalizedStringResource("message.menu.reply", bundle: bundle)
             public static let edit = LocalizedStringResource("message.menu.edit", bundle: bundle)

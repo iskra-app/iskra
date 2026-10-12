@@ -1156,3 +1156,6 @@
 "devices.newSignInMore" = "и ещё %lld";
 "devices.newSignInYes" = "Да, это я";
 "devices.newSignInNo" = "Это не я";
+
+/* Кто поставил реакции: вкладка «все». */
+"message.menu.reactorsAll" = "Все %lld";

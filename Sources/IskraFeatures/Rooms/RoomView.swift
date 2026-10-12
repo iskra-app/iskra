@@ -1875,7 +1875,8 @@ public struct RoomView: View {
                 Keyboard.dismiss()
                 jumpTarget = eventID
             },
-            onReport: { reason in Task { await timeline.report(messageID: message.id, reason: reason) } }
+            onReport: { reason in Task { await timeline.report(messageID: message.id, reason: reason) } },
+            loadReactors: timeline.isOneToOne ? nil : { await timeline.reactors(of: message.id) }
         )
     }
 

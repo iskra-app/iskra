@@ -952,6 +952,31 @@ public final class TimelineStore {
 
     // MARK: - Reacting and unsending
 
+    /// Everybody who reacted to a message, named the way this room names them — the list a group's
+    /// message menu opens. Emoji in the order they first appeared, people in the order they pressed.
+    ///
+    /// Asked for when the list is opened, not kept on every message: a name costs a lookup in the
+    /// room's member list, and a pill only ever needs a count.
+    public func reactors(of messageID: String) async -> [Reactor] {
+        let message = rows.lazy.compactMap(\.message).first { $0.id == messageID }
+        guard let message else { return [] }
+
+        var names: [String: (String, String?)] = [:]
+        var reactors: [Reactor] = []
+        for reaction in message.reactions {
+            for userID in reaction.senders {
+                if names[userID] == nil {
+                    let name = (try? await room.memberDisplayName(userId: userID)) ?? nil
+                    let avatar = (try? await room.memberAvatarUrl(userId: userID)) ?? nil
+                    names[userID] = (name ?? userID, avatar)
+                }
+                let (name, avatar) = names[userID] ?? (userID, nil)
+                reactors.append(Reactor(key: reaction.key, userID: userID, name: name, avatarURL: avatar))
+            }
+        }
+        return reactors
+    }
+
     /// Adds an emoji to a message, or takes it back if it is already ours.
     ///
     /// One call for both directions, because that is what the SDK offers and what the UI
