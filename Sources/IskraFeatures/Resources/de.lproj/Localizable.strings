@@ -267,7 +267,7 @@
 "lock.unlock" = "Unlock";
 "lock.reason" = "Unlock Iskra";
 
-"settings.blocked" = "Blocked";
+"settings.blocked" = "Blockierte Nutzer";
 "settings.blockedEmptyTitle" = "Nobody is blocked";
 "settings.blockedEmptyMessage" = "People you block show up here. You won’t see their messages.";
 "settings.unblock" = "Unblock";

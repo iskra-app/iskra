@@ -100,8 +100,6 @@ struct SecurityView: View {
                 lockSection(appLock)
             }
 
-            bridge
-
             if recovery.protection == .on {
                 Section {
                     // Asks first. Minting a code destroys the one before it, permanently and with no
@@ -299,6 +297,8 @@ struct SecurityView: View {
             } label: {
                 Label(Strings.Settings.blocked, systemImage: "hand.raised")
             }
+
+            bridge
         }
     }
 
@@ -367,16 +367,17 @@ struct SecurityView: View {
     /// It belongs on this screen and not on the settings root, and the screen itself is the
     /// argument: two of its four sections exist to say who can see your traffic and how far the
     /// protection actually goes. That is a security question wearing the word "connection".
+    ///
+    /// A row under the devices and the blocked, in their group: all three are about who stands
+    /// between you and the people you talk to.
     private var bridge: some View {
-        Section {
-            NavigationLink {
-                ConnectionView(session: session)
-            } label: {
-                Label(
-                    Strings.Settings.connection,
-                    systemImage: "point.3.filled.connected.trianglepath.dotted"
-                )
-            }
+        NavigationLink {
+            ConnectionView(session: session)
+        } label: {
+            Label(
+                Strings.Settings.connection,
+                systemImage: "point.3.filled.connected.trianglepath.dotted"
+            )
         }
     }
 
