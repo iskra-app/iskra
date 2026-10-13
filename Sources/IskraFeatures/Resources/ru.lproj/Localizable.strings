@@ -261,7 +261,7 @@
 "lock.unlock" = "Разблокировать";
 "lock.reason" = "Разблокировать Iskra";
 
-"settings.blocked" = "Заблокированные";
+"settings.blocked" = "Заблокированные пользователи";
 "settings.blockedEmptyTitle" = "Никто не заблокирован";
 "settings.blockedEmptyMessage" = "Заблокированные люди появятся здесь. Их сообщения вы не увидите.";
 "settings.unblock" = "Разблокировать";

@@ -193,7 +193,7 @@ struct LocalizationTests {
         // Blocking a person.
         (Strings.Message.Menu.block, en: "Block", ru: "Заблокировать"),
         (Strings.Message.Menu.blockConfirm("Аня"), en: "Block Аня?", ru: "Заблокировать Аня?"),
-        (Strings.Settings.blocked, en: "Blocked", ru: "Заблокированные"),
+        (Strings.Settings.blocked, en: "Blocked Users", ru: "Заблокированные пользователи"),
         (Strings.Settings.unblock, en: "Unblock", ru: "Разблокировать"),
 
         // The app lock.
