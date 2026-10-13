@@ -787,9 +787,12 @@ public enum Theme {
         /// How close to the top of a conversation counts as asking for more of it.
         ///
         /// Not zero, deliberately: fetching only once the user has hit the very top means
-        /// they watch a spinner. A screenful of slack ahead of them means the next page is
-        /// usually already there by the time they get to where it goes.
-        public static let paginationReach: CGFloat = 400
+        /// they watch a spinner. And not one screenful either, which is what it was: a flick
+        /// travels further than that, so the conversation hit its top and bounced *before* the
+        /// page landed, and the page then arrived under a scroll view in the middle of its bounce
+        /// — the jump people kept reporting. Several screens of slack means the history is in
+        /// place long before a thumb can get there.
+        public static let paginationReach: CGFloat = 2400
 
         /// How close to the newest message counts as standing on it — and therefore as having
         /// asked to be brought along when the next one arrives.
