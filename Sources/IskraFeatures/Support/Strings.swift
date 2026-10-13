@@ -365,6 +365,11 @@ public enum Strings {
             LocalizedStringResource("roomList.mentions", defaultValue: "\(count) mentioning you", bundle: bundle)
         }
 
+        /// Reactions nobody has seen yet — the heart beside a chat's badge, for VoiceOver.
+        public static func reactions(_ count: Int) -> LocalizedStringResource {
+            LocalizedStringResource("roomList.reactions", defaultValue: "\(count) new reactions", bundle: bundle)
+        }
+
         /// The swipe actions on a chat row, and their VoiceOver twins. Each verb has both
         /// directions where it toggles, so the label always says what the *next* press does.
         public enum Swipe {

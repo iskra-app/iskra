@@ -152,11 +152,32 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
     /// can be missing when the invite event itself is not in the store.
     public let invitedBy: String?
 
-    public var hasUnread: Bool { unreadCount > 0 || unreadMessageCount > 0 || isMarkedUnread }
+    /// Unread reactions, told apart from unread messages.
+    ///
+    /// The SDK has no count of them; it has to be worked out. `ReactionPushRule` makes every
+    /// reaction *notify*, so each one lands in `unreadCount` — and a reaction is not a message, so
+    /// none lands in `unreadMessageCount`. What notified beyond the messages there are is, give or
+    /// take, reactions. It errs towards too few, never too many: a room that notifies only on
+    /// mentions has more messages than notifications, and its reactions read as nought, which is
+    /// a missing heart rather than a heart for nothing.
+    ///
+    /// It used to be no distinction at all: a reaction put a number on the chat's badge, the chat
+    /// opened on nothing new, and the number meant nothing anybody could find.
+    public var unreadReactionCount: Int { max(0, unreadCount - unreadMessageCount) }
+
+    /// Unread messages that would have notified — `unreadCount` without the reactions in it.
+    /// What the number on the badge says.
+    public var unreadNotifyingMessages: Int { unreadCount - unreadReactionCount }
+
+    public var hasUnreadReactions: Bool { unreadReactionCount > 0 }
+
+    /// Something to read — messages, or a flag set by hand. Reactions alone are not this: they
+    /// have a mark of their own (`hasUnreadReactions`).
+    public var hasUnread: Bool { unreadNotifyingMessages > 0 || unreadMessageCount > 0 || isMarkedUnread }
     /// There is a number to show. A muted room, or a room flagged unread by hand, has unread
     /// *something* and nothing to count — it gets a dot instead, and asking this is how the row
     /// tells the two apart.
-    public var hasUnreadCount: Bool { unreadCount > 0 }
+    public var hasUnreadCount: Bool { unreadNotifyingMessages > 0 }
     public var isMentioned: Bool { mentionCount > 0 }
 
     /// How loudly the unread badge should say so — three answers, and the view turns them into
