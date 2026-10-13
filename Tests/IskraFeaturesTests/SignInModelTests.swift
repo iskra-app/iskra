@@ -65,9 +65,22 @@ struct SignInModelTests {
         #expect(!problem.lowercased().contains("homeserver"))
     }
 
-    @Test("an empty address cannot be submitted")
+    /// Nobody is asked where their account is: matrix.org is filled in, and the buttons work at
+    /// once. Clearing the server is still not something that can be submitted.
+    @Test("the server starts on matrix.org, and an empty one cannot be submitted")
     func requiresAnAddress() {
         let model = model()
+        #expect(model.address == SignInModel.defaultAddress)
+        #expect(model.canContinue)
+
+        model.address = "  "
         #expect(!model.canContinue)
+    }
+
+    @Test("the server is shown without its scheme or a trailing slash")
+    func serverName() {
+        let model = model()
+        model.address = "https://example.org/"
+        #expect(model.serverName == "example.org")
     }
 }

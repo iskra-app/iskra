@@ -217,14 +217,18 @@ public struct RoomView: View {
     /// rubber band, where the arithmetic finally went negative.
     ///
     /// Starts true, because a room opens on its newest message — see `hasAnchored`.
-    private var isAtNewest: Bool { isNearBottom || endIsOnScreen }
+    ///
+    /// **It is one signal now, not two**, and the second was taken out for making the way-down
+    /// button vanish. It was a hairline at the foot of the lazy stack reporting whether it was on
+    /// screen — and a lazy stack builds rows it is not showing, ahead of the scroll and while a
+    /// page of history lands, so the marker said "on screen" from three screens up and the button
+    /// went away under the reader's thumb. What replaced both is the distance sum taken *without*
+    /// the bottom inset: wherever the composer's inset is or is not counted, at rest against the
+    /// last message it comes to zero or less, and far up it cannot come anywhere near the reach.
+    private var isAtNewest: Bool { isNearBottom }
 
     /// Distance to the end, from the scroll view.
     @State private var isNearBottom = true
-
-    /// The end of the conversation, as a thing that is either on the screen or is not — see the
-    /// marker under the last row.
-    @State private var endIsOnScreen = true
 
     /// The room-info screen, built when the header is first pressed and kept afterwards.
     ///
@@ -856,8 +860,9 @@ public struct RoomView: View {
             // is, from the other end of the scroll view. Half of the answer — the other half is the
             // marker under the last row, and `isAtNewest` says why there are two.
             .onScrollGeometryChange(for: Bool.self) { geometry in
+                // Without `contentInsets.bottom` — see `isAtNewest`. At most the inset's height
+                // generous at the end, and never generous anywhere else.
                 let distanceFromBottom = geometry.contentSize.height
-                    + geometry.contentInsets.bottom
                     - geometry.contentOffset.y
                     - geometry.containerSize.height
                 return distanceFromBottom < Theme.Size.newestReach
@@ -2079,19 +2084,12 @@ public struct RoomView: View {
         }
     }
 
-    /// The end of the conversation, asked of the screen rather than worked out from it.
-    ///
-    /// Everything that turns on "is the reader at the end" — following an arriving message,
-    /// offering the way down — used to be answered by a sum over content size, offset, container
-    /// and insets, and that sum has one answer per convention about what those four things mean.
-    /// This has one answer: the floor under the last message is either in front of the reader or
-    /// it is not. See `isAtNewest`.
+    /// A hairline under the last message — what the end of the conversation is scrolled to rest
+    /// against. It used to report whether it was on screen, too; see `isAtNewest` for why it no
+    /// longer does.
     private var endMarker: some View {
         Color.clear
             .frame(height: Theme.Border.hairline)
-            .onScrollVisibilityChange(threshold: 0.01) { visible in
-                endIsOnScreen = visible
-            }
     }
 
     /// The way back down when nothing has arrived — just a room you have read a long way up.
