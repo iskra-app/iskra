@@ -160,6 +160,47 @@ final class MessageMenuPresenter {
     /// Whether the message is on its way home — the menu is still drawn, but it is going.
     private var isClosing = false
 
+    // MARK: Choosing without lifting the finger
+
+    /// What the finger that opened the menu is over, while it is still down — the verb or the
+    /// emoji that lights up and is chosen when the finger comes up. Telegram's: the hold opens
+    /// the menu and the same touch slides on to an item, so the commonest things — reply, copy,
+    /// a reaction — are one gesture rather than a hold, a lift and a tap.
+    private(set) var hovered: AnyHashable?
+
+    /// Bumped as the finger moves from one item to the next, for the tick under the thumb.
+    private(set) var hoverChanges = 0
+
+    /// Every item in the open menu that can be slid to, where it is on screen (`.global`, which on
+    /// a phone is the window's space — the space UIKit hands the finger over in) and what it does.
+    @ObservationIgnored private var targets: [AnyHashable: (frame: CGRect, perform: () -> Void)] = [:]
+
+    func register(_ id: AnyHashable, frame: CGRect, perform: @escaping () -> Void) {
+        targets[id] = (frame, perform)
+    }
+
+    func unregister(_ id: AnyHashable) {
+        targets[id] = nil
+        if hovered == id { hovered = nil }
+    }
+
+    /// The opening finger has moved to `point`, in window coordinates.
+    func slide(to point: CGPoint) {
+        guard presentation != nil, !isClosing else { return }
+        let target = targets.first { $0.value.frame.contains(point) }?.key
+        guard target != hovered else { return }
+        hovered = target
+        if target != nil { hoverChanges += 1 }
+    }
+
+    /// The opening finger came up. Over an item, the item is done; anywhere else the menu stays
+    /// open, as if it had been opened by a hold and nothing more.
+    func release() {
+        defer { hovered = nil }
+        guard let hovered, let target = targets[hovered], !isClosing else { return }
+        target.perform()
+    }
+
     func present(_ presentation: MessageMenuPresentation) {
         guard self.presentation?.id != presentation.id || isClosing else { return }
         lifts += 1
@@ -171,6 +212,8 @@ final class MessageMenuPresenter {
         var still = Transaction()
         still.disablesAnimations = true
         withTransaction(still) {
+            hovered = nil
+            targets = [:]
             liftedID = presentation.id
             isOut = false
             isFilled = false
