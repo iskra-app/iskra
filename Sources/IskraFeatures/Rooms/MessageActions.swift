@@ -5,8 +5,8 @@ import IskraDesign
 /// Everything you can *do* to a message, lifted off the shape it is drawn in.
 ///
 /// A bubble and a compact line are two ways of showing the same message, and the long press
-/// on them offers the same nine things either way: react, reply, edit, copy, forward, pin,
-/// delete, report, block. None of that is a fact about the shape — so none of it lives with
+/// on them offers the same eight things either way: react, reply, edit, copy, forward, pin,
+/// delete, report. None of that is a fact about the shape — so none of it lives with
 /// the shape. It lives here, and both rows put it on.
 ///
 /// The alternative was to leave it in `MessageRow` and copy it into the compact row, which is
@@ -65,9 +65,6 @@ struct MessageActions<Content: View>: View {
     /// Whether the report form is up for this message.
     @State private var isReporting = false
 
-    /// Whether the "block this sender?" confirmation is up.
-    @State private var isConfirmingBlock = false
-
     /// Whether the room picker for forwarding is up.
     @State private var isForwarding = false
 
@@ -86,9 +83,6 @@ struct MessageActions<Content: View>: View {
     /// nobody can be told about. Replying is the exception, and only looks like one: a reply is a new
     /// message, and a new message goes into the send queue and leaves when the network does.
     @Environment(\.isOffline) private var isOffline
-
-    /// The account's block list, for blocking a message's sender from the menu.
-    @Environment(\.blockStore) private var blockStore
 
     /// The forward capability, for sending this message into another room.
     @Environment(\.forwarding) private var forwarding
@@ -165,7 +159,9 @@ struct MessageActions<Content: View>: View {
             .overlay {
                 MessageHold(duration: Theme.Timing.menuLift,
                             onPressingChanged: { _ in },
-                            onHold: open)
+                            onHold: open,
+                            onSlide: { menu?.slide(to: $0) },
+                            onRelease: { menu?.release() })
             }
             #else
             .onLongPressGesture(minimumDuration: Theme.Timing.menuLift) {
@@ -214,16 +210,6 @@ struct MessageActions<Content: View>: View {
                 if let load = handlers.loadReactors {
                     ReactorsSheet(reactions: message.reactions, load: load)
                 }
-            }
-            .confirmationDialog(Text(Strings.Message.Menu.blockConfirm(message.senderName)),
-                                isPresented: $isConfirmingBlock,
-                                titleVisibility: .visible) {
-                Button(String(app: Strings.Message.Menu.block), role: .destructive) {
-                    let sender = message.senderID
-                    Task { await blockStore?.block(userID: sender) }
-                }
-            } message: {
-                Text(Strings.Message.Menu.blockConfirmMessage)
             }
     }
 
@@ -466,14 +452,6 @@ struct MessageActions<Content: View>: View {
                                              systemImage: "exclamationmark.bubble",
                                              manner: .destructive,
                                              perform: { isReporting = true }))
-        }
-
-        // Block the sender — someone else, and only when there is a block list to add them to.
-        if !message.isOwn && blockStore != nil {
-            actions.append(MessageMenuAction(title: Strings.Message.Menu.block,
-                                             systemImage: "hand.raised",
-                                             manner: .destructive,
-                                             perform: { isConfirmingBlock = true }))
         }
 
         return actions

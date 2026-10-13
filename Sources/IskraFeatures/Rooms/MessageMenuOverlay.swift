@@ -87,6 +87,8 @@ struct MessageMenuOverlay: View {
         // The knock that says the message is in your hand. It lands on the lift and not on the
         // action, because by the time an action is chosen the app has something else to say.
         .sensoryFeedback(.impact(weight: .medium), trigger: presenter.lifts)
+        // And the tick of each item the held finger slides over — see `MessageMenuPresenter.slide`.
+        .sensoryFeedback(.selection, trigger: presenter.hoverChanges)
         .onChange(of: presenter.presentation?.id) { _, id in
             if id == nil { isPickingEmoji = false }
         }
@@ -147,6 +149,7 @@ struct MessageMenuOverlay: View {
                                     mine: presentation.mine,
                                     growsFromTrailing: presentation.isOwn,
                                     isFilled: presenter.isFilled,
+                                    presenter: presenter,
                                     onPick: { react($0, in: presentation) },
                                     onMore: {
                                         withAnimation(Theme.Timing.menuOpens) { isPickingEmoji = true }
@@ -257,10 +260,15 @@ struct MessageMenuOverlay: View {
             VStack(spacing: 0) {
                 ForEach(Array(presentation.sections.enumerated()), id: \.element.id) { index, section in
                     ForEach(section.actions) { action in
-                        MessageMenuRow(action: action) {
+                        let perform = {
                             close()
                             action.perform()
                         }
+                        MessageMenuRow(action: action,
+                                       isHovered: presenter.hovered == AnyHashable(action.id),
+                                       perform: perform)
+                            .slideTarget(action.manner == .fact ? nil : AnyHashable(action.id),
+                                         in: presenter, perform: perform)
                     }
 
                     if index < presentation.sections.count - 1 {
@@ -378,6 +386,9 @@ struct MessageMenuOverlay: View {
 /// Internal rather than private: the chat peek draws its verbs with it too — see `ChatPeek`.
 struct MessageMenuRow: View {
     let action: MessageMenuAction
+    /// Whether the finger that opened the menu is over this row — lit as if pressed, because it
+    /// is about to be.
+    var isHovered = false
     let perform: () -> Void
 
     var body: some View {
@@ -400,7 +411,7 @@ struct MessageMenuRow: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(.rect)
         }
-        .buttonStyle(MessageMenuRowStyle())
+        .buttonStyle(MessageMenuRowStyle(isHovered: isHovered))
         .disabled(action.manner == .fact)
         // Disabled is how a menu draws a line that only says something — but it is *not* how it
         // should be announced. VoiceOver reading "Sent 12 July, dimmed button" is telling the
@@ -422,10 +433,30 @@ struct MessageMenuRow: View {
 /// Nothing moves on purpose. A menu row that scales under the finger is a row that appears to
 /// come *off* the list it is in, and this list is already floating.
 private struct MessageMenuRowStyle: ButtonStyle {
+    var isHovered = false
+
     func makeBody(configuration: Configuration) -> some View {
+        let lit = configuration.isPressed || isHovered
         configuration.label
-            .background(configuration.isPressed ? AnyShapeStyle(.primary.opacity(0.1)) : AnyShapeStyle(.clear))
-            .animation(.smooth(duration: Theme.Timing.chrome / 2), value: configuration.isPressed)
+            .background(lit ? AnyShapeStyle(.primary.opacity(0.1)) : AnyShapeStyle(.clear))
+            .animation(.smooth(duration: Theme.Timing.chrome / 2), value: lit)
+    }
+}
+
+extension View {
+    /// Lets the finger that opened the message menu choose this without lifting first — see
+    /// `MessageMenuPresenter.slide`. Its frame is told to the presenter in `.global`, the space
+    /// UIKit hands the finger over in. A nil `id` is not a target (a line that only says something).
+    func slideTarget(_ id: AnyHashable?, in presenter: MessageMenuPresenter,
+                     perform: @escaping () -> Void) -> some View {
+        onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame in
+            guard let id else { return }
+            presenter.register(id, frame: frame, perform: perform)
+        }
+        .onDisappear {
+            guard let id else { return }
+            presenter.unregister(id)
+        }
     }
 }
 
@@ -444,6 +475,8 @@ struct ReactionBar: View {
     /// Whether the emoji are on the capsule yet. The capsule opens empty and they pop onto it
     /// once it has — see `MessageMenuPresenter.isFilled`.
     let isFilled: Bool
+    /// For sliding the opening finger onto an emoji — see `MessageMenuPresenter.slide`.
+    let presenter: MessageMenuPresenter
     let onPick: (String) -> Void
     let onMore: () -> Void
 
@@ -494,14 +527,21 @@ struct ReactionBar: View {
 
         HStack(spacing: 0) {
             ForEach(Array(QuickReaction.allCases.enumerated()), id: \.element) { index, reaction in
+                let id = AnyHashable("reaction:" + reaction.key)
                 pops(EmojiButton(emoji: reaction.key,
                                  isMine: mine.contains(reaction.key),
                                  size: cell,
-                                 accent: accent) { onPick(reaction.key) },
+                                 accent: accent) { onPick(reaction.key) }
+                        // Swelling under a sliding finger, as Telegram's do: the one it lands on
+                        // is the one that will be left.
+                        .scaleEffect(presenter.hovered == id ? 1.35 : 1)
+                        .animation(.smooth(duration: Theme.Timing.chrome / 2), value: presenter.hovered == id)
+                        .slideTarget(id, in: presenter) { onPick(reaction.key) },
                      index: index, of: count)
             }
 
-            pops(moreButton, index: count - 1, of: count)
+            pops(moreButton.slideTarget(AnyHashable("reaction:more"), in: presenter, perform: onMore),
+                 index: count - 1, of: count)
         }
         .padding(.horizontal, Theme.Spacing.close)
         .frame(width: width, height: Theme.Size.reactionBar)
