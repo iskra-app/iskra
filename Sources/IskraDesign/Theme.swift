@@ -708,6 +708,10 @@ public enum Theme {
         /// large simply to be looked at.
         public static let signInMark: CGFloat = 56
 
+        /// The app's icon at the top of the opening screen — the one picture on it, so it can be
+        /// big enough to be the screen's subject.
+        public static let signInLogo: CGFloat = 112
+
         /// The mark over a welcome slide. A placeholder for now — the illustrations that go
         /// there are not drawn yet — and sized as the picture it will be rather than as the
         /// symbol standing in for it, so the layout does not shift when they arrive.

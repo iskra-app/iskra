@@ -6,8 +6,9 @@ import IskraDesign
 ///
 /// The copy here is doing real work. A person arriving at a Matrix client is
 /// typically asked for a "homeserver URL", which is a sentence that means nothing to
-/// them. We ask where their account lives, suggest the answer most people want, and
-/// keep every protocol word off the screen.
+/// them. Here they are asked nothing: two buttons — sign in, create an account — on a server
+/// already filled in, and every protocol word kept off the screen. The address is one quiet
+/// line for the people who were given one.
 public struct SignInView: View {
     @State private var model: SignInModel
     @FocusState private var focus: Field?
@@ -34,28 +35,158 @@ public struct SignInView: View {
     }
 
     public var body: some View {
-        ScrollView {
-            VStack(spacing: Theme.Spacing.generous) {
-                header
-
-                switch model.step {
-                case .enteringAddress:
-                    addressForm
-                case let .ready(options):
-                    signInForm(options)
+        GeometryReader { proxy in
+            ScrollView {
+                VStack(spacing: Theme.Spacing.generous) {
+                    switch model.step {
+                    case .enteringAddress:
+                        door
+                    case let .ready(options):
+                        signInForm(options)
+                    }
                 }
+                .padding(Theme.Spacing.generous)
+                .frame(maxWidth: Theme.Size.signInColumn)
+                .frame(maxWidth: .infinity, minHeight: proxy.size.height)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+        }
+        .animation(.smooth, value: model.step)
+        .animation(.smooth, value: model.problem)
+        .animation(.smooth, value: isEditingServer)
+    }
 
+    // MARK: - The door
+
+    /// Whether the server line has been opened up into a field.
+    @State private var isEditingServer = false
+
+    /// The opening screen: the app, a sentence, and two buttons — the shape every messenger's first
+    /// screen has, because it is the shape nobody needs explaining.
+    ///
+    /// It used to open on a question — "where is your account?" — over an empty field, which is a
+    /// fair question to somebody who knows what a homeserver is and a wall to everybody else. Now
+    /// the answer most people want, matrix.org, is already given, in one quiet line at the bottom
+    /// with "Change" beside it. Somebody who was handed an address knows to press it; nobody else
+    /// has to read it.
+    private var door: some View {
+        VStack(spacing: Theme.Spacing.generous) {
+            Spacer(minLength: Theme.Spacing.generous)
+
+            header
+
+            Spacer(minLength: Theme.Spacing.generous)
+
+            VStack(spacing: Theme.Spacing.normal) {
                 if let problem = model.problem {
                     problemPanel(problem)
                 }
+
+                Button {
+                    Task { await model.begin(.signIn) }
+                } label: {
+                    busyLabel(Strings.SignIn.signIn, when: model.pending == .signIn)
+                }
+                .buttonStyle(.glassAction)
+                .controlSize(.large)
+                .frame(maxWidth: .infinity)
+                .disabled(!model.canContinue)
+
+                Button {
+                    Task { await model.begin(.createAccount) }
+                } label: {
+                    busyLabel(Strings.SignIn.createAccount, when: model.pending == .createAccount)
+                }
+                .navigationGlassButton()
+                .controlSize(.large)
+                .frame(maxWidth: .infinity)
+                .disabled(!model.canContinue)
+
+                server
             }
-            .padding(Theme.Spacing.generous)
-            .frame(maxWidth: Theme.Size.signInColumn)
-            .frame(maxWidth: .infinity)
         }
-        .scrollBounceBehavior(.basedOnSize)
-        .animation(.smooth, value: model.step)
-        .animation(.smooth, value: model.problem)
+    }
+
+    private var header: some View {
+        VStack(spacing: Theme.Spacing.normal) {
+            Group {
+                if let artwork = AppIcon.artwork {
+                    artwork
+                        .resizable()
+                        .scaledToFit()
+                } else {
+                    Image(systemName: "bubble.left.and.bubble.right.fill")
+                        .font(.system(size: Theme.Size.signInMark))
+                        .foregroundStyle(.tint)
+                }
+            }
+            .frame(width: Theme.Size.signInLogo, height: Theme.Size.signInLogo)
+            .accessibilityHidden(true)
+
+            Text(Strings.SignIn.title)
+                .font(.largeTitle.bold())
+
+            Text(Strings.SignIn.tagline)
+                .font(.body)
+                .foregroundStyle(.secondary)
+        }
+        .multilineTextAlignment(.center)
+    }
+
+    /// Where the account will be: one line, or — once "Change" is pressed — the field for it.
+    @ViewBuilder
+    private var server: some View {
+        if isEditingServer {
+            VStack(alignment: .leading, spacing: Theme.Spacing.close) {
+                Text(Strings.SignIn.whereIsAccount)
+                    .font(.headline)
+
+                Text(Strings.SignIn.whereIsAccountHelp)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: Theme.Spacing.close) {
+                    TextField(String(app: Strings.SignIn.addressPlaceholder), text: $model.address)
+                        .textContentType(.URL)
+                        #if !os(macOS)
+                        .textInputAutocapitalization(.never)
+                        .keyboardType(.URL)
+                        #endif
+                        .autocorrectionDisabled()
+                        .focused($focus, equals: .address)
+                        .submitLabel(.done)
+                        .onSubmit { isEditingServer = false }
+                        .entryField()
+                        .accessibilityLabel(Text(Strings.SignIn.addressLabel))
+
+                    Button(String(app: Strings.SignIn.serverDone)) {
+                        isEditingServer = false
+                    }
+                    .font(.body.weight(.semibold))
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.tint)
+                    .disabled(model.serverName.isEmpty)
+                }
+            }
+            .padding(.top, Theme.Spacing.close)
+            .transition(.opacity.combined(with: .move(edge: .bottom)))
+            .onAppear { focus = .address }
+        } else {
+            HStack(spacing: Theme.Spacing.tight) {
+                Text(Strings.SignIn.server(model.serverName))
+                    .foregroundStyle(.secondary)
+                Button(String(app: Strings.SignIn.changeServer)) {
+                    isEditingServer = true
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.tint)
+                .disabled(model.isBusy)
+            }
+            .font(.footnote)
+            .frame(maxWidth: .infinity)
+            .padding(.top, Theme.Spacing.close)
+        }
     }
 
     /// What went wrong, said so that somebody sees it.
@@ -101,59 +232,6 @@ public struct SignInView: View {
         }
     }
 
-    private var header: some View {
-        VStack(spacing: Theme.Spacing.normal) {
-            Image(systemName: "bubble.left.and.bubble.right.fill")
-                .font(.system(size: Theme.Size.signInMark))
-                .foregroundStyle(.tint)
-                .accessibilityHidden(true)
-
-            Text(Strings.SignIn.title)
-                .font(.largeTitle.bold())
-
-            Text(Strings.SignIn.tagline)
-                .font(.body)
-                .foregroundStyle(.secondary)
-        }
-        .multilineTextAlignment(.center)
-        .padding(.top, Theme.Spacing.generous)
-    }
-
-    private var addressForm: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.normal) {
-            Text(Strings.SignIn.whereIsAccount)
-                .font(.headline)
-
-            Text(Strings.SignIn.whereIsAccountHelp)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            TextField(String(app: Strings.SignIn.addressPlaceholder), text: $model.address)
-                .textContentType(.URL)
-                #if !os(macOS)
-                .textInputAutocapitalization(.never)
-                .keyboardType(.URL)
-                #endif
-                .autocorrectionDisabled()
-                .focused($focus, equals: .address)
-                .entryField()
-                .onSubmit { Task { await model.findServer() } }
-                .accessibilityLabel(Text(Strings.SignIn.addressLabel))
-
-            Button {
-                Task { await model.findServer() }
-            } label: {
-                busyLabel(Strings.SignIn.continue)
-            }
-            .buttonStyle(.glassAction)
-            .controlSize(.large)
-            .frame(maxWidth: .infinity)
-            .disabled(!model.canContinue)
-        }
-        .onAppear { focus = .address }
-    }
-
     /// How you get in, once the server has said how it lets people in.
     ///
     /// **One way in, not two.** This screen used to show the browser button and the password form
@@ -170,78 +248,67 @@ public struct SignInView: View {
     @ViewBuilder
     private func signInForm(_ options: SignInOptions) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.roomy) {
-            if options.canUseSingleSignOn {
-                VStack(alignment: .leading, spacing: Theme.Spacing.close) {
-                    Text(Strings.SignIn.readyTitle)
-                        .font(.headline)
-                    Text(Strings.SignIn.readyHelp)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
+            Button {
+                // The disclosure goes back with the address. It was a decision about *that* server,
+                // and the next one may not even have a password to offer.
+                isUsingPassword = false
+                Task { await model.startOver() }
+            } label: {
+                Label(String(app: Strings.SignIn.back), systemImage: "chevron.backward")
+                    .font(.body.weight(.medium))
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.tint)
+            .disabled(model.isBusy)
+
+            Text(Strings.SignIn.signInTo(model.serverName))
+                .font(.largeTitle.bold())
+                .fixedSize(horizontal: false, vertical: true)
+
+            if options.canUseSingleSignOn && !(isUsingPassword && options.supportsPassword) {
+                // The browser was closed before it finished. The way back to it, said as what it
+                // is, and the password for the people who came back on purpose.
+                Text(Strings.SignIn.browserHelp)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 Button {
                     Task { await model.continueWithSingleSignOn() }
                 } label: {
-                    busyLabel(Strings.SignIn.signIn)
+                    busyLabel(Strings.SignIn.continueInBrowser)
                 }
                 .buttonStyle(.glassAction)
                 .controlSize(.large)
                 .frame(maxWidth: .infinity)
                 .disabled(model.isBusy)
 
-                // Making an account, where the server says it can make one. Plain glass, not tinted:
-                // most people arriving here already have an account and are here to sign in, and the
-                // tinted button is spent on the thing the screen is actually about.
-                //
-                // Absent on servers that do not speak OIDC — not disabled, absent. There is no way to
-                // register through this app on such a server at all, and a greyed-out button would be
-                // the app implying otherwise.
-                if options.supportsRegistration {
-                    Button {
-                        Task { await model.createAccount() }
-                    } label: {
-                        busyLabel(Strings.SignIn.createAccount)
-                    }
-                    .navigationGlassButton()
-                    .controlSize(.large)
-                    .frame(maxWidth: .infinity)
-                    .disabled(model.isBusy)
-                }
-
                 if options.supportsPassword {
-                    if isUsingPassword {
-                        passwordFields
-                        passwordButton(prominent: false)
-                    } else {
-                        Button(String(app: Strings.SignIn.usePasswordInstead)) {
-                            isUsingPassword = true
-                            focus = .username
-                        }
-                        .font(.footnote)
-                        .buttonStyle(.plain)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity)
+                    Button(String(app: Strings.SignIn.usePasswordInstead)) {
+                        isUsingPassword = true
+                        focus = .username
                     }
+                    .font(.footnote)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
                 }
             } else if options.supportsPassword {
-                // No OAuth, so nothing to hide behind anything: this is the way in, and it is the
-                // only way in. No disclosure, no hint, no second thought.
+                Text(Strings.SignIn.passwordHelp)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 passwordFields
                 passwordButton(prominent: true)
+                    .onAppear { if focus == nil { focus = .username } }
             }
 
-            Button(String(app: Strings.SignIn.differentAddress)) {
-                // The disclosure goes back with the address. It was a decision about *that* server,
-                // and the next one may not even have a password to offer — arriving at it with the
-                // form already open would be this screen remembering something that is not true any
-                // more.
-                isUsingPassword = false
-                Task { await model.startOver() }
+            if let problem = model.problem {
+                problemPanel(problem)
             }
-            .font(.footnote)
-            .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity)
+
+            Spacer(minLength: 0)
         }
         .animation(.smooth, value: isUsingPassword)
     }
@@ -285,8 +352,8 @@ public struct SignInView: View {
     }
 
     @ViewBuilder
-    private func busyLabel(_ title: LocalizedStringResource) -> some View {
-        if model.isBusy {
+    private func busyLabel(_ title: LocalizedStringResource, when spinning: Bool? = nil) -> some View {
+        if spinning ?? model.isBusy {
             ProgressView()
                 .controlSize(.small)
                 .frame(maxWidth: .infinity)

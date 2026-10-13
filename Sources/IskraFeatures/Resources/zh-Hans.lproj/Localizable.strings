@@ -392,14 +392,14 @@
 
 "signIn.tagline" = "Private messages, on your terms.";
 
-"signIn.title" = "欢迎使用 Iskra";
+"signIn.title" = "Iskra";
 
 "signIn.username" = "Username";
 
 /* The question that replaces asking for a 'homeserver URL'. */
 "signIn.whereIsAccount" = "您的账户在哪里？";
 
-"signIn.whereIsAccountHelp" = "If someone gave you an address to use, type it here. If not, matrix.org works for most people.";
+"signIn.whereIsAccountHelp" = "如果有人给了你服务器地址，请输入。否则保留 matrix.org——大多数账户都在那里。";
 
 "room.attachPhoto" = "Photo or video";
 
@@ -1169,3 +1169,12 @@
 "message.media.counter" = "%lld of %lld";
 "message.media.skipBack" = "Back 15 seconds";
 "message.media.skipForward" = "Forward 15 seconds";
+"signIn.server" = "服务器：%@";
+"signIn.changeServer" = "更改";
+"signIn.serverDone" = "完成";
+"signIn.signInTo" = "登录 %@";
+"signIn.back" = "返回";
+"signIn.continueInBrowser" = "在浏览器中继续";
+"signIn.browserHelp" = "将打开你的服务器登录页面，一切照常。";
+"signIn.passwordHelp" = "你账户的用户名和密码。";
+"signIn.problem.noRegistration" = "该服务器不支持在应用中创建账户。请选择其他服务器，或在其网站上注册。";

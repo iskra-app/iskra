@@ -386,14 +386,14 @@
 
 "signIn.tagline" = "Личная переписка на ваших условиях.";
 
-"signIn.title" = "Добро пожаловать в Iskra";
+"signIn.title" = "Iskra";
 
 "signIn.username" = "Имя пользователя";
 
 /* The question that replaces asking for a 'homeserver URL'. */
 "signIn.whereIsAccount" = "Где ваш аккаунт?";
 
-"signIn.whereIsAccountHelp" = "Если вам дали адрес — введите его. Если нет, большинству подойдёт matrix.org.";
+"signIn.whereIsAccountHelp" = "Если вам дали адрес сервера — введите его. Если нет, оставьте matrix.org: там большинство аккаунтов.";
 
 "room.attachPhoto" = "Фото или видео";
 
@@ -1161,3 +1161,12 @@
 "message.media.counter" = "%lld из %lld";
 "message.media.skipBack" = "Назад на 15 секунд";
 "message.media.skipForward" = "Вперёд на 15 секунд";
+"signIn.server" = "Сервер: %@";
+"signIn.changeServer" = "Изменить";
+"signIn.serverDone" = "Готово";
+"signIn.signInTo" = "Вход на %@";
+"signIn.back" = "Назад";
+"signIn.continueInBrowser" = "Продолжить в браузере";
+"signIn.browserHelp" = "Откроется страница входа вашего сервера — там всё как обычно.";
+"signIn.passwordHelp" = "Имя пользователя и пароль от вашего аккаунта.";
+"signIn.problem.noRegistration" = "На этом сервере нельзя создать аккаунт из приложения. Выберите другой сервер или зарегистрируйтесь на его сайте.";

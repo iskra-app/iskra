@@ -162,6 +162,24 @@ public enum Strings {
         public static let usePasswordInstead = LocalizedStringResource("signIn.usePasswordInstead", bundle: bundle)
         public static let differentAddress = LocalizedStringResource("signIn.differentAddress", bundle: bundle)
 
+        /// The one line on the opening screen that says where the account will be — matrix.org
+        /// unless somebody changes it — and the word that changes it.
+        public static func server(_ name: String) -> LocalizedStringResource {
+            LocalizedStringResource("signIn.server", defaultValue: "Server: \(name)", bundle: bundle)
+        }
+        public static let changeServer = LocalizedStringResource("signIn.changeServer", bundle: bundle)
+        public static let serverDone = LocalizedStringResource("signIn.serverDone", bundle: bundle)
+
+        /// The second screen, reached only on a server with nothing but a password, or after the
+        /// browser was closed half way: whose sign-in it is, and the way back.
+        public static func signInTo(_ name: String) -> LocalizedStringResource {
+            LocalizedStringResource("signIn.signInTo", defaultValue: "Sign in to \(name)", bundle: bundle)
+        }
+        public static let back = LocalizedStringResource("signIn.back", bundle: bundle)
+        public static let continueInBrowser = LocalizedStringResource("signIn.continueInBrowser", bundle: bundle)
+        public static let browserHelp = LocalizedStringResource("signIn.browserHelp", bundle: bundle)
+        public static let passwordHelp = LocalizedStringResource("signIn.passwordHelp", bundle: bundle)
+
         /// Errors. Each says what happened and what to do; none names a protocol.
         public enum Problem {
             public static let notFound = LocalizedStringResource("signIn.problem.notFound", bundle: bundle)
@@ -172,6 +190,8 @@ public enum Strings {
             public static let badCredentials = LocalizedStringResource("signIn.problem.badCredentials", bundle: bundle)
             /// Signing in, from "Add account", to somebody who is already on the device.
             public static let alreadySignedIn = LocalizedStringResource("signIn.problem.alreadySignedIn", bundle: bundle)
+            /// "Create an account" on a server that will not make one through an app.
+            public static let noRegistration = LocalizedStringResource("signIn.problem.noRegistration", bundle: bundle)
         }
     }
 

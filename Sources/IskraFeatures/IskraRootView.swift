@@ -39,11 +39,6 @@ public struct IskraRootView: View {
     /// user's. See the wash below, and `AccentTheme.tintsInterfaceKey` for why it is off by default.
     @AppStorage(AccentTheme.tintsInterfaceKey) private var tintsInterface = false
 
-    /// Whether this device has already been shown what the app is — see `Onboarding` and
-    /// `WelcomeView`. False on a fresh install, and the slides are what stands where the sign-in
-    /// screen otherwise would.
-    @AppStorage(Onboarding.welcomeSeenKey) private var hasSeenWelcome = false
-
     /// Whether the app is in the demo rather than the real account — see `SignInMockServer`. Watched
     /// here because switching it swaps the whole session, and this is the view that owns one.
     @AppStorage(BetaFeatures.mockBackendKey) private var mockBackend = false
@@ -75,15 +70,6 @@ public struct IskraRootView: View {
         /// not open. Somebody who merely reopened the app answered it long ago, and asking again
         /// every morning would be the app forgetting rather than remembering.
         case settingUp(UserSession)
-        /// Signed in, encryption settled, and being shown the first run: a hello by name, the
-        /// colour, and the faces. See `FirstRunView`.
-        ///
-        /// After the encryption question and not before it, although the two colour screens come
-        /// last in the order somebody describes this flow. The reason is that one of these is a
-        /// question about the account and the other two are questions about taste: an app that
-        /// asks what colour it should be and *then* asks whether this device can read your history
-        /// has put the trivial question in front of the one that decides what the app can do.
-        case decorating(UserSession)
         case signedIn(UserSession)
     }
 
@@ -146,16 +132,11 @@ public struct IskraRootView: View {
                     .task { await restore() }
 
             case .signedOut:
-                // The slides first, once per device. They are what this app is, said before
-                // anybody is asked to type an address into it — and `hasSeenWelcome` is not
-                // forgotten on sign-out, deliberately: somebody signing out to change accounts,
-                // or signed out by a server that ended their session, has not forgotten what
-                // Iskra is. See `Onboarding`.
-                if hasSeenWelcome {
-                    signIn
-                } else {
-                    WelcomeView { hasSeenWelcome = true }
-                }
+                // Straight to signing in. There used to be slides first, and after signing in a
+                // greeting, a choice of colour and a choice of faces — four screens between a
+                // person and their conversations, all of them answerable later in settings and
+                // none of them anything somebody opened a messenger to do.
+                signIn
 
             case .offline:
                 offlineStart
@@ -167,16 +148,9 @@ public struct IskraRootView: View {
                 // sign-in seam handing over a session it had not started would have made the first
                 // thing the user sees a spinner over an account nobody was syncing.
                 RecoverySetupView(session: session) {
-                    // The colours and the faces belong to the device, not to the account, and a
-                    // second account has nothing new to say about them.
-                    phase = authentication.accounts().count > 1 ? .signedIn(session) : .decorating(session)
-                }
-                .task { try? await session.start() }
-
-            case let .decorating(session):
-                FirstRunView(session: session) {
                     phase = .signedIn(session)
                 }
+                .task { try? await session.start() }
 
             case let .signedIn(session):
                 conversations(session)
@@ -707,7 +681,7 @@ public struct IskraRootView: View {
     /// The session on screen, whichever phase it is in.
     private var currentSession: UserSession? {
         switch phase {
-        case let .settingUp(session), let .decorating(session), let .signedIn(session): session
+        case let .settingUp(session), let .signedIn(session): session
         case .starting, .signedOut, .offline: nil
         }
     }
