@@ -66,7 +66,7 @@ struct MockWorld {
         accountData["m.push_rules"] = Self.pushRules(for: me)
         // Four of the eight are the account's own; the other four are the development room's,
         // so that a sticker *not* yet yours turns up in a chat and can be added.
-        accountData["im.ponies.user_emotes"] = ["images": pack([.happy, .love, .wink, .sleepy])]
+        accountData["im.ponies.user_emotes"] = ["images": pack([.hello, .love, .joy, .sleepy])]
     }
 
     // MARK: - Conversations
@@ -126,7 +126,7 @@ struct MockWorld {
         text(room, misha, "Кажется «Имаджинариум», но не уверен")
         at(room, 25)
         text(room, misha, "Ладно, нашёл, это «Диксит» 😅")
-        sticker(room, misha, .surprised)
+        sticker(room, misha, .surprise)
         read(room, me, upToIndex: 3)
         return room
     }
@@ -213,9 +213,9 @@ struct MockWorld {
         text(room, anya, "Ссылка на макеты: https://matrix.org")
         state(room, me, "im.ponies.room_emotes", [
             "pack": ["display_name": "Искра", "usage": ["sticker"]],
-            "images": pack([.heart, .star, .surprised, .cool]),
+            "images": pack([.connected, .unlocked, .surprise, .bypass]),
         ])
-        sticker(room, kostya, .star)
+        sticker(room, kostya, .connected)
 
         rooms[room]?.accountData["m.tag"] = ["tags": ["m.favourite": ["order": 0.1]]]
         read(room, me, upToIndex: (rooms[room]?.events.count ?? 5) - 5)

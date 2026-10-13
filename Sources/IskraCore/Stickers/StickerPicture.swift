@@ -40,10 +40,35 @@ struct StickerPicture: Sendable, Equatable {
 
     static let webPMimeType = "image/webp"
 
-    /// Whether an image with this type is drawn as a sticker — the receiving half of the rule
-    /// above, and the one place it is written down.
-    static func isSticker(mimeType: String?) -> Bool {
-        mimeType?.lowercased() == webPMimeType
+    /// Whether an image is drawn as a sticker — the receiving half of the rule above, and the one
+    /// place it is written down. A WebP, however it came; or an image this app sent *as* a sticker,
+    /// which it names `sticker.<ext>` (`filename`) — a pack sticker is usually a PNG, and so is a
+    /// WebP whose metadata had to be redrawn out of it, and either would otherwise arrive as a
+    /// photograph in a bubble.
+    static func isSticker(mimeType: String?, filename: String? = nil) -> Bool {
+        if mimeType?.lowercased() == webPMimeType { return true }
+        guard let filename = filename?.lowercased(), filename.hasPrefix("sticker.") else { return false }
+        return ["png", "webp", "gif"].contains(filename.dropFirst("sticker.".count))
+    }
+
+    /// A pack sticker's picture, made ready to go out as an encrypted image: a WebP the way any
+    /// WebP is (`prepare`), anything else checked against `MetadataStripper.isClean` and, if it
+    /// is not, stripped. Nil for bytes that are not a picture or will not come clean.
+    static func fromPack(_ data: Data) -> StickerPicture? {
+        switch prepare(data) {
+        case let .ready(picture): return picture
+        case .refused: return nil
+        case .notASticker: break
+        }
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let type = CGImageSourceGetType(source) as String?,
+              let utType = UTType(type), utType.conforms(to: .image) else { return nil }
+        if MetadataStripper.isClean(photo: data), let mimeType = utType.preferredMIMEType {
+            return describe(data, mimeType: mimeType)
+        }
+        guard let stripped = MetadataStripper.photo(data, filename: "sticker.png") else { return nil }
+        let mimeType = MediaMetadata.mimeType(ofFilename: stripped.filename) ?? "image/png"
+        return describe(stripped.data, mimeType: mimeType)
     }
 
     /// What became of a picture offered as a sticker.

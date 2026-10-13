@@ -46,7 +46,7 @@ enum MessagePreview {
         case let .emote(content):
             return content.body
         case let .image(content):
-            return String(core: StickerPicture.isSticker(mimeType: content.info?.mimetype) ? CoreStrings.Preview.sticker
+            return String(core: StickerPicture.isSticker(mimeType: content.info?.mimetype, filename: content.filename) ? CoreStrings.Preview.sticker
                                                                                          : CoreStrings.Preview.photo)
         case let .video(content):
             return String(core: VideoNote.isVideoNote(content) ? CoreStrings.Preview.videoNote

@@ -336,7 +336,7 @@ public extension TimelineStore {
                                       height: picture.height,
                                       mimeType: picture.mimeType,
                                       size: picture.data.count)
-                await send(sticker: sticker, replyingTo: replyID)
+                await sendRaw(sticker: sticker, replyingTo: replyID)
             } catch {
                 Log.media.error("could not upload a sticker: \(Log.describe(error), privacy: .public)")
                 failure = .sticker
@@ -344,6 +344,34 @@ public extension TimelineStore {
             return
         }
 
+        sendSealed(stickerPicture: picture, through: timeline, replyingTo: replyID)
+    }
+
+    /// A pack sticker into an encrypted room: its picture fetched, checked as any sticker is, and
+    /// sent as an encrypted image through the queue — see `send(sticker:)`.
+    func sendSealed(sticker: Sticker, replyingTo replyID: String?) async {
+        guard let timeline = liveTimeline, let downloadMedia else {
+            failure = .sticker
+            return
+        }
+        do {
+            let url = sticker.url
+            let data = try await withTimeout(Self.stickerUploadTimeout) { try await downloadMedia(url) }
+            let picture = await Task.detached(priority: .userInitiated) { StickerPicture.fromPack(data) }.value
+            guard let picture else {
+                Log.media.error("sticker refused: its picture could not be read or cleaned")
+                failure = .sticker
+                return
+            }
+            sendSealed(stickerPicture: picture, through: timeline, replyingTo: replyID)
+        } catch {
+            Log.media.error("could not fetch a sticker: \(Log.describe(error), privacy: .public)")
+            failure = .sticker
+        }
+    }
+
+    private func sendSealed(stickerPicture picture: StickerPicture, through timeline: Timeline,
+                            replyingTo replyID: String?) {
         let info = MediaMetadata.image(data: picture.data, filename: picture.filename)
         let parameters = UploadParameters(source: .data(bytes: picture.data, filename: picture.filename),
                                           caption: nil,

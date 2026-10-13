@@ -132,6 +132,10 @@ public final class TimelineStore {
     /// encrypted way, which is right in every room.
     @ObservationIgnored var uploadMedia: (@Sendable (_ mimeType: String, _ data: Data) async throws -> String)?
 
+    /// `Client.getMediaContent`, handed down by the session: a pack sticker's picture, fetched so
+    /// that it can go into an encrypted room through the send queue — see `send(sticker:)`.
+    @ObservationIgnored var downloadMedia: (@Sendable (_ url: String) async throws -> Data)?
+
     /// The SDK timeline, for the media-sending extension in `TimelineStore+Media`.
     /// Nil until `start()` has run.
     var liveTimeline: Timeline? { timeline }
@@ -815,16 +819,32 @@ public final class TimelineStore {
 
     /// Sends a sticker from a pack — see `Sticker`.
     ///
-    /// `Room.sendRaw` and not the timeline, because the timeline has no call for it: it sends
-    /// messages, attachments, locations and polls, and an `m.sticker` is none of those. Raw is
-    /// still encrypted in an encrypted room — the SDK seals any event type the same way — and
-    /// nothing is uploaded, because the picture is already on the server and the event only points
-    /// at it.
+    /// Two roads, by the room:
     ///
-    /// What raw does *not* get is the send queue, and the difference shows in one place: offline.
-    /// A typed message waits on disk for the network; a sticker is refused at once and the failure
-    /// is said. Pretending it was queued would be a sticker that silently never arrives.
+    /// - **not encrypted**: an `m.sticker` through `Room.sendRaw`, pointing at the pack's picture.
+    ///   Every client draws it as a sticker.
+    /// - **encrypted** — which is nearly every real conversation: the picture is fetched and goes
+    ///   back out as an encrypted image through the send queue, named so this app draws it as a
+    ///   sticker (`StickerPicture.isSticker`), exactly as a WebP does.
+    ///
+    /// It used to be `sendRaw` in both, and in an encrypted room that is the call that failed. Raw
+    /// is outside the send queue, so everything the queue does quietly and with retries — loading
+    /// the room's members, asking for their keys, sharing the room key, and stopping for a verified
+    /// person's unconfirmed device (`EncryptionPolicy`) — happened inline, under one timeout, and
+    /// any of it going wrong was "the sticker was not sent". The demo never showed it: its rooms
+    /// are not encrypted. Through the queue a sticker waits for the network like a message does,
+    /// and a hold-up is the message's own "Not sent" with "Send anyway" on it.
     public func send(sticker: Sticker, replyingTo replyID: String? = nil) async {
+        if await isKnownUnencrypted() {
+            await sendRaw(sticker: sticker, replyingTo: replyID)
+        } else {
+            stopTellingThemWeType()
+            await sendSealed(sticker: sticker, replyingTo: replyID)
+        }
+    }
+
+    /// An `m.sticker` pointing at the pack's own picture — for a room that is not encrypted only.
+    func sendRaw(sticker: Sticker, replyingTo replyID: String?) async {
         let eventID = replyID.flatMap { eventID(for: $0) }
         let content = sticker.eventContent(replyingTo: eventID)
 

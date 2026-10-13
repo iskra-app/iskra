@@ -457,15 +457,15 @@ struct MessageComposer: View {
         onChooseSticker != nil && context?.isEditing != true
     }
 
-    /// The face at the end of the field. Quiet — secondary, no glass of its own — because it is
-    /// part of the field and not a control standing beside it.
+    /// The sticker at the end of the field — a peeled square, not a smiley: a smiley is the
+    /// keyboard's emoji button, and this opens something else. Quiet — secondary, no glass of its
+    /// own — because it is part of the field and not a control standing beside it.
     private func stickerButton(_ open: @escaping () -> Void) -> some View {
         Button {
             close()
             open()
         } label: {
-            Image(systemName: "face.smiling")
-                .font(.body)
+            StickerGlyph()
                 .foregroundStyle(.secondary)
                 .frame(width: control, height: control)
                 .contentShape(.rect)

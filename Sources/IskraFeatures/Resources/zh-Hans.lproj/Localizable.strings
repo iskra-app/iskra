@@ -969,15 +969,14 @@
 
 /* The groups in the emoji panel. Short — they are headings over a grid, not chapter titles. */
 "reactions.recent" = "Recent";
-"reactions.smileys" = "Smileys";
-"reactions.gestures" = "Gestures";
-"reactions.hearts" = "Hearts";
-"reactions.animals" = "Animals & nature";
-"reactions.food" = "Food";
-"reactions.activity" = "Activity";
-"reactions.places" = "Places";
-"reactions.objects" = "Objects";
-"reactions.symbols" = "Symbols";
+"reactions.smileys" = "笑脸和人物";
+"reactions.animals" = "动物与自然";
+"reactions.food" = "食物与饮料";
+"reactions.activity" = "活动";
+"reactions.places" = "旅行与地点";
+"reactions.objects" = "物体";
+"reactions.symbols" = "符号";
+"reactions.flags" = "旗帜";
 
 /* The Security tab — what used to be Encryption. Everything that answers "who can get at this"
    lives under one roof now: recovery, this device, my devices, the Face ID lock and the bridge.
