@@ -45,6 +45,9 @@ public struct RoomListView: View {
     @State private var isShowingSettings = false
     @State private var isShowingArchive = false
 
+    /// The chat opened from the archive on a phone — see `ArchiveView.pushed`.
+    @State private var archivedRoomID: String?
+
     /// The space whose rooms are being shown, when one has been tapped.
     @State private var openedSpace: RoomSummary?
 
@@ -211,14 +214,20 @@ public struct RoomListView: View {
             }
         }
         .navigationDestination(isPresented: $isShowingArchive) {
-            ArchiveView(session: session) { roomID in
-                // Opening a chat from the archive selects it and leaves the archive where it is.
-                // On a phone the split view is one stack, so the chat is pushed *over* the archive
-                // and Back returns to it — the way back is the way in. It used to pop the archive
-                // in the same moment it selected the room, and the two cancelled out: no push
-                // animation at all, and closing the chat landed in the main list.
-                selectedRoomID = roomID
-            }
+            // Beside the archive on iPad and Mac: the chat goes to the detail column, as from the main
+            // list. On a phone the archive pushes the chat itself (`pushed`). Selecting it there —
+            // which is what this did — asks the collapsed split view to show its detail column, and
+            // it does that by unwinding the sidebar's stack, archive and all: no slide in, and Back
+            // landed in the main list.
+            ArchiveView(session: session,
+                        onOpen: { roomID in
+                            if isSidebar {
+                                selectedRoomID = roomID
+                            } else {
+                                archivedRoomID = roomID
+                            }
+                        },
+                        pushed: isSidebar ? nil : $archivedRoomID)
         }
         .navigationDestination(isPresented: $isShowingSettings) {
             // In a sidebar the system pushes without giving the pushed screen a way back,

@@ -218,17 +218,24 @@ public struct RoomView: View {
     ///
     /// Starts true, because a room opens on its newest message — see `hasAnchored`.
     ///
-    /// **It is one signal now, not two**, and the second was taken out for making the way-down
-    /// button vanish. It was a hairline at the foot of the lazy stack reporting whether it was on
-    /// screen — and a lazy stack builds rows it is not showing, ahead of the scroll and while a
-    /// page of history lands, so the marker said "on screen" from three screens up and the button
-    /// went away under the reader's thumb. What replaced both is the distance sum taken *without*
-    /// the bottom inset: wherever the composer's inset is or is not counted, at rest against the
-    /// last message it comes to zero or less, and far up it cannot come anywhere near the reach.
-    private var isAtNewest: Bool { isNearBottom }
+    /// **The marker is believed only near the end.** It is a hairline at the foot of a lazy stack,
+    /// and a lazy stack builds rows it is not showing — ahead of the scroll, and while a page of
+    /// history lands — so on its own it said "on screen" from three screens up and the way-down
+    /// button vanished under the reader's thumb. Taking it out altogether was tried, and left the
+    /// sum alone at rest, which is a composer's height short there: the button never went away.
+    /// So the marker is asked, and its yes counts only while the sum puts the end within half a
+    /// screen — which it always does at rest, and never does three screens up.
+    private var isAtNewest: Bool { isNearBottom || (endIsOnScreen && endIsClose) }
 
     /// Distance to the end, from the scroll view.
     @State private var isNearBottom = true
+
+    /// The end of the conversation, as a thing that is either on the screen or is not — see the
+    /// marker under the last row.
+    @State private var endIsOnScreen = true
+
+    /// Whether the sum puts the end within half a screen — what the marker is held to.
+    @State private var endIsClose = true
 
     /// The room-info screen, built when the header is first pressed and kept afterwards.
     ///
@@ -860,14 +867,22 @@ public struct RoomView: View {
             // is, from the other end of the scroll view. Half of the answer — the other half is the
             // marker under the last row, and `isAtNewest` says why there are two.
             .onScrollGeometryChange(for: Bool.self) { geometry in
-                // Without `contentInsets.bottom` — see `isAtNewest`. At most the inset's height
-                // generous at the end, and never generous anywhere else.
                 let distanceFromBottom = geometry.contentSize.height
+                    + geometry.contentInsets.bottom
                     - geometry.contentOffset.y
                     - geometry.containerSize.height
                 return distanceFromBottom < Theme.Size.newestReach
             } action: { _, isNear in
                 isNearBottom = isNear
+            }
+            .onScrollGeometryChange(for: Bool.self) { geometry in
+                let distanceFromBottom = geometry.contentSize.height
+                    + geometry.contentInsets.bottom
+                    - geometry.contentOffset.y
+                    - geometry.containerSize.height
+                return distanceFromBottom < geometry.containerSize.height / 2
+            } action: { _, isClose in
+                endIsClose = isClose
             }
             // Arriving at the end is having seen it. The pill has nothing left to offer — and the
             // sender has something to be told.
@@ -2084,12 +2099,14 @@ public struct RoomView: View {
         }
     }
 
-    /// A hairline under the last message — what the end of the conversation is scrolled to rest
-    /// against. It used to report whether it was on screen, too; see `isAtNewest` for why it no
-    /// longer does.
+    /// The end of the conversation, asked of the screen rather than worked out from it — and
+    /// believed only near the end. See `isAtNewest`.
     private var endMarker: some View {
         Color.clear
             .frame(height: Theme.Border.hairline)
+            .onScrollVisibilityChange(threshold: 0.01) { visible in
+                endIsOnScreen = visible
+            }
     }
 
     /// The way back down when nothing has arrived — just a room you have read a long way up.

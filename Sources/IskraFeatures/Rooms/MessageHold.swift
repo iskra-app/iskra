@@ -49,11 +49,6 @@ struct MessageHold: UIViewRepresentable {
     /// The hold happened: lift the message into the menu.
     let onHold: () -> Void
 
-    /// After the hold, the same finger moving over the menu, in window coordinates — and coming up.
-    /// What lets an item be chosen without lifting the finger first (`MessageMenuPresenter.slide`).
-    var onSlide: ((CGPoint) -> Void)?
-    var onRelease: (() -> Void)?
-
     func makeUIView(context: Context) -> UIView {
         let view = AttachingView()
         // Invisible to touches, and that is the entire point — see the note above about the
@@ -67,8 +62,6 @@ struct MessageHold: UIViewRepresentable {
     func updateUIView(_ view: UIView, context: Context) {
         context.coordinator.onPressingChanged = onPressingChanged
         context.coordinator.onHold = onHold
-        context.coordinator.onSlide = onSlide
-        context.coordinator.onRelease = onRelease
         context.coordinator.duration = duration
     }
 
@@ -106,12 +99,6 @@ struct MessageHold: UIViewRepresentable {
         var duration: TimeInterval
         var onPressingChanged: (Bool) -> Void
         var onHold: () -> Void
-        var onSlide: ((CGPoint) -> Void)?
-        var onRelease: (() -> Void)?
-
-        /// Whether this row's hold fired and its finger is still down — the stretch in which the
-        /// finger is choosing from the menu rather than pressing a message.
-        private var isSliding = false
 
         /// The row this speaks for, which is also the rectangle a touch has to be inside.
         private weak var mine: UIView?
@@ -196,33 +183,8 @@ struct MessageHold: UIViewRepresentable {
         }
 
         @objc private func held(_ recogniser: UILongPressGestureRecognizer) {
-            switch recogniser.state {
-            case .began:
-                guard isMine(recogniser) else { return }
-                isSliding = onSlide != nil
-                // The conversation stops following the finger: from here on it is choosing from
-                // the menu, and a list scrolling under it would carry the gap the message left
-                // away from where the message will land. Switching the pan off and on cancels
-                // the touch it has; the next touch is the list's again.
-                if isSliding, let scroll = host as? UIScrollView {
-                    scroll.panGestureRecognizer.isEnabled = false
-                    scroll.panGestureRecognizer.isEnabled = true
-                }
-                onHold()
-
-            case .changed:
-                guard isSliding else { return }
-                onSlide?(recogniser.location(in: nil))
-
-            case .ended:
-                guard isSliding else { return }
-                isSliding = false
-                onSlide?(recogniser.location(in: nil))
-                onRelease?()
-
-            default:
-                isSliding = false
-            }
+            guard recogniser.state == .began, isMine(recogniser) else { return }
+            onHold()
         }
 
         @objc private func touched(_ recogniser: UILongPressGestureRecognizer) {
