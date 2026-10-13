@@ -853,6 +853,10 @@ public enum Theme {
         /// widths, and left to themselves the words beside them would not line up.
         public static let menuIcon: CGFloat = 26
 
+        /// A hand-drawn icon standing where an SF Symbol at body size would — the sticker
+        /// button's (`StickerGlyph`). Scaled with Dynamic Type from there.
+        public static let glyph: CGFloat = 20
+
         /// The chat a long press lifts out of the chat list — see `ChatPeek`.
         ///
         /// Ceilings, not sizes. On a phone the screen is smaller than both and the card takes what

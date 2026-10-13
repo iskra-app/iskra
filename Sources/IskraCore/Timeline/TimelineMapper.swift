@@ -567,7 +567,7 @@ enum TimelineMapper {
             // A WebP is a sticker however it came: in an encrypted room this app sends one as an
             // encrypted image, because a real `m.sticker` would go up unencrypted — see
             // `StickerPicture`.
-            return StickerPicture.isSticker(mimeType: content.info?.mimetype) ? .sticker(attachment)
+            return StickerPicture.isSticker(mimeType: content.info?.mimetype, filename: content.filename) ? .sticker(attachment)
                                                                               : .image(attachment)
 
         case let .video(content):

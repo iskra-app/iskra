@@ -256,14 +256,14 @@ struct DemoBackendTests {
         let timeline = try #require(session.timeline(forRoomID: devID))
         try await timeline.start()
         defer { timeline.stop() }
-        let sticker = try #require(library.packs.first { $0.name == "Искра" }?.stickers.first { $0.body == "😎" })
+        let sticker = try #require(library.packs.first { $0.name == "Искра" }?.stickers.first { $0.body == "🏃" })
         await timeline.send(sticker: sticker)
         #expect(timeline.failure == nil)
         let arrived = await eventually {
             timeline.rows.contains { row in
                 guard case let .message(message) = row, message.isOwn,
                       case let .sticker(attachment) = message.kind else { return false }
-                return attachment.mediaID == sticker.url && attachment.caption == "😎"
+                return attachment.mediaID == sticker.url && attachment.caption == "🏃"
             }
         }
         #expect(arrived)

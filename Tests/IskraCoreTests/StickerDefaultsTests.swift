@@ -72,7 +72,7 @@ struct StickerPictureTests {
 
     @Test("anything else is a photo — whatever its name says")
     func notWebP() {
-        #expect(StickerPicture.prepare(StickerArt.happy.png()) == .notASticker)
+        #expect(StickerPicture.prepare(StickerArt.hello.png()) == .notASticker)
         #expect(StickerPicture.prepare(Data("not a picture".utf8)) == .notASticker)
     }
 
@@ -82,6 +82,9 @@ struct StickerPictureTests {
         #expect(StickerPicture.isSticker(mimeType: "IMAGE/WEBP"))
         #expect(!StickerPicture.isSticker(mimeType: "image/png"))
         #expect(!StickerPicture.isSticker(mimeType: nil))
+        #expect(StickerPicture.isSticker(mimeType: "image/png", filename: "sticker.png"))
+        #expect(!StickerPicture.isSticker(mimeType: "image/png", filename: "IMG_0001.png"))
+        #expect(!StickerPicture.isSticker(mimeType: "image/png", filename: "sticker.pdf"))
     }
 
     /// The encrypted way: an `m.image` of type `image/webp`. The chat list and the lock screen
@@ -135,7 +138,7 @@ struct BuiltInStickerTests {
         let pack = try #require(first.packs.last)
         #expect(pack.isBuiltIn)
         #expect(pack.stickers.map(\.shortcode) == StickerArt.allCases.map(\.rawValue))
-        #expect(pack.stickers.first?.body == "😊")
+        #expect(pack.stickers.first?.body == "👋")
         #expect(pack.stickers.allSatisfy { $0.url.hasPrefix("mxc://") && $0.mimeType == "image/png" })
         #expect(server.uploads.withLock { $0 } == StickerArt.allCases.count)
 
