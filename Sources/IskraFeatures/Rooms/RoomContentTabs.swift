@@ -262,6 +262,23 @@ struct RoomMediaGrid: View {
     }
 }
 
+extension View {
+    /// A section of a grouped form with no margin either side — the full width of the screen. On
+    /// systems before 26, and on the Mac, there is no way to ask, and the section keeps its card's inset.
+    @ViewBuilder
+    func edgeToEdge(_ isOn: Bool = true) -> some View {
+        #if os(iOS)
+        if isOn, #available(iOS 26, *) {
+            listSectionMargins(.horizontal, 0)
+        } else {
+            self
+        }
+        #else
+        self
+        #endif
+    }
+}
+
 /// A month's heading over the run of things sent in it — "Октябрь 2026" — Telegram's way of breaking
 /// up shared media, so a long history reads as a calendar and not as one undifferentiated wall.
 struct MonthHeader: View {
