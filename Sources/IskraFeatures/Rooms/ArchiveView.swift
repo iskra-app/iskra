@@ -14,6 +14,12 @@ struct ArchiveView: View {
     let session: UserSession
     var onOpen: (String) -> Void
 
+    /// On a phone, the chat opened from here — pushed onto *this* screen's stack, so it slides in
+    /// over the archive and Back comes back to it. See `RoomListView` for why the selection that
+    /// the main list uses cannot do this on a phone. Nil on iPad and Mac, where the chat goes to
+    /// the detail column beside the archive and nothing is pushed here.
+    var pushed: Binding<String?>?
+
     @State private var roomToLeave: RoomSummary?
 
     @Environment(\.chatPeek) private var chatPeek
@@ -41,6 +47,9 @@ struct ArchiveView: View {
             }
         }
         .listStyle(.plain)
+        .navigationDestination(item: pushed ?? .constant(nil)) { roomID in
+            ArchivedRoom(session: session, roomID: roomID) { pushed?.wrappedValue = nil }
+        }
         .navigationTitle(Text(Strings.RoomList.Archive.title))
         .toolbarTitleDisplayMode(.inline)
         .overlay { emptyState }
@@ -67,6 +76,37 @@ struct ArchiveView: View {
             ContentUnavailableView(String(app: Strings.RoomList.Archive.emptyTitle),
                                    systemImage: "archivebox",
                                    description: Text(Strings.RoomList.Archive.emptyMessage))
+        }
+    }
+}
+
+/// A chat opened from the archive on a phone, as the detail column would show it — and doing the
+/// two things the root does for the chat it selects: telling notifications this room is on screen,
+/// and clearing what was delivered for it.
+private struct ArchivedRoom: View {
+    let session: UserSession
+    let roomID: String
+    let close: () -> Void
+
+    @State private var openAt: String?
+
+    var body: some View {
+        if let timeline = session.timeline(forRoomID: roomID) {
+            RoomView(timeline: timeline,
+                     identityChanges: session.identityChanges(forRoomID: roomID),
+                     makeDetails: { session.details(forRoomID: roomID) },
+                     openAt: $openAt,
+                     onLeave: close,
+                     onClose: close)
+                .id(roomID)
+                .onAppear {
+                    PushRouter.shared.visibleRoomID = roomID
+                    PushRouter.shared.visibleAccountID = session.sessionID
+                    DeliveredNotifications.clear(roomID: roomID)
+                }
+                .onDisappear {
+                    if PushRouter.shared.visibleRoomID == roomID { PushRouter.shared.visibleRoomID = nil }
+                }
         }
     }
 }

@@ -159,9 +159,7 @@ struct MessageActions<Content: View>: View {
             .overlay {
                 MessageHold(duration: Theme.Timing.menuLift,
                             onPressingChanged: { _ in },
-                            onHold: open,
-                            onSlide: { menu?.slide(to: $0) },
-                            onRelease: { menu?.release() })
+                            onHold: open)
             }
             #else
             .onLongPressGesture(minimumDuration: Theme.Timing.menuLift) {
