@@ -260,6 +260,16 @@ struct MessageMenuLayout: Equatable {
     /// naturally sit, and it is zero for every message that is not near an edge.
     var emojiOffset: CGFloat
 
+    /// The bar of six, which is as wide as its seven cells and no wider — see `ReactionBar`.
+    ///
+    /// It used to be stretched to the panel's width, which spread six emoji across 360 points
+    /// with a thumb's width of nothing between each pair: a row of separate buttons rather than
+    /// one strip of reactions. Hugging its cells, it reads as the strip it is.
+    var barWidth: CGFloat
+
+    /// And its slide back onto the screen, worked out exactly as `emojiOffset` is.
+    var barOffset: CGFloat
+
     /// How tall the lifted message is allowed to be. Its own height, unless it is a very long
     /// message on a very short screen — and then it keeps its size and *scrolls* inside this
     /// height, rather than being shrunk to fit, which is what it used to do. A shrunken page of
@@ -296,7 +306,8 @@ struct MessageMenuLayout: Equatable {
                         region: CGRect,
                         isOwn: Bool,
                         aboveHeight: CGFloat,
-                        listHeight: CGFloat) -> MessageMenuLayout {
+                        listHeight: CGFloat,
+                        barWidth: CGFloat = Theme.Size.emojiPanelWidth) -> MessageMenuLayout {
         let gap = MessageMenu.gap
         let margin = MessageMenu.margin
 
@@ -335,10 +346,14 @@ struct MessageMenuLayout: Equatable {
 
         // The emoji grid, which is the one part of the menu that is wider than the rest. Same
         // anchored edge, same margins — only the width differs, so the sum is the same sum.
-        let emojiWidth = min(Theme.Size.emojiPanelWidth, max(0, container.width - margin * 2))
-        let wantedEmojiX = isOwn ? x + width - emojiWidth : x
-        let furthestEmojiX = max(margin, container.width - margin - emojiWidth)
-        let emojiX = min(max(wantedEmojiX, margin), furthestEmojiX)
+        func overhang(_ wide: CGFloat) -> (width: CGFloat, offset: CGFloat) {
+            let fitted = min(wide, max(0, container.width - margin * 2))
+            let wantedX = isOwn ? x + width - fitted : x
+            let furthestX = max(margin, container.width - margin - fitted)
+            return (fitted, min(max(wantedX, margin), furthestX) - wantedX)
+        }
+        let emoji = overhang(Theme.Size.emojiPanelWidth)
+        let bar = overhang(barWidth)
 
         // Where the lifted message ends up, against where it was. It sits under the bar when there
         // is one (and the gap after it), and it hangs from its own edge of the column — its right if
@@ -349,8 +364,10 @@ struct MessageMenuLayout: Equatable {
 
         return MessageMenuLayout(origin: CGPoint(x: x, y: y),
                                  width: width,
-                                 emojiWidth: emojiWidth,
-                                 emojiOffset: emojiX - wantedEmojiX,
+                                 emojiWidth: emoji.width,
+                                 emojiOffset: emoji.offset,
+                                 barWidth: bar.width,
+                                 barOffset: bar.offset,
                                  contentHeight: contentHeight,
                                  listMaxHeight: listMaxHeight,
                                  lift: CGSize(width: anchorEdge - liftedEdge,
