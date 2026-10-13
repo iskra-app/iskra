@@ -322,9 +322,13 @@ public enum Theme {
         /// It was briefly shortened to 180 ms, to cure a hold that seemed to do nothing for about
         /// a second. It was not the culprit: the second was the microphone being opened behind an
         /// unchanged screen, and it is cured where it was caused — see `VoiceRecorder.State.starting`.
-        /// So this is a quarter of a second again, which is the number that keeps the widest margin
-        /// between a hold and the tap that flips the button between voice and video.
-        public static let holdBegins: Duration = .milliseconds(250)
+        /// It was a quarter of a second after that, which kept the widest margin between a hold
+        /// and the tap that flips the button between voice and video — and the quarter of a
+        /// second was itself the lag people felt: nothing on screen moved until it was over. Now
+        /// the button answers the touch itself (it swells, and the phone ticks — see
+        /// `MessageComposer.recordButton`), and this is what is left of the wait: as short as a
+        /// deliberate tap allows, which in practice is well under 150 ms.
+        public static let holdBegins: Duration = .milliseconds(150)
 
         /// How long one slide of the welcome carousel stands still before the next one comes.
         ///

@@ -436,6 +436,7 @@ struct MessageComposer: View {
         // Heavy and at full intensity. A medium tap is what a button gives you, and the button is
         // not what happened here — the hold took, and the phone started listening. It should land
         // like the shutter of a camera, not like a keypress.
+        .sensoryFeedback(.impact(weight: .light, intensity: 0.6), trigger: beats.pressed)
         .sensoryFeedback(.impact(weight: .heavy, intensity: 1), trigger: beats.began)
         .sensoryFeedback(.success, trigger: beats.locked)
         .sensoryFeedback(.impact(flexibility: .rigid, intensity: 0.9), trigger: beats.cancelled)
@@ -634,7 +635,15 @@ struct MessageComposer: View {
         // it — and the hold survives with it.
         Color.clear
             .frame(width: control, height: control)
-            .overlay { icon(glyph, isPrimary: voice != nil, tint: .red) }
+            .overlay {
+                icon(glyph, isPrimary: voice != nil || hold == .holding, tint: .red)
+                    // The answer to the finger, the instant it lands — before anybody knows
+                    // whether it is a tap or a hold. It used to be nothing for the length of
+                    // `holdBegins`, and a quarter of a second of a button not moving under a
+                    // thumb reads as a button that did not notice. Telegram's grows; so does this.
+                    .scaleEffect(hold == .none || hold == .over ? 1 : Self.heldScale)
+                    .animation(.spring(response: 0.18, dampingFraction: 0.6), value: hold)
+            }
             .contentShape(.circle)
             .gesture(
                 DragGesture(minimumDistance: 0)
@@ -649,6 +658,7 @@ struct MessageComposer: View {
                         switch hold {
                         case .none:
                             hold = .pressing
+                            beats.pressed += 1
 
                             // A press while a hands-free recording is running means stop, not
                             // start another — the button has become a stop button and looks like
@@ -914,6 +924,9 @@ struct MessageComposer: View {
 
     @State private var hold: Hold = .none
 
+    /// How much the record button swells under a finger — see `recordButton`.
+    private static let heldScale: CGFloat = 1.25
+
     /// The timer that turns a press into a hold, held onto so that lifting the finger can call
     /// it off. Cancelled on release, and cancelled again when the view goes away with the finger
     /// still down — a task that outlives the composer would start a recording into a room the
@@ -960,6 +973,7 @@ struct MessageComposer: View {
     /// The three things the phone taps back at, counted rather than flagged — see the feedback
     /// modifiers on the body for why.
     private struct Beats: Equatable {
+        var pressed = 0
         var began = 0
         var locked = 0
         var cancelled = 0
