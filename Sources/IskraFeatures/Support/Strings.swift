@@ -629,7 +629,6 @@ public enum Strings {
             public static let deleteChatHelp = LocalizedStringResource("room.manage.deleteChatHelp", bundle: bundle)
             public static let topicPlaceholder = LocalizedStringResource("room.manage.topicPlaceholder", bundle: bundle)
 
-
             /// Who may walk in. The switch is the plain-language half of the join rules —
             /// the protocol's other answers (knocking, restricted to a space) are not
             /// offered, because neither can be explained in a sentence a person recognises.
