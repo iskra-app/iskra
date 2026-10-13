@@ -212,11 +212,12 @@ public struct RoomListView: View {
         }
         .navigationDestination(isPresented: $isShowingArchive) {
             ArchiveView(session: session) { roomID in
-                // Opening a chat from the archive drops back to the main column and selects it —
-                // the detail follows the selection, and the archive is a place you came from, not
-                // one you stay in to read.
+                // Opening a chat from the archive selects it and leaves the archive where it is.
+                // On a phone the split view is one stack, so the chat is pushed *over* the archive
+                // and Back returns to it — the way back is the way in. It used to pop the archive
+                // in the same moment it selected the room, and the two cancelled out: no push
+                // animation at all, and closing the chat landed in the main list.
                 selectedRoomID = roomID
-                isShowingArchive = false
             }
         }
         .navigationDestination(isPresented: $isShowingSettings) {

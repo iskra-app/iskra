@@ -8,8 +8,8 @@ import IskraDesign
 /// archived chat is not a different kind of thing, it is an ordinary chat put on a shelf. The one
 /// difference is the trailing swipe lifts it back out ("Unarchive") instead of putting it away.
 ///
-/// Opening a chat here hands the room back up to the list, which selects it and pops this screen:
-/// the archive is a place you came from, not one you read in.
+/// Opening a chat here hands the room back up to the list, which selects it; on a phone the chat
+/// is pushed over this screen, and Back comes back here.
 struct ArchiveView: View {
     let session: UserSession
     var onOpen: (String) -> Void
