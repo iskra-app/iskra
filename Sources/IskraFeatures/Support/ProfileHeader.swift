@@ -34,10 +34,35 @@ struct ProfileHeader: View {
     /// the settings screen, where the header is the user's own.
     var faces: [RoomFace] = []
 
+    /// The picture, opened full screen — Telegram's: a tap on the portrait shows the photograph
+    /// itself rather than the circle cut out of it. Only where there is a photograph; initials and
+    /// a drawn creature have nothing more to show.
+    @State private var opened: MediaItem?
+
+    private var picture: MediaItem? {
+        guard let avatarURL, let attachment = Attachment.picture(url: avatarURL) else { return nil }
+        return MediaItem(id: avatarURL, attachment: attachment, kind: .photo,
+                         sender: name, timestamp: .now)
+    }
+
     var body: some View {
         VStack(spacing: Theme.Spacing.normal) {
             RoomAvatar(name: name, url: avatarURL, size: Theme.Size.avatarProfile, shape: shape,
                        seed: seed, faces: faces)
+                .contentShape(.circle)
+                .onTapGesture {
+                    if let picture { opened = picture }
+                }
+            #if os(iOS)
+            .fullScreenCover(item: $opened) { item in
+                MediaPager(items: [item], startIndex: 0)
+                    .presentationBackground(.black)
+            }
+            #else
+            .sheet(item: $opened) { item in
+                MediaPager(items: [item], startIndex: 0)
+            }
+            #endif
 
             VStack(spacing: Theme.Spacing.tight) {
                 // A size up from the `.title2` a heading in a form would get, because this is not

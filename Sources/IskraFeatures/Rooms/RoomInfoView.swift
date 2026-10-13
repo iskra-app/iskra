@@ -90,6 +90,13 @@ struct RoomInfoView: View {
                     .profileHeaderRow()
             }
 
+            // A personal chat is a person: the same tiles and the same card their page has from a
+            // group's member list, so the two are one screen — Telegram's — rather than two
+            // screens about the same person that disagree.
+            if !isRoom {
+                person
+            }
+
             about
 
             // What the padlock means, directly under the name. It used to sit five sections down,
@@ -129,10 +136,13 @@ struct RoomInfoView: View {
                 }
                 .disabled(isOffline)
 
-                Button {
-                    onSearch()
-                } label: {
-                    Label(Strings.Room.searchInChat, systemImage: "magnifyingglass")
+                // In a personal chat the search is a tile under the portrait.
+                if isRoom {
+                    Button {
+                        onSearch()
+                    } label: {
+                        Label(Strings.Room.searchInChat, systemImage: "magnifyingglass")
+                    }
                 }
             } footer: {
                 // Said once, at the top of everything this screen can no longer do, rather than as a
@@ -145,6 +155,14 @@ struct RoomInfoView: View {
             }
 
             contents
+
+            // The account's block, for the person this chat is with — at the foot of their page,
+            // where it is on every person's page. See `PersonBlockButton`.
+            if !isRoom, let counterpartID = details.counterpartID {
+                Section {
+                    PersonBlockButton(userID: counterpartID, name: details.name)
+                }
+            }
 
             Section {
                 Button(role: .destructive) {
@@ -251,6 +269,78 @@ struct RoomInfoView: View {
             onLeave()
         }
     }
+
+    // MARK: - The person, in a personal chat
+
+    /// The ID has just been copied — the tile says so with a tick.
+    @State private var isCopied = false
+
+    /// Telegram's tiles and card under a person's portrait, for the person a personal chat is with.
+    /// The same pieces `MemberProfileView` is made of — `ProfileActionTile` and the Matrix ID card —
+    /// with the two acts that only make sense from inside the chat: search it, and silence it.
+    @ViewBuilder
+    private var person: some View {
+        Section {
+            NavigationGlassGroup(spacing: Theme.Spacing.close) {
+                HStack(spacing: Theme.Spacing.close) {
+                    ProfileActionTile(title: Strings.Profile.search,
+                                      systemImage: "magnifyingglass",
+                                      isBusy: false) {
+                        onSearch()
+                    }
+
+                    let isMuted = details.alerts == .muted
+                    ProfileActionTile(title: isMuted ? Strings.Profile.unmute : Strings.Profile.mute,
+                                      systemImage: isMuted ? "bell.slash.fill" : "bell.fill",
+                                      isBusy: false) {
+                        Task { await details.setAlerts(isMuted ? .all : .muted) }
+                    }
+                    .disabled(isOffline)
+
+                    if let counterpartID = details.counterpartID,
+                       let link = MemberProfileView.link(to: counterpartID) {
+                        ShareLink(item: link) {
+                            ProfileActionTileLabel(title: Strings.Profile.share, systemImage: "square.and.arrow.up")
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    if let counterpartID = details.counterpartID {
+                        ProfileActionTile(title: Strings.Profile.copyID,
+                                          systemImage: isCopied ? "checkmark" : "doc.on.doc",
+                                          isBusy: false) {
+                            Clipboard.copy(counterpartID)
+                            withAnimation(.smooth(duration: Theme.Timing.chrome)) { isCopied = true }
+                        }
+                        .sensoryFeedback(.success, trigger: isCopied)
+                    }
+                }
+            }
+            .padding(.vertical, Theme.Spacing.close)
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets())
+        }
+
+        if let counterpartID = details.counterpartID {
+            Section {
+                LabeledContent {
+                    Text(verbatim: counterpartID)
+                        .textSelection(.enabled)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                } label: {
+                    Text(Strings.Profile.matrixID)
+                }
+            } footer: {
+                if blockStore?.isBlocked(counterpartID) == true {
+                    Text(Strings.Profile.blockedNotice)
+                }
+            }
+        }
+    }
+
+    /// For the note under the card when this person is blocked.
+    @Environment(\.blockStore) private var blockStore
 
     // MARK: - Who or what this room is
 

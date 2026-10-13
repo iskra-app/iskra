@@ -111,13 +111,14 @@ struct LocalizationTests {
         (Strings.Room.pinnedTitle, en: "Pinned messages", ru: "Закреплённые"),
         (Strings.Room.Manage.invite, en: "Invite", ru: "Пригласить"),
         (Strings.Room.Manage.remove, en: "Remove", ru: "Исключить"),
-        (Strings.Room.Manage.block, en: "Block", ru: "Заблокировать"),
+        (Strings.Room.Manage.block, en: "Ban from Chat", ru: "Заблокировать в чате"),
+        (Strings.Profile.blockUser, en: "Block User", ru: "Заблокировать пользователя"),
         (Strings.Room.Manage.member, en: "Member", ru: "Участник"),
         (Strings.Room.Manage.openToAnyone, en: "Open chat", ru: "Открытый чат"),
         (Strings.Room.Manage.leave, en: "Leave the chat", ru: "Выйти из чата"),
         // The one act on this screen that asks first, and it asks by name — so the name has
         // to survive the trip through the format string in both languages.
-        (Strings.Room.Manage.blockQuestion("Аня"), en: "Block Аня?", ru: "Заблокировать Аня?"),
+        (Strings.Room.Manage.blockQuestion("Аня"), en: "Ban Аня from this chat?", ru: "Заблокировать Аня в этом чате?"),
         (Strings.RoomList.New.create, en: "Create", ru: "Создать"),
         (Strings.RoomList.New.start, en: "Start", ru: "Начать"),
         (Strings.Room.Manage.alerts, en: "Notifications", ru: "Уведомления"),

@@ -240,10 +240,17 @@ public struct RoomView: View {
 
     /// Opens a person's page — from their name in a grey line, or their face beside a message.
     /// The room details are what the page is made of, so they are made here if nothing has yet.
+    ///
+    /// In a personal chat, the person it is with *is* the chat: their page is the chat's info, the
+    /// one screen Telegram has for both, rather than a second page about the same person.
     private func openProfile(_ userID: String) {
         if details == nil { details = makeDetails() }
         guard details != nil else { return }
-        profileUserID = userID
+        if timeline.isOneToOne, userID == timeline.directCounterpartID {
+            isShowingDetails = true
+        } else {
+            profileUserID = userID
+        }
     }
 
     /// Whether the room has already been put down. See `tearDown()` — there are two ways out and
@@ -997,13 +1004,18 @@ public struct RoomView: View {
         }
         .safeAreaInset(edge: .bottom) {
             Group {
-                if timeline.canPost {
+                if let blockedID {
+                    BlockedBanner {
+                        Task { await blockStore?.unblock(userID: blockedID) }
+                    }
+                } else if timeline.canPost {
                     composer
                 } else {
                     readOnlyBanner
                 }
             }
             .animation(.smooth, value: timeline.canPost)
+            .animation(.smooth, value: blockedID)
         }
         // A picture dragged anywhere onto the room — the conversation, the composer, the header's
         // underside — lands in the composer. The whole room and not the field, because the field
@@ -1670,6 +1682,17 @@ public struct RoomView: View {
 
     private var readOnlyBanner: some View {
         ReadOnlyBanner()
+    }
+
+    /// The account's block list — see `BlockedBanner`.
+    @Environment(\.blockStore) private var blockStore
+
+    /// The person this personal chat is with, when the account has blocked them. Nil in a group,
+    /// where one blocked member does not stop anybody writing to the rest.
+    private var blockedID: String? {
+        guard timeline.isOneToOne, let id = timeline.directCounterpartID,
+              blockStore?.isBlocked(id) == true else { return nil }
+        return id
     }
 
     /// The camera, over the conversation rather than instead of it.
