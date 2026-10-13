@@ -961,15 +961,14 @@
 
 /* Разделы в панели эмодзи. Короткие: это заголовки над сеткой, а не названия глав. */
 "reactions.recent" = "Недавние";
-"reactions.smileys" = "Улыбки";
-"reactions.gestures" = "Жесты";
-"reactions.hearts" = "Сердца";
+"reactions.smileys" = "Смайлики и люди";
 "reactions.animals" = "Животные и природа";
-"reactions.food" = "Еда";
-"reactions.activity" = "Занятия";
-"reactions.places" = "Места";
-"reactions.objects" = "Вещи";
+"reactions.food" = "Еда и напитки";
+"reactions.activity" = "Активность";
+"reactions.places" = "Путешествия и места";
+"reactions.objects" = "Предметы";
 "reactions.symbols" = "Символы";
+"reactions.flags" = "Флаги";
 
 /* Вкладка «Безопасность» — бывшее «Шифрование». Под одной крышей собрано всё, что отвечает
    на вопрос «кто может до этого добраться»: восстановление переписки, это устройство, мои

@@ -1584,14 +1584,13 @@ public enum Strings {
         /// heading in the grid and the name VoiceOver gives the tab that jumps to it.
         public static let recent = LocalizedStringResource("reactions.recent", bundle: bundle)
         public static let smileys = LocalizedStringResource("reactions.smileys", bundle: bundle)
-        public static let gestures = LocalizedStringResource("reactions.gestures", bundle: bundle)
-        public static let hearts = LocalizedStringResource("reactions.hearts", bundle: bundle)
         public static let animals = LocalizedStringResource("reactions.animals", bundle: bundle)
         public static let food = LocalizedStringResource("reactions.food", bundle: bundle)
         public static let activity = LocalizedStringResource("reactions.activity", bundle: bundle)
         public static let places = LocalizedStringResource("reactions.places", bundle: bundle)
         public static let objects = LocalizedStringResource("reactions.objects", bundle: bundle)
         public static let symbols = LocalizedStringResource("reactions.symbols", bundle: bundle)
+        public static let flags = LocalizedStringResource("reactions.flags", bundle: bundle)
     }
 
     /// Choosing which icon the app wears on the home screen — see `HomeIconPicker`.

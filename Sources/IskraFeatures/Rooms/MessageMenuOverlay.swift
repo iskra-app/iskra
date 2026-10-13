@@ -59,7 +59,8 @@ struct MessageMenuOverlay: View {
                         region: region,
                         isOwn: presentation.isOwn,
                         aboveHeight: aboveHeight(for: presentation),
-                        listHeight: listHeight(for: presentation))
+                        listHeight: listHeight(for: presentation),
+                        barWidth: ReactionBar.naturalWidth)
 
                     // Picked up, not faded in — Telegram's. The arrangement is first drawn with the
                     // message exactly where it stood in the conversation, and springs from there to
@@ -139,11 +140,10 @@ struct MessageMenuOverlay: View {
                             .offset(x: layout.emojiOffset)
                             .transition(.scale(scale: 0.9, anchor: .bottom).combined(with: .opacity))
                     } else {
-                        // As wide as the panel the "+" opens, not as narrow as the verbs:
-                        // seven round targets in the width of a column of words came out at
-                        // thumb-and-a-half apart, and a reaction is the thing people reach for
-                        // most. Slid onto the screen by the same correction as the panel.
-                        ReactionBar(width: layout.emojiWidth,
+                        // As wide as its own seven cells: wider than the column of verbs, so
+                        // the targets are never squeezed, and no wider, so the emoji sit
+                        // together as one strip. Slid onto the screen like the panel.
+                        ReactionBar(width: layout.barWidth,
                                     mine: presentation.mine,
                                     growsFromTrailing: presentation.isOwn,
                                     isFilled: presenter.isFilled,
@@ -151,7 +151,7 @@ struct MessageMenuOverlay: View {
                                     onMore: {
                                         withAnimation(Theme.Timing.menuOpens) { isPickingEmoji = true }
                                     })
-                            .offset(x: layout.emojiOffset)
+                            .offset(x: layout.barOffset)
                             // Unrolled from the message's own corner, as Telegram's is: the capsule
                             // opens sideways out of the edge the bubble hangs from, and the emoji
                             // in it pop up one after another from that side (`ReactionBar`).
@@ -436,7 +436,7 @@ private struct MessageMenuRowStyle: ButtonStyle {
 /// The same six as the double tap chooses from — see `QuickReaction`, which is the one list —
 /// and a "+" at the end for everything else. Capsule, glass, floating: the navigation layer
 /// doing exactly what the material is for.
-private struct ReactionBar: View {
+struct ReactionBar: View {
     let width: CGFloat
     let mine: Set<String>
     /// Which end the bar unrolls from — the bubble's own edge — and so which emoji pops first.
@@ -469,14 +469,24 @@ private struct ReactionBar: View {
                        value: isFilled)
     }
 
-    /// Seven things in the width of the menu: six emoji and the "+".
+    private static var cells: CGFloat { CGFloat(QuickReaction.allCases.count + 1) }
+
+    /// Seven full cells and the capsule's padding: the width the bar asks for when the screen
+    /// has the room. It used to be stretched to the emoji panel's 360 points, which spread the
+    /// six across the capsule with a thumb's width of nothing between each pair — a row of
+    /// separate buttons rather than one strip. Hugging its cells, the gap between two emoji is
+    /// the same on every phone and the strip reads as one thing.
+    static var naturalWidth: CGFloat {
+        cells * Theme.Size.reactionCell + Theme.Spacing.close * 2
+    }
+
+    /// Seven things in the width of the bar: six emoji and the "+".
     ///
-    /// Worked out rather than fixed, because six 44-point circles and a seventh come to more
-    /// than a narrow menu is wide — and an `HStack` handed more than it has room for does not
+    /// Worked out rather than fixed, because on the narrowest screen seven 44-point circles
+    /// come to more than there is — and an `HStack` handed more than it has room for does not
     /// shrink politely, it draws past the capsule it is inside and out over the conversation.
     private var cell: CGFloat {
-        let count = CGFloat(QuickReaction.allCases.count + 1)
-        return min(Theme.Size.reactionCell, (width - Theme.Spacing.close * 2) / count)
+        min(Theme.Size.reactionCell, (width - Theme.Spacing.close * 2) / Self.cells)
     }
 
     var body: some View {
@@ -489,11 +499,9 @@ private struct ReactionBar: View {
                                  size: cell,
                                  accent: accent) { onPick(reaction.key) },
                      index: index, of: count)
-                    .frame(maxWidth: .infinity)
             }
 
             pops(moreButton, index: count - 1, of: count)
-                .frame(maxWidth: .infinity)
         }
         .padding(.horizontal, Theme.Spacing.close)
         .frame(width: width, height: Theme.Size.reactionBar)
