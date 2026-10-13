@@ -700,8 +700,8 @@
 "room.manage.write" = "Write to them";
 "room.manage.goToChat" = "Go to the chat";
 "room.manage.remove" = "Remove";
-"room.manage.block" = "Block";
-"room.manage.blockQuestion" = "Block %@?";
+"room.manage.block" = "チャットから追放";
+"room.manage.blockQuestion" = "%@ をこのチャットから追放しますか？";
 "room.manage.blockHelp" = "They will leave the chat and cannot come back until you unblock them.";
 "room.manage.leave" = "チャットを退出";
 "room.manage.leaveQuestion" = "Leave this chat?";
@@ -1178,3 +1178,9 @@
 "signIn.browserHelp" = "サーバーのサインインページが開きます。いつも通りに操作できます。";
 "signIn.passwordHelp" = "アカウントのユーザー名とパスワード。";
 "signIn.problem.noRegistration" = "このサーバーではアプリからアカウントを作成できません。別のサーバーを選ぶか、サーバーのサイトで登録してください。";
+"profile.search" = "検索";
+"profile.mute" = "ミュート";
+"profile.unmute" = "ミュート解除";
+"profile.blockUser" = "ユーザーをブロック";
+"profile.unblockUser" = "ブロックを解除";
+"profile.blockedNotice" = "このユーザーをブロックしています。新しいメッセージは届きません。";

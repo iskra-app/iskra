@@ -1411,6 +1411,21 @@ public enum Strings {
         public static let loading = LocalizedStringResource("profile.loading", bundle: bundle)
         /// The person has left the room, or was never in it.
         public static let notInRoom = LocalizedStringResource("profile.notInRoom", bundle: bundle)
+
+        /// The tiles a personal chat adds to a person's page: finding something in the chat, and
+        /// how loudly it reaches you.
+        public static let search = LocalizedStringResource("profile.search", bundle: bundle)
+        public static let mute = LocalizedStringResource("profile.mute", bundle: bundle)
+        public static let unmute = LocalizedStringResource("profile.unmute", bundle: bundle)
+
+        /// The account's block — Matrix's ignore — at the foot of a person's page. Not the room's
+        /// ban, which is `Room.Manage.block` and only for whoever runs a group.
+        public static let blockUser = LocalizedStringResource("profile.blockUser", bundle: bundle)
+        public static let unblockUser = LocalizedStringResource("profile.unblockUser", bundle: bundle)
+
+        /// What a personal chat says about a person you have blocked — on their page, and over the
+        /// field where you would otherwise write to them.
+        public static let blockedNotice = LocalizedStringResource("profile.blockedNotice", bundle: bundle)
     }
 
     /// Settings → Devices — see `DevicesView`.

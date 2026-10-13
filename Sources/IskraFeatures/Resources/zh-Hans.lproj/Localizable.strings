@@ -700,8 +700,8 @@
 "room.manage.write" = "Write to them";
 "room.manage.goToChat" = "Go to the chat";
 "room.manage.remove" = "Remove";
-"room.manage.block" = "Block";
-"room.manage.blockQuestion" = "Block %@?";
+"room.manage.block" = "从聊天中封禁";
+"room.manage.blockQuestion" = "要将 %@ 从此聊天中封禁吗？";
 "room.manage.blockHelp" = "They will leave the chat and cannot come back until you unblock them.";
 "room.manage.leave" = "退出聊天";
 "room.manage.leaveQuestion" = "Leave this chat?";
@@ -1178,3 +1178,9 @@
 "signIn.browserHelp" = "将打开你的服务器登录页面，一切照常。";
 "signIn.passwordHelp" = "你账户的用户名和密码。";
 "signIn.problem.noRegistration" = "该服务器不支持在应用中创建账户。请选择其他服务器，或在其网站上注册。";
+"profile.search" = "搜索";
+"profile.mute" = "静音";
+"profile.unmute" = "取消静音";
+"profile.blockUser" = "屏蔽用户";
+"profile.unblockUser" = "取消屏蔽";
+"profile.blockedNotice" = "你已屏蔽此用户，其新消息不会送达你。";

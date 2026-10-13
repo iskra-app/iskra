@@ -114,6 +114,23 @@ public enum MessageKind: Sendable, Equatable {
     case unsupported
 }
 
+public extension Attachment {
+    /// A picture known only by its `mxc://` URL — a person's or a room's avatar, opened full screen
+    /// from their page. Nil for a URL the SDK will not read as one.
+    static func picture(url: String) -> Attachment? {
+        guard let source = try? MediaSource.fromUrl(url: url) else { return nil }
+        return Attachment(source: source,
+                          thumbnailSource: nil,
+                          filename: "avatar.jpg",
+                          caption: nil,
+                          width: nil,
+                          height: nil,
+                          duration: nil,
+                          mimeType: nil,
+                          blurhash: nil)
+    }
+}
+
 /// A downloadable piece of media. The bytes are fetched lazily via `MediaLoader`,
 /// because a timeline of a hundred photos should not pull a hundred photos.
 public struct Attachment: Sendable, Equatable {

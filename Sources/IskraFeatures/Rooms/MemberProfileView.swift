@@ -152,6 +152,14 @@ struct MemberProfileView: View {
                     }
                 }
             }
+
+            // The account's own block, last — the same button, in the same place, as on a
+            // personal chat's page. See `PersonBlockButton`.
+            if member.id != currentUserID {
+                Section {
+                    PersonBlockButton(userID: member.id, name: member.name)
+                }
+            }
         }
         .formStyle(.grouped)
         .profileScreen()

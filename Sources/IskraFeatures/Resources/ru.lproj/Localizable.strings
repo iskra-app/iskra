@@ -693,8 +693,8 @@
 "room.manage.write" = "Написать";
 "room.manage.goToChat" = "Перейти в чат";
 "room.manage.remove" = "Исключить";
-"room.manage.block" = "Заблокировать";
-"room.manage.blockQuestion" = "Заблокировать %@?";
+"room.manage.block" = "Заблокировать в чате";
+"room.manage.blockQuestion" = "Заблокировать %@ в этом чате?";
 "room.manage.blockHelp" = "Человек выйдет из чата и не сможет вернуться, пока вы не снимете блокировку.";
 "room.manage.leave" = "Выйти из чата";
 "room.manage.leaveQuestion" = "Выйти из чата?";
@@ -1170,3 +1170,9 @@
 "signIn.browserHelp" = "Откроется страница входа вашего сервера — там всё как обычно.";
 "signIn.passwordHelp" = "Имя пользователя и пароль от вашего аккаунта.";
 "signIn.problem.noRegistration" = "На этом сервере нельзя создать аккаунт из приложения. Выберите другой сервер или зарегистрируйтесь на его сайте.";
+"profile.search" = "Поиск";
+"profile.mute" = "Без звука";
+"profile.unmute" = "Со звуком";
+"profile.blockUser" = "Заблокировать пользователя";
+"profile.unblockUser" = "Разблокировать пользователя";
+"profile.blockedNotice" = "Вы заблокировали этого пользователя. Его новые сообщения сюда не приходят.";

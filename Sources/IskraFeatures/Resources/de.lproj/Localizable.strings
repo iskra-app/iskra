@@ -700,8 +700,8 @@
 "room.manage.write" = "Write to them";
 "room.manage.goToChat" = "Go to the chat";
 "room.manage.remove" = "Remove";
-"room.manage.block" = "Block";
-"room.manage.blockQuestion" = "Block %@?";
+"room.manage.block" = "Aus dem Chat verbannen";
+"room.manage.blockQuestion" = "%@ aus diesem Chat verbannen?";
 "room.manage.blockHelp" = "They will leave the chat and cannot come back until you unblock them.";
 "room.manage.leave" = "Chat verlassen";
 "room.manage.leaveQuestion" = "Leave this chat?";
@@ -1178,3 +1178,9 @@
 "signIn.browserHelp" = "Die Anmeldeseite deines Servers öffnet sich – dort funktioniert alles wie gewohnt.";
 "signIn.passwordHelp" = "Benutzername und Passwort deines Kontos.";
 "signIn.problem.noRegistration" = "Auf diesem Server kann man in der App kein Konto erstellen. Wähle einen anderen Server oder registriere dich auf seiner Website.";
+"profile.search" = "Suchen";
+"profile.mute" = "Stumm";
+"profile.unmute" = "Ton an";
+"profile.blockUser" = "Nutzer blockieren";
+"profile.unblockUser" = "Nutzer nicht mehr blockieren";
+"profile.blockedNotice" = "Du hast diesen Nutzer blockiert. Seine neuen Nachrichten erreichen dich nicht.";
