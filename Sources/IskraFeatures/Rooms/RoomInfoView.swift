@@ -501,6 +501,10 @@ struct RoomInfoView: View {
             } header: {
                 Text(openTab.title)
             }
+            // The grid of pictures runs from one edge of the screen to the other, Telegram's
+            // contact sheet — not inside the inset card every other section sits in, where three
+            // tiles to a row came out as three small stamps with a margin either side.
+            .edgeToEdge(openTab == .media)
         }
     }
 
