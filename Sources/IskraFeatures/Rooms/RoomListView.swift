@@ -701,8 +701,20 @@ struct RoomRow: View {
 
                     Spacer(minLength: 0)
 
-                    if room.hasUnread {
+                    if room.hasUnread || room.hasUnreadReactions {
                         HStack(spacing: Theme.Spacing.tight) {
+                            // Somebody reacted. A heart of its own, and never a number on the
+                            // badge — a reaction is an answer to something already read, and
+                            // counting it as a message sent people into chats that had nothing
+                            // new in them. Telegram's mark, in Telegram's red.
+                            if room.hasUnreadReactions {
+                                Image(systemName: "heart.fill")
+                                    .font(.system(size: Theme.Size.unreadBadge * 0.5, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: Theme.Size.unreadBadge, height: Theme.Size.unreadBadge)
+                                    .background(room.isMuted ? Color.gray : Color.red, in: Circle())
+                            }
+
                             // Somebody named you, or answered you. It used to turn the whole badge
                             // red, and red in a list of chats reads as an *error* — so it is its
                             // own mark now, an "@" beside the count, in the same colour as the
@@ -731,17 +743,17 @@ struct RoomRow: View {
                             // draw a badge with **0** written in it.
                             Group {
                                 if room.hasUnreadCount {
-                                    Text(room.unreadCount, format: .number)
+                                    Text(room.unreadNotifyingMessages, format: .number)
                                         .font(.caption.weight(.semibold).monospacedDigit())
                                         .foregroundStyle(badgeInk)
                                         .padding(.horizontal, 7)
                                         .frame(minWidth: Theme.Size.unreadBadge,
                                                minHeight: Theme.Size.unreadBadge)
-                                } else if !room.isMentioned {
+                                } else if room.hasUnread && !room.isMentioned {
                                     Circle().fill(.clear).frame(width: Theme.Size.unreadDot, height: Theme.Size.unreadDot)
                                 }
                             }
-                            .background(badgeFill, in: Capsule())
+                            .background(room.hasUnread ? badgeFill : AnyShapeStyle(.clear), in: Capsule())
                         }
                     }
                 }
@@ -781,7 +793,7 @@ struct RoomRow: View {
         // "1 mention". The badge and the voice were reading different numbers off the same row,
         // and the one you could not see was the one leaving twelve messages out.
         if room.hasUnreadCount {
-            parts.append(String(app: Strings.RoomList.unread(room.unreadCount)))
+            parts.append(String(app: Strings.RoomList.unread(room.unreadNotifyingMessages)))
         } else if room.hasUnread {
             // Unread with nothing to count — a muted room, or one flagged by hand. "0 unread"
             // is what the counted sentence would have said, and it is the opposite of true.
@@ -789,6 +801,9 @@ struct RoomRow: View {
         }
         if room.isMentioned {
             parts.append(String(app: Strings.RoomList.mentions(room.mentionCount)))
+        }
+        if room.hasUnreadReactions {
+            parts.append(String(app: Strings.RoomList.reactions(room.unreadReactionCount)))
         }
         return parts.joined(separator: ", ")
     }
