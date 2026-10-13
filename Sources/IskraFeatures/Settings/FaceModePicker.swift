@@ -151,4 +151,3 @@ struct FaceModePicker: View {
             }
     }
 }
-
