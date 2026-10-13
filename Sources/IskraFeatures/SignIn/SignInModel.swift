@@ -6,18 +6,32 @@ import IskraCore
 ///
 /// Matrix's sign-in story is genuinely complicated — three auth methods, servers
 /// discovered from a domain name, a browser round-trip — and none of that is the
-/// user's problem. This model absorbs it and exposes two states: "type your address"
-/// and "here's how you get in".
+/// user's problem. This model absorbs it and exposes two states: the door ("sign in" or
+/// "create an account", on a server already filled in) and, only where the door alone was not
+/// enough, "here's how you get in".
 @MainActor
 @Observable
 public final class SignInModel {
     public enum Step: Equatable {
+        /// The opening screen: the two buttons, and the server they will go to.
         case enteringAddress
         /// The server was found and told us how it lets people in.
         case ready(SignInOptions)
     }
 
+    /// The server, filled in before anybody is asked: matrix.org, where most people's accounts
+    /// are and where a new one is made. It is shown as one quiet line with "Change" beside it, so
+    /// the person who was given an address can type it and nobody else has to think about it.
     public var address: String = ""
+
+    /// What the visitor pressed — sign in, or make an account. Which button spins.
+    public enum Intent: Equatable { case signIn, createAccount }
+    public private(set) var pending: Intent?
+
+    /// The server matrix.org, as the opening screen offers it.
+    public static let defaultAddress = "matrix.org"
+
+    private var hasSignedIn = false
     public private(set) var step: Step = .enteringAddress
     public private(set) var isBusy = false
     /// Always a sentence, always about what the user should do next.
@@ -33,7 +47,7 @@ public final class SignInModel {
                 address: String = "",
                 onSignedIn: @escaping @MainActor (UserSession) -> Void) {
         self.authentication = authentication
-        self.address = address
+        self.address = address.isEmpty ? Self.defaultAddress : address
         self.onSignedIn = onSignedIn
     }
 
@@ -41,15 +55,72 @@ public final class SignInModel {
         !address.trimmingCharacters(in: .whitespaces).isEmpty && !isBusy
     }
 
+    /// The server's name as the screen shows it — what was typed, without a scheme or a slash.
+    public var serverName: String {
+        var name = address.trimmingCharacters(in: .whitespaces)
+        for prefix in ["https://", "http://"] where name.lowercased().hasPrefix(prefix) {
+            name.removeFirst(prefix.count)
+        }
+        while name.hasSuffix("/") { name.removeLast() }
+        return name
+    }
+
+    /// One of the two buttons on the opening screen.
+    ///
+    /// Signing in, on a server with a sign-in page of its own, goes straight to it — no second
+    /// screen asking which way in. Only a server with nothing but a password gets a form, and a
+    /// browser closed half way brings up the same quiet second screen, with the way back to the
+    /// browser and the password beside it. Making an account goes to the server's page for it,
+    /// and says so plainly where the server has none.
+    public func begin(_ intent: Intent) async {
+        guard !isBusy else { return }
+        pending = intent
+        defer { pending = nil }
+
+        if case .ready = step {
+            await authentication.cancelSignIn()
+            step = .enteringAddress
+        }
+        guard let options = await lookUp() else { return }
+
+        switch intent {
+        case .signIn:
+            if options.canUseSingleSignOn {
+                await continueWithSingleSignOn()
+                if !hasSignedIn {
+                    if problem == nil || options.supportsPassword {
+                        step = .ready(options)
+                    } else {
+                        await authentication.cancelSignIn()
+                    }
+                }
+            } else {
+                step = .ready(options)
+            }
+
+        case .createAccount:
+            guard options.supportsRegistration else {
+                await authentication.cancelSignIn()
+                problem = Strings.SignIn.Problem.noRegistration
+                return
+            }
+            await createAccount()
+            if !hasSignedIn { await authentication.cancelSignIn() }
+        }
+    }
+
     /// Looks up the address the user typed and works out how they can sign in.
     public func findServer() async {
+        if let options = await lookUp() { step = .ready(options) }
+    }
+
+    private func lookUp() async -> SignInOptions? {
         isBusy = true
         problem = nil
         defer { isBusy = false }
 
         do {
-            let options = try await authentication.startSignIn(homeserverAddress: address.trimmingCharacters(in: .whitespaces))
-            step = .ready(options)
+            return try await authentication.startSignIn(homeserverAddress: address.trimmingCharacters(in: .whitespaces))
         } catch AuthenticationError.homeserverNotFound {
             problem = Strings.SignIn.Problem.notFound
         } catch AuthenticationError.homeserverUnreachable {
@@ -63,6 +134,7 @@ public final class SignInModel {
         } catch {
             problem = Strings.SignIn.Problem.unreachable
         }
+        return nil
     }
 
     /// Opens the browser for single sign-on and waits for it to come back.
@@ -172,6 +244,7 @@ public final class SignInModel {
     /// `UserSession` and the client never leaves `IskraCore`.
     private func finish(with session: UserSession) async {
         isBusy = false
+        hasSignedIn = true
         onSignedIn(session)
     }
 }

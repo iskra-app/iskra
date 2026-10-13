@@ -392,14 +392,14 @@
 
 "signIn.tagline" = "Private messages, on your terms.";
 
-"signIn.title" = "Iskraへようこそ";
+"signIn.title" = "Iskra";
 
 "signIn.username" = "Username";
 
 /* The question that replaces asking for a 'homeserver URL'. */
 "signIn.whereIsAccount" = "アカウントはどこにありますか？";
 
-"signIn.whereIsAccountHelp" = "If someone gave you an address to use, type it here. If not, matrix.org works for most people.";
+"signIn.whereIsAccountHelp" = "サーバーのアドレスを教わっている場合は入力してください。わからなければ matrix.org のままで大丈夫です。";
 
 "room.attachPhoto" = "Photo or video";
 
@@ -1169,3 +1169,12 @@
 "message.media.counter" = "%lld of %lld";
 "message.media.skipBack" = "Back 15 seconds";
 "message.media.skipForward" = "Forward 15 seconds";
+"signIn.server" = "サーバー: %@";
+"signIn.changeServer" = "変更";
+"signIn.serverDone" = "完了";
+"signIn.signInTo" = "%@ にサインイン";
+"signIn.back" = "戻る";
+"signIn.continueInBrowser" = "ブラウザで続ける";
+"signIn.browserHelp" = "サーバーのサインインページが開きます。いつも通りに操作できます。";
+"signIn.passwordHelp" = "アカウントのユーザー名とパスワード。";
+"signIn.problem.noRegistration" = "このサーバーではアプリからアカウントを作成できません。別のサーバーを選ぶか、サーバーのサイトで登録してください。";

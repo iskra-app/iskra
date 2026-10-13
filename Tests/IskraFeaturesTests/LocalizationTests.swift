@@ -24,7 +24,8 @@ struct LocalizationTests {
     /// it here is fine; adding one without a translation is not, and that is what
     /// these catch.
     private static let englishAndRussian: [(LocalizedStringResource, en: String, ru: String)] = [
-        (Strings.SignIn.title, en: "Welcome to Iskra", ru: "Добро пожаловать в Iskra"),
+        (Strings.SignIn.changeServer, en: "Change", ru: "Изменить"),
+        (Strings.SignIn.signInTo("matrix.org"), en: "Sign in to matrix.org", ru: "Вход на matrix.org"),
         (Strings.SignIn.whereIsAccount, en: "Where’s your account?", ru: "Где ваш аккаунт?"),
         (Strings.SignIn.continue, en: "Continue", ru: "Продолжить"),
         (Strings.RoomList.title, en: "Chats", ru: "Чаты"),

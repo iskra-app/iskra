@@ -392,14 +392,14 @@
 
 "signIn.tagline" = "Private messages, on your terms.";
 
-"signIn.title" = "Bienvenue dans Iskra";
+"signIn.title" = "Iskra";
 
 "signIn.username" = "Username";
 
 /* The question that replaces asking for a 'homeserver URL'. */
 "signIn.whereIsAccount" = "Où est votre compte ?";
 
-"signIn.whereIsAccountHelp" = "If someone gave you an address to use, type it here. If not, matrix.org works for most people.";
+"signIn.whereIsAccountHelp" = "Si on vous a donné l'adresse d'un serveur, saisissez-la. Sinon, gardez matrix.org : c'est là que sont la plupart des comptes.";
 
 "room.attachPhoto" = "Photo or video";
 
@@ -1169,3 +1169,12 @@
 "message.media.counter" = "%lld of %lld";
 "message.media.skipBack" = "Back 15 seconds";
 "message.media.skipForward" = "Forward 15 seconds";
+"signIn.server" = "Serveur : %@";
+"signIn.changeServer" = "Modifier";
+"signIn.serverDone" = "OK";
+"signIn.signInTo" = "Connexion à %@";
+"signIn.back" = "Retour";
+"signIn.continueInBrowser" = "Continuer dans le navigateur";
+"signIn.browserHelp" = "La page de connexion de votre serveur s'ouvre ; tout y fonctionne comme d'habitude.";
+"signIn.passwordHelp" = "Le nom d'utilisateur et le mot de passe de votre compte.";
+"signIn.problem.noRegistration" = "Ce serveur ne permet pas de créer un compte depuis l'app. Choisissez un autre serveur ou inscrivez-vous sur son site.";
