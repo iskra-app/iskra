@@ -133,6 +133,27 @@ public final class VideoNoteRecorder: NSObject {
     /// like an app that had ignored the press. Now the overlay is on the screen before the camera
     /// is even asked for, and the picture arrives into a window that is already there.
     public func prepare() async {
+        // Already being opened — by the touch-down on the record button, a moment before the hold
+        // put this screen up (`MessageComposer.onPrewarm`). Waited for rather than skipped: the
+        // screen goes straight on to `start()`, which needs the camera ready, not merely asked for.
+        //
+        // Then looked at again: a tap that warmed the camera and was called off a moment later
+        // leaves an opening in flight that ends in nothing, and a hold right behind it needs one
+        // of its own.
+        if let preparing {
+            await preparing.value
+        }
+        guard state == .idle else { return }
+        let task = Task { await open() }
+        preparing = task
+        await task.value
+        if preparing == task { preparing = nil }
+    }
+
+    /// The camera being opened, for anybody else who asks while it is — see `prepare()`.
+    private var preparing: Task<Void, Never>?
+
+    private func open() async {
         guard state == .idle else { return }
         state = .preparing
 

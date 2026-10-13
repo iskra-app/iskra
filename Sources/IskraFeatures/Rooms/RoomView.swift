@@ -1552,6 +1552,18 @@ public struct RoomView: View {
                         onStartVoice: { Task { await startVoice() } },
                         onFinishVoice: { Task { await finishVoice() } },
                         onCancelVoice: cancelVoice,
+                        onPrewarm: { mode in
+                            switch mode {
+                            case .voice: voice.prewarm()
+                            case .video: Task { await videoNote.prepare() }
+                            }
+                        },
+                        onDiscardPrewarm: { mode in
+                            switch mode {
+                            case .voice: voice.discardPrewarm()
+                            case .video: if !isRecordingVideoNote { videoNote.cancel() }
+                            }
+                        },
                         onLockGesture: { lock = $0 },
                         voice: voiceRecording,
                         onChoosePhoto: { isChoosingPhoto = true },

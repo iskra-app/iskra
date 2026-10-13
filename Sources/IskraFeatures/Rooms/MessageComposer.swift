@@ -87,6 +87,13 @@ struct MessageComposer: View {
     var onFinishVoice: () -> Void = {}
     var onCancelVoice: () -> Void = {}
 
+    /// A finger has landed on the record button, and it may be a hold: open the microphone or the
+    /// camera *now*, so it is ready by the time the hold is certain. And the press turned out to
+    /// be a tap: put it away again. The slow part of a recording beginning was never the wait for
+    /// the hold — it was the hardware waking after it. See `VoiceRecorder.prewarm()`.
+    var onPrewarm: (RecordingMode) -> Void = { _ in }
+    var onDiscardPrewarm: (RecordingMode) -> Void = { _ in }
+
     /// The swipe up, reported outward on every movement of the finger and not merely when it
     /// arrives.
     ///
@@ -170,6 +177,8 @@ struct MessageComposer: View {
          onStartVoice: @escaping () -> Void = {},
          onFinishVoice: @escaping () -> Void = {},
          onCancelVoice: @escaping () -> Void = {},
+         onPrewarm: @escaping (RecordingMode) -> Void = { _ in },
+         onDiscardPrewarm: @escaping (RecordingMode) -> Void = { _ in },
          onLockGesture: @escaping (LockGesture) -> Void = { _ in },
          voice: VoiceRecording? = nil,
          onChoosePhoto: @escaping () -> Void,
@@ -193,6 +202,8 @@ struct MessageComposer: View {
         self.onStartVoice = onStartVoice
         self.onFinishVoice = onFinishVoice
         self.onCancelVoice = onCancelVoice
+        self.onPrewarm = onPrewarm
+        self.onDiscardPrewarm = onDiscardPrewarm
         self.onLockGesture = onLockGesture
         self.voice = voice
         self.onChoosePhoto = onChoosePhoto
@@ -665,6 +676,8 @@ struct MessageComposer: View {
                             // one. Nothing is armed; the release does the work.
                             guard voice == nil else { return }
 
+                            onPrewarm(mode)
+
                             arming = Task {
                                 try? await Task.sleep(for: Theme.Timing.holdBegins)
                                 guard !Task.isCancelled, hold == .pressing else { return }
@@ -719,6 +732,7 @@ struct MessageComposer: View {
                             // is running, and otherwise flips the button to the other kind of
                             // message.
                             if voice == nil {
+                                onDiscardPrewarm(mode)
                                 withAnimation(.smooth(duration: Theme.Timing.chrome)) { mode.toggle() }
                             } else {
                                 onFinishVoice()
