@@ -435,7 +435,8 @@ struct DeliveryTick: View {
             }
         }
         .font(.caption2)
-        .foregroundStyle(.secondary)
+        // Grey on the app's page; on a wallpaper, ink chosen against it — see `onWallpaperInk`.
+        .onWallpaperInk()
         // Scoped to the mark and to the symbol it shows, and to nothing else in the row: the rest of
         // a message that is merely changing still changes at once (see `MessageRow`).
         .animation(.smooth(duration: Theme.Timing.chrome), value: symbol)

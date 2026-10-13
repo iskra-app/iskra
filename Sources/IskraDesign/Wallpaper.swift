@@ -52,6 +52,38 @@ public enum Wallpaper: String, CaseIterable, Identifiable, Sendable {
     /// Whether anything is drawn behind the conversation at all.
     public var isSet: Bool { self != .none }
 
+    /// How bright the gradient is, 0 to 1 — the mean of its two colours' relative luminance. Nil
+    /// for the photograph, whose brightness has to be measured (`WallpaperStore.luminance`), and
+    /// for no wallpaper at all.
+    public var luminance: Double? {
+        let values: [[Double]] = switch self {
+        case .sunset: [[0.98, 0.55, 0.35], [0.54, 0.24, 0.47]]
+        case .sea: [[0.36, 0.68, 0.86], [0.10, 0.28, 0.52]]
+        case .forest: [[0.51, 0.74, 0.51], [0.11, 0.31, 0.27]]
+        case .dusk: [[0.44, 0.45, 0.74], [0.16, 0.15, 0.33]]
+        case .sand: [[0.93, 0.85, 0.70], [0.66, 0.51, 0.38]]
+        case .night: [[0.22, 0.24, 0.30], [0.05, 0.05, 0.09]]
+        case .none, .photo: []
+        }
+        guard !values.isEmpty else { return nil }
+        return values.map { Self.luminance(red: $0[0], green: $0[1], blue: $0[2]) }.reduce(0, +) / Double(values.count)
+    }
+
+    /// Relative luminance of an sRGB colour, as WCAG defines it.
+    public static func luminance(red: Double, green: Double, blue: Double) -> Double {
+        func linear(_ channel: Double) -> Double {
+            channel <= 0.03928 ? channel / 12.92 : pow((channel + 0.055) / 1.055, 2.4)
+        }
+        return 0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue)
+    }
+
+    /// Whether words on this wallpaper should be light. Measured after the dimmer, which only
+    /// ever darkens. The threshold is where white and black text have the same contrast (WCAG):
+    /// below it white reads better, above it black does.
+    public static func isDark(luminance: Double, dimming: Double) -> Bool {
+        luminance * (1 - dimming) < 0.179
+    }
+
     /// The two colours, top to bottom.
     ///
     /// Deliberately not the system's named colours. `.blue` and the rest are *control* colours —
@@ -137,9 +169,25 @@ public extension EnvironmentValues {
     /// laid over somebody's holiday snap is the holiday snap, with words on it. So the bubble asks
     /// this, and over a wallpaper it uses an opaque fill instead. See `MessageBubble`.
     @Entry var hasWallpaper: Bool = false
+
+    /// Whether the wallpaper under the conversation is dark — what words drawn straight onto it
+    /// take their colour from (`onWallpaperInk()`). Meaningless without `hasWallpaper`.
+    @Entry var wallpaperIsDark: Bool = true
 }
 
 public extension View {
+    /// Words drawn straight onto the conversation, coloured so a wallpaper cannot swallow them:
+    /// white on a dark one, near-black on a light one, each with a faint halo of the other for the
+    /// busy parts of a photograph. Without a wallpaper, the secondary grey they have on the app's
+    /// own page. In place of `.foregroundStyle(.secondary)` on the words themselves — a style set
+    /// further out is overridden by one set closer in, so it cannot be put round them afterwards.
+    ///
+    /// The alternative to `wallpaperPlate()` for the smallest words — the time beside a bubble —
+    /// where a capsule under every message is a row of pills down the screen.
+    func onWallpaperInk() -> some View {
+        modifier(OnWallpaperInk())
+    }
+
     /// Something to stand on, for words drawn straight onto the conversation — the date between
     /// days, a line saying who joined, the time beside a bubble — when the conversation is standing
     /// on a wallpaper, and nothing when it is not.
@@ -150,6 +198,21 @@ public extension View {
     /// content, and glass stays on the navigation layer (see `Glass.swift`).
     func wallpaperPlate() -> some View {
         modifier(WallpaperPlate())
+    }
+}
+
+private struct OnWallpaperInk: ViewModifier {
+    @Environment(\.hasWallpaper) private var hasWallpaper
+    @Environment(\.wallpaperIsDark) private var isDark
+
+    func body(content: Content) -> some View {
+        if hasWallpaper {
+            content
+                .foregroundStyle(isDark ? Color.white.opacity(0.92) : Color.black.opacity(0.78))
+                .shadow(color: (isDark ? Color.black : Color.white).opacity(0.45), radius: 1.5)
+        } else {
+            content.foregroundStyle(.secondary)
+        }
     }
 }
 

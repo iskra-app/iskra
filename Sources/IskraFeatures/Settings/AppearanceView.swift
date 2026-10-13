@@ -195,6 +195,7 @@ struct AppearanceView: View {
         // Told, so the bubbles inside it draw the way they will in a room. The whole point of the
         // card is that it does not lie about this.
         .environment(\.hasWallpaper, wallpaper.isSet)
+        .environment(\.wallpaperIsDark, wallpapers.isDark(wallpaper, dimming: dimming))
         // The picture is read off the disk once per launch, and this screen can be the first thing
         // to want it — somebody who has a wallpaper and opens Appearance before opening a room.
         .task { await wallpapers.load() }
