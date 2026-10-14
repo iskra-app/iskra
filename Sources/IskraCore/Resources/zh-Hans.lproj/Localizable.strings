@@ -1,193 +1,189 @@
-/* Beta translation. Only the most visible strings are translated; every other line is
-   the English one, on purpose — a key missing from this file shows on screen as the key
-   itself, it does not fall back to English. Translate in place, line by line. */
-
 /* Iskra — user-facing text.
    Edit the values, never the keys. The keys are referenced from Strings.swift.
-   Language: en */
+   Language: zh-Hans */
 
 /* Device name shown in the user's list of signed-in devices. */
 "device.generic" = "Iskra";
 
 /* Device name shown in the user's list of signed-in devices. */
-"device.iOS" = "Iskra on iPhone or iPad";
+"device.iOS" = "iPhone 或 iPad 上的 Iskra";
 
 /* Device name shown in the user's list of signed-in devices. */
-"device.mac" = "Iskra on Mac";
+"device.mac" = "Mac 上的 Iskra";
 
 /* Summary line for an audio file in the chat list. */
-"preview.audio" = "Audio";
+"preview.audio" = "音频";
 
 /* Summary line for a message that was deleted. */
-"preview.deleted" = "Message deleted";
+"preview.deleted" = "消息已删除";
 
 /* Summary line for a file attachment in the chat list. */
-"preview.file" = "File";
+"preview.file" = "文件";
 
 /* Summary line for a shared location. */
-"preview.location" = "Location";
+"preview.location" = "位置";
 
 /* Summary line for a photo in the chat list. */
-"preview.photo" = "Photo";
+"preview.photo" = "照片";
 
 /* Summary line for a poll. */
-"preview.poll" = "Poll";
+"preview.poll" = "投票";
 
 /* Summary line for a sticker. */
-"preview.sticker" = "Sticker";
+"preview.sticker" = "贴纸";
 
 /* Summary line for a message this device has no key for. Deliberately avoids the words 'decrypt' and 'key'. */
-"preview.unreadable" = "Message you can’t read yet";
+"preview.unreadable" = "暂时打不开的消息";
 
 /* Summary line for a video in the chat list. */
-"preview.video" = "Video";
+"preview.video" = "视频";
 
 /* Summary line for a round video message. */
-"preview.videoNote" = "Video message";
+"preview.videoNote" = "视频消息";
 
 /* Summary line for a voice message. */
-"preview.voice" = "Voice message";
+"preview.voice" = "语音消息";
 
 /* Says an unencrypted room is one, in three words. Read as a status, not as a warning. */
-"privacy.notProtected" = "This chat isn’t encrypted";
+"privacy.notProtected" = "此聊天未加密";
 
 /* Says an encrypted room is one. Sits directly under the name, where it is read at a glance. */
-"privacy.protected" = "This chat is encrypted";
+"privacy.protected" = "此聊天已加密";
 
 /* Shown before we have synced enough to know. Never claim protection we cannot see. */
-"privacy.unknown" = "Checking encryption";
+"privacy.unknown" = "正在检查加密";
 
 /* Fallback name for a conversation that has none. Most Matrix DMs have no name. */
-"room.untitled" = "Chat";
+"room.untitled" = "聊天";
 
 /* Shown when a message could not be sent. The SDK retries, so this reassures rather than alarms. */
-"timeline.sendFailed" = "Your message didn’t go through. It’ll try again automatically.";
+"timeline.sendFailed" = "消息没发出去。我们会自动再试一次。";
 
 /* A sticker that did not go. Unlike a message, it is not retried. */
-"timeline.stickerFailed" = "The sticker didn’t go through. Check your connection and try again.";
+"timeline.stickerFailed" = "贴纸没发出去。请检查网络后再试一次。";
 
 /* The account's sticker pack would not take a new sticker. */
-"stickers.addFailed" = "Couldn’t add the sticker. Please try again.";
+"stickers.addFailed" = "没能添加贴纸。请再试一次。";
 
 /* The account's sticker pack would not let a sticker go. */
-"stickers.removeFailed" = "Couldn’t remove the sticker. Please try again.";
+"stickers.removeFailed" = "没能移除贴纸。请再试一次。";
 
 /* Shown when an emoji reaction could not be sent. Must not say "message" — nothing the user wrote is at stake. */
-"timeline.reactionFailed" = "Your reaction didn’t go through. Try again.";
+"timeline.reactionFailed" = "回应没发出去。请再试一次。";
 
 /* Shown when deleting a message failed. Must be unambiguous: the message is still there, and everyone can still read it. */
-"timeline.deleteFailed" = "The message couldn’t be deleted, so it’s still there. Try again.";
+"timeline.deleteFailed" = "消息没删掉，它还在聊天里。请再试一次。";
 
 /* Why a message is stuck, tapped from the badge beside it. Each names what to do next:
    the user is the only one who can clear these. No cryptography vocabulary. */
-"sendFailure.insecureDevices" = "Someone you verified is signed in on a device they haven’t confirmed yet. If you trust that device, send it anyway.";
-"sendFailure.identityChanged" = "The encryption keys of someone you verified have changed. If you’re sure it’s still the same person, send it anyway.";
-"sendFailure.verificationRequired" = "Verify this device before sending to a private chat. Open Settings to do it.";
-"sendFailure.missingMedia" = "The file is no longer on this device, so there is nothing left to send.";
-"sendFailure.unsupportedFileType" = "This kind of file can’t be sent.";
-"sendFailure.server" = "Your server turned this message away.";
+"sendFailure.insecureDevices" = "你验证过的联系人在一台他本人尚未确认的设备上登录了。如果你信任这台设备，可以照常发送。";
+"sendFailure.identityChanged" = "你验证过的联系人的加密密钥变了。如果确定还是同一个人，可以照常发送。";
+"sendFailure.verificationRequired" = "要在受保护的聊天中发消息，请先确认这台设备。可以在设置中完成。";
+"sendFailure.missingMedia" = "文件已经不在这台设备上了，没有可发送的内容。";
+"sendFailure.unsupportedFileType" = "这类文件无法发送。";
+"sendFailure.server" = "你的服务器没有接受这条消息。";
 
 /* The Devices screen, when something did not work. */
-"devices.loadFailed" = "Couldn’t load your devices. Check your connection and try again.";
-"devices.endFailed" = "The session didn’t end. Try again.";
-"devices.wrongPassword" = "That password didn’t work.";
-"devices.managedElsewhere" = "On this server, sessions are ended on its website.";
+"devices.loadFailed" = "没能加载设备列表。请检查网络后再试一次。";
+"devices.endFailed" = "会话没有结束。请再试一次。";
+"devices.wrongPassword" = "密码不对。";
+"devices.managedElsewhere" = "在此服务器上，会话需要在其网站上结束。";
 
 /* The strip above a message that answers another one. */
-"reply.loading" = "Loading the message…";
-"reply.unavailable" = "Message unavailable";
+"reply.loading" = "正在加载消息…";
+"reply.unavailable" = "消息不可用";
 
 /* Shown when an edit could not be sent. The message still says the old thing — say so. */
-"timeline.editFailed" = "The change wasn’t saved, so the message still says what it did. Try again.";
+"timeline.editFailed" = "修改没有保存，消息还是原来的样子。请再试一次。";
 
 /* Shown when pinning or unpinning was refused. */
-"timeline.pinFailed" = "The pinned messages couldn’t be changed. You may not be allowed to.";
-"timeline.reportFailed" = "The report didn’t go through. Try again.";
+"timeline.pinFailed" = "没能修改置顶消息。你可能没有这个权限。";
+"timeline.reportFailed" = "举报没发出去。请再试一次。";
 
 /* The grey lines across a conversation: people coming and going, the room changing. */
-"roomEvent.joined" = "%@ joined";
-"roomEvent.left" = "%@ left";
-"roomEvent.invited" = "Invited: %@";
-"roomEvent.removed" = "Removed: %@";
-"roomEvent.banned" = "Blocked: %@";
-"roomEvent.renamedThemselves" = "%1$@ is now %2$@";
-"roomEvent.roomRenamed" = "The chat is now called “%@”";
-"roomEvent.roomTopicChanged" = "The chat description changed";
-"roomEvent.roomPictureChanged" = "The chat has a new picture";
-"roomEvent.roomCreated" = "The chat was created";
-"roomEvent.encryptionEnabled" = "From now on, only people in this chat can read these messages";
-"roomEvent.pair" = "%1$@ and %2$@";
+"roomEvent.joined" = "%@ 加入了聊天";
+"roomEvent.left" = "%@ 离开了聊天";
+"roomEvent.invited" = "已邀请：%@";
+"roomEvent.removed" = "已移出：%@";
+"roomEvent.banned" = "已封禁：%@";
+"roomEvent.renamedThemselves" = "%1$@ 现在叫 %2$@";
+"roomEvent.roomRenamed" = "聊天现在叫“%@”";
+"roomEvent.roomTopicChanged" = "聊天简介已更改";
+"roomEvent.roomPictureChanged" = "聊天换了新头像";
+"roomEvent.roomCreated" = "聊天已创建";
+"roomEvent.encryptionEnabled" = "从现在起，只有聊天成员能读这些消息";
+"roomEvent.pair" = "%1$@ 和 %2$@";
 
 /* What a client that cannot draw a map shows instead of one. */
-"timeline.locationBody" = "Location: %1$.6f, %2$.6f";
+"timeline.locationBody" = "位置：%1$.6f, %2$.6f";
 
 /* Changes to a room the homeserver would not make. One sentence each: "something went
    wrong" tells nobody anything, while "you weren't allowed to" says it was a question of
    rights and that the room is unchanged. */
-"roomAction.renameFailed" = "The name didn’t change. You may not be allowed to.";
-"roomAction.topicFailed" = "The description didn’t change. You may not be allowed to.";
-"roomAction.pictureFailed" = "The picture didn’t change. You may not be allowed to.";
-"roomAction.visibilityFailed" = "Who can join this chat couldn’t be changed.";
-"roomAction.inviteFailed" = "The invitation didn’t go through. Check the address — it looks like @name:server.";
-"roomAction.removeFailed" = "They couldn’t be removed. They are still in the chat.";
-"roomAction.banFailed" = "They couldn’t be blocked. They are still in the chat.";
-"roomAction.roleFailed" = "The role didn’t change. You may not be allowed to.";
-"roomAction.leaveFailed" = "You couldn’t leave the chat. Try again.";
-"roomAction.createFailed" = "The chat wasn’t created. The server may not have answered — try again.";
-"roomAction.alertsFailed" = "This chat’s notifications didn’t change. Try again.";
+"roomAction.renameFailed" = "名称没有更改。你可能没有这个权限。";
+"roomAction.topicFailed" = "简介没有更改。你可能没有这个权限。";
+"roomAction.pictureFailed" = "头像没有更改。你可能没有这个权限。";
+"roomAction.visibilityFailed" = "没能更改谁可以加入聊天。";
+"roomAction.inviteFailed" = "邀请没发出去。请检查地址，格式是 @名字:服务器。";
+"roomAction.removeFailed" = "没能移出此人。对方还在聊天里。";
+"roomAction.banFailed" = "没能封禁此人。对方还在聊天里。";
+"roomAction.roleFailed" = "角色没有更改。你可能没有这个权限。";
+"roomAction.leaveFailed" = "没能退出聊天。请再试一次。";
+"roomAction.createFailed" = "聊天没有创建成功。可能是服务器没有响应，请再试一次。";
+"roomAction.alertsFailed" = "此聊天的通知没有更改。请再试一次。";
 
 /* The account: name, picture and encryption. */
-"account.nameFailed" = "Your name didn’t change. Try again.";
-"account.pictureFailed" = "Your picture didn’t change. Try again.";
-"account.protectFailed" = "Your messages couldn’t be protected. Try again — the keys to your old messages are still where they were.";
-"account.newKeyFailed" = "The new code wasn’t created. The old one still works.";
-"account.restoreFailed" = "That code didn’t fit. Check you copied all of it, spaces and all.";
-"account.staleCodeFailed" = "The code is put together correctly — and still does not fit this account. That happens when a recovery code has been created again: the previous one stops working for good.";
+"account.nameFailed" = "名字没有更改。请再试一次。";
+"account.pictureFailed" = "头像没有更改。请再试一次。";
+"account.protectFailed" = "没能保护你的消息。请再试一次，旧消息的密钥还在原处。";
+"account.newKeyFailed" = "新代码没有创建成功。旧代码仍然有效。";
+"account.restoreFailed" = "代码不对。请检查是否完整复制，包括空格。";
+"account.staleCodeFailed" = "代码格式正确，但和这个账户对不上。重新生成恢复代码后，之前的代码就永久失效了。";
 
 /* The reset failed — the rare case where failure is the good news: nothing was lost. */
-"account.startOverFailed" = "Couldn’t start again. Try again — for now, everything is as it was.";
-"account.blockFailed" = "Couldn’t block them. Try again.";
-"account.unblockFailed" = "Couldn’t unblock them. Try again.";
+"account.startOverFailed" = "没能重新开始。请再试一次，目前一切照旧。";
+"account.blockFailed" = "没能屏蔽。请再试一次。";
+"account.unblockFailed" = "没能取消屏蔽。请再试一次。";
 
 /* Pushes. A message speaks for itself — there is nothing to translate but the invitation. */
-"push.invite" = "%@ invites you to the chat";
+"push.invite" = "%@ 邀请你加入聊天";
 "push.hiddenTitle" = "Iskra";
-"push.hiddenBody" = "New message";
+"push.hiddenBody" = "新消息";
 
 /* Somebody reacted to something you said. Which reaction is not in the push — see Strings.swift. */
-"push.reaction" = "Reaction to your message";
+"push.reaction" = "对你消息的回应";
 
 /* The Share extension. */
 "share.title" = "发送到…";
 "share.cancel" = "取消";
-"share.empty" = "Open Iskra and sign in first — then your chats will show up here.";
-"share.willSendOnOpen" = "It goes right away — Iskra opens to send it.";
-"share.comment" = "Add a comment…";
+"share.empty" = "请先打开 Iskra 并登录，聊天就会显示在这里。";
+"share.willSendOnOpen" = "会立即发送，Iskra 会打开来发送它。";
+"share.comment" = "添加评论…";
 "share.send" = "发送";
-"share.locked" = "Iskra is locked";
-"share.lockedBody" = "Unlock it and your chats will show up.";
-"share.unlock" = "Unlock";
-"share.unlockReason" = "To share this to Iskra";
+"share.locked" = "Iskra 已锁定";
+"share.lockedBody" = "解锁后就会显示你的聊天。";
+"share.unlock" = "解锁";
+"share.unlockReason" = "以便分享到 Iskra";
 
 /* Room invitations. */
-"roomAction.acceptInviteFailed" = "You couldn’t join the chat. The invitation may have been withdrawn.";
-"roomAction.declineInviteFailed" = "The invitation wasn’t declined. It is still there — try again.";
+"roomAction.acceptInviteFailed" = "没能加入聊天。邀请可能已被撤回。";
+"roomAction.declineInviteFailed" = "没能拒绝邀请。邀请还在，请再试一次。";
 
 /* Organising the list: pin, archive, mark read, report. */
-"roomAction.pinFailed" = "The chat wasn’t pinned. It slid back — try again.";
-"roomAction.archiveFailed" = "The chat wasn’t archived. It is still in the list — try again.";
-"roomAction.readFailed" = "The read state wouldn’t change.";
-"roomAction.reportFailed" = "The report didn’t go through. Try again.";
+"roomAction.pinFailed" = "没能置顶聊天。它回到了原位，请再试一次。";
+"roomAction.archiveFailed" = "没能归档聊天。它还在列表里，请再试一次。";
+"roomAction.readFailed" = "没能更改已读状态。";
+"roomAction.reportFailed" = "举报没发出去。请再试一次。";
 
 /* The room would not open at all — the one refusal here that is not about something the user did:
    they pressed nothing and were refused nothing. The room simply could not be read. */
-"roomAction.loadFailed" = "This chat wouldn't open. Try again.";
+"roomAction.loadFailed" = "没能打开这个聊天。请再试一次。";
 
 /* Account-wide notification rules — see `NotificationRulesStore`. These are not settings on this
    phone but push rules on the server: they apply to every device at once. */
-"notificationRules.directFailed" = "The rule for personal chats wouldn’t change. The switch went back — try again.";
-"notificationRules.groupFailed" = "The rule for groups wouldn’t change. The switch went back — try again.";
-"notificationRules.mentionFailed" = "The rule for mentions wouldn’t change. Try again.";
-"notificationRules.roomMentionFailed" = "The rule for @room wouldn’t change. Try again.";
-"notificationRules.invitationFailed" = "The rule for invitations wouldn’t change. Try again.";
-"notificationRules.callFailed" = "The rule for calls wouldn’t change. Try again.";
+"notificationRules.directFailed" = "没能更改私聊的通知。开关已恢复原状，请再试一次。";
+"notificationRules.groupFailed" = "没能更改群组的通知。开关已恢复原状，请再试一次。";
+"notificationRules.mentionFailed" = "没能更改提及的通知。请再试一次。";
+"notificationRules.roomMentionFailed" = "没能更改 @room 的通知。请再试一次。";
+"notificationRules.invitationFailed" = "没能更改邀请的通知。请再试一次。";
+"notificationRules.callFailed" = "没能更改通话的通知。请再试一次。";

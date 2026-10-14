@@ -1,0 +1,4 @@
+/* What Siri listens for. Every phrase has to carry the app's name. */
+
+"Open a chat in ${applicationName}" = "${applicationName}でチャットを開いて";
+"Send a message with ${applicationName}" = "${applicationName}でメッセージを送って";

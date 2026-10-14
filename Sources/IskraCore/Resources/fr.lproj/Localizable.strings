@@ -1,193 +1,189 @@
-/* Beta translation. Only the most visible strings are translated; every other line is
-   the English one, on purpose — a key missing from this file shows on screen as the key
-   itself, it does not fall back to English. Translate in place, line by line. */
-
 /* Iskra — user-facing text.
    Edit the values, never the keys. The keys are referenced from Strings.swift.
-   Language: en */
+   Language: fr */
 
 /* Device name shown in the user's list of signed-in devices. */
 "device.generic" = "Iskra";
 
 /* Device name shown in the user's list of signed-in devices. */
-"device.iOS" = "Iskra on iPhone or iPad";
+"device.iOS" = "Iskra sur iPhone ou iPad";
 
 /* Device name shown in the user's list of signed-in devices. */
-"device.mac" = "Iskra on Mac";
+"device.mac" = "Iskra sur Mac";
 
 /* Summary line for an audio file in the chat list. */
 "preview.audio" = "Audio";
 
 /* Summary line for a message that was deleted. */
-"preview.deleted" = "Message deleted";
+"preview.deleted" = "Message supprimé";
 
 /* Summary line for a file attachment in the chat list. */
-"preview.file" = "File";
+"preview.file" = "Fichier";
 
 /* Summary line for a shared location. */
-"preview.location" = "Location";
+"preview.location" = "Position";
 
 /* Summary line for a photo in the chat list. */
 "preview.photo" = "Photo";
 
 /* Summary line for a poll. */
-"preview.poll" = "Poll";
+"preview.poll" = "Sondage";
 
 /* Summary line for a sticker. */
-"preview.sticker" = "Sticker";
+"preview.sticker" = "Autocollant";
 
 /* Summary line for a message this device has no key for. Deliberately avoids the words 'decrypt' and 'key'. */
-"preview.unreadable" = "Message you can’t read yet";
+"preview.unreadable" = "Message qui ne s’ouvre pas encore";
 
 /* Summary line for a video in the chat list. */
-"preview.video" = "Video";
+"preview.video" = "Vidéo";
 
 /* Summary line for a round video message. */
-"preview.videoNote" = "Video message";
+"preview.videoNote" = "Message vidéo";
 
 /* Summary line for a voice message. */
-"preview.voice" = "Voice message";
+"preview.voice" = "Message vocal";
 
 /* Says an unencrypted room is one, in three words. Read as a status, not as a warning. */
-"privacy.notProtected" = "This chat isn’t encrypted";
+"privacy.notProtected" = "Cette discussion n’est pas chiffrée";
 
 /* Says an encrypted room is one. Sits directly under the name, where it is read at a glance. */
-"privacy.protected" = "This chat is encrypted";
+"privacy.protected" = "Cette discussion est chiffrée";
 
 /* Shown before we have synced enough to know. Never claim protection we cannot see. */
-"privacy.unknown" = "Checking encryption";
+"privacy.unknown" = "Vérification du chiffrement";
 
 /* Fallback name for a conversation that has none. Most Matrix DMs have no name. */
-"room.untitled" = "Chat";
+"room.untitled" = "Discussion";
 
 /* Shown when a message could not be sent. The SDK retries, so this reassures rather than alarms. */
-"timeline.sendFailed" = "Your message didn’t go through. It’ll try again automatically.";
+"timeline.sendFailed" = "Le message n’est pas parti. Nous réessaierons automatiquement.";
 
 /* A sticker that did not go. Unlike a message, it is not retried. */
-"timeline.stickerFailed" = "The sticker didn’t go through. Check your connection and try again.";
+"timeline.stickerFailed" = "L’autocollant n’est pas parti. Vérifiez la connexion et réessayez.";
 
 /* The account's sticker pack would not take a new sticker. */
-"stickers.addFailed" = "Couldn’t add the sticker. Please try again.";
+"stickers.addFailed" = "Impossible d’ajouter l’autocollant. Réessayez.";
 
 /* The account's sticker pack would not let a sticker go. */
-"stickers.removeFailed" = "Couldn’t remove the sticker. Please try again.";
+"stickers.removeFailed" = "Impossible de retirer l’autocollant. Réessayez.";
 
 /* Shown when an emoji reaction could not be sent. Must not say "message" — nothing the user wrote is at stake. */
-"timeline.reactionFailed" = "Your reaction didn’t go through. Try again.";
+"timeline.reactionFailed" = "La réaction n’est pas partie. Réessayez.";
 
 /* Shown when deleting a message failed. Must be unambiguous: the message is still there, and everyone can still read it. */
-"timeline.deleteFailed" = "The message couldn’t be deleted, so it’s still there. Try again.";
+"timeline.deleteFailed" = "Le message n’a pas été supprimé : il est toujours dans la discussion. Réessayez.";
 
 /* Why a message is stuck, tapped from the badge beside it. Each names what to do next:
    the user is the only one who can clear these. No cryptography vocabulary. */
-"sendFailure.insecureDevices" = "Someone you verified is signed in on a device they haven’t confirmed yet. If you trust that device, send it anyway.";
-"sendFailure.identityChanged" = "The encryption keys of someone you verified have changed. If you’re sure it’s still the same person, send it anyway.";
-"sendFailure.verificationRequired" = "Verify this device before sending to a private chat. Open Settings to do it.";
-"sendFailure.missingMedia" = "The file is no longer on this device, so there is nothing left to send.";
-"sendFailure.unsupportedFileType" = "This kind of file can’t be sent.";
-"sendFailure.server" = "Your server turned this message away.";
+"sendFailure.insecureDevices" = "Une personne que vous avez vérifiée s’est connectée depuis un appareil qu’elle n’a pas encore confirmé. Si vous faites confiance à cet appareil, envoyez quand même.";
+"sendFailure.identityChanged" = "Les clés de chiffrement d’une personne que vous avez vérifiée ont changé. Si vous êtes sûr qu’il s’agit toujours de la même personne, envoyez quand même.";
+"sendFailure.verificationRequired" = "Confirmez cet appareil pour écrire dans une discussion protégée. Cela se fait dans les Réglages.";
+"sendFailure.missingMedia" = "Le fichier n’est plus sur cet appareil : il n’y a plus rien à envoyer.";
+"sendFailure.unsupportedFileType" = "Ce type de fichier ne peut pas être envoyé.";
+"sendFailure.server" = "Votre serveur n’a pas accepté ce message.";
 
 /* The Devices screen, when something did not work. */
-"devices.loadFailed" = "Couldn’t load your devices. Check your connection and try again.";
-"devices.endFailed" = "The session didn’t end. Try again.";
-"devices.wrongPassword" = "That password didn’t work.";
-"devices.managedElsewhere" = "On this server, sessions are ended on its website.";
+"devices.loadFailed" = "Impossible de charger la liste des appareils. Vérifiez la connexion et réessayez.";
+"devices.endFailed" = "La session n’a pas été fermée. Réessayez.";
+"devices.wrongPassword" = "Le mot de passe ne convient pas.";
+"devices.managedElsewhere" = "Sur ce serveur, les sessions se ferment sur son site web.";
 
 /* The strip above a message that answers another one. */
-"reply.loading" = "Loading the message…";
-"reply.unavailable" = "Message unavailable";
+"reply.loading" = "Chargement du message…";
+"reply.unavailable" = "Message indisponible";
 
 /* Shown when an edit could not be sent. The message still says the old thing — say so. */
-"timeline.editFailed" = "The change wasn’t saved, so the message still says what it did. Try again.";
+"timeline.editFailed" = "La modification n’a pas été enregistrée : le message est resté tel quel. Réessayez.";
 
 /* Shown when pinning or unpinning was refused. */
-"timeline.pinFailed" = "The pinned messages couldn’t be changed. You may not be allowed to.";
-"timeline.reportFailed" = "The report didn’t go through. Try again.";
+"timeline.pinFailed" = "Impossible de modifier les messages épinglés. Vous n’en avez peut-être pas le droit.";
+"timeline.reportFailed" = "Le signalement n’est pas parti. Réessayez.";
 
 /* The grey lines across a conversation: people coming and going, the room changing. */
-"roomEvent.joined" = "%@ joined";
-"roomEvent.left" = "%@ left";
-"roomEvent.invited" = "Invited: %@";
-"roomEvent.removed" = "Removed: %@";
-"roomEvent.banned" = "Blocked: %@";
-"roomEvent.renamedThemselves" = "%1$@ is now %2$@";
-"roomEvent.roomRenamed" = "The chat is now called “%@”";
-"roomEvent.roomTopicChanged" = "The chat description changed";
-"roomEvent.roomPictureChanged" = "The chat has a new picture";
-"roomEvent.roomCreated" = "The chat was created";
-"roomEvent.encryptionEnabled" = "From now on, only people in this chat can read these messages";
-"roomEvent.pair" = "%1$@ and %2$@";
+"roomEvent.joined" = "%@ a rejoint la discussion";
+"roomEvent.left" = "%@ a quitté la discussion";
+"roomEvent.invited" = "Invité : %@";
+"roomEvent.removed" = "Retiré : %@";
+"roomEvent.banned" = "Bloqué : %@";
+"roomEvent.renamedThemselves" = "%1$@ s’appelle désormais %2$@";
+"roomEvent.roomRenamed" = "La discussion s’appelle désormais « %@ »";
+"roomEvent.roomTopicChanged" = "La description de la discussion a changé";
+"roomEvent.roomPictureChanged" = "La discussion a une nouvelle photo";
+"roomEvent.roomCreated" = "Discussion créée";
+"roomEvent.encryptionEnabled" = "Désormais, seuls les membres de la discussion peuvent lire ces messages";
+"roomEvent.pair" = "%1$@ et %2$@";
 
 /* What a client that cannot draw a map shows instead of one. */
-"timeline.locationBody" = "Location: %1$.6f, %2$.6f";
+"timeline.locationBody" = "Position : %1$.6f, %2$.6f";
 
 /* Changes to a room the homeserver would not make. One sentence each: "something went
    wrong" tells nobody anything, while "you weren't allowed to" says it was a question of
    rights and that the room is unchanged. */
-"roomAction.renameFailed" = "The name didn’t change. You may not be allowed to.";
-"roomAction.topicFailed" = "The description didn’t change. You may not be allowed to.";
-"roomAction.pictureFailed" = "The picture didn’t change. You may not be allowed to.";
-"roomAction.visibilityFailed" = "Who can join this chat couldn’t be changed.";
-"roomAction.inviteFailed" = "The invitation didn’t go through. Check the address — it looks like @name:server.";
-"roomAction.removeFailed" = "They couldn’t be removed. They are still in the chat.";
-"roomAction.banFailed" = "They couldn’t be blocked. They are still in the chat.";
-"roomAction.roleFailed" = "The role didn’t change. You may not be allowed to.";
-"roomAction.leaveFailed" = "You couldn’t leave the chat. Try again.";
-"roomAction.createFailed" = "The chat wasn’t created. The server may not have answered — try again.";
-"roomAction.alertsFailed" = "This chat’s notifications didn’t change. Try again.";
+"roomAction.renameFailed" = "Le nom n’a pas changé. Vous n’en avez peut-être pas le droit.";
+"roomAction.topicFailed" = "La description n’a pas changé. Vous n’en avez peut-être pas le droit.";
+"roomAction.pictureFailed" = "La photo n’a pas changé. Vous n’en avez peut-être pas le droit.";
+"roomAction.visibilityFailed" = "Impossible de changer qui peut rejoindre la discussion.";
+"roomAction.inviteFailed" = "L’invitation n’est pas partie. Vérifiez l’adresse : elle ressemble à @nom:serveur.";
+"roomAction.removeFailed" = "Impossible de retirer cette personne. Elle est toujours dans la discussion.";
+"roomAction.banFailed" = "Impossible de bloquer cette personne. Elle est toujours dans la discussion.";
+"roomAction.roleFailed" = "Le rôle n’a pas changé. Vous n’en avez peut-être pas le droit.";
+"roomAction.leaveFailed" = "Impossible de quitter la discussion. Réessayez.";
+"roomAction.createFailed" = "La discussion n’a pas été créée. Le serveur n’a peut-être pas répondu : réessayez.";
+"roomAction.alertsFailed" = "Les notifications de cette discussion n’ont pas changé. Réessayez.";
 
 /* The account: name, picture and encryption. */
-"account.nameFailed" = "Your name didn’t change. Try again.";
-"account.pictureFailed" = "Your picture didn’t change. Try again.";
-"account.protectFailed" = "Your messages couldn’t be protected. Try again — the keys to your old messages are still where they were.";
-"account.newKeyFailed" = "The new code wasn’t created. The old one still works.";
-"account.restoreFailed" = "That code didn’t fit. Check you copied all of it, spaces and all.";
-"account.staleCodeFailed" = "The code is put together correctly — and still does not fit this account. That happens when a recovery code has been created again: the previous one stops working for good.";
+"account.nameFailed" = "Votre nom n’a pas changé. Réessayez.";
+"account.pictureFailed" = "Votre photo n’a pas changé. Réessayez.";
+"account.protectFailed" = "Impossible de protéger vos messages. Réessayez : les clés de vos anciens messages sont toujours là où elles étaient.";
+"account.newKeyFailed" = "Le nouveau code n’a pas été créé. L’ancien fonctionne toujours.";
+"account.restoreFailed" = "Le code ne convient pas. Vérifiez que vous l’avez copié en entier, espaces compris.";
+"account.staleCodeFailed" = "Le code est bien formé, et pourtant il ne correspond pas à ce compte. Cela arrive quand un code de récupération a été recréé : le précédent cesse de fonctionner pour de bon.";
 
 /* The reset failed — the rare case where failure is the good news: nothing was lost. */
-"account.startOverFailed" = "Couldn’t start again. Try again — for now, everything is as it was.";
-"account.blockFailed" = "Couldn’t block them. Try again.";
-"account.unblockFailed" = "Couldn’t unblock them. Try again.";
+"account.startOverFailed" = "Impossible de recommencer. Réessayez : pour l’instant, tout est resté comme avant.";
+"account.blockFailed" = "Impossible de bloquer. Réessayez.";
+"account.unblockFailed" = "Impossible de débloquer. Réessayez.";
 
 /* Pushes. A message speaks for itself — there is nothing to translate but the invitation. */
-"push.invite" = "%@ invites you to the chat";
+"push.invite" = "%@ vous invite dans la discussion";
 "push.hiddenTitle" = "Iskra";
-"push.hiddenBody" = "New message";
+"push.hiddenBody" = "Nouveau message";
 
 /* Somebody reacted to something you said. Which reaction is not in the push — see Strings.swift. */
-"push.reaction" = "Reaction to your message";
+"push.reaction" = "Réaction à votre message";
 
 /* The Share extension. */
 "share.title" = "Envoyer à…";
 "share.cancel" = "Annuler";
-"share.empty" = "Open Iskra and sign in first — then your chats will show up here.";
-"share.willSendOnOpen" = "It goes right away — Iskra opens to send it.";
-"share.comment" = "Add a comment…";
+"share.empty" = "Ouvrez d’abord Iskra et connectez-vous : vos discussions apparaîtront ici.";
+"share.willSendOnOpen" = "Part tout de suite : Iskra s’ouvre pour l’envoyer.";
+"share.comment" = "Ajouter un commentaire…";
 "share.send" = "Envoyer";
-"share.locked" = "Iskra is locked";
-"share.lockedBody" = "Unlock it and your chats will show up.";
-"share.unlock" = "Unlock";
-"share.unlockReason" = "To share this to Iskra";
+"share.locked" = "Iskra est verrouillée";
+"share.lockedBody" = "Déverrouillez-la et vos discussions apparaîtront.";
+"share.unlock" = "Déverrouiller";
+"share.unlockReason" = "Pour envoyer ceci dans Iskra";
 
 /* Room invitations. */
-"roomAction.acceptInviteFailed" = "You couldn’t join the chat. The invitation may have been withdrawn.";
-"roomAction.declineInviteFailed" = "The invitation wasn’t declined. It is still there — try again.";
+"roomAction.acceptInviteFailed" = "Impossible de rejoindre la discussion. L’invitation a peut-être été retirée.";
+"roomAction.declineInviteFailed" = "L’invitation n’a pas été refusée. Elle est toujours là : réessayez.";
 
 /* Organising the list: pin, archive, mark read, report. */
-"roomAction.pinFailed" = "The chat wasn’t pinned. It slid back — try again.";
-"roomAction.archiveFailed" = "The chat wasn’t archived. It is still in the list — try again.";
-"roomAction.readFailed" = "The read state wouldn’t change.";
-"roomAction.reportFailed" = "The report didn’t go through. Try again.";
+"roomAction.pinFailed" = "La discussion n’a pas été épinglée. Elle est revenue à sa place : réessayez.";
+"roomAction.archiveFailed" = "La discussion n’a pas été archivée. Elle est toujours dans la liste : réessayez.";
+"roomAction.readFailed" = "Impossible de changer l’état de lecture.";
+"roomAction.reportFailed" = "Le signalement n’est pas parti. Réessayez.";
 
 /* The room would not open at all — the one refusal here that is not about something the user did:
    they pressed nothing and were refused nothing. The room simply could not be read. */
-"roomAction.loadFailed" = "This chat wouldn't open. Try again.";
+"roomAction.loadFailed" = "Impossible d’ouvrir cette discussion. Réessayez.";
 
 /* Account-wide notification rules — see `NotificationRulesStore`. These are not settings on this
    phone but push rules on the server: they apply to every device at once. */
-"notificationRules.directFailed" = "The rule for personal chats wouldn’t change. The switch went back — try again.";
-"notificationRules.groupFailed" = "The rule for groups wouldn’t change. The switch went back — try again.";
-"notificationRules.mentionFailed" = "The rule for mentions wouldn’t change. Try again.";
-"notificationRules.roomMentionFailed" = "The rule for @room wouldn’t change. Try again.";
-"notificationRules.invitationFailed" = "The rule for invitations wouldn’t change. Try again.";
-"notificationRules.callFailed" = "The rule for calls wouldn’t change. Try again.";
+"notificationRules.directFailed" = "Les notifications des discussions privées n’ont pas changé. L’interrupteur est revenu en place : réessayez.";
+"notificationRules.groupFailed" = "Les notifications des groupes n’ont pas changé. L’interrupteur est revenu en place : réessayez.";
+"notificationRules.mentionFailed" = "Les notifications des mentions n’ont pas changé. Réessayez.";
+"notificationRules.roomMentionFailed" = "Les notifications pour @room n’ont pas changé. Réessayez.";
+"notificationRules.invitationFailed" = "Les notifications des invitations n’ont pas changé. Réessayez.";
+"notificationRules.callFailed" = "Les notifications des appels n’ont pas changé. Réessayez.";

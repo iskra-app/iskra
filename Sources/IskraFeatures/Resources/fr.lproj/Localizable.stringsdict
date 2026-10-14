@@ -29,9 +29,9 @@
 			<key>NSStringFormatValueTypeKey</key>
 			<string>lld</string>
 				<key>one</key>
-				<string>%lld message mentioning you</string>
+				<string>%lld message vous mentionne</string>
 				<key>other</key>
-				<string>%lld messages mentioning you</string>
+				<string>%lld messages vous mentionnent</string>
 		</dict>
 	</dict>
 	<key>room.participants</key>
@@ -61,9 +61,9 @@
 			<key>NSStringFormatValueTypeKey</key>
 			<string>lld</string>
 				<key>one</key>
-				<string>%lld person</string>
+				<string>%lld personne</string>
 				<key>other</key>
-				<string>%lld people</string>
+				<string>%lld personnes</string>
 		</dict>
 	</dict>
 	<key>roomList.unread</key>
@@ -77,9 +77,9 @@
 			<key>NSStringFormatValueTypeKey</key>
 			<string>lld</string>
 				<key>one</key>
-				<string>%lld unread</string>
+				<string>%lld non lu</string>
 				<key>other</key>
-				<string>%lld unread</string>
+				<string>%lld non lus</string>
 		</dict>
 	</dict>
 	<key>message.menu.reactors</key>
@@ -93,9 +93,9 @@
 			<key>NSStringFormatValueTypeKey</key>
 			<string>lld</string>
 				<key>one</key>
-				<string>%lld reaction</string>
+				<string>%lld réaction</string>
 				<key>other</key>
-				<string>%lld reactions</string>
+				<string>%lld réactions</string>
 		</dict>
 	</dict>
 </dict>
