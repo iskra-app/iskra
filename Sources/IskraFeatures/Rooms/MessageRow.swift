@@ -986,6 +986,9 @@ struct StickerView: View {
 /// is the right shape *before* the picture arrives and the timeline does not jump
 /// around as things load.
 struct PictureBubble: View {
+    /// The conversation's height with the keyboard down — see `EnvironmentValues.timelineHeight`.
+    @Environment(\.timelineHeight) private var timelineHeight
+
     let attachment: Attachment
 
     /// Which message this is, so that the viewer it opens can find this picture among the room's
@@ -1120,7 +1123,7 @@ struct PictureBubble: View {
                 // picture in it.
                 .containerRelativeFrame(.vertical) { height, _ in
                     min(Theme.Size.picture / aspectRatio,
-                        height * Theme.Size.pictureHeightFraction)
+                        (timelineHeight > 0 ? timelineHeight : height) * Theme.Size.pictureHeightFraction)
                 }
                 .overlay {
                     if isPlayable {

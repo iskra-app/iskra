@@ -38,6 +38,15 @@ public extension EnvironmentValues {
     }
 }
 
+extension EnvironmentValues {
+    /// How tall the conversation is with the keyboard *down* — what a picture's height limit is
+    /// a fraction of. Zero where nobody measured, and a picture then asks its container.
+    ///
+    /// Not the scroll view's height as it stands: the keyboard takes half of that away, and every
+    /// photograph on the screen shrank the moment somebody started to type.
+    @Entry var timelineHeight: CGFloat = 0
+}
+
 private struct TimelineWidthKey: EnvironmentKey {
     static let defaultValue: CGFloat = 0
 }

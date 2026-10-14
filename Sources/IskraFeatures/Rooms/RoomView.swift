@@ -291,6 +291,9 @@ public struct RoomView: View {
     /// The width the messages have to live in. See `EnvironmentValues.timelineWidth`.
     @State private var timelineWidth: CGFloat = 0
 
+    /// What the picture height limit is taken from — see `EnvironmentValues.timelineHeight`.
+    @State private var timelineSize: CGSize = .zero
+
     /// The leading edge of the composer's text, on the screen — reported by `MessageComposer` and
     /// handed down for `ComposerTravel`. Nil until the composer has been laid out, and in a room the
     /// account cannot post in, where nothing of ours will ever travel.
@@ -611,6 +614,15 @@ public struct RoomView: View {
                 timelineWidth = width
             }
             .environment(\.timelineWidth, timelineWidth)
+            // The height pictures are limited by: the tallest the conversation has been at this
+            // width. The keyboard only ever makes it shorter, so it does not move this; a turn of
+            // the phone or a window resized changes the width, and starts it again.
+            .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
+                if size.width != timelineSize.width || size.height > timelineSize.height {
+                    timelineSize = size
+                }
+            }
+            .environment(\.timelineHeight, timelineSize.height)
             // Where a message of ours starts its journey to its bubble — see `ComposerTravel`.
             .environment(\.composerTextLeading, composerTextLeading)
             // A name in a grey line, a face beside a message: both go to that person's page.
