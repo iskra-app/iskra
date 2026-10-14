@@ -67,11 +67,43 @@ public final class RoomListStore {
     /// is subscribed in `startSteps`.
     public private(set) var isUpdating = false
 
+    /// The server has been asked and has not answered for long enough that the honest word is
+    /// "waiting for network" — although, as far as the SDK is concerned, nothing has gone wrong yet.
+    /// See `FirstAnswerWatch`. What the screens show as offline is `isUnreachable`, which is both.
+    public private(set) var isStalled = false
+
+    /// What the screens mean by "offline": the SDK has said so, or the server has been silent for
+    /// too long since sync came back up. Not what the send queues and the open room act on — that is
+    /// `isOffline`, which is the SDK's own fact and the one that turns into `.running` again.
+    public var isUnreachable: Bool { isOffline || isStalled }
+
     private var syncIndicatorHandle: TaskHandle?
     private static let updatingShowsAfterMs: UInt32 = 500
 
+    /// What the SDK's own indicator last said. `isUpdating` is this *or* our own wait for the first
+    /// answer — see `FirstAnswerWatch`.
+    private var sdkSaysUpdating = false
+
+    /// Shown "Updating…" because sync came back up and the server has not answered yet.
+    private var isAwaitingFirstAnswer = false
+
+    private var roomListStateHandle: TaskHandle?
+
+    /// The room list has had an answer from the server since sync last came up. See
+    /// `FirstAnswerWatch.answered`.
+    private var roomListAnswered = false
+
+    /// The timer behind `isAwaitingFirstAnswer` and `isStalled`; nil while nothing is awaited.
+    private var firstAnswerWatch: Task<Void, Never>?
+
     private func syncIndicatorChanged(isUpdating: Bool) {
         guard !hasStopped else { return }
+        sdkSaysUpdating = isUpdating
+        refreshUpdating()
+    }
+
+    private func refreshUpdating() {
+        let isUpdating = sdkSaysUpdating || isAwaitingFirstAnswer
         let wasUpdating = self.isUpdating
         self.isUpdating = isUpdating
 
@@ -364,11 +396,65 @@ public final class RoomListStore {
             }
         })
 
+        // Whether the server has answered since sync last came up — see `FirstAnswerWatch`.
+        roomListStateHandle = listService.state(listener: RoomListStateListener { [weak self] state in
+            Task { @MainActor [weak self] in
+                guard let self, !self.hasStopped else { return }
+                self.roomListAnswered = FirstAnswerWatch.answered(state)
+                self.watchFirstAnswer()
+            }
+        })
+
         // The one that matters: a loop started after `stop()` is the zombie.
         guard isStillWanted(started) else { return }
         isPaused = false
         isSyncAsleep = false
         await service.start()
+        watchFirstAnswer()
+    }
+
+    /// Starts or stops waiting for the server's first answer, whichever the state now says.
+    ///
+    /// The SDK's own indicator is silent at exactly the moment it is needed most. It shows only
+    /// while the list is being set up from nothing or has failed outright; coming back from the
+    /// pocket, the list is `terminated` and then `recovering`, and both of those are *hidden*. And
+    /// the SDK records the next state only once a request has come back — so on a VPN that has lost
+    /// its way, with the first request hanging for its full minute and then retried, the list sat
+    /// there for minutes looking up to date, with no "Updating…" and no "Waiting for network",
+    /// while a push had already said a message was waiting. Telegram said "Updating…" the whole time.
+    ///
+    /// So from the moment sync comes up until the room list has heard from the server, the title
+    /// says "Updating…" (after the same half second as the SDK's, so a quick answer never flashes
+    /// it), and after `FirstAnswerWatch.stalledAfter` "Waiting for network", because by then that
+    /// is what it is.
+    private func watchFirstAnswer() {
+        let waiting = FirstAnswerWatch.isWaiting(stopped: hasStopped || syncService == nil,
+                                                 paused: isPaused, offline: isOffline,
+                                                 answered: roomListAnswered)
+        guard waiting else {
+            firstAnswerWatch?.cancel()
+            firstAnswerWatch = nil
+            isStalled = false
+            if isAwaitingFirstAnswer {
+                isAwaitingFirstAnswer = false
+                refreshUpdating()
+            }
+            return
+        }
+        guard firstAnswerWatch == nil else { return }
+
+        let generation = self.generation
+        firstAnswerWatch = Task { [weak self] in
+            try? await Task.sleep(for: FirstAnswerWatch.updatingAfter)
+            guard let self, !Task.isCancelled, generation == self.generation else { return }
+            self.isAwaitingFirstAnswer = true
+            self.refreshUpdating()
+
+            try? await Task.sleep(for: FirstAnswerWatch.stalledAfter - FirstAnswerWatch.updatingAfter)
+            guard !Task.isCancelled, generation == self.generation else { return }
+            Log.session.error("no answer from the server since sync came up; saying so")
+            self.isStalled = true
+        }
     }
 
     /// The sync loop has stopped and nobody asked it to. Start it again.
@@ -404,6 +490,8 @@ public final class RoomListStore {
         // first time a page failed — it had to, or it would have asked once per frame of every scroll
         // — and nothing in that room can tell that the network is back. Only this can. See
         // `TimelineStore.connectivityChanged` and `UserSession`, which is what carries it there.
+        watchFirstAnswer()
+
         if wasOffline != isOffline {
             await onConnectivityChange?(isOffline)
         }
@@ -468,6 +556,7 @@ public final class RoomListStore {
         guard !hasStopped, syncService != nil else { return }
 
         isPaused = true
+        watchFirstAnswer()
         await settleSync()
     }
 
@@ -478,6 +567,7 @@ public final class RoomListStore {
 
         isPaused = false
         await settleSync()
+        watchFirstAnswer()
     }
 
     /// Brings the loop to whatever `isPaused` says *now*, after every earlier transition has
@@ -560,6 +650,14 @@ public final class RoomListStore {
 
         syncIndicatorHandle?.cancel()
         syncIndicatorHandle = nil
+        roomListStateHandle?.cancel()
+        roomListStateHandle = nil
+        firstAnswerWatch?.cancel()
+        firstAnswerWatch = nil
+        roomListAnswered = false
+        sdkSaysUpdating = false
+        isAwaitingFirstAnswer = false
+        isStalled = false
         isUpdating = false
 
         // Bounded, and for the same reason `logout` is: this is on the path out of the account,
@@ -1293,6 +1391,18 @@ private final class SyncIndicatorListener: RoomListServiceSyncIndicatorListener 
 
     func onUpdate(syncIndicator: RoomListServiceSyncIndicator) {
         onIndicator(syncIndicator)
+    }
+}
+
+private final class RoomListStateListener: RoomListServiceStateListener {
+    private let onState: @Sendable (RoomListServiceState) -> Void
+
+    init(onState: @escaping @Sendable (RoomListServiceState) -> Void) {
+        self.onState = onState
+    }
+
+    func onUpdate(state: RoomListServiceState) {
+        onState(state)
     }
 }
 

@@ -836,7 +836,7 @@ public struct IskraRootView: View {
         // Said once, here, and read by both columns. The room list and the room are in different
         // branches of the tree and both have to know, and the session is the only thing that is
         // above both of them. See `OfflineBanner`.
-        .environment(\.isOffline, session.roomList.isOffline)
+        .environment(\.isOffline, session.roomList.isUnreachable)
     }
 
     /// The sign-in screen — pointed at the in-app server under `--mock-signin`, and otherwise at
