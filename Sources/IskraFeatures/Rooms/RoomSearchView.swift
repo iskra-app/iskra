@@ -42,6 +42,8 @@ struct RoomSearchView: View {
             .listStyle(.plain)
             .overlay { emptyState }
             .searchable(text: $query, prompt: Text(Strings.Room.searchPrompt))
+            // Scrolling the results puts the keyboard away — it covers half of them otherwise.
+            .scrollDismissesKeyboard(.immediately)
             .onChange(of: query) { _, text in
                 store.search(text)
             }

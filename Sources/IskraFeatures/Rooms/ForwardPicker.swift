@@ -42,6 +42,7 @@ struct ForwardPicker: View {
                 .padding(.vertical, Theme.Spacing.close)
             }
             .searchable(text: $query, prompt: Text(Strings.Message.Forward.prompt))
+            .scrollDismissesKeyboard(.immediately)
             .safeAreaInset(edge: .bottom) {
                 if !chosen.isEmpty {
                     ShareSendBar(comment: $comment,
