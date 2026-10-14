@@ -290,8 +290,42 @@ public final class VideoNoteRecorder: NSObject {
     /// camera records mirrored and the back camera does not, so a flip that forgot to say so would
     /// send a rear-facing shot reversed. `camera` is set before `aim()` runs, which is what makes
     /// the question answerable at all.
+    /// How far in the lens is — 1 is as wide as it goes. Pinched on the circle, Telegram's.
+    public private(set) var zoom: CGFloat = 1
+
+    /// Twice as close at most on a front camera, five times on a back one: further than that a
+    /// face fills the circle with pores, and digital zoom past the sensor is mush.
+    private var maximumZoom: CGFloat {
+        #if os(iOS)
+        guard let device = cameraInput?.device else { return 1 }
+        return min(device.maxAvailableVideoZoomFactor, camera == .front ? 2 : 5)
+        #else
+        return 1
+        #endif
+    }
+
+    /// Sets the zoom, held between 1 and what the lens can honestly give. A Mac's camera has no
+    /// zoom to set, and there it does nothing.
+    public func setZoom(_ factor: CGFloat) {
+        #if os(iOS)
+        guard let device = cameraInput?.device else { return }
+        let clamped = min(max(factor, 1), maximumZoom)
+        guard clamped != zoom else { return }
+        do {
+            try device.lockForConfiguration()
+            device.videoZoomFactor = clamped
+            device.unlockForConfiguration()
+            zoom = clamped
+        } catch {
+            Log.media.error("the camera would not zoom: \(Log.describe(error), privacy: .public)")
+        }
+        #endif
+    }
+
     public func flip() {
         guard state == .ready || isRecording, let session, let cameraInput else { return }
+        // The other lens starts wide; a zoom chosen for one camera is nothing to the other.
+        zoom = 1
 
         let wanted: AVCaptureDevice.Position = camera == .front ? .back : .front
         guard let lens = Self.lens(facing: wanted),
