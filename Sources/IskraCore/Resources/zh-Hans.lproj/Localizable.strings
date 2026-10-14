@@ -76,12 +76,12 @@
 
 /* Why a message is stuck, tapped from the badge beside it. Each names what to do next:
    the user is the only one who can clear these. No cryptography vocabulary. */
-"sendFailure.insecureDevices" = "你验证过的联系人在一台他本人尚未确认的设备上登录了。如果你信任这台设备，可以照常发送。";
-"sendFailure.identityChanged" = "你验证过的联系人的加密密钥变了。如果确定还是同一个人，可以照常发送。";
+"sendFailure.insecureDevices" = "您验证过的联系人在一台他本人尚未确认的设备上登录了。如果您信任这台设备，可以照常发送。";
+"sendFailure.identityChanged" = "您验证过的联系人的加密密钥变了。如果确定还是同一个人，可以照常发送。";
 "sendFailure.verificationRequired" = "要在受保护的聊天中发消息，请先确认这台设备。可以在设置中完成。";
 "sendFailure.missingMedia" = "文件已经不在这台设备上了，没有可发送的内容。";
 "sendFailure.unsupportedFileType" = "这类文件无法发送。";
-"sendFailure.server" = "你的服务器没有接受这条消息。";
+"sendFailure.server" = "您的服务器没有接受这条消息。";
 
 /* The Devices screen, when something did not work. */
 "devices.loadFailed" = "没能加载设备列表。请检查网络后再试一次。";
@@ -97,7 +97,7 @@
 "timeline.editFailed" = "修改没有保存，消息还是原来的样子。请再试一次。";
 
 /* Shown when pinning or unpinning was refused. */
-"timeline.pinFailed" = "没能修改置顶消息。你可能没有这个权限。";
+"timeline.pinFailed" = "没能修改置顶消息。您可能没有这个权限。";
 "timeline.reportFailed" = "举报没发出去。请再试一次。";
 
 /* The grey lines across a conversation: people coming and going, the room changing. */
@@ -120,14 +120,14 @@
 /* Changes to a room the homeserver would not make. One sentence each: "something went
    wrong" tells nobody anything, while "you weren't allowed to" says it was a question of
    rights and that the room is unchanged. */
-"roomAction.renameFailed" = "名称没有更改。你可能没有这个权限。";
-"roomAction.topicFailed" = "简介没有更改。你可能没有这个权限。";
-"roomAction.pictureFailed" = "头像没有更改。你可能没有这个权限。";
+"roomAction.renameFailed" = "名称没有更改。您可能没有这个权限。";
+"roomAction.topicFailed" = "简介没有更改。您可能没有这个权限。";
+"roomAction.pictureFailed" = "头像没有更改。您可能没有这个权限。";
 "roomAction.visibilityFailed" = "没能更改谁可以加入聊天。";
 "roomAction.inviteFailed" = "邀请没发出去。请检查地址，格式是 @名字:服务器。";
 "roomAction.removeFailed" = "没能移出此人。对方还在聊天里。";
 "roomAction.banFailed" = "没能封禁此人。对方还在聊天里。";
-"roomAction.roleFailed" = "角色没有更改。你可能没有这个权限。";
+"roomAction.roleFailed" = "角色没有更改。您可能没有这个权限。";
 "roomAction.leaveFailed" = "没能退出聊天。请再试一次。";
 "roomAction.createFailed" = "聊天没有创建成功。可能是服务器没有响应，请再试一次。";
 "roomAction.alertsFailed" = "此聊天的通知没有更改。请再试一次。";
@@ -135,7 +135,7 @@
 /* The account: name, picture and encryption. */
 "account.nameFailed" = "名字没有更改。请再试一次。";
 "account.pictureFailed" = "头像没有更改。请再试一次。";
-"account.protectFailed" = "没能保护你的消息。请再试一次，旧消息的密钥还在原处。";
+"account.protectFailed" = "没能保护您的消息。请再试一次，旧消息的密钥还在原处。";
 "account.newKeyFailed" = "新代码没有创建成功。旧代码仍然有效。";
 "account.restoreFailed" = "代码不对。请检查是否完整复制，包括空格。";
 "account.staleCodeFailed" = "代码格式正确，但和这个账户对不上。重新生成恢复代码后，之前的代码就永久失效了。";
@@ -146,12 +146,12 @@
 "account.unblockFailed" = "没能取消屏蔽。请再试一次。";
 
 /* Pushes. A message speaks for itself — there is nothing to translate but the invitation. */
-"push.invite" = "%@ 邀请你加入聊天";
+"push.invite" = "%@ 邀请您加入聊天";
 "push.hiddenTitle" = "Iskra";
 "push.hiddenBody" = "新消息";
 
 /* Somebody reacted to something you said. Which reaction is not in the push — see Strings.swift. */
-"push.reaction" = "对你消息的回应";
+"push.reaction" = "对您消息的回应";
 
 /* The Share extension. */
 "share.title" = "发送到…";
@@ -161,7 +161,7 @@
 "share.comment" = "添加评论…";
 "share.send" = "发送";
 "share.locked" = "Iskra 已锁定";
-"share.lockedBody" = "解锁后就会显示你的聊天。";
+"share.lockedBody" = "解锁后就会显示您的聊天。";
 "share.unlock" = "解锁";
 "share.unlockReason" = "以便分享到 Iskra";
 

@@ -55,7 +55,7 @@
 "message.spoken.sentVoice" = "un mensaje de voz";
 
 /* VoiceOver: how the user's own messages are attributed. */
-"message.spoken.you" = "Tú";
+"message.spoken.you" = "Usted";
 
 /* Shown in place of a message this device has no key for. Must not mention keys or decryption. */
 "message.unreadable" = "Este mensaje no se puede abrir: este dispositivo no tiene su clave.";
@@ -68,11 +68,11 @@
 "room.composerPlaceholder" = "Mensaje";
 
 /* The banner shown in place of the composer when posting is not allowed. */
-"room.readOnly" = "No puedes enviar mensajes en este chat";
+"room.readOnly" = "No puede enviar mensajes en este chat";
 
-"room.noRoomSelectedMessage" = "Elige una conversación para empezar a leer.";
+"room.noRoomSelectedMessage" = "Elija una conversación para empezar a leer.";
 
-"room.noRoomSelectedTitle" = "Elige un chat";
+"room.noRoomSelectedTitle" = "Elija un chat";
 
 "problem.ok" = "Entendido";
 
@@ -81,7 +81,7 @@
 
 "room.sendFailedTitle" = "Mensaje no enviado";
 
-"roomList.emptyMessage" = "Cuando alguien te escriba, la conversación aparecerá aquí.";
+"roomList.emptyMessage" = "Cuando alguien le escriba, la conversación aparecerá aquí.";
 
 "roomList.emptyTitle" = "Aún no hay chats";
 
@@ -160,7 +160,7 @@
 
 /* Said once at the top of the screen, so that every switch below it is read as an offer
    rather than as a setting somebody forgot to finish. */
-"beta.intro" = "Aquí está lo que aún no está terminado. Desactívalo si te molesta y vuelve a activarlo si cambias de idea: nada se rompe y nada se pierde.";
+"beta.intro" = "Aquí está lo que aún no está terminado. Desactívelo si le molesta y vuelva a activarlo si cambia de idea: nada se rompe y nada se pierde.";
 
 "beta.nativeSidebar" = "Barra lateral nativa";
 
@@ -183,7 +183,7 @@
 
 /* The last sentence is the one that matters: whoever turns this on is first of all afraid
    of losing their real account. */
-"beta.mockBackendHelp" = "Una cuenta inventada en lugar de la tuya, que ya tiene chats, fotos, mensajes de voz e incluso una invitación. El servidor vive dentro de la app y nunca se conecta a internet. Tu cuenta sigue donde está: desactívalo y vuelves a ella.";
+"beta.mockBackendHelp" = "Una cuenta inventada en lugar de la suya, que ya tiene chats, fotos, mensajes de voz e incluso una invitación. El servidor vive dentro de la app y nunca se conecta a internet. Su cuenta sigue donde está: desactive esto y vuelve a ella.";
 
 
 
@@ -212,7 +212,7 @@
 "connection.statusLocal" = "A través de la capa local";
 "connection.statusBridged" = "A través del puente, relays: %lld";
 "connection.statusFailed" = "No se ha podido activar";
-"connection.pending" = "La nueva configuración se aplicará en cuanto salgas de esta pantalla: la app se reconectará sola.";
+"connection.pending" = "La nueva configuración se aplicará en cuanto salga de esta pantalla: la app se reconectará sola.";
 "connection.applyNow" = "Reconectar ahora";
 
 /* The bridge's address. While the field is empty the switch changes nothing, and that is
@@ -225,10 +225,10 @@
 
 "connection.relays" = "Relays";
 "connection.relaysPrompt" = "wss://nos.lol, wss://relay.primal.net";
-"connection.relaysFooter" = "Aquí es donde la app y el puente se encuentran. Varios no son una rueda de repuesto: la petición va a todos a la vez y la respuesta llega del que fue más rápido. Déjalo vacío para usar los tres predeterminados.";
+"connection.relaysFooter" = "Aquí es donde la app y el puente se encuentran. Varios no son una rueda de repuesto: la petición va a todos a la vez y la respuesta llega del que fue más rápido. Déjelo vacío para usar los tres predeterminados.";
 
 "connection.myKey" = "Clave de este dispositivo";
-"connection.myKeyFooter" = "Si el puente es cerrado, añade esta clave a su ALLOWED_PUBKEYS; si no, no te oirá en absoluto.";
+"connection.myKeyFooter" = "Si el puente es cerrado, añada esta clave a su ALLOWED_PUBKEYS; si no, no le oirá en absoluto.";
 "connection.copy" = "Copiar";
 "connection.copied" = "Copiado";
 
@@ -243,17 +243,17 @@
 /* Not "what is unfinished" but what to expect: the numbers come from measuring a whole session
    through the bridge (Bridge/README.md), and whoever turns the bridge on should know them first. */
 "connection.unfinished" = "Qué esperar";
-"connection.unfinishedBody" = "Cada petición da un rodeo por un relay y cuesta 200–350 ms, así que iniciar sesión y abrir los chats por primera vez es bastante más lento que con una conexión directa: un segundo donde antes era instantáneo. Los mensajes nuevos, en cambio, llegan casi tan rápido como en directo. Los adjuntos grandes también llegan, pero es mejor no pasarlos por relays públicos: para los archivos multimedia, dale al puente un relay propio.";
+"connection.unfinishedBody" = "Cada petición da un rodeo por un relay y cuesta 200–350 ms, así que iniciar sesión y abrir los chats por primera vez es bastante más lento que con una conexión directa: un segundo donde antes era instantáneo. Los mensajes nuevos, en cambio, llegan casi tan rápido como en directo. Los adjuntos grandes también llegan, pero es mejor no pasarlos por relays públicos: para los archivos multimedia, dele al puente un relay propio.";
 
 "connection.sees" = "Qué ve el puente";
-"connection.seesBody" = "El puente desempaqueta tus peticiones al servidor, así que ve tu token, en qué salas estás y el texto de los mensajes de los chats sin cifrar. No puede leer las conversaciones cifradas. Por eso conviene que el puente sea tuyo y no de otra persona.";
+"connection.seesBody" = "El puente desempaqueta sus peticiones al servidor, así que ve su token, en qué salas está usted y el texto de los mensajes de los chats sin cifrar. No puede leer las conversaciones cifradas. Por eso conviene que el puente sea suyo y no de otra persona.";
 
 /* App lock by Face ID / device passcode. */
 "settings.lock" = "Bloqueo de la app";
 "settings.lockEnable" = "Pedir Face ID o código";
 "settings.lockTimeout" = "Pedir";
-"settings.lockExplanation" = "La app pedirá Face ID, Touch ID o el código del dispositivo cuando vuelvas.";
-"settings.lockUnavailable" = "Configura primero un código en el dispositivo.";
+"settings.lockExplanation" = "La app pedirá Face ID, Touch ID o el código del dispositivo cuando vuelva.";
+"settings.lockUnavailable" = "Configure primero un código en el dispositivo.";
 "settings.lockTimeout.immediately" = "Inmediatamente";
 "settings.lockTimeout.afterMinute" = "Tras 1 minuto";
 "settings.lockTimeout.afterFiveMinutes" = "Tras 5 minutos";
@@ -265,7 +265,7 @@
 
 "settings.blocked" = "Usuarios bloqueados";
 "settings.blockedEmptyTitle" = "No hay nadie bloqueado";
-"settings.blockedEmptyMessage" = "Las personas que bloquees aparecerán aquí. No verás sus mensajes.";
+"settings.blockedEmptyMessage" = "Las personas que bloquee aparecerán aquí. No verá sus mensajes.";
 "settings.unblock" = "Desbloquear";
 
 /* The storage screen: how much room the app is taking, what is taking it, and which part of it
@@ -282,20 +282,20 @@
 "storage.cache.explained" = "Lo descargado. Se vuelve a descargar cuando hace falta.";
 
 "storage.search" = "Índice de búsqueda";
-"storage.search.explained" = "Para buscar en tus mensajes directamente en el dispositivo.";
+"storage.search.explained" = "Para buscar en sus mensajes directamente en el dispositivo.";
 
 "storage.clear" = "Vaciar caché";
 "storage.clearing" = "Vaciando…";
 "storage.confirm.title" = "¿Vaciar la caché?";
-"storage.confirm.body" = "La app se recargará. Los mensajes, fotos y archivos se descargarán de nuevo cuando los abras, y durante un tiempo la búsqueda no lo encontrará todo. Seguirás con la sesión iniciada.";
+"storage.confirm.body" = "La app se recargará. Los mensajes, fotos y archivos se descargarán de nuevo cuando los abra, y durante un tiempo la búsqueda no lo encontrará todo. Seguirá con la sesión iniciada.";
 "storage.confirm.action" = "Vaciar";
 "storage.cancel" = "Cancelar";
-"storage.failed" = "No se ha podido vaciar la caché. Inténtalo de nuevo.";
+"storage.failed" = "No se ha podido vaciar la caché. Inténtelo de nuevo.";
 
 "storage.search.clear" = "Vaciar el índice de búsqueda";
 "storage.search.confirm.title" = "¿Vaciar el índice de búsqueda?";
-"storage.search.confirm.body" = "La app se recargará. Durante un tiempo la búsqueda no lo encontrará todo: el índice se rellena mientras lees. Tus mensajes y fotos siguen donde están.";
-"storage.search.failed" = "No se ha podido vaciar el índice. Inténtalo de nuevo.";
+"storage.search.confirm.body" = "La app se recargará. Durante un tiempo la búsqueda no lo encontrará todo: el índice se rellena mientras lee. Sus mensajes y fotos siguen donde están.";
+"storage.search.failed" = "No se ha podido vaciar el índice. Inténtelo de nuevo.";
 
 /* The last row of settings, the way through to the About screen. */
 "settings.about" = "Acerca de Iskra";
@@ -331,7 +331,7 @@
 "reactions.quick" = "Reacción rápida";
 
 /* Names the gesture rather than the setting — the emoji is useless until you know how to send it. */
-"reactions.quickHelp" = "Toca dos veces un mensaje para dejarla.";
+"reactions.quickHelp" = "Toque dos veces un mensaje para dejarla.";
 
 /* Accessibility label for the address field. */
 "signIn.addressLabel" = "Dirección de la cuenta";
@@ -347,17 +347,17 @@
 
 "signIn.password" = "Contraseña";
 
-"signIn.problem.badCredentials" = "El nombre de usuario o la contraseña no son correctos. Inténtalo de nuevo.";
+"signIn.problem.badCredentials" = "El nombre de usuario o la contraseña no son correctos. Inténtelo de nuevo.";
 
 /* The address is wrong. Must send the user back to the address field, and must not say 'homeserver'. */
-"signIn.problem.notFound" = "No hemos encontrado nada en esa dirección. Comprueba cómo está escrita e inténtalo de nuevo.";
+"signIn.problem.notFound" = "No hemos encontrado nada en esa dirección. Compruebe cómo está escrita e inténtelo de nuevo.";
 
-"signIn.problem.ssoIncomplete" = "El inicio de sesión no se ha completado. Inténtalo de nuevo.";
+"signIn.problem.ssoIncomplete" = "El inicio de sesión no se ha completado. Inténtelo de nuevo.";
 
 /* Nothing to do with what the user typed, so it must not send them back to the address field. */
-"signIn.problem.storageUnavailable" = "Iskra no ha podido preparar un almacenamiento seguro en este dispositivo, así que no puede iniciar tu sesión de forma segura.";
+"signIn.problem.storageUnavailable" = "Iskra no ha podido preparar un almacenamiento seguro en este dispositivo, así que no puede iniciar su sesión de forma segura.";
 
-"signIn.problem.unreachable" = "No se ha podido conectar con esa dirección. Comprueba la conexión e inténtalo de nuevo.";
+"signIn.problem.unreachable" = "No se ha podido conectar con esa dirección. Compruebe la conexión e inténtelo de nuevo.";
 
 "signIn.problem.unsupportedMethod" = "Este servicio usa una forma de iniciar sesión que Iskra aún no admite.";
 
@@ -365,7 +365,7 @@
    anything about signing in: the account is fine and the messages are on the device. */
 "session.offlineTitle" = "Sin conexión";
 
-"session.offlineMessage" = "Tus conversaciones están aquí, en este dispositivo. Solo que ahora no podemos conectar con el servidor: comprueba tu red.";
+"session.offlineMessage" = "Sus conversaciones están aquí, en este dispositivo. Solo que ahora no podemos conectar con el servidor: compruebe su red.";
 
 "session.tryAgain" = "Reintentar";
 
@@ -373,7 +373,7 @@
    the conversations and must not push them off the screen. */
 "connection.offline" = "Sin red";
 
-"signIn.readyHelp" = "Abriremos el navegador para que inicies sesión como siempre.";
+"signIn.readyHelp" = "Abriremos el navegador para que inicie sesión como siempre.";
 
 "signIn.readyTitle" = "Todo listo";
 
@@ -386,16 +386,16 @@
    they did not have. One way, and a hint for the people it does not work for. */
 "signIn.usePasswordInstead" = "Solo tengo usuario y contraseña";
 
-"signIn.tagline" = "Mensajes privados, a tu manera.";
+"signIn.tagline" = "Mensajes privados, a su manera.";
 
 "signIn.title" = "Iskra";
 
 "signIn.username" = "Nombre de usuario";
 
 /* The question that replaces asking for a 'homeserver URL'. */
-"signIn.whereIsAccount" = "¿Dónde está tu cuenta?";
+"signIn.whereIsAccount" = "¿Dónde está su cuenta?";
 
-"signIn.whereIsAccountHelp" = "Si te dieron la dirección de un servidor, escríbela. Si no, deja matrix.org: ahí está la mayoría de las cuentas.";
+"signIn.whereIsAccountHelp" = "Si le dieron la dirección de un servidor, escríbala. Si no, deje matrix.org: ahí está la mayoría de las cuentas.";
 
 "room.attachPhoto" = "Foto o vídeo";
 
@@ -418,7 +418,7 @@
 
 "videoNote.title" = "Videomensaje";
 
-"videoNote.holdToRecord" = "Mantén pulsado para grabar y suelta para enviar. Hasta un minuto.";
+"videoNote.holdToRecord" = "Mantenga pulsado para grabar y suelte para enviar. Hasta un minuto.";
 
 "videoNote.sending" = "Enviando…";
 
@@ -431,13 +431,13 @@
 /* A conversation with no messages in it. Not a problem — an invitation. */
 "room.emptyTitle" = "Aquí aún no hay nada";
 
-"room.emptyMessage" = "Escribe el primer mensaje: así empieza todo.";
+"room.emptyMessage" = "Escriba el primer mensaje: así empieza todo.";
 
 /* The chat could not be opened at all. Must not be confused with an empty chat: the
    messages are there, we just can't show them. */
 "room.loadFailedTitle" = "No se ha podido abrir el chat";
 
-"room.loadFailedMessage" = "Los mensajes no se han perdido: solo que no hemos podido cargarlos. Comprueba la conexión.";
+"room.loadFailedMessage" = "Los mensajes no se han perdido: solo que no hemos podido cargarlos. Compruebe la conexión.";
 
 "room.tryAgain" = "Reintentar";
 
@@ -473,7 +473,7 @@
 "message.menu.removeQuick" = "Quitar %@";
 "message.menu.moreReactions" = "Más reacciones";
 
-"message.menu.removeReaction" = "Quitar tu reacción";
+"message.menu.removeReaction" = "Quitar su reacción";
 
 /* At the foot of a message's menu: the exact moment. The clock beside the bubble has room
    for the hour and nothing else; this is the whole date, formatted by the system. */
@@ -557,11 +557,11 @@
 
 "appearance.wallpaper.night" = "Noche";
 
-"appearance.wallpaper.photo" = "Tu propia foto";
+"appearance.wallpaper.photo" = "Su propia foto";
 
 /* The photo was picked and could not be read — a refusal that happens before anything is
    sent, so blaming the server would be a lie. Usually it is still in iCloud, not on the phone. */
-"room.attachmentUnreadable" = "No se ha podido leer esta foto. Pasa cuando aún está en iCloud: ábrela en Fotos e inténtalo de nuevo.";
+"room.attachmentUnreadable" = "No se ha podido leer esta foto. Pasa cuando aún está en iCloud: ábrala en Fotos e inténtelo de nuevo.";
 
 /* A link in a message: ask before opening. The dialog's title is the address itself. */
 "message.link.open" = "Abrir";
@@ -577,9 +577,9 @@
 "message.forward.send" = "Enviar";
 "message.menu.block" = "Bloquear";
 "message.menu.blockConfirm" = "¿Bloquear a %@?";
-"message.menu.blockConfirmMessage" = "Dejarás de recibir los mensajes de esta persona. Puedes desbloquearla en Ajustes.";
+"message.menu.blockConfirmMessage" = "Dejará de recibir los mensajes de esta persona. Puede desbloquearla en Ajustes.";
 "message.report.title" = "Denunciar mensaje";
-"message.report.explanation" = "La denuncia llega a los moderadores del servidor. Puedes contar brevemente qué pasa, o enviarla sin más.";
+"message.report.explanation" = "La denuncia llega a los moderadores del servidor. Puede contar brevemente qué pasa, o enviarla sin más.";
 "message.report.reasonPrompt" = "¿Qué pasa? (opcional)";
 "message.report.submit" = "Enviar";
 "message.report.cancel" = "Cancelar";
@@ -637,7 +637,7 @@
 "message.media.openFile" = "Abrir archivo";
 
 /* The one button in the composer that records: tap to choose voice or video, hold to record. */
-"recording.hint" = "Toca para elegir voz o vídeo. Mantén pulsado para grabar y desliza hacia arriba para seguir sin manos.";
+"recording.hint" = "Toque para elegir voz o vídeo. Mantenga pulsado para grabar y deslice hacia arriba para seguir sin manos.";
 "recording.switchToVoice" = "Cambiar a mensaje de voz";
 "recording.switchToVideo" = "Cambiar a videomensaje";
 "recording.cancel" = "Cancelar";
@@ -645,7 +645,7 @@
 
 /* Recording a spoken message by holding the microphone in the composer. */
 "voice.record" = "Grabar un mensaje de voz";
-"voice.needsMicrophone" = "Permite el acceso al micrófono para grabar mensajes de voz";
+"voice.needsMicrophone" = "Permita el acceso al micrófono para grabar mensajes de voz";
 
 /* Sending a place. */
 /* The sticker sheet's title, and the composer button that opens it. */
@@ -667,7 +667,7 @@
 
 /* The sticker sheet with nothing in it. */
 "stickers.empty.title" = "Aún no hay stickers";
-"stickers.empty.message" = "¿Te gusta un sticker de un chat? Mantenlo pulsado y elige «Añadir a mis stickers».";
+"stickers.empty.message" = "¿Le gusta un sticker de un chat? Manténgalo pulsado y elija «Añadir a mis stickers».";
 
 /* In a sticker's menu: put it into, or take it out of, the account's own pack. */
 "stickers.add" = "Añadir a mis stickers";
@@ -698,14 +698,14 @@
 "room.manage.remove" = "Expulsar";
 "room.manage.block" = "Expulsar del chat";
 "room.manage.blockQuestion" = "¿Expulsar a %@ de este chat?";
-"room.manage.blockHelp" = "Saldrá del chat y no podrá volver hasta que la desbloquees.";
+"room.manage.blockHelp" = "Saldrá del chat y no podrá volver hasta que usted la desbloquee.";
 "room.manage.leave" = "Salir del chat";
 "room.manage.leaveQuestion" = "¿Salir de este chat?";
-"room.manage.leaveHelp" = "Dejarán de llegar mensajes nuevos. Solo podrás volver con una invitación.";
+"room.manage.leaveHelp" = "Dejarán de llegar mensajes nuevos. Solo podrá volver con una invitación.";
 
 /* Why everything on the room-settings screen is greyed out. Shown only while offline. Must say
    what still works — reading and writing — rather than only what does not. */
-"room.manage.offline" = "Sin red puedes leer este chat y escribir en él, pero no cambiarlo.";
+"room.manage.offline" = "Sin red puede leer este chat y escribir en él, pero no cambiarlo.";
 "room.manage.cancel" = "Cancelar";
 "problem.title" = "No ha funcionado";
 
@@ -723,7 +723,7 @@
 "roomList.swipe.unarchive" = "Desarchivar";
 "roomList.swipe.delete" = "Eliminar";
 "roomList.swipe.leaveConfirmTitle" = "¿Salir de este chat?";
-"roomList.swipe.leaveConfirmMessage" = "Saldrás de la sala y dejarás de recibir sus mensajes. En Matrix no se puede eliminar un chat compartido: solo puedes salir tú.";
+"roomList.swipe.leaveConfirmMessage" = "Saldrá de la sala y dejará de recibir sus mensajes. En Matrix no se puede eliminar un chat compartido: solo puede salir usted.";
 "roomList.swipe.leaveConfirm" = "Salir";
 "roomList.swipe.cancel" = "Cancelar";
 
@@ -732,14 +732,14 @@
 "roomList.peek.open" = "Abrir chat";
 "roomList.peek.markRead" = "Marcar como leído";
 "roomList.peek.markUnread" = "Marcar como no leído";
-"roomList.peek.staysUnread" = "Solo estás echando un vistazo: no se marcará como leído";
+"roomList.peek.staysUnread" = "Solo está echando un vistazo: no se marcará como leído";
 "roomList.peek.close" = "Cerrar vista previa";
 
 /* The archive: the shelf for set-aside chats and the way back to them. */
 "roomList.archive.title" = "Archivo";
 "roomList.archive.entry" = "Archivo (%lld)";
 "roomList.archive.emptyTitle" = "No hay nada archivado";
-"roomList.archive.emptyMessage" = "Desliza un chat a la izquierda y archívalo: dejará de estar en la lista principal sin desaparecer.";
+"roomList.archive.emptyMessage" = "Deslice un chat a la izquierda y archívelo: dejará de estar en la lista principal sin desaparecer.";
 
 /* How loudly a room may interrupt you. */
 "room.manage.alerts" = "Notificaciones";
@@ -748,12 +748,12 @@
 "room.manage.alertsMuted" = "Desactivadas";
 
 /* The profile: name and picture. */
-"account.namePlaceholder" = "Tu nombre";
+"account.namePlaceholder" = "Su nombre";
 "account.edit" = "Editar";
-"account.editTitle" = "Tu perfil";
+"account.editTitle" = "Su perfil";
 "account.nameHeader" = "Nombre";
-"account.editOffline" = "Sin red no puedes cambiar tu perfil: la app no puede contactar con el servidor.";
-"account.nameChangeNotice" = "Si cambias tu nombre, se enterarán todas las personas con las que hablas: aparecerá un aviso en cada chat compartido.";
+"account.editOffline" = "Sin red no puede cambiar su perfil: la app no puede contactar con el servidor.";
+"account.nameChangeNotice" = "Si cambia su nombre, se enterarán todas las personas con las que habla: aparecerá un aviso en cada chat compartido.";
 "account.usernameHeader" = "Nombre de usuario";
 "account.usernameFixed" = "El nombre de usuario se elige una sola vez, al crear la cuenta. No se puede cambiar, ni aquí ni en ningún otro sitio.";
 
@@ -775,29 +775,29 @@
 "room.tabs.links" = "Enlaces";
 "room.tabs.label" = "Qué hay aquí";
 "room.localName.header" = "Nombre en este dispositivo";
-"room.localName.help" = "Solo tú ves este nombre, y solo en este dispositivo. La otra persona no se entera, tus otros dispositivos mantienen el nombre que ya tenían y, al cerrar sesión, se olvida.";
+"room.localName.help" = "Solo usted ve este nombre, y solo en este dispositivo. La otra persona no se entera, sus otros dispositivos mantienen el nombre que ya tenían y, al cerrar sesión, se olvida.";
 "room.localName.reset" = "Restaurar «%@»";
 
 /* Encryption: whether your messages will still be readable on your next device. */
 "encryption.title" = "Cifrado";
 
-"encryption.on" = "Tus mensajes están protegidos";
-"encryption.onHelp" = "Tus conversaciones se guardan cifradas en una copia de seguridad en el servidor. Con tu código de recuperación puedes leerlas en cualquier dispositivo nuevo.";
+"encryption.on" = "Sus mensajes están protegidos";
+"encryption.onHelp" = "Sus conversaciones se guardan cifradas en una copia de seguridad en el servidor. Con su código de recuperación puede leerlas en cualquier dispositivo nuevo.";
 
-"encryption.off" = "Tus mensajes no están protegidos";
-"encryption.offHelp" = "Si pierdes este dispositivo, nadie podrá leer tus mensajes antiguos, ni siquiera tú. Protégelos y te daremos el código que los recupera.";
+"encryption.off" = "Sus mensajes no están protegidos";
+"encryption.offHelp" = "Si pierde este dispositivo, nadie podrá leer sus mensajes antiguos, ni siquiera usted. Protéjalos y le daremos el código que los recupera.";
 "encryption.protect" = "Proteger mis mensajes";
 
-"encryption.keyNeeded" = "Hace falta tu código de recuperación";
-"encryption.keyNeededHelp" = "Tus mensajes antiguos están cifrados y este dispositivo aún no puede abrirlos. Introduce el código que guardaste al activar la copia de seguridad.";
+"encryption.keyNeeded" = "Hace falta su código de recuperación";
+"encryption.keyNeededHelp" = "Sus mensajes antiguos están cifrados y este dispositivo aún no puede abrirlos. Introduzca el código que guardó al activar la copia de seguridad.";
 "encryption.keyPlaceholder" = "Código de recuperación";
 "encryption.restore" = "Recuperar mis mensajes";
 
 "encryption.newKey" = "Crear un código de recuperación nuevo";
 "encryption.newKeyHelp" = "El código anterior dejará de funcionar. Conviene hacerlo si ha acabado donde no debía.";
 
-"encryption.saveKey" = "Guarda tu código";
-"encryption.saveKeyHelp" = "Lo mostramos una vez y nunca más. Apúntalo o guárdalo en un gestor de contraseñas: sin él, tus mensajes antiguos no vuelven.";
+"encryption.saveKey" = "Guarde su código";
+"encryption.saveKeyHelp" = "Lo mostramos una vez y nunca más. Apúntelo o guárdelo en un gestor de contraseñas: sin él, sus mensajes antiguos no vuelven.";
 "encryption.copyKey" = "Copiar el código";
 "encryption.keyCopied" = "Copiado";
 "encryption.saved" = "He guardado el código";
@@ -808,8 +808,8 @@
 "room.unreadMessages" = "Mensajes no leídos";
 
 /* A room invitation: who asked, and the two answers. */
-"roomList.invite.from" = "%@ te invita";
-"roomList.invite.unattributed" = "Te han invitado";
+"roomList.invite.from" = "%@ le invita";
+"roomList.invite.unattributed" = "Le han invitado";
 "roomList.invite.accept" = "Unirse";
 "roomList.invite.decline" = "Rechazar";
 
@@ -822,7 +822,7 @@
 
 /* Stands where the "show earlier" button would be, when the older messages could not be fetched —
    offline, this is where the cached history runs out. Explains; does not promise. */
-"room.earlierUnavailable" = "Te mostraremos lo anterior cuando vuelvas a tener conexión";
+"room.earlierUnavailable" = "Le mostraremos lo anterior cuando vuelva a tener conexión";
 "appearance.previewAsk" = "¿Qué color has elegido?";
 "appearance.previewAnswer" = "Este. ¿Qué te parece?";
 "appearance.previewReply" = "Queda genial";
@@ -835,13 +835,13 @@
    says who spoke — and in the compact layout it is the only thing that does. The reader's own
    line is labelled "You": the same word VoiceOver reads, not a second one like it. */
 "appearance.previewSender" = "Ana";
-"appearance.previewLabel" = "Así se verán tus mensajes";
+"appearance.previewLabel" = "Así se verán sus mensajes";
 
 /* The session was ended somewhere else — from another device, or because the account is gone.
    Somebody dropped back onto the sign-in screen with no explanation assumes the app lost their
    account, so this names the cause rather than merely stating the fact. */
-"session.ended.title" = "Ya no tienes la sesión iniciada";
-"session.ended.message" = "Tu servidor ya no acepta esta sesión. Lo más probable es que la cerraras desde otro dispositivo. Vuelve a iniciar sesión: tus conversaciones siguen ahí.";
+"session.ended.title" = "Ya no tiene la sesión iniciada";
+"session.ended.message" = "Su servidor ya no acepta esta sesión. Lo más probable es que la cerrara desde otro dispositivo. Vuelva a iniciar sesión: sus conversaciones siguen ahí.";
 
 /* What the media bubbles are called for VoiceOver. A photo and a video note are opened by a tap
    gesture, and a tap gesture does not exist in the accessibility tree at all — with no name and no
@@ -856,27 +856,27 @@
    show the same thing, which is the whole of it, and is explicable without a single term. */
 "verification.verify" = "Confirmar este dispositivo";
 "verification.title" = "Confirmación";
-"verification.why" = "Mientras este dispositivo no esté confirmado, tu cuenta no puede saber que de verdad eres tú, y tus conversaciones anteriores no llegarán aquí. Puedes confirmarlo desde un teléfono u ordenador donde ya hayas iniciado sesión.";
-"verification.waiting.title" = "Mira tu otro dispositivo";
-"verification.waiting.message" = "La app de tu otro dispositivo tiene que estar abierta ahora mismo; si no, la solicitud no le llegará.";
-"verification.asked.message" = "Este dispositivo acaba de iniciar sesión en tu cuenta y pide que lo confirmes. Si fuiste tú, acepta y luego compara los emojis. Si no, recházalo: alguien más conoce tu contraseña.";
+"verification.why" = "Mientras este dispositivo no esté confirmado, su cuenta no puede saber que de verdad es usted, y sus conversaciones anteriores no llegarán aquí. Puede confirmarlo desde un teléfono u ordenador donde ya haya iniciado sesión.";
+"verification.waiting.title" = "Mire su otro dispositivo";
+"verification.waiting.message" = "La app de su otro dispositivo tiene que estar abierta ahora mismo; si no, la solicitud no le llegará.";
+"verification.asked.message" = "Este dispositivo acaba de iniciar sesión en su cuenta y pide que lo confirme. Si fue usted, acepte y luego compare los emojis. Si no, rechácelo: alguien más conoce su contraseña.";
 "verification.unnamedDevice" = "Un dispositivo sin nombre";
 "verification.mine" = "Soy yo";
 "verification.notMine" = "No soy yo";
 "verification.negotiating.title" = "Un momento";
 "verification.negotiating.message" = "Los dos dispositivos se están poniendo de acuerdo. Enseguida aparecerán los emojis en ambas pantallas.";
-"verification.compare" = "Tu otro dispositivo muestra los mismos siete emojis. Comprueba que coinciden y que están en el mismo orden.";
+"verification.compare" = "Su otro dispositivo muestra los mismos siete emojis. Compruebe que coinciden y que están en el mismo orden.";
 "verification.match" = "Coinciden";
 "verification.noMatch" = "No coinciden";
 "verification.done.title" = "Este dispositivo está confirmado";
-"verification.done.message" = "Tu cuenta ya confía en este dispositivo. Tus conversaciones anteriores aparecerán aquí solas.";
+"verification.done.message" = "Su cuenta ya confía en este dispositivo. Sus conversaciones anteriores aparecerán aquí solas.";
 "verification.declined.title" = "Confirmación detenida";
-"verification.declined.message" = "Si los emojis de verdad no coincidían, no confíes en esta conexión e inténtalo de nuevo. También puede que simplemente iniciaras la confirmación dos veces.";
-"verification.refused.title" = "Lo has rechazado";
-"verification.refused.message" = "Ese dispositivo no ha recibido acceso a tus conversaciones. Pero si no fuiste tú quien inició sesión, alguien más conoce tu contraseña, y hay que cambiarla ya mismo.";
+"verification.declined.message" = "Si los emojis de verdad no coincidían, no confíe en esta conexión e inténtelo de nuevo. También puede que simplemente iniciara la confirmación dos veces.";
+"verification.refused.title" = "Lo ha rechazado";
+"verification.refused.message" = "Ese dispositivo no ha recibido acceso a sus conversaciones. Pero si no fue usted quien inició sesión, alguien más conoce su contraseña, y hay que cambiarla ya mismo.";
 "verification.refused.endSession" = "Cerrar esta sesión";
 "verification.failed.title" = "No ha funcionado";
-"verification.failed.message" = "La confirmación no ha terminado. Inténtalo de nuevo.";
+"verification.failed.message" = "La confirmación no ha terminado. Inténtelo de nuevo.";
 "verification.close" = "Cerrar";
 "verification.signIn.title" = "Inicio de sesión en la cuenta";
 
@@ -887,61 +887,61 @@
    code — and it behaves like a backup code from an authenticator app. */
 
 /* While the SDK works out what this device knows. Seconds, but saying nothing is not an option. */
-"recovery.preparing" = "Un momento, estamos revisando tus mensajes";
+"recovery.preparing" = "Un momento, estamos revisando sus mensajes";
 
 /* Flow 1. The backup turns itself on, without asking, and the wait is a real one:
    the whole history goes up to the server. Promising "instant" would be a lie. */
-"recovery.creating.title" = "Preparando tu copia de seguridad";
-"recovery.creating.message" = "Estamos guardando tus mensajes en una copia de seguridad para que puedas leerlos desde cualquier dispositivo. Puede tardar un minuto.";
+"recovery.creating.title" = "Preparando su copia de seguridad";
+"recovery.creating.message" = "Estamos guardando sus mensajes en una copia de seguridad para que pueda leerlos desde cualquier dispositivo. Puede tardar un minuto.";
 
 /* The button under the code. Skipping is allowed — but the strip in the chat list won’t let you forget. */
 
 /* Flow 2. Two buttons of equal weight. Neither is "the main one": somebody who picks the
    picture check should not feel they picked the fallback. */
 "recovery.new.title" = "¿Crear un código nuevo?";
-"recovery.new.message" = "El código anterior dejará de funcionar al instante y no se podrá recuperar. Si lo tienes apuntado en algún sitio, esa nota ya no servirá.";
+"recovery.new.message" = "El código anterior dejará de funcionar al instante y no se podrá recuperar. Si lo tiene apuntado en algún sitio, esa nota ya no servirá.";
 "recovery.new.confirm" = "Crear un código nuevo";
 "recovery.new.keepOld" = "Más tarde: buscaré el antiguo";
-"recovery.approve.title" = "¿Lo has aprobado?";
-"recovery.approve.message" = "El restablecimiento se tiene que aprobar en la página de tu servidor. Si lo has hecho, continúa, y tus mensajes antiguos se perderán para siempre. Si has cambiado de idea, no pasará nada.";
+"recovery.approve.title" = "¿Lo ha aprobado?";
+"recovery.approve.message" = "El restablecimiento se tiene que aprobar en la página de su servidor. Si lo ha hecho, continúe, y sus mensajes antiguos se perderán para siempre. Si ha cambiado de idea, no pasará nada.";
 "recovery.approve.confirm" = "Borrar los mensajes antiguos para siempre";
 "recovery.approve.cancel" = "He cambiado de idea";
-"recovery.choose.title" = "Desbloquea tus mensajes";
-"recovery.choose.message" = "Tus mensajes anteriores están cifrados y este dispositivo aún no puede abrirlos. Hay dos formas, y las dos funcionan.";
+"recovery.choose.title" = "Desbloquee sus mensajes";
+"recovery.choose.message" = "Sus mensajes anteriores están cifrados y este dispositivo aún no puede abrirlos. Hay dos formas, y las dos funcionan.";
 "recovery.choose.haveCode" = "Tengo mi código de recuperación";
 "recovery.choose.otherDevice" = "Confirmar desde otro dispositivo";
 "recovery.choose.neither" = "No tengo ninguna de las dos cosas";
 
 /* Entering the code. The keyboard has no business helping here — this arrives by paste. */
-"recovery.enter.title" = "Introduce tu código de recuperación";
-"recovery.enter.message" = "El código que te mostramos al activar la copia de seguridad.";
+"recovery.enter.title" = "Introduzca su código de recuperación";
+"recovery.enter.message" = "El código que le mostramos al activar la copia de seguridad.";
 "recovery.enter.unlock" = "Desbloquear mis mensajes";
 "recovery.enter.lost" = "No encuentro mi código";
 
 /* Flow 3, the branch where another device exists. Losing the code is not a disaster, and the tone says so. */
-"recovery.lost.title" = "¿No lo encuentras?";
-"recovery.lost.hasDevices" = "No pasa nada. Confirma este dispositivo desde un teléfono u ordenador donde ya hayas iniciado sesión y te daremos enseguida un código nuevo en lugar del perdido.";
+"recovery.lost.title" = "¿No lo encuentra?";
+"recovery.lost.hasDevices" = "No pasa nada. Confirme este dispositivo desde un teléfono u ordenador donde ya haya iniciado sesión y le daremos enseguida un código nuevo en lugar del perdido.";
 
 /* Flow 3, the branch where there is nothing else. Said plainly, without frightening anyone:
    losing your messages is bad, but being frightened and not knowing what to do is worse. */
 "recovery.lost.alone.title" = "Empecemos de cero";
-"recovery.lost.alone.message" = "Sin el código y sin otro dispositivo, tus mensajes antiguos no pueden volver: se quedan cifrados para siempre. Los mensajes nuevos llegarán como siempre y te daremos un código de recuperación nuevo.";
+"recovery.lost.alone.message" = "Sin el código y sin otro dispositivo, sus mensajes antiguos no pueden volver: se quedan cifrados para siempre. Los mensajes nuevos llegarán como siempre y le daremos un código de recuperación nuevo.";
 
 /* The design note asks for this to be separated from a password reset explicitly, so that
    nobody — the developer included — confuses the two. A password opens the account, not the messages. */
-"recovery.lost.alone.notPassword" = "La contraseña de tu cuenta no tiene nada que ver: abre tu cuenta, no tus mensajes antiguos.";
+"recovery.lost.alone.notPassword" = "La contraseña de su cuenta no tiene nada que ver: abre su cuenta, no sus mensajes antiguos.";
 "recovery.lost.alone.start" = "Empezar de cero";
 
 /* The server wants to see the person again before it allows the reset. */
-"recovery.password.title" = "Introduce tu contraseña";
-"recovery.password.message" = "Tu servidor te pide confirmar que de verdad eres tú.";
+"recovery.password.title" = "Introduzca su contraseña";
+"recovery.password.message" = "Su servidor le pide confirmar que de verdad es usted.";
 "recovery.password.placeholder" = "Contraseña";
 "recovery.password.confirm" = "Confirmar";
 
 /* The strip in the chat list. It stays until the reason is gone: the code is shown once, and
    somebody who didn’t save it finds out six months later — unless they’re reminded. */
-"recovery.banner.locked" = "Tus mensajes antiguos están bloqueados";
-"recovery.save.warning" = "Si pierdes este código y no tienes otro dispositivo, nadie podrá recuperar tus mensajes antiguos: ni nosotros ni el servidor. Se quedarán cifrados para siempre.";
+"recovery.banner.locked" = "Sus mensajes antiguos están bloqueados";
+"recovery.save.warning" = "Si pierde este código y no tiene otro dispositivo, nadie podrá recuperar sus mensajes antiguos: ni nosotros ni el servidor. Se quedarán cifrados para siempre.";
 "recovery.save.confirm" = "He apuntado el código en un lugar seguro";
 "recovery.lost.noAccess" = "No tengo acceso a ese dispositivo";
 "recovery.banner.hint" = "Abre la configuración de recuperación";
@@ -992,16 +992,16 @@
 /* Under this device, in place of when it was last seen. */
 "devices.online" = "en línea";
 "devices.endOthers" = "Cerrar todas las demás sesiones";
-"devices.endOthersFooter" = "Cierra la sesión de tu cuenta en todos los dispositivos menos en este.";
+"devices.endOthersFooter" = "Cierre la sesión de su cuenta en todos los dispositivos menos en este.";
 "devices.endOthersConfirm" = "¿Cerrar todas las demás sesiones?";
 "devices.others" = "Sesiones activas";
-"devices.noOthers" = "No hay otras sesiones: solo has iniciado sesión aquí.";
+"devices.noOthers" = "No hay otras sesiones: solo ha iniciado sesión aquí.";
 "devices.end" = "Cerrar";
 "devices.endConfirm" = "¿Cerrar esta sesión?";
 /* Under the list, when sessions are ended on the server's website (browser sign-in). */
-"devices.managedFooter" = "Las sesiones de esta cuenta se cierran en el sitio web de tu servidor: «Cerrar» lo abrirá.";
+"devices.managedFooter" = "Las sesiones de esta cuenta se cierran en el sitio web de su servidor: «Cerrar» lo abrirá.";
 "devices.passwordTitle" = "Se necesita la contraseña";
-"devices.passwordMessage" = "Tu servidor pide la contraseña de tu cuenta para cerrar la sesión.";
+"devices.passwordMessage" = "Su servidor pide la contraseña de su cuenta para cerrar la sesión.";
 "devices.passwordField" = "Contraseña";
 "devices.cancel" = "Cancelar";
 "devices.retry" = "Reintentar";
@@ -1023,7 +1023,7 @@
 "notifications.other" = "Todo lo demás";
 "notifications.invitations" = "Invitaciones a chats";
 "notifications.calls" = "Llamadas";
-"notifications.otherFooter" = "Aún no hay llamadas en Iskra, pero te pueden llamar desde otras apps.";
+"notifications.otherFooter" = "Aún no hay llamadas en Iskra, pero le pueden llamar desde otras apps.";
 
 "notifications.system" = "Permiso";
 "notifications.systemOn" = "El sistema deja pasar las notificaciones";
@@ -1032,15 +1032,15 @@
 "notifications.openSystem" = "Abrir Ajustes";
 "notifications.systemFooter" = "Mientras el sistema bloquee las notificaciones, ninguna de las reglas de abajo funcionará.";
 
-"notifications.failed" = "No se han podido leer los ajustes de notificación. El servidor no responde: inténtalo más tarde.";
+"notifications.failed" = "No se han podido leer los ajustes de notificación. El servidor no responde: inténtelo más tarde.";
 
 /* The first run. Six slides before the sign-in — the only place the app talks about itself,
    so the lines are short and no protocol word appears on any of them. See `WelcomeView`. */
 "onboarding.slide.iskra.title" = "Iskra";
-"onboarding.slide.iskra.body" = "Conversaciones que son tuyas y de nadie más";
+"onboarding.slide.iskra.body" = "Conversaciones que son suyas y de nadie más";
 
 "onboarding.slide.encryption.title" = "Cifrado de extremo a extremo por defecto";
-"onboarding.slide.encryption.body" = "Nadie más que tú y la persona a la que escribes puede leerlo. Ni siquiera la CIA";
+"onboarding.slide.encryption.body" = "Nadie más que usted y la persona a la que escribe puede leerlo. Ni siquiera la CIA";
 
 "onboarding.slide.decentralised.title" = "Descentralizado";
 "onboarding.slide.decentralised.body" = "Iskra funciona sobre Matrix, un protocolo abierto que desarrolla la comunidad";
@@ -1048,8 +1048,8 @@
 "onboarding.slide.appleWay.title" = "Apple way";
 "onboarding.slide.appleWay.body" = "Una app nativa en Swift para todas las plataformas a la vez: vuela y no se come la batería";
 
-"onboarding.slide.freedom.title" = "Tú eliges";
-"onboarding.slide.freedom.body" = "Usa un servidor que ya existe o monta el tuyo. Nadie te encierra en un solo ecosistema";
+"onboarding.slide.freedom.title" = "Usted elige";
+"onboarding.slide.freedom.body" = "Use un servidor que ya existe o monte el suyo. Nadie le encierra en un solo ecosistema";
 
 "onboarding.slide.anonymous.title" = "Anónimo";
 "onboarding.slide.anonymous.body" = "La cuenta no está ligada a ningún teléfono ni correo: un nombre de usuario y una contraseña, y ya está";
@@ -1066,19 +1066,19 @@
 "onboarding.skip" = "Omitir";
 
 "room.identity.changedTitle" = "%@: claves de cifrado nuevas";
-"room.identity.changedBody" = "Los mensajes a esta persona ahora se cifran con claves nuevas. Suele pasar al iniciar sesión en un teléfono nuevo. Si no te lo esperabas, pregúntale en persona.";
+"room.identity.changedBody" = "Los mensajes a esta persona ahora se cifran con claves nuevas. Suele pasar al iniciar sesión en un teléfono nuevo. Si no se lo esperaba, pregúntele en persona.";
 "room.identity.understood" = "Entendido";
 "room.identity.violationTitle" = "%@: las claves ya no coinciden con las verificadas";
-"room.identity.violationBody" = "Verificaste a esta persona, pero desde entonces las claves han cambiado. Hasta que estés seguro de que sigue siendo ella, no escribas nada importante.";
+"room.identity.violationBody" = "Usted verificó a esta persona, pero desde entonces las claves han cambiado. Hasta que esté seguro de que sigue siendo ella, no escriba nada importante.";
 "room.identity.withdraw" = "Quitar la verificación";
-"room.identity.failed" = "No ha funcionado. Comprueba la conexión e inténtalo de nuevo.";
+"room.identity.failed" = "No ha funcionado. Compruebe la conexión e inténtelo de nuevo.";
 "message.delivery.sendAnyway" = "Enviar de todos modos";
-"message.delivery.sendAnywayFailed" = "El mensaje sigue sin enviarse. Comprueba la conexión e inténtalo de nuevo.";
+"message.delivery.sendAnywayFailed" = "El mensaje sigue sin enviarse. Compruebe la conexión e inténtelo de nuevo.";
 "onboarding.greeting" = "¡Hola, %@!";
 "onboarding.greetingNameless" = "¡Hola!";
 
 "onboarding.appearance.title" = "¿De qué color es Iskra?";
-"onboarding.appearance.body" = "De este color serán tus mensajes y todo lo que pulses. Puedes cambiarlo cuando quieras en Ajustes, en «Apariencia».";
+"onboarding.appearance.body" = "De este color serán sus mensajes y todo lo que pulse. Puede cambiarlo cuando quiera en Ajustes, en «Apariencia».";
 
 "onboarding.faces.title" = "Quién recibe una criatura";
 "onboarding.faces.body" = "La criatura se calcula en el dispositivo a partir de la dirección de la persona: cada uno tiene la suya, y siempre la misma. No se envía nada a ningún sitio.";
@@ -1106,8 +1106,8 @@
 "accounts.current" = "Abierta ahora";
 "accounts.unread" = "No leídos: %lld";
 "accounts.signOutOf" = "Cerrar sesión de %@";
-"session.endedOther.message" = "El servidor ya no acepta la sesión de %@; lo más probable es que se cerrara desde otro dispositivo. Tus otras cuentas siguen aquí y puedes volver a añadir esta.";
-"signIn.problem.alreadySignedIn" = "Esta cuenta ya está en este dispositivo: puedes cambiar a ella en Ajustes.";
+"session.endedOther.message" = "El servidor ya no acepta la sesión de %@; lo más probable es que se cerrara desde otro dispositivo. Sus otras cuentas siguen aquí y puede volver a añadir esta.";
+"signIn.problem.alreadySignedIn" = "Esta cuenta ya está en este dispositivo: puede cambiar a ella en Ajustes.";
 
 /* Settings → Chats: service lines, the Return key, the account in the Share menu. */
 "settings.chats" = "Chats";
@@ -1124,14 +1124,14 @@
 "chats.shareAccount" = "Cuenta";
 "chats.shareActive" = "Activa";
 "chats.shareAll" = "Todas";
-"chats.shareHelp" = "De qué cuenta mostrar los chats cuando compartes algo desde otra app. «Activa» es la que está abierta ahora en Iskra.";
+"chats.shareHelp" = "De qué cuenta mostrar los chats cuando comparte algo desde otra app. «Activa» es la que está abierta ahora en Iskra.";
 
 /* Settings → Privacy. */
 "privacy.title" = "Privacidad";
 "privacy.hidePresence" = "Ocultar última conexión";
-"privacy.hidePresenceHelp" = "Los demás no verán cuándo estuviste en línea por última vez.";
+"privacy.hidePresenceHelp" = "Los demás no verán cuándo estuvo en línea por última vez.";
 "privacy.hideTyping" = "Ocultar «escribiendo…»";
-"privacy.hideTypingHelp" = "Los demás no verán cuándo estás escribiendo.";
+"privacy.hideTypingHelp" = "Los demás no verán cuándo está escribiendo.";
 
 /* Photos & videos: auto-download. */
 "media.download" = "Descargar";
@@ -1140,8 +1140,8 @@
 "media.autoDownload.wifi" = "Solo con Wi-Fi";
 "media.autoDownload.never" = "Nunca";
 "media.autoDownload.alwaysHelp" = "Las fotos, vídeos y videomensajes de los chats se descargan solos en cuanto aparecen en pantalla.";
-"media.autoDownload.wifiHelp" = "Con datos móviles y en el modo de datos reducidos, las fotos y vídeos no se descargan solos: en su lugar verás una silueta borrosa y un botón de descarga.";
-"media.autoDownload.neverHelp" = "Las fotos y vídeos solo se descargan cuando tocas el botón de descarga o los abres. Los avatares y stickers, siempre.";
+"media.autoDownload.wifiHelp" = "Con datos móviles y en el modo de datos reducidos, las fotos y vídeos no se descargan solos: en su lugar verá una silueta borrosa y un botón de descarga.";
+"media.autoDownload.neverHelp" = "Las fotos y vídeos solo se descargan cuando toca el botón de descarga o los abre. Los avatares y stickers, siempre.";
 
 /* The session card and the new sign-in banner. */
 "devices.application" = "App";
@@ -1151,7 +1151,7 @@
 "devices.unknown" = "desconocido";
 "devices.endSession" = "Cerrar sesión";
 "devices.done" = "Listo";
-"devices.newSignInTitle" = "Nuevo inicio de sesión en tu cuenta";
+"devices.newSignInTitle" = "Nuevo inicio de sesión en su cuenta";
 "devices.newSignInMore" = "y %lld más";
 "devices.newSignInYes" = "Sí, fui yo";
 "devices.newSignInNo" = "No fui yo";
@@ -1169,12 +1169,12 @@
 "signIn.signInTo" = "Iniciar sesión en %@";
 "signIn.back" = "Atrás";
 "signIn.continueInBrowser" = "Continuar en el navegador";
-"signIn.browserHelp" = "Se abre la página de inicio de sesión de tu servidor; allí todo funciona como siempre.";
-"signIn.passwordHelp" = "El nombre de usuario y la contraseña de tu cuenta.";
-"signIn.problem.noRegistration" = "Este servidor no permite crear una cuenta desde la app. Elige otro servidor o regístrate en su web.";
+"signIn.browserHelp" = "Se abre la página de inicio de sesión de su servidor; allí todo funciona como siempre.";
+"signIn.passwordHelp" = "El nombre de usuario y la contraseña de su cuenta.";
+"signIn.problem.noRegistration" = "Este servidor no permite crear una cuenta desde la app. Elija otro servidor o regístrese en su web.";
 "profile.search" = "Buscar";
 "profile.mute" = "Silenciar";
 "profile.unmute" = "Activar sonido";
 "profile.blockUser" = "Bloquear usuario";
 "profile.unblockUser" = "Desbloquear usuario";
-"profile.blockedNotice" = "Bloqueaste a este usuario. Sus mensajes nuevos no te llegan.";
+"profile.blockedNotice" = "Ha bloqueado a este usuario. Sus mensajes nuevos no le llegan.";
