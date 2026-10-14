@@ -56,18 +56,17 @@ public enum Wallpaper: String, CaseIterable, Identifiable, Sendable {
     /// for the photograph, whose brightness has to be measured (`WallpaperStore.luminance`), and
     /// for no wallpaper at all.
     public var luminance: Double? {
-        let values = components
+        let values: [[Double]] = switch self {
+        case .sunset: [[0.98, 0.55, 0.35], [0.54, 0.24, 0.47]]
+        case .sea: [[0.36, 0.68, 0.86], [0.10, 0.28, 0.52]]
+        case .forest: [[0.51, 0.74, 0.51], [0.11, 0.31, 0.27]]
+        case .dusk: [[0.44, 0.45, 0.74], [0.16, 0.15, 0.33]]
+        case .sand: [[0.93, 0.85, 0.70], [0.66, 0.51, 0.38]]
+        case .night: [[0.22, 0.24, 0.30], [0.05, 0.05, 0.09]]
+        case .none, .photo: []
+        }
         guard !values.isEmpty else { return nil }
         return values.map { Self.luminance(red: $0[0], green: $0[1], blue: $0[2]) }.reduce(0, +) / Double(values.count)
-    }
-
-    /// The colour at the top of the gradient once the dimmer has gone over it — what something that
-    /// fades into the wallpaper at the top of the screen fades into. Nil for the photograph, which
-    /// has no one colour, and for no wallpaper at all.
-    public func topColor(dimming: Double) -> Color? {
-        guard let top = components.first else { return nil }
-        let keep = 1 - dimming
-        return Color(red: top[0] * keep, green: top[1] * keep, blue: top[2] * keep)
     }
 
     /// Relative luminance of an sRGB colour, as WCAG defines it.
@@ -93,19 +92,13 @@ public enum Wallpaper: String, CaseIterable, Identifiable, Sendable {
     /// dark enough at the bottom that white chrome reads over them and soft enough at the top that
     /// they are a room rather than a poster.
     var colors: [Color] {
-        components.map { Color(red: $0[0], green: $0[1], blue: $0[2]) }
-    }
-
-    /// The two colours as sRGB components, top to bottom — the one table the colours, their
-    /// brightness and the top edge are all read from.
-    private var components: [[Double]] {
         switch self {
-        case .sunset: [[0.98, 0.55, 0.35], [0.54, 0.24, 0.47]]
-        case .sea: [[0.36, 0.68, 0.86], [0.10, 0.28, 0.52]]
-        case .forest: [[0.51, 0.74, 0.51], [0.11, 0.31, 0.27]]
-        case .dusk: [[0.44, 0.45, 0.74], [0.16, 0.15, 0.33]]
-        case .sand: [[0.93, 0.85, 0.70], [0.66, 0.51, 0.38]]
-        case .night: [[0.22, 0.24, 0.30], [0.05, 0.05, 0.09]]
+        case .sunset: [Color(red: 0.98, green: 0.55, blue: 0.35), Color(red: 0.54, green: 0.24, blue: 0.47)]
+        case .sea: [Color(red: 0.36, green: 0.68, blue: 0.86), Color(red: 0.10, green: 0.28, blue: 0.52)]
+        case .forest: [Color(red: 0.51, green: 0.74, blue: 0.51), Color(red: 0.11, green: 0.31, blue: 0.27)]
+        case .dusk: [Color(red: 0.44, green: 0.45, blue: 0.74), Color(red: 0.16, green: 0.15, blue: 0.33)]
+        case .sand: [Color(red: 0.93, green: 0.85, blue: 0.70), Color(red: 0.66, green: 0.51, blue: 0.38)]
+        case .night: [Color(red: 0.22, green: 0.24, blue: 0.30), Color(red: 0.05, green: 0.05, blue: 0.09)]
         case .none, .photo: []
         }
     }
