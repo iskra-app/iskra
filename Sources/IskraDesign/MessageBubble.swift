@@ -235,7 +235,7 @@ public extension EnvironmentValues {
     @Entry var bubbleIsLifted: Bool = false
 }
 
-private extension Color {
+public extension Color {
     /// The page a conversation is drawn on when it has no wallpaper — the system's own
     /// background, named as a colour rather than reached through `ShapeStyle.background`. That
     /// one resolves through the environment's `backgroundStyle`, and the whole point of the page

@@ -354,6 +354,10 @@ private struct ChatPeekCard: View {
         .overlay { placeholder }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .chatWallpaper()
+        // The page itself, under the wallpaper. Without a wallpaper `chatWallpaper` draws nothing,
+        // and the card's conversation was see-through: the bubbles floated on the darkened chat
+        // list behind it, under a header that did have a background of its own.
+        .background(Color.page)
     }
 
     /// How near the top, in points, before the next page is asked for. A screen's worth, so the
