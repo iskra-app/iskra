@@ -452,6 +452,24 @@ public struct RoomView: View {
                               startPoint: .top, endPoint: .bottom)
     }
 
+    /// Whether the conversation runs on under the title bar, fading as it goes — everywhere but
+    /// the Mac.
+    ///
+    /// On the Mac it stops at the bar instead. Running under a macOS 26 window toolbar, the list
+    /// was given the system's scroll-edge blur, and the system works that band out from a list the
+    /// right way up: turned over, it stretched it across the whole conversation. `scrollEdgeHidden`
+    /// keeps it away on iOS and did not on the Mac, where the toolbar shows its edge whenever the
+    /// pointer is in the window — so moving the mouse onto a chat blurred every message in it, and
+    /// moving it away left the room's name printed over the top message with nothing behind it. A
+    /// list that does not reach under the bar gives the system nothing to blur.
+    private var runsUnderTitleBar: Bool {
+        #if os(macOS)
+        false
+        #else
+        true
+        #endif
+    }
+
     /// A phone-shaped title bar: an iPhone, or an iPad window squeezed narrow enough to be
     /// one. Never the Mac, which has no size class worth asking.
     private var isCompact: Bool {
@@ -549,7 +567,7 @@ public struct RoomView: View {
             }
             // The list is turned over, and so are its margins: the title bar the conversation runs
             // under is at the top of the screen, which is the *bottom* of the content.
-            .contentMargins(.bottom, timelineInsets.top, for: .scrollContent)
+            .contentMargins(.bottom, runsUnderTitleBar ? timelineInsets.top : 0, for: .scrollContent)
             // No scroll indicator, as in Telegram — and not only for the look. Measured on a phone
             // (the watchdog's crash report): with the list turned over, the indicator's insets were
             // recomputed on every frame of the keyboard's animation and never settled, and the app
@@ -567,7 +585,9 @@ public struct RoomView: View {
             // states, flipping, for as long as the keyboard was up. Turned over, the list needs no
             // help at the bottom anyway: the newest message is its top, offset zero, and stays put
             // when the keyboard makes the frame shorter.
-            .ignoresSafeArea(.container, edges: .top)
+            //
+            // Not on the Mac — see `runsUnderTitleBar`.
+            .ignoresSafeArea(.container, edges: runsUnderTitleBar ? .top : [])
             // The title bar's height, read by a view of its own that nothing on the screen depends
             // on. Read off the scroll view itself it was a loop: a margin set from a measurement of
             // the view the margin is set on.
