@@ -325,6 +325,10 @@ public struct RoomView: View {
 
     @State private var timelineInsets = TimelineInsets()
 
+    /// Where the reader's finger took hold of the conversation, while it holds — what the drag that
+    /// puts the keyboard away is measured from. See `.scrollDismissesKeyboard`.
+    @State private var keyboardDragStart: CGFloat?
+
     @State private var metrics = ScrollMetrics(contentHeight: 0, offset: 0)
 
     /// Where the reader was standing when a message arrived at the far end of a conversation they
@@ -545,17 +549,26 @@ public struct RoomView: View {
             // The conversation goes soft and a shade darker as it passes under the title bar —
             // the scroll-edge effect the system would have drawn for an upright list, drawn by hand
             // for one turned over.
-            .overlay {
+            .overlay(alignment: .top) {
                 TopFade(height: timelineInsets.top + Theme.Spacing.generous)
             }
-            // Drag the conversation and the keyboard goes down with your finger, rather than
-            // vanishing at the first pixel of movement: pulling down takes it down with you, and
-            // changing your mind halfway puts it back.
+            // The keyboard goes down once the reader has dragged the conversation a little way back
+            // into its history — a deliberate pull, not the first pixel of movement, which is what
+            // `.immediately` reacts to and why it felt like the keyboard vanished on a touch. It goes
+            // with the system's own animation, and the list, sitting above it, follows.
             //
-            // It was `.immediately` for a while, blamed for a hang whose stack ended in
-            // `UICoreKeyboardTracking`. The hang was the margins under the keyboard feeding back
-            // into the layout (see `.ignoresSafeArea` above); with those gone, this is safe again.
-            .scrollDismissesKeyboard(.interactively)
+            // Not `.interactively`, which would be the nicer gesture and hangs the app: tracking the
+            // keyboard under the finger, with the list turned over, sent the main thread round the
+            // scroll view's layout until the watchdog killed it — twice, on a phone, both times the
+            // moment the keyboard was pulled (the stack ends in `UICoreKeyboardTracking`).
+            .scrollDismissesKeyboard(.never)
+            .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, offset in
+                // Turned over, the offset grows as the reader goes back in time.
+                guard let start = keyboardDragStart,
+                      offset - start > Theme.Size.keyboardDismissDrag else { return }
+                keyboardDragStart = nil
+                Keyboard.dismiss()
+            }
             .defaultScrollAnchor(.top)
             .scrollPosition($scrollPosition)
             // The spinner floats over the top of the conversation rather than standing at the
@@ -744,8 +757,9 @@ public struct RoomView: View {
             //
             // So every phase counts except the two that are not the reader: `.idle`, and the
             // `.animating` of a scroll this view asked for itself — including the hold's own.
-            .onScrollPhaseChange { _, phase in
+            .onScrollPhaseChange { _, phase, context in
                 floatingDateFollows(phase)
+                keyboardDragStart = phase == .interacting ? context.geometry.contentOffset.y : nil
                 guard phase != .idle, phase != .animating else { return }
                 isOpening = false
                 // The reader has the list now; a place noted for them a moment ago is not where
@@ -2411,38 +2425,38 @@ extension View {
 /// standing on, a short way below it. Content-side, so a material and not glass.
 ///
 /// "Whatever it is standing on" is the point. A wash in the page's colour is right on the app's own
-/// page and wrong over a wallpaper — a white or black band laid across a sunset. Over a wallpaper the
-/// wash *is* the wallpaper: drawn again, full screen and lined up with the one behind, and let
-/// through only at the top.
+/// page and wrong over a wallpaper — a white or black band laid across a sunset. Over a wallpaper
+/// the wash takes the colour of the wallpaper's top edge, dimmed as the wallpaper is.
 private struct TopFade: View {
     let height: CGFloat
 
     @Environment(\.hasWallpaper) private var hasWallpaper
+    @AppStorage(Wallpaper.storageKey) private var wallpaper: Wallpaper = .default
+    @AppStorage(Wallpaper.dimmingKey) private var dimming: Double = Wallpaper.defaultDimming
 
     var body: some View {
-        ZStack {
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                // Light: the conversation should still be legible under the bar, only softened.
-                .opacity(0.8)
-            if hasWallpaper {
-                ChatWallpaper()
-                    .opacity(0.5)
-            } else {
-                Color.page.opacity(0.35)
-            }
+        let fade = LinearGradient(stops: [.init(color: .black, location: 0),
+                                          .init(color: .black, location: 0.3),
+                                          .init(color: .clear, location: 1)],
+                                  startPoint: .top, endPoint: .bottom)
+        Rectangle()
+            .fill(.ultraThinMaterial)
+            // Light: the conversation should still be legible under the bar, only softened.
+            .opacity(0.8)
+            .overlay(wash.opacity(0.35))
+            .mask(fade)
+            .frame(height: height)
+            .ignoresSafeArea(edges: .top)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+
+    private var wash: Color {
+        guard hasWallpaper else { return .page }
+        guard let top = wallpaper.topColor(dimming: dimming) else {
+            // A photograph has no one colour; its brightness picks between the two that read on it.
+            return WallpaperStore.shared.isDark(wallpaper, dimming: dimming) ? .black : .white
         }
-        // The whole screen, exactly as the wallpaper is drawn, so the two line up; only the band at
-        // the top is let through.
-        .ignoresSafeArea()
-        .mask(alignment: .top) {
-            LinearGradient(stops: [.init(color: .black, location: 0),
-                                   .init(color: .black, location: 0.3),
-                                   .init(color: .clear, location: 1)],
-                           startPoint: .top, endPoint: .bottom)
-                .frame(height: height)
-        }
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
+        return top
     }
 }
