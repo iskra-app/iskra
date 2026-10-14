@@ -36,18 +36,17 @@ struct RoomEventRow: View {
     var body: some View {
         Text(Self.linked(event, linking: openProfile != nil))
             .font(.caption)
-            .foregroundStyle(.secondary)
-            // The names are the room's people, not links out of the app: drawn as the line's own
-            // grey, only heavier, the way Telegram draws them — and pressing one opens the page of
-            // the person it names rather than a browser.
-            .tint(.secondary)
+            // Bare words, like the time beside a bubble — see `onWallpaperInk`. The names are the
+            // room's people, not links out of the app: drawn in the line's own ink, only heavier,
+            // the way Telegram draws them — and pressing one opens the page of the person it names
+            // rather than a browser.
+            .onWallpaperInk()
             .environment(\.openURL, OpenURLAction { url in
                 guard let userID = Self.userID(in: url) else { return .systemAction }
                 openProfile?(userID)
                 return .handled
             })
             .multilineTextAlignment(.center)
-            .wallpaperPlate()
             .padding(.horizontal, Theme.Spacing.normal)
             .padding(.vertical, Theme.Spacing.tight)
             .frame(maxWidth: .infinity)
