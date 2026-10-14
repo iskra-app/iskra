@@ -312,7 +312,18 @@ public struct RoomView: View {
     private struct ScrollMetrics: Equatable {
         let contentHeight: CGFloat
         let offset: CGFloat
+        /// How far the oldest loaded message is from coming into view — the far end of the
+        /// content, which is the top of the screen.
+        var toOldest: CGFloat = .infinity
     }
+
+    /// What the screen keeps clear around the conversation — see the margins on the scroll view.
+    struct TimelineInsets: Equatable {
+        var top: CGFloat = 0
+        var globalTop: CGFloat = 0
+    }
+
+    @State private var timelineInsets = TimelineInsets()
 
     @State private var metrics = ScrollMetrics(contentHeight: 0, offset: 0)
 
@@ -443,48 +454,36 @@ public struct RoomView: View {
     public var body: some View {
         ScrollViewReader { scroll in
             ScrollView {
+                // **Upside down, like Telegram's** (`ChatHistoryListNode`: the list is rotated half a
+                // turn and every message turned back). The newest message is the *first* thing in
+                // the content, and history is added at its *end* — which on the screen is the top.
+                //
+                // That is the whole cure for the conversation jumping while history loads. The other
+                // way up, a page of history is inserted at the start of the content, and everything
+                // being read has to be pushed down by exactly its height at exactly that moment.
+                // Measured on a phone, SwiftUI does not do that while a finger or momentum is moving
+                // the list — the offset stayed put while the content grew by two thousand points —
+                // and no correction made from outside kept up. Added at the end, a page moves
+                // nothing on the screen at all, so there is nothing to correct.
                 LazyVStack(spacing: 0) {
-                    loadEarlier
+                    endMarker
 
-                    ForEach(placedRows) { placed in
+                    // Someone writing — first, which is the very bottom of the conversation on screen.
+                    typingBubble
+                        .flippedForTimeline()
+
+                    ForEach(placedRows.reversed()) { placed in
                         view(for: placed.row,
                              followsEvent: placed.followsEvent,
                              opensDay: placed.opensDay,
                              arrives: placed.arrives,
                              in: scroll)
+                            .flippedForTimeline()
                             .id(placed.id)
                     }
 
-                    // Someone writing, shown as an unfinished incoming message at the foot of the
-                    // conversation — the header says who, this is the animation of it. It comes up
-                    // from below and fades, exactly as a message does (`AnyTransition.arrival`),
-                    // and goes back down the same way when they stop.
-                    //
-                    // The `VStack` is load-bearing and must not go back to being a `Group`. A
-                    // `Group` is not a container: it hands every modifier to each of its members,
-                    // so the `.animation` below landed on `TypingBubble` itself rather than around
-                    // the `if` that inserts it — no animated transaction, no transition, and the
-                    // bubble popped in and out while the modifier that was supposed to stop it sat
-                    // right there looking correct.
-                    //
-                    // This is the one implicit animation scope in the conversation, and it is
-                    // allowed because of how little it wraps: a single bubble whose only other
-                    // animatable state, the pulse of the dots, carries an `.animation` of its own
-                    // further in and therefore wins. Nothing else can be caught by it.
-                    //
-                    // The animation is explicit now, in `setTyping`, rather than a scope here —
-                    // see `showsTyping` for why the bubble no longer follows the store directly.
-                    VStack(spacing: 0) {
-                        if showsTyping {
-                            TypingBubble()
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.top, Theme.Spacing.withinRun)
-                                .transition(.asymmetric(insertion: .arrival,
-                                                        removal: .opacity.animation(.easeOut(duration: Theme.Timing.chrome / 2))))
-                        }
-                    }
-
-                    endMarker
+                    loadEarlier
+                        .flippedForTimeline()
                 }
                 // **No `.animation` here, and none may be added.** This modifier wraps the
                 // whole conversation, and an implicit scope animates *every* animatable value in
@@ -507,36 +506,57 @@ public struct RoomView: View {
                 // The composer floats over the timeline on glass, so the last message
                 // must be able to scroll clear of it — but only just. The composer already
                 // carries its own padding, and a generous gap on top of that reads as the
-                // conversation having ended some way above the bar you answer it in.
-                .padding(.bottom, Theme.Spacing.close)
+                // conversation having ended some way above the bar you answer it in. (The top
+                // of the content, upside down, is the bottom of the screen.)
+                .padding(.top, Theme.Spacing.close)
             }
-            // Drag the conversation and the keyboard goes down with your finger.
+            // The list is turned over, and so are its margins: the title bar the conversation runs
+            // under is at the top of the screen, which is the *bottom* of the content.
+            .contentMargins(.bottom, timelineInsets.top, for: .scrollContent)
+            // No scroll indicator, as in Telegram — and not only for the look. Measured on a phone
+            // (the watchdog's crash report): with the list turned over, the indicator's insets were
+            // recomputed on every frame of the keyboard's animation and never settled, and the app
+            // was killed for hanging the moment the text field was pressed.
+            .scrollIndicators(.hidden)
+            .flippedForTimeline()
+            // Under the title bar, and *only* under it. The bottom — the composer, the keyboard, the
+            // home indicator — is left to the safe area, and the list simply ends above them. Measured
+            // on a phone (counting what changed on every layout pass while the app hung): a list
+            // that went under the composer and the keyboard had to be handed their height as a
+            // margin, read off the layout, and the margin moved the layout it was read from — two
+            // states, flipping, for as long as the keyboard was up. Turned over, the list needs no
+            // help at the bottom anyway: the newest message is its top, offset zero, and stays put
+            // when the keyboard makes the frame shorter.
+            .ignoresSafeArea(.container, edges: .top)
+            // The title bar's height, read by a view of its own that nothing on the screen depends
+            // on. Read off the scroll view itself it was a loop: a margin set from a measurement of
+            // the view the margin is set on.
+            .background {
+                Color.clear
+                    .ignoresSafeArea(.container, edges: .top)
+                    .onGeometryChange(for: TimelineInsets.self) { proxy in
+                        TimelineInsets(top: proxy.safeAreaInsets.top,
+                                       globalTop: proxy.frame(in: .global).minY)
+                    } action: { insets in
+                        timelineInsets = insets
+                        floatingDateLine = insets.globalTop + insets.top + Theme.Spacing.roomy
+                    }
+            }
+            // The conversation goes soft and a shade darker as it passes under the title bar —
+            // the scroll-edge effect the system would have drawn for an upright list, drawn by hand
+            // for one turned over.
+            .overlay {
+                TopFade(height: timelineInsets.top + Theme.Spacing.generous)
+            }
+            // Drag the conversation and the keyboard goes down with your finger, rather than
+            // vanishing at the first pixel of movement: pulling down takes it down with you, and
+            // changing your mind halfway puts it back.
             //
-            // `.interactively` rather than `.immediately` because the keyboard should follow the
-            // hand rather than vanish at the first pixel of movement: pulling down takes it down
-            // with you, and changing your mind halfway puts it back. Reaching for something further
-            // up the conversation is the one gesture that plainly means "I have stopped typing for
-            // a moment", and until now it left half the screen covered by a keyboard nobody was
-            // using.
+            // It was `.immediately` for a while, blamed for a hang whose stack ended in
+            // `UICoreKeyboardTracking`. The hang was the margins under the keyboard feeding back
+            // into the layout (see `.ignoresSafeArea` above); with those gone, this is safe again.
             .scrollDismissesKeyboard(.interactively)
-            .defaultScrollAnchor(.bottom)
-            // What keeps the conversation still while history lands on top of it.
-            //
-            // A scroll view holds its offset from the *top* of the content, so anything added
-            // above the reader pushes what they are reading down the screen — and a page of
-            // history is nothing but twenty-five things added above the reader. Anchoring size
-            // changes to the bottom inverts that: the end of the conversation is what stays put,
-            // and the content grows away from it, upwards, out of sight.
-            //
-            // This is what an anchor kept by hand could never do, and it is worth knowing why.
-            // A page does not arrive as one change. The SDK hands its diffs over in batches, each
-            // batch crosses to the main actor as its own `Task`, and each publishes `rows` again —
-            // so the content grows in several steps across several frames. Then the older events
-            // *decrypt*, and their rows change height where they stand, above the reader, after
-            // they have already been laid out. Then the photos in them arrive and change height
-            // again. There is no single moment to measure and put back; there are a dozen, and the
-            // only cure is to make the scroll view hold the end it is not being changed at.
-            .defaultScrollAnchor(.bottom, for: .sizeChanges)
+            .defaultScrollAnchor(.top)
             .scrollPosition($scrollPosition)
             // The spinner floats over the top of the conversation rather than standing at the
             // head of it.
@@ -643,7 +663,10 @@ public struct RoomView: View {
             // above its first message and the iPhone did not. A chat has nothing to separate
             // there: the toolbar is already a glass surface, and the rule only fenced the top
             // message off from the name of the person who sent it.
-            .softScrollEdge(for: .top)
+            // No scroll-edge effect at all. The system works out where its blurred band goes from a
+            // list the right way up; turned over and running under the bars, it stretched the band
+            // across nearly the whole conversation. The bars are glass of their own.
+            .scrollEdgeHidden(true, for: .all)
             // Reaching the top is the request for older messages — the gesture people
             // already make, rather than a spinner they have to notice. `loadMore` ignores
             // a call while it is already paginating and once the room has no more history,
@@ -677,41 +700,24 @@ public struct RoomView: View {
             // in flight, and does nothing once the room has no more history.
             .onScrollGeometryChange(for: ScrollMetrics.self) { geometry in
                 ScrollMetrics(contentHeight: geometry.contentSize.height,
-                              offset: geometry.contentOffset.y)
+                              offset: geometry.contentOffset.y,
+                              toOldest: geometry.contentSize.height
+                                - geometry.contentOffset.y
+                                - geometry.contentInsets.top
+                                - geometry.containerSize.height)
             } action: { _, metrics in
                 self.metrics = metrics
 
-                if metrics.offset < Theme.Size.paginationReach, hasAnchored {
+                if metrics.toOldest < Theme.Size.paginationReach, hasAnchored {
                     Task { await timeline.loadMore() }
                 }
 
-                // A room opens on its newest message, and *stays* there until the reader takes
-                // hold of it. One `scrollTo` at the moment the first page lands is not enough and
-                // this is why: opening a room is not one change of size, it is a long series of
-                // them. The store keeps fetching until it has a screenful, each batch of diffs
-                // publishes its own rows, the events then decrypt and their rows change height,
-                // and the photos in them arrive and change height again. Scrolling to the bottom
-                // once, in the middle of that, lands on a conversation that is still growing —
-                // which is precisely the room that opened a few messages short of the end. So the
-                // end is *held* until the reader disagrees by scrolling.
-                //
-                // Deferred: calling `scrollTo` synchronously inside `onScrollGeometryChange`
-                // changes the scroll position, which fires the callback again — a re-entrant
-                // loop that produced "tried to update multiple times per frame" and hung the
-                // app. A `Task` breaks the cycle: the current callback finishes, and the scroll
-                // lands on the next pass through the run loop.
-                if isOpening {
-                    Task { scrollPosition.scrollTo(edge: .bottom) }
-                    return
-                }
-
-                // The same hold, for the moments after a message lands rather than the moments
-                // after the room opens. See `followsEnd`. Deferred for the same reason as above:
-                // scrolling from inside this callback calls it again.
-                if followsEnd {
-                    Task { scrollPosition.scrollTo(edge: .bottom) }
-                    return
-                }
+                // No hold on the end here any more — neither while the room opens nor after a
+                // message lands. Upside down, the newest message is the start of the content, and
+                // a list resting at its start stays there by itself while history piles up at the
+                // other end. The holds were a `scrollTo` on every change of geometry, and with the
+                // list turned over and the keyboard resizing it, they answered each other until
+                // the app hung.
 
                 if let since = heldSince, ContinuousClock.now - since > Theme.Timing.placeIsHeld {
                     held = nil
@@ -720,7 +726,10 @@ public struct RoomView: View {
                 guard let place = held, metrics.contentHeight > place.contentHeight else { return }
                 held = nil
                 heldSince = nil
-                scrollPosition.scrollTo(y: place.offset)
+                // Upside down, a message arriving goes in at the *start* of the content, under the
+                // reader, and pushes what they are reading along by its height; they are put back
+                // by the same amount.
+                scrollPosition.scrollTo(y: place.offset + metrics.contentHeight - place.contentHeight)
             }
             // Moving the conversation is what says the reader wants it left where they put it.
             // An arriving message is not the reader, and neither is a photo finishing its
@@ -798,7 +807,7 @@ public struct RoomView: View {
                 // Not animated: this is where the room *opens*, not somewhere it travels to. The
                 // hold above keeps it there while the conversation finishes arriving; this is
                 // only the first of those moves, made as soon as there is a row to make it to.
-                scroll.scrollTo(last, anchor: .bottom)
+                scroll.scrollTo(last, anchor: .top)
 
                 // The room may now move — but not this instant. The batches still in flight, the
                 // decryptions and the pictures all land in the moments after the first page is
@@ -831,7 +840,8 @@ public struct RoomView: View {
                     // move is made on the next pass, after the anchor above has landed, for the reason
                     // `jumpTarget` waits for the same thing.
                     isOpening = false
-                    Task { scroll.scrollTo(TimelineRow.unreadDividerID, anchor: .top) }
+                    // `.bottom` of the turned-over list is the top of the screen.
+                    Task { scroll.scrollTo(TimelineRow.unreadDividerID, anchor: .bottom) }
                 }
             }
             // A search hit in a room that is *already* open. On iPhone this never arises: going back
@@ -890,11 +900,10 @@ public struct RoomView: View {
                 // bottom inset and left out the top one, and came out two hundred points short at
                 // rest and a keyboard's height short with it up; the way-down button, "typing…" and
                 // the arrival animation all asked it and all got "no".
-                let distanceFromBottom = geometry.contentSize.height
-                    - geometry.contentOffset.y
-                    - geometry.contentInsets.top
-                    - geometry.containerSize.height
-                return distanceFromBottom < Theme.Size.newestReach
+                // Upside down, the newest message is at the start of the content: the reader is at
+                // the end of the conversation when the offset is back at the start, past its margin.
+                let distanceFromNewest = geometry.contentOffset.y + geometry.contentInsets.top
+                return distanceFromNewest < Theme.Size.newestReach
             } action: { _, isNear in
                 isNearBottom = isNear
             }
@@ -981,13 +990,6 @@ public struct RoomView: View {
             // bottom of a conversation that is still arriving. Built only at the end, it would
             // have to do all of that in front of the reader, which is the thing being cured.
             .opacity(isRevealed ? 1 : 0)
-            // The top of what can be seen, under the title bar — where the floating date sits, and
-            // so the line a date has to pass to be the one floating there.
-            .onScrollGeometryChange(for: CGFloat.self) { geometry in
-                geometry.contentInsets.top
-            } action: { _, top in
-                floatingDateLine = top + Theme.Spacing.roomy
-            }
             .overlay(alignment: .top) {
                 if showsFloatingDate, let date = floatingDates.current {
                     FloatingDateLabel(date: date)
@@ -1452,14 +1454,10 @@ public struct RoomView: View {
         followingEnd?.cancel()
         followsEnd = true
 
-        followingEnd = Task {
-            let deadline = ContinuousClock.now + Theme.Timing.endIsHeld
-            while !Task.isCancelled, ContinuousClock.now < deadline {
-                scrollPosition.scrollTo(edge: .bottom)
-                try? await Task.sleep(for: Theme.Timing.endIsCheckedEvery)
-            }
-            followsEnd = false
-        }
+        // Once, not held: upside down the end does not drift away from a message still settling
+        // into its height — it grows at the start, where the list is resting.
+        scrollPosition.scrollTo(edge: .top)
+        followsEnd = false
     }
 
     /// Putting the room down: the draft, the listeners, the camera, the microphone.
@@ -2094,6 +2092,19 @@ public struct RoomView: View {
         }
     }
 
+    /// Grows its own room and rises into it — the arrival a message has (`ClaimedHeight`), rather
+    /// than a transition: inserted into a list that is upside down, a transition came in from
+    /// somewhere in the middle. Always there and sized by `showsTyping`, animated by `setTyping`.
+    private var typingBubble: some View {
+        ClaimedHeight(fraction: showsTyping ? 1 : 0) {
+            TypingBubble()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, Theme.Spacing.withinRun)
+                .opacity(showsTyping ? 1 : 0)
+        }
+        .accessibilityHidden(!showsTyping)
+    }
+
     /// A hairline under the last message — the floor the conversation rests against.
     private var endMarker: some View {
         Color.clear
@@ -2139,7 +2150,7 @@ public struct RoomView: View {
         // here it decided whether the button could put itself away. Sent to the last message,
         // the reader landed a composer's height short of the end, the end marker stayed off
         // screen, and the button that had just taken them there was still on top of it.
-        withAnimation(.smooth) { scrollPosition.scrollTo(edge: .bottom) }
+        withAnimation(.smooth) { scrollPosition.scrollTo(edge: .top) }
     }
 
     /// How far back a jump is willing to dig for a message that is not loaded. Ten pages of
@@ -2333,7 +2344,9 @@ struct DayDividerView: View {
             // A Bool, not the position: it changes twice per date per pass of the reader's thumb,
             // where a position would change every frame and redraw the room with it.
             .onGeometryChange(for: Bool.self) { proxy in
-                proxy.frame(in: .scrollView).minY < floatingDateLine
+                // On the screen, not in the scroll view: the conversation is laid out upside down,
+                // and only the window's coordinates say which way is up.
+                proxy.frame(in: .global).minY < floatingDateLine
             } action: { isAbove in
                 dayPassesTop?(date, isAbove)
             }
@@ -2384,5 +2397,52 @@ private struct VoiceScope<Content: View>: View {
 
     var body: some View {
         content(RoomView.recording(of: voice))
+    }
+}
+
+extension View {
+    /// Turned upside down — the conversation, and each row in it turned back. See `RoomView.body`.
+    func flippedForTimeline() -> some View {
+        scaleEffect(x: 1, y: -1, anchor: .center)
+    }
+}
+
+/// The top of the conversation, under the title bar: blurred, and fading into whatever the room is
+/// standing on, a short way below it. Content-side, so a material and not glass.
+///
+/// "Whatever it is standing on" is the point. A wash in the page's colour is right on the app's own
+/// page and wrong over a wallpaper — a white or black band laid across a sunset. Over a wallpaper the
+/// wash *is* the wallpaper: drawn again, full screen and lined up with the one behind, and let
+/// through only at the top.
+private struct TopFade: View {
+    let height: CGFloat
+
+    @Environment(\.hasWallpaper) private var hasWallpaper
+
+    var body: some View {
+        ZStack {
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                // Light: the conversation should still be legible under the bar, only softened.
+                .opacity(0.8)
+            if hasWallpaper {
+                ChatWallpaper()
+                    .opacity(0.5)
+            } else {
+                Color.page.opacity(0.35)
+            }
+        }
+        // The whole screen, exactly as the wallpaper is drawn, so the two line up; only the band at
+        // the top is let through.
+        .ignoresSafeArea()
+        .mask(alignment: .top) {
+            LinearGradient(stops: [.init(color: .black, location: 0),
+                                   .init(color: .black, location: 0.3),
+                                   .init(color: .clear, location: 1)],
+                           startPoint: .top, endPoint: .bottom)
+                .frame(height: height)
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
