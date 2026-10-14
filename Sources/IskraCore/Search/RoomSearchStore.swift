@@ -13,7 +13,7 @@ import MatrixRustSDK
 /// One store per open room, made with the room's handle, like `TimelineStore`.
 @MainActor
 @Observable
-public final class RoomSearchStore {
+public final class RoomSearchStore: Identifiable {
     public private(set) var hits: [SearchHit] = []
     public private(set) var isSearching = false
     /// True when a finished search found nothing, so the UI can say so rather than sit blank.

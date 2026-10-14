@@ -216,7 +216,10 @@ public struct RoomView: View {
     /// Searching within this conversation. The store is made when the search opens and let go when
     /// it closes — see `openRoomSearch`. Its results jump through the same `jumpTarget` road a reply
     /// or a global-search hit takes.
-    @State private var isSearchingRoom = false
+    ///
+    /// The store *is* the sheet's item, rather than a flag beside it. With `isPresented:` and an
+    /// `if let` inside, both set in one tap, the sheet was built from the store as it was before the
+    /// tap — `nil` — and opened onto nothing at all: a blank sheet, with the chat behind it.
     @State private var roomSearch: RoomSearchStore?
 
     /// Whether the reader is standing at the newest message, which is what decides if an
@@ -495,8 +498,7 @@ public struct RoomView: View {
     }
 
     private func openRoomSearch() {
-        if roomSearch == nil { roomSearch = timeline.makeSearch() }
-        isSearchingRoom = true
+        roomSearch = timeline.makeSearch()
     }
 
     /// The room's media, handed to every picture in it — see `RoomMediaSource`.
@@ -1268,14 +1270,12 @@ public struct RoomView: View {
                 .outsideToolbarGlass()
             }
         }
-        .sheet(isPresented: $isSearchingRoom) {
-            if let roomSearch {
-                RoomSearchView(store: roomSearch) { eventID in
-                    isSearchingRoom = false
-                    // The same road a reply takes: paginate back until the message is loaded, then
-                    // scroll to it and light it.
-                    jumpTarget = eventID
-                }
+        .sheet(item: $roomSearch) { search in
+            RoomSearchView(store: search) { eventID in
+                roomSearch = nil
+                // The same road a reply takes: paginate back until the message is loaded, then
+                // scroll to it and light it.
+                jumpTarget = eventID
             }
         }
         .navigationDestination(isPresented: $isShowingDetails) {
