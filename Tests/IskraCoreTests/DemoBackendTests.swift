@@ -326,6 +326,51 @@ struct DemoBackendTests {
         #expect(unrecognized.isEmpty, "\(unrecognized)")
     }
 
+    /// The row of a chat on the screen reads the chat itself — see `RoomPeek`. Three things the
+    /// SDK's own summary cannot say, each made to happen on the server with the chat *closed*: a
+    /// message of yours read on the other side, a message taken back, and a grey line.
+    @Test("a row on the screen shows the read mark, a deleted message and a grey line")
+    func rowReadsTheChat() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(component: "iskra-rowpeek-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let client = try await DemoBackend.makeClient(data: root.appending(component: "data"),
+                                                      cache: root.appending(component: "cache"),
+                                                      search: root.appending(component: "search"))
+        let session = UserSession(client: client, authentication: AuthenticationService(), sessionID: "demo", isDemo: true)
+        try await session.start()
+        defer { Task { await session.close() } }
+
+        let roomID = "!misha:iskra.demo"
+        let me = "@sasha:iskra.demo"
+        let misha = "@misha:iskra.demo"
+        let list = session.roomList
+        #expect(await eventually { list.rooms.contains { $0.id == roomID } })
+        list.rowAppeared(roomID)
+        defer { list.rowDisappeared(roomID) }
+        let row = { list.rooms.first { $0.id == roomID } }
+
+        let mine = await MockHomeserver.shared.append(roomID, sender: me, type: "m.room.message",
+                                                      content: ["msgtype": "m.text", "body": "Встретимся в шесть"])
+        #expect(await eventually { row()?.lastMessage == "Встретимся в шесть" })
+        await MockHomeserver.shared.read(roomID, by: misha, upTo: mine)
+        #expect(await eventually { row()?.lastMessageMark == .read }, "\(String(describing: row()))")
+
+        let theirs = await MockHomeserver.shared.append(roomID, sender: misha, type: "m.room.message",
+                                                        content: ["msgtype": "m.text", "body": "Ой, не туда"])
+        #expect(await eventually { row()?.lastMessage == "Ой, не туда" })
+        _ = await MockHomeserver.shared.append(roomID, sender: misha, type: "m.room.redaction",
+                                               content: ["redacts": theirs], extra: ["redacts": theirs])
+        let deleted = MessagePreview.text(for: .deleted)
+        #expect(await eventually { row()?.lastMessage == deleted }, "\(String(describing: row()?.lastMessage))")
+
+        _ = await MockHomeserver.shared.append(roomID, sender: misha, type: "m.room.member",
+                                               content: ["membership": "join", "displayname": "Михаил"],
+                                               stateKey: misha)
+        #expect(await eventually { row()?.lastMessage?.contains("Михаил") == true },
+                "\(String(describing: row()?.lastMessage))")
+    }
+
     private func eventually(seconds: Double = 15, _ condition: () -> Bool) async -> Bool {
         let deadline = Date().addingTimeInterval(seconds)
         while Date() < deadline {

@@ -45,6 +45,10 @@ public final class StickerLibrary {
     /// The URLs in the account's own pack — what "already yours" is decided by.
     private var mine: Set<String> = []
 
+    /// The packs the account has subscribed to, by `StickerPack.id` — what decides whether a room's
+    /// pack offers "add" in the sheet and "unsubscribe" in settings.
+    public private(set) var subscribed: Set<String> = []
+
     private let readAccountData: @Sendable (String) async throws -> String?
     private let writeAccountData: @Sendable (String, String) async throws -> Void
     private let send: @Sendable (ProxiedRequest) async throws -> ProxiedResponse
@@ -96,9 +100,12 @@ public final class StickerLibrary {
         let mine = ImagePack.pack(from: own, origin: .mine)
         self.mine = Set(mine.stickers.map(\.url))
 
-        let subscriptions = ImagePack.subscriptions(in: await object(ofAccountData: ImagePack.subscriptionsType) ?? [:])
+        let subscriptions = ImagePack.subscriptions(in: (try? await current(ImagePack.subscriptionsType)) ?? [:])
+        subscribed = Set(subscriptions.map { StickerPack.Origin.room(roomID: $0.roomID, stateKey: $0.stateKey).packID })
         var places = [(roomID: String, stateKey: String)]()
-        if let roomID { places.append((roomID, "")) }
+        // The open chat's own pack, unless Settings → Stickers says to leave it out. A pack the
+        // account subscribed to is shown either way: that was asked for by name.
+        if let roomID, StickerSettings.showsRoomPack() { places.append((roomID, "")) }
         for place in subscriptions where !places.contains(where: { $0 == place }) {
             places.append(place)
         }
@@ -122,7 +129,9 @@ public final class StickerLibrary {
         let recentContent = await object(ofAccountData: Self.recentType) ?? [:]
         recent = Self.recent(in: recentContent)
 
-        // Last, and after the others are on screen: the first time, this is a dozen uploads.
+        // Last, and after the others are on screen: the first time, this is a dozen uploads. Not at
+        // all with the pack switched off in settings — and then nothing is uploaded either.
+        guard StickerSettings.showsBuiltIn() else { return }
         if let builtIn = await builtInPack(), !builtIn.stickers.isEmpty {
             packs.removeAll { $0.isBuiltIn }
             packs.append(builtIn)
@@ -175,6 +184,56 @@ public final class StickerLibrary {
         } catch {
             Log.media.error("could not remove a sticker: \(Log.describe(error), privacy: .public)")
             failure = .remove
+        }
+    }
+
+    /// Whether this is a room's pack the account has subscribed to.
+    public func isSubscribed(_ pack: StickerPack) -> Bool {
+        subscribed.contains(pack.id)
+    }
+
+    /// Subscribes to a room's pack — `im.ponies.emote_rooms`, the list Element and Cinny read too —
+    /// so that it is offered in every chat and not only in the one that publishes it.
+    public func subscribe(to pack: StickerPack) async {
+        guard case let .room(roomID, stateKey) = pack.origin, !subscribed.contains(pack.id) else { return }
+        subscribed.insert(pack.id)
+        do {
+            let content = try await current(ImagePack.subscriptionsType)
+            try await writeRemembering(ImagePack.subscribing(roomID: roomID, stateKey: stateKey, in: content),
+                                       as: ImagePack.subscriptionsType)
+        } catch {
+            subscribed.remove(pack.id)
+            Log.media.error("could not subscribe to a sticker pack: \(Log.describe(error), privacy: .public)")
+            failure = .subscribe
+        }
+    }
+
+    /// Takes a room's pack off the list. The pack itself is the room's and stays where it is.
+    public func unsubscribe(from pack: StickerPack) async {
+        guard case let .room(roomID, stateKey) = pack.origin, subscribed.contains(pack.id) else { return }
+        subscribed.remove(pack.id)
+        packs.removeAll { $0.id == pack.id }
+        do {
+            let content = try await current(ImagePack.subscriptionsType)
+            try await writeRemembering(ImagePack.unsubscribing(roomID: roomID, stateKey: stateKey, from: content),
+                                       as: ImagePack.subscriptionsType)
+        } catch {
+            subscribed.insert(pack.id)
+            packs.append(pack)
+            Log.media.error("could not unsubscribe from a sticker pack: \(Log.describe(error), privacy: .public)")
+            failure = .unsubscribe
+        }
+    }
+
+    /// Empties the recent row, on every device of the account — it lives in account data.
+    public func clearRecent() async {
+        let previous = recent
+        recent = []
+        do {
+            try await write(["images": [] as [Any]], as: Self.recentType)
+        } catch {
+            recent = previous
+            failure = .clearRecent
         }
     }
 
@@ -267,8 +326,8 @@ public final class StickerLibrary {
 
     // MARK: - Underneath
 
-    /// The account's pack as this device last wrote it, and when — see `ownContent()`.
-    @ObservationIgnored private var written: (content: [String: Any], at: Date)?
+    /// What this device last wrote of each kind of account data, and when — see `current(_:)`.
+    @ObservationIgnored private var written: [String: (content: [String: Any], at: Date)] = [:]
 
     /// How long what was written is trusted over what the SDK says. Long enough for sync to bring
     /// the write back; short enough that a change made on another device afterwards is not hidden
@@ -283,19 +342,30 @@ public final class StickerLibrary {
     /// take the first sticker out again. So what this device wrote is the truth until the store
     /// says the same thing, or until it has had a minute to.
     private func ownContent() async throws -> [String: Any] {
-        let stored = try await freshObject(ofAccountData: ImagePack.userType)
-        guard let written, Date().timeIntervalSince(written.at) < Self.writeSettles else {
-            self.written = nil
+        try await current(ImagePack.userType)
+    }
+
+    /// One kind of account data, to change — the store's copy, unless this device has written
+    /// something newer that sync has not brought back yet. The subscriptions are changed the same
+    /// way as the pack, a press at a time, and are lost the same way without it.
+    private func current(_ type: String) async throws -> [String: Any] {
+        let stored = try await freshObject(ofAccountData: type)
+        guard let written = written[type], Date().timeIntervalSince(written.at) < Self.writeSettles else {
+            self.written[type] = nil
             return stored
         }
-        if NSDictionary(dictionary: stored).isEqual(to: written.content) { self.written = nil }
+        if NSDictionary(dictionary: stored).isEqual(to: written.content) { self.written[type] = nil }
         return written.content
+    }
+
+    private func writeRemembering(_ content: [String: Any], as type: String) async throws {
+        try await write(content, as: type)
+        written[type] = (content, Date())
     }
 
     /// Writes the account's pack and shows it at once, without waiting for sync to bring it back.
     private func writeOwn(_ content: [String: Any]) async throws {
-        try await write(content, as: ImagePack.userType)
-        written = (content, Date())
+        try await writeRemembering(content, as: ImagePack.userType)
         show(own: content)
     }
 
@@ -359,6 +429,9 @@ public final class StickerLibrary {
 public enum StickerFailure: String, Error, Equatable, Sendable, ActionFailure {
     case add
     case remove
+    case subscribe
+    case unsubscribe
+    case clearRecent
 
     public var id: String { rawValue }
 
@@ -366,6 +439,9 @@ public enum StickerFailure: String, Error, Equatable, Sendable, ActionFailure {
         switch self {
         case .add: CoreStrings.Stickers.addFailed
         case .remove: CoreStrings.Stickers.removeFailed
+        case .subscribe: CoreStrings.Stickers.subscribeFailed
+        case .unsubscribe: CoreStrings.Stickers.unsubscribeFailed
+        case .clearRecent: CoreStrings.Stickers.clearRecentFailed
         }
     }
 }

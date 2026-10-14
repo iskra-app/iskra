@@ -187,3 +187,7 @@
 "notificationRules.roomMentionFailed" = "Die Mitteilungen für @room haben sich nicht geändert. Versuchen Sie es noch einmal.";
 "notificationRules.invitationFailed" = "Die Mitteilungen für Einladungen haben sich nicht geändert. Versuchen Sie es noch einmal.";
 "notificationRules.callFailed" = "Die Mitteilungen für Anrufe haben sich nicht geändert. Versuchen Sie es noch einmal.";
+
+"stickers.subscribeFailed" = "Das Set konnte nicht hinzugefügt werden. Versuchen Sie es noch einmal.";
+"stickers.unsubscribeFailed" = "Das Set konnte nicht entfernt werden. Versuchen Sie es noch einmal.";
+"stickers.clearRecentFailed" = "Die zuletzt verwendeten Sticker konnten nicht gelöscht werden. Versuchen Sie es noch einmal.";

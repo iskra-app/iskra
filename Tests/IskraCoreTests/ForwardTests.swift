@@ -35,4 +35,47 @@ struct ForwardTests {
     func unreadableDoesNotForward() {
         #expect(!message(.unreadable).canForward)
     }
+
+    @Test("a forward names the original sender, and says it mentions nobody")
+    func forwardContent() throws {
+        let content = try #require(Forwarded.content(forwarding: message(.text("hi"))))
+        #expect(content["body"] as? String == "hi")
+        #expect(content["msgtype"] as? String == "m.text")
+        let forwarded = try #require(content["m.forwarded"] as? [String: Any])
+        #expect(forwarded["sender"] as? String == "@a:example.org")
+        #expect(forwarded["displayname"] as? String == "А")
+        #expect(forwarded["event_id"] as? String == "$e")
+        #expect((forwarded["content"] as? [String: Any])?["body"] as? String == "hi")
+        #expect((content["m.mentions"] as? [String: Any])?.isEmpty == true)
+
+        // And it reads back as the origin it was written from.
+        let origin = try #require(Forwarded.origin(inContent: content))
+        #expect(origin.senderID == "@a:example.org")
+        #expect(origin.displayName == "А")
+        #expect(origin.timestamp == Date(timeIntervalSince1970: 0))
+    }
+
+    @Test("a forward of a forward points at the original")
+    func forwardOfForward() throws {
+        var forward = message(.text("hi"))
+        forward.forwardedFrom = ForwardOrigin(senderID: "@first:example.org", senderName: "Первый", eventID: "$first")
+        let content = try #require(Forwarded.content(forwarding: forward))
+        let origin = try #require(Forwarded.origin(inContent: content))
+        #expect(origin.senderID == "@first:example.org")
+        #expect(origin.eventID == "$first")
+    }
+
+    @Test("an event read off the wire: MSC2723's shape, with or without a name")
+    func originFromJSON() {
+        let json = #"{"type":"m.room.message","content":{"msgtype":"m.text","body":"x","m.forwarded":{"sender":"@b:x","origin_server_ts":1000}}}"#
+        let origin = Forwarded.origin(inEventJSON: json)
+        #expect(origin?.displayName == "@b:x")
+        #expect(origin?.timestamp == Date(timeIntervalSince1970: 1))
+        #expect(Forwarded.origin(inEventJSON: #"{"content":{"body":"x"}}"#) == nil)
+    }
+
+    @Test("only words are sent marked")
+    func onlyWords() {
+        #expect(Forwarded.content(forwarding: message(.deleted)) == nil)
+    }
 }

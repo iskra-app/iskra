@@ -190,3 +190,7 @@
 "notificationRules.roomMentionFailed" = "Не получилось изменить уведомления об обращениях ко всем (@room). Попробуйте ещё раз.";
 "notificationRules.invitationFailed" = "Не получилось изменить уведомления о приглашениях. Попробуйте ещё раз.";
 "notificationRules.callFailed" = "Не получилось изменить уведомления о звонках. Попробуйте ещё раз.";
+
+"stickers.subscribeFailed" = "Не получилось добавить набор. Попробуйте ещё раз.";
+"stickers.unsubscribeFailed" = "Не получилось убрать набор. Попробуйте ещё раз.";
+"stickers.clearRecentFailed" = "Не получилось очистить недавние. Попробуйте ещё раз.";

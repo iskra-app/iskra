@@ -187,3 +187,7 @@
 "notificationRules.roomMentionFailed" = "The rule for @room wouldn’t change. Try again.";
 "notificationRules.invitationFailed" = "The rule for invitations wouldn’t change. Try again.";
 "notificationRules.callFailed" = "The rule for calls wouldn’t change. Try again.";
+
+"stickers.subscribeFailed" = "Couldn’t add the pack. Please try again.";
+"stickers.unsubscribeFailed" = "Couldn’t remove the pack. Please try again.";
+"stickers.clearRecentFailed" = "Couldn’t clear recent stickers. Please try again.";

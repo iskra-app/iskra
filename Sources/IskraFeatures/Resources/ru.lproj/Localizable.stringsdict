@@ -122,5 +122,25 @@
 				<string>%lld реакции</string>
 		</dict>
 	</dict>
+	<key>stickers.settings.count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+				<key>one</key>
+				<string>%lld стикер</string>
+				<key>few</key>
+				<string>%lld стикера</string>
+				<key>many</key>
+				<string>%lld стикеров</string>
+				<key>other</key>
+				<string>%lld стикера</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

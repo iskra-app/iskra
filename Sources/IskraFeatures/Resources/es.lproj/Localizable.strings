@@ -1178,3 +1178,20 @@
 "profile.blockUser" = "Bloquear usuario";
 "profile.unblockUser" = "Desbloquear usuario";
 "profile.blockedNotice" = "Ha bloqueado a este usuario. Sus mensajes nuevos no le llegan.";
+
+"accounts.signOut" = "Cerrar sesión";
+"accounts.signOutTitle" = "¿Cerrar sesión de %@?";
+"accounts.signOutMessage" = "Los chats de esta cuenta se borrarán de este dispositivo. Para volver a leer los mensajes cifrados, necesitará su clave de recuperación u otro de sus dispositivos.";
+"stickers.subscribe" = "Añadir";
+"stickers.settings.sheetSection" = "Qué mostrar";
+"stickers.settings.builtIn" = "Chispitas";
+"stickers.settings.roomPacks" = "Paquetes de chats";
+"stickers.settings.roomPacksHelp" = "Si un chat tiene su propio paquete, lo verá mientras esté en ese chat. Pulse «Añadir» encima y lo tendrá en todos los chats.";
+"stickers.settings.subscriptions" = "Paquetes añadidos";
+"stickers.settings.subscriptionsHelp" = "Deslice un paquete a la izquierda para quitarlo. El paquete sigue en su chat.";
+"stickers.settings.unsubscribe" = "Quitar";
+"stickers.settings.mineHelp" = "Un sticker llega aquí cuando lo añade desde un chat. Manténgalo pulsado para quitarlo. Otras apps de Matrix también ven este paquete.";
+"stickers.settings.clearRecent" = "Borrar recientes";
+"stickers.settings.clearRecentHelp" = "Los recientes se guardan en su cuenta y se borrarán en todos sus dispositivos.";
+"message.forwarded" = "Mensaje reenviado";
+"message.forwardedFrom" = "Reenviado de %@";

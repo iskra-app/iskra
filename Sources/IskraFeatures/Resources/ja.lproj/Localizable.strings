@@ -1178,3 +1178,20 @@
 "profile.blockUser" = "ユーザーをブロック";
 "profile.unblockUser" = "ブロックを解除";
 "profile.blockedNotice" = "このユーザーをブロックしています。新しいメッセージは届きません。";
+
+"accounts.signOut" = "サインアウト";
+"accounts.signOutTitle" = "%@ からサインアウトしますか？";
+"accounts.signOutMessage" = "このアカウントのチャットはこのデバイスから削除されます。暗号化されたメッセージをもう一度読むには、復元キーかほかのデバイスが必要です。";
+"stickers.subscribe" = "追加";
+"stickers.settings.sheetSection" = "表示するもの";
+"stickers.settings.builtIn" = "スパークス";
+"stickers.settings.roomPacks" = "チャットのステッカー";
+"stickers.settings.roomPacksHelp" = "チャットに独自のステッカーがあれば、そのチャットにいる間は表示されます。上の「追加」をタップすると、すべてのチャットで使えます。";
+"stickers.settings.subscriptions" = "追加したステッカー";
+"stickers.settings.subscriptionsHelp" = "左にスワイプすると削除できます。ステッカー自体は元のチャットに残ります。";
+"stickers.settings.unsubscribe" = "削除";
+"stickers.settings.mineHelp" = "チャットから追加したステッカーがここに入ります。長押しで削除できます。このステッカーはほかの Matrix アプリにも表示されます。";
+"stickers.settings.clearRecent" = "最近使ったものを消去";
+"stickers.settings.clearRecentHelp" = "最近使ったものはアカウントに保存されているため、すべてのデバイスで消去されます。";
+"message.forwarded" = "転送されたメッセージ";
+"message.forwardedFrom" = "%@ から転送";

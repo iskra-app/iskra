@@ -181,6 +181,7 @@ struct MessageContent: View {
     /// carrying its question is a bigger thing than a bare line of text.
     private func bubble(@ViewBuilder _ inner: () -> some View) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.close) {
+            forwarded
             quote
 
             inner()
@@ -193,12 +194,37 @@ struct MessageContent: View {
     /// emote. It gets a small bubble of its own and sits above them.
     private func quoted(@ViewBuilder _ inner: () -> some View) -> some View {
         VStack(alignment: alignment, spacing: Theme.Spacing.tight) {
-            if message.replyTo != nil {
-                quote
-                    .messageBubble(style)
+            if message.forwardedFrom != nil || message.replyTo != nil {
+                VStack(alignment: .leading, spacing: Theme.Spacing.close) {
+                    forwarded
+                    quote
+                }
+                .messageBubble(style)
             }
 
             inner()
+        }
+    }
+
+    /// "Forwarded from Аня", over the words — Telegram's line, and for the same reason: without it
+    /// the person who passed the message on reads as the person who wrote it. Only for a message
+    /// that says it is a forward (`m.forwarded`); in the bubble's own ink, stepped back from it,
+    /// like the quote under it.
+    @ViewBuilder
+    private var forwarded: some View {
+        if let origin = message.forwardedFrom {
+            Label {
+                if let name = origin.displayName {
+                    Text(Strings.Message.forwardedFrom(name))
+                } else {
+                    Text(Strings.Message.forwarded)
+                }
+            } icon: {
+                Image(systemName: "arrowshape.turn.up.right.fill")
+            }
+            .font(.caption.weight(.semibold))
+            .lineLimit(1)
+            .opacity(0.75)
         }
     }
 

@@ -33,6 +33,14 @@ public final class AccountSwitcher {
     /// Set by a screen to ask for the sign-in sheet; the root presents it.
     public var isAddingAccount = false
 
+    /// Set by a screen to sign out of an account that is not on screen; the root does it and
+    /// clears it. The one on screen is signed out of by settings' own red button, not this.
+    public var requestedSignOut: String?
+
+    /// The accounts being signed out of right now, so their rows can say so rather than sit there
+    /// looking untouched for the ten seconds a slow server can take.
+    public internal(set) var signingOut: Set<String> = []
+
     public init() {}
 
     /// Everyone except the account on screen.
@@ -49,6 +57,12 @@ public final class AccountSwitcher {
 
     public func addAccount() {
         isAddingAccount = true
+    }
+
+    public func signOut(_ id: String) {
+        guard id != activeID, !signingOut.contains(id) else { return }
+        signingOut.insert(id)
+        requestedSignOut = id
     }
 
     /// Re-reads the list, after anything that could have changed it.
@@ -80,6 +94,7 @@ public extension EnvironmentValues {
 struct AccountRow: View {
     let account: AccountRecord
     let unread: Int
+    var isSigningOut = false
 
     var body: some View {
         HStack(spacing: Theme.Spacing.normal) {
@@ -95,7 +110,10 @@ struct AccountRow: View {
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
-            if unread > 0 {
+            if isSigningOut {
+                ProgressView()
+                    .controlSize(.small)
+            } else if unread > 0 {
                 Text(unread, format: .number)
                     .font(.caption.weight(.semibold).monospacedDigit())
                     .foregroundStyle(.secondary)

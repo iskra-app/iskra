@@ -222,6 +222,9 @@ public enum CoreStrings {
     public enum Stickers {
         public static let addFailed = LocalizedStringResource("stickers.addFailed", bundle: bundle)
         public static let removeFailed = LocalizedStringResource("stickers.removeFailed", bundle: bundle)
+        public static let subscribeFailed = LocalizedStringResource("stickers.subscribeFailed", bundle: bundle)
+        public static let unsubscribeFailed = LocalizedStringResource("stickers.unsubscribeFailed", bundle: bundle)
+        public static let clearRecentFailed = LocalizedStringResource("stickers.clearRecentFailed", bundle: bundle)
     }
 
     /// What the Devices screen says when it could not do something — see `DevicesActionFailure`.

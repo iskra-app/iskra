@@ -710,6 +710,12 @@ public enum Strings {
     public enum Message {
         public static let unreadable = LocalizedStringResource("message.unreadable", bundle: bundle)
         public static let deleted = LocalizedStringResource("message.deleted", bundle: bundle)
+        /// Over a forwarded message whose original sender it does not name.
+        public static let forwarded = LocalizedStringResource("message.forwarded", bundle: bundle)
+        /// Over a forwarded message: who wrote it in the first place.
+        public static func forwardedFrom(_ name: String) -> LocalizedStringResource {
+            LocalizedStringResource("message.forwardedFrom", defaultValue: "Forwarded from \(name)", bundle: bundle)
+        }
         public static let unsupported = LocalizedStringResource("message.unsupported", bundle: bundle)
         /// The mark beside a message whose author went back and changed it. One word, so it can
         /// sit inside the bubble beside the text without becoming a second line.
@@ -982,6 +988,27 @@ public enum Strings {
         public static let emptyMessage = LocalizedStringResource("stickers.empty.message", bundle: bundle)
         public static let add = LocalizedStringResource("stickers.add", bundle: bundle)
         public static let remove = LocalizedStringResource("stickers.remove", bundle: bundle)
+        /// Over a chat's pack in the sheet: keep it for every chat, not only this one.
+        public static let subscribe = LocalizedStringResource("stickers.subscribe", bundle: bundle)
+
+        /// The sticker sections of Settings → Stickers & reactions.
+        public enum Settings {
+            public static let sheetSection = LocalizedStringResource("stickers.settings.sheetSection", bundle: bundle)
+            public static let builtIn = LocalizedStringResource("stickers.settings.builtIn", bundle: bundle)
+            public static let roomPacks = LocalizedStringResource("stickers.settings.roomPacks", bundle: bundle)
+            public static let roomPacksHelp = LocalizedStringResource("stickers.settings.roomPacksHelp", bundle: bundle)
+            public static let subscriptionsSection = LocalizedStringResource("stickers.settings.subscriptions", bundle: bundle)
+            public static let subscriptionsHelp = LocalizedStringResource("stickers.settings.subscriptionsHelp", bundle: bundle)
+            public static let unsubscribe = LocalizedStringResource("stickers.settings.unsubscribe", bundle: bundle)
+            public static let mineHelp = LocalizedStringResource("stickers.settings.mineHelp", bundle: bundle)
+            public static let clearRecent = LocalizedStringResource("stickers.settings.clearRecent", bundle: bundle)
+            public static let clearRecentHelp = LocalizedStringResource("stickers.settings.clearRecentHelp", bundle: bundle)
+
+            /// How many stickers are in a pack. Plural, so it is in the `.stringsdict`.
+            public static func count(_ count: Int) -> LocalizedStringResource {
+                LocalizedStringResource("stickers.settings.count", defaultValue: "\(count) stickers", bundle: bundle)
+            }
+        }
     }
 
     /// The apology every screen shares — see `View.failureAlert`, which is the only thing
@@ -1123,6 +1150,17 @@ public enum Strings {
         public static func signOut(of account: String) -> LocalizedStringResource {
             LocalizedStringResource("accounts.signOutOf", defaultValue: "Sign out of \(account)", bundle: bundle)
         }
+
+        /// The swipe on another account's row, and the button that confirms it.
+        public static let signOutShort = LocalizedStringResource("accounts.signOut", bundle: bundle)
+
+        /// Asked before an account that is not on screen is signed out of.
+        public static func signOutTitle(of account: String) -> LocalizedStringResource {
+            LocalizedStringResource("accounts.signOutTitle", defaultValue: "Sign out of \(account)?", bundle: bundle)
+        }
+
+        /// What goes with it — said before, because nothing can bring it back from here.
+        public static let signOutMessage = LocalizedStringResource("accounts.signOutMessage", bundle: bundle)
     }
 
     public enum Account {

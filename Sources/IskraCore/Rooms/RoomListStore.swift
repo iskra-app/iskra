@@ -549,6 +549,9 @@ public final class RoomListStore {
         typingHandles = [:]
         typingRoomIDs = []
 
+        // Each is a timeline over the store `logout()` is about to delete.
+        stopPeeks()
+
         // Before the service is stopped, not after: stopping it is going to move it to a state the
         // observer is watching for, and an observer still listening at that moment would take a
         // deliberate shutdown for a failure and start the whole thing up again on the way out.
@@ -936,6 +939,16 @@ public final class RoomListStore {
             break
         }
 
+        // The chat's own last line, where its row is on the screen and the chat has one — see
+        // `PeekLine`. Unless the SDK knows of something newer: the peek is a page of the room, and
+        // a message that has only just landed may reach the summary a moment before the page.
+        if let line = peeks[info.id]?.line, activity.map({ line.date >= $0 }) ?? true {
+            preview = line.text
+            kind = line.kind
+            mark = line.mark
+            activity = line.date
+        }
+
         return RoomSummary(info: info,
                            ownUserID: ownUserID,
                            lastMessage: preview,
@@ -943,6 +956,95 @@ public final class RoomListStore {
                            lastMessageKind: kind,
                            lastMessageMark: mark,
                            isMuted: mutedRoomIDs.contains(info.id))
+    }
+
+    // MARK: - Peeks
+
+    /// A live timeline for each row on the screen — see `RoomPeek` and `PeekLine`.
+    private var peeks: [String: RoomPeek] = [:]
+
+    /// The rows the list says are on the screen right now.
+    private var visibleRows: Set<String> = []
+
+    /// The rooms with a peek, the longest unseen first — which ones go when there are too many.
+    private var peekOrder: [String] = []
+
+    /// Rooms waiting for a peek, opened one at a time by `peekOpener`. One at a time, because a
+    /// list appearing is a dozen rows appearing at once, and a dozen timelines built side by side
+    /// during the first sync is the stampede the 50 ms debounce exists to prevent.
+    private var peekQueue: [String] = []
+    private var peekOpener: Task<Void, Never>?
+
+    /// How many peeks are kept. A screenful and a scroll either side of it; a row that comes back
+    /// within that is not opened twice.
+    static let peekLimit = 40
+
+    /// A row came onto the screen.
+    public func rowAppeared(_ roomID: String) {
+        guard !hasStopped else { return }
+        visibleRows.insert(roomID)
+        peekOrder.removeAll { $0 == roomID }
+        peekOrder.append(roomID)
+
+        if peeks[roomID] == nil, !peekQueue.contains(roomID) {
+            peekQueue.append(roomID)
+            openPeeks()
+        }
+        trimPeeks()
+    }
+
+    /// A row went off the screen. Its peek stays until there are too many — see `peekLimit`.
+    public func rowDisappeared(_ roomID: String) {
+        visibleRows.remove(roomID)
+        peekQueue.removeAll { $0 == roomID }
+    }
+
+    /// Settings → Chats changed which grey lines are shown. The rows follow the chats.
+    public func serviceEventSettingsChanged() {
+        peeks.values.forEach { $0.refresh() }
+    }
+
+    private func openPeeks() {
+        guard peekOpener == nil else { return }
+        let generation = self.generation
+        peekOpener = Task { [weak self] in
+            while let self, generation == self.generation, !self.peekQueue.isEmpty {
+                let roomID = self.peekQueue.removeFirst()
+                guard self.peeks[roomID] == nil,
+                      let room = self.orderedRooms.first(where: { $0.id() == roomID }),
+                      // An invitation has no conversation to look into yet, and a space is not one.
+                      room.membership() == .joined, !room.isSpace() else { continue }
+
+                let peek = RoomPeek(room: room, ownUserID: self.ownUserID)
+                peek.onChange = { [weak self] in self?.scheduleRebuild(only: [roomID]) }
+                self.peeks[roomID] = peek
+                await peek.start()
+            }
+            guard let self, generation == self.generation else { return }
+            self.peekOpener = nil
+        }
+    }
+
+    private func trimPeeks() {
+        var excess = peeks.count - Self.peekLimit
+        guard excess > 0 else { return }
+        for roomID in peekOrder where excess > 0 && !visibleRows.contains(roomID) {
+            guard let peek = peeks.removeValue(forKey: roomID) else { continue }
+            peek.stop()
+            excess -= 1
+            scheduleRebuild(only: [roomID])
+        }
+        peekOrder.removeAll { peeks[$0] == nil && !peekQueue.contains($0) && !visibleRows.contains($0) }
+    }
+
+    private func stopPeeks() {
+        peekOpener?.cancel()
+        peekOpener = nil
+        peekQueue = []
+        peeks.values.forEach { $0.stop() }
+        peeks = [:]
+        peekOrder = []
+        visibleRows = []
     }
 
     /// How far your own messages in each room are known to have been read — by when they were
