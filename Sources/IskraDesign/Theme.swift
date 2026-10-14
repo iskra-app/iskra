@@ -337,6 +337,10 @@ public enum Theme {
         /// deliberate tap allows, which in practice is well under 150 ms.
         public static let holdBegins: Duration = .milliseconds(150)
 
+        /// How long a press on the record button has to last before the microphone is woken for
+        /// it — longer than a tap, so switching between voice and video wakes nothing.
+        public static let prewarmAfter: Duration = .milliseconds(90)
+
         /// How long one slide of the welcome carousel stands still before the next one comes.
         ///
         /// Long enough to read two lines without hurrying — the slides are the app's only pitch,
