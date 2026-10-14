@@ -752,7 +752,6 @@
 
 /* The archive: the shelf for set-aside chats and the way back to them. */
 "roomList.archive.title" = "アーカイブ";
-"roomList.archive.entry" = "アーカイブ (%lld)";
 "roomList.archive.emptyTitle" = "アーカイブは空です";
 "roomList.archive.emptyMessage" = "チャットを左にスワイプしてアーカイブすると、一覧からは外れますが、消えはしません。";
 

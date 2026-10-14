@@ -56,6 +56,10 @@ struct RoomInfoView: View {
     @State private var tab: RoomContentTab = .members
 
     @State private var isInviting = false
+
+    /// The picture pressed in the media tab. Held here rather than in the grid, because the grid is
+    /// a run of rows of the form and a sheet hung on those would be one sheet per row.
+    @State private var openedMedia: OpenedIndex?
     @State private var invitee = ""
 
     /// The person a block has been asked for and not yet confirmed. Blocking is the one
@@ -85,16 +89,17 @@ struct RoomInfoView: View {
 
     var body: some View {
         Form {
+            // The round buttons under the portrait, in the portrait's own section: a section of
+            // their own put the form's gap between sections under the name, and the buttons read as
+            // the start of the list rather than as part of who this is. A personal chat is a person:
+            // the same tiles their page has from a group's member list, so the two are one screen —
+            // Telegram's — rather than two screens about the same person that disagree. A group gets
+            // the same row, with "invite" where a person has "share".
             Section {
                 identity
                     .profileHeaderRow()
+                tiles
             }
-
-            // The round buttons under the portrait. A personal chat is a person: the same tiles their
-            // page has from a group's member list, so the two are one screen — Telegram's — rather
-            // than two screens about the same person that disagree. A group gets the same row, with
-            // "invite" where a person has "share".
-            tiles
 
             // One block: who the person is, what the chat is for, how loudly it reaches you, and —
             // in a personal chat — the block. One-row sections in a column read as a list that has
@@ -120,6 +125,18 @@ struct RoomInfoView: View {
         .formStyle(.grouped)
         .profileScreen()
         .task { await details.load() }
+        // Keyed on the rows themselves: an unchanged array compares by its buffer, so a redraw that
+        // changed nothing costs nothing, and a page that arrived is sorted once rather than on
+        // every one of the body's many readings of the tabs.
+        .task(id: timeline?.rows) {
+            let rows = timeline?.rows ?? []
+            let result = await Task.detached(priority: .userInitiated) { RoomContents(rows: rows) }.value
+            guard !Task.isCancelled else { return }
+            sorted = result
+        }
+        .sheet(item: $openedMedia) { opened in
+            MediaPager(items: photos, startIndex: opened.value)
+        }
         .sheet(isPresented: $isShowingCode) {
             if let link {
                 QRCodeSheet(name: details.name,
@@ -245,52 +262,48 @@ struct RoomInfoView: View {
     /// pieces `MemberProfileView` is made of, with the two acts that only make sense from inside
     /// the chat. In a group: search, silence and invite, and for a public one its link and code too,
     /// because a room you can hand to somebody is, for that purpose, the same kind of thing.
-    @ViewBuilder
     private var tiles: some View {
-        Section {
-            NavigationGlassGroup(spacing: Theme.Spacing.close) {
-                HStack(spacing: Theme.Spacing.close) {
-                    ProfileActionTile(title: Strings.Profile.search,
-                                      systemImage: "magnifyingglass",
-                                      isBusy: false) {
-                        onSearch()
-                    }
+        NavigationGlassGroup(spacing: Theme.Spacing.close) {
+            HStack(spacing: Theme.Spacing.close) {
+                ProfileActionTile(title: Strings.Profile.search,
+                                  systemImage: "magnifyingglass",
+                                  isBusy: false) {
+                    onSearch()
+                }
 
-                    let isMuted = details.alerts == .muted
-                    ProfileActionTile(title: isMuted ? Strings.Profile.unmute : Strings.Profile.mute,
-                                      systemImage: isMuted ? "bell.slash.fill" : "bell.fill",
+                let isMuted = details.alerts == .muted
+                ProfileActionTile(title: isMuted ? Strings.Profile.unmute : Strings.Profile.mute,
+                                  systemImage: isMuted ? "bell.slash.fill" : "bell.fill",
+                                  isBusy: false) {
+                    Task { await details.setAlerts(isMuted ? .all : .muted) }
+                }
+                .disabled(isOffline)
+
+                if isRoom, details.permissions.canInvite {
+                    ProfileActionTile(title: Strings.Room.Manage.invite,
+                                      systemImage: "person.badge.plus",
                                       isBusy: false) {
-                        Task { await details.setAlerts(isMuted ? .all : .muted) }
+                        isInviting = true
                     }
                     .disabled(isOffline)
+                }
 
-                    if isRoom, details.permissions.canInvite {
-                        ProfileActionTile(title: Strings.Room.Manage.invite,
-                                          systemImage: "person.badge.plus",
-                                          isBusy: false) {
-                            isInviting = true
-                        }
-                        .disabled(isOffline)
+                if let link {
+                    ShareLink(item: link.url) {
+                        ProfileActionTileLabel(title: Strings.Profile.share, systemImage: "square.and.arrow.up")
                     }
+                    .buttonStyle(.plain)
 
-                    if let link {
-                        ShareLink(item: link.url) {
-                            ProfileActionTileLabel(title: Strings.Profile.share, systemImage: "square.and.arrow.up")
-                        }
-                        .buttonStyle(.plain)
-
-                        // A code to point a camera at, where a clipboard used to be — see
-                        // `MemberProfileView`, whose row this is.
-                        ProfileActionTile(title: Strings.QR.title, systemImage: "qrcode", isBusy: false) {
-                            isShowingCode = true
-                        }
+                    // A code to point a camera at, where a clipboard used to be — see
+                    // `MemberProfileView`, whose row this is.
+                    ProfileActionTile(title: Strings.QR.title, systemImage: "qrcode", isBusy: false) {
+                        isShowingCode = true
                     }
                 }
             }
-            .padding(.vertical, Theme.Spacing.close)
-            .listRowBackground(Color.clear)
-            .listRowInsets(EdgeInsets())
         }
+        .padding(.bottom, Theme.Spacing.close)
+        .profileHeaderRow()
     }
 
     /// The Matrix ID, the description, the notifications and the block in a personal chat; the
@@ -510,7 +523,7 @@ struct RoomInfoView: View {
             members
         case .media:
             // Edge to edge, Telegram's contact sheet: the month headings keep their own margin.
-            RoomMediaGrid(items: photos)
+            RoomMediaGrid(items: photos) { openedMedia = OpenedIndex(value: $0) }
                 .profileHeaderRow()
             loadEarlier
         case .voice:
@@ -545,26 +558,15 @@ struct RoomInfoView: View {
 
     // MARK: - The history, sorted into tabs
 
-    /// The messages the conversation has loaded, newest first — or none where this screen stands
-    /// on its own.
-    ///
-    /// The timeline holds them the way a conversation reads: oldest at the top, newest at the
-    /// bottom, which is right for the chat and backwards for every tab here. Nobody opens the
-    /// files tab to find the first file ever sent. Reversed once, at the source, so the six lists
-    /// cannot disagree about it — and so a link posted this morning is not eleven screens down.
-    private var messages: [Message] {
-        let rows = timeline?.rows ?? []
-        return rows.reversed().compactMap { row in
-            if case let .message(message) = row { message } else { nil }
-        }
-    }
+    /// The history sorted into the tabs, worked out once per change of the timeline and off the main
+    /// thread — see `RoomContents`.
+    @State private var sorted = RoomContents()
 
-    private var mediaItems: [MediaItem] { MediaItem.items(from: messages) }
-    private var photos: [MediaItem] { mediaItems.filter { $0.kind == .photo || $0.kind == .video } }
-    private var voices: [MediaItem] { mediaItems.filter { $0.kind == .voice || $0.kind == .audio } }
-    private var videoNotes: [MediaItem] { mediaItems.filter { $0.kind == .videoNote } }
-    private var files: [MediaItem] { mediaItems.filter { $0.kind == .file } }
-    private var links: [LinkItem] { LinkItem.items(from: messages) }
+    private var photos: [MediaItem] { sorted.photos }
+    private var voices: [MediaItem] { sorted.voices }
+    private var videoNotes: [MediaItem] { sorted.videoNotes }
+    private var files: [MediaItem] { sorted.files }
+    private var links: [LinkItem] { sorted.links }
 
     // MARK: - Who is in it
 

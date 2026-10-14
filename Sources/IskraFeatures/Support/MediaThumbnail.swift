@@ -106,10 +106,27 @@ struct MediaThumbnail: View {
     }
 
     /// The sender's blur, drawn — what stands in for the picture until it is here.
+    ///
+    /// Decoded once per hash, not once per redraw: a grid of a hundred tiles waiting for their
+    /// pictures redraws all of them every time one arrives.
     private var blur: Image? {
-        guard let hash = attachment.blurhash, let image = Blurhash.decode(hash) else { return nil }
+        guard let hash = attachment.blurhash else { return nil }
+        if let cached = Self.blurs.object(forKey: hash as NSString) { return Image(decorative: cached.image, scale: 1) }
+        guard let image = Blurhash.decode(hash) else { return nil }
+        Self.blurs.setObject(DecodedBlur(image: image), forKey: hash as NSString)
         return Image(decorative: image, scale: 1)
     }
+
+    private final class DecodedBlur {
+        let image: CGImage
+        init(image: CGImage) { self.image = image }
+    }
+
+    nonisolated(unsafe) private static let blurs: NSCache<NSString, DecodedBlur> = {
+        let cache = NSCache<NSString, DecodedBlur>()
+        cache.countLimit = 500
+        return cache
+    }()
 
     var body: some View {
         Group {

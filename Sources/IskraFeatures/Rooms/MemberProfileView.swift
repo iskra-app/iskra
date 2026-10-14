@@ -80,14 +80,12 @@ struct MemberProfileView: View {
                               // The ID is exactly the string somebody opens this screen to copy.
                               isSubtitleSelectable: true)
                     .profileHeaderRow()
-            }
 
-            // Telegram's row of buttons under the portrait: the things one does *with* a person, as
-            // tiles, before anything that is said *about* them.
-            Section {
+                // Telegram's row of buttons under the portrait: the things one does *with* a person,
+                // as tiles, before anything that is said *about* them. In the portrait's section, so
+                // the form's gap between sections does not open up under the name.
                 actionTiles
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets())
+                    .profileHeaderRow()
             }
 
             // And then what is known about them, as one card — Telegram's "username", "bio" block.
@@ -194,7 +192,7 @@ struct MemberProfileView: View {
         NavigationGlassGroup(spacing: Theme.Spacing.close) {
             tileRow
         }
-        .padding(.vertical, Theme.Spacing.close)
+        .padding(.bottom, Theme.Spacing.close)
     }
 
     private var tileRow: some View {

@@ -182,7 +182,6 @@ struct LocalizationTests {
         (Strings.RoomList.Swipe.delete, en: "Delete", ru: "Удалить"),
         (Strings.RoomList.Swipe.leaveConfirm, en: "Leave", ru: "Выйти"),
         (Strings.RoomList.Archive.title, en: "Archive", ru: "Архив"),
-        (Strings.RoomList.Archive.entry(3), en: "Archive (3)", ru: "Архив (3)"),
 
         // Links behind a confirmation, and reporting a message.
         (Strings.Message.Link.open, en: "Open", ru: "Открыть"),

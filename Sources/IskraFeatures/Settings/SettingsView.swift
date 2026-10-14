@@ -168,14 +168,11 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            // The two ways of handing yourself to somebody, under your name — the same round tiles a
+            // person's page has under theirs, so your own page and theirs are one design. In the
+            // portrait's section, so the form's gap between sections does not open up under the name.
             Section {
                 profile
-            }
-            .profileHeaderRow()
-
-            // The two ways of handing yourself to somebody, under your name — the same round tiles a
-            // person's page has under theirs, so your own page and theirs are one design.
-            Section {
                 NavigationGlassGroup(spacing: Theme.Spacing.close) {
                     HStack(spacing: Theme.Spacing.close) {
                         ShareLink(item: MatrixLink.user(session.userID).url) {
@@ -188,10 +185,9 @@ struct SettingsView: View {
                         }
                     }
                 }
-                .padding(.vertical, Theme.Spacing.close)
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets())
+                .padding(.bottom, Theme.Spacing.close)
             }
+            .profileHeaderRow()
 
             if let switcher, switcher.isAvailable {
                 accounts(switcher)
