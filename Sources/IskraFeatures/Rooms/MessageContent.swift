@@ -210,6 +210,10 @@ struct MessageContent: View {
     /// the person who passed the message on reads as the person who wrote it. Only for a message
     /// that says it is a forward (`m.forwarded`); in the bubble's own ink, stepped back from it,
     /// like the quote under it.
+    ///
+    /// A claim, not a proof: `m.forwarded` is written by whoever sent the message, and nothing in
+    /// Matrix checks it — Telegram's server vouches for its line, no homeserver does for this one.
+    /// So it is drawn quietly, as the sender's own aside, and never as anything that looks verified.
     @ViewBuilder
     private var forwarded: some View {
         if let origin = message.forwardedFrom {
