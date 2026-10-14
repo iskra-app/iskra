@@ -32,6 +32,9 @@ struct RoomSearchField: View {
                 .textFieldStyle(.plain)
                 .focused($isFocused)
                 .submitLabel(.search)
+                // "Search" on the keyboard puts the keyboard away: the results are already on
+                // screen as you type, and what is left to do is look at them.
+                .onSubmit { isFocused = false }
 
             if isSearching {
                 Button {

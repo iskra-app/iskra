@@ -156,6 +156,8 @@ public struct RoomListView: View {
         // sidebar *look* without the system's assumption about what a sidebar is for.
         .toolbar(removing: .sidebarToggle)
         .roomListSearch(text: $searchText, nativeSidebar: isNativeSidebar)
+        // Scrolling the results puts the keyboard away — it covers half of them otherwise.
+        .scrollDismissesKeyboard(.immediately)
         // And the same reasoning at the other end. The banner is in the way *on purpose* — it is
         // about messages the user cannot read, or a code that is one lost phone away from mattering
         // very much — but being in the way is not the same as sitting on top of the first
