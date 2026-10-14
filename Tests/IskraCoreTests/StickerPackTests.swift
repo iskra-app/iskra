@@ -270,4 +270,45 @@ struct StickerLibraryTests {
         await reread.load(roomID: nil)
         #expect(reread.recent.map(\.url) == ["mxc://x/b", "mxc://x/a"])
     }
+
+    @Test("subscribing to a chat's pack adds it to the list, beside what was there; unsubscribing takes only it")
+    func subscriptions() async throws {
+        let account = Account()
+        try store(["rooms": ["!other:x": ["": [:]]], "unknown": true], as: ImagePack.subscriptionsType, in: account)
+        let roomTarget = "/_matrix/client/v3/rooms/%21here%3Ax/state/im.ponies.room_emotes/"
+        let library = try library(account, roomPacks: [roomTarget: ["images": ["a": ["url": "mxc://x/a"]]]])
+        await library.load(roomID: "!here:x")
+
+        let pack = try #require(library.packs.first { $0.isRoomPack && $0.name == nil && $0.stickers.first?.url == "mxc://x/a" })
+        #expect(!library.isSubscribed(pack))
+
+        await library.subscribe(to: pack)
+        #expect(library.failure == nil)
+        #expect(library.isSubscribed(pack))
+        func written() throws -> [String: Any] {
+            let text = try #require(account.data.withLock { $0[ImagePack.subscriptionsType] })
+            return try #require(JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any])
+        }
+        #expect(ImagePack.subscriptions(in: try written()).map(\.roomID) == ["!here:x", "!other:x"])
+        #expect(try written()["unknown"] as? Bool == true)
+
+        await library.unsubscribe(from: pack)
+        #expect(!library.isSubscribed(pack))
+        #expect(ImagePack.subscriptions(in: try written()).map(\.roomID) == ["!other:x"])
+        #expect((try written()["rooms"] as? [String: Any])?["!here:x"] == nil)
+    }
+
+    @Test("clearing the recent row empties it in the account")
+    func clearingRecent() async throws {
+        let account = Account()
+        let library = try library(account)
+        await library.used(Sticker(url: "mxc://x/a", shortcode: "", body: "a"))
+        #expect(!library.recent.isEmpty)
+
+        await library.clearRecent()
+        #expect(library.recent.isEmpty)
+        let reread = try self.library(account)
+        await reread.load(roomID: nil)
+        #expect(reread.recent.isEmpty)
+    }
 }

@@ -187,3 +187,7 @@
 "notificationRules.roomMentionFailed" = "@room の通知を変更できませんでした。もう一度お試しください。";
 "notificationRules.invitationFailed" = "招待の通知を変更できませんでした。もう一度お試しください。";
 "notificationRules.callFailed" = "通話の通知を変更できませんでした。もう一度お試しください。";
+
+"stickers.subscribeFailed" = "ステッカーを追加できませんでした。もう一度お試しください。";
+"stickers.unsubscribeFailed" = "ステッカーを削除できませんでした。もう一度お試しください。";
+"stickers.clearRecentFailed" = "最近使ったものを消去できませんでした。もう一度お試しください。";

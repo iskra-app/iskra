@@ -303,7 +303,20 @@ enum TimelineMapper {
                        deletedAt: kind == .deleted ? redaction(of: event) : nil,
                        mentionedUserIDs: mentionedUserIDs(from: event.content),
                        formattedBody: formattedBody(from: event.content),
+                       forwardedFrom: forwardOrigin(of: event, kind: kind),
                        uploadProgress: event.isOwn ? uploadProgress(of: event.localSendState) : nil)
+    }
+
+    /// The `m.forwarded` the event carries, if it is a forward — see `ForwardOrigin`. Read off the
+    /// event's own JSON, the one place the SDK keeps a field it has no name for, and only for the
+    /// kinds that can be forwarded at all; once per event, see `Forwarded.origin(eventID:json:)`.
+    private static func forwardOrigin(of event: EventTimelineItem, kind: MessageKind) -> ForwardOrigin? {
+        switch kind {
+        case .text, .notice, .emote, .image, .video, .file: break
+        default: return nil
+        }
+        guard case let .eventId(eventID) = event.eventOrTransactionId else { return nil }
+        return Forwarded.origin(eventID: eventID) { event.lazyProvider.debugInfo().originalJson }
     }
 
     /// How far an attachment of ours has got on its way up — see `Message.uploadProgress`.

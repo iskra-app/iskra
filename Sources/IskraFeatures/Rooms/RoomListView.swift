@@ -41,6 +41,11 @@ public struct RoomListView: View {
     /// preference and not a fact about the layout: `isSidebar` above is the layout.
     @AppStorage(BetaFeatures.nativeSidebarKey) private var prefersNativeSidebar = BetaFeatures.nativeSidebarByDefault
 
+    /// The grey lines Settings → Chats leaves out — the last line of a row follows them, as the
+    /// chat does. See `RoomListStore.serviceEventSettingsChanged`.
+    @AppStorage(ServiceEventSettings.hidesNameChangesKey) private var hidesNameChanges = false
+    @AppStorage(ServiceEventSettings.hidesMembershipChangesKey) private var hidesMembershipChanges = false
+
     @State private var searchText = ""
     @State private var isShowingSettings = false
     @State private var isShowingArchive = false
@@ -116,6 +121,8 @@ public struct RoomListView: View {
         // on the screen a moment, so the first conversations do not fly in at launch.
         .animation(hasSettledList ? .smooth(duration: Theme.Timing.chrome * 1.5) : nil,
                    value: session.roomList.rooms.map(\.id))
+        .onChange(of: hidesNameChanges) { session.roomList.serviceEventSettingsChanged() }
+        .onChange(of: hidesMembershipChanges) { session.roomList.serviceEventSettingsChanged() }
         .onChange(of: session.roomList.rooms.isEmpty, initial: true) { _, isEmpty in
             guard !isEmpty, !hasSettledList else { return }
             Task {
@@ -406,6 +413,10 @@ public struct RoomListView: View {
                         .chatPeek(room, session: session) { selectedRoomID = room.id }
                 }
         }
+        // What the row says is read off the chat itself while it is on the screen — the deleted
+        // message, the grey line, the eye on a message read. See `RoomPeek`.
+        .onAppear { session.roomList.rowAppeared(room.id) }
+        .onDisappear { session.roomList.rowDisappeared(room.id) }
     }
 
     /// The conversations filed into sections, for the native sidebar only.

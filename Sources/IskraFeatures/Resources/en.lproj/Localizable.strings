@@ -1178,3 +1178,20 @@
 "profile.blockUser" = "Block User";
 "profile.unblockUser" = "Unblock User";
 "profile.blockedNotice" = "You blocked this user. Their new messages don't reach you.";
+
+"accounts.signOut" = "Sign out";
+"accounts.signOutTitle" = "Sign out of %@?";
+"accounts.signOutMessage" = "This account’s chats will be removed from this device. To read encrypted messages again, you’ll need your recovery key or another of your devices.";
+"stickers.subscribe" = "Add to mine";
+"stickers.settings.sheetSection" = "What to show";
+"stickers.settings.builtIn" = "Sparks";
+"stickers.settings.roomPacks" = "Chat packs";
+"stickers.settings.roomPacksHelp" = "If a chat has its own pack, you see it while you’re in that chat. Tap “Add to mine” above it to have it in every chat.";
+"stickers.settings.subscriptions" = "Added packs";
+"stickers.settings.subscriptionsHelp" = "Swipe a pack left to remove it. The pack itself stays in its chat.";
+"stickers.settings.unsubscribe" = "Remove";
+"stickers.settings.mineHelp" = "A sticker lands here when you add it from a chat. Touch and hold to remove it. Other Matrix apps see this pack too.";
+"stickers.settings.clearRecent" = "Clear recent";
+"stickers.settings.clearRecentHelp" = "Recent stickers are kept in your account, so they’ll be cleared on all your devices.";
+"message.forwarded" = "Forwarded message";
+"message.forwardedFrom" = "Forwarded from %@";

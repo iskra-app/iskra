@@ -72,6 +72,9 @@ struct ReactionsView: View {
             } footer: {
                 Text(Strings.Reactions.quickHelp)
             }
+
+            // The other thing people send instead of words — the screen is "Stickers & reactions".
+            StickerSettingsSections()
         }
         .formStyle(.grouped)
         .navigationTitle(Text(Strings.Settings.reactions))

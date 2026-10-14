@@ -1174,3 +1174,20 @@
 "profile.blockUser" = "Заблокировать пользователя";
 "profile.unblockUser" = "Разблокировать пользователя";
 "profile.blockedNotice" = "Вы заблокировали этого пользователя. Его новые сообщения сюда не приходят.";
+
+"accounts.signOut" = "Выйти";
+"accounts.signOutTitle" = "Выйти из %@?";
+"accounts.signOutMessage" = "Чаты этого аккаунта удалятся с устройства. Чтобы снова читать зашифрованные сообщения, понадобится ключ восстановления или другое ваше устройство.";
+"stickers.subscribe" = "Добавить себе";
+"stickers.settings.sheetSection" = "Что показывать";
+"stickers.settings.builtIn" = "Искорки";
+"stickers.settings.roomPacks" = "Наборы чатов";
+"stickers.settings.roomPacksHelp" = "Если у чата есть свой набор, он виден, пока вы в этом чате. Нажмите «Добавить себе» над ним — и он будет во всех чатах.";
+"stickers.settings.subscriptions" = "Добавленные наборы";
+"stickers.settings.subscriptionsHelp" = "Смахните набор влево, чтобы убрать его. Сам набор останется в своём чате.";
+"stickers.settings.unsubscribe" = "Убрать";
+"stickers.settings.mineHelp" = "Стикер попадает сюда, когда вы добавляете его из чата. Нажмите и подержите, чтобы убрать. Этот набор виден и в других приложениях Matrix.";
+"stickers.settings.clearRecent" = "Очистить недавние";
+"stickers.settings.clearRecentHelp" = "Недавние хранятся в аккаунте и очистятся на всех ваших устройствах.";
+"message.forwarded" = "Пересланное сообщение";
+"message.forwardedFrom" = "Переслано от %@";

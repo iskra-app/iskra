@@ -47,6 +47,9 @@ struct SettingsView: View {
     /// Set when the sign-out starts, and never cleared — see the button.
     @State private var isSigningOut = false
 
+    /// Another account, swiped to be signed out of and waiting for the answer to "are you sure".
+    @State private var accountToSignOut: AccountRecord?
+
     /// The one place this screen can go that is worth building lazily — see the
     /// `navigationDestination` below.
     private enum Destination: Hashable {
@@ -99,9 +102,33 @@ struct SettingsView: View {
                 Button {
                     switcher.switchTo(account.sessionID)
                 } label: {
-                    AccountRow(account: account, unread: switcher.unread[account.sessionID] ?? 0)
+                    AccountRow(account: account,
+                               unread: switcher.unread[account.sessionID] ?? 0,
+                               isSigningOut: switcher.signingOut.contains(account.sessionID))
                 }
                 .buttonStyle(.plain)
+                .disabled(switcher.signingOut.contains(account.sessionID))
+                // A swipe, as a chat is left from the chat list — and the same thing on a press,
+                // because a Mac has no swipe to find it by.
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    Button(role: .destructive) {
+                        accountToSignOut = account
+                    } label: {
+                        Label(String(app: Strings.Accounts.signOutShort),
+                              systemImage: "rectangle.portrait.and.arrow.right")
+                    }
+                    // Red by hand. A swipe button takes the tint of the screen, and this screen is
+                    // tinted with the accent — white on the mono one, so "Sign out" came up white.
+                    .tint(.red)
+                }
+                .contextMenu {
+                    Button(role: .destructive) {
+                        accountToSignOut = account
+                    } label: {
+                        Label(String(app: Strings.Account.signOut),
+                              systemImage: "rectangle.portrait.and.arrow.right")
+                    }
+                }
             }
             Button {
                 switcher.addAccount()
@@ -114,6 +141,21 @@ struct SettingsView: View {
             }
         }
         .onAppear { switcher.refreshUnread() }
+        // Asked, because it cannot be undone from here: the chats go off the device, and an
+        // encrypted history comes back only with the recovery key.
+        .confirmationDialog(Text(Strings.Accounts.signOutTitle(of: accountToSignOut.map(AccountSwitcher.name(of:)) ?? "")),
+                            isPresented: Binding(get: { accountToSignOut != nil },
+                                                 set: { if !$0 { accountToSignOut = nil } }),
+                            titleVisibility: .visible,
+                            presenting: accountToSignOut) { account in
+            Button(role: .destructive) {
+                switcher.signOut(account.sessionID)
+            } label: {
+                Text(Strings.Accounts.signOutShort)
+            }
+        } message: { _ in
+            Text(Strings.Accounts.signOutMessage)
+        }
     }
 
     /// "Sign out", or — when there is more than one account it could mean — whose.

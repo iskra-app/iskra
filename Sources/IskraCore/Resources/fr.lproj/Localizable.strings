@@ -187,3 +187,7 @@
 "notificationRules.roomMentionFailed" = "Les notifications pour @room n’ont pas changé. Réessayez.";
 "notificationRules.invitationFailed" = "Les notifications des invitations n’ont pas changé. Réessayez.";
 "notificationRules.callFailed" = "Les notifications des appels n’ont pas changé. Réessayez.";
+
+"stickers.subscribeFailed" = "Impossible d’ajouter le pack. Réessayez.";
+"stickers.unsubscribeFailed" = "Impossible de retirer le pack. Réessayez.";
+"stickers.clearRecentFailed" = "Impossible d’effacer les récents. Réessayez.";

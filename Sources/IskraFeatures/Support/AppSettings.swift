@@ -31,7 +31,7 @@ enum AppSettings {
         Wallpaper.storageKey,
         Wallpaper.dimmingKey,
         ComposerReturnKey.sendsWithCommandReturnKey,
-    ] + MediaSettings.keys + PrivacySettings.keys + ServiceEventSettings.keys
+    ] + MediaSettings.keys + PrivacySettings.keys + ServiceEventSettings.keys + StickerSettings.keys
 
     @MainActor
     static func forget() {

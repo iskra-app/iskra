@@ -319,6 +319,8 @@ public struct Message: Sendable, Identifiable, Equatable {
     /// reason the plain body is kept as a `String`: cheap to diff, and nothing in the model layer
     /// holds an `AttributedString`. Nil for a plain message, which is drawn from `kind` as ever.
     public var formattedBody: String?
+    /// Where it was forwarded from, for a message that says it was — see `ForwardOrigin`.
+    public var forwardedFrom: ForwardOrigin?
     /// Grouped under one avatar with the message above it, iMessage-style.
     public var isContinuation: Bool = false
     /// The one message that wears the "read" mark on behalf of all of them.
@@ -360,6 +362,7 @@ public struct Message: Sendable, Identifiable, Equatable {
                 deletedAt: Date? = nil,
                 mentionedUserIDs: [String] = [],
                 formattedBody: String? = nil,
+                forwardedFrom: ForwardOrigin? = nil,
                 isContinuation: Bool = false,
                 carriesReadMark: Bool = false,
                 uploadProgress: Double? = nil) {
@@ -378,6 +381,7 @@ public struct Message: Sendable, Identifiable, Equatable {
         self.deletedAt = deletedAt
         self.mentionedUserIDs = mentionedUserIDs
         self.formattedBody = formattedBody
+        self.forwardedFrom = forwardedFrom
         self.isContinuation = isContinuation
         self.carriesReadMark = carriesReadMark
         self.uploadProgress = uploadProgress

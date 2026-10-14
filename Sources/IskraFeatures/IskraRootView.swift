@@ -361,6 +361,12 @@ public struct IskraRootView: View {
             switcher.requestedAccount = nil
             Task { await switchAccount(to: id) }
         }
+        // Signing out of an account that is not on screen — swiped away in settings.
+        .onChange(of: switcher.requestedSignOut) { _, id in
+            guard let id else { return }
+            switcher.requestedSignOut = nil
+            Task { await signOutInBackground(id) }
+        }
         // "Add account": the sign-in screen over the app, with the account underneath still open
         // until the new one is in.
         .sheet(isPresented: Binding(get: { switcher.isAddingAccount },
@@ -641,6 +647,37 @@ public struct IskraRootView: View {
         authentication.setActiveAccount(id)
         roomAfterSwitch = roomID
         restart()
+    }
+
+    /// Signs out of an account that is closed, and leaves the one on screen exactly where it is.
+    ///
+    /// Signing out is something only a live client can do — the server is asked to end the
+    /// session, and to stop pushing — so the account is opened for the length of it, without sync,
+    /// beside the one on screen. Two clients at once is nothing new: the notification extension
+    /// does it every time a push arrives. If it will not open — no network, a session the server
+    /// has already ended — what is on this device goes anyway: the keys, the tokens and the store
+    /// are what signing out *means* here, and a device the server still lists is the lesser harm.
+    private func signOutInBackground(_ id: String) async {
+        defer { switcher.signingOut.remove(id) }
+        guard let current = currentSession, current.sessionID != id, isOnDevice(id) else { return }
+
+        if let other = try? await authentication.restoreSession(id: id) {
+            await PushPermission.shared.signingOutInBackground(other)
+            await other.signOut()
+            accountLeft(other)
+        } else {
+            await authentication.forgetSession(id)
+            ChatDirectory.forget(account: id)
+            KnownDevices().forget(account: id)
+            AppBadge.forget(account: id)
+            DeliveredNotifications.clear(account: id)
+            CommunicationNotification.forget(account: id)
+        }
+
+        // Opening the other account pointed the nicknames at it — see `UserSession.init`. They
+        // belong to the one on screen.
+        LocalNames.use(account: current.sessionID)
+        reloadAccounts(current)
     }
 
     /// Signed in to one more account from the sheet. It becomes the account on screen; the one that

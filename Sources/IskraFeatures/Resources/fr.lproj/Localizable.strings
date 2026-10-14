@@ -1178,3 +1178,20 @@
 "profile.blockUser" = "Bloquer l’utilisateur";
 "profile.unblockUser" = "Débloquer l’utilisateur";
 "profile.blockedNotice" = "Vous avez bloqué cet utilisateur. Ses nouveaux messages ne vous parviennent pas.";
+
+"accounts.signOut" = "Se déconnecter";
+"accounts.signOutTitle" = "Se déconnecter de %@ ?";
+"accounts.signOutMessage" = "Les discussions de ce compte seront supprimées de cet appareil. Pour relire les messages chiffrés, il vous faudra votre clé de récupération ou un autre de vos appareils.";
+"stickers.subscribe" = "Ajouter";
+"stickers.settings.sheetSection" = "Ce qui s’affiche";
+"stickers.settings.builtIn" = "Étincelles";
+"stickers.settings.roomPacks" = "Packs des discussions";
+"stickers.settings.roomPacksHelp" = "Si une discussion a son propre pack, vous le voyez tant que vous êtes dans cette discussion. Touchez « Ajouter » au-dessus pour l’avoir dans toutes les discussions.";
+"stickers.settings.subscriptions" = "Packs ajoutés";
+"stickers.settings.subscriptionsHelp" = "Balayez un pack vers la gauche pour le retirer. Le pack reste dans sa discussion.";
+"stickers.settings.unsubscribe" = "Retirer";
+"stickers.settings.mineHelp" = "Un autocollant arrive ici quand vous l’ajoutez depuis une discussion. Maintenez-le appuyé pour le retirer. Les autres applications Matrix voient aussi ce pack.";
+"stickers.settings.clearRecent" = "Effacer les récents";
+"stickers.settings.clearRecentHelp" = "Les récents sont gardés dans votre compte et seront effacés sur tous vos appareils.";
+"message.forwarded" = "Message transféré";
+"message.forwardedFrom" = "Transféré de %@";

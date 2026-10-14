@@ -187,3 +187,7 @@
 "notificationRules.roomMentionFailed" = "没能更改 @room 的通知。请再试一次。";
 "notificationRules.invitationFailed" = "没能更改邀请的通知。请再试一次。";
 "notificationRules.callFailed" = "没能更改通话的通知。请再试一次。";
+
+"stickers.subscribeFailed" = "没能添加贴纸包。请再试一次。";
+"stickers.unsubscribeFailed" = "没能移除贴纸包。请再试一次。";
+"stickers.clearRecentFailed" = "没能清除最近使用的贴纸。请再试一次。";

@@ -1311,7 +1311,12 @@ public final class TimelineStore {
     public func forward(_ message: Message, loader: MediaLoader) async {
         switch message.kind {
         case let .text(body), let .notice(body), let .emote(body):
-            await send(text: body)
+            // Marked as a forward where it can be — see `sendMarkedForward`.
+            if await isKnownUnencrypted(), let content = Forwarded.content(forwarding: message) {
+                await sendMarkedForward(content)
+            } else {
+                await send(text: body)
+            }
 
         case let .image(attachment):
             guard let data = try? await loader.data(for: attachment) else { failure = .send; return }
@@ -1332,6 +1337,31 @@ public final class TimelineStore {
         default:
             // Voice, video note, location, sticker, and anything gone or unsendable. Nothing sent.
             break
+        }
+    }
+
+    /// Words forwarded with `m.forwarded` on them, so the reader sees whose they were.
+    ///
+    /// Only into a room that is not encrypted, and for the same reason a sticker is only sent raw
+    /// into one (see `send(sticker:)`): the field is not one the send queue can carry — it takes
+    /// a message's content as the SDK spells it, and the SDK has no word for this — so it goes by
+    /// `Room.sendRaw`, outside the queue. In an encrypted room that road is the one that failed for
+    /// stickers, and a forward that does not arrive is worse than one that arrives unmarked. There
+    /// it is an ordinary message, as every forward was before.
+    private func sendMarkedForward(_ content: [String: Any]) async {
+        guard let data = try? JSONSerialization.data(withJSONObject: content),
+              let json = String(bytes: data, encoding: .utf8) else {
+            failure = .send
+            return
+        }
+        do {
+            let room = room
+            try await withTimeout(Self.sdkTimeout) {
+                try await room.sendRaw(eventType: "m.room.message", content: json)
+            }
+        } catch {
+            Log.media.error("could not forward a message: \(Log.describe(error), privacy: .public)")
+            failure = .send
         }
     }
 

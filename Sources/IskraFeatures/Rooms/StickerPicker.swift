@@ -98,7 +98,8 @@ struct StickerPicker: View {
                                 stickers: library.recent, library: library)
                     }
                     ForEach(library.packs) { pack in
-                        section(id: pack.id, title: name(of: pack), stickers: pack.stickers, library: library)
+                        section(id: pack.id, title: name(of: pack), stickers: pack.stickers, library: library,
+                                subscribing: pack.isRoomPack && !library.isSubscribed(pack) ? pack : nil)
                     }
                 }
                 .padding(.horizontal, Theme.Spacing.roomy)
@@ -115,7 +116,10 @@ struct StickerPicker: View {
         }
     }
 
-    private func section(id: String, title: Text, stickers: [Sticker], library: StickerLibrary) -> some View {
+    /// `subscribing`: a chat's pack the account has not subscribed to — offered here because this
+    /// is where somebody meets it, and only here would it otherwise vanish when they leave the chat.
+    private func section(id: String, title: Text, stickers: [Sticker], library: StickerLibrary,
+                         subscribing pack: StickerPack? = nil) -> some View {
         Section {
             LazyVGrid(columns: columns, spacing: Theme.Spacing.close) {
                 ForEach(stickers) { sticker in
@@ -123,12 +127,25 @@ struct StickerPicker: View {
                 }
             }
         } header: {
-            title
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, Theme.Spacing.normal)
-                .id(id)
+            HStack {
+                title
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+                if let pack {
+                    Button {
+                        Task { await library.subscribe(to: pack) }
+                    } label: {
+                        Label(String(app: Strings.Stickers.subscribe), systemImage: "plus.circle")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(accent.color)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, Theme.Spacing.normal)
+            .id(id)
         }
     }
 

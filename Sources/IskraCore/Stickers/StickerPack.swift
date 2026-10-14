@@ -92,17 +92,25 @@ public struct StickerPack: Identifiable, Sendable, Equatable {
         case room(roomID: String, stateKey: String)
         /// The app's own — see `StickerArt`. Uploaded by this account and read by nobody else.
         case builtIn
+
+        var packID: String {
+            switch self {
+            case .mine: "mine"
+            case let .room(roomID, stateKey): "\(roomID)/\(stateKey)"
+            case .builtIn: "builtin"
+            }
+        }
+    }
+
+    /// A room's pack, as opposed to the account's own or the app's.
+    public var isRoomPack: Bool {
+        if case .room = origin { return true }
+        return false
     }
 
     public let origin: Origin
 
-    public var id: String {
-        switch origin {
-        case .mine: "mine"
-        case let .room(roomID, stateKey): "\(roomID)/\(stateKey)"
-        case .builtIn: "builtin"
-        }
-    }
+    public var id: String { origin.packID }
 
     /// What the pack calls itself, if it says. The account's own pack usually does not, and the
     /// screen names it.
@@ -244,6 +252,29 @@ enum ImagePack {
             ((keys as? JSON) ?? [:]).keys.map { (roomID: roomID, stateKey: $0) }
         }
         .sorted { ($0.roomID, $0.stateKey) < ($1.roomID, $1.stateKey) }
+    }
+
+    /// The subscriptions with this pack in them — and with everything that was already there.
+    static func subscribing(roomID: String, stateKey: String, in content: JSON) -> JSON {
+        var content = content
+        var rooms = content["rooms"] as? JSON ?? [:]
+        var keys = rooms[roomID] as? JSON ?? [:]
+        guard keys[stateKey] == nil else { return content }
+        keys[stateKey] = [:] as JSON
+        rooms[roomID] = keys
+        content["rooms"] = rooms
+        return content
+    }
+
+    /// The subscriptions without this pack. A room with no pack left subscribed to goes too, rather
+    /// than staying behind as an empty object every client has to step over.
+    static func unsubscribing(roomID: String, stateKey: String, from content: JSON) -> JSON {
+        var content = content
+        guard var rooms = content["rooms"] as? JSON, var keys = rooms[roomID] as? JSON else { return content }
+        keys[stateKey] = nil
+        rooms[roomID] = keys.isEmpty ? nil : keys
+        content["rooms"] = rooms
+        return content
     }
 
     /// JSON numbers arrive as `Int` from one decoder and `Double` from another, and a size
