@@ -803,8 +803,6 @@
 "encryption.saved" = "I’ve saved the code";
 
 "encryption.deviceUnverified" = "New device";
-/* The pill at the foot of a room when a message arrives while you are reading further up. */
-"room.jumpToNewest" = "New messages";
 
 /* The bar across the conversation: what you have not read yet starts here. */
 "room.unreadMessages" = "Unread messages";

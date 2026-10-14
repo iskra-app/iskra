@@ -154,7 +154,6 @@ struct LocalizationTests {
         // word whoever is doing the inviting; Matrix does not know, and a coin flip on every name
         // in every room is exactly how an interface starts reading as machine-translated.
         (Strings.RoomList.Invite.from("Аня"), en: "Аня invites you", ru: "Аня приглашает вас"),
-        (Strings.Room.jumpToNewest, en: "New messages", ru: "Новые сообщения"),
         // Same rule again, and the reason both of these exist rather than one: in a one-to-one chat
         // the person's name is already the title of the screen, so saying it a second time here
         // would be the app repeating itself.
