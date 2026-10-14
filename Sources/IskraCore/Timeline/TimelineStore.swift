@@ -136,6 +136,11 @@ public final class TimelineStore {
     /// that it can go into an encrypted room through the send queue — see `send(sticker:)`.
     @ObservationIgnored var downloadMedia: (@Sendable (_ url: String) async throws -> Data)?
 
+    /// Told when your newest read message changes — the chat list's read mark comes from here,
+    /// since the room list holds no receipts. See `RoomListStore.noteRead`.
+    @ObservationIgnored var onOwnMessagesRead: ((Date) -> Void)?
+    @ObservationIgnored private var reportedReadUpTo: Date?
+
     /// The SDK timeline, for the media-sending extension in `TimelineStore+Media`.
     /// Nil until `start()` has run.
     var liveTimeline: Timeline? { timeline }
@@ -1842,6 +1847,13 @@ public final class TimelineStore {
         }
 
         latestRows = built
+
+        if let onOwnMessagesRead,
+           let read = built.last(where: { $0.message?.isOwn == true && $0.message?.delivery == .read })?.message?.timestamp,
+           read != reportedReadUpTo {
+            reportedReadUpTo = read
+            onOwnMessagesRead(read)
+        }
 
         // A reply whose original the SDK is holding nothing for is not a lost message — it is a
         // message nobody has asked for. Ask.

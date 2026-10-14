@@ -354,6 +354,9 @@ public final class UserSession {
         store.uploadMedia = { [client] mimeType, data in
             try await client.uploadMedia(mimeType: mimeType, data: data, progressWatcher: nil)
         }
+        store.onOwnMessagesRead = { [roomList] date in
+            roomList.noteRead(roomID: roomID, upTo: date)
+        }
         store.downloadMedia = { [client] url in
             try await client.getMediaContent(mediaSource: MediaSource.fromUrl(url: url))
         }

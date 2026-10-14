@@ -96,6 +96,10 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
     public let unreadMessageCount: Int
     public let lastMessage: String?
     public let lastActivity: Date?
+    /// The attachment the last message is, if it is one — see `PreviewKind`.
+    public let lastMessageKind: PreviewKind?
+    /// Your own last message's progress; nil when the last message is somebody else's.
+    public let lastMessageMark: LastMessageMark?
 
     /// A space, not a chat. The list shows it as an ordinary row — a square-cornered avatar and
     /// a tap that opens the space's rooms rather than a conversation — so what tells the two
@@ -215,6 +219,8 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
                 mentionCount: Int = 0,
                 lastMessage: String? = nil,
                 lastActivity: Date? = nil,
+                lastMessageKind: PreviewKind? = nil,
+                lastMessageMark: LastMessageMark? = nil,
                 isFavourite: Bool = false,
                 isLowPriority: Bool = false,
                 isMarkedUnread: Bool = false,
@@ -235,6 +241,8 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
         self.mentionCount = mentionCount
         self.lastMessage = lastMessage
         self.lastActivity = lastActivity
+        self.lastMessageKind = lastMessageKind
+        self.lastMessageMark = lastMessageMark
         self.isFavourite = isFavourite
         self.isLowPriority = isLowPriority
         self.isMarkedUnread = isMarkedUnread
@@ -247,6 +255,8 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
           ownUserID: String,
           lastMessage: String?,
           lastActivity: Date?,
+          lastMessageKind: PreviewKind? = nil,
+          lastMessageMark: LastMessageMark? = nil,
           isMuted: Bool = false) {
         // A room that is neither joined nor invited is not a row. Failing here rather than
         // defaulting to `.joined` is the point: a left or banned room rendered as an ordinary chat
@@ -279,6 +289,8 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
         self.unreadMessageCount = Int(info.numUnreadMessages)
         self.lastMessage = lastMessage
         self.lastActivity = lastActivity
+        self.lastMessageKind = lastMessageKind
+        self.lastMessageMark = lastMessageMark
         self.isFavourite = info.isFavourite
         self.isLowPriority = info.isLowPriority
         self.isMarkedUnread = info.isMarkedUnread

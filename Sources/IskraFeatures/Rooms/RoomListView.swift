@@ -676,6 +676,12 @@ struct RoomRow: View {
                             .accessibilityLabel(Text(Strings.RoomList.pinned))
                     }
 
+                    // How far your own last message has got, beside its time — Telegram's place
+                    // for it. The same marks the conversation draws (`DeliveryTick`).
+                    if let mark = room.lastMessageMark, !isTyping {
+                        lastMessageMark(mark)
+                    }
+
                     if let date = room.lastActivity {
                         // See `RoomTimestamp`: not `.relative`, which says "-3 мин" in Russian and
                         // then goes on saying it for an hour.
@@ -691,7 +697,7 @@ struct RoomRow: View {
                 HStack(alignment: .top, spacing: Theme.Spacing.close) {
                     // "печатает…" in place of the last message while somebody is writing, in the
                     // accent — the one moment the preview is news rather than history.
-                    Text(isTyping ? String(app: Strings.Room.typing) : (room.lastMessage ?? " "))
+                    preview
                         .font(.subheadline)
                         .foregroundStyle(isTyping ? AnyShapeStyle(accent.color) : AnyShapeStyle(.secondary))
                         .contentTransition(.opacity)
@@ -783,6 +789,54 @@ struct RoomRow: View {
                                   trailing: Theme.Spacing.roomy))
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
+    }
+
+    /// The last message, with the icon of what it is in front of it when it is an attachment —
+    /// a photo, a voice message, a sticker. Part of the same `Text`, so the two lines wrap as one.
+    private var preview: Text {
+        if isTyping { return Text(Strings.Room.typing) }
+        let words = Text(room.lastMessage ?? " ")
+        guard let symbol = room.lastMessageKind.map(Self.symbol(for:)) else { return words }
+        return Text("\(Image(systemName: symbol)) ") + words
+    }
+
+    static func symbol(for kind: PreviewKind) -> String {
+        switch kind {
+        case .photo: "photo"
+        case .video: "video"
+        case .videoNote: "video.circle"
+        case .voice: "mic"
+        case .audio: "music.note"
+        case .file: "doc"
+        case .location: "mappin.and.ellipse"
+        case .sticker: "face.smiling"
+        case .poll: "chart.bar"
+        }
+    }
+
+    @ViewBuilder
+    private func lastMessageMark(_ mark: LastMessageMark) -> some View {
+        Group {
+            switch mark {
+            case .sending:
+                Image(systemName: "clock")
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel(Text(Strings.Message.Delivery.sending))
+            case .sent:
+                Image(systemName: "checkmark")
+                    .foregroundStyle(accent.color)
+                    .accessibilityLabel(Text(Strings.Message.Delivery.sent))
+            case .read:
+                Image(systemName: "eye.fill")
+                    .foregroundStyle(accent.color)
+                    .accessibilityLabel(Text(Strings.Message.Delivery.read))
+            case .failed:
+                Image(systemName: "exclamationmark.circle.fill")
+                    .foregroundStyle(.red)
+                    .accessibilityLabel(Text(Strings.Message.Delivery.failed))
+            }
+        }
+        .font(.caption)
     }
 
     /// One sentence, so VoiceOver reads a row as a thought rather than as a pile of

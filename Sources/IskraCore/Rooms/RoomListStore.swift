@@ -908,14 +908,30 @@ public final class RoomListStore {
 
         var preview: String?
         var activity: Date?
+        var kind: PreviewKind?
+        var mark: LastMessageMark?
 
         switch await room.latestEvent() {
-        case let .remote(timestamp, _, _, _, content):
+        case let .remote(timestamp, _, isOwn, _, content):
             preview = MessagePreview.text(for: content)
-            activity = MessagePreview.date(from: timestamp)
-        case let .local(timestamp, _, _, content, _):
+            kind = MessagePreview.kind(for: content)
+            let date = MessagePreview.date(from: timestamp)
+            activity = date
+            if isOwn {
+                // Read is not something the latest event says — only a chat's timeline holds the
+                // receipts. So it is what an open chat last saw (`noteRead`), and a message newer
+                // than that is merely sent.
+                mark = readUpTo[info.id].map { date <= $0 } == true ? .read : .sent
+            }
+        case let .local(timestamp, _, _, content, state):
             preview = MessagePreview.text(for: content)
+            kind = MessagePreview.kind(for: content)
             activity = MessagePreview.date(from: timestamp)
+            mark = switch state {
+            case .isSending: .sending
+            case .hasBeenSent: .sent
+            case .cannotBeSent: .failed
+            }
         default:
             break
         }
@@ -924,7 +940,21 @@ public final class RoomListStore {
                            ownUserID: ownUserID,
                            lastMessage: preview,
                            lastActivity: activity,
+                           lastMessageKind: kind,
+                           lastMessageMark: mark,
                            isMuted: mutedRoomIDs.contains(info.id))
+    }
+
+    /// How far your own messages in each room are known to have been read — by when they were
+    /// sent. Told by the chat itself when it is open (`TimelineStore.onOwnMessagesRead`), because
+    /// the receipts are in a timeline and the room list has none.
+    private var readUpTo: [String: Date] = [:]
+
+    /// A chat saw your messages read up to `date`. The row is rebuilt if that is news.
+    public func noteRead(roomID: String, upTo date: Date) {
+        guard readUpTo[roomID].map({ date > $0 }) ?? true else { return }
+        readUpTo[roomID] = date
+        scheduleRebuild(only: [roomID])
     }
 
     /// Keeps one typing subscription per room in the list: new rooms are listened to, rooms that
