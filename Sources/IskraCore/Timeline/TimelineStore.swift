@@ -201,6 +201,8 @@ public final class TimelineStore {
         localNameObserver = LocalNames.observe { [weak self] changed in
             guard let self, changed == nil || changed == self.roomID else { return }
             self.roomName = LocalNames.name(for: self.roomID) ?? self.serverRoomName
+            // And the messages, which carry the name too — see `applyingLocalName`.
+            self.rebuildRows()
         }
     }
 
@@ -1822,6 +1824,21 @@ public final class TimelineStore {
         rebuildRows()
     }
 
+    /// In a personal chat you have named, the other person goes by that name in the conversation
+    /// too — on their messages and on every quote of them — and not only in the header and the
+    /// list. Their own name used to come back in the strip over a reply, which is the one place a
+    /// nickname is most obviously missing: you are answering *Мама*, and it said `anna_1987`.
+    private func applyingLocalName(to rows: [TimelineRow]) -> [TimelineRow] {
+        guard isOneToOne, let counterpart = directCounterpartID,
+              let local = LocalNames.name(for: roomID) else { return rows }
+        return rows.map { row in
+            guard case var .message(message) = row else { return row }
+            if message.senderID == counterpart { message.senderName = local }
+            if message.replyTo?.senderID == counterpart { message.replyTo?.senderName = local }
+            return .message(message)
+        }
+    }
+
     private func rebuildRows() {
         var built = TimelineMapper.rows(from: items, ownUserID: ownUserID, unsent: unsentReactions,
                                         hiding: ServiceEventSettings.current())
@@ -1846,7 +1863,7 @@ public final class TimelineStore {
             adopted = adopted.filter { present.contains($0.key) }
         }
 
-        latestRows = built
+        latestRows = applyingLocalName(to: built)
 
         if let onOwnMessagesRead,
            let read = built.last(where: { $0.message?.isOwn == true && $0.message?.delivery == .read })?.message?.timestamp,
@@ -1955,6 +1972,7 @@ public final class TimelineStore {
 
         return ReplyPreview(eventID: eventID,
                             senderName: original.senderName,
+                            senderID: original.senderID,
                             text: MessagePreview.text(for: original.kind))
     }
 

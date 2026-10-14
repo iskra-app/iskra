@@ -52,6 +52,16 @@ struct RoomEditView: View {
     var body: some View {
         Form {
             if !isRoom {
+                // Their face at the top, as on every person's page — and what the screen's layout
+                // assumes (`profileScreen()` lifts the form under the bar to meet a portrait). With
+                // nothing there the name field itself went up under the toolbar.
+                Section {
+                    RoomAvatar(name: details.name, url: details.avatarURL,
+                               size: Theme.Size.avatarProfile, seed: details.avatarSeed)
+                        .frame(maxWidth: .infinity)
+                        .padding(.bottom, Theme.Spacing.roomy)
+                        .profileHeaderRow()
+                }
                 contactName
             }
 
@@ -163,7 +173,7 @@ struct RoomEditView: View {
                     draftLocalName = ""
                     details.renameLocally(to: nil)
                 } label: {
-                    Text(Strings.Room.LocalName.reset)
+                    Text(Strings.Room.LocalName.reset(details.serverName))
                 }
             }
         } header: {

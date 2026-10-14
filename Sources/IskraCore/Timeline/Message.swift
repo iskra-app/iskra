@@ -251,14 +251,18 @@ public struct Reactor: Sendable, Identifiable, Equatable {
 /// managed to summarise it.
 public struct ReplyPreview: Sendable, Equatable {
     public let eventID: String
-    /// Nil while the SDK is still fetching the original, or where it never found it.
-    public let senderName: String?
+    /// Nil while the SDK is still fetching the original, or where it never found it. Settable
+    /// inside the core, so a nickname can stand in for it — see `TimelineStore.applyingLocalName`.
+    public internal(set) var senderName: String?
+    /// Who wrote the original, when the SDK has said — what a nickname is matched against.
+    public let senderID: String?
     /// One line, already summarised — "Photo", "Voice message", or the words themselves.
     public let text: String
 
-    public init(eventID: String, senderName: String?, text: String) {
+    public init(eventID: String, senderName: String?, senderID: String? = nil, text: String) {
         self.eventID = eventID
         self.senderName = senderName
+        self.senderID = senderID
         self.text = text
     }
 }
@@ -268,7 +272,9 @@ public struct Message: Sendable, Identifiable, Equatable {
     public let id: String
     public let kind: MessageKind
     public let senderID: String
-    public let senderName: String
+    /// Settable inside the core, so a nickname can stand in for it — see
+    /// `TimelineStore.applyingLocalName`.
+    public internal(set) var senderName: String
     public let senderAvatarURL: String?
     public let isOwn: Bool
     public let timestamp: Date
@@ -296,7 +302,7 @@ public struct Message: Sendable, Identifiable, Equatable {
     public var readAt: Date?
     public let isEdited: Bool
     /// What this message is an answer to, for one that is.
-    public let replyTo: ReplyPreview?
+    public internal(set) var replyTo: ReplyPreview?
     /// In the order they were first left, so a busy message does not reshuffle its own
     /// emoji every time someone adds one.
     public let reactions: [MessageReaction]
