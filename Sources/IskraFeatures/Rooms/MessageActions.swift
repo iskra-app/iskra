@@ -52,6 +52,11 @@ struct MessageActions<Content: View>: View {
     private final class Anchor {
         var rect: CGRect = .zero
 
+        /// Where UIKit had the conversation at the moment `rect` was measured — so that a message
+        /// held while the room is still sliding in can be moved by however far it has slid since.
+        /// See `WindowProbe`.
+        var roomPosition: CGPoint?
+
         /// Everything the conversation tells this message about how to draw itself — whether
         /// there is a wallpaper behind it, how wide the room is, the reader's text size — kept
         /// so the copy the menu lifts can be told the same. See `EnvironmentTap`.
@@ -92,6 +97,9 @@ struct MessageActions<Content: View>: View {
 
     /// The menu itself, which lives above the whole app — see `messageMenuLayer()`.
     @Environment(\.messageMenu) private var menu
+
+    /// The conversation this message is in, if it is in one — see `WindowProbe`.
+    @Environment(\.messageMenuRoom) private var room
 
     /// The emoji a double tap leaves. The user's, chosen once in settings and read by every
     /// row in every conversation — see `QuickReaction`.
@@ -134,7 +142,10 @@ struct MessageActions<Content: View>: View {
             // put its copy of the message exactly where the original is standing.
             .onGeometryChange(for: CGRect.self) { proxy in
                 proxy.frame(in: .named(MessageMenu.space))
-            } action: { anchor.rect = $0 }
+            } action: {
+                anchor.rect = $0
+                anchor.roomPosition = room?.position
+            }
             // And the environment it is drawn in, for the same reason and in the same box.
             .background { EnvironmentTap { [anchor] in anchor.environment = $0 } }
             // Nothing happens to the bubble under a held finger — no sinking, no squeeze. It used
@@ -275,8 +286,13 @@ struct MessageActions<Content: View>: View {
         // refusal of the tap that is about to arrive. See `MessageTaps.suppress`.
         taps.suppress()
 
-        let rect = anchor.rect
-        guard let menu, rect != .zero else { return }
+        guard let menu, anchor.rect != .zero else { return }
+        // Moved by however far the conversation has slid since it was measured — nothing at all,
+        // unless the room is still arriving. See `WindowProbe`.
+        var rect = anchor.rect
+        if let then = anchor.roomPosition, let now = room?.position {
+            rect = rect.offsetBy(dx: now.x - then.x, dy: now.y - then.y)
+        }
         menu.present(MessageMenuPresentation(
             id: message.id,
             anchor: rect,
