@@ -46,7 +46,69 @@ enum MessageMenu {
 
     /// And between the whole arrangement and the edge of the screen.
     static let margin = Theme.Spacing.roomy
+
 }
+
+/// How far a conversation has moved since SwiftUI last measured it — the one thing SwiftUI's
+/// geometry cannot see.
+///
+/// A message reports where it stands through `onGeometryChange`, and SwiftUI re-takes that when
+/// the message moves *inside SwiftUI* — a scroll, a relayout — and not when the UIKit view hosting
+/// the whole conversation moves. A room is pushed: its hosting view starts a screen's width to the
+/// right and slides in, every row was measured at the start of that slide, and nothing measured it
+/// again until the first scroll. A message held before then was "standing" past the right edge,
+/// and the menu lifted it from there — it flew in from beyond the edge instead of rising from its
+/// place.
+///
+/// So the probe answers one question, and it is a *difference*: where UIKit has the conversation
+/// now, against where UIKit had it when the message last measured itself (`MessageActions`
+/// notes it down in the same breath). Most of the time that is nothing, and the message's own
+/// measurement is used untouched, exactly as before.
+///
+/// Two attempts to use UIKit's numbers *outright* failed, and the reason is worth keeping. UIKit
+/// and SwiftUI do not agree on where things are in absolute terms: measured on a phone, a probe
+/// behind the root of the app was 62 points down by UIKit — the status bar — and at the very top
+/// of the window by SwiftUI, and before that, a probe on the message itself sat inside a list that
+/// is turned upside down (`flippedForTimeline`). Each time the lifted copy appeared away from the
+/// gap it left and flew to it. A difference of two UIKit readings of the same view cannot carry
+/// any such disagreement, whatever it turns out to be.
+@MainActor
+final class WindowProbe {
+    #if os(iOS)
+    fileprivate weak var view: UIView?
+    #endif
+
+    /// Where UIKit has the conversation right now, in its window. Only ever compared with another
+    /// reading of itself — see above. Nil on a Mac, where nothing slides under SwiftUI.
+    var position: CGPoint? {
+        #if os(iOS)
+        guard let view, view.window != nil else { return nil }
+        return view.convert(CGPoint.zero, to: nil)
+        #else
+        return nil
+        #endif
+    }
+}
+
+#if os(iOS)
+/// The view a `WindowProbe` asks. Invisible, deaf to touches, and laid out behind the
+/// conversation, so it moves with it.
+private struct WindowProbeView: UIViewRepresentable {
+    let probe: WindowProbe
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        view.isUserInteractionEnabled = false
+        view.backgroundColor = .clear
+        probe.view = view
+        return view
+    }
+
+    func updateUIView(_ view: UIView, context: Context) {
+        probe.view = view
+    }
+}
+#endif
 
 // MARK: - What is in the menu
 
@@ -216,6 +278,11 @@ public extension EnvironmentValues {
     /// ever in — see `messageMenuLayer()` — but it is left optional so a preview of a single
     /// row is not a crash.
     @Entry internal var messageMenu: MessageMenuPresenter?
+
+    /// The conversation a message is in, for correcting its measurement by how far the
+    /// conversation has moved since — see `WindowProbe`. Nil outside one, and then there is
+    /// nothing to correct.
+    @Entry internal var messageMenuRoom: WindowProbe?
 }
 
 // MARK: - Where it goes
@@ -386,6 +453,26 @@ extension View {
     /// and the conversation behind it would darken while the bar above it stayed bright.
     func messageMenuLayer() -> some View {
         modifier(MessageMenuLayer())
+    }
+}
+
+extension View {
+    /// Marks the conversation the messages are in, so that a message lifted while it is still
+    /// sliding into place is lifted from where it really is — see `WindowProbe`.
+    func messageMenuRoom() -> some View {
+        modifier(MessageMenuRoom())
+    }
+}
+
+private struct MessageMenuRoom: ViewModifier {
+    @State private var probe = WindowProbe()
+
+    func body(content: Content) -> some View {
+        content
+            #if os(iOS)
+            .background { WindowProbeView(probe: probe) }
+            #endif
+            .environment(\.messageMenuRoom, probe)
     }
 }
 
