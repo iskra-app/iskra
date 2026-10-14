@@ -324,7 +324,6 @@
    Apache 2.0 and MIT travel with the binary, so a person holding the app has to be able to read
    about them inside the app. */
 "about.licences" = "许可证";
-"about.cryptography" = "所有加密都来自 matrix-rust-sdk。这里一行加密代码都没写，这样最好。";
 
 /* The screen where the double-tap reaction is chosen: the heading over the six emoji, and
    the line under them. */

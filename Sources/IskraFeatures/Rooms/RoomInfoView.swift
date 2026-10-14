@@ -90,81 +90,16 @@ struct RoomInfoView: View {
                     .profileHeaderRow()
             }
 
-            // A personal chat is a person: the same tiles and the same card their page has from a
-            // group's member list, so the two are one screen — Telegram's — rather than two
-            // screens about the same person that disagree.
-            if !isRoom {
-                person
-            }
+            // The round buttons under the portrait. A personal chat is a person: the same tiles their
+            // page has from a group's member list, so the two are one screen — Telegram's — rather
+            // than two screens about the same person that disagree. A group gets the same row, with
+            // "invite" where a person has "share".
+            tiles
 
-            publicRoomTiles
-
-            about
-
-            // What the padlock means, directly under the name. It used to sit five sections down,
-            // between the room's visibility and its notifications, which is filing the one fact on
-            // this screen that is about *safety* under housekeeping. Whether a room is encrypted is
-            // the first thing worth knowing about it after what it is called.
-            Section {
-                privacy
-
-                if isRoom, details.permissions.canChangeVisibility {
-                    Toggle(isOn: Binding(get: { details.isPublic },
-                                         set: { open in Task { await details.setPublic(open) } })) {
-                        VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-                            Text(Strings.Room.Manage.openToAnyone)
-                            Text(Strings.Room.Manage.openToAnyoneHelp)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .accentControl()
-                    .disabled(isOffline)
-                }
-            }
-
-            // Notifications and search in one block: both are about *your* relationship with this
-            // room rather than about the room — how loudly it reaches you, and how you find what
-            // was said in it — and two one-row sections in a column read as a list that has come
-            // apart rather than as two decisions.
-            Section {
-                Picker(selection: Binding(get: { details.alerts },
-                                          set: { choice in Task { await details.setAlerts(choice) } })) {
-                    ForEach(RoomAlerts.allCases) { choice in
-                        Text(Strings.Room.Manage.alerts(choice)).tag(choice)
-                    }
-                } label: {
-                    Label(String(app: Strings.Room.Manage.alerts), systemImage: alertsIcon)
-                }
-                .disabled(isOffline)
-
-                // In a personal chat the search is a tile under the portrait.
-                if isRoom {
-                    Button {
-                        onSearch()
-                    } label: {
-                        Label(Strings.Room.searchInChat, systemImage: "magnifyingglass")
-                    }
-                }
-            } footer: {
-                // Said once, at the top of everything this screen can no longer do, rather than as a
-                // grey control the reader is left to interpret. A disabled switch explains nothing on
-                // its own; a person who has not noticed the strip at the top of the screen would
-                // simply think the app had broken.
-                if isOffline {
-                    Text(Strings.Room.Manage.offline)
-                }
-            }
-
-            contents
-
-            // The account's block, for the person this chat is with — at the foot of their page,
-            // where it is on every person's page. See `PersonBlockButton`.
-            if !isRoom, let counterpartID = details.counterpartID {
-                Section {
-                    PersonBlockButton(userID: counterpartID, name: details.name)
-                }
-            }
+            // One block: who the person is, what the chat is for, how loudly it reaches you, and —
+            // in a personal chat — the block. One-row sections in a column read as a list that has
+            // come apart.
+            settings
 
             Section {
                 Button(role: .destructive) {
@@ -179,6 +114,8 @@ struct RoomInfoView: View {
                 // no way to know whether they left or not.
                 .disabled(isOffline)
             }
+
+            contents
         }
         .formStyle(.grouped)
         .profileScreen()
@@ -302,36 +239,14 @@ struct RoomInfoView: View {
         return .room(details.roomID, via: server.map { [$0] } ?? [])
     }
 
-    /// A public room's two tiles: share it, and show its code. The same circles a person's page has,
+    /// Telegram's row of round buttons under the portrait.
+    ///
+    /// In a personal chat: search it, silence it, share the person and show their code — the same
+    /// pieces `MemberProfileView` is made of, with the two acts that only make sense from inside
+    /// the chat. In a group: search, silence and invite, and for a public one its link and code too,
     /// because a room you can hand to somebody is, for that purpose, the same kind of thing.
     @ViewBuilder
-    private var publicRoomTiles: some View {
-        if isRoom, let link {
-            Section {
-                NavigationGlassGroup(spacing: Theme.Spacing.close) {
-                    HStack(spacing: Theme.Spacing.close) {
-                        ShareLink(item: link.url) {
-                            ProfileActionTileLabel(title: Strings.Profile.share, systemImage: "square.and.arrow.up")
-                        }
-                        .buttonStyle(.plain)
-
-                        ProfileActionTile(title: Strings.QR.title, systemImage: "qrcode", isBusy: false) {
-                            isShowingCode = true
-                        }
-                    }
-                }
-                .padding(.vertical, Theme.Spacing.close)
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets())
-            }
-        }
-    }
-
-    /// Telegram's tiles and card under a person's portrait, for the person a personal chat is with.
-    /// The same pieces `MemberProfileView` is made of — `ProfileActionTile` and the Matrix ID card —
-    /// with the two acts that only make sense from inside the chat: search it, and silence it.
-    @ViewBuilder
-    private var person: some View {
+    private var tiles: some View {
         Section {
             NavigationGlassGroup(spacing: Theme.Spacing.close) {
                 HStack(spacing: Theme.Spacing.close) {
@@ -349,17 +264,23 @@ struct RoomInfoView: View {
                     }
                     .disabled(isOffline)
 
-                    if let counterpartID = details.counterpartID,
-                       let link = MemberProfileView.link(to: counterpartID) {
-                        ShareLink(item: link) {
+                    if isRoom, details.permissions.canInvite {
+                        ProfileActionTile(title: Strings.Room.Manage.invite,
+                                          systemImage: "person.badge.plus",
+                                          isBusy: false) {
+                            isInviting = true
+                        }
+                        .disabled(isOffline)
+                    }
+
+                    if let link {
+                        ShareLink(item: link.url) {
                             ProfileActionTileLabel(title: Strings.Profile.share, systemImage: "square.and.arrow.up")
                         }
                         .buttonStyle(.plain)
-                    }
 
-                    // A code to point a camera at, where a clipboard used to be — see `MemberProfileView`,
-                    // whose row this is.
-                    if details.counterpartID != nil {
+                        // A code to point a camera at, where a clipboard used to be — see
+                        // `MemberProfileView`, whose row this is.
                         ProfileActionTile(title: Strings.QR.title, systemImage: "qrcode", isBusy: false) {
                             isShowingCode = true
                         }
@@ -370,21 +291,53 @@ struct RoomInfoView: View {
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets())
         }
+    }
 
-        if let counterpartID = details.counterpartID {
-            Section {
-                LabeledContent {
-                    Text(verbatim: counterpartID)
+    /// The Matrix ID, the description, the notifications and the block in a personal chat; the
+    /// description and the notifications in a group, where the ID is a room's and the block is per
+    /// person, from the member list.
+    @ViewBuilder
+    private var settings: some View {
+        Section {
+            if !isRoom, let counterpartID = details.counterpartID {
+                MatrixIDField(userID: counterpartID)
+            }
+
+            // The description, under the ID — Telegram's "bio" under "username". Nothing at all
+            // when there is none: a label over a blank is a field asking to be filled in.
+            if let topic = details.topic, !topic.isEmpty {
+                ProfileField(title: Strings.Room.about) {
+                    // People write paragraphs in a room topic, and they are worth reading.
+                    // Selectable, because a topic is where the invite link and the rules tend to live.
+                    Text(topic)
                         .textSelection(.enabled)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                } label: {
-                    Text(Strings.Profile.matrixID)
                 }
-            } footer: {
-                if blockStore?.isBlocked(counterpartID) == true {
-                    Text(Strings.Profile.blockedNotice)
+            }
+
+            Picker(selection: Binding(get: { details.alerts },
+                                      set: { choice in Task { await details.setAlerts(choice) } })) {
+                ForEach(RoomAlerts.allCases) { choice in
+                    Text(Strings.Room.Manage.alerts(choice)).tag(choice)
                 }
+            } label: {
+                Label(String(app: Strings.Room.Manage.alerts), systemImage: alertsIcon)
+            }
+            .disabled(isOffline)
+
+            // The account's block, for the person this chat is with — see `PersonBlockButton`.
+            if !isRoom, let counterpartID = details.counterpartID {
+                PersonBlockButton(userID: counterpartID, name: details.name)
+            }
+        } footer: {
+            // Said once, under everything this screen can no longer do, rather than as a grey
+            // control the reader is left to interpret. A disabled switch explains nothing on its
+            // own; a person who has not noticed the strip at the top of the screen would simply
+            // think the app had broken.
+            if isOffline {
+                Text(Strings.Room.Manage.offline)
+            } else if !isRoom, let counterpartID = details.counterpartID,
+                      blockStore?.isBlocked(counterpartID) == true {
+                Text(Strings.Profile.blockedNotice)
             }
         }
     }
@@ -412,12 +365,17 @@ struct RoomInfoView: View {
                       // which is exactly the string someone opens this screen to copy. A count of
                       // participants is not.
                       isSubtitleSelectable: details.isOneToOne,
-                      faces: details.kind == .space ? [] : details.faces)
+                      faces: details.kind == .space ? [] : details.faces,
+                      // What the padlock in the header means, in small print directly under the
+                      // name — the first thing worth knowing about a chat after who it is.
+                      note: details.privacy.explanation,
+                      noteIcon: details.privacy.iconName,
+                      noteTint: details.privacy == .protected ? .secondary : .orange)
     }
 
     /// Whether there is anything behind a pencil worth opening.
     ///
-    /// In a room the three powers are granted separately: the pencil appears if the room allows any
+    /// In a room the four powers are granted separately: the pencil appears if the room allows any
     /// one of them, and the screen it opens shows only the fields it allows.
     ///
     /// In a personal chat there is always exactly one thing, and it is never refused — what *you*
@@ -429,6 +387,7 @@ struct RoomInfoView: View {
         return details.permissions.canRename
             || details.permissions.canChangeTopic
             || details.permissions.canChangePicture
+            || details.permissions.canChangeVisibility
     }
 
     /// Whether the pencil needs the network to be worth pressing.
@@ -440,27 +399,6 @@ struct RoomInfoView: View {
     private var editingNeedsNetwork: Bool { isRoom }
 
     // MARK: - What it is for, and what it does to your phone
-
-    /// The topic: what the room is for, written by whoever runs it — and nothing at all when
-    /// there is none, because an empty section is a heading over a blank. Editing it lives behind
-    /// the pencil; this is the reading copy, and it is the same one for everybody.
-    @ViewBuilder
-    private var about: some View {
-        let topic = details.topic ?? ""
-
-        if !topic.isEmpty {
-            Section {
-                Text(topic)
-                    .font(.callout)
-                    // People write paragraphs in a room topic, and they are worth reading.
-                    // Selectable, because a topic is where the invite link and the rules
-                    // tend to live.
-                    .textSelection(.enabled)
-            } header: {
-                Text(Strings.Room.about)
-            }
-        }
-    }
 
     /// A Matrix ID in a one-to-one chat, a count of people in a room.
     ///
@@ -484,25 +422,6 @@ struct RoomInfoView: View {
         case .mentions: "bell.badge"
         case .muted: "bell.slash"
         }
-    }
-
-    /// What the padlock in the header means, said plainly. The words come from `IskraCore`, which
-    /// is where the app's vocabulary for privacy lives.
-    ///
-    /// Short on purpose. It used to be a full sentence explaining that nobody outside the chat can
-    /// read it, "not even us" — true, well meant, and a paragraph in the position on the screen
-    /// where the eye expects a status. A line like that gets read once and then becomes furniture.
-    /// The state is the point, so the state is what it says.
-    private var privacy: some View {
-        Label {
-            Text(details.privacy.explanation)
-                .font(.callout)
-                .foregroundStyle(.secondary)
-        } icon: {
-            Image(systemName: details.privacy.iconName)
-                .foregroundStyle(details.privacy == .protected ? Color.secondary : Color.orange)
-        }
-        .accessibilityElement(children: .combine)
     }
 
     // MARK: - What is in it
@@ -651,15 +570,6 @@ struct RoomInfoView: View {
 
     @ViewBuilder
     private var members: some View {
-        if isRoom, details.permissions.canInvite {
-            Button {
-                isInviting = true
-            } label: {
-                Label(String(app: Strings.Room.Manage.invite), systemImage: "person.badge.plus")
-            }
-            .disabled(isOffline)
-        }
-
         if details.isLoadingMembers && details.members.isEmpty {
             // Not an empty list: a room always has at least us in it, so "no one is here" is never
             // the truth — it only ever means we have not looked yet.

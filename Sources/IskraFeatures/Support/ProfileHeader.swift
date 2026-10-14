@@ -33,6 +33,12 @@ struct ProfileHeader: View {
     /// A group's faces, drawn as the same cluster the chat list shows. Empty for a person, and for
     /// the settings screen, where the header is the user's own.
     var faces: [RoomFace] = []
+    /// One small line under everything else — whether a chat is encrypted. Nil on the screens that
+    /// have nothing of the kind to say, which is a person's own settings.
+    var note: LocalizedStringResource?
+    var noteIcon: String?
+    /// The icon's colour: grey for the ordinary state, a warning colour for the one worth noticing.
+    var noteTint: Color = .secondary
 
     /// The picture, opened full screen — Telegram's: a tap on the portrait shows the photograph
     /// itself rather than the circle cut out of it. Only where there is a photograph; initials and
@@ -86,6 +92,22 @@ struct ProfileHeader: View {
                     } else {
                         line.textSelection(.disabled)
                     }
+                }
+
+                if let note {
+                    // An `HStack` rather than a `Label`: a label leaves the icon a column of its own
+                    // to sit in, and at this size the padlock ended up a word's width from the words.
+                    HStack(spacing: Theme.Spacing.tight) {
+                        if let noteIcon {
+                            Image(systemName: noteIcon)
+                                .foregroundStyle(noteTint)
+                        }
+                        Text(note)
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, Theme.Spacing.tight)
                 }
             }
         }

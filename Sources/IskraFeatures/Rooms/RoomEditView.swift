@@ -3,7 +3,8 @@ import PhotosUI
 import IskraCore
 import IskraDesign
 
-/// The chat's picture, its name and what it is for — on a screen that exists to change them.
+/// The chat's picture, its name, what it is for and who may walk in — on a screen that exists to
+/// change them.
 ///
 /// Reached by the pencil in the corner of `RoomInfoView`, and only ever shown to somebody the
 /// room actually lets change something: the pencil is not drawn otherwise. Each field appears on
@@ -93,10 +94,31 @@ struct RoomEditView: View {
                         .disabled(isOffline)
                 } header: {
                     Text(Strings.Room.about)
-                } footer: {
-                    if isOffline {
-                        Text(Strings.Room.Manage.offline)
+                }
+            }
+
+            // Whether anybody can find the room and walk in. A setting of the room, like its name,
+            // so it lives here with the name rather than on the screen people read.
+            if isRoom, details.permissions.canChangeVisibility {
+                Section {
+                    Toggle(isOn: Binding(get: { details.isPublic },
+                                         set: { open in Task { await details.setPublic(open) } })) {
+                        VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                            Text(Strings.Room.Manage.openToAnyone)
+                            Text(Strings.Room.Manage.openToAnyoneHelp)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
+                    .accentControl()
+                    .disabled(isOffline)
+                }
+            }
+
+            if isRoom, isOffline {
+                Section {
+                } footer: {
+                    Text(Strings.Room.Manage.offline)
                 }
             }
         }
