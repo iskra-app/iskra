@@ -67,8 +67,8 @@ struct MemberProfileView: View {
     /// visibly does nothing.
     @State private var failure: RoomCreationFailure?
 
-    /// The ID has just been copied — the tile says so with a tick.
-    @State private var isCopied = false
+    /// The QR code with this person's link in it — see `QRCodeSheet`.
+    @State private var isShowingCode = false
 
     var body: some View {
         Form {
@@ -171,6 +171,10 @@ struct MemberProfileView: View {
         .formStyle(.grouped)
         .profileScreen()
         .failureAlert($failure)
+        .sheet(isPresented: $isShowingCode) {
+            QRCodeSheet(name: member.name, subtitle: member.id, avatarURL: member.avatarURL,
+                        seed: member.id, link: .user(member.id))
+        }
         .confirmationDialog(Text(Strings.Room.Manage.blockQuestion(member.name)),
                             isPresented: $isConfirmingBlock,
                             titleVisibility: .visible) {
@@ -220,15 +224,13 @@ struct MemberProfileView: View {
                 .buttonStyle(.plain)
             }
 
-            // The ID is what people open a profile to take away with them. The destructive acts stay
-            // where Telegram keeps them, in red at the foot of the page, rather than behind a tile.
-            ProfileActionTile(title: Strings.Profile.copyID,
-                              systemImage: isCopied ? "checkmark" : "doc.on.doc",
-                              isBusy: false) {
-                Clipboard.copy(member.id)
-                withAnimation(.smooth(duration: Theme.Timing.chrome)) { isCopied = true }
+            // The ID is what people open a profile to take away with them — and across a table it is
+            // taken away by a camera, not by a clipboard. It can still be copied: the ID on the card
+            // below is selectable. The destructive acts stay where Telegram keeps them, in red at the
+            // foot of the page, rather than behind a tile.
+            ProfileActionTile(title: Strings.QR.title, systemImage: "qrcode", isBusy: false) {
+                isShowingCode = true
             }
-            .sensoryFeedback(.success, trigger: isCopied)
         }
     }
 
@@ -246,8 +248,7 @@ struct MemberProfileView: View {
     /// The person's address as a link anybody can open in any Matrix client — `matrix.to`, the
     /// protocol's own way of pointing at a person, and what Telegram's "share contact" is here.
     static func link(to userID: String) -> URL? {
-        let escaped = userID.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? userID
-        return URL(string: "https://matrix.to/#/\(escaped)")
+        MatrixLink.user(userID).url
     }
 
     private func write() async {

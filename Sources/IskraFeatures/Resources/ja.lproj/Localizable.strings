@@ -711,8 +711,24 @@
 
 /* Starting a new chat, or a new room. */
 "roomList.new.create" = "作成";
-"roomList.new.start" = "開始";
 "roomList.new.openMeansUnencrypted" = "オープンなルームは参加した人なら誰でも読めるので、暗号化されません。非公開のルームは暗号化されます。";
+"roomList.new.searchPrompt" = "ユーザーを検索";
+"roomList.new.createRoom" = "ルームを作成";
+"roomList.new.publicRooms" = "公開ルーム";
+"roomList.new.joinByAddress" = "アドレスで参加";
+"roomList.new.yourChats" = "やり取りしている人";
+"roomList.new.onServer" = "サーバー上";
+"roomList.new.writeTo" = "このアドレスに送る";
+"roomList.new.nobodyFound" = "見つかりませんでした";
+"roomList.new.searchFailed" = "サーバーが検索に応答しませんでした";
+"roomList.new.roomsPrompt" = "ルームを検索";
+"roomList.new.inviteOnly" = "招待制";
+"roomList.new.noRooms" = "ルームが見つかりませんでした";
+"roomList.new.directoryFailed" = "ディレクトリを開けませんでした。";
+"roomList.new.retry" = "もう一度";
+"roomList.new.join" = "参加";
+"roomList.new.addressPlaceholder" = "#ルーム:サーバー";
+"roomList.new.addressHelp" = "ルームのアドレスは #名前:サーバー の形です。「!」で始まるルームIDでも参加できます。";
 
 /* Swipe actions on a chat row, and their VoiceOver twins. */
 "roomList.swipe.markRead" = "既読";
@@ -980,7 +996,6 @@
 /* The round buttons under a person's portrait. */
 "profile.message" = "メッセージ";
 "profile.share" = "共有";
-"profile.copyID" = "コピー";
 /* The label beside a person's Matrix address on their profile. */
 "profile.matrixID" = "Matrix ID";
 "profile.loading" = "プロフィールを読み込んでいます…";
@@ -1204,3 +1219,16 @@
 "presence.atTime" = "%@にオンライン";
 "presence.yesterday" = "昨日オンライン";
 "presence.at" = "%@にオンライン";
+
+/* QR codes: your own, a chat's, and the scanner in New chat. */
+"qr.title" = "QRコード";
+"qr.scan" = "QRコードをスキャン";
+"qr.scanHint" = "人またはルームのQRコードにカメラを向けてください";
+"qr.notMatrix" = "Matrixのリンクではありません";
+"qr.choosePicture" = "画像を選ぶ";
+"qr.noCamera" = "カメラにアクセスできません。設定で許可するか、コードの画像を選んでください。";
+"qr.nothingFound" = "画像にQRコードがありません";
+"qr.joinRoom" = "ルームに参加";
+"qr.openRoom" = "開く";
+"qr.roomUnknown" = "サーバーはこのルームについて何も教えてくれませんでしたが、参加を試すことはできます。";
+"qr.inviteOnlyRoom" = "このルームは招待制です。";

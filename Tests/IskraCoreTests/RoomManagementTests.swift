@@ -124,4 +124,35 @@ struct RoomManagementTests {
             }
         }
     }
+
+    /// "Join by address" takes an alias or a room ID, and says so before it asks a server.
+    @Test("a room address is #alias:server or a room ID")
+    func roomAddressesAreRecognised() {
+        #expect(UserSession.isRoomAddress("#matrix:matrix.org"))
+        #expect(UserSession.isRoomAddress(" #matrix:matrix.org:8448 "))
+        #expect(UserSession.isRoomAddress("!abc:matrix.org"))
+        // Room version 12: no server in the ID at all.
+        #expect(UserSession.isRoomAddress("!31hneApxJ_1o-63DmFrpeqnkFfWppnzWso1JvH3ogLM"))
+
+        #expect(!UserSession.isRoomAddress("#matrix"))
+        #expect(!UserSession.isRoomAddress("#:matrix.org"))
+        #expect(!UserSession.isRoomAddress("matrix:matrix.org"))
+        #expect(!UserSession.isRoomAddress("@boris:matrix.org"))
+        #expect(!UserSession.isRoomAddress("#my room:matrix.org"))
+        #expect(!UserSession.isRoomAddress("!"))
+    }
+
+    @Test("a room that was not joined says why in both languages")
+    func joinFailuresAreTranslated() {
+        for failure in RoomJoinFailure.allCases {
+            for language in ["en", "ru"] {
+                var explanation = failure.explanation
+                explanation.locale = Locale(identifier: language)
+                let sentence = String(localized: explanation)
+
+                #expect(!sentence.hasPrefix("roomAction."), "\(sentence) is a key, not a sentence")
+                #expect(sentence.count > 10, "\(failure) says too little to act on")
+            }
+        }
+    }
 }

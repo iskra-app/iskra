@@ -711,8 +711,24 @@
 
 /* Starting a new chat, or a new room. */
 "roomList.new.create" = "Erstellen";
-"roomList.new.start" = "Starten";
 "roomList.new.openMeansUnencrypted" = "Einen offenen Raum kann jeder lesen, der beitritt, deshalb ist er nicht verschlüsselt. Ein privater schon.";
+"roomList.new.searchPrompt" = "Personen suchen";
+"roomList.new.createRoom" = "Raum erstellen";
+"roomList.new.publicRooms" = "Öffentliche Räume";
+"roomList.new.joinByAddress" = "Per Adresse beitreten";
+"roomList.new.yourChats" = "Ihre Gesprächspartner";
+"roomList.new.onServer" = "Auf dem Server";
+"roomList.new.writeTo" = "An diese Adresse schreiben";
+"roomList.new.nobodyFound" = "Niemand gefunden";
+"roomList.new.searchFailed" = "Der Server hat auf die Suche nicht geantwortet";
+"roomList.new.roomsPrompt" = "Räume suchen";
+"roomList.new.inviteOnly" = "Nur auf Einladung";
+"roomList.new.noRooms" = "Keine Räume gefunden";
+"roomList.new.directoryFailed" = "Das Verzeichnis hat sich nicht geöffnet.";
+"roomList.new.retry" = "Noch einmal";
+"roomList.new.join" = "Beitreten";
+"roomList.new.addressPlaceholder" = "#raum:server";
+"roomList.new.addressHelp" = "Eine Raumadresse sieht so aus: #name:server. Die ID des Raums geht auch – sie beginnt mit „!“.";
 
 /* Swipe actions on a chat row, and their VoiceOver twins. */
 "roomList.swipe.markRead" = "Gelesen";
@@ -980,7 +996,6 @@
 /* The round buttons under a person's portrait. */
 "profile.message" = "Schreiben";
 "profile.share" = "Teilen";
-"profile.copyID" = "Kopieren";
 /* The label beside a person's Matrix address on their profile. */
 "profile.matrixID" = "Matrix ID";
 "profile.loading" = "Profil wird geladen…";
@@ -1204,3 +1219,16 @@
 "presence.atTime" = "zuletzt um %@ online";
 "presence.yesterday" = "zuletzt gestern online";
 "presence.at" = "zuletzt am %@ online";
+
+/* QR codes: your own, a chat's, and the scanner in New chat. */
+"qr.title" = "QR-Code";
+"qr.scan" = "QR-Code scannen";
+"qr.scanHint" = "Richten Sie die Kamera auf den QR-Code einer Person oder eines Raums";
+"qr.notMatrix" = "Das ist kein Matrix-Link";
+"qr.choosePicture" = "Bild auswählen";
+"qr.noCamera" = "Kein Zugriff auf die Kamera. Erlauben Sie ihn in den Einstellungen – oder wählen Sie ein Bild mit dem Code.";
+"qr.nothingFound" = "Auf dem Bild ist kein QR-Code";
+"qr.joinRoom" = "Raum betreten";
+"qr.openRoom" = "Öffnen";
+"qr.roomUnknown" = "Der Server hat nichts über diesen Raum verraten, aber Sie können trotzdem versuchen beizutreten.";
+"qr.inviteOnlyRoom" = "Diesen Raum betritt man nur auf Einladung.";

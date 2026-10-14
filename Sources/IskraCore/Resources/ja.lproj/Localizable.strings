@@ -130,6 +130,8 @@
 "roomAction.roleFailed" = "役割を変更できませんでした。権限がないのかもしれません。";
 "roomAction.leaveFailed" = "チャットから退出できませんでした。もう一度お試しください。";
 "roomAction.createFailed" = "チャットを作成できませんでした。サーバーが応答しなかったのかもしれません。もう一度お試しください。";
+"roomAction.joinAddressInvalid" = "ルームのアドレスは #名前:サーバー または !id:サーバー の形です。";
+"roomAction.joinFailed" = "ルームに参加できませんでした。存在しないか、閉じられているか、サーバーが応答しなかったのかもしれません。";
 "roomAction.alertsFailed" = "このチャットの通知を変更できませんでした。もう一度お試しください。";
 
 /* The account: name, picture and encryption. */

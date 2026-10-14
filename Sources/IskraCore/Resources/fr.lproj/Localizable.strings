@@ -130,6 +130,8 @@
 "roomAction.roleFailed" = "Le rôle n’a pas changé. Vous n’en avez peut-être pas le droit.";
 "roomAction.leaveFailed" = "Impossible de quitter la discussion. Réessayez.";
 "roomAction.createFailed" = "La discussion n’a pas été créée. Le serveur n’a peut-être pas répondu : réessayez.";
+"roomAction.joinAddressInvalid" = "Une adresse de salon ressemble à #nom:serveur ou !id:serveur.";
+"roomAction.joinFailed" = "Impossible de rejoindre le salon. Il n’existe peut-être pas, il est fermé, ou le serveur n’a pas répondu.";
 "roomAction.alertsFailed" = "Les notifications de cette discussion n’ont pas changé. Réessayez.";
 
 /* The account: name, picture and encryption. */

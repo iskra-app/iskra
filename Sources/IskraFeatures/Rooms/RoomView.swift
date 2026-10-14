@@ -156,6 +156,8 @@ public struct RoomView: View {
     /// so the message rises into the place it stood instead of appearing under a bubble on its way
     /// out.
     @State private var showsTyping = false
+    /// The names the compact typing row last showed, kept for its fade — see `typingNames`.
+    @State private var lastTypingNames: [String] = []
     @State private var typingHide: Task<Void, Never>?
 
     private static let typingGrace: Duration = .milliseconds(700)
@@ -832,6 +834,9 @@ public struct RoomView: View {
             // The typing bubble — see `showsTyping`.
             .onChange(of: timeline.typing.isEmpty, initial: true) { _, isEmpty in
                 setTyping(!isEmpty)
+            }
+            .onChange(of: timeline.typing) { _, names in
+                if !names.isEmpty { lastTypingNames = names }
             }
             .onChange(of: timeline.rows.last?.id) { _, _ in
                 guard showsTyping, timeline.rows.last?.message?.isOwn == false else { return }
@@ -2161,12 +2166,24 @@ public struct RoomView: View {
     /// somewhere in the middle. Always there and sized by `showsTyping`, animated by `setTyping`.
     private var typingBubble: some View {
         ClaimedHeight(fraction: showsTyping ? 1 : 0) {
-            TypingBubble()
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, Theme.Spacing.withinRun)
-                .opacity(showsTyping ? 1 : 0)
+            Group {
+                switch messageLayout {
+                case .bubbles:
+                    TypingBubble()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, Theme.Spacing.withinRun)
+                case .compact:
+                    CompactTypingRow(names: typingNames)
+                }
+            }
+            .opacity(showsTyping ? 1 : 0)
         }
         .accessibilityHidden(!showsTyping)
+    }
+
+    /// Who the compact row names: whoever is typing now, or, while it fades out, whoever was.
+    private var typingNames: [String] {
+        timeline.typing.isEmpty ? lastTypingNames : timeline.typing
     }
 
     /// A hairline under the last message — the floor the conversation rests against.

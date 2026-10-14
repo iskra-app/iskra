@@ -130,6 +130,8 @@
 "roomAction.roleFailed" = "Die Rolle hat sich nicht geändert. Vielleicht haben Sie dazu keine Berechtigung.";
 "roomAction.leaveFailed" = "Sie konnten den Chat nicht verlassen. Versuchen Sie es noch einmal.";
 "roomAction.createFailed" = "Der Chat wurde nicht erstellt. Vielleicht hat der Server nicht geantwortet – versuchen Sie es noch einmal.";
+"roomAction.joinAddressInvalid" = "Eine Raumadresse sieht so aus: #name:server oder !id:server.";
+"roomAction.joinFailed" = "Dem Raum konnte nicht beigetreten werden. Vielleicht gibt es ihn nicht, er ist geschlossen oder der Server hat nicht geantwortet.";
 "roomAction.alertsFailed" = "Die Mitteilungen dieses Chats haben sich nicht geändert. Versuchen Sie es noch einmal.";
 
 /* The account: name, picture and encryption. */

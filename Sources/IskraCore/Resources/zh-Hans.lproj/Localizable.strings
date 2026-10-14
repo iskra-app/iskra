@@ -130,6 +130,8 @@
 "roomAction.roleFailed" = "角色没有更改。您可能没有这个权限。";
 "roomAction.leaveFailed" = "没能退出聊天。请再试一次。";
 "roomAction.createFailed" = "聊天没有创建成功。可能是服务器没有响应，请再试一次。";
+"roomAction.joinAddressInvalid" = "房间地址的格式是 #名称:服务器 或 !id:服务器。";
+"roomAction.joinFailed" = "没能加入房间。它可能不存在、不对外开放，或者服务器没有响应。";
 "roomAction.alertsFailed" = "此聊天的通知没有更改。请再试一次。";
 
 /* The account: name, picture and encryption. */

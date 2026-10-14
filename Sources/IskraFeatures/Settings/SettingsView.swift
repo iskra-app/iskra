@@ -46,6 +46,8 @@ struct SettingsView: View {
 
     /// Set when the sign-out starts, and never cleared — see the button.
     @State private var isSigningOut = false
+    /// Your own QR code — see `QRCodeSheet`.
+    @State private var isShowingCode = false
 
     /// Another account, swiped to be signed out of and waiting for the answer to "are you sure".
     @State private var accountToSignOut: AccountRecord?
@@ -171,6 +173,26 @@ struct SettingsView: View {
             }
             .profileHeaderRow()
 
+            // The two ways of handing yourself to somebody, under your name — the same round tiles a
+            // person's page has under theirs, so your own page and theirs are one design.
+            Section {
+                NavigationGlassGroup(spacing: Theme.Spacing.close) {
+                    HStack(spacing: Theme.Spacing.close) {
+                        ShareLink(item: MatrixLink.user(session.userID).url) {
+                            ProfileActionTileLabel(title: Strings.Profile.share, systemImage: "square.and.arrow.up")
+                        }
+                        .buttonStyle(.plain)
+
+                        ProfileActionTile(title: Strings.QR.title, systemImage: "qrcode", isBusy: false) {
+                            isShowingCode = true
+                        }
+                    }
+                }
+                .padding(.vertical, Theme.Spacing.close)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets())
+            }
+
             if let switcher, switcher.isAvailable {
                 accounts(switcher)
             }
@@ -263,6 +285,11 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .sheet(isPresented: $isShowingCode) {
+            QRCodeSheet(name: session.displayName, subtitle: session.userID,
+                        avatarURL: session.avatarURL, seed: session.userID,
+                        link: .user(session.userID))
+        }
         .tint(accent.color)
         .profileScreen()
         // Value-based, because a `NavigationLink` with a destination *closure* builds that
