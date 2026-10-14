@@ -121,6 +121,12 @@ public struct RoomView: View {
     /// room. See `Theme.Timing.roomWaitsToBeSeen` for the ceiling on the wait.
     @State private var isRevealed = false
 
+    /// The wait for the room has gone on long enough to be seen — a spinner goes up in the middle
+    /// of it. Not at once: almost every room is out of the SDK's store in a frame, and a spinner
+    /// that flashes for that frame is the app saying "wait" about nothing. But a room fetched over
+    /// a slow network used to be a black screen for seconds, which reads as the app having hung.
+    @State private var isWaitingVisibly = false
+
     /// What "arriving" means here, and why it is not "new".
     ///
     /// A time limit was not enough, and the reason is worth writing down: a conversation does
@@ -779,7 +785,9 @@ public struct RoomView: View {
             // network. A conversation half-fetched is worth more than an empty screen that goes
             // on being empty, so past this point the room is shown with whatever it has.
             .task {
-                try? await Task.sleep(for: Theme.Timing.roomWaitsToBeSeen)
+                try? await Task.sleep(for: Theme.Timing.roomWaitIsShown)
+                if !isRevealed { withAnimation(.smooth) { isWaitingVisibly = true } }
+                try? await Task.sleep(for: Theme.Timing.roomWaitsToBeSeen - Theme.Timing.roomWaitIsShown)
                 isRevealed = true
             }
             .onChange(of: isReady, initial: true) { _, ready in
@@ -1521,6 +1529,11 @@ public struct RoomView: View {
                     Task { await timeline.retryLoading() }
                 }
                 .buttonStyle(.primaryAction)
+            }
+        } else if !isRevealed {
+            if isWaitingVisibly {
+                ProgressView()
+                    .transition(.opacity)
             }
         } else if !timeline.hasLoaded {
             EmptyView()

@@ -290,7 +290,14 @@ public enum Theme {
         /// done — see `RoomView.isRevealed`. That is a promise about somebody else's server, so
         /// there is a floor under it: past this, the room shows what it has, because a partly
         /// fetched conversation beats an empty screen that goes on being empty.
-        public static let roomWaitsToBeSeen: Duration = .milliseconds(2500)
+        ///
+        /// It was two and a half seconds, which on a dark appearance is two and a half seconds of a
+        /// black screen; it is shorter now, and the wait shows a spinner after `roomWaitIsShown`.
+        public static let roomWaitsToBeSeen: Duration = .milliseconds(1500)
+
+        /// How long a room may stay blank before the wait for it is shown — see
+        /// `RoomView.isWaitingVisibly`.
+        public static let roomWaitIsShown: Duration = .milliseconds(400)
 
         /// A video note growing as it starts, and settling back when it ends.
         ///
