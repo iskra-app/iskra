@@ -132,6 +132,9 @@ struct MessageRow: View {
         // and the row's height follows them. Scoped to the set of emoji and nothing else, so a
         // tick or an edit landing in the same pass is not caught by it.
         .animation(.smooth(duration: Theme.Timing.reaction), value: message.reactions.map(\.key))
+        // And the row's height with them, which the line above cannot do: an implicit animation
+        // moves what is inside the row, and the list around it still jumped by a line of pills.
+        .animatesHeight(when: message.reactions.map(\.key))
         // Nothing else about a message is animated *from here*, and that is the rule rather than
         // an omission. A message arrives once; after that it only ever *changes* — an edit
         // rewrites it, a redaction replaces it with the grey line. Those are facts becoming true,
@@ -1196,5 +1199,39 @@ extension AnyTransition {
     /// and fades, while the row's height eases open or shut behind it — see `MessageRow.body`.
     static var reactionsAppear: AnyTransition {
         .scale(scale: 0.6, anchor: .top).combined(with: .opacity)
+    }
+}
+
+/// Animates a view's height when `trigger` changes, and only then — so a reaction coming or going
+/// opens or closes the row smoothly and pushes its neighbours along with it, while a photo landing
+/// or an edit changes the height at once, as before.
+///
+/// The natural height is measured inside, unconstrained, and the frame is set outside it, so the
+/// measurement never depends on the frame it sets.
+private struct AnimatesHeight<Trigger: Equatable>: ViewModifier {
+    let trigger: Trigger
+
+    @State private var height: CGFloat?
+    @State private var measuredFor: Trigger?
+
+    func body(content: Content) -> some View {
+        content
+            .fixedSize(horizontal: false, vertical: true)
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { natural in
+                if let measuredFor, measuredFor != trigger, height != nil {
+                    withAnimation(.smooth(duration: Theme.Timing.reaction)) { height = natural }
+                } else {
+                    height = natural
+                }
+                measuredFor = trigger
+            }
+            .frame(height: height, alignment: .top)
+    }
+}
+
+extension View {
+    /// See `AnimatesHeight`.
+    func animatesHeight<Trigger: Equatable>(when trigger: Trigger) -> some View {
+        modifier(AnimatesHeight(trigger: trigger))
     }
 }
