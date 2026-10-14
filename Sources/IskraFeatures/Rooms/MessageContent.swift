@@ -135,9 +135,8 @@ struct MessageContent: View {
         // one. These two were bare, and the quote above an answer to a file or a piece of
         // music was silently dropped.
         case let .audio(attachment):
-            quoted {
-                FileBubble(attachment: attachment, systemImage: "waveform", style: style)
-            }
+            // Played in place, like a voice message — not handed to the system as a file.
+            bubble { AudioFileView(attachment: attachment) }
 
         case let .file(attachment):
             quoted {
