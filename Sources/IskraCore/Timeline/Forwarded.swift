@@ -77,21 +77,15 @@ enum Forwarded {
             original["formatted_body"] = html
         }
 
-        // Who and when, never *where*: no `event_id`, no `room_id`. A marked forward goes only into
-        // a room that is not encrypted, and the message may well come out of one that is — an event
-        // ID from a private conversation, written where the server can read it, says that the
-        // conversation exists and points into it. Both MSCs make them optional, and outside the
-        // room they came from they open nothing anyway.
-        var forwarded: [String: Any]
-        if let origin = message.forwardedFrom {
-            forwarded = [:]
-            if let sender = origin.senderID { forwarded["sender"] = sender }
-            if let name = origin.senderName { forwarded["displayname"] = name }
-            if let date = origin.timestamp { forwarded["origin_server_ts"] = Int(date.timeIntervalSince1970 * 1000) }
-        } else {
-            forwarded = ["sender": message.senderID,
-                         "displayname": message.senderName,
-                         "origin_server_ts": Int(message.timestamp.timeIntervalSince1970 * 1000)]
+        // Only *that* it is a forward, and when it was first said — never who said it or where.
+        // A marked forward goes only into a room that is not encrypted, and the message may well
+        // come out of one that is: its author's name and Matrix ID, or an event ID from a private
+        // conversation, written where the server can read them, say who was talking and that the
+        // conversation exists. Every field but `content` is optional in both MSCs, and a reader
+        // with no `sender` draws the plain "Forwarded" — which is what it says here.
+        var forwarded: [String: Any] = [:]
+        if let date = message.forwardedFrom?.timestamp ?? (message.forwardedFrom == nil ? message.timestamp : nil) {
+            forwarded["origin_server_ts"] = Int(date.timeIntervalSince1970 * 1000)
         }
         forwarded["content"] = original
 
