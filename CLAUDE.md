@@ -377,11 +377,13 @@ avatar. Switching is `UserSession.close()` + `setActiveAccount` + the root's ord
 words live in `Resources/<lang>.lproj/Localizable.strings`, **which is the file to edit**. English
 and Russian are both complete; neither is a fallback.
 
-German, Spanish, French, Japanese and Chinese (`de`, `es`, `fr`, `ja`, `zh-Hans`) are **beta**: a few
-dozen of the most visible strings are translated, and every other line of their `.strings` and
-`.stringsdict` is the English one, copied in. That copy is load-bearing — a key *missing* from a
-`.lproj` does not fall back to English, it is shown as the key. A string added to `en` has to be
-added to the beta files too (in English, until somebody translates it).
+German, Spanish, French, Japanese and Chinese (`de`, `es`, `fr`, `ja`, `zh-Hans`) are complete too —
+every string, every plural, and Siri's phrases in `Apps/Shared/<lang>.lproj`. They are translated
+from the Russian as much as from the English, so they keep its plain voice: `du`/`tú`/`你` and
+`vous` in French, as the first translated lines set it. A key *missing* from a `.lproj` does not
+fall back to English, it is shown as the key, so a string added to `en` has to be added to all
+seven — in English as a placeholder if there is no translation yet, which
+`otherLanguagesAreComplete` will not notice and a reader will.
 
 **Write the Russian first, then the English.** Not the other way round, however natural that feels.
 A sentence composed in English and then translated arrives in Russian with its tone stripped out:

@@ -246,28 +246,67 @@ struct LocalizationTests {
         }
     }
 
-    /// German, Spanish, French, Japanese and Chinese are in beta: a few dozen of the most visible
-    /// strings, and English for the rest. What has to hold is the second half — a string nobody
-    /// has translated yet reads in English, never as its key. That English is *written into* each
-    /// beta `.lproj`: a key missing from the file does not fall back to `en`, it shows as itself.
-    @Test("beta languages translate what they have and fall back to English for the rest")
-    func betaLanguagesFallBackToEnglish() {
-        let translated: [String: String] = [
-            "de": "Einstellungen", "es": "Ajustes", "fr": "Réglages", "ja": "設定", "zh-Hans": "设置"
+    /// German, Spanish, French, Japanese and Chinese are complete, the same as English and
+    /// Russian. Two things hold them there: every one of them knows exactly the keys English
+    /// knows — a key missing from a `.lproj` does not fall back to English, it shows as itself —
+    /// and the words are actually theirs, which is checked on a string that used to be left in
+    /// English (`Strings.Room.moderator`) and on one from the model layer.
+    @Test("German, Spanish, French, Japanese and Chinese are complete")
+    func otherLanguagesAreComplete() throws {
+        func keys(_ language: String) throws -> Set<String> {
+            let url = try #require(Strings.resourceBundle.url(forResource: "Localizable",
+                                                              withExtension: "strings",
+                                                              subdirectory: nil,
+                                                              localization: language),
+                                   "no Localizable.strings for \(language)")
+            let table = try #require(NSDictionary(contentsOf: url) as? [String: String])
+            return Set(table.keys)
+        }
+        let english = try keys("en")
+
+        let expected: [String: (settings: String, moderator: String, encrypted: String)] = [
+            "de": ("Einstellungen", "Moderator", "verschlüsselt"),
+            "es": ("Ajustes", "Moderador", "cifrado"),
+            "fr": ("Réglages", "Modérateur", "chiffrée"),
+            "ja": ("設定", "モデレーター", "暗号化"),
+            "zh-Hans": ("设置", "协管员", "加密")
         ]
-        for (language, settings) in translated {
+        for (language, words) in expected {
+            let known = try keys(language)
+            #expect(english.subtracting(known).isEmpty, "missing from \(language): \(english.subtracting(known).sorted())")
+            #expect(known.subtracting(english).isEmpty, "not in English: \(known.subtracting(english).sorted())")
+
             var title = Strings.Settings.title
             title.locale = Locale(identifier: language)
-            #expect(String(localized: title) == settings)
+            #expect(String(localized: title) == words.settings)
 
-            var untranslated = Strings.Room.administrator
-            untranslated.locale = Locale(identifier: language)
-            #expect(String(localized: untranslated) == "Administrator", "\(language)")
+            var moderator = Strings.Room.moderator
+            moderator.locale = Locale(identifier: language)
+            #expect(String(localized: moderator) == words.moderator, "\(language)")
 
-            var share = CoreStrings.Share.title
-            share.locale = Locale(identifier: language)
-            #expect(!String(localized: share).hasPrefix("share."), "\(language)")
+            var protected = CoreStrings.Privacy.protected
+            protected.locale = Locale(identifier: language)
+            #expect(String(localized: protected).contains(words.encrypted), "\(language)")
         }
+    }
+
+    /// The plural tables of the other five, through the one string with two arguments — the
+    /// positional specifiers are what breaks silently, and Japanese and Chinese have only
+    /// `other`, so a missing `one` must not matter to them.
+    @Test("the other languages count people")
+    func otherLanguagesCount() {
+        func reaction(_ count: Int, _ language: String) -> String {
+            var resource = Strings.Message.Menu.reaction("👍", count)
+            resource.locale = Locale(identifier: language)
+            return String(localized: resource)
+        }
+
+        #expect(reaction(1, "de") == "👍, 1 Person")
+        #expect(reaction(3, "de") == "👍, 3 Personen")
+        #expect(reaction(1, "fr") == "👍, 1 personne")
+        #expect(reaction(3, "es") == "👍, 3 personas")
+        #expect(reaction(1, "ja") == "👍, 1 人")
+        #expect(reaction(5, "zh-Hans") == "👍, 5 人")
     }
 
     @Test("core strings resolve in English and in Russian")

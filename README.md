@@ -65,7 +65,8 @@ No user-facing string appears in a view. Every one is named in a `Strings.swift`
 `Sources/IskraCore/Support/Strings.swift` for what the model layer produces), and the
 words themselves live in `Resources/<lang>.lproj/Localizable.strings`. **Those `.strings`
 files are the ones to edit.** English and Russian are both complete; neither is a
-fallback for the other.
+fallback for the other. German, Spanish, French, Japanese and Chinese are complete as
+well.
 
 Two things here are easy to get wrong and are worth stating:
 

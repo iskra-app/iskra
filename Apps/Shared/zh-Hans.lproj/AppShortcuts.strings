@@ -1,0 +1,4 @@
+/* What Siri listens for. Every phrase has to carry the app's name. */
+
+"Open a chat in ${applicationName}" = "在${applicationName}中打开聊天";
+"Send a message with ${applicationName}" = "用${applicationName}发消息";

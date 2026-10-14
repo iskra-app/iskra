@@ -5,17 +5,15 @@
 	<key>roomEvent.others</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
-		<string>%1$@ and %2$#@count@</string>
+		<string>%1$@ と他 %2$#@count@</string>
 		<key>count</key>
 		<dict>
 			<key>NSStringFormatSpecTypeKey</key>
 			<string>NSStringPluralRuleType</string>
 			<key>NSStringFormatValueTypeKey</key>
 			<string>lld</string>
-			<key>one</key>
-			<string>%lld other</string>
 			<key>other</key>
-			<string>%lld others</string>
+			<string>%lld 人</string>
 		</dict>
 	</dict>
 </dict>
