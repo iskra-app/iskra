@@ -711,8 +711,24 @@
 
 /* Starting a new chat, or a new room. */
 "roomList.new.create" = "Crear";
-"roomList.new.start" = "Empezar";
 "roomList.new.openMeansUnencrypted" = "Cualquiera que entre en una sala abierta puede leerla, así que no está cifrada. Una privada sí.";
+"roomList.new.searchPrompt" = "Buscar personas";
+"roomList.new.createRoom" = "Crear una sala";
+"roomList.new.publicRooms" = "Salas públicas";
+"roomList.new.joinByAddress" = "Unirse por dirección";
+"roomList.new.yourChats" = "Personas con las que habla";
+"roomList.new.onServer" = "En el servidor";
+"roomList.new.writeTo" = "Escribir a esta dirección";
+"roomList.new.nobodyFound" = "No se ha encontrado a nadie";
+"roomList.new.searchFailed" = "El servidor no ha respondido a la búsqueda";
+"roomList.new.roomsPrompt" = "Buscar salas";
+"roomList.new.inviteOnly" = "Solo por invitación";
+"roomList.new.noRooms" = "No se han encontrado salas";
+"roomList.new.directoryFailed" = "El directorio no se ha abierto.";
+"roomList.new.retry" = "Otra vez";
+"roomList.new.join" = "Entrar";
+"roomList.new.addressPlaceholder" = "#sala:servidor";
+"roomList.new.addressHelp" = "La dirección de una sala tiene la forma #nombre:servidor. También vale su ID, que empieza por «!».";
 
 /* Swipe actions on a chat row, and their VoiceOver twins. */
 "roomList.swipe.markRead" = "Leído";
@@ -980,7 +996,6 @@
 /* The round buttons under a person's portrait. */
 "profile.message" = "Escribir";
 "profile.share" = "Compartir";
-"profile.copyID" = "Copiar";
 /* The label beside a person's Matrix address on their profile. */
 "profile.matrixID" = "Matrix ID";
 "profile.loading" = "Cargando el perfil…";
@@ -1204,3 +1219,16 @@
 "presence.atTime" = "últ. vez a las %@";
 "presence.yesterday" = "últ. vez ayer";
 "presence.at" = "últ. vez el %@";
+
+/* QR codes: your own, a chat's, and the scanner in New chat. */
+"qr.title" = "Código QR";
+"qr.scan" = "Escanear código QR";
+"qr.scanHint" = "Apunte la cámara al código QR de una persona o de una sala";
+"qr.notMatrix" = "Eso no es un enlace de Matrix";
+"qr.choosePicture" = "Elegir una imagen";
+"qr.noCamera" = "No hay acceso a la cámara. Permítalo en Ajustes, o elija una imagen con el código.";
+"qr.nothingFound" = "En la imagen no hay ningún código QR";
+"qr.joinRoom" = "Entrar en la sala";
+"qr.openRoom" = "Abrir";
+"qr.roomUnknown" = "El servidor no ha dicho nada de esta sala, pero puede intentar entrar igualmente.";
+"qr.inviteOnlyRoom" = "A esta sala solo se entra por invitación.";

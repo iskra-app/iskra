@@ -220,3 +220,34 @@ struct CompactMessageRow: View {
         return max(Theme.Size.videoNote, wanted)
     }
 }
+
+/// Somebody writing, in the plain column: the dots where a face would be, and who it is beside them
+/// in the same small grey the names over a run are set in.
+///
+/// Not the bubble. The compact timeline has no bubbles, and one appearing at its foot would be
+/// the only shape of its kind in the whole column — a piece of the other layout left behind. And
+/// it names people, even in a chat with one other person, for the reason `CompactMessageRow`
+/// always names the sender: nothing else in this column says who.
+struct CompactTypingRow: View {
+    let names: [String]
+
+    @ScaledSize(Theme.Size.avatarSmall) private var avatarSize
+
+    var body: some View {
+        HStack(alignment: .center, spacing: Theme.Spacing.close) {
+            TypingDots(dot: Theme.Spacing.tight, spacing: Theme.Spacing.tight)
+                .frame(width: avatarSize)
+
+            // The last names that were typing, held while the row fades — an empty sentence for
+            // the length of the fade would be worse than a slightly stale one.
+            Text(names.isEmpty ? "" : String(app: Strings.Room.typingBy(names.formatted(.list(type: .and)))))
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.top, Theme.Spacing.betweenSenders)
+        .accessibilityHidden(true)
+    }
+}

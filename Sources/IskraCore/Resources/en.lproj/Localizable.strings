@@ -130,6 +130,8 @@
 "roomAction.roleFailed" = "The role didn’t change. You may not be allowed to.";
 "roomAction.leaveFailed" = "You couldn’t leave the chat. Try again.";
 "roomAction.createFailed" = "The chat wasn’t created. The server may not have answered — try again.";
+"roomAction.joinAddressInvalid" = "A room address looks like #name:server or !id:server.";
+"roomAction.joinFailed" = "Couldn’t join the room. It may not exist, may be closed, or the server didn’t answer.";
 "roomAction.alertsFailed" = "This chat’s notifications didn’t change. Try again.";
 
 /* The account: name, picture and encryption. */

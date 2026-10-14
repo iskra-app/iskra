@@ -84,7 +84,7 @@ public struct RoomListView: View {
     @State private var isFixingRecovery = false
 
     /// Which of the two things the "+" was pressed for, and nil when it was not.
-    @State private var creating: NewConversationView.Kind?
+    @State private var isStartingChat = false
 
     public init(session: UserSession,
                 selectedRoomID: Binding<String?>,
@@ -237,6 +237,19 @@ public struct RoomListView: View {
                             }
                         },
                         pushed: isSidebar ? nil : $archivedRoomID)
+            #if os(macOS)
+            // Escape puts the archive away, as it closes anything else on a Mac. A key equivalent,
+            // like the conversation's own (`RoomView`), and switched off while a conversation is
+            // open beside it: then the first Escape closes the chat and the second the archive,
+            // rather than the two shortcuts fighting over one key.
+            .background {
+                Button("") { isShowingArchive = false }
+                    .keyboardShortcut(.cancelAction)
+                    .disabled(selectedRoomID != nil)
+                    .opacity(0)
+                    .accessibilityHidden(true)
+            }
+            #endif
         }
         .navigationDestination(isPresented: $isShowingSettings) {
             // In a sidebar the system pushes without giving the pushed screen a way back,
@@ -253,12 +266,13 @@ public struct RoomListView: View {
         // A sheet, not a push: creating a chat is a question with a Cancel, and the answer
         // to it replaces what is *behind* this column — so it is a thing you put down, not
         // a place you go back from.
-        .sheet(item: $creating) { kind in
-            NewConversationView(kind: kind, session: session) { roomID in
-                // Openable already: `createRoom` does not come back until the SDK has the
-                // room, so selecting it here does not race the sync that will put it in
-                // the list a moment later. See `UserSession.timeline(forRoomID:)`.
+        .sheet(isPresented: $isStartingChat) {
+            NewChatView(session: session) { roomID in
+                // Openable already: creating and joining both wait for the SDK to have the
+                // room, so selecting it here does not race the sync that will put it in the
+                // list a moment later. See `UserSession.timeline(forRoomID:)`.
                 selectedRoomID = roomID
+                isStartingChat = false
             }
         }
         .onChange(of: searchText) { _, query in
@@ -293,31 +307,18 @@ public struct RoomListView: View {
 
     // MARK: - Chrome
 
-    /// The "+": top-left on iPhone, beside the gear on iPad and Mac.
+    /// The "+": top-left on iPhone, beside the gear on iPad and Mac. Opens "New chat".
     private var newConversationMenu: some View {
-        Menu {
-            Button {
-                creating = .directChat
-            } label: {
-                Label(Strings.RoomList.newChat, systemImage: "person")
-            }
-
-            Button {
-                creating = .room
-            } label: {
-                Label(Strings.RoomList.newRoom, systemImage: "person.3")
-            }
+        Button {
+            isStartingChat = true
         } label: {
             Image(systemName: "plus")
                 .font(.body.weight(.medium))
         }
-        .menuIndicator(.hidden)
         .accessibilityLabel(Text(Strings.RoomList.newConversation))
-        // Making a room is a conversation with the server, and offline there is nobody to have it
-        // with: `client.createRoom` is a plain network call with no queue behind it. Left enabled, it
-        // would take somebody through the whole New Chat screen — a name, a topic, a person to invite
-        // — and refuse at the last press. The button that cannot work says so before it is pressed.
-        .disabled(isOffline)
+        // Not disabled offline any more, though making a room still needs the server: the screen
+        // behind it is also the list of everybody you already write to, and opening one of those
+        // conversations needs nothing but the local store.
     }
 
     /// The user's own face, top right — the iPhone's way into settings, and the twin of the
@@ -438,7 +439,16 @@ public struct RoomListView: View {
         let pinned = chats.filter(\.isPinned)
         let unpinned = chats.filter { !$0.isPinned }
 
-        // First, because it is a question waiting for an answer rather than a place to read.
+        // At the top, where the plain list and Telegram both keep it. It used to sit at the
+        // bottom here, on the theory that a Mac sidebar files the shelf you rarely open under
+        // everything you do — and under a few hundred chats that put it where nobody would ever
+        // scroll to find it.
+        if !session.roomList.archivedRooms.isEmpty {
+            Section { archiveEntry.sidebarRowInsets() }
+        }
+
+        // Then invitations, because they are a question waiting for an answer rather than a place
+        // to read.
         if !invitations.isEmpty {
             section(invitations, titled: Strings.RoomList.Sidebar.invitations)
         }
@@ -460,12 +470,6 @@ public struct RoomListView: View {
         let isAlone = invitations.isEmpty && spaces.isEmpty && pinned.isEmpty
         section(unpinned, titled: isAlone ? nil : Strings.RoomList.Sidebar.chats)
 
-        // Last rather than first. In the plain list the archive is a quiet row at the top, where
-        // Telegram keeps it; a Mac sidebar puts the shelf you rarely open at the bottom, under
-        // everything you do.
-        if !session.roomList.archivedRooms.isEmpty {
-            Section { archiveEntry.sidebarRowInsets() }
-        }
     }
 
     /// One heading and the conversations under it — or, with no title, the conversations alone.

@@ -259,6 +259,13 @@ struct MessageContent: View {
                     withAnimation(.smooth(duration: Theme.Timing.reaction)) { _ = revealedSpoilers.insert(number) }
                     return .handled
                 }
+                // A link to a person or a room is not a page that could be pretending to be another:
+                // it opens inside the app, on a page that shows who or what it is, and nothing
+                // happens until a button there is pressed. Asking first would be asking twice.
+                if IskraRootView.matrixLink(in: url) != nil {
+                    openURL(url)
+                    return .handled
+                }
                 linkToConfirm = url
                 return .handled
             })

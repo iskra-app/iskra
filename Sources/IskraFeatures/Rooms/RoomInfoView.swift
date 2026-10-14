@@ -97,6 +97,8 @@ struct RoomInfoView: View {
                 person
             }
 
+            publicRoomTiles
+
             about
 
             // What the padlock means, directly under the name. It used to sit five sections down,
@@ -181,6 +183,16 @@ struct RoomInfoView: View {
         .formStyle(.grouped)
         .profileScreen()
         .task { await details.load() }
+        .sheet(isPresented: $isShowingCode) {
+            if let link {
+                QRCodeSheet(name: details.name,
+                            subtitle: details.counterpartID ?? details.canonicalAlias ?? details.roomID,
+                            avatarURL: details.avatarURL,
+                            seed: details.kind == .space ? nil : details.avatarSeed,
+                            shape: details.kind == .space ? .roundedSquare : .circle,
+                            link: link)
+            }
+        }
         .toolbar {
             if canEdit {
                 ToolbarItem(placement: .primaryAction) {
@@ -272,8 +284,48 @@ struct RoomInfoView: View {
 
     // MARK: - The person, in a personal chat
 
-    /// The ID has just been copied — the tile says so with a tick.
-    @State private var isCopied = false
+    /// The QR code for this person, or for this room when it is public — see `QRCodeSheet`.
+    @State private var isShowingCode = false
+
+    /// What the QR code and "Share" point at: the person in a personal chat; a public room by its
+    /// address, or by its ID and the server that knows it when it has none. A private room has no
+    /// link worth handing out — anybody scanning it would be turned away at the door.
+    private var link: MatrixLink? {
+        if !isRoom {
+            return details.counterpartID.map(MatrixLink.user)
+        }
+        guard details.isPublic else { return nil }
+        if let alias = details.canonicalAlias {
+            return .room(alias, via: [])
+        }
+        let server = details.roomID.split(separator: ":", maxSplits: 1).dropFirst().first.map(String.init)
+        return .room(details.roomID, via: server.map { [$0] } ?? [])
+    }
+
+    /// A public room's two tiles: share it, and show its code. The same circles a person's page has,
+    /// because a room you can hand to somebody is, for that purpose, the same kind of thing.
+    @ViewBuilder
+    private var publicRoomTiles: some View {
+        if isRoom, let link {
+            Section {
+                NavigationGlassGroup(spacing: Theme.Spacing.close) {
+                    HStack(spacing: Theme.Spacing.close) {
+                        ShareLink(item: link.url) {
+                            ProfileActionTileLabel(title: Strings.Profile.share, systemImage: "square.and.arrow.up")
+                        }
+                        .buttonStyle(.plain)
+
+                        ProfileActionTile(title: Strings.QR.title, systemImage: "qrcode", isBusy: false) {
+                            isShowingCode = true
+                        }
+                    }
+                }
+                .padding(.vertical, Theme.Spacing.close)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets())
+            }
+        }
+    }
 
     /// Telegram's tiles and card under a person's portrait, for the person a personal chat is with.
     /// The same pieces `MemberProfileView` is made of — `ProfileActionTile` and the Matrix ID card —
@@ -305,14 +357,12 @@ struct RoomInfoView: View {
                         .buttonStyle(.plain)
                     }
 
-                    if let counterpartID = details.counterpartID {
-                        ProfileActionTile(title: Strings.Profile.copyID,
-                                          systemImage: isCopied ? "checkmark" : "doc.on.doc",
-                                          isBusy: false) {
-                            Clipboard.copy(counterpartID)
-                            withAnimation(.smooth(duration: Theme.Timing.chrome)) { isCopied = true }
+                    // A code to point a camera at, where a clipboard used to be — see `MemberProfileView`,
+                    // whose row this is.
+                    if details.counterpartID != nil {
+                        ProfileActionTile(title: Strings.QR.title, systemImage: "qrcode", isBusy: false) {
+                            isShowingCode = true
                         }
-                        .sensoryFeedback(.success, trigger: isCopied)
                     }
                 }
             }

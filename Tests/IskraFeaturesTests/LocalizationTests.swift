@@ -120,7 +120,10 @@ struct LocalizationTests {
         // to survive the trip through the format string in both languages.
         (Strings.Room.Manage.blockQuestion("Аня"), en: "Ban Аня from this chat?", ru: "Заблокировать Аня в этом чате?"),
         (Strings.RoomList.New.create, en: "Create", ru: "Создать"),
-        (Strings.RoomList.New.start, en: "Start", ru: "Начать"),
+        (Strings.RoomList.New.searchPrompt, en: "Search people", ru: "Поиск по пользователям"),
+        (Strings.RoomList.New.createRoom, en: "Create a room", ru: "Создать комнату"),
+        (Strings.RoomList.New.publicRooms, en: "Public rooms", ru: "Публичные комнаты"),
+        (Strings.RoomList.New.joinByAddress, en: "Join by address", ru: "Присоединиться по адресу"),
         (Strings.Room.Manage.alerts, en: "Notifications", ru: "Уведомления"),
         (Strings.Room.Manage.alerts(.muted), en: "Off", ru: "Выключены"),
         (Strings.Room.Manage.alerts(.mentions), en: "Mentions only", ru: "Только упоминания"),

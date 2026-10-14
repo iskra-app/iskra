@@ -711,8 +711,24 @@
 
 /* Starting a new chat, or a new room. */
 "roomList.new.create" = "创建";
-"roomList.new.start" = "开始";
 "roomList.new.openMeansUnencrypted" = "公开房间任何加入的人都能读，所以不加密。私密房间会加密。";
+"roomList.new.searchPrompt" = "搜索用户";
+"roomList.new.createRoom" = "创建房间";
+"roomList.new.publicRooms" = "公开房间";
+"roomList.new.joinByAddress" = "通过地址加入";
+"roomList.new.yourChats" = "您的联系人";
+"roomList.new.onServer" = "服务器上";
+"roomList.new.writeTo" = "给这个地址发消息";
+"roomList.new.nobodyFound" = "没有找到任何人";
+"roomList.new.searchFailed" = "服务器没有响应搜索";
+"roomList.new.roomsPrompt" = "搜索房间";
+"roomList.new.inviteOnly" = "仅限邀请";
+"roomList.new.noRooms" = "没有找到房间";
+"roomList.new.directoryFailed" = "目录没能打开。";
+"roomList.new.retry" = "再试一次";
+"roomList.new.join" = "加入";
+"roomList.new.addressPlaceholder" = "#房间:服务器";
+"roomList.new.addressHelp" = "房间地址的格式是 #名称:服务器。也可以用房间 ID——它以“!”开头。";
 
 /* Swipe actions on a chat row, and their VoiceOver twins. */
 "roomList.swipe.markRead" = "已读";
@@ -980,7 +996,6 @@
 /* The round buttons under a person's portrait. */
 "profile.message" = "发消息";
 "profile.share" = "分享";
-"profile.copyID" = "拷贝";
 /* The label beside a person's Matrix address on their profile. */
 "profile.matrixID" = "Matrix ID";
 "profile.loading" = "正在加载个人资料…";
@@ -1204,3 +1219,16 @@
 "presence.atTime" = "%@ 在线";
 "presence.yesterday" = "昨天在线";
 "presence.at" = "%@ 在线";
+
+/* QR codes: your own, a chat's, and the scanner in New chat. */
+"qr.title" = "二维码";
+"qr.scan" = "扫描二维码";
+"qr.scanHint" = "将相机对准某人或某个房间的二维码";
+"qr.notMatrix" = "这不是 Matrix 链接";
+"qr.choosePicture" = "选择图片";
+"qr.noCamera" = "无法访问相机。请在“设置”中允许，或者选择一张带有二维码的图片。";
+"qr.nothingFound" = "图片里没有二维码";
+"qr.joinRoom" = "加入房间";
+"qr.openRoom" = "打开";
+"qr.roomUnknown" = "服务器没有提供这个房间的信息，但您仍然可以尝试加入。";
+"qr.inviteOnlyRoom" = "这个房间仅限邀请加入。";

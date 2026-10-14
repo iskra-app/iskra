@@ -711,8 +711,24 @@
 
 /* Starting a new chat, or a new room. */
 "roomList.new.create" = "Create";
-"roomList.new.start" = "Start";
 "roomList.new.openMeansUnencrypted" = "Anyone who joins an open room can read it, so it isn’t encrypted. A private one is.";
+"roomList.new.searchPrompt" = "Search people";
+"roomList.new.createRoom" = "Create a room";
+"roomList.new.publicRooms" = "Public rooms";
+"roomList.new.joinByAddress" = "Join by address";
+"roomList.new.yourChats" = "People you talk to";
+"roomList.new.onServer" = "On the server";
+"roomList.new.writeTo" = "Write to this address";
+"roomList.new.nobodyFound" = "Nobody found";
+"roomList.new.searchFailed" = "The server didn’t answer the search";
+"roomList.new.roomsPrompt" = "Search rooms";
+"roomList.new.inviteOnly" = "Invite only";
+"roomList.new.noRooms" = "No rooms found";
+"roomList.new.directoryFailed" = "The directory didn’t open.";
+"roomList.new.retry" = "Try again";
+"roomList.new.join" = "Join";
+"roomList.new.addressPlaceholder" = "#room:server";
+"roomList.new.addressHelp" = "A room address looks like #name:server. Its ID works too — it starts with “!”.";
 
 /* Swipe actions on a chat row, and their VoiceOver twins. */
 "roomList.swipe.markRead" = "Read";
@@ -980,7 +996,6 @@
 /* The round buttons under a person's portrait. */
 "profile.message" = "Message";
 "profile.share" = "Share";
-"profile.copyID" = "Copy";
 /* The label beside a person's Matrix address on their profile. */
 "profile.matrixID" = "Matrix ID";
 "profile.loading" = "Loading profile…";
@@ -1204,3 +1219,16 @@
 "presence.atTime" = "last seen at %@";
 "presence.yesterday" = "last seen yesterday";
 "presence.at" = "last seen %@";
+
+/* QR codes: your own, a chat's, and the scanner in New chat. */
+"qr.title" = "QR code";
+"qr.scan" = "Scan QR code";
+"qr.scanHint" = "Point the camera at a person’s or a room’s QR code";
+"qr.notMatrix" = "That’s not a Matrix link";
+"qr.choosePicture" = "Choose a picture";
+"qr.noCamera" = "No access to the camera. Allow it in Settings — or choose a picture of the code.";
+"qr.nothingFound" = "There’s no QR code in that picture";
+"qr.joinRoom" = "Join room";
+"qr.openRoom" = "Open";
+"qr.roomUnknown" = "The server didn’t say anything about this room, but you can still try to join.";
+"qr.inviteOnlyRoom" = "This room is invite only.";

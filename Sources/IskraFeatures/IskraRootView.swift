@@ -18,6 +18,24 @@ public struct IskraRootView: View {
 
     @State private var selectedRoomID: String?
 
+    /// A link to a person or a room that is being shown — see `matrixLink(in:)`.
+    @State private var openedLink: OpenedLink?
+
+    struct OpenedLink: Identifiable {
+        let id = UUID()
+        let link: MatrixLink
+    }
+
+    /// The person or room a URL points at, if it is a Matrix link: `matrix.to`, or `matrix:`.
+    /// Anything else — a web page, the sign-in callback — is not this function's.
+    static func matrixLink(in url: URL) -> MatrixLink? {
+        let scheme = url.scheme?.lowercased()
+        let isMatrix = scheme == "matrix"
+            || ((scheme == "https" || scheme == "http") && url.host?.lowercased() == "matrix.to")
+        guard isMatrix else { return nil }
+        return MatrixLink(parsing: url.absoluteString)
+    }
+
     /// The *message* the room is being opened on, when it is being opened on one — searching finds
     /// a message, not a room, and landing at the bottom of the conversation it happens to be in is
     /// not an answer to what was asked.
@@ -203,6 +221,36 @@ public struct IskraRootView: View {
                         selectedRoomID = roomID
                         selectedEventID = nil
                     })
+                    // A link to a person or a room opens here, wherever it came from: tapped in a
+                    // message (`matrix.to`), or handed over by another app (`matrix:`, the scheme
+                    // this app claims — see `Apps/project.yml`). It opens as a page about them, never
+                    // as a jump into a room: see `MatrixLinkView`.
+                    .environment(\.openURL, OpenURLAction { url in
+                        guard let link = Self.matrixLink(in: url) else { return .systemAction }
+                        openedLink = OpenedLink(link: link)
+                        return .handled
+                    })
+                    .onOpenURL { url in
+                        guard let link = Self.matrixLink(in: url) else { return }
+                        openedLink = OpenedLink(link: link)
+                    }
+                    .sheet(item: $openedLink) { opened in
+                        NavigationStack {
+                            MatrixLinkView(session: session, link: opened.link) { roomID in
+                                selectedRoomID = roomID
+                                selectedEventID = nil
+                                openedLink = nil
+                            }
+                            .toolbar {
+                                ToolbarItem(placement: .cancellationAction) {
+                                    Button(role: .leaving) { openedLink = nil } label: {
+                                        Label(String(app: Strings.Recovery.close), systemImage: "xmark")
+                                            .labelStyle(.iconOnly)
+                                    }
+                                }
+                            }
+                        }
+                    }
                     // Notifications are asked for *here*, and the timing is the whole of the
                     // decision. On the sign-in screen the question is about nothing — no account,
                     // no chats, nothing that could notify anybody — and it gets the answer a

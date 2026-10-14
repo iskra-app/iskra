@@ -167,6 +167,15 @@ public struct RoomMemberSummary: Sendable, Identifiable, Equatable {
     public let isNameAmbiguous: Bool
 }
 
+public extension RoomMemberSummary {
+    /// Somebody met outside any room — a QR code, a link. They have no role anywhere this screen
+    /// could speak of, so they are an ordinary member of nothing in particular.
+    init(person: PersonProfile) {
+        self.init(id: person.id, name: person.name, avatarURL: person.avatarURL,
+                  role: .member, authority: .level(0), isNameAmbiguous: false)
+    }
+}
+
 /// Everything the room-info screen shows: what the room is, who is in it, and — for
 /// whoever runs the place — the means to change both.
 ///
@@ -210,6 +219,8 @@ public final class RoomDetailsStore {
     /// invitation. Read from the join rules, and `false` until they arrive — the safer of
     /// the two guesses to show for half a second.
     public private(set) var isPublic = false
+    /// The room's published address, `#name:server`, when it has one — what a link to it is made of.
+    public private(set) var canonicalAlias: String?
 
     /// The other person's Matrix ID, in a chat that has exactly one other person.
     /// Nil in a room, and nil in a chat with only yourself in it.
@@ -454,6 +465,7 @@ public final class RoomDetailsStore {
         kind = info.kind
         isOneToOne = info.isOneToOne
         isPublic = info.isPublic ?? false
+        canonicalAlias = info.canonicalAlias
         memberCount = Int(info.joinedMembersCount)
         counterpartID = isOneToOne ? info.counterpart(besides: ownUserID)?.userId : nil
     }
@@ -796,7 +808,7 @@ public final class RoomDetailsStore {
     /// Checked here rather than left to the server, because the failure the server gives
     /// back for a malformed ID is the same one it gives for an ID it has never heard of —
     /// and the two mean very different things to the person who typed it.
-    public static func isMatrixID(_ text: String) -> Bool {
+    nonisolated public static func isMatrixID(_ text: String) -> Bool {
         let candidate = text.trimmingCharacters(in: .whitespaces)
         guard candidate.hasPrefix("@") else { return false }
 

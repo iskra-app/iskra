@@ -708,8 +708,24 @@
 
 /* Экран «новый чат» и «новая комната». */
 "roomList.new.create" = "Создать";
-"roomList.new.start" = "Начать";
 "roomList.new.openMeansUnencrypted" = "Открытую комнату читает каждый, кто в неё зашёл, поэтому шифрования в ней нет. В закрытой — есть.";
+"roomList.new.searchPrompt" = "Поиск по пользователям";
+"roomList.new.createRoom" = "Создать комнату";
+"roomList.new.publicRooms" = "Публичные комнаты";
+"roomList.new.joinByAddress" = "Присоединиться по адресу";
+"roomList.new.yourChats" = "Ваши собеседники";
+"roomList.new.onServer" = "На сервере";
+"roomList.new.writeTo" = "Написать по этому адресу";
+"roomList.new.nobodyFound" = "Никого не нашлось";
+"roomList.new.searchFailed" = "Сервер не ответил на поиск";
+"roomList.new.roomsPrompt" = "Поиск комнат";
+"roomList.new.inviteOnly" = "Только по приглашению";
+"roomList.new.noRooms" = "Комнат не нашлось";
+"roomList.new.directoryFailed" = "Каталог не открылся.";
+"roomList.new.retry" = "Ещё раз";
+"roomList.new.join" = "Войти";
+"roomList.new.addressPlaceholder" = "#комната:сервер";
+"roomList.new.addressHelp" = "Адрес комнаты выглядит как #название:сервер. Подойдёт и её ID — он начинается с «!».";
 
 /* Свайпы по строке чата, и их дублёры для VoiceOver. */
 "roomList.swipe.markRead" = "Прочитано";
@@ -977,7 +993,6 @@
 /* Круглые кнопки под портретом человека, как в Telegram. */
 "profile.message" = "Написать";
 "profile.share" = "Поделиться";
-"profile.copyID" = "Скопировать";
 /* Подпись к адресу человека в Matrix в карточке профиля. */
 "profile.matrixID" = "Matrix ID";
 "profile.loading" = "Загружаем профиль…";
@@ -1200,3 +1215,16 @@
 "presence.atTime" = "был(а) в %@";
 "presence.yesterday" = "был(а) вчера";
 "presence.at" = "был(а) %@";
+
+/* QR codes: your own, a chat's, and the scanner in New chat. */
+"qr.title" = "QR-код";
+"qr.scan" = "Отсканировать QR-код";
+"qr.scanHint" = "Наведите камеру на QR-код человека или комнаты";
+"qr.notMatrix" = "Это не ссылка на Matrix";
+"qr.choosePicture" = "Выбрать картинку";
+"qr.noCamera" = "Нет доступа к камере. Разрешите его в Настройках — или выберите картинку с кодом.";
+"qr.nothingFound" = "На картинке нет QR-кода";
+"qr.joinRoom" = "Войти в комнату";
+"qr.openRoom" = "Открыть";
+"qr.roomUnknown" = "Сервер ничего не рассказал об этой комнате, но войти всё равно можно попробовать.";
+"qr.inviteOnlyRoom" = "В эту комнату пускают только по приглашению.";

@@ -364,11 +364,37 @@ public enum Strings {
         /// person, and the button ought to say which of those is about to happen.
         public enum New {
             public static let create = LocalizedStringResource("roomList.new.create", bundle: bundle)
-            public static let start = LocalizedStringResource("roomList.new.start", bundle: bundle)
             /// What "open chat" costs, said once, where the switch is. Encryption is not a
             /// switch of its own in this app — see `UserSession.createRoom`.
             public static let openMeansUnencrypted = LocalizedStringResource("roomList.new.openMeansUnencrypted",
                                                                              bundle: bundle)
+
+            /// "New chat", Telegram's way: one field to find a person by, three ways into a room
+            /// beneath it, then everybody there is already a conversation with.
+            public static let searchPrompt = LocalizedStringResource("roomList.new.searchPrompt", bundle: bundle)
+            public static let createRoom = LocalizedStringResource("roomList.new.createRoom", bundle: bundle)
+            public static let publicRooms = LocalizedStringResource("roomList.new.publicRooms", bundle: bundle)
+            public static let joinByAddress = LocalizedStringResource("roomList.new.joinByAddress", bundle: bundle)
+            /// The two halves of a search: people already written to, and people the server knows.
+            public static let yourChats = LocalizedStringResource("roomList.new.yourChats", bundle: bundle)
+            public static let onServer = LocalizedStringResource("roomList.new.onServer", bundle: bundle)
+            /// Under a Matrix ID typed in full that the directory did not turn up — still somebody
+            /// you can write to.
+            public static let writeTo = LocalizedStringResource("roomList.new.writeTo", bundle: bundle)
+            public static let nobodyFound = LocalizedStringResource("roomList.new.nobodyFound", bundle: bundle)
+            public static let searchFailed = LocalizedStringResource("roomList.new.searchFailed", bundle: bundle)
+
+            /// The public room directory.
+            public static let roomsPrompt = LocalizedStringResource("roomList.new.roomsPrompt", bundle: bundle)
+            public static let inviteOnly = LocalizedStringResource("roomList.new.inviteOnly", bundle: bundle)
+            public static let noRooms = LocalizedStringResource("roomList.new.noRooms", bundle: bundle)
+            public static let directoryFailed = LocalizedStringResource("roomList.new.directoryFailed", bundle: bundle)
+            public static let retry = LocalizedStringResource("roomList.new.retry", bundle: bundle)
+
+            /// Joining a room by its address.
+            public static let join = LocalizedStringResource("roomList.new.join", bundle: bundle)
+            public static let addressPlaceholder = LocalizedStringResource("roomList.new.addressPlaceholder", bundle: bundle)
+            public static let addressHelp = LocalizedStringResource("roomList.new.addressHelp", bundle: bundle)
         }
 
         /// Pluralised. Russian needs one/few/many, which is why these go through the
@@ -1478,7 +1504,6 @@ public enum Strings {
     public enum Profile {
         public static let message = LocalizedStringResource("profile.message", bundle: bundle)
         public static let share = LocalizedStringResource("profile.share", bundle: bundle)
-        public static let copyID = LocalizedStringResource("profile.copyID", bundle: bundle)
         public static let matrixID = LocalizedStringResource("profile.matrixID", bundle: bundle)
         /// While the room's member list is still being fetched for a profile opened from the chat.
         public static let loading = LocalizedStringResource("profile.loading", bundle: bundle)
@@ -1828,6 +1853,24 @@ public enum Strings {
             }
         }
     }
+
+    /// QR codes: the one that says who you are (or what a room is), and the camera that reads
+    /// somebody else's. What is in the code is a `matrix.to` link — see `MatrixLink`.
+    public enum QR {
+        public static let title = LocalizedStringResource("qr.title", bundle: bundle)
+        public static let scan = LocalizedStringResource("qr.scan", bundle: bundle)
+        public static let scanHint = LocalizedStringResource("qr.scanHint", bundle: bundle)
+        /// A code that is not a person or a room — a menu, a Wi-Fi password.
+        public static let notMatrix = LocalizedStringResource("qr.notMatrix", bundle: bundle)
+        public static let choosePicture = LocalizedStringResource("qr.choosePicture", bundle: bundle)
+        public static let noCamera = LocalizedStringResource("qr.noCamera", bundle: bundle)
+        public static let nothingFound = LocalizedStringResource("qr.nothingFound", bundle: bundle)
+        /// A room a link pointed at: walk in, or — if you are in it already — open it.
+        public static let joinRoom = LocalizedStringResource("qr.joinRoom", bundle: bundle)
+        public static let openRoom = LocalizedStringResource("qr.openRoom", bundle: bundle)
+        public static let roomUnknown = LocalizedStringResource("qr.roomUnknown", bundle: bundle)
+        public static let inviteOnlyRoom = LocalizedStringResource("qr.inviteOnlyRoom", bundle: bundle)
+    }
 }
 
 extension String {
@@ -1835,4 +1878,5 @@ extension String {
     init(app resource: LocalizedStringResource) {
         self.init(localized: resource)
     }
+
 }
