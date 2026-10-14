@@ -29,9 +29,9 @@
 			<key>NSStringFormatValueTypeKey</key>
 			<string>lld</string>
 				<key>one</key>
-				<string>%lld mensaje te menciona</string>
+				<string>%lld mensaje le menciona</string>
 				<key>other</key>
-				<string>%lld mensajes te mencionan</string>
+				<string>%lld mensajes le mencionan</string>
 		</dict>
 	</dict>
 	<key>room.participants</key>

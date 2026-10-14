@@ -27,7 +27,7 @@
 			<key>NSStringFormatValueTypeKey</key>
 			<string>lld</string>
 				<key>other</key>
-				<string>%lld 条消息提及你</string>
+				<string>%lld 条消息提及您</string>
 		</dict>
 	</dict>
 	<key>room.participants</key>

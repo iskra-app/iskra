@@ -60,32 +60,32 @@
 "timeline.sendFailed" = "El mensaje no se ha enviado. Lo volveremos a intentar automáticamente.";
 
 /* A sticker that did not go. Unlike a message, it is not retried. */
-"timeline.stickerFailed" = "El sticker no se ha enviado. Comprueba la conexión e inténtalo de nuevo.";
+"timeline.stickerFailed" = "El sticker no se ha enviado. Compruebe la conexión e inténtelo de nuevo.";
 
 /* The account's sticker pack would not take a new sticker. */
-"stickers.addFailed" = "No se ha podido añadir el sticker. Inténtalo de nuevo.";
+"stickers.addFailed" = "No se ha podido añadir el sticker. Inténtelo de nuevo.";
 
 /* The account's sticker pack would not let a sticker go. */
-"stickers.removeFailed" = "No se ha podido quitar el sticker. Inténtalo de nuevo.";
+"stickers.removeFailed" = "No se ha podido quitar el sticker. Inténtelo de nuevo.";
 
 /* Shown when an emoji reaction could not be sent. Must not say "message" — nothing the user wrote is at stake. */
-"timeline.reactionFailed" = "La reacción no se ha enviado. Inténtalo de nuevo.";
+"timeline.reactionFailed" = "La reacción no se ha enviado. Inténtelo de nuevo.";
 
 /* Shown when deleting a message failed. Must be unambiguous: the message is still there, and everyone can still read it. */
-"timeline.deleteFailed" = "El mensaje no se ha eliminado: sigue en el chat. Inténtalo de nuevo.";
+"timeline.deleteFailed" = "El mensaje no se ha eliminado: sigue en el chat. Inténtelo de nuevo.";
 
 /* Why a message is stuck, tapped from the badge beside it. Each names what to do next:
    the user is the only one who can clear these. No cryptography vocabulary. */
-"sendFailure.insecureDevices" = "Alguien a quien verificaste ha iniciado sesión en un dispositivo que aún no ha confirmado. Si confías en ese dispositivo, envíalo de todos modos.";
-"sendFailure.identityChanged" = "Las claves de cifrado de alguien a quien verificaste han cambiado. Si estás seguro de que sigue siendo la misma persona, envíalo de todos modos.";
-"sendFailure.verificationRequired" = "Confirma este dispositivo para escribir en un chat protegido. Se hace en Ajustes.";
+"sendFailure.insecureDevices" = "Alguien a quien usted verificó ha iniciado sesión en un dispositivo que aún no ha confirmado. Si confía en ese dispositivo, envíelo de todos modos.";
+"sendFailure.identityChanged" = "Las claves de cifrado de alguien a quien usted verificó han cambiado. Si está seguro de que sigue siendo la misma persona, envíelo de todos modos.";
+"sendFailure.verificationRequired" = "Confirme este dispositivo para escribir en un chat protegido. Se hace en Ajustes.";
 "sendFailure.missingMedia" = "El archivo ya no está en este dispositivo: no queda nada que enviar.";
 "sendFailure.unsupportedFileType" = "Este tipo de archivo no se puede enviar.";
-"sendFailure.server" = "Tu servidor no ha aceptado este mensaje.";
+"sendFailure.server" = "Su servidor no ha aceptado este mensaje.";
 
 /* The Devices screen, when something did not work. */
-"devices.loadFailed" = "No se ha podido cargar la lista de dispositivos. Comprueba la conexión e inténtalo de nuevo.";
-"devices.endFailed" = "La sesión no se ha cerrado. Inténtalo de nuevo.";
+"devices.loadFailed" = "No se ha podido cargar la lista de dispositivos. Compruebe la conexión e inténtelo de nuevo.";
+"devices.endFailed" = "La sesión no se ha cerrado. Inténtelo de nuevo.";
 "devices.wrongPassword" = "La contraseña no es correcta.";
 "devices.managedElsewhere" = "En este servidor, las sesiones se cierran en su sitio web.";
 
@@ -94,11 +94,11 @@
 "reply.unavailable" = "Mensaje no disponible";
 
 /* Shown when an edit could not be sent. The message still says the old thing — say so. */
-"timeline.editFailed" = "El cambio no se ha guardado: el mensaje sigue igual. Inténtalo de nuevo.";
+"timeline.editFailed" = "El cambio no se ha guardado: el mensaje sigue igual. Inténtelo de nuevo.";
 
 /* Shown when pinning or unpinning was refused. */
-"timeline.pinFailed" = "No se han podido cambiar los mensajes fijados. Quizá no tengas permiso para hacerlo.";
-"timeline.reportFailed" = "La denuncia no se ha enviado. Inténtalo de nuevo.";
+"timeline.pinFailed" = "No se han podido cambiar los mensajes fijados. Quizá no tenga permiso para hacerlo.";
+"timeline.reportFailed" = "La denuncia no se ha enviado. Inténtelo de nuevo.";
 
 /* The grey lines across a conversation: people coming and going, the room changing. */
 "roomEvent.joined" = "%@ se ha unido al chat";
@@ -120,70 +120,70 @@
 /* Changes to a room the homeserver would not make. One sentence each: "something went
    wrong" tells nobody anything, while "you weren't allowed to" says it was a question of
    rights and that the room is unchanged. */
-"roomAction.renameFailed" = "El nombre no ha cambiado. Quizá no tengas permiso para hacerlo.";
-"roomAction.topicFailed" = "La descripción no ha cambiado. Quizá no tengas permiso para hacerlo.";
-"roomAction.pictureFailed" = "La foto no ha cambiado. Quizá no tengas permiso para hacerlo.";
+"roomAction.renameFailed" = "El nombre no ha cambiado. Quizá no tenga permiso para hacerlo.";
+"roomAction.topicFailed" = "La descripción no ha cambiado. Quizá no tenga permiso para hacerlo.";
+"roomAction.pictureFailed" = "La foto no ha cambiado. Quizá no tenga permiso para hacerlo.";
 "roomAction.visibilityFailed" = "No se ha podido cambiar quién puede unirse al chat.";
-"roomAction.inviteFailed" = "No se ha podido invitar. Comprueba la dirección: tiene el formato @nombre:servidor.";
+"roomAction.inviteFailed" = "No se ha podido invitar. Compruebe la dirección: tiene el formato @nombre:servidor.";
 "roomAction.removeFailed" = "No se ha podido expulsar a esta persona. Sigue en el chat.";
 "roomAction.banFailed" = "No se ha podido bloquear a esta persona. Sigue en el chat.";
-"roomAction.roleFailed" = "El rol no ha cambiado. Quizá no tengas permiso para hacerlo.";
-"roomAction.leaveFailed" = "No has podido salir del chat. Inténtalo de nuevo.";
-"roomAction.createFailed" = "El chat no se ha creado. Puede que el servidor no haya respondido: inténtalo de nuevo.";
-"roomAction.alertsFailed" = "Las notificaciones de este chat no han cambiado. Inténtalo de nuevo.";
+"roomAction.roleFailed" = "El rol no ha cambiado. Quizá no tenga permiso para hacerlo.";
+"roomAction.leaveFailed" = "No ha podido salir del chat. Inténtelo de nuevo.";
+"roomAction.createFailed" = "El chat no se ha creado. Puede que el servidor no haya respondido: inténtelo de nuevo.";
+"roomAction.alertsFailed" = "Las notificaciones de este chat no han cambiado. Inténtelo de nuevo.";
 
 /* The account: name, picture and encryption. */
-"account.nameFailed" = "Tu nombre no ha cambiado. Inténtalo de nuevo.";
-"account.pictureFailed" = "Tu foto no ha cambiado. Inténtalo de nuevo.";
-"account.protectFailed" = "No se han podido proteger tus mensajes. Inténtalo de nuevo: las claves de tus mensajes antiguos siguen donde estaban.";
+"account.nameFailed" = "Su nombre no ha cambiado. Inténtelo de nuevo.";
+"account.pictureFailed" = "Su foto no ha cambiado. Inténtelo de nuevo.";
+"account.protectFailed" = "No se han podido proteger sus mensajes. Inténtelo de nuevo: las claves de sus mensajes antiguos siguen donde estaban.";
 "account.newKeyFailed" = "No se ha creado el código nuevo. El anterior sigue funcionando.";
-"account.restoreFailed" = "El código no es válido. Comprueba que lo has copiado entero, con los espacios.";
+"account.restoreFailed" = "El código no es válido. Compruebe que lo ha copiado entero, con los espacios.";
 "account.staleCodeFailed" = "El código tiene el formato correcto, pero no corresponde a esta cuenta. Pasa cuando se ha creado un código de recuperación nuevo: el anterior deja de funcionar para siempre.";
 
 /* The reset failed — the rare case where failure is the good news: nothing was lost. */
-"account.startOverFailed" = "No se ha podido empezar de nuevo. Inténtalo otra vez: por ahora todo sigue como estaba.";
-"account.blockFailed" = "No se ha podido bloquear. Inténtalo de nuevo.";
-"account.unblockFailed" = "No se ha podido desbloquear. Inténtalo de nuevo.";
+"account.startOverFailed" = "No se ha podido empezar de nuevo. Inténtelo otra vez: por ahora todo sigue como estaba.";
+"account.blockFailed" = "No se ha podido bloquear. Inténtelo de nuevo.";
+"account.unblockFailed" = "No se ha podido desbloquear. Inténtelo de nuevo.";
 
 /* Pushes. A message speaks for itself — there is nothing to translate but the invitation. */
-"push.invite" = "%@ te invita al chat";
+"push.invite" = "%@ le invita al chat";
 "push.hiddenTitle" = "Iskra";
 "push.hiddenBody" = "Mensaje nuevo";
 
 /* Somebody reacted to something you said. Which reaction is not in the push — see Strings.swift. */
-"push.reaction" = "Reacción a tu mensaje";
+"push.reaction" = "Reacción a su mensaje";
 
 /* The Share extension. */
 "share.title" = "Enviar a…";
 "share.cancel" = "Cancelar";
-"share.empty" = "Primero abre Iskra e inicia sesión; entonces aquí aparecerán tus chats.";
+"share.empty" = "Primero abra Iskra e inicie sesión; entonces aquí aparecerán sus chats.";
 "share.willSendOnOpen" = "Se envía enseguida: Iskra se abrirá para enviarlo.";
 "share.comment" = "Añadir un comentario…";
 "share.send" = "Enviar";
 "share.locked" = "Iskra está bloqueada";
-"share.lockedBody" = "Desbloquéala y aparecerán tus chats.";
+"share.lockedBody" = "Desbloquéela y aparecerán sus chats.";
 "share.unlock" = "Desbloquear";
 "share.unlockReason" = "Para enviar esto a Iskra";
 
 /* Room invitations. */
-"roomAction.acceptInviteFailed" = "No has podido unirte al chat. Puede que hayan retirado la invitación.";
-"roomAction.declineInviteFailed" = "No se ha podido rechazar la invitación. Sigue ahí: inténtalo de nuevo.";
+"roomAction.acceptInviteFailed" = "No ha podido unirse al chat. Puede que hayan retirado la invitación.";
+"roomAction.declineInviteFailed" = "No se ha podido rechazar la invitación. Sigue ahí: inténtelo de nuevo.";
 
 /* Organising the list: pin, archive, mark read, report. */
-"roomAction.pinFailed" = "No se ha podido fijar el chat. Ha vuelto a su sitio: inténtalo de nuevo.";
-"roomAction.archiveFailed" = "No se ha podido archivar el chat. Sigue en la lista: inténtalo de nuevo.";
+"roomAction.pinFailed" = "No se ha podido fijar el chat. Ha vuelto a su sitio: inténtelo de nuevo.";
+"roomAction.archiveFailed" = "No se ha podido archivar el chat. Sigue en la lista: inténtelo de nuevo.";
 "roomAction.readFailed" = "No se ha podido cambiar el estado de lectura.";
-"roomAction.reportFailed" = "La denuncia no se ha enviado. Inténtalo de nuevo.";
+"roomAction.reportFailed" = "La denuncia no se ha enviado. Inténtelo de nuevo.";
 
 /* The room would not open at all — the one refusal here that is not about something the user did:
    they pressed nothing and were refused nothing. The room simply could not be read. */
-"roomAction.loadFailed" = "No se ha podido abrir este chat. Inténtalo de nuevo.";
+"roomAction.loadFailed" = "No se ha podido abrir este chat. Inténtelo de nuevo.";
 
 /* Account-wide notification rules — see `NotificationRulesStore`. These are not settings on this
    phone but push rules on the server: they apply to every device at once. */
-"notificationRules.directFailed" = "Las notificaciones de los chats privados no han cambiado. El interruptor ha vuelto atrás: inténtalo de nuevo.";
-"notificationRules.groupFailed" = "Las notificaciones de los grupos no han cambiado. El interruptor ha vuelto atrás: inténtalo de nuevo.";
-"notificationRules.mentionFailed" = "Las notificaciones de menciones no han cambiado. Inténtalo de nuevo.";
-"notificationRules.roomMentionFailed" = "Las notificaciones de @room no han cambiado. Inténtalo de nuevo.";
-"notificationRules.invitationFailed" = "Las notificaciones de invitaciones no han cambiado. Inténtalo de nuevo.";
-"notificationRules.callFailed" = "Las notificaciones de llamadas no han cambiado. Inténtalo de nuevo.";
+"notificationRules.directFailed" = "Las notificaciones de los chats privados no han cambiado. El interruptor ha vuelto atrás: inténtelo de nuevo.";
+"notificationRules.groupFailed" = "Las notificaciones de los grupos no han cambiado. El interruptor ha vuelto atrás: inténtelo de nuevo.";
+"notificationRules.mentionFailed" = "Las notificaciones de menciones no han cambiado. Inténtelo de nuevo.";
+"notificationRules.roomMentionFailed" = "Las notificaciones de @room no han cambiado. Inténtelo de nuevo.";
+"notificationRules.invitationFailed" = "Las notificaciones de invitaciones no han cambiado. Inténtelo de nuevo.";
+"notificationRules.callFailed" = "Las notificaciones de llamadas no han cambiado. Inténtelo de nuevo.";

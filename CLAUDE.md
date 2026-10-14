@@ -379,8 +379,10 @@ and Russian are both complete; neither is a fallback.
 
 German, Spanish, French, Japanese and Chinese (`de`, `es`, `fr`, `ja`, `zh-Hans`) are complete too —
 every string, every plural, and Siri's phrases in `Apps/Shared/<lang>.lproj`. They are translated
-from the Russian as much as from the English, so they keep its plain voice: `du`/`tú`/`你` and
-`vous` in French, as the first translated lines set it. A key *missing* from a `.lproj` does not
+from the Russian as much as from the English, so they keep its plain voice — and its «вы»: `Sie`,
+`usted`, `vous`, `您`, and Japanese in です/ます. Two exceptions, both on purpose: the chat in the
+Appearance preview, which is two friends talking (`du`/`tú`/`tu`/`你`, as «выбрал?» is in Russian),
+and Siri's phrases, which are said *to Siri* and are as informal as «Открой…». A key *missing* from a `.lproj` does not
 fall back to English, it is shown as the key, so a string added to `en` has to be added to all
 seven — in English as a placeholder if there is no translation yet, which
 `otherLanguagesAreComplete` will not notice and a reader will.

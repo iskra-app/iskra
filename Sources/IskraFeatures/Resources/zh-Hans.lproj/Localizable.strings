@@ -55,7 +55,7 @@
 "message.spoken.sentVoice" = "一条语音消息";
 
 /* VoiceOver: how the user's own messages are attributed. */
-"message.spoken.you" = "你";
+"message.spoken.you" = "您";
 
 /* Shown in place of a message this device has no key for. Must not mention keys or decryption. */
 "message.unreadable" = "这条消息打不开：这台设备上没有它的密钥。";
@@ -68,7 +68,7 @@
 "room.composerPlaceholder" = "消息";
 
 /* The banner shown in place of the composer when posting is not allowed. */
-"room.readOnly" = "你不能在这个聊天中发消息";
+"room.readOnly" = "您不能在这个聊天中发消息";
 
 "room.noRoomSelectedMessage" = "选择一个对话开始阅读。";
 
@@ -81,7 +81,7 @@
 
 "room.sendFailedTitle" = "消息未发送";
 
-"roomList.emptyMessage" = "有人给你发消息时，对话会出现在这里。";
+"roomList.emptyMessage" = "有人给您发消息时，对话会出现在这里。";
 
 "roomList.emptyTitle" = "还没有聊天";
 
@@ -183,7 +183,7 @@
 
 /* The last sentence is the one that matters: whoever turns this on is first of all afraid
    of losing their real account. */
-"beta.mockBackendHelp" = "用一个虚构的账户代替你的账户，里面已经有聊天、照片、语音消息，甚至还有一条邀请。服务器就在应用内部，从不联网。你自己的账户原封不动：关掉它就回来了。";
+"beta.mockBackendHelp" = "用一个虚构的账户代替您的账户，里面已经有聊天、照片、语音消息，甚至还有一条邀请。服务器就在应用内部，从不联网。您自己的账户原封不动：关掉它就回来了。";
 
 
 
@@ -228,7 +228,7 @@
 "connection.relaysFooter" = "应用和网桥通过它们找到彼此。多个并不是备胎：请求会同时发往所有中继，回答来自最快的那个。留空则使用默认的三个。";
 
 "connection.myKey" = "本设备的密钥";
-"connection.myKeyFooter" = "如果网桥是封闭的，请把这个密钥加入它的 ALLOWED_PUBKEYS，否则它根本听不到你。";
+"connection.myKeyFooter" = "如果网桥是封闭的，请把这个密钥加入它的 ALLOWED_PUBKEYS，否则它根本听不到您。";
 "connection.copy" = "拷贝";
 "connection.copied" = "已拷贝";
 
@@ -246,13 +246,13 @@
 "connection.unfinishedBody" = "每个请求都要绕道中继，耗时 200–350 毫秒，因此登录和首次打开聊天会明显比直连慢——原本瞬间完成的地方要等上一秒。不过新消息几乎和直连一样快。大附件也能传过去，但最好不要经过公共中继：媒体请给网桥配一个专用中继。";
 
 "connection.sees" = "网桥能看到什么";
-"connection.seesBody" = "网桥会拆开你发往服务器的请求，因此能看到你的令牌、你在哪些房间，以及未加密聊天中的消息文字。加密的对话它读不了。所以网桥最好是你自己的，而不是别人的。";
+"connection.seesBody" = "网桥会拆开您发往服务器的请求，因此能看到您的令牌、您在哪些房间，以及未加密聊天中的消息文字。加密的对话它读不了。所以网桥最好是您自己的，而不是别人的。";
 
 /* App lock by Face ID / device passcode. */
 "settings.lock" = "应用锁";
 "settings.lockEnable" = "要求 Face ID 或密码";
 "settings.lockTimeout" = "何时要求";
-"settings.lockExplanation" = "你回到应用时，它会要求 Face ID、Touch ID 或设备密码。";
+"settings.lockExplanation" = "您回到应用时，它会要求 Face ID、Touch ID 或设备密码。";
 "settings.lockUnavailable" = "请先设置设备密码。";
 "settings.lockTimeout.immediately" = "立即";
 "settings.lockTimeout.afterMinute" = "1 分钟后";
@@ -265,7 +265,7 @@
 
 "settings.blocked" = "已屏蔽的用户";
 "settings.blockedEmptyTitle" = "没有屏蔽任何人";
-"settings.blockedEmptyMessage" = "你屏蔽的人会显示在这里。你不会看到他们的消息。";
+"settings.blockedEmptyMessage" = "您屏蔽的人会显示在这里。您不会看到他们的消息。";
 "settings.unblock" = "取消屏蔽";
 
 /* The storage screen: how much room the app is taking, what is taking it, and which part of it
@@ -282,19 +282,19 @@
 "storage.cache.explained" = "已下载的内容。需要时会重新下载。";
 
 "storage.search" = "搜索索引";
-"storage.search.explained" = "用于直接在设备上搜索你的消息。";
+"storage.search.explained" = "用于直接在设备上搜索您的消息。";
 
 "storage.clear" = "清除缓存";
 "storage.clearing" = "正在清除…";
 "storage.confirm.title" = "清除缓存？";
-"storage.confirm.body" = "应用会重新加载。消息、照片和文件会在你打开时重新下载，一段时间内搜索可能找不全。你仍保持登录。";
+"storage.confirm.body" = "应用会重新加载。消息、照片和文件会在您打开时重新下载，一段时间内搜索可能找不全。您仍保持登录。";
 "storage.confirm.action" = "清除";
 "storage.cancel" = "取消";
 "storage.failed" = "没能清除缓存。请再试一次。";
 
 "storage.search.clear" = "清除搜索索引";
 "storage.search.confirm.title" = "清除搜索索引？";
-"storage.search.confirm.body" = "应用会重新加载。一段时间内搜索可能找不全——索引会在你阅读时重新建立。你的消息和照片原封不动。";
+"storage.search.confirm.body" = "应用会重新加载。一段时间内搜索可能找不全——索引会在您阅读时重新建立。您的消息和照片原封不动。";
 "storage.search.failed" = "没能清除索引。请再试一次。";
 
 /* The last row of settings, the way through to the About screen. */
@@ -365,7 +365,7 @@
    anything about signing in: the account is fine and the messages are on the device. */
 "session.offlineTitle" = "无连接";
 
-"session.offlineMessage" = "你的对话都在，就在这台设备上。我们只是暂时连不上服务器——请检查网络。";
+"session.offlineMessage" = "您的对话都在，就在这台设备上。我们只是暂时连不上服务器——请检查网络。";
 
 "session.tryAgain" = "重试";
 
@@ -373,7 +373,7 @@
    the conversations and must not push them off the screen. */
 "connection.offline" = "无网络";
 
-"signIn.readyHelp" = "我们会打开浏览器，让你照常登录。";
+"signIn.readyHelp" = "我们会打开浏览器，让您照常登录。";
 
 "signIn.readyTitle" = "一切就绪";
 
@@ -386,16 +386,16 @@
    they did not have. One way, and a hint for the people it does not work for. */
 "signIn.usePasswordInstead" = "我只有用户名和密码";
 
-"signIn.tagline" = "私密消息，由你做主。";
+"signIn.tagline" = "私密消息，由您做主。";
 
 "signIn.title" = "Iskra";
 
 "signIn.username" = "用户名";
 
 /* The question that replaces asking for a 'homeserver URL'. */
-"signIn.whereIsAccount" = "你的账户在哪里？";
+"signIn.whereIsAccount" = "您的账户在哪里？";
 
-"signIn.whereIsAccountHelp" = "如果有人给了你服务器地址，请输入。否则保留 matrix.org——大多数账户都在那里。";
+"signIn.whereIsAccountHelp" = "如果有人给了您服务器地址，请输入。否则保留 matrix.org——大多数账户都在那里。";
 
 "room.attachPhoto" = "照片或视频";
 
@@ -473,7 +473,7 @@
 "message.menu.removeQuick" = "移除 %@";
 "message.menu.moreReactions" = "更多回应";
 
-"message.menu.removeReaction" = "移除你的回应";
+"message.menu.removeReaction" = "移除您的回应";
 
 /* At the foot of a message's menu: the exact moment. The clock beside the bubble has room
    for the hour and nothing else; this is the whole date, formatted by the system. */
@@ -577,9 +577,9 @@
 "message.forward.send" = "发送";
 "message.menu.block" = "屏蔽";
 "message.menu.blockConfirm" = "屏蔽 %@？";
-"message.menu.blockConfirmMessage" = "你将不再收到此人的消息。可以在设置中取消屏蔽。";
+"message.menu.blockConfirmMessage" = "您将不再收到此人的消息。可以在设置中取消屏蔽。";
 "message.report.title" = "举报消息";
-"message.report.explanation" = "举报会发给服务器的协管员。你可以简单说明问题，也可以不写直接发送。";
+"message.report.explanation" = "举报会发给服务器的协管员。您可以简单说明问题，也可以不写直接发送。";
 "message.report.reasonPrompt" = "发生了什么？（可选）";
 "message.report.submit" = "发送";
 "message.report.cancel" = "取消";
@@ -698,14 +698,14 @@
 "room.manage.remove" = "移出";
 "room.manage.block" = "从聊天中封禁";
 "room.manage.blockQuestion" = "要将 %@ 从此聊天中封禁吗？";
-"room.manage.blockHelp" = "对方会离开聊天，在你解除封禁前无法回来。";
+"room.manage.blockHelp" = "对方会离开聊天，在您解除封禁前无法回来。";
 "room.manage.leave" = "退出聊天";
 "room.manage.leaveQuestion" = "退出这个聊天？";
 "room.manage.leaveHelp" = "将不再收到新消息。只有受到邀请才能回来。";
 
 /* Why everything on the room-settings screen is greyed out. Shown only while offline. Must say
    what still works — reading and writing — rather than only what does not. */
-"room.manage.offline" = "没有网络时，你可以阅读这个聊天、在里面发消息，但不能修改它。";
+"room.manage.offline" = "没有网络时，您可以阅读这个聊天、在里面发消息，但不能修改它。";
 "room.manage.cancel" = "取消";
 "problem.title" = "没成功";
 
@@ -723,7 +723,7 @@
 "roomList.swipe.unarchive" = "取消归档";
 "roomList.swipe.delete" = "删除";
 "roomList.swipe.leaveConfirmTitle" = "退出这个聊天？";
-"roomList.swipe.leaveConfirmMessage" = "你会离开房间，不再收到它的消息。Matrix 无法删除共享的聊天——只能自己退出。";
+"roomList.swipe.leaveConfirmMessage" = "您会离开房间，不再收到它的消息。Matrix 无法删除共享的聊天——只能自己退出。";
 "roomList.swipe.leaveConfirm" = "退出";
 "roomList.swipe.cancel" = "取消";
 
@@ -748,12 +748,12 @@
 "room.manage.alertsMuted" = "关闭";
 
 /* The profile: name and picture. */
-"account.namePlaceholder" = "你的名字";
+"account.namePlaceholder" = "您的名字";
 "account.edit" = "编辑";
-"account.editTitle" = "你的个人资料";
+"account.editTitle" = "您的个人资料";
 "account.nameHeader" = "名字";
 "account.editOffline" = "没有网络时无法修改个人资料——应用联系不上服务器。";
-"account.nameChangeNotice" = "改名后，所有和你聊天的人都会知道——每个共同聊天里都会出现一条提示。";
+"account.nameChangeNotice" = "改名后，所有和您聊天的人都会知道——每个共同聊天里都会出现一条提示。";
 "account.usernameHeader" = "用户名";
 "account.usernameFixed" = "用户名只在注册时选择一次，之后无法更改——这里不行，别处也不行。";
 
@@ -775,28 +775,28 @@
 "room.tabs.links" = "链接";
 "room.tabs.label" = "里面有什么";
 "room.localName.header" = "在此设备上的名字";
-"room.localName.help" = "这个名字只有你能看到，而且只在这台设备上。对方不会知道，你的其他设备上仍是原来的名字，退出登录后它就会被忘掉。";
+"room.localName.help" = "这个名字只有您能看到，而且只在这台设备上。对方不会知道，您的其他设备上仍是原来的名字，退出登录后它就会被忘掉。";
 "room.localName.reset" = "恢复为“%@”";
 
 /* Encryption: whether your messages will still be readable on your next device. */
 "encryption.title" = "加密";
 
-"encryption.on" = "你的消息受到保护";
-"encryption.onHelp" = "你的对话以加密备份的形式保存在服务器上。有了恢复代码，你可以在任何新设备上阅读它们。";
+"encryption.on" = "您的消息受到保护";
+"encryption.onHelp" = "您的对话以加密备份的形式保存在服务器上。有了恢复代码，您可以在任何新设备上阅读它们。";
 
-"encryption.off" = "你的消息未受保护";
-"encryption.offHelp" = "如果这台设备丢了，谁都读不了你的旧消息——包括你自己。保护它们，我们会给你一个能找回消息的代码。";
+"encryption.off" = "您的消息未受保护";
+"encryption.offHelp" = "如果这台设备丢了，谁都读不了您的旧消息——包括您自己。保护它们，我们会给您一个能找回消息的代码。";
 "encryption.protect" = "保护我的消息";
 
-"encryption.keyNeeded" = "需要你的恢复代码";
-"encryption.keyNeededHelp" = "你的旧消息是加密的，这台设备暂时打不开。请输入开启备份时保存的代码。";
+"encryption.keyNeeded" = "需要您的恢复代码";
+"encryption.keyNeededHelp" = "您的旧消息是加密的，这台设备暂时打不开。请输入开启备份时保存的代码。";
 "encryption.keyPlaceholder" = "恢复代码";
 "encryption.restore" = "找回我的消息";
 
 "encryption.newKey" = "创建新的恢复代码";
 "encryption.newKeyHelp" = "旧代码将失效。如果它落入了不该落入的人手中，值得这样做。";
 
-"encryption.saveKey" = "保存你的代码";
+"encryption.saveKey" = "保存您的代码";
 "encryption.saveKeyHelp" = "它只显示这一次。请把它写下来或存进密码管理器：没有它，旧消息就回不来了。";
 "encryption.copyKey" = "拷贝代码";
 "encryption.keyCopied" = "已拷贝";
@@ -808,8 +808,8 @@
 "room.unreadMessages" = "未读消息";
 
 /* A room invitation: who asked, and the two answers. */
-"roomList.invite.from" = "%@ 邀请你";
-"roomList.invite.unattributed" = "你收到了邀请";
+"roomList.invite.from" = "%@ 邀请您";
+"roomList.invite.unattributed" = "您收到了邀请";
 "roomList.invite.accept" = "加入";
 "roomList.invite.decline" = "拒绝";
 
@@ -835,13 +835,13 @@
    says who spoke — and in the compact layout it is the only thing that does. The reader's own
    line is labelled "You": the same word VoiceOver reads, not a second one like it. */
 "appearance.previewSender" = "安娜";
-"appearance.previewLabel" = "你的消息会是这个样子";
+"appearance.previewLabel" = "您的消息会是这个样子";
 
 /* The session was ended somewhere else — from another device, or because the account is gone.
    Somebody dropped back onto the sign-in screen with no explanation assumes the app lost their
    account, so this names the cause rather than merely stating the fact. */
-"session.ended.title" = "你已不再登录";
-"session.ended.message" = "服务器不再接受这个会话。很可能是你在另一台设备上结束了它。请重新登录——你的对话一条都没少。";
+"session.ended.title" = "您已不再登录";
+"session.ended.message" = "服务器不再接受这个会话。很可能是您在另一台设备上结束了它。请重新登录——您的对话一条都没少。";
 
 /* What the media bubbles are called for VoiceOver. A photo and a video note are opened by a tap
    gesture, and a tap gesture does not exist in the accessibility tree at all — with no name and no
@@ -856,24 +856,24 @@
    show the same thing, which is the whole of it, and is explicable without a single term. */
 "verification.verify" = "确认这台设备";
 "verification.title" = "确认";
-"verification.why" = "在这台设备得到确认之前，你的账户无法知道这真的是你——旧的对话也不会同步过来。你可以在已经登录的手机或电脑上确认它。";
-"verification.waiting.title" = "看看你的另一台设备";
+"verification.why" = "在这台设备得到确认之前，您的账户无法知道这真的是您——旧的对话也不会同步过来。您可以在已经登录的手机或电脑上确认它。";
+"verification.waiting.title" = "看看您的另一台设备";
 "verification.waiting.message" = "另一台设备上的应用现在必须开着，否则请求到不了。";
-"verification.asked.message" = "这台设备刚刚登录了你的账户，正请求确认。如果是你本人，请同意，然后比对表情符号。如果不是，请拒绝：说明别人知道你的密码。";
+"verification.asked.message" = "这台设备刚刚登录了您的账户，正请求确认。如果是您本人，请同意，然后比对表情符号。如果不是，请拒绝：说明别人知道您的密码。";
 "verification.unnamedDevice" = "未命名的设备";
 "verification.mine" = "是我";
 "verification.notMine" = "不是我";
 "verification.negotiating.title" = "稍等";
 "verification.negotiating.message" = "两台设备正在相互协商。表情符号马上会出现在两个屏幕上。";
-"verification.compare" = "你的另一台设备上显示着同样的七个表情符号。请检查它们是否一致，并且顺序相同。";
+"verification.compare" = "您的另一台设备上显示着同样的七个表情符号。请检查它们是否一致，并且顺序相同。";
 "verification.match" = "一致";
 "verification.noMatch" = "不一致";
 "verification.done.title" = "这台设备已确认";
-"verification.done.message" = "你的账户现在信任这台设备了。旧的对话会自动出现在这里。";
+"verification.done.message" = "您的账户现在信任这台设备了。旧的对话会自动出现在这里。";
 "verification.declined.title" = "确认已中止";
-"verification.declined.message" = "如果表情符号确实不一致，请不要信任这个连接，并再试一次。也可能只是你启动了两次确认。";
-"verification.refused.title" = "你拒绝了";
-"verification.refused.message" = "那台设备没有获得访问你对话的权限。但如果登录的不是你，说明别人知道你的密码——需要立刻更改。";
+"verification.declined.message" = "如果表情符号确实不一致，请不要信任这个连接，并再试一次。也可能只是您启动了两次确认。";
+"verification.refused.title" = "您拒绝了";
+"verification.refused.message" = "那台设备没有获得访问您对话的权限。但如果登录的不是您，说明别人知道您的密码——需要立刻更改。";
 "verification.refused.endSession" = "结束这个会话";
 "verification.failed.title" = "没成功";
 "verification.failed.message" = "确认没有完成。请再试一次。";
@@ -887,45 +887,45 @@
    code — and it behaves like a backup code from an authenticator app. */
 
 /* While the SDK works out what this device knows. Seconds, but saying nothing is not an option. */
-"recovery.preparing" = "稍等，正在查看你的消息";
+"recovery.preparing" = "稍等，正在查看您的消息";
 
 /* Flow 1. The backup turns itself on, without asking, and the wait is a real one:
    the whole history goes up to the server. Promising "instant" would be a lie. */
 "recovery.creating.title" = "正在准备备份";
-"recovery.creating.message" = "我们正在把你的消息放进备份，这样你在任何设备上都能读。这可能需要一分钟。";
+"recovery.creating.message" = "我们正在把您的消息放进备份，这样您在任何设备上都能读。这可能需要一分钟。";
 
 /* The button under the code. Skipping is allowed — but the strip in the chat list won’t let you forget. */
 
 /* Flow 2. Two buttons of equal weight. Neither is "the main one": somebody who picks the
    picture check should not feel they picked the fallback. */
 "recovery.new.title" = "创建新代码？";
-"recovery.new.message" = "旧代码会立即失效，且无法找回。如果你把它记在了某处，那份记录就没用了。";
+"recovery.new.message" = "旧代码会立即失效，且无法找回。如果您把它记在了某处，那份记录就没用了。";
 "recovery.new.confirm" = "创建新代码";
 "recovery.new.keepOld" = "以后再说——我去找找旧的";
-"recovery.approve.title" = "你批准了吗？";
-"recovery.approve.message" = "重置需要在服务器页面上批准。如果你已经批准，请继续——旧消息将永久丢失。如果你改主意了，什么都不会发生。";
+"recovery.approve.title" = "您批准了吗？";
+"recovery.approve.message" = "重置需要在服务器页面上批准。如果您已经批准，请继续——旧消息将永久丢失。如果您改主意了，什么都不会发生。";
 "recovery.approve.confirm" = "永久清除旧消息";
 "recovery.approve.cancel" = "我改主意了";
-"recovery.choose.title" = "解锁你的消息";
-"recovery.choose.message" = "你以前的消息是加密的，这台设备暂时打不开。有两种方法——都管用。";
+"recovery.choose.title" = "解锁您的消息";
+"recovery.choose.message" = "您以前的消息是加密的，这台设备暂时打不开。有两种方法——都管用。";
 "recovery.choose.haveCode" = "我有恢复代码";
 "recovery.choose.otherDevice" = "从另一台设备确认";
 "recovery.choose.neither" = "两样都没有";
 
 /* Entering the code. The keyboard has no business helping here — this arrives by paste. */
-"recovery.enter.title" = "输入你的恢复代码";
-"recovery.enter.message" = "就是开启备份时我们给你看的那个代码。";
+"recovery.enter.title" = "输入您的恢复代码";
+"recovery.enter.message" = "就是开启备份时我们给您看的那个代码。";
 "recovery.enter.unlock" = "解锁我的消息";
 "recovery.enter.lost" = "我找不到代码";
 
 /* Flow 3, the branch where another device exists. Losing the code is not a disaster, and the tone says so. */
 "recovery.lost.title" = "找不到？";
-"recovery.lost.hasDevices" = "没关系。在已经登录的手机或电脑上确认这台设备，我们会马上给你一个新代码来替换丢失的那个。";
+"recovery.lost.hasDevices" = "没关系。在已经登录的手机或电脑上确认这台设备，我们会马上给您一个新代码来替换丢失的那个。";
 
 /* Flow 3, the branch where there is nothing else. Said plainly, without frightening anyone:
    losing your messages is bad, but being frightened and not knowing what to do is worse. */
 "recovery.lost.alone.title" = "从头开始吧";
-"recovery.lost.alone.message" = "没有代码，也没有其他设备，旧消息就回不来了——它们会永远保持加密。新消息照常接收，我们也会给你一个新的恢复代码。";
+"recovery.lost.alone.message" = "没有代码，也没有其他设备，旧消息就回不来了——它们会永远保持加密。新消息照常接收，我们也会给您一个新的恢复代码。";
 
 /* The design note asks for this to be separated from a password reset explicitly, so that
    nobody — the developer included — confuses the two. A password opens the account, not the messages. */
@@ -933,15 +933,15 @@
 "recovery.lost.alone.start" = "从头开始";
 
 /* The server wants to see the person again before it allows the reset. */
-"recovery.password.title" = "输入你的密码";
-"recovery.password.message" = "服务器要求你确认这真的是你。";
+"recovery.password.title" = "输入您的密码";
+"recovery.password.message" = "服务器要求您确认这真的是您。";
 "recovery.password.placeholder" = "密码";
 "recovery.password.confirm" = "确认";
 
 /* The strip in the chat list. It stays until the reason is gone: the code is shown once, and
    somebody who didn’t save it finds out six months later — unless they’re reminded. */
-"recovery.banner.locked" = "你的旧消息被锁住了";
-"recovery.save.warning" = "如果这个代码丢了，而你又没有其他设备，就没有人能找回你的旧消息——我们不能，服务器也不能。它们会永远保持加密。";
+"recovery.banner.locked" = "您的旧消息被锁住了";
+"recovery.save.warning" = "如果这个代码丢了，而您又没有其他设备，就没有人能找回您的旧消息——我们不能，服务器也不能。它们会永远保持加密。";
 "recovery.save.confirm" = "我已把代码记在安全的地方";
 "recovery.lost.noAccess" = "我用不了那台设备";
 "recovery.banner.hint" = "打开恢复设置";
@@ -992,16 +992,16 @@
 /* Under this device, in place of when it was last seen. */
 "devices.online" = "在线";
 "devices.endOthers" = "结束所有其他会话";
-"devices.endOthersFooter" = "在除这台设备以外的所有设备上退出你的账户。";
+"devices.endOthersFooter" = "在除这台设备以外的所有设备上退出您的账户。";
 "devices.endOthersConfirm" = "结束所有其他会话？";
 "devices.others" = "活跃会话";
-"devices.noOthers" = "没有其他会话——你只在这里登录。";
+"devices.noOthers" = "没有其他会话——您只在这里登录。";
 "devices.end" = "结束";
 "devices.endConfirm" = "结束这个会话？";
 /* Under the list, when sessions are ended on the server's website (browser sign-in). */
 "devices.managedFooter" = "此账户的会话需要在服务器网站上结束——点“结束”会打开它。";
 "devices.passwordTitle" = "需要密码";
-"devices.passwordMessage" = "服务器需要你的账户密码来结束会话。";
+"devices.passwordMessage" = "服务器需要您的账户密码来结束会话。";
 "devices.passwordField" = "密码";
 "devices.cancel" = "取消";
 "devices.retry" = "重试";
@@ -1023,7 +1023,7 @@
 "notifications.other" = "其他";
 "notifications.invitations" = "聊天邀请";
 "notifications.calls" = "通话";
-"notifications.otherFooter" = "Iskra 还没有通话功能，但别人仍可以从其他应用给你打电话。";
+"notifications.otherFooter" = "Iskra 还没有通话功能，但别人仍可以从其他应用给您打电话。";
 
 "notifications.system" = "权限";
 "notifications.systemOn" = "系统允许通知";
@@ -1037,10 +1037,10 @@
 /* The first run. Six slides before the sign-in — the only place the app talks about itself,
    so the lines are short and no protocol word appears on any of them. See `WelcomeView`. */
 "onboarding.slide.iskra.title" = "Iskra";
-"onboarding.slide.iskra.body" = "只属于你的对话";
+"onboarding.slide.iskra.body" = "只属于您的对话";
 
 "onboarding.slide.encryption.title" = "默认端到端加密";
-"onboarding.slide.encryption.body" = "除了你和对方，没人能读。连 CIA 也不行";
+"onboarding.slide.encryption.body" = "除了您和对方，没人能读。连 CIA 也不行";
 
 "onboarding.slide.decentralised.title" = "去中心化";
 "onboarding.slide.decentralised.body" = "Iskra 基于社区共建的开放协议 Matrix";
@@ -1048,8 +1048,8 @@
 "onboarding.slide.appleWay.title" = "Apple way";
 "onboarding.slide.appleWay.body" = "一款同时面向所有平台的原生 Swift 应用——飞快，而且不费电";
 
-"onboarding.slide.freedom.title" = "由你选择";
-"onboarding.slide.freedom.body" = "用现成的服务器，或者自己搭一个。没人把你锁在一个生态里";
+"onboarding.slide.freedom.title" = "由您选择";
+"onboarding.slide.freedom.body" = "用现成的服务器，或者自己搭一个。没人把您锁在一个生态里";
 
 "onboarding.slide.anonymous.title" = "匿名";
 "onboarding.slide.anonymous.body" = "账户不绑定手机号，也不绑定邮箱：只有用户名和密码";
@@ -1066,19 +1066,19 @@
 "onboarding.skip" = "跳过";
 
 "room.identity.changedTitle" = "%@：新的加密密钥";
-"room.identity.changedBody" = "发给此人的消息现在用新密钥加密。这通常发生在对方在新手机上登录之后。如果你没有预料到，请当面确认。";
+"room.identity.changedBody" = "发给此人的消息现在用新密钥加密。这通常发生在对方在新手机上登录之后。如果您没有预料到，请当面确认。";
 "room.identity.understood" = "知道了";
-"room.identity.violationTitle" = "%@：密钥与你验证过的不一致";
-"room.identity.violationBody" = "你验证过此人，但之后密钥变了。在确定还是同一个人之前，不要写任何重要内容。";
+"room.identity.violationTitle" = "%@：密钥与您验证过的不一致";
+"room.identity.violationBody" = "您验证过此人，但之后密钥变了。在确定还是同一个人之前，不要写任何重要内容。";
 "room.identity.withdraw" = "撤销验证";
 "room.identity.failed" = "没成功。请检查网络后再试一次。";
 "message.delivery.sendAnyway" = "仍然发送";
 "message.delivery.sendAnywayFailed" = "消息还是没发出去。请检查网络后再试一次。";
-"onboarding.greeting" = "你好，%@！";
-"onboarding.greetingNameless" = "你好！";
+"onboarding.greeting" = "您好，%@！";
+"onboarding.greetingNameless" = "您好！";
 
 "onboarding.appearance.title" = "Iskra 用什么颜色？";
-"onboarding.appearance.body" = "你的消息和所有可点按的东西都会是这个颜色。随时可以在设置的“外观”中更改。";
+"onboarding.appearance.body" = "您的消息和所有可点按的东西都会是这个颜色。随时可以在设置的“外观”中更改。";
 
 "onboarding.faces.title" = "谁会得到小怪物";
 "onboarding.faces.body" = "小怪物是在设备上根据对方的地址算出来的：每人一个，而且永远不变。不会发送到任何地方。";
@@ -1106,7 +1106,7 @@
 "accounts.current" = "当前打开";
 "accounts.unread" = "未读：%lld";
 "accounts.signOutOf" = "退出 %@";
-"session.endedOther.message" = "服务器不再接受 %@ 的会话——很可能是在另一台设备上结束的。你的其他账户都还在，这个账户可以重新添加。";
+"session.endedOther.message" = "服务器不再接受 %@ 的会话——很可能是在另一台设备上结束的。您的其他账户都还在，这个账户可以重新添加。";
 "signIn.problem.alreadySignedIn" = "这个账户已经在这台设备上了——可以在设置中切换过去。";
 
 /* Settings → Chats: service lines, the Return key, the account in the Share menu. */
@@ -1129,9 +1129,9 @@
 /* Settings → Privacy. */
 "privacy.title" = "隐私";
 "privacy.hidePresence" = "隐藏上次在线时间";
-"privacy.hidePresenceHelp" = "别人看不到你上次在线的时间。";
+"privacy.hidePresenceHelp" = "别人看不到您上次在线的时间。";
 "privacy.hideTyping" = "隐藏“正在输入…”";
-"privacy.hideTypingHelp" = "别人看不到你正在输入。";
+"privacy.hideTypingHelp" = "别人看不到您正在输入。";
 
 /* Photos & videos: auto-download. */
 "media.download" = "下载";
@@ -1141,7 +1141,7 @@
 "media.autoDownload.never" = "从不";
 "media.autoDownload.alwaysHelp" = "聊天中的照片、视频和视频消息一出现在屏幕上就会自动下载。";
 "media.autoDownload.wifiHelp" = "使用蜂窝数据或低数据模式时，照片和视频不会自动下载：取而代之的是模糊的轮廓和一个下载按钮。";
-"media.autoDownload.neverHelp" = "照片和视频只在你点按下载按钮或打开它们时才下载。头像和贴纸总是会下载。";
+"media.autoDownload.neverHelp" = "照片和视频只在您点按下载按钮或打开它们时才下载。头像和贴纸总是会下载。";
 
 /* The session card and the new sign-in banner. */
 "devices.application" = "应用";
@@ -1151,7 +1151,7 @@
 "devices.unknown" = "未知";
 "devices.endSession" = "结束会话";
 "devices.done" = "完成";
-"devices.newSignInTitle" = "你的账户有新的登录";
+"devices.newSignInTitle" = "您的账户有新的登录";
 "devices.newSignInMore" = "还有 %lld 个";
 "devices.newSignInYes" = "是的，是我";
 "devices.newSignInNo" = "不是我";
@@ -1169,12 +1169,12 @@
 "signIn.signInTo" = "登录 %@";
 "signIn.back" = "返回";
 "signIn.continueInBrowser" = "在浏览器中继续";
-"signIn.browserHelp" = "将打开你的服务器登录页面，一切照常。";
-"signIn.passwordHelp" = "你账户的用户名和密码。";
+"signIn.browserHelp" = "将打开您的服务器登录页面，一切照常。";
+"signIn.passwordHelp" = "您账户的用户名和密码。";
 "signIn.problem.noRegistration" = "该服务器不支持在应用中创建账户。请选择其他服务器，或在其网站上注册。";
 "profile.search" = "搜索";
 "profile.mute" = "静音";
 "profile.unmute" = "取消静音";
 "profile.blockUser" = "屏蔽用户";
 "profile.unblockUser" = "取消屏蔽";
-"profile.blockedNotice" = "你已屏蔽此用户，其新消息不会送达你。";
+"profile.blockedNotice" = "您已屏蔽此用户，其新消息不会送达您。";
