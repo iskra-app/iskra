@@ -1628,17 +1628,14 @@ public struct RoomView: View {
                         onStartVoice: { Task { await startVoice() } },
                         onFinishVoice: { Task { await finishVoice() } },
                         onCancelVoice: cancelVoice,
+                        // The microphone only. The camera is not woken ahead of a hold: its light
+                        // comes on, and a camera that switches on under a press that may yet be a
+                        // tap is a camera somebody sees turning on for no reason.
                         onPrewarm: { mode in
-                            switch mode {
-                            case .voice: voice.prewarm()
-                            case .video: Task { await videoNote.prepare() }
-                            }
+                            if mode == .voice { voice.prewarm() }
                         },
                         onDiscardPrewarm: { mode in
-                            switch mode {
-                            case .voice: voice.discardPrewarm()
-                            case .video: if !isRecordingVideoNote { videoNote.cancel() }
-                            }
+                            if mode == .voice { voice.discardPrewarm() }
                         },
                         onLockGesture: { lock = $0 },
                         voice: recording,

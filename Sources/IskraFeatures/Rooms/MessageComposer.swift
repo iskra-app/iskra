@@ -670,6 +670,7 @@ struct MessageComposer: View {
                         switch hold {
                         case .none:
                             hold = .pressing
+                            isPrewarmed = false
                             beats.pressed += 1
 
                             // A press while a hands-free recording is running means stop, not
@@ -677,10 +678,16 @@ struct MessageComposer: View {
                             // one. Nothing is armed; the release does the work.
                             guard voice == nil else { return }
 
-                            onPrewarm(mode)
-
                             arming = Task {
-                                try? await Task.sleep(for: Theme.Timing.holdBegins)
+                                // The warm-up waits out a tap first. Begun at touch-down, every
+                                // tap that only meant "switch to video" switched the camera on and
+                                // off again, and the composer stuttered under it.
+                                try? await Task.sleep(for: Theme.Timing.prewarmAfter)
+                                guard !Task.isCancelled, hold == .pressing else { return }
+                                onPrewarm(mode)
+                                isPrewarmed = true
+
+                                try? await Task.sleep(for: Theme.Timing.holdBegins - Theme.Timing.prewarmAfter)
                                 guard !Task.isCancelled, hold == .pressing else { return }
                                 hold = .holding
                                 start()
@@ -733,7 +740,7 @@ struct MessageComposer: View {
                             // is running, and otherwise flips the button to the other kind of
                             // message.
                             if voice == nil {
-                                onDiscardPrewarm(mode)
+                                if isPrewarmed { onDiscardPrewarm(mode) }
                                 withAnimation(.smooth(duration: Theme.Timing.chrome)) { mode.toggle() }
                             } else {
                                 onFinishVoice()
@@ -938,6 +945,9 @@ struct MessageComposer: View {
     }
 
     @State private var hold: Hold = .none
+
+    /// Whether this press got far enough to warm the recorder up — see `Timing.prewarmAfter`.
+    @State private var isPrewarmed = false
 
     /// How much the record button swells under a finger — see `recordButton`.
     private static let heldScale: CGFloat = 1.25
