@@ -44,7 +44,8 @@ struct ForwardTests {
         let forwarded = try #require(content["m.forwarded"] as? [String: Any])
         #expect(forwarded["sender"] as? String == "@a:example.org")
         #expect(forwarded["displayname"] as? String == "А")
-        #expect(forwarded["event_id"] as? String == "$e")
+        // Never where it came from — see `Forwarded.content`.
+        #expect(forwarded["event_id"] == nil && forwarded["room_id"] == nil)
         #expect((forwarded["content"] as? [String: Any])?["body"] as? String == "hi")
         #expect((content["m.mentions"] as? [String: Any])?.isEmpty == true)
 
@@ -62,7 +63,7 @@ struct ForwardTests {
         let content = try #require(Forwarded.content(forwarding: forward))
         let origin = try #require(Forwarded.origin(inContent: content))
         #expect(origin.senderID == "@first:example.org")
-        #expect(origin.eventID == "$first")
+        #expect(origin.eventID == nil)
     }
 
     @Test("an event read off the wire: MSC2723's shape, with or without a name")

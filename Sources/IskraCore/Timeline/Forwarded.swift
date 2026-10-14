@@ -77,19 +77,21 @@ enum Forwarded {
             original["formatted_body"] = html
         }
 
+        // Who and when, never *where*: no `event_id`, no `room_id`. A marked forward goes only into
+        // a room that is not encrypted, and the message may well come out of one that is — an event
+        // ID from a private conversation, written where the server can read it, says that the
+        // conversation exists and points into it. Both MSCs make them optional, and outside the
+        // room they came from they open nothing anyway.
         var forwarded: [String: Any]
         if let origin = message.forwardedFrom {
             forwarded = [:]
             if let sender = origin.senderID { forwarded["sender"] = sender }
             if let name = origin.senderName { forwarded["displayname"] = name }
-            if let event = origin.eventID { forwarded["event_id"] = event }
-            if let room = origin.roomID { forwarded["room_id"] = room }
             if let date = origin.timestamp { forwarded["origin_server_ts"] = Int(date.timeIntervalSince1970 * 1000) }
         } else {
             forwarded = ["sender": message.senderID,
                          "displayname": message.senderName,
                          "origin_server_ts": Int(message.timestamp.timeIntervalSince1970 * 1000)]
-            if message.id.hasPrefix("$") { forwarded["event_id"] = message.id }
         }
         forwarded["content"] = original
 
