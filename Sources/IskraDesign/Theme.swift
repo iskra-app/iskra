@@ -715,6 +715,11 @@ public enum Theme {
         /// large simply to be looked at.
         public static let signInMark: CGFloat = 56
 
+        /// One line of `.body` at the default text size, rounded to the grid — what a one-line
+        /// bubble is as tall as. Scaled from there with Dynamic Type (see
+        /// `MessageBubble.minimumContentWidth`).
+        public static let bodyLine: CGFloat = 24
+
         /// The app's icon at the top of the opening screen — the one picture on it, so it can be
         /// big enough to be the screen's subject.
         public static let signInLogo: CGFloat = 112
