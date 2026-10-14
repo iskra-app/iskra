@@ -168,16 +168,22 @@ public struct RoomView: View {
     /// drives it still runs, so turning it back on is this one line.
     private static let showsHistorySpinner = false
 
-    /// A message arrived while the reader was somewhere else in the conversation.
+    /// How many messages arrived while the reader was somewhere else in the conversation —
+    /// the number on the way-down button, Telegram's.
     ///
     /// The other half of not dragging them to the bottom. Left on its own, "we no longer follow
     /// the newest message" would be a room that goes quiet on you: something is said, nothing
-    /// moves, and you find out ten minutes later. So the room stays where it is and *offers*.
-    @State private var hasUnseenBelow = false
+    /// moves, and you find out ten minutes later. It used to be a pill of its own, "New messages",
+    /// in the middle of the screen beside the round button that goes to the same place; one
+    /// button with a count on it says the same thing once.
+    @State private var unseenBelow = 0
 
     /// The colour the user chose. The pill that takes you to a new message is the one thing on the
     /// screen asking to be pressed, so it wears it — the same reason the send button does.
     @Environment(\.accent) private var accent
+
+    /// For the count on the way-down button — `AccentTheme.foreground(in:)`.
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.messageMenu) private var messageMenu
 
     /// The account's stickers — see `StickerPicker`. Nil only where no session put one up.
@@ -880,7 +886,11 @@ public struct RoomView: View {
                     + geometry.contentInsets.bottom
                     - geometry.contentOffset.y
                     - geometry.containerSize.height
-                return distanceFromBottom < geometry.containerSize.height / 2
+                // A whole screen, not half: with the keyboard up the sum is a keyboard's height
+                // further out at rest, and half a screen left the marker disbelieved — the
+                // way-down button stayed up, "typing…" never showed, and arriving messages did
+                // not animate, because all three ask whether the reader is at the end.
+                return distanceFromBottom < geometry.containerSize.height
             } action: { _, isClose in
                 endIsClose = isClose
             }
@@ -900,8 +910,8 @@ public struct RoomView: View {
                 // reader was away from it. See `setTyping`.
                 setTyping(!timeline.typing.isEmpty)
 
-                guard hasUnseenBelow else { return }
-                withAnimation(.smooth) { hasUnseenBelow = false }
+                guard unseenBelow > 0 else { return }
+                withAnimation(.smooth) { unseenBelow = 0 }
             }
             // And afterwards, a message arriving brings the conversation with it — but *only*
             // if the reader is standing at the end of it. Somebody reading last week's messages
@@ -913,14 +923,20 @@ public struct RoomView: View {
             // answering the newest message by definition.
             // `last` is used — by `guard let last`, the shorthand SwiftLint does not read as a use.
             // swiftlint:disable:next unused_closure_parameter
-            .onChange(of: timeline.rows.last?.id) { _, last in
+            .onChange(of: timeline.rows.last?.id) { previous, last in
                 guard hasAnchored, let last else { return }
 
                 guard isAtNewest || timeline.rows.last?.message?.isOwn == true else {
                     // Not going anywhere — but something *did* arrive, and the reader is not
-                    // looking at it. That is what the pill is for: the room no longer drags them
-                    // to the bottom, so it has to offer.
-                    withAnimation(.smooth) { hasUnseenBelow = true }
+                    // looking at it. That is what the count on the way-down button is for: the
+                    // room no longer drags them to the bottom, so it has to say so. Messages
+                    // from other people only, after the end the reader last had.
+                    let rows = timeline.rows
+                    let after = previous.flatMap { id in rows.lastIndex { $0.id == id } }.map { $0 + 1 } ?? rows.count - 1
+                    let arrived = rows[max(0, after)...].filter { $0.message.map { !$0.isOwn } ?? false }.count
+                    if arrived > 0 {
+                        withAnimation(.smooth) { unseenBelow += arrived }
+                    }
 
                     // And the anchor has to be overruled, this once. It holds the *bottom* of the
                     // conversation still, which is exactly right while history piles up above the
@@ -983,16 +999,6 @@ public struct RoomView: View {
             // The way back down. Inside the `ScrollViewReader`, because that is the only place the
             // proxy exists — and at the bottom of the conversation rather than floating in the
             // middle of it, because that is the direction it takes you.
-            .overlay(alignment: .bottom) {
-                Group {
-                    if hasUnseenBelow {
-                        jumpToNewest()
-                            .padding(.bottom, Theme.Spacing.close)
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
-                    }
-                }
-                .animation(.smooth(duration: Theme.Timing.chrome), value: hasUnseenBelow)
-            }
             // And the plain way down, for when nothing has been said and you are simply a long
             // way up. This did not exist, and its absence is only invisible on a short
             // conversation: reading back through a year of a room left the only route to the
@@ -2034,36 +2040,6 @@ public struct RoomView: View {
         }
     }
 
-    private func jumpToNewest() -> some View {
-        Button {
-            goToNewest()
-            // Not cleared here — arriving is what clears it, and arriving is what the scroll
-            // geometry reports. Clearing it on the press would take the pill away from somebody
-            // whose scroll had not started yet.
-        } label: {
-            HStack(spacing: Theme.Spacing.tight) {
-                Image(systemName: "arrow.down")
-                    .font(.caption.weight(.semibold))
-                Text(Strings.Room.jumpToNewest)
-                    .font(.caption.weight(.medium))
-            }
-            .padding(.horizontal, Theme.Spacing.normal)
-            .padding(.vertical, Theme.Spacing.close)
-            // Plain glass, not the accent.
-            //
-            // The tint is reserved for *the* primary action — the send button, "Continue" on
-            // sign-in — and this is not one. It is a notice that something was said while you
-            // were reading, and it is offering to take you there; painting it in the same colour
-            // as the button that sends a message put two loudest-things-on-the-screen on the
-            // screen at once, a few points apart, both round, both accented. The eye had to be
-            // told which was which. Glass says "floating control" without claiming to be the
-            // point of the room, and the point of the room is the conversation behind it.
-            .navigationGlass(in: .capsule)
-            .contentShape(.capsule)
-        }
-        .buttonStyle(.plain)
-    }
-
     /// The way to the rest of a conversation the reader cannot scroll to.
     ///
     /// Everywhere else, older messages are asked for by scrolling to the top, and that is the right
@@ -2137,9 +2113,23 @@ public struct RoomView: View {
                 .frame(width: Theme.Size.composerControl, height: Theme.Size.composerControl)
                 .navigationGlass(in: .circle)
                 .contentShape(.circle)
+                // How many arrived while the reader was up here — see `unseenBelow`.
+                .overlay(alignment: .top) {
+                    if unseenBelow > 0 {
+                        Text(unseenBelow, format: .number)
+                            .font(.caption2.weight(.semibold).monospacedDigit())
+                            .foregroundStyle(accent.foreground(in: colorScheme))
+                            .padding(.horizontal, Theme.Spacing.tight)
+                            .frame(minWidth: Theme.Size.unreadBadge, minHeight: Theme.Size.unreadBadge)
+                            .background(accent.color, in: Capsule())
+                            .offset(y: -Theme.Size.unreadBadge / 2)
+                            .transition(.scale.combined(with: .opacity))
+                    }
+                }
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text(Strings.Room.scrollToBottom))
+        .accessibilityValue(unseenBelow > 0 ? Text(Strings.RoomList.unread(unseenBelow)) : Text(""))
     }
 
     private func goToNewest() {
