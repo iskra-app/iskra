@@ -77,6 +77,18 @@ struct MessageBubble: ViewModifier {
     private var horizontal: CGFloat { style == .plain ? 0 : Theme.Spacing.roomy }
     private var vertical: CGFloat { style == .plain ? 0 : Theme.Spacing.normal }
 
+    /// One line of body text, as tall as Dynamic Type makes it — what a one-line bubble's height
+    /// is made of, and so what its narrowest width has to match.
+    @ScaledMetric(relativeTo: .body) private var lineHeight: CGFloat = Theme.Size.bodyLine
+
+    /// Never narrower than tall. "ок" in a bubble two letters wide came out as a thin upright
+    /// pill; at least as wide as a line is high, the shortest message is a circle — Telegram's —
+    /// and the words sit in the middle of it.
+    private var minimumContentWidth: CGFloat {
+        guard style != .plain else { return 0 }
+        return max(0, lineHeight + vertical * 2 - horizontal * 2)
+    }
+
     private var fill: AnyShapeStyle {
         switch style {
         case .own: accent.bubble(onWallpaper: hasWallpaper)
@@ -89,6 +101,7 @@ struct MessageBubble: ViewModifier {
         let shape = BubbleShape()
 
         return content
+            .frame(minWidth: minimumContentWidth)
             .padding(.horizontal, horizontal)
             .padding(.vertical, vertical)
             .foregroundStyle(style == .own ? accent.onBubble : AnyShapeStyle(.primary))
