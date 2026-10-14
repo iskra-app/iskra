@@ -1129,7 +1129,7 @@
 /* Settings → Privacy. */
 "privacy.title" = "Confidentialité";
 "privacy.hidePresence" = "Masquer la dernière connexion";
-"privacy.hidePresenceHelp" = "Les autres ne verront pas quand vous étiez en ligne pour la dernière fois.";
+"privacy.hidePresenceHelp" = "Les autres ne verront pas quand vous étiez en ligne pour la dernière fois — et vous ne verrez pas la leur.";
 "privacy.hideTyping" = "Masquer « écrit… »";
 "privacy.hideTypingHelp" = "Les autres ne verront pas quand vous écrivez.";
 

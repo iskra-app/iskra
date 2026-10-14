@@ -1129,7 +1129,7 @@
 /* Settings → Privacy. */
 "privacy.title" = "Privacy";
 "privacy.hidePresence" = "Hide last seen";
-"privacy.hidePresenceHelp" = "Other people won’t see when you were last online.";
+"privacy.hidePresenceHelp" = "Other people won’t see when you were last online — and you won’t see theirs.";
 "privacy.hideTyping" = "Hide “typing…”";
 "privacy.hideTypingHelp" = "Other people won’t see when you are typing.";
 

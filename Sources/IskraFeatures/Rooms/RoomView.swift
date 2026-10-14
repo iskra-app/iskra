@@ -196,6 +196,9 @@ public struct RoomView: View {
     @Environment(\.isOffline) private var isOffline
     @Environment(\.isUpdating) private var isUpdating
 
+    /// Your own last-seen time hidden means nobody else's is shown — see `watchPresence`.
+    @AppStorage(PrivacySettings.hidesPresenceKey) private var hidesPresence = PrivacySettings.hidesPresenceByDefault
+
     /// The account's stickers — see `StickerPicker`. Nil only where no session put one up.
     @Environment(\.stickers) private var stickers
 
@@ -1334,7 +1337,8 @@ public struct RoomView: View {
         // Where the other person is — asked again every minute for as long as this room is open,
         // and started afresh when the counterpart changes (it arrives with the room's info, a
         // moment after the screen). An explicit call, not a side effect of drawing the line.
-        .task(id: timeline.directCounterpartID) {
+        // Hiding your own last-seen time in Settings stops it at once, and showing it starts it again.
+        .task(id: PresenceWatch(counterpart: timeline.directCounterpartID, hidesOwn: hidesPresence)) {
             await timeline.watchPresence()
         }
         .task {
@@ -2465,4 +2469,11 @@ extension View {
     func flippedForTimeline() -> some View {
         scaleEffect(x: 1, y: -1, anchor: .center)
     }
+}
+
+/// What the presence request in a room depends on — who the other person is, and whether you are
+/// hiding from them (and so not looking at them either).
+private struct PresenceWatch: Equatable {
+    let counterpart: String?
+    let hidesOwn: Bool
 }
