@@ -64,4 +64,17 @@ struct SearchTests {
         let unreadable = MsgLikeKind.unableToDecrypt(msg: .olmV1Curve25519AesSha2(senderKey: "key"))
         #expect(SearchStore.excerpt(for: content(unreadable)) == nil)
     }
+
+    // The nickname given to a personal chat names the person it is with, and nobody else in it.
+    @Test func nicknameGoesOnlyToTheCounterpart() {
+        let name = { (sender: String) in
+            SearchStore.senderName(sender, displayName: "anna_1987",
+                                   counterpartID: "@anna:example.org", localName: "Мама")
+        }
+        #expect(name("@anna:example.org") == "Мама")
+        // A third person invited into the chat keeps their own name — never the nickname.
+        #expect(name("@mallory:example.org") == "anna_1987")
+        #expect(SearchStore.senderName("@anna:example.org", displayName: nil,
+                                       counterpartID: nil, localName: "Мама") == "@anna:example.org")
+    }
 }

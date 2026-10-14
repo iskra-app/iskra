@@ -78,7 +78,10 @@ public final class RoomSearchStore: Identifiable {
             }
 
             guard !Task.isCancelled else { return }
-            hits = results.compactMap { Self.hit(from: $0, roomID: roomID, ownUserID: ownUserID) }
+            let counterpartID = LocalNames.name(for: roomID) == nil
+                ? nil : await SearchStore.counterpart(in: room, ownUserID: ownUserID)
+            guard !Task.isCancelled else { return }
+            hits = results.compactMap { Self.hit(from: $0, roomID: roomID, counterpartID: counterpartID) }
             foundNothing = hits.isEmpty
         } catch {
             guard !Task.isCancelled else { return }
@@ -90,7 +93,7 @@ public final class RoomSearchStore: Identifiable {
     /// One room-scoped result into a `SearchHit`. A deleted message is dropped by
     /// `SearchStore.excerpt` — the words the query matched may still be in the index even though the
     /// message is gone, and a redaction must not come back as a result. See that method's note.
-    static func hit(from result: RoomSearchResult, roomID: String, ownUserID: String?) -> SearchHit? {
+    static func hit(from result: RoomSearchResult, roomID: String, counterpartID: String?) -> SearchHit? {
         guard let excerpt = SearchStore.excerpt(for: result.content) else { return nil }
 
         var displayName: String?
@@ -99,7 +102,8 @@ public final class RoomSearchStore: Identifiable {
         return SearchHit(id: result.eventId,
                          roomID: roomID,
                          senderName: SearchStore.senderName(result.sender, displayName: displayName,
-                                                            roomID: roomID, ownUserID: ownUserID),
+                                                            counterpartID: counterpartID,
+                                                            localName: LocalNames.name(for: roomID)),
                          excerpt: excerpt,
                          timestamp: MessagePreview.date(from: result.timestamp))
     }
