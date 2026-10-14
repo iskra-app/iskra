@@ -1566,7 +1566,20 @@ public struct RoomView: View {
         return String(app: Strings.Room.typingBy(names.formatted(.list(type: .and))))
     }
 
+    /// The composer, inside a view of its own that is the only thing reading the voice recorder.
+    ///
+    /// The recorder's clock and waveform change twenty times a second, and they used to be read
+    /// *here*, in the room's body — so for as long as somebody was speaking, the entire room, every
+    /// row of the conversation with it, was rebuilt twenty times a second. That was the stutter at
+    /// the start of every recording and the stiffness all the way through it. Read inside
+    /// `VoiceScope`, they rebuild the composer and nothing else.
     private var composer: some View {
+        VoiceScope(voice: voice) { recording in
+            composer(voice: recording)
+        }
+    }
+
+    private func composer(voice recording: VoiceRecording?) -> some View {
         MessageComposer(draft: $draft,
                         context: composerContext,
                         onCancelContext: cancelContext,
@@ -1597,7 +1610,7 @@ public struct RoomView: View {
                             }
                         },
                         onLockGesture: { lock = $0 },
-                        voice: voiceRecording,
+                        voice: recording,
                         onChoosePhoto: { isChoosingPhoto = true },
                         onChooseFile: { isChoosingFile = true },
                         onChooseLocation: { isChoosingLocation = true },
@@ -1786,7 +1799,7 @@ public struct RoomView: View {
     /// belongs on the screen for all of them — the hold has taken, the phone has said so with a tap
     /// on the hand, and the one thing that must not happen next is nothing. The clock reads 0:00 and
     /// the waveform is empty, because that is exactly what has been recorded so far.
-    private var voiceRecording: VoiceRecording? {
+    static func recording(of voice: VoiceRecorder) -> VoiceRecording? {
         guard voice.state == .starting || voice.state == .recording || voice.state == .stopped else {
             return nil
         }
@@ -2369,5 +2382,15 @@ struct DayDividerView: View {
         let sameYear = calendar.isDate(date, equalTo: now, toGranularity: .year)
         return date.formatted(sameYear ? .dateTime.day().month(.wide)
                                        : .dateTime.day().month(.wide).year())
+    }
+}
+
+/// Reads the voice recorder so that the room does not have to — see `RoomView.composer`.
+private struct VoiceScope<Content: View>: View {
+    let voice: VoiceRecorder
+    @ViewBuilder let content: (VoiceRecording?) -> Content
+
+    var body: some View {
+        content(RoomView.recording(of: voice))
     }
 }
