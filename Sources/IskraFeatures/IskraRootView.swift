@@ -111,6 +111,14 @@ public struct IskraRootView: View {
         // message is the length it says it is — see `ScrollTouches`.
         ScrollTouches.stopDelaying()
 
+        // No hyphenation in the text system's default layout. A messenger's lines are short, and
+        // on a phone the system was breaking ordinary words across them — "сообще-ние" in a
+        // bubble two words wide — which reads as the app mangling what somebody wrote. Words
+        // now wrap whole; only a word too long for a line of its own is broken, where it must.
+        // It is the text system's own preference key (see `NSLayoutManager.usesDefaultHyphenation`),
+        // registered rather than set, so it is a default and never a value written to disk.
+        UserDefaults.standard.register(defaults: ["NSUsesDefaultHyphenation": false])
+
         // The generated-faces switch moved into the App Group's defaults so that the notification
         // extension can read it too — and somebody who turned it on before it moved would
         // otherwise find it back off, and their lock screen disagreeing with their chat list.
