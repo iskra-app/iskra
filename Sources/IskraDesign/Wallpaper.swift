@@ -182,22 +182,16 @@ public extension View {
     /// own page. In place of `.foregroundStyle(.secondary)` on the words themselves — a style set
     /// further out is overridden by one set closer in, so it cannot be put round them afterwards.
     ///
-    /// The alternative to `wallpaperPlate()` for the smallest words — the time beside a bubble —
-    /// where a capsule under every message is a row of pills down the screen.
+    /// Everything drawn straight onto the conversation wears it, and nothing more: the time beside
+    /// a bubble, the date between days, the line saying who joined. There used to be a capsule of
+    /// material under the date and the note whenever a wallpaper was showing, and it made them two
+    /// more shapes in a column of shapes — the time beside a bubble had already shown that ink
+    /// with a halo reads on a photograph without anything under it.
+    ///
+    /// Links inside the words — the names in a note — take the same ink, through the tint: a link
+    /// in grey on a dark photograph would be the one part of the line nobody could read.
     func onWallpaperInk() -> some View {
         modifier(OnWallpaperInk())
-    }
-
-    /// Something to stand on, for words drawn straight onto the conversation — the date between
-    /// days, a line saying who joined, the time beside a bubble — when the conversation is standing
-    /// on a wallpaper, and nothing when it is not.
-    ///
-    /// The bubbles already knew to go opaque over a wallpaper; these did not, and secondary grey
-    /// over a dark photograph in the light appearance is words nobody can read. A capsule of
-    /// material, the way every messenger with wallpapers does it. A material, not glass: this is
-    /// content, and glass stays on the navigation layer (see `Glass.swift`).
-    func wallpaperPlate() -> some View {
-        modifier(WallpaperPlate())
     }
 }
 
@@ -207,26 +201,15 @@ private struct OnWallpaperInk: ViewModifier {
 
     func body(content: Content) -> some View {
         if hasWallpaper {
+            let ink = isDark ? Color.white.opacity(0.92) : Color.black.opacity(0.78)
             content
-                .foregroundStyle(isDark ? Color.white.opacity(0.92) : Color.black.opacity(0.78))
+                .foregroundStyle(ink)
+                .tint(ink)
                 .shadow(color: (isDark ? Color.black : Color.white).opacity(0.45), radius: 1.5)
         } else {
-            content.foregroundStyle(.secondary)
-        }
-    }
-}
-
-private struct WallpaperPlate: ViewModifier {
-    @Environment(\.hasWallpaper) private var hasWallpaper
-
-    func body(content: Content) -> some View {
-        if hasWallpaper {
             content
-                .padding(.horizontal, Theme.Spacing.close)
-                .padding(.vertical, Theme.Spacing.withinRun)
-                .background(.regularMaterial, in: Capsule())
-        } else {
-            content
+                .foregroundStyle(.secondary)
+                .tint(.secondary)
         }
     }
 }

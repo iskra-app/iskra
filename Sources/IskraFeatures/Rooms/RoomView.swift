@@ -2403,8 +2403,8 @@ struct DayDividerView: View {
     private var label: some View {
         Text(Self.label(for: date))
             .font(.caption.weight(.medium))
-            .foregroundStyle(.secondary)
-            .wallpaperPlate()
+            // Bare words, like the time beside a bubble — see `onWallpaperInk`.
+            .onWallpaperInk()
             // Enough air to read as a break in the conversation, and no more. At `roomy` on both
             // sides the date was holding a band of empty screen the height of a message either
             // side of it, so a day with two lines in it looked like a day with a hole in it.
