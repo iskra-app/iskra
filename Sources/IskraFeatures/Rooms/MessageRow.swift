@@ -727,6 +727,111 @@ struct VideoNoteView: View {
     }
 }
 
+/// A music file, or any sound that is not a voice message: played in the bubble, the way a voice
+/// message is, and not opened as a document somewhere else.
+///
+/// A round play button, the track's name, and a bar that fills as it plays — draggable, because a
+/// song, unlike a voice message, is a thing people skip about in. The time under it counts up
+/// while playing and shows the whole length otherwise.
+struct AudioFileView: View {
+    let attachment: Attachment
+
+    @Environment(\.mediaLoader) private var loader
+    @Environment(\.accent) private var accent
+
+    @State private var playback = AudioPlayback()
+
+    /// Where the finger is on the bar while it drags, so the bar follows it rather than the
+    /// player, which only catches up when the finger comes up.
+    @State private var scrubbing: Double?
+
+    private var title: String {
+        let name = (attachment.filename as NSString).deletingPathExtension
+        return name.isEmpty ? attachment.filename : name
+    }
+
+    private var length: TimeInterval? { attachment.duration ?? playback.duration }
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.normal) {
+            Button {
+                Task { await playback.toggle(attachment, using: loader) }
+            } label: {
+                Group {
+                    if playback.isLoading {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill")
+                            .font(.body.weight(.semibold))
+                            .contentTransition(.symbolEffect(.replace))
+                    }
+                }
+                .frame(width: Theme.Size.minimumTapTarget, height: Theme.Size.minimumTapTarget)
+                .background(Circle().fill(.primary.opacity(0.12)))
+                .contentShape(.circle)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(playback.isPlaying ? Strings.Message.Media.pause
+                                                        : Strings.Message.Media.play))
+
+            VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                Text(title)
+                    .font(.subheadline.weight(.medium))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+
+                bar
+
+                time
+                    .font(.caption.monospacedDigit())
+                    .opacity(0.7)
+            }
+            .frame(minWidth: Theme.Size.audioTrack, alignment: .leading)
+        }
+        .onDisappear { playback.stop() }
+    }
+
+    private var shown: Double { scrubbing ?? playback.progress }
+
+    private var bar: some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                Capsule().opacity(0.25)
+                Capsule().frame(width: proxy.size.width * shown)
+            }
+            .frame(height: Theme.Size.waveformBar * 2)
+            .frame(maxHeight: .infinity)
+            .contentShape(.rect)
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        guard playback.duration != nil else { return }
+                        scrubbing = min(max(value.location.x / max(proxy.size.width, 1), 0), 1)
+                    }
+                    .onEnded { _ in
+                        if let scrubbing { playback.seek(to: scrubbing) }
+                        scrubbing = nil
+                    }
+            )
+        }
+        .frame(height: Theme.Size.audioScrubber)
+        .animation(.linear(duration: 0.05), value: playback.progress)
+        .accessibilityHidden(true)
+    }
+
+    @ViewBuilder
+    private var time: some View {
+        if let length {
+            if playback.isPlaying || shown > 0 {
+                Text("\(Duration.seconds(length * shown), format: .time(pattern: .minuteSecond)) / \(Duration.seconds(length), format: .time(pattern: .minuteSecond))")
+            } else {
+                Text(Duration.seconds(length), format: .time(pattern: .minuteSecond))
+            }
+        }
+    }
+}
+
 /// A voice message: a play button, the shape of the sound, and how far through it is.
 ///
 /// The waveform is the sender's own — computed on their device and sent with the message — so

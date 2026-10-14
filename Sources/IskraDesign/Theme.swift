@@ -617,6 +617,11 @@ public enum Theme {
         /// long press, the double tap, the reaction — and growing this to 44pt would push the
         /// waveform out of the bubble rather than making anything easier to hit.
         public static let voiceButton: CGFloat = 28
+
+        /// A music file's bubble: how wide its name and bar are at least, and how tall the strip
+        /// the bar is dragged along — taller than the bar, so a thumb can find it.
+        public static let audioTrack: CGFloat = 160
+        public static let audioScrubber: CGFloat = 20
         public static let waveform: CGFloat = 24
 
         /// One bar of that waveform: how wide it is drawn, and the shortest it may be so that a
