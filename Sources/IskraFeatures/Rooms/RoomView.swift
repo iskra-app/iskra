@@ -546,11 +546,15 @@ public struct RoomView: View {
                         floatingDateLine = insets.globalTop + insets.top + Theme.Spacing.roomy
                     }
             }
-            // The conversation goes soft and a shade darker as it passes under the title bar —
-            // the scroll-edge effect the system would have drawn for an upright list, drawn by hand
-            // for one turned over.
-            .overlay(alignment: .top) {
-                TopFade(height: timelineInsets.top + Theme.Spacing.generous)
+            // The conversation fades out as it passes under the title bar — not blurred, not washed
+            // in a colour, but simply less and less there, so whatever the room stands on (the page,
+            // a gradient, somebody's photograph) shows through unchanged.
+            .mask {
+                VStack(spacing: 0) {
+                    LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom)
+                        .frame(height: timelineInsets.top + Theme.Spacing.generous)
+                    Color.black
+                }
             }
             // The keyboard goes down once the reader has dragged the conversation a little way back
             // into its history — a deliberate pull, not the first pixel of movement, which is what
@@ -2418,45 +2422,5 @@ extension View {
     /// Turned upside down — the conversation, and each row in it turned back. See `RoomView.body`.
     func flippedForTimeline() -> some View {
         scaleEffect(x: 1, y: -1, anchor: .center)
-    }
-}
-
-/// The top of the conversation, under the title bar: blurred, and fading into whatever the room is
-/// standing on, a short way below it. Content-side, so a material and not glass.
-///
-/// "Whatever it is standing on" is the point. A wash in the page's colour is right on the app's own
-/// page and wrong over a wallpaper — a white or black band laid across a sunset. Over a wallpaper
-/// the wash takes the colour of the wallpaper's top edge, dimmed as the wallpaper is.
-private struct TopFade: View {
-    let height: CGFloat
-
-    @Environment(\.hasWallpaper) private var hasWallpaper
-    @AppStorage(Wallpaper.storageKey) private var wallpaper: Wallpaper = .default
-    @AppStorage(Wallpaper.dimmingKey) private var dimming: Double = Wallpaper.defaultDimming
-
-    var body: some View {
-        let fade = LinearGradient(stops: [.init(color: .black, location: 0),
-                                          .init(color: .black, location: 0.3),
-                                          .init(color: .clear, location: 1)],
-                                  startPoint: .top, endPoint: .bottom)
-        Rectangle()
-            .fill(.ultraThinMaterial)
-            // Light: the conversation should still be legible under the bar, only softened.
-            .opacity(0.8)
-            .overlay(wash.opacity(0.35))
-            .mask(fade)
-            .frame(height: height)
-            .ignoresSafeArea(edges: .top)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
-    }
-
-    private var wash: Color {
-        guard hasWallpaper else { return .page }
-        guard let top = wallpaper.topColor(dimming: dimming) else {
-            // A photograph has no one colour; its brightness picks between the two that read on it.
-            return WallpaperStore.shared.isDark(wallpaper, dimming: dimming) ? .black : .white
-        }
-        return top
     }
 }
