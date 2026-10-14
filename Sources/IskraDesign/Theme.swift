@@ -825,6 +825,10 @@ public enum Theme {
         /// conversation they were reading. A screenful of slack would do exactly that.
         public static let newestReach: CGFloat = 80
 
+        /// How far the conversation has to be dragged back into its history before the keyboard
+        /// goes down. Enough to be a decision, not a twitch of the thumb.
+        public static let keyboardDismissDrag: CGFloat = 48
+
         /// How much of the title bar the chat's name and avatar may take.
         ///
         /// A limit rather than a size: a title bar has buttons in both corners, and a room
