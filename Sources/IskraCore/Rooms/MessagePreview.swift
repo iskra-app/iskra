@@ -6,7 +6,40 @@ import MatrixRustSDK
 /// Deliberately lossy. Attachments become "Photo", "Voice message" and so on rather
 /// than leaking a filename, and anything we cannot render becomes nil rather than a
 /// placeholder full of protocol vocabulary.
+/// What kind of attachment the last message in a chat is — the small icon the chat list draws in
+/// front of "Photo", "Voice message" and the rest. Nil for words.
+public enum PreviewKind: Sendable, Equatable {
+    case photo, video, videoNote, voice, audio, file, location, sticker, poll
+}
+
+/// How far your own last message in a chat has got — the mark in front of it in the chat list.
+public enum LastMessageMark: Sendable, Equatable {
+    case sending, sent, read, failed
+}
+
 enum MessagePreview {
+    static func kind(for content: TimelineItemContent) -> PreviewKind? {
+        guard case let .msgLike(msgLike) = content else { return nil }
+        switch msgLike.kind {
+        case let .message(message):
+            switch message.msgType {
+            case let .image(content):
+                return StickerPicture.isSticker(mimeType: content.info?.mimetype, filename: content.filename)
+                    ? .sticker : .photo
+            case let .video(content):
+                return VideoNote.isVideoNote(content) ? .videoNote : .video
+            case let .audio(content):
+                return content.voice != nil ? .voice : .audio
+            case .file: return .file
+            case .location: return .location
+            default: return nil
+            }
+        case .sticker: return .sticker
+        case .poll: return .poll
+        default: return nil
+        }
+    }
+
     static func text(for content: TimelineItemContent) -> String? {
         guard case let .msgLike(msgLike) = content else { return nil }
 
