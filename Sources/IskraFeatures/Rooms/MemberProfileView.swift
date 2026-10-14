@@ -94,14 +94,7 @@ struct MemberProfileView: View {
             // The Matrix ID is the one thing here people come to copy, so it is selectable and has a
             // copy of its own in the menu.
             Section {
-                LabeledContent {
-                    Text(verbatim: member.id)
-                        .textSelection(.enabled)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                } label: {
-                    Text(Strings.Profile.matrixID)
-                }
+                MatrixIDField(userID: member.id)
 
                 if showsRole {
                     LabeledContent {

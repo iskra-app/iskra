@@ -208,8 +208,6 @@ struct LicensesView: View {
                         }
                     }
                 }
-            } footer: {
-                Text(Strings.About.cryptography)
             }
         }
         .formStyle(.grouped)

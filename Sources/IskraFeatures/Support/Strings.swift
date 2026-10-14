@@ -1664,8 +1664,6 @@ public enum Strings {
 
         /// The row that leads to `LicensesView`, and that screen's title.
         public static let licences = LocalizedStringResource("about.licences", bundle: bundle)
-        /// Under the list of licences: whose the cryptography is.
-        public static let cryptography = LocalizedStringResource("about.cryptography", bundle: bundle)
     }
 
     /// What the app is keeping on the device, and the one part of it the user can throw away.
