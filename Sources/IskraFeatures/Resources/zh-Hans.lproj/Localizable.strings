@@ -1129,7 +1129,7 @@
 /* Settings → Privacy. */
 "privacy.title" = "隐私";
 "privacy.hidePresence" = "隐藏上次在线时间";
-"privacy.hidePresenceHelp" = "别人看不到您上次在线的时间。";
+"privacy.hidePresenceHelp" = "别人看不到您上次在线的时间，您也看不到别人的。";
 "privacy.hideTyping" = "隐藏“正在输入…”";
 "privacy.hideTypingHelp" = "别人看不到您正在输入。";
 

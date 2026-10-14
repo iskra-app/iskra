@@ -640,12 +640,15 @@ public final class TimelineStore {
     /// `m.presence` block of `/sync`, which the SDK reads and the FFI does not forward, so there
     /// is no stream to subscribe to — only a question to ask again.
     ///
+    /// Not at all while your own last-seen time is hidden — see `PrivacySettings.seesOthersPresence`.
+    ///
     /// A refusal (presence switched off, or no shared room) is permanent for as long as the room is
     /// open, so the loop stops on it. A timeout or a dropped connection keeps the last answer:
     /// "был(а) 5 мин назад" going briefly stale is better than it flickering out every time the
     /// train enters a tunnel.
     public func watchPresence() async {
-        guard let ask = askPresence, let userID = directCounterpartID else {
+        guard let ask = askPresence, let userID = directCounterpartID,
+              PrivacySettings.seesOthersPresence() else {
             counterpartPresence = nil
             return
         }

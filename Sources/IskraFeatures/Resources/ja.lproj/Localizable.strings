@@ -1129,7 +1129,7 @@
 /* Settings → Privacy. */
 "privacy.title" = "プライバシー";
 "privacy.hidePresence" = "最終オンラインを隠す";
-"privacy.hidePresenceHelp" = "ほかの人には、あなたが最後にオンラインだった時刻が見えなくなります。";
+"privacy.hidePresenceHelp" = "ほかの人には、あなたが最後にオンラインだった時刻が見えなくなります。あなたにも、ほかの人の時刻は見えなくなります。";
 "privacy.hideTyping" = "「入力中…」を隠す";
 "privacy.hideTypingHelp" = "ほかの人には、あなたが入力中であることが見えなくなります。";
 

@@ -50,4 +50,17 @@ struct PresenceTests {
         #expect(presence.isWorthShowing)
     }
 
+    // MARK: - Who is looked at
+
+    /// Hiding from people means not looking at them either — the rule `watchPresence` asks before
+    /// every request, so no screen can watch while hiding.
+    @Test func hidingYourOwnHidesEverybodyElses() throws {
+        let name = UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+
+        #expect(PrivacySettings.seesOthersPresence(defaults))
+        defaults.set(true, forKey: PrivacySettings.hidesPresenceKey)
+        #expect(!PrivacySettings.seesOthersPresence(defaults))
+    }
 }

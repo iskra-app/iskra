@@ -8,9 +8,9 @@ import Foundation
 /// keys and defaults. Both are off by default, as they are in every messenger: hiding them is a
 /// choice somebody makes, not one made for them.
 ///
-/// Neither changes what *you* see of other people. The app shows nobody's last-seen time (the FFI
-/// exports no presence at all — see `TimelineStore.typing`), and "печатает…" from others keeps
-/// arriving, because a server that relays typing does not ask the reader's permission.
+/// Hiding your last-seen time hides everybody else's from you too, as in Telegram — see
+/// `seesOthersPresence`. Hiding typing does not: "печатает…" from others keeps arriving, because a
+/// server that relays typing does not ask the reader's permission.
 public enum PrivacySettings {
     /// Whether the account tells the homeserver it is offline whatever it is doing, so nobody sees
     /// when it was last here.
@@ -23,6 +23,14 @@ public enum PrivacySettings {
 
     public static func hidesPresence(_ defaults: UserDefaults = .standard) -> Bool {
         defaults.object(forKey: hidesPresenceKey) as? Bool ?? hidesPresenceByDefault
+    }
+
+    /// Whether the app asks the server where other people are. Never while your own is hidden:
+    /// watching people while hiding from them is the one combination the switch rules out, and it
+    /// is ruled out here, where `TimelineStore.watchPresence` asks, rather than in a view that could
+    /// forget.
+    public static func seesOthersPresence(_ defaults: UserDefaults = .standard) -> Bool {
+        !hidesPresence(defaults)
     }
 
     public static func hidesTyping(_ defaults: UserDefaults = .standard) -> Bool {
