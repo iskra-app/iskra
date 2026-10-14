@@ -824,7 +824,10 @@ struct AudioFileView: View {
     private var time: some View {
         if let length {
             if playback.isPlaying || shown > 0 {
-                Text("\(Duration.seconds(length * shown), format: .time(pattern: .minuteSecond)) / \(Duration.seconds(length), format: .time(pattern: .minuteSecond))")
+                // Two clock readings and a slash — numbers, not words, so nothing to translate.
+                let pattern = Duration.TimeFormatStyle(pattern: .minuteSecond)
+                Text(verbatim: Duration.seconds(length * shown).formatted(pattern)
+                     + " / " + Duration.seconds(length).formatted(pattern))
             } else {
                 Text(Duration.seconds(length), format: .time(pattern: .minuteSecond))
             }
