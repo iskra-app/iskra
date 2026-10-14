@@ -799,7 +799,7 @@ struct RoomRow: View {
         if isTyping { return Text(Strings.Room.typing) }
         let words = Text(room.lastMessage ?? " ")
         guard let symbol = room.lastMessageKind.map(Self.symbol(for:)) else { return words }
-        return Text("\(Image(systemName: symbol)) ") + words
+        return Text(Image(systemName: symbol)) + Text(verbatim: " ") + words
     }
 
     static func symbol(for kind: PreviewKind) -> String {

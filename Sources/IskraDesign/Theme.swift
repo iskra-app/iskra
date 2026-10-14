@@ -909,6 +909,10 @@ public enum Theme {
         /// keyboard — and short enough to leave the message it belongs to on screen.
         public static let emojiPanel: CGFloat = 268
 
+        /// A group's heading in that panel — fixed, so where each group starts can be worked out
+        /// rather than measured (`EmojiPanel.offset(of:)`).
+        public static let emojiHeader: CGFloat = 28
+
         /// And how wide it is — half again as wide as the menu of verbs beside it.
         ///
         /// The only part of the menu that is not a column of words. It is a *grid*, and a grid
