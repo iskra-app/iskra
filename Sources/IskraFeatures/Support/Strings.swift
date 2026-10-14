@@ -451,10 +451,6 @@ public enum Strings {
         /// The archive: the shelf where swept-aside chats wait, and the way back to them.
         public enum Archive {
             public static let title = LocalizedStringResource("roomList.archive.title", bundle: bundle)
-            /// The row at the top of the list that opens the archive, with a count of what is in it.
-            public static func entry(_ count: Int) -> LocalizedStringResource {
-                LocalizedStringResource("roomList.archive.entry", defaultValue: "Archive (\(count))", bundle: bundle)
-            }
             public static let emptyTitle = LocalizedStringResource("roomList.archive.emptyTitle", bundle: bundle)
             public static let emptyMessage = LocalizedStringResource("roomList.archive.emptyMessage", bundle: bundle)
         }

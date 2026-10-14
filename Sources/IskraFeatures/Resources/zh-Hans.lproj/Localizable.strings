@@ -752,7 +752,6 @@
 
 /* The archive: the shelf for set-aside chats and the way back to them. */
 "roomList.archive.title" = "归档";
-"roomList.archive.entry" = "归档 (%lld)";
 "roomList.archive.emptyTitle" = "归档是空的";
 "roomList.archive.emptyMessage" = "把聊天向左滑并归档——它不会再占用主列表，但也不会消失。";
 

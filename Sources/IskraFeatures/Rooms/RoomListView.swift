@@ -497,12 +497,11 @@ public struct RoomListView: View {
     /// shelf that is usually empty.
     @ViewBuilder
     private var archiveEntry: some View {
-        let archived = session.roomList.archivedRooms
-        if !archived.isEmpty {
+        if !session.roomList.archivedRooms.isEmpty {
             Button {
                 isShowingArchive = true
             } label: {
-                Label(String(app: Strings.RoomList.Archive.entry(archived.count)),
+                Label(String(app: Strings.RoomList.Archive.title),
                       systemImage: "archivebox")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.secondary)

@@ -752,7 +752,6 @@
 
 /* The archive: the shelf for set-aside chats and the way back to them. */
 "roomList.archive.title" = "Archivo";
-"roomList.archive.entry" = "Archivo (%lld)";
 "roomList.archive.emptyTitle" = "No hay nada archivado";
 "roomList.archive.emptyMessage" = "Deslice un chat a la izquierda y archívelo: dejará de estar en la lista principal sin desaparecer.";
 

@@ -27,10 +27,12 @@ public final class SearchStore {
     public private(set) var foundNothing = false
 
     private let client: Client
+    private let ownUserID: String?
     private var searchTask: Task<Void, Never>?
 
     init(client: Client) {
         self.client = client
+        self.ownUserID = try? client.userId()
     }
 
     /// Searches as the user types, cancelling whatever was in flight.
@@ -97,16 +99,28 @@ public final class SearchStore {
         let event = result.result
         guard let excerpt = Self.excerpt(for: event.content) else { return nil }
 
-        var senderName = event.sender
-        if case let .ready(displayName, _, _) = event.senderProfile, let displayName {
-            senderName = displayName
-        }
+        var displayName: String?
+        if case let .ready(name, _, _) = event.senderProfile { displayName = name }
 
         return SearchHit(id: event.eventId,
                          roomID: result.roomId,
-                         senderName: senderName,
+                         senderName: Self.senderName(event.sender, displayName: displayName,
+                                                     roomID: result.roomId, ownUserID: ownUserID),
                          excerpt: excerpt,
                          timestamp: MessagePreview.date(from: event.timestamp))
+    }
+
+    /// Who a result is from, as the rest of the app calls them.
+    ///
+    /// In a personal chat the user has given a name to, the other person goes by that name in a
+    /// result too — the list, the header and the conversation already call them *Мама*, and a
+    /// search that answered with `anna_1987` read as a message from a stranger. A nickname is only
+    /// ever set on a personal chat (see `LocalNames`), so in a room that has one, anybody who is not
+    /// us is the person it names.
+    nonisolated static func senderName(_ senderID: String, displayName: String?,
+                                       roomID: String, ownUserID: String?) -> String {
+        if senderID != ownUserID, let local = LocalNames.name(for: roomID) { return local }
+        return displayName ?? senderID
     }
 
     /// The words for one search result — or nil for an event that must not be a result at all.

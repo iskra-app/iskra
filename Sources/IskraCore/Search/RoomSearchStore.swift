@@ -21,11 +21,13 @@ public final class RoomSearchStore: Identifiable {
 
     private let room: Room
     private let roomID: String
+    private let ownUserID: String
     private var searchTask: Task<Void, Never>?
 
     init(room: Room) {
         self.room = room
         self.roomID = room.id()
+        self.ownUserID = room.ownUserId()
     }
 
     /// Searches as the user types, cancelling whatever was in flight. Same shape and same 200 ms
@@ -76,7 +78,7 @@ public final class RoomSearchStore: Identifiable {
             }
 
             guard !Task.isCancelled else { return }
-            hits = results.compactMap { Self.hit(from: $0, roomID: roomID) }
+            hits = results.compactMap { Self.hit(from: $0, roomID: roomID, ownUserID: ownUserID) }
             foundNothing = hits.isEmpty
         } catch {
             guard !Task.isCancelled else { return }
@@ -88,17 +90,16 @@ public final class RoomSearchStore: Identifiable {
     /// One room-scoped result into a `SearchHit`. A deleted message is dropped by
     /// `SearchStore.excerpt` — the words the query matched may still be in the index even though the
     /// message is gone, and a redaction must not come back as a result. See that method's note.
-    static func hit(from result: RoomSearchResult, roomID: String) -> SearchHit? {
+    static func hit(from result: RoomSearchResult, roomID: String, ownUserID: String?) -> SearchHit? {
         guard let excerpt = SearchStore.excerpt(for: result.content) else { return nil }
 
-        var senderName = result.sender
-        if case let .ready(displayName, _, _) = result.senderProfile, let displayName {
-            senderName = displayName
-        }
+        var displayName: String?
+        if case let .ready(name, _, _) = result.senderProfile { displayName = name }
 
         return SearchHit(id: result.eventId,
                          roomID: roomID,
-                         senderName: senderName,
+                         senderName: SearchStore.senderName(result.sender, displayName: displayName,
+                                                            roomID: roomID, ownUserID: ownUserID),
                          excerpt: excerpt,
                          timestamp: MessagePreview.date(from: result.timestamp))
     }

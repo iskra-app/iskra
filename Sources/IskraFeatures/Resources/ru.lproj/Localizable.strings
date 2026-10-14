@@ -749,7 +749,6 @@
 
 /* Архив: полка для отложенных чатов и дорога обратно к ним. */
 "roomList.archive.title" = "Архив";
-"roomList.archive.entry" = "Архив (%lld)";
 "roomList.archive.emptyTitle" = "В архиве пусто";
 "roomList.archive.emptyMessage" = "Смахните чат влево и уберите его в архив — он не будет мешать в общем списке, но и никуда не денется.";
 
