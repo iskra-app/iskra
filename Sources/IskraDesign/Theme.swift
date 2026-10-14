@@ -829,6 +829,10 @@ public enum Theme {
         /// goes down. Enough to be a decision, not a twitch of the thumb.
         public static let keyboardDismissDrag: CGFloat = 48
 
+        /// How far the conversation takes to fade out under a bar — the same at the title bar and
+        /// at the composer, so the two edges match.
+        public static let timelineFade: CGFloat = 56
+
         /// How much of the title bar the chat's name and avatar may take.
         ///
         /// A limit rather than a size: a title bar has buttons in both corners, and a room

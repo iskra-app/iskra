@@ -422,17 +422,21 @@ public struct RoomView: View {
     /// Consumed once and cleared, so that returning to the room by ordinary means goes nowhere.
     @Binding private var openAt: String?
 
-    /// The conversation's opacity down the screen: clear under the title bar, solid in between, and
-    /// clear again by the bottom of the composer. `screen` is the mask's own frame, in the same
-    /// global coordinates the composer was measured in.
+    /// The conversation's opacity down the screen: solid in the middle, fading out over the same
+    /// distance at both ends — into the title bar at the top, into the composer at the bottom — so
+    /// the two edges read as one effect. Each fade *ends* at its bar's edge and runs under the bar,
+    /// never out over the open conversation. `screen` is the mask's own frame, in the same global
+    /// coordinates the composer was measured in.
     private func timelineFade(in screen: CGRect) -> LinearGradient {
         let height = max(screen.height, 1)
         func at(_ y: CGFloat) -> CGFloat { min(max((y - screen.minY) / height, 0), 1) }
-        let topSolid = at(screen.minY + timelineInsets.top + Theme.Spacing.generous)
+        let titleBarEdge = screen.minY + timelineInsets.top
+        let topClear = at(titleBarEdge - Theme.Size.timelineFade)
+        let topSolid = at(titleBarEdge)
         let hasComposer = composerFrame.height > 0
-        let bottomSolid = hasComposer ? max(at(composerFrame.minY - Theme.Spacing.generous), topSolid) : 1
-        let bottomClear = hasComposer ? max(at(composerFrame.maxY), bottomSolid) : 1
-        return LinearGradient(stops: [.init(color: .clear, location: 0),
+        let bottomSolid = hasComposer ? max(at(composerFrame.minY), topSolid) : 1
+        let bottomClear = hasComposer ? max(at(composerFrame.minY + Theme.Size.timelineFade), bottomSolid) : 1
+        return LinearGradient(stops: [.init(color: .clear, location: topClear),
                                       .init(color: .black, location: topSolid),
                                       .init(color: .black, location: bottomSolid),
                                       .init(color: .clear, location: bottomClear)],
