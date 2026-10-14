@@ -113,7 +113,10 @@ public final class VoiceRecorder {
     private var warming: Task<Warm?, Never>?
 
     /// A recorder that has been made and primed, and the file it will write.
-    private struct Warm {
+    ///
+    /// `@unchecked Sendable` because it is made on a background thread and handed to the main
+    /// actor once, by nobody else holding it — the one crossing it ever makes.
+    private struct Warm: @unchecked Sendable {
         let recorder: AVAudioRecorder
         let url: URL
     }
@@ -131,10 +134,10 @@ public final class VoiceRecorder {
     public func prewarm() {
         guard state == .idle, warming == nil,
               AVCaptureDevice.authorizationStatus(for: .audio) == .authorized else { return }
-        warming = Task { [weak self] in
+        warming = Task {
             await AudioSession.prepare(for: .recording)
-            guard !Task.isCancelled, let self else { return nil }
-            return self.makeRecorder()
+            guard !Task.isCancelled else { return nil }
+            return await Self.makeRecorder()
         }
     }
 
@@ -151,7 +154,13 @@ public final class VoiceRecorder {
         }
     }
 
-    private func makeRecorder() -> Warm? {
+    /// Off the main thread: making the file and the encoder is the slow half of a recording
+    /// starting, and on the main actor it was a frozen screen under the thumb.
+    private static func makeRecorder() async -> Warm? {
+        await Task.detached(priority: .userInitiated) { makeRecorderNow() }.value
+    }
+
+    nonisolated private static func makeRecorderNow() -> Warm? {
         let url = URL.temporaryDirectory.appending(component: "\(UUID().uuidString).m4a")
         let settings: [String: Any] = [
             AVFormatIDKey: kAudioFormatMPEG4AAC,
@@ -204,7 +213,7 @@ public final class VoiceRecorder {
             warm = await warming.value
         } else {
             await AudioSession.prepare(for: .recording)
-            warm = makeRecorder()
+            warm = await Self.makeRecorder()
         }
 
         // And again on the other side of it. Waking the session is a round-trip to another process
@@ -221,7 +230,20 @@ public final class VoiceRecorder {
             let recorder = warm.recorder
             let url = warm.url
 
-            guard recorder.record(forDuration: Self.maximumDuration) else {
+            // `record` starts the audio unit, which is a wait on another process — off the main
+            // actor for the same reason the recorder is made off it.
+            let primed = warm
+            let cap = Self.maximumDuration
+            let started = await Task.detached(priority: .userInitiated) {
+                primed.recorder.record(forDuration: cap)
+            }.value
+            guard generation == self.generation, state == .starting else {
+                recorder.stop()
+                recorder.deleteRecording()
+                AudioSession.release()
+                return
+            }
+            guard started else {
                 Log.media.error("the microphone would not start")
                 // The session was activated just above and is now ours for nothing — hand it back,
                 // or whatever was playing before the recording never comes back. The two guards

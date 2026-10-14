@@ -377,21 +377,30 @@ public final class VideoNoteRecorder: NSObject {
 
         let url = URL.temporaryDirectory.appending(component: "\(UUID().uuidString).mov")
 
-        // The cap arrives from the capture queue, on the frame that crosses sixty seconds. It is
-        // routed back through `stop` and not handled there, because reaching the cap is a
-        // recording that *ended properly* and has to go the same way as one the user let go of.
-        guard let writing = VideoNoteWriter(url: url, audioSettings: settings, onCap: { [weak self] in
-            Task { @MainActor in self?.stop() }
-        }) else {
-            state = .unavailable
-            return
-        }
-
         self.onRecorded = onRecorded
         recordingStarted = .now
         state = .recording(secondsElapsed: 0)
 
-        frames.async { [take] in take.hold(writing) }
+        // The writer is made on the capture queue, where it lives, and not here. Making an
+        // `AVAssetWriter` opens a file and an encoder, and on the main actor that was a frozen
+        // frame at the very moment the camera circle should start to move. The first frames
+        // that arrive before it is ready simply have nothing to hold them, which is a few
+        // milliseconds of nothing at the head of the clip.
+        //
+        // The cap arrives from the capture queue, on the frame that crosses sixty seconds. It is
+        // routed back through `stop` and not handled there, because reaching the cap is a
+        // recording that *ended properly* and has to go the same way as one the user let go of.
+        nonisolated(unsafe) let audioSettings = settings
+        let onCap: @Sendable () -> Void = { [weak self] in
+            Task { @MainActor in self?.stop() }
+        }
+        frames.async { [take, weak self] in
+            guard let writing = VideoNoteWriter(url: url, audioSettings: audioSettings, onCap: onCap) else {
+                Task { @MainActor in self?.writerRefused() }
+                return
+            }
+            take.hold(writing)
+        }
 
         ticker = Task { [weak self] in
             while !Task.isCancelled {
@@ -402,6 +411,14 @@ public final class VideoNoteRecorder: NSObject {
                 }
             }
         }
+    }
+
+    /// The file could not be opened on the capture queue — see `start`. Nothing was recorded, and
+    /// the screen says the camera is unavailable rather than showing a clock over nothing.
+    private func writerRefused() {
+        guard case .recording = state else { return }
+        teardown()
+        state = .unavailable
     }
 
     /// Stops and sends. The cap may also stop us on its own, and lands here.
