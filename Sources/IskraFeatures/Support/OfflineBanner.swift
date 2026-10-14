@@ -18,6 +18,20 @@ extension EnvironmentValues {
     }
 }
 
+/// Whether the app is catching up with the server — sync has come back and nothing has been heard
+/// yet. `RoomListStore.isUpdating`, put here by `IskraRootView` beside `isOffline`, so the room can
+/// say "Updating…" under its name the way the chat list says it in its title.
+private struct UpdatingKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    public var isUpdating: Bool {
+        get { self[UpdatingKey.self] }
+        set { self[UpdatingKey.self] = newValue }
+    }
+}
+
 /// The strip that says the network is gone.
 ///
 /// An *inset* and not an overlay, for the same reason the search field below the conversation list

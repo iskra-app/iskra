@@ -434,6 +434,45 @@ public enum Strings {
         }
     }
 
+    /// Where somebody was last seen — the line under their name in a one-to-one chat.
+    ///
+    /// «был(а)», not «был» — Matrix knows nothing about anyone's gender and inventing one in a
+    /// sentence about them would be a strange place for this app to start guessing. The units are
+    /// abbreviated («мин», «ч») because that is how the line is read at a glance, and because an
+    /// abbreviation does not decline: `5 мин назад` is right where `5 минут назад` needs a plural
+    /// rule and `2 минуты` to go with it. See `PresenceLabel`.
+    public enum Presence {
+        public static let online = LocalizedStringResource("presence.online", bundle: bundle)
+        public static let justNow = LocalizedStringResource("presence.justNow", bundle: bundle)
+        public static let yesterday = LocalizedStringResource("presence.yesterday", bundle: bundle)
+
+        public static func minutesAgo(_ minutes: Int) -> LocalizedStringResource {
+            LocalizedStringResource("presence.minutesAgo",
+                                    defaultValue: "last seen \(minutes) min ago",
+                                    bundle: bundle)
+        }
+
+        public static func hoursAgo(_ hours: Int) -> LocalizedStringResource {
+            LocalizedStringResource("presence.hoursAgo",
+                                    defaultValue: "last seen \(hours) hr ago",
+                                    bundle: bundle)
+        }
+
+        /// A clock time, for earlier the same day.
+        public static func atTime(_ time: String) -> LocalizedStringResource {
+            LocalizedStringResource("presence.atTime",
+                                    defaultValue: "last seen at \(time)",
+                                    bundle: bundle)
+        }
+
+        /// A date, for anything older than yesterday.
+        public static func at(_ date: String) -> LocalizedStringResource {
+            LocalizedStringResource("presence.at",
+                                    defaultValue: "last seen \(date)",
+                                    bundle: bundle)
+        }
+    }
+
     public enum Room {
         /// Somebody in the room has new keys — see `IdentityChangeBanner`. Written so that no name
         /// has to be declined and nobody's gender guessed: the name stands alone before a colon.

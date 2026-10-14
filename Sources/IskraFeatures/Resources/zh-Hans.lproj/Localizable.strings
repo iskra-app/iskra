@@ -1195,3 +1195,12 @@
 "stickers.settings.clearRecentHelp" = "最近使用的贴纸保存在您的账号中，会在您的所有设备上清除。";
 "message.forwarded" = "转发的消息";
 "message.forwardedFrom" = "转发自 %@";
+
+/* The line under somebody's name in a one-to-one chat — see PresenceLabel. */
+"presence.online" = "在线";
+"presence.justNow" = "刚刚在线";
+"presence.minutesAgo" = "%lld 分钟前在线";
+"presence.hoursAgo" = "%lld 小时前在线";
+"presence.atTime" = "%@ 在线";
+"presence.yesterday" = "昨天在线";
+"presence.at" = "%@ 在线";

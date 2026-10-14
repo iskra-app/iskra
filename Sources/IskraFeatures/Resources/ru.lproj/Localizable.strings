@@ -1191,3 +1191,12 @@
 "stickers.settings.clearRecentHelp" = "Недавние хранятся в аккаунте и очистятся на всех ваших устройствах.";
 "message.forwarded" = "Пересланное сообщение";
 "message.forwardedFrom" = "Переслано от %@";
+
+/* The line under somebody's name in a one-to-one chat — see PresenceLabel. */
+"presence.online" = "в сети";
+"presence.justNow" = "был(а) только что";
+"presence.minutesAgo" = "был(а) %lld мин назад";
+"presence.hoursAgo" = "был(а) %lld ч назад";
+"presence.atTime" = "был(а) в %@";
+"presence.yesterday" = "был(а) вчера";
+"presence.at" = "был(а) %@";

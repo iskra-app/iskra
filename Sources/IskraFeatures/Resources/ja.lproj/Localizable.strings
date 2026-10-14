@@ -1195,3 +1195,12 @@
 "stickers.settings.clearRecentHelp" = "最近使ったものはアカウントに保存されているため、すべてのデバイスで消去されます。";
 "message.forwarded" = "転送されたメッセージ";
 "message.forwardedFrom" = "%@ から転送";
+
+/* The line under somebody's name in a one-to-one chat — see PresenceLabel. */
+"presence.online" = "オンライン";
+"presence.justNow" = "たった今オンライン";
+"presence.minutesAgo" = "%lld分前にオンライン";
+"presence.hoursAgo" = "%lld時間前にオンライン";
+"presence.atTime" = "%@にオンライン";
+"presence.yesterday" = "昨日オンライン";
+"presence.at" = "%@にオンライン";
