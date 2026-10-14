@@ -360,6 +360,11 @@ public final class UserSession {
         store.downloadMedia = { [client] url in
             try await client.getMediaContent(mediaSource: MediaSource.fromUrl(url: url))
         }
+        if !isDemo {
+            store.askPresence = { [send = authorisedSender()] userID in
+                try await Self.presence(of: userID, send: send)
+            }
+        }
 
         keep(store)
 
@@ -659,6 +664,25 @@ public final class UserSession {
                                      headers: ["Content-Type": "application/json"],
                                      body: body)
         _ = try? await authorisedSender()(request)
+    }
+
+    /// What the homeserver says about where somebody is — see `TimelineStore.watchPresence`.
+    ///
+    /// The FFI has no presence call, so like `applyPresence` this is a request of the app's own,
+    /// through the same listener (and the bridge, when there is one) as everything else.
+    nonisolated private static func presence(
+        of userID: String,
+        send: @Sendable (ProxiedRequest) async throws -> ProxiedResponse
+    ) async throws -> Presence? {
+        let user = userID.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed.subtracting(["/", ":"])) ?? userID
+        let response = try await send(ProxiedRequest(method: "GET",
+                                                     target: "/_matrix/client/v3/presence/\(user)/status",
+                                                     headers: [:],
+                                                     body: Data()))
+        guard response.status == 200 else { throw PresenceDeclined(status: response.status) }
+        let json = (try? JSONSerialization.jsonObject(with: response.body)) as? [String: Any] ?? [:]
+        let presence = Presence(json: json)
+        return presence.isWorthShowing ? presence : nil
     }
 
     /// A 401 that means "your token has expired" and not "say your password" — the second is a

@@ -1195,3 +1195,12 @@
 "stickers.settings.clearRecentHelp" = "Recent stickers are kept in your account, so they’ll be cleared on all your devices.";
 "message.forwarded" = "Forwarded message";
 "message.forwardedFrom" = "Forwarded from %@";
+
+/* The line under somebody's name in a one-to-one chat — see PresenceLabel. */
+"presence.online" = "online";
+"presence.justNow" = "last seen just now";
+"presence.minutesAgo" = "last seen %lld min ago";
+"presence.hoursAgo" = "last seen %lld hr ago";
+"presence.atTime" = "last seen at %@";
+"presence.yesterday" = "last seen yesterday";
+"presence.at" = "last seen %@";

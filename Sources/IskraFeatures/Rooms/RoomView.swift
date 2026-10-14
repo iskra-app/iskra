@@ -192,6 +192,10 @@ public struct RoomView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.messageMenu) private var messageMenu
 
+    /// What the line under the name says before anything else — see `headerSubtitle`.
+    @Environment(\.isOffline) private var isOffline
+    @Environment(\.isUpdating) private var isUpdating
+
     /// The account's stickers — see `StickerPicker`. Nil only where no session put one up.
     @Environment(\.stickers) private var stickers
 
@@ -1163,10 +1167,8 @@ public struct RoomView: View {
             // Opening a pinned room therefore set every message in it sliding.
             .animation(.smooth, value: timeline.pinnedEventIDs)
         }
-        // Above the pinned strip, because it is about the whole app rather than about this room —
-        // and because somebody reading a conversation should not have to go back to the list to find
-        // out why nothing new is arriving in it. See `OfflineBanner`.
-        .offlineBanner()
+        // No offline strip here: the line under the room's name says "Waiting for network…" instead,
+        // the way the chat list's title does — see `headerSubtitle`.
         .onChange(of: hidesNameChanges) { timeline.serviceEventSettingsChanged() }
         .onChange(of: hidesMembershipChanges) { timeline.serviceEventSettingsChanged() }
         // Opened the first time the room reports anything pinned, and kept afterwards. A room
@@ -1328,6 +1330,12 @@ public struct RoomView: View {
             } else {
                 timeline.typed()
             }
+        }
+        // Where the other person is — asked again every minute for as long as this room is open,
+        // and started afresh when the counterpart changes (it arrives with the room's info, a
+        // moment after the screen). An explicit call, not a side effect of drawing the line.
+        .task(id: timeline.directCounterpartID) {
+            await timeline.watchPresence()
         }
         .task {
             // Back on screen, so alive again: whatever put the room down on the way here — a
@@ -1589,31 +1597,32 @@ public struct RoomView: View {
         }
     }
 
-    /// The line under the room's name in the header.
+    /// The line under the room's name in the header — one fact, the most urgent one.
     ///
-    /// In a room, how many people are in it. In a chat with one other person, their Matrix
-    /// ID — *not* "last seen five minutes ago", which this app cannot honestly say: the
-    /// Rust SDK exposes no presence over FFI at all, and the only timestamp we could reach
-    /// for is the last message in the conversation, which is a different fact wearing
-    /// presence's clothes. Someone who has been reading all morning without typing is not
-    /// "last seen at 09:14".
+    /// First, whether this screen is current at all: "Waiting for network…" or "Updating…", the
+    /// same words and the same rule as the chat list's title (`RoomListStatus`). Somebody reading a
+    /// conversation should not have to go back to the list to find out why nothing new arrives.
     ///
-    /// Nil until the room has synced enough to say. A header that reads "0 participants"
-    /// for a moment is worse than one that is briefly just a name.
-    /// What the line under the room's name says.
+    /// Then somebody typing, because it is true for four seconds and about to become a message. In
+    /// a one-to-one chat their name is already the title, so the line just says that writing is
+    /// happening; in a room it names them.
     ///
-    /// Somebody typing displaces it, and displaces it rather than joining it, because the line has
-    /// room for one fact and this is the more urgent one — a member count is true all day, and
-    /// "Аня печатает…" is true for four seconds and is about to become a message.
-    ///
-    /// In a one-to-one chat their name is already the *title*, so naming them again here would say
-    /// it twice; the line just says that writing is happening. In a room full of people it names
-    /// them, because that is the whole of what you want to know.
+    /// Then, with one other person, where they were last seen — from the homeserver's presence and
+    /// nothing else (`PresenceLabel`) — or, when the server will not say, their Matrix ID. In a
+    /// room, how many people are in it. Nil until the room has synced enough to say: a header that
+    /// reads "0 participants" for a moment is worse than one that is briefly just a name.
     private var headerSubtitle: String? {
+        if let status = RoomListStatus(isOffline: isOffline, isUpdating: isUpdating) {
+            return String(app: status.title)
+        }
         if let typing = typingSubtitle {
             return typing
         }
         if timeline.isOneToOne {
+            if let presence = timeline.counterpartPresence,
+               let line = PresenceLabel.label(for: presence) {
+                return line
+            }
             return timeline.directCounterpartID
         }
         guard timeline.memberCount > 0 else { return nil }

@@ -1195,3 +1195,12 @@
 "stickers.settings.clearRecentHelp" = "Los recientes se guardan en su cuenta y se borrarán en todos sus dispositivos.";
 "message.forwarded" = "Mensaje reenviado";
 "message.forwardedFrom" = "Reenviado de %@";
+
+/* The line under somebody's name in a one-to-one chat — see PresenceLabel. */
+"presence.online" = "en línea";
+"presence.justNow" = "últ. vez hace un momento";
+"presence.minutesAgo" = "últ. vez hace %lld min";
+"presence.hoursAgo" = "últ. vez hace %lld h";
+"presence.atTime" = "últ. vez a las %@";
+"presence.yesterday" = "últ. vez ayer";
+"presence.at" = "últ. vez el %@";

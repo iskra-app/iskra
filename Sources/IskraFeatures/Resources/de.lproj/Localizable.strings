@@ -1195,3 +1195,12 @@
 "stickers.settings.clearRecentHelp" = "Die zuletzt verwendeten Sticker liegen in Ihrem Konto und werden auf allen Ihren Geräten gelöscht.";
 "message.forwarded" = "Weitergeleitete Nachricht";
 "message.forwardedFrom" = "Weitergeleitet von %@";
+
+/* The line under somebody's name in a one-to-one chat — see PresenceLabel. */
+"presence.online" = "online";
+"presence.justNow" = "zuletzt gerade eben online";
+"presence.minutesAgo" = "zuletzt vor %lld Min. online";
+"presence.hoursAgo" = "zuletzt vor %lld Std. online";
+"presence.atTime" = "zuletzt um %@ online";
+"presence.yesterday" = "zuletzt gestern online";
+"presence.at" = "zuletzt am %@ online";

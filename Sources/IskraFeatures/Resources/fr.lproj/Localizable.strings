@@ -1195,3 +1195,12 @@
 "stickers.settings.clearRecentHelp" = "Les récents sont gardés dans votre compte et seront effacés sur tous vos appareils.";
 "message.forwarded" = "Message transféré";
 "message.forwardedFrom" = "Transféré de %@";
+
+/* The line under somebody's name in a one-to-one chat — see PresenceLabel. */
+"presence.online" = "en ligne";
+"presence.justNow" = "vu(e) à l’instant";
+"presence.minutesAgo" = "vu(e) il y a %lld min";
+"presence.hoursAgo" = "vu(e) il y a %lld h";
+"presence.atTime" = "vu(e) à %@";
+"presence.yesterday" = "vu(e) hier";
+"presence.at" = "vu(e) le %@";

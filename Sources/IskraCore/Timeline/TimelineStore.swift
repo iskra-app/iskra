@@ -95,12 +95,24 @@ public final class TimelineStore {
 
     /// The other person's Matrix ID, in a chat that has exactly one other person.
     ///
-    /// This is what the header shows under their name. It is deliberately *not* a "last
-    /// seen" time: the Rust SDK exposes no presence at all over FFI, and a timestamp
-    /// invented from their last message would say "online 5 minutes ago" about someone
-    /// who has been reading over your shoulder in silence all day. The Matrix ID is the
-    /// thing people actually ask each other for.
+    /// What the header shows under their name when the server will not say where they are — see
+    /// `counterpartPresence`. Never a time made up from their last message: that would say
+    /// "online 5 minutes ago" about someone who has been reading over your shoulder in silence
+    /// all day.
     public private(set) var directCounterpartID: String?
+
+    /// Where the other person in a one-to-one chat is, as the homeserver tells it. Nil when it
+    /// says nothing worth showing — presence switched off on the server is the common case, and
+    /// it answers `offline` with no timestamp about everybody. See `watchPresence()`.
+    public private(set) var counterpartPresence: Presence?
+
+    /// `GET /presence/{userId}/status`, handed down by the session. Nil for a store that has no
+    /// business asking — the chat list's peek, the demo.
+    @ObservationIgnored var askPresence: (@Sendable (_ userID: String) async throws -> Presence?)?
+
+    /// How often the open chat asks again. Presence is a fact about minutes and the line is
+    /// written in minutes; a room left open all afternoon costs about forty requests.
+    private static let presenceInterval: Duration = .seconds(60)
 
     /// Whether this account may add to the conversation. Starts true: until the room's
     /// power levels arrive, the safe assumption is the one that keeps the composer on
@@ -508,7 +520,11 @@ public final class TimelineStore {
         // back to nothing (rather than to our own ID) is right: a note-to-self room
         // has no counterpart, and claiming one would put your own address in the
         // header of your own chat.
-        directCounterpartID = isOneToOne ? info.counterpart(besides: ownUserID)?.userId : nil
+        let counterpart = isOneToOne ? info.counterpart(besides: ownUserID)?.userId : nil
+        // Somebody else's presence must not stay under a new name — invite a third person and the
+        // line goes, exactly as it should.
+        if counterpart != directCounterpartID { counterpartPresence = nil }
+        directCounterpartID = counterpart
 
         // Sending is governed by the room's power levels. If the levels are not in the
         // info we just received, leave the previous answer alone: it may have arrived in an
@@ -615,6 +631,39 @@ public final class TimelineStore {
 
         await fillPages(untilAtLeast: rows.count + Self.screenful,
                         maximumPages: Self.maximumOpeningPages)
+    }
+
+    /// Keeps `counterpartPresence` fresh until the calling task is cancelled — the room screen's
+    /// `.task(id:)` on the counterpart, so it runs only while somebody is looking at the answer.
+    ///
+    /// **It polls, and there is no alternative.** Presence reaches a Matrix client in the
+    /// `m.presence` block of `/sync`, which the SDK reads and the FFI does not forward, so there
+    /// is no stream to subscribe to — only a question to ask again.
+    ///
+    /// A refusal (presence switched off, or no shared room) is permanent for as long as the room is
+    /// open, so the loop stops on it. A timeout or a dropped connection keeps the last answer:
+    /// "был(а) 5 мин назад" going briefly stale is better than it flickering out every time the
+    /// train enters a tunnel.
+    public func watchPresence() async {
+        guard let ask = askPresence, let userID = directCounterpartID else {
+            counterpartPresence = nil
+            return
+        }
+
+        while !Task.isCancelled {
+            do {
+                let presence = try await withTimeout(.seconds(10)) { try await ask(userID) }
+                guard !Task.isCancelled, userID == directCounterpartID else { return }
+                counterpartPresence = presence
+            } catch is PresenceDeclined {
+                counterpartPresence = nil
+                return
+            } catch {
+                Log.session.debug("presence request failed; keeping the last answer")
+            }
+
+            try? await Task.sleep(for: Self.presenceInterval)
+        }
     }
 
     /// The network came back, or went away. Told to us by `UserSession`, which hears it from the one
