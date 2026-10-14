@@ -780,7 +780,7 @@
 "room.tabs.label" = "What's in here";
 "room.localName.header" = "Name on this device";
 "room.localName.help" = "Only you see this name, and only on this device. The other person is never told, your other devices keep the name they already had, and signing out forgets it.";
-"room.localName.reset" = "Use their real name again";
+"room.localName.reset" = "Restaurar «%@»";
 
 /* Encryption: whether your messages will still be readable on your next device. */
 "encryption.title" = "Encryption";

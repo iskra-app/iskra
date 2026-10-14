@@ -588,7 +588,10 @@ public enum Strings {
         public enum LocalName {
             public static let header = LocalizedStringResource("room.localName.header", bundle: bundle)
             public static let help = LocalizedStringResource("room.localName.help", bundle: bundle)
-            public static let reset = LocalizedStringResource("room.localName.reset", bundle: bundle)
+            /// Names the name that comes back — "Вернуть «Anna»" — so the button says what it does.
+            public static func reset(_ name: String) -> LocalizedStringResource {
+                LocalizedStringResource("room.localName.reset", defaultValue: "Restore “\(name)”", bundle: bundle)
+            }
         }
         public static let administrator = LocalizedStringResource("room.administrator", bundle: bundle)
         public static let moderator = LocalizedStringResource("room.moderator", bundle: bundle)

@@ -431,7 +431,7 @@ enum TimelineMapper {
         case let .ready(content, sender, senderProfile, _, _):
             let (name, _) = profile(from: senderProfile, fallback: sender)
             let text = MessagePreview.text(for: content) ?? String(core: CoreStrings.Reply.unavailable)
-            return ReplyPreview(eventID: eventID, senderName: name, text: text)
+            return ReplyPreview(eventID: eventID, senderName: name, senderID: sender, text: text)
 
         case .pending:
             return ReplyPreview(eventID: eventID,
