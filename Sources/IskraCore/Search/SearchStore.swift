@@ -86,7 +86,16 @@ public final class SearchStore {
 
             guard !Task.isCancelled else { return }
 
-            hits = results.compactMap { hit(from: $0) }
+            // Who each nicknamed personal chat is with, asked once per room rather than per hit.
+            var counterparts: [String: String] = [:]
+            for roomID in Set(results.map(\.roomId)) where LocalNames.name(for: roomID) != nil {
+                if let id = await Self.counterpart(in: try? client.getRoom(roomId: roomID), ownUserID: ownUserID) {
+                    counterparts[roomID] = id
+                }
+            }
+            guard !Task.isCancelled else { return }
+
+            hits = results.compactMap { hit(from: $0, counterpartID: counterparts[$0.roomId]) }
             foundNothing = hits.isEmpty
         } catch {
             guard !Task.isCancelled else { return }
@@ -95,7 +104,7 @@ public final class SearchStore {
         }
     }
 
-    private func hit(from result: GlobalSearchResult) -> SearchHit? {
+    private func hit(from result: GlobalSearchResult, counterpartID: String?) -> SearchHit? {
         let event = result.result
         guard let excerpt = Self.excerpt(for: event.content) else { return nil }
 
@@ -105,7 +114,8 @@ public final class SearchStore {
         return SearchHit(id: event.eventId,
                          roomID: result.roomId,
                          senderName: Self.senderName(event.sender, displayName: displayName,
-                                                     roomID: result.roomId, ownUserID: ownUserID),
+                                                     counterpartID: counterpartID,
+                                                     localName: LocalNames.name(for: result.roomId)),
                          excerpt: excerpt,
                          timestamp: MessagePreview.date(from: event.timestamp))
     }
@@ -114,13 +124,21 @@ public final class SearchStore {
     ///
     /// In a personal chat the user has given a name to, the other person goes by that name in a
     /// result too — the list, the header and the conversation already call them *Мама*, and a
-    /// search that answered with `anna_1987` read as a message from a stranger. A nickname is only
-    /// ever set on a personal chat (see `LocalNames`), so in a room that has one, anybody who is not
-    /// us is the person it names.
+    /// search that answered with `anna_1987` read as a message from a stranger.
+    ///
+    /// Only the person the chat is *with* — matched by ID, the same rule as
+    /// `TimelineStore.applyingLocalName`. "Anybody who is not us" would hand the nickname to a third
+    /// person invited into the chat, and their words would be shown as *Мама*'s.
     nonisolated static func senderName(_ senderID: String, displayName: String?,
-                                       roomID: String, ownUserID: String?) -> String {
-        if senderID != ownUserID, let local = LocalNames.name(for: roomID) { return local }
+                                       counterpartID: String?, localName: String?) -> String {
+        if let counterpartID, senderID == counterpartID, let localName { return localName }
         return displayName ?? senderID
+    }
+
+    /// The other person in a one-to-one chat, or nil for anything else — the rule the header uses.
+    nonisolated static func counterpart(in room: Room?, ownUserID: String?) async -> String? {
+        guard let room, let info = try? await room.roomInfo(), info.isOneToOne else { return nil }
+        return info.counterpart(besides: ownUserID)?.userId
     }
 
     /// The words for one search result — or nil for an event that must not be a result at all.
