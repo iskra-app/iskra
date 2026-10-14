@@ -329,6 +329,9 @@ public struct RoomView: View {
     /// puts the keyboard away is measured from. See `.scrollDismissesKeyboard`.
     @State private var keyboardDragStart: CGFloat?
 
+    /// Where the composer is on screen — the line the conversation fades out at, at the bottom.
+    @State private var composerFrame: CGRect = .zero
+
     @State private var metrics = ScrollMetrics(contentHeight: 0, offset: 0)
 
     /// Where the reader was standing when a message arrived at the far end of a conversation they
@@ -418,6 +421,23 @@ public struct RoomView: View {
     /// The message this room is being opened *on*, if it is being opened on one — a search result.
     /// Consumed once and cleared, so that returning to the room by ordinary means goes nowhere.
     @Binding private var openAt: String?
+
+    /// The conversation's opacity down the screen: clear under the title bar, solid in between, and
+    /// clear again by the bottom of the composer. `screen` is the mask's own frame, in the same
+    /// global coordinates the composer was measured in.
+    private func timelineFade(in screen: CGRect) -> LinearGradient {
+        let height = max(screen.height, 1)
+        func at(_ y: CGFloat) -> CGFloat { min(max((y - screen.minY) / height, 0), 1) }
+        let topSolid = at(screen.minY + timelineInsets.top + Theme.Spacing.generous)
+        let hasComposer = composerFrame.height > 0
+        let bottomSolid = hasComposer ? max(at(composerFrame.minY - Theme.Spacing.generous), topSolid) : 1
+        let bottomClear = hasComposer ? max(at(composerFrame.maxY), bottomSolid) : 1
+        return LinearGradient(stops: [.init(color: .clear, location: 0),
+                                      .init(color: .black, location: topSolid),
+                                      .init(color: .black, location: bottomSolid),
+                                      .init(color: .clear, location: bottomClear)],
+                              startPoint: .top, endPoint: .bottom)
+    }
 
     /// A phone-shaped title bar: an iPhone, or an iPad window squeezed narrow enough to be
     /// one. Never the Mac, which has no size class worth asking.
@@ -546,15 +566,19 @@ public struct RoomView: View {
                         floatingDateLine = insets.globalTop + insets.top + Theme.Spacing.roomy
                     }
             }
-            // The conversation fades out as it passes under the title bar — not blurred, not washed
-            // in a colour, but simply less and less there, so whatever the room stands on (the page,
-            // a gradient, somebody's photograph) shows through unchanged.
+            // The conversation fades out as it passes under the title bar and under the composer —
+            // not blurred, not washed in a colour, but simply less and less there, so whatever the
+            // room stands on (the page, a gradient, somebody's photograph) shows through unchanged.
+            //
+            // Drawn over the whole screen, in screen coordinates, because the messages are drawn
+            // under the composer and past the edge of the list's own frame. Both lines it fades at
+            // are measured elsewhere, and a mask is only drawing: nothing here can move the layout
+            // those measurements are read from.
             .mask {
-                VStack(spacing: 0) {
-                    LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom)
-                        .frame(height: timelineInsets.top + Theme.Spacing.generous)
-                    Color.black
+                GeometryReader { proxy in
+                    timelineFade(in: proxy.frame(in: .global))
                 }
+                .ignoresSafeArea()
             }
             // The keyboard goes down once the reader has dragged the conversation a little way back
             // into its history — a deliberate pull, not the first pixel of movement, which is what
@@ -1066,6 +1090,8 @@ public struct RoomView: View {
             }
             .animation(.smooth, value: timeline.canPost)
             .animation(.smooth, value: blockedID)
+            // Where the conversation fades out at the bottom — see the mask on the scroll view.
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { composerFrame = $0 }
         }
         // A picture dragged anywhere onto the room — the conversation, the composer, the header's
         // underside — lands in the composer. The whole room and not the field, because the field
