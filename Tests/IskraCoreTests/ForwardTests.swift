@@ -36,14 +36,14 @@ struct ForwardTests {
         #expect(!message(.unreadable).canForward)
     }
 
-    @Test("a forward names the original sender, and says it mentions nobody")
+    @Test("a forward says it is one, names nobody, and mentions nobody")
     func forwardContent() throws {
         let content = try #require(Forwarded.content(forwarding: message(.text("hi"))))
         #expect(content["body"] as? String == "hi")
         #expect(content["msgtype"] as? String == "m.text")
         let forwarded = try #require(content["m.forwarded"] as? [String: Any])
-        #expect(forwarded["sender"] as? String == "@a:example.org")
-        #expect(forwarded["displayname"] as? String == "А")
+        // Neither who wrote it nor where — see `Forwarded.content`.
+        #expect(forwarded["sender"] == nil && forwarded["displayname"] == nil)
         // Never where it came from — see `Forwarded.content`.
         #expect(forwarded["event_id"] == nil && forwarded["room_id"] == nil)
         #expect((forwarded["content"] as? [String: Any])?["body"] as? String == "hi")
@@ -51,19 +51,18 @@ struct ForwardTests {
 
         // And it reads back as the origin it was written from.
         let origin = try #require(Forwarded.origin(inContent: content))
-        #expect(origin.senderID == "@a:example.org")
-        #expect(origin.displayName == "А")
+        #expect(origin.senderID == nil)
+        #expect(origin.displayName == nil)
         #expect(origin.timestamp == Date(timeIntervalSince1970: 0))
     }
 
-    @Test("a forward of a forward points at the original")
+    @Test("a forward of a forward does not carry the original's author on either")
     func forwardOfForward() throws {
         var forward = message(.text("hi"))
         forward.forwardedFrom = ForwardOrigin(senderID: "@first:example.org", senderName: "Первый", eventID: "$first")
         let content = try #require(Forwarded.content(forwarding: forward))
         let origin = try #require(Forwarded.origin(inContent: content))
-        #expect(origin.senderID == "@first:example.org")
-        #expect(origin.eventID == nil)
+        #expect(origin.senderID == nil && origin.displayName == nil && origin.eventID == nil)
     }
 
     @Test("an event read off the wire: MSC2723's shape, with or without a name")
