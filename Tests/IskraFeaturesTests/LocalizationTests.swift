@@ -24,7 +24,8 @@ struct LocalizationTests {
     /// it here is fine; adding one without a translation is not, and that is what
     /// these catch.
     private static let englishAndRussian: [(LocalizedStringResource, en: String, ru: String)] = [
-        (Strings.SignIn.title, en: "Welcome to Iskra", ru: "Добро пожаловать в Iskra"),
+        (Strings.SignIn.changeServer, en: "Change", ru: "Изменить"),
+        (Strings.SignIn.signInTo("matrix.org"), en: "Sign in to matrix.org", ru: "Вход на matrix.org"),
         (Strings.SignIn.whereIsAccount, en: "Where’s your account?", ru: "Где ваш аккаунт?"),
         (Strings.SignIn.continue, en: "Continue", ru: "Продолжить"),
         (Strings.RoomList.title, en: "Chats", ru: "Чаты"),
@@ -36,7 +37,6 @@ struct LocalizationTests {
         (Strings.RoomList.Sidebar.spaces, en: "Spaces", ru: "Пространства"),
         (Strings.RoomList.Sidebar.pinned, en: "Pinned", ru: "Закреплённые"),
         (Strings.RoomList.Sidebar.chats, en: "Chats", ru: "Чаты"),
-        (Strings.Settings.beta, en: "Beta features", ru: "Бета-функции"),
         // The first run. The slides are the only place the app describes itself, and they are
         // seen before anything else — a sentence of them falling back to English would be the
         // first thing a Russian speaker learned about this app.
@@ -81,8 +81,8 @@ struct LocalizationTests {
         (Strings.Message.Menu.close, en: "Close the menu", ru: "Закрыть меню"),
         (Strings.Reactions.more, en: "More emoji", ru: "Больше эмодзи"),
         (Strings.Reactions.recent, en: "Recent", ru: "Недавние"),
-        (Strings.Reactions.smileys, en: "Smileys", ru: "Улыбки"),
-        (Strings.Reactions.hearts, en: "Hearts", ru: "Сердца"),
+        (Strings.Reactions.smileys, en: "Smileys & People", ru: "Смайлики и люди"),
+        (Strings.Reactions.flags, en: "Flags", ru: "Флаги"),
         (Strings.Reactions.symbols, en: "Symbols", ru: "Символы"),
         (Strings.Reactions.quickHelp,
          en: "Double-tap a message to leave it.",
@@ -111,20 +111,24 @@ struct LocalizationTests {
         (Strings.Room.pinnedTitle, en: "Pinned messages", ru: "Закреплённые"),
         (Strings.Room.Manage.invite, en: "Invite", ru: "Пригласить"),
         (Strings.Room.Manage.remove, en: "Remove", ru: "Исключить"),
-        (Strings.Room.Manage.block, en: "Block", ru: "Заблокировать"),
+        (Strings.Room.Manage.block, en: "Ban from Chat", ru: "Заблокировать в чате"),
+        (Strings.Profile.blockUser, en: "Block User", ru: "Заблокировать пользователя"),
         (Strings.Room.Manage.member, en: "Member", ru: "Участник"),
         (Strings.Room.Manage.openToAnyone, en: "Open chat", ru: "Открытый чат"),
         (Strings.Room.Manage.leave, en: "Leave the chat", ru: "Выйти из чата"),
         // The one act on this screen that asks first, and it asks by name — so the name has
         // to survive the trip through the format string in both languages.
-        (Strings.Room.Manage.blockQuestion("Аня"), en: "Block Аня?", ru: "Заблокировать Аня?"),
+        (Strings.Room.Manage.blockQuestion("Аня"), en: "Ban Аня from this chat?", ru: "Заблокировать Аня в этом чате?"),
         (Strings.RoomList.New.create, en: "Create", ru: "Создать"),
-        (Strings.RoomList.New.start, en: "Start", ru: "Начать"),
+        (Strings.RoomList.New.searchPrompt, en: "Search people", ru: "Поиск по пользователям"),
+        (Strings.RoomList.New.createRoom, en: "Create a room", ru: "Создать комнату"),
+        (Strings.RoomList.New.publicRooms, en: "Public rooms", ru: "Публичные комнаты"),
+        (Strings.RoomList.New.joinByAddress, en: "Join by address", ru: "Присоединиться по адресу"),
         (Strings.Room.Manage.alerts, en: "Notifications", ru: "Уведомления"),
         (Strings.Room.Manage.alerts(.muted), en: "Off", ru: "Выключены"),
         (Strings.Room.Manage.alerts(.mentions), en: "Mentions only", ru: "Только упоминания"),
         (Strings.Account.namePlaceholder, en: "Your name", ru: "Ваше имя"),
-        (Strings.Account.changePicture, en: "Change picture", ru: "Изменить фото"),
+        (Strings.Picture.change, en: "Change", ru: "Изменить"),
         (Strings.Settings.encryption, en: "Encryption", ru: "Шифрование"),
         (Strings.Encryption.protect, en: "Protect my messages", ru: "Защитить переписку"),
         (Strings.Encryption.restore, en: "Bring my messages back", ru: "Восстановить переписку"),
@@ -138,19 +142,6 @@ struct LocalizationTests {
         // Neutral, not alarming. An unverified device is the ordinary state of a device somebody has
         // just signed in on, and "Not verified" in red made it read as a break-in.
         (Strings.Encryption.deviceUnverified, en: "New device", ru: "Новое устройство"),
-        (Strings.Encryption.thisDevice, en: "This device", ru: "Это устройство"),
-
-        // The two footers under "this device", and the reason there are two. The app used to say
-        // "your other devices are under My devices" unconditionally — on a session signed in with a
-        // password there *is* no such row, because the server hands over no account page to link to,
-        // so settings was citing a section of itself that was not there. Whichever of these is shown,
-        // it has to be true.
-        (Strings.Encryption.otherDevicesHere,
-         en: "Your other devices are under “My devices”.",
-         ru: "Остальные ваши устройства — в разделе «Мои устройства»."),
-        (Strings.Encryption.otherDevices,
-         en: "Iskra can’t show your other devices. To end a session on another device, go to your server’s website.",
-         ru: "Другие ваши устройства Iskra не показывает. Завершить сеанс на чужом устройстве можно на сайте вашего сервера."),
 
         // "Emoji", not "pictures". They are emoji, everybody calls them emoji, and inventing a
         // gentler word for them only makes the reader wonder what they are being protected from.
@@ -166,7 +157,6 @@ struct LocalizationTests {
         // word whoever is doing the inviting; Matrix does not know, and a coin flip on every name
         // in every room is exactly how an interface starts reading as machine-translated.
         (Strings.RoomList.Invite.from("Аня"), en: "Аня invites you", ru: "Аня приглашает вас"),
-        (Strings.Room.jumpToNewest, en: "New messages", ru: "Новые сообщения"),
         // Same rule again, and the reason both of these exist rather than one: in a one-to-one chat
         // the person's name is already the title of the screen, so saying it a second time here
         // would be the app repeating itself.
@@ -207,7 +197,7 @@ struct LocalizationTests {
         // Blocking a person.
         (Strings.Message.Menu.block, en: "Block", ru: "Заблокировать"),
         (Strings.Message.Menu.blockConfirm("Аня"), en: "Block Аня?", ru: "Заблокировать Аня?"),
-        (Strings.Settings.blocked, en: "Blocked", ru: "Заблокированные"),
+        (Strings.Settings.blocked, en: "Blocked Users", ru: "Заблокированные пользователи"),
         (Strings.Settings.unblock, en: "Unblock", ru: "Разблокировать"),
 
         // The app lock.
@@ -257,6 +247,69 @@ struct LocalizationTests {
             resource.locale = Locale(identifier: "ru")
             #expect(String(localized: resource) == russian)
         }
+    }
+
+    /// German, Spanish, French, Japanese and Chinese are complete, the same as English and
+    /// Russian. Two things hold them there: every one of them knows exactly the keys English
+    /// knows — a key missing from a `.lproj` does not fall back to English, it shows as itself —
+    /// and the words are actually theirs, which is checked on a string that used to be left in
+    /// English (`Strings.Room.moderator`) and on one from the model layer.
+    @Test("German, Spanish, French, Japanese and Chinese are complete")
+    func otherLanguagesAreComplete() throws {
+        func keys(_ language: String) throws -> Set<String> {
+            let url = try #require(Strings.resourceBundle.url(forResource: "Localizable",
+                                                              withExtension: "strings",
+                                                              subdirectory: nil,
+                                                              localization: language),
+                                   "no Localizable.strings for \(language)")
+            let table = try #require(NSDictionary(contentsOf: url) as? [String: String])
+            return Set(table.keys)
+        }
+        let english = try keys("en")
+
+        let expected: [String: (settings: String, moderator: String, encrypted: String)] = [
+            "de": ("Einstellungen", "Moderator", "verschlüsselt"),
+            "es": ("Ajustes", "Moderador", "cifrado"),
+            "fr": ("Réglages", "Modérateur", "chiffrée"),
+            "ja": ("設定", "モデレーター", "暗号化"),
+            "zh-Hans": ("设置", "协管员", "加密")
+        ]
+        for (language, words) in expected {
+            let known = try keys(language)
+            #expect(english.subtracting(known).isEmpty, "missing from \(language): \(english.subtracting(known).sorted())")
+            #expect(known.subtracting(english).isEmpty, "not in English: \(known.subtracting(english).sorted())")
+
+            var title = Strings.Settings.title
+            title.locale = Locale(identifier: language)
+            #expect(String(localized: title) == words.settings)
+
+            var moderator = Strings.Room.moderator
+            moderator.locale = Locale(identifier: language)
+            #expect(String(localized: moderator) == words.moderator, "\(language)")
+
+            var protected = CoreStrings.Privacy.protected
+            protected.locale = Locale(identifier: language)
+            #expect(String(localized: protected).contains(words.encrypted), "\(language)")
+        }
+    }
+
+    /// The plural tables of the other five, through the one string with two arguments — the
+    /// positional specifiers are what breaks silently, and Japanese and Chinese have only
+    /// `other`, so a missing `one` must not matter to them.
+    @Test("the other languages count people")
+    func otherLanguagesCount() {
+        func reaction(_ count: Int, _ language: String) -> String {
+            var resource = Strings.Message.Menu.reaction("👍", count)
+            resource.locale = Locale(identifier: language)
+            return String(localized: resource)
+        }
+
+        #expect(reaction(1, "de") == "👍, 1 Person")
+        #expect(reaction(3, "de") == "👍, 3 Personen")
+        #expect(reaction(1, "fr") == "👍, 1 personne")
+        #expect(reaction(3, "es") == "👍, 3 personas")
+        #expect(reaction(1, "ja") == "👍, 1 人")
+        #expect(reaction(5, "zh-Hans") == "👍, 5 人")
     }
 
     @Test("core strings resolve in English and in Russian")
@@ -411,11 +464,18 @@ struct LocalizationTests {
     func retryIsOfferedHonestly() {
         #expect(SendFailure.server.canRetry)
         #expect(SendFailure.verificationRequired.canRetry)
-        #expect(SendFailure.insecureDevices.canRetry)
-        #expect(SendFailure.identityChanged.canRetry)
 
         #expect(!SendFailure.missingMedia.canRetry)
         #expect(!SendFailure.unsupportedFileType.canRetry)
+
+        // A verified person who no longer checks out: sending again stops on the same thing,
+        // because nothing in the app can verify them again. "Send anyway" is the way on — and
+        // it is offered nowhere else, since everywhere else it would be trust given for nothing.
+        for failure in SendFailure.allCases {
+            let isTrust = failure == .insecureDevices || failure == .identityChanged
+            #expect(failure.canSendAnyway == isTrust, "\(failure)")
+            if isTrust { #expect(!failure.canRetry, "\(failure)") }
+        }
     }
 
     /// The failure this is really guarding against: a string that resolves to its own
@@ -625,7 +685,7 @@ struct LocalizationTests {
     /// in that state actually draws: a slider that showed "creatures for everybody" over an app
     /// showing initials would be lying about the very thing it is for.
     @Test("the face slider names exactly the states the app can be in")
-    func faceModesRoundTrip() {
+    func faceModesRoundTrip() throws {
         for mode in FaceMode.allCases {
             #expect(FaceMode(drawsCreatures: mode.drawsCreatures,
                              overridesPictures: mode.overridesPictures) == mode)
@@ -637,7 +697,7 @@ struct LocalizationTests {
 
         // And the same question `Avatar` and the lock screen ask, answered the same way — the
         // slider is a view of `BetaFeatures`, not a second opinion about it.
-        let defaults = UserDefaults(suiteName: "onboarding.facemode.test")!
+        let defaults = try #require(UserDefaults(suiteName: "onboarding.facemode.test"))
         for mode in FaceMode.allCases {
             defaults.set(mode.drawsCreatures, forKey: BetaFeatures.blobatarKey)
             defaults.set(mode.overridesPictures, forKey: BetaFeatures.forceBlobatarKey)

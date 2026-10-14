@@ -1,4 +1,5 @@
 import Foundation
+import IskraCore
 
 /// Everything a row can ask the conversation to do, in one parcel.
 ///
@@ -24,6 +25,10 @@ struct MessageHandlers {
     /// Starts the room's send queue again, for the one message shape that can ask for it:
     /// a failure the SDK called recoverable.
     var onRetry: () -> Void = {}
+
+    /// Sends it past a verification that no longer holds, having been told — see
+    /// `TimelineStore.sendAnyway`. Offered only where `SendFailure.canSendAnyway`.
+    var onSendAnyway: () -> Void = {}
 
     /// Adds an emoji, or takes it back if it is already ours. One callback for both,
     /// because a reaction is a toggle — see `TimelineStore.toggleReaction`.
@@ -54,4 +59,8 @@ struct MessageHandlers {
     /// Reports this message to the moderators, carrying the user's reason. Only `RoomView`
     /// holds the store that can send it, so the reason is handed upward.
     var onReport: (String) -> Void = { _ in }
+
+    /// Who reacted, named — for the "N reactions" line in a group's menu. Nil in a personal chat,
+    /// and nil means the line is not offered. See `ReactorsSheet`.
+    var loadReactors: (() async -> [Reactor])?
 }

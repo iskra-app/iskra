@@ -59,6 +59,15 @@
 /* Shown when a message could not be sent. The SDK retries, so this reassures rather than alarms. */
 "timeline.sendFailed" = "Your message didn’t go through. It’ll try again automatically.";
 
+/* A sticker that did not go. Unlike a message, it is not retried. */
+"timeline.stickerFailed" = "The sticker didn’t go through. Check your connection and try again.";
+
+/* The account's sticker pack would not take a new sticker. */
+"stickers.addFailed" = "Couldn’t add the sticker. Please try again.";
+
+/* The account's sticker pack would not let a sticker go. */
+"stickers.removeFailed" = "Couldn’t remove the sticker. Please try again.";
+
 /* Shown when an emoji reaction could not be sent. Must not say "message" — nothing the user wrote is at stake. */
 "timeline.reactionFailed" = "Your reaction didn’t go through. Try again.";
 
@@ -67,12 +76,18 @@
 
 /* Why a message is stuck, tapped from the badge beside it. Each names what to do next:
    the user is the only one who can clear these. No cryptography vocabulary. */
-"sendFailure.insecureDevices" = "Someone here is signed in on a device you haven’t verified yet. Verify it, and this message will go.";
-"sendFailure.identityChanged" = "Someone in this chat signed in somewhere new, so their identity changed. Check it’s really them, and this message will go.";
+"sendFailure.insecureDevices" = "Someone you verified is signed in on a device they haven’t confirmed yet. If you trust that device, send it anyway.";
+"sendFailure.identityChanged" = "The encryption keys of someone you verified have changed. If you’re sure it’s still the same person, send it anyway.";
 "sendFailure.verificationRequired" = "Verify this device before sending to a private chat. Open Settings to do it.";
 "sendFailure.missingMedia" = "The file is no longer on this device, so there is nothing left to send.";
 "sendFailure.unsupportedFileType" = "This kind of file can’t be sent.";
 "sendFailure.server" = "Your server turned this message away.";
+
+/* The Devices screen, when something did not work. */
+"devices.loadFailed" = "Couldn’t load your devices. Check your connection and try again.";
+"devices.endFailed" = "The session didn’t end. Try again.";
+"devices.wrongPassword" = "That password didn’t work.";
+"devices.managedElsewhere" = "On this server, sessions are ended on its website.";
 
 /* The strip above a message that answers another one. */
 "reply.loading" = "Loading the message…";
@@ -115,6 +130,8 @@
 "roomAction.roleFailed" = "The role didn’t change. You may not be allowed to.";
 "roomAction.leaveFailed" = "You couldn’t leave the chat. Try again.";
 "roomAction.createFailed" = "The chat wasn’t created. The server may not have answered — try again.";
+"roomAction.joinAddressInvalid" = "A room address looks like #name:server or !id:server.";
+"roomAction.joinFailed" = "Couldn’t join the room. It may not exist, may be closed, or the server didn’t answer.";
 "roomAction.alertsFailed" = "This chat’s notifications didn’t change. Try again.";
 
 /* The account: name, picture and encryption. */
@@ -142,7 +159,13 @@
 "share.title" = "Send to…";
 "share.cancel" = "Cancel";
 "share.empty" = "Open Iskra and sign in first — then your chats will show up here.";
-"share.willSendOnOpen" = "It’ll send when you next open Iskra.";
+"share.willSendOnOpen" = "It goes right away — Iskra opens to send it.";
+"share.comment" = "Add a comment…";
+"share.send" = "Send";
+"share.locked" = "Iskra is locked";
+"share.lockedBody" = "Unlock it and your chats will show up.";
+"share.unlock" = "Unlock";
+"share.unlockReason" = "To share this to Iskra";
 
 /* Room invitations. */
 "roomAction.acceptInviteFailed" = "You couldn’t join the chat. The invitation may have been withdrawn.";
@@ -166,3 +189,7 @@
 "notificationRules.roomMentionFailed" = "The rule for @room wouldn’t change. Try again.";
 "notificationRules.invitationFailed" = "The rule for invitations wouldn’t change. Try again.";
 "notificationRules.callFailed" = "The rule for calls wouldn’t change. Try again.";
+
+"stickers.subscribeFailed" = "Couldn’t add the pack. Please try again.";
+"stickers.unsubscribeFailed" = "Couldn’t remove the pack. Please try again.";
+"stickers.clearRecentFailed" = "Couldn’t clear recent stickers. Please try again.";

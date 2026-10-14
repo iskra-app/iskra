@@ -63,6 +63,56 @@ public final class RoomListStore {
     /// and nothing anywhere explains why.
     public private(set) var isOffline = false
 
+    /// The list is catching up with the server — "Updating…" in the title, Telegram's. See where it
+    /// is subscribed in `startSteps`.
+    public private(set) var isUpdating = false
+
+    /// The server has been asked and has not answered for long enough that the honest word is
+    /// "waiting for network" — although, as far as the SDK is concerned, nothing has gone wrong yet.
+    /// See `FirstAnswerWatch`. What the screens show as offline is `isUnreachable`, which is both.
+    public private(set) var isStalled = false
+
+    /// What the screens mean by "offline": the SDK has said so, or the server has been silent for
+    /// too long since sync came back up. Not what the send queues and the open room act on — that is
+    /// `isOffline`, which is the SDK's own fact and the one that turns into `.running` again.
+    public var isUnreachable: Bool { isOffline || isStalled }
+
+    private var syncIndicatorHandle: TaskHandle?
+    private static let updatingShowsAfterMs: UInt32 = 500
+
+    /// What the SDK's own indicator last said. `isUpdating` is this *or* our own wait for the first
+    /// answer — see `FirstAnswerWatch`.
+    private var sdkSaysUpdating = false
+
+    /// Shown "Updating…" because sync came back up and the server has not answered yet.
+    private var isAwaitingFirstAnswer = false
+
+    private var roomListStateHandle: TaskHandle?
+
+    /// The room list has had an answer from the server since sync last came up. See
+    /// `FirstAnswerWatch.answered`.
+    private var roomListAnswered = false
+
+    /// The timer behind `isAwaitingFirstAnswer` and `isStalled`; nil while nothing is awaited.
+    private var firstAnswerWatch: Task<Void, Never>?
+
+    private func syncIndicatorChanged(isUpdating: Bool) {
+        guard !hasStopped else { return }
+        sdkSaysUpdating = isUpdating
+        refreshUpdating()
+    }
+
+    private func refreshUpdating() {
+        let isUpdating = sdkSaysUpdating || isAwaitingFirstAnswer
+        let wasUpdating = self.isUpdating
+        self.isUpdating = isUpdating
+
+        // The catch-up is over: one full pass over the rooms, as a net under the incremental
+        // rebuilds — anything a diff did not mention but a long sync changed (a mute made on another
+        // device, a name) is picked up here. See `scheduleRebuild(only:)`.
+        if wasUpdating, !isUpdating { scheduleRebuild() }
+    }
+
     /// An invitation that would not be accepted or declined. Reported the same way `RoomDetailsStore`
     /// reports a refusal — as a field the screen puts in an alert — rather than thrown, because the
     /// press that caused it happened in a *row of a list*, and there is no call stack there to catch
@@ -108,6 +158,14 @@ public final class RoomListStore {
     /// Keeps the previews honest about messages that have not left yet — see `start()`.
     private var sendQueueHandle: TaskHandle?
 
+    /// The SDK telling us a room's send queue has stopped itself — see `sendQueueStopped()`.
+    private var sendQueueErrorHandle: TaskHandle?
+
+    /// The restart waiting out its pause, if one is. One for all rooms: `enableAllSendQueues` is
+    /// the call, and two rooms failing in the same second are one network having a bad moment.
+    private var sendQueueRestart: Task<Void, Never>?
+    private var sendQueueRecovery = SendQueueRecovery()
+
     /// The thing that actually keeps the diff stream alive.
     ///
     /// `entriesWithDynamicAdapters` hands back a result, and the result's `entriesStream()` is the
@@ -134,6 +192,17 @@ public final class RoomListStore {
     /// the thing that had just been deliberately stopped.
     private var isPaused = false
 
+    /// The pause or resume being carried out, so the next one waits its turn behind it.
+    ///
+    /// Both are an await on the SDK, and a pocket and back in quick succession used to run them
+    /// side by side: the resume's `start()` returned first, the pause's `stop()` landed after it,
+    /// and the loop was left `.idle` with `isPaused` false — which the observer below takes for a
+    /// loop at rest, not one that died, so nothing ever started it again.
+    private var syncTransition: Task<Void, Never>?
+
+    /// What the last transition actually did to the loop, as opposed to what was last asked for.
+    private var isSyncAsleep = false
+
     /// The room handles, in the order the SDK says they should appear.
     private var orderedRooms: [Room] = []
 
@@ -158,7 +227,27 @@ public final class RoomListStore {
     public func start() async throws {
         guard syncService == nil else { return }
         hasStopped = false
+        // Every `await` below is a moment `stop()` can run in — a sign-out, an account switch, the
+        // bridge changed in settings — and `stop()` can only tear down what already exists. This
+        // used to carry on regardless and end in `service.start()`: a sync loop for a session that
+        // had been closed, never stopped, on a client that might go straight to the homeserver
+        // after the user had asked for the bridge. So each step asks whether it is still wanted.
+        let started = generation
+        do {
+            try await startSteps(started)
+        } catch {
+            // Half-built and failed: tear down what exists, so the next `start()` can try again
+            // instead of finding `syncService` set and returning, for ever, having synced nothing.
+            if started == generation { await stop() }
+            throw error
+        }
+    }
 
+    private func isStillWanted(_ started: Int) -> Bool {
+        !hasStopped && started == generation
+    }
+
+    private func startSteps(_ started: Int) async throws {
         // A chat renamed on this device: nothing syncs, so no diff will ever arrive to say the row
         // has changed. The rebuild is the list's own ordinary way of recomputing every summary, and
         // it is debounced, so asking for one here costs a rename exactly one pass over the rooms.
@@ -175,7 +264,17 @@ public final class RoomListStore {
         // until some unrelated message arrived and happened to rebuild the row. The delegate is the
         // SDK's own "the notification settings moved" — it says nothing about which rule, which is
         // all this needs: the set is read again and the list recomputed.
-        await watchMuting()
+        //
+        // *Beside* the opening, not in front of it. It used to be awaited here, first, and it is a
+        // read of the push rules followed by a question per room that has a rule of its own — all
+        // of it standing between launching the app and the first conversation appearing, for the
+        // sake of the colour of a badge. The list now comes up at once with every badge in the
+        // accent, and the handful of muted ones turn grey a moment later. See `firstPaint`.
+        Task { [weak self] in
+            await self?.watchMuting()
+            guard let self, self.isStillWanted(started) else { return }
+            self.scheduleRebuild()
+        }
 
         // Offline mode is the SDK's own answer to a network that has gone away, and without it the
         // sync loop treats one as a failure: it reports `.error`, stops, and waits to be restarted.
@@ -185,10 +284,31 @@ public final class RoomListStore {
         // With it, sync reports `.offline` instead and stays up, reading from the store until the
         // network comes back. `syncStateChanged` below already treats `.offline` as a state to sit
         // in rather than restart out of, which is exactly right: there is nothing to restart into.
-        let service = try await client.syncService().withOfflineMode().finish()
+        let service = try await client.syncService().withOfflineMode().withSharePos(enable: true).finish()
+        // Not kept if nobody wants it any more: `stop()` has already been and gone, and would never
+        // know to stop this one.
+        guard isStillWanted(started) else { return }
         syncService = service
 
-        let list = try await service.roomListService().allRooms()
+        let listService = service.roomListService()
+
+        // "Updating…" in the title while the list is catching up — Telegram's. The SDK keeps this
+        // signal itself (Element X uses the same one): it is up while the room-list sync is setting
+        // up or recovering, which is exactly the stretch after launch, after a trip into a pocket
+        // and after the network comes back when what is on screen may be out of date. Shown only
+        // after half a second, so a catch-up that is over before anyone could read the word never
+        // flashes it.
+        syncIndicatorHandle = listService.syncIndicator(
+            delayBeforeShowingInMs: Self.updatingShowsAfterMs,
+            delayBeforeHidingInMs: 0,
+            listener: SyncIndicatorListener { [weak self] indicator in
+                Task { @MainActor [weak self] in
+                    self?.syncIndicatorChanged(isUpdating: indicator == .show)
+                }
+            })
+
+        let list = try await listService.allRooms()
+        guard isStillWanted(started) else { return }
         roomList = list
 
         // One ordered queue, for the same reason as the timeline's — see `TimelineStore.open()`,
@@ -212,6 +332,10 @@ public final class RoomListStore {
         }
 
         let result = try await list.entriesWithDynamicAdapters(pageSize: 100, listener: listener)
+        guard isStillWanted(started) else {
+            continuation.finish()
+            return
+        }
         entriesResult = result
         entriesHandle = result.entriesStream()
         // A room you have walked out of is still a room the SDK knows about, and with no filter
@@ -237,12 +361,27 @@ public final class RoomListStore {
         //
         // The send queue is what knows. Every enqueue, send and failure comes through
         // here, and each one is a reason to look again.
-        let sendQueueListener = SendQueueListener { [weak self] in
+        // Only the room the update is about: a message going out changes one row.
+        let sendQueueListener = SendQueueListener { [weak self] roomID in
             Task { @MainActor [weak self] in
-                self?.scheduleRebuild()
+                self?.scheduleRebuild(only: [roomID])
             }
         }
-        sendQueueHandle = try await client.subscribeToSendQueueUpdates(listener: sendQueueListener)
+        let queueHandle = try await client.subscribeToSendQueueUpdates(listener: sendQueueListener)
+        guard isStillWanted(started) else {
+            queueHandle.cancel()
+            return
+        }
+        sendQueueHandle = queueHandle
+
+        // And the queues that stop themselves. A send that fails for a reason that may pass — a
+        // dropped request, a server timing out — disables that room's queue, and the SDK waits to be
+        // told to carry on. See `SendQueueRecovery`, which decides when.
+        sendQueueErrorHandle = client.subscribeToSendQueueStatus(listener: SendQueueErrorListener { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.sendQueueStopped()
+            }
+        })
 
         // Nobody was listening to this, and the sync loop is the one thing in the app that *cannot*
         // be allowed to fail quietly. It stops on a network error like any other network client —
@@ -257,8 +396,65 @@ public final class RoomListStore {
             }
         })
 
+        // Whether the server has answered since sync last came up — see `FirstAnswerWatch`.
+        roomListStateHandle = listService.state(listener: RoomListStateListener { [weak self] state in
+            Task { @MainActor [weak self] in
+                guard let self, !self.hasStopped else { return }
+                self.roomListAnswered = FirstAnswerWatch.answered(state)
+                self.watchFirstAnswer()
+            }
+        })
+
+        // The one that matters: a loop started after `stop()` is the zombie.
+        guard isStillWanted(started) else { return }
         isPaused = false
+        isSyncAsleep = false
         await service.start()
+        watchFirstAnswer()
+    }
+
+    /// Starts or stops waiting for the server's first answer, whichever the state now says.
+    ///
+    /// The SDK's own indicator is silent at exactly the moment it is needed most. It shows only
+    /// while the list is being set up from nothing or has failed outright; coming back from the
+    /// pocket, the list is `terminated` and then `recovering`, and both of those are *hidden*. And
+    /// the SDK records the next state only once a request has come back — so on a VPN that has lost
+    /// its way, with the first request hanging for its full minute and then retried, the list sat
+    /// there for minutes looking up to date, with no "Updating…" and no "Waiting for network",
+    /// while a push had already said a message was waiting. Telegram said "Updating…" the whole time.
+    ///
+    /// So from the moment sync comes up until the room list has heard from the server, the title
+    /// says "Updating…" (after the same half second as the SDK's, so a quick answer never flashes
+    /// it), and after `FirstAnswerWatch.stalledAfter` "Waiting for network", because by then that
+    /// is what it is.
+    private func watchFirstAnswer() {
+        let waiting = FirstAnswerWatch.isWaiting(stopped: hasStopped || syncService == nil,
+                                                 paused: isPaused, offline: isOffline,
+                                                 answered: roomListAnswered)
+        guard waiting else {
+            firstAnswerWatch?.cancel()
+            firstAnswerWatch = nil
+            isStalled = false
+            if isAwaitingFirstAnswer {
+                isAwaitingFirstAnswer = false
+                refreshUpdating()
+            }
+            return
+        }
+        guard firstAnswerWatch == nil else { return }
+
+        let generation = self.generation
+        firstAnswerWatch = Task { [weak self] in
+            try? await Task.sleep(for: FirstAnswerWatch.updatingAfter)
+            guard let self, !Task.isCancelled, generation == self.generation else { return }
+            self.isAwaitingFirstAnswer = true
+            self.refreshUpdating()
+
+            try? await Task.sleep(for: FirstAnswerWatch.stalledAfter - FirstAnswerWatch.updatingAfter)
+            guard !Task.isCancelled, generation == self.generation else { return }
+            Log.session.error("no answer from the server since sync came up; saying so")
+            self.isStalled = true
+        }
     }
 
     /// The sync loop has stopped and nobody asked it to. Start it again.
@@ -282,6 +478,11 @@ public final class RoomListStore {
         // written offline sit there after the network is back, and the only cure is to press retry on
         // each one — which reads as an app that lost them.
         if state == .running {
+            // Sooner than any backoff, so the backoff is let go of: the network is back, and the
+            // next failure is a new story.
+            sendQueueRestart?.cancel()
+            sendQueueRestart = nil
+            sendQueueRecovery.reset()
             await client.enableAllSendQueues(enable: true)
         }
 
@@ -289,6 +490,8 @@ public final class RoomListStore {
         // first time a page failed — it had to, or it would have asked once per frame of every scroll
         // — and nothing in that room can tell that the network is back. Only this can. See
         // `TimelineStore.connectivityChanged` and `UserSession`, which is what carries it there.
+        watchFirstAnswer()
+
         if wasOffline != isOffline {
             await onConnectivityChange?(isOffline)
         }
@@ -318,6 +521,27 @@ public final class RoomListStore {
 
     private static let syncRestartDelay: Duration = .seconds(2)
 
+    /// A room's send queue has stopped itself on a failure that may pass. Start it again — later.
+    ///
+    /// Not while offline: there the sync loop reports the network back and starts every queue at
+    /// once (`syncStateChanged`), and a timer firing into no network would only stop them again and
+    /// lengthen the next pause for nothing. And never two restarts waiting at once — the pause is the
+    /// point, and a second failure arriving inside it is the same bad moment, not a new one.
+    private func sendQueueStopped() {
+        guard !hasStopped, !isOffline, sendQueueRestart == nil else { return }
+
+        let pause = sendQueueRecovery.failed()
+        Log.session.info("a send queue stopped itself; starting it again in \(pause, privacy: .public)")
+
+        sendQueueRestart = Task { [weak self] in
+            try? await Task.sleep(for: pause)
+            guard let self, !Task.isCancelled else { return }
+            self.sendQueueRestart = nil
+            guard !self.hasStopped, !self.isOffline else { return }
+            await self.client.enableAllSendQueues(enable: true)
+        }
+    }
+
     /// The app has gone into the user's pocket.
     ///
     /// Sync is stopped rather than left running, and the reason is not battery. A push arriving is
@@ -329,19 +553,38 @@ public final class RoomListStore {
     /// Not called on the Mac. A Mac app that is not in front is still an app the user expects to be
     /// receiving messages, and there is no extension racing it for the file.
     public func pause() async {
-        guard !hasStopped, let syncService else { return }
+        guard !hasStopped, syncService != nil else { return }
 
         isPaused = true
-        await syncService.stop()
+        watchFirstAnswer()
+        await settleSync()
     }
 
     /// And back out of it. `start()` on the service, not on this store: the listeners, the streams
     /// and the room handles were never taken down, only the loop that feeds them.
     public func resume() async {
-        guard !hasStopped, isPaused, let syncService else { return }
+        guard !hasStopped, isPaused, syncService != nil else { return }
 
         isPaused = false
-        await syncService.start()
+        await settleSync()
+        watchFirstAnswer()
+    }
+
+    /// Brings the loop to whatever `isPaused` says *now*, after every earlier transition has
+    /// finished. Asked twice in a row it does the work once; asked to pause and resume before
+    /// either has run, it does nothing at all — the loop is already where both requests end.
+    private func settleSync() async {
+        let previous = syncTransition
+        let task = Task { @MainActor [weak self] in
+            await previous?.value
+            guard let self, !self.hasStopped, let service = self.syncService,
+                  self.isSyncAsleep != self.isPaused else { return }
+            let asleep = self.isPaused
+            self.isSyncAsleep = asleep
+            if asleep { await service.stop() } else { await service.start() }
+        }
+        syncTransition = task
+        await task.value
     }
 
     /// Shuts the list down, and means it.
@@ -386,15 +629,36 @@ public final class RoomListStore {
         sendQueueHandle?.cancel()
         sendQueueHandle = nil
 
+        sendQueueErrorHandle?.cancel()
+        sendQueueErrorHandle = nil
+        sendQueueRestart?.cancel()
+        sendQueueRestart = nil
+        sendQueueRecovery.reset()
+
         typingHandles.values.forEach { $0.cancel() }
         typingHandles = [:]
         typingRoomIDs = []
+
+        // Each is a timeline over the store `logout()` is about to delete.
+        stopPeeks()
 
         // Before the service is stopped, not after: stopping it is going to move it to a state the
         // observer is watching for, and an observer still listening at that moment would take a
         // deliberate shutdown for a failure and start the whole thing up again on the way out.
         syncStateHandle?.cancel()
         syncStateHandle = nil
+
+        syncIndicatorHandle?.cancel()
+        syncIndicatorHandle = nil
+        roomListStateHandle?.cancel()
+        roomListStateHandle = nil
+        firstAnswerWatch?.cancel()
+        firstAnswerWatch = nil
+        roomListAnswered = false
+        sdkSaysUpdating = false
+        isAwaitingFirstAnswer = false
+        isStalled = false
+        isUpdating = false
 
         // Bounded, and for the same reason `logout` is: this is on the path out of the account,
         // and the way out of an account must not depend on the network being well. A sync service
@@ -426,6 +690,9 @@ public final class RoomListStore {
         rooms = []
         isLoadingInitialRooms = true
         needsRebuild = false
+        summaryCache = [:]
+        changedRoomIDs = []
+        needsFullRebuild = true
     }
 
     // MARK: - Diff handling
@@ -435,15 +702,23 @@ public final class RoomListStore {
         // store may have just been deleted from under them — see `stop()`.
         guard !hasStopped else { return }
 
+        // The rooms this batch says something about — the only ones whose summaries need asking
+        // for again. See `scheduleRebuild(only:)`.
+        var touched: Set<String> = []
+        func touch(_ rooms: [Room]) { for room in rooms { touched.insert(room.id()) } }
+
         for diff in diffs {
             switch diff {
             case let .append(values):
+                touch(values)
                 orderedRooms.append(contentsOf: values)
             case .clear:
                 orderedRooms.removeAll()
             case let .pushFront(value):
+                touch([value])
                 orderedRooms.insert(value, at: 0)
             case let .pushBack(value):
+                touch([value])
                 orderedRooms.append(value)
             case .popFront:
                 if !orderedRooms.isEmpty { orderedRooms.removeFirst() }
@@ -459,12 +734,14 @@ public final class RoomListStore {
                 guard i <= orderedRooms.count else {
                     return desynced("insert at \(i) of \(orderedRooms.count)")
                 }
+                touch([value])
                 orderedRooms.insert(value, at: i)
             case let .set(index, value):
                 let i = Int(index)
                 guard orderedRooms.indices.contains(i) else {
                     return desynced("set at \(i) of \(orderedRooms.count)")
                 }
+                touch([value])
                 orderedRooms[i] = value
             case let .remove(index):
                 let i = Int(index)
@@ -480,11 +757,12 @@ public final class RoomListStore {
                 orderedRooms.removeSubrange(n...)
 
             case let .reset(values):
+                touch(values)
                 orderedRooms = values
             }
         }
 
-        scheduleRebuild()
+        scheduleRebuild(only: touched)
     }
 
     /// The list is no longer the list the SDK is describing, so it is asked for again.
@@ -523,7 +801,21 @@ public final class RoomListStore {
     /// is running raises a flag rather than a knife. When it finishes, it looks at the flag and
     /// goes round again. Bursts still collapse — a hundred diffs during one rebuild are one more
     /// rebuild, not a hundred — but a rebuild always *finishes*.
-    private func scheduleRebuild() {
+    ///
+    /// `only` narrows it, and that is the second half of keeping the list steady while a sync
+    /// pours in. Every diff used to rebuild *every* summary — a `roomInfo()` and a `latestEvent()`
+    /// per room, in sequence — so on an account with a few hundred chats one new message cost a few
+    /// hundred round trips into Rust, and a busy sync was a list always half a second behind and
+    /// rebuilt again before it caught up. A diff names the rooms it is about; those are asked again,
+    /// and every other row is the summary it already had. With no argument — a rename, a mute, the
+    /// send queue, the end of a catch-up — nothing names a room, and every one is asked.
+    private func scheduleRebuild(only rooms: Set<String>? = nil) {
+        if let rooms {
+            changedRoomIDs.formUnion(rooms)
+        } else {
+            needsFullRebuild = true
+        }
+
         needsRebuild = true
         guard rebuildTask == nil else { return }
 
@@ -545,7 +837,11 @@ public final class RoomListStore {
 
             while let self, self.needsRebuild, !Task.isCancelled, generation == self.generation {
                 self.needsRebuild = false
-                await self.rebuildSummaries()
+                let full = self.needsFullRebuild
+                let changed = self.changedRoomIDs
+                self.needsFullRebuild = false
+                self.changedRoomIDs = []
+                await self.rebuildSummaries(asking: full ? nil : changed)
             }
 
             guard let self, generation == self.generation else { return }
@@ -566,6 +862,21 @@ public final class RoomListStore {
     /// A diff arrived while a rebuild was already running, so another one is owed. See
     /// `scheduleRebuild`.
     private var needsRebuild = false
+
+    /// The summaries as last built, by room ID — nil for a room the list does not show (see
+    /// `RoomSummary.init`). What an incremental rebuild reuses for every room nobody mentioned.
+    private var summaryCache: [String: RoomSummary?] = [:]
+
+    /// The rooms named by diffs since the last rebuild, and whether something that names no room
+    /// asked for all of them. See `scheduleRebuild(only:)`.
+    private var changedRoomIDs: Set<String> = []
+    private var needsFullRebuild = true
+
+    /// How many conversations go on the screen before the rest of them are summarised, the first
+    /// time — a screenful and then some. Telegram opens on the list it had; this is as close as a
+    /// list read room by room out of the SDK can get: the top of it in the time it takes to ask
+    /// thirty rooms, then the rest underneath, out of sight.
+    private static let firstPaint = 30
 
     /// The rooms this account has silenced by name, so the list can draw their badges grey.
     ///
@@ -623,48 +934,227 @@ public final class RoomListStore {
         mutedRoomIDs = muted
     }
 
-    private func rebuildSummaries() async {
+    /// `asking`: the rooms to ask the SDK about again, every other one reusing its summary; nil asks
+    /// about all of them. See `scheduleRebuild(only:)`.
+    private func rebuildSummaries(asking changed: Set<String>?) async {
         let handles = orderedRooms
 
         var summaries: [RoomSummary] = []
         summaries.reserveCapacity(handles.count)
 
+        // Nothing on the screen yet: the first rooms go up as soon as there are enough of them to
+        // fill it, rather than after the last of several hundred has been asked about. That wait was
+        // the "Loading your messages…" screen at every launch — every conversation already in the
+        // store, and none of them shown until all of them had been summarised.
+        var isFirstPaint = rooms.isEmpty && archivedRooms.isEmpty
+
+        // The run of the list this rebuild belongs to. Every write below comes after an await into
+        // the SDK, and the account can be closed in the middle of one — signed out, switched away
+        // from. `stop()` empties `rooms` precisely so that one account's chats are never left on the
+        // screen of the next; a rebuild that woke up afterwards and published the thirty it had
+        // gathered would put them straight back. So nothing is written once the run has moved on.
+        let generation = self.generation
+        func isCurrent() -> Bool { !Task.isCancelled && !hasStopped && generation == self.generation }
+
         for room in handles {
-            guard !Task.isCancelled else { return }
-            guard let info = try? await room.roomInfo() else { continue }
+            guard isCurrent() else { return }
 
-            var preview: String?
-            var activity: Date?
-
-            switch await room.latestEvent() {
-            case let .remote(timestamp, _, _, _, content):
-                preview = MessagePreview.text(for: content)
-                activity = MessagePreview.date(from: timestamp)
-            case let .local(timestamp, _, _, content, _):
-                preview = MessagePreview.text(for: content)
-                activity = MessagePreview.date(from: timestamp)
-            default:
-                break
-            }
-
-            guard let summary = RoomSummary(info: info,
-                                            ownUserID: ownUserID,
-                                            lastMessage: preview,
-                                            lastActivity: activity,
-                                            isMuted: mutedRoomIDs.contains(info.id)) else {
+            let roomID = room.id()
+            if let changed, !changed.contains(roomID), let cached = summaryCache[roomID] {
+                if let cached { summaries.append(cached) }
                 continue
             }
+
+            let built = await summary(of: room)
+            guard isCurrent() else { return }
+
+            guard let summary = built else {
+                summaryCache[roomID] = .some(nil)
+                continue
+            }
+            summaryCache[roomID] = summary
             summaries.append(summary)
+
+            if isFirstPaint, summaries.count == Self.firstPaint {
+                isFirstPaint = false
+                publish(summaries)
+            }
         }
 
-        guard !Task.isCancelled else { return }
+        guard isCurrent() else { return }
         watchTyping(in: handles)
-        // One list in, two lists out: the archive is everything the user swept aside, the main list
-        // is the rest. Both keep the same recency-and-pins order.
+        publish(summaries)
+
+        // Rooms that have left the list take their summaries with them.
+        let present = Set(handles.map { $0.id() })
+        summaryCache = summaryCache.filter { present.contains($0.key) }
+    }
+
+    /// One list in, two lists out: the archive is everything the user swept aside, the main list is
+    /// the rest. Both keep the same recency-and-pins order.
+    private func publish(_ summaries: [RoomSummary]) {
         let (active, archived) = Self.partitionArchived(summaries)
-        rooms = Self.byRecency(active)
-        archivedRooms = Self.byRecency(archived)
+        let sortedActive = Self.byRecency(active)
+        let sortedArchived = Self.byRecency(archived)
+        // Only when something is different. `rooms` is observed by the whole list, and assigning an
+        // equal array still tells every observer it changed.
+        if sortedActive != rooms { rooms = sortedActive }
+        if sortedArchived != archivedRooms { archivedRooms = sortedArchived }
         isLoadingInitialRooms = false
+    }
+
+    /// One room's row, asked of the SDK.
+    private func summary(of room: Room) async -> RoomSummary? {
+        guard let info = try? await room.roomInfo() else { return nil }
+
+        var preview: String?
+        var activity: Date?
+        var kind: PreviewKind?
+        var mark: LastMessageMark?
+
+        switch await room.latestEvent() {
+        case let .remote(timestamp, _, isOwn, _, content):
+            preview = MessagePreview.text(for: content)
+            kind = MessagePreview.kind(for: content)
+            let date = MessagePreview.date(from: timestamp)
+            activity = date
+            if isOwn {
+                // Read is not something the latest event says — only a chat's timeline holds the
+                // receipts. So it is what an open chat last saw (`noteRead`), and a message newer
+                // than that is merely sent.
+                mark = readUpTo[info.id].map { date <= $0 } == true ? .read : .sent
+            }
+        case let .local(timestamp, _, _, content, state):
+            preview = MessagePreview.text(for: content)
+            kind = MessagePreview.kind(for: content)
+            activity = MessagePreview.date(from: timestamp)
+            mark = switch state {
+            case .isSending: .sending
+            case .hasBeenSent: .sent
+            case .cannotBeSent: .failed
+            }
+        default:
+            break
+        }
+
+        // The chat's own last line, where its row is on the screen and the chat has one — see
+        // `PeekLine`. Unless the SDK knows of something newer: the peek is a page of the room, and
+        // a message that has only just landed may reach the summary a moment before the page.
+        if let line = peeks[info.id]?.line, activity.map({ line.date >= $0 }) ?? true {
+            preview = line.text
+            kind = line.kind
+            mark = line.mark
+            activity = line.date
+        }
+
+        return RoomSummary(info: info,
+                           ownUserID: ownUserID,
+                           lastMessage: preview,
+                           lastActivity: activity,
+                           lastMessageKind: kind,
+                           lastMessageMark: mark,
+                           isMuted: mutedRoomIDs.contains(info.id))
+    }
+
+    // MARK: - Peeks
+
+    /// A live timeline for each row on the screen — see `RoomPeek` and `PeekLine`.
+    private var peeks: [String: RoomPeek] = [:]
+
+    /// The rows the list says are on the screen right now.
+    private var visibleRows: Set<String> = []
+
+    /// The rooms with a peek, the longest unseen first — which ones go when there are too many.
+    private var peekOrder: [String] = []
+
+    /// Rooms waiting for a peek, opened one at a time by `peekOpener`. One at a time, because a
+    /// list appearing is a dozen rows appearing at once, and a dozen timelines built side by side
+    /// during the first sync is the stampede the 50 ms debounce exists to prevent.
+    private var peekQueue: [String] = []
+    private var peekOpener: Task<Void, Never>?
+
+    /// How many peeks are kept. A screenful and a scroll either side of it; a row that comes back
+    /// within that is not opened twice.
+    static let peekLimit = 40
+
+    /// A row came onto the screen.
+    public func rowAppeared(_ roomID: String) {
+        guard !hasStopped else { return }
+        visibleRows.insert(roomID)
+        peekOrder.removeAll { $0 == roomID }
+        peekOrder.append(roomID)
+
+        if peeks[roomID] == nil, !peekQueue.contains(roomID) {
+            peekQueue.append(roomID)
+            openPeeks()
+        }
+        trimPeeks()
+    }
+
+    /// A row went off the screen. Its peek stays until there are too many — see `peekLimit`.
+    public func rowDisappeared(_ roomID: String) {
+        visibleRows.remove(roomID)
+        peekQueue.removeAll { $0 == roomID }
+    }
+
+    /// Settings → Chats changed which grey lines are shown. The rows follow the chats.
+    public func serviceEventSettingsChanged() {
+        peeks.values.forEach { $0.refresh() }
+    }
+
+    private func openPeeks() {
+        guard peekOpener == nil else { return }
+        let generation = self.generation
+        peekOpener = Task { [weak self] in
+            while let self, generation == self.generation, !self.peekQueue.isEmpty {
+                let roomID = self.peekQueue.removeFirst()
+                guard self.peeks[roomID] == nil,
+                      let room = self.orderedRooms.first(where: { $0.id() == roomID }),
+                      // An invitation has no conversation to look into yet, and a space is not one.
+                      room.membership() == .joined, !room.isSpace() else { continue }
+
+                let peek = RoomPeek(room: room, ownUserID: self.ownUserID)
+                peek.onChange = { [weak self] in self?.scheduleRebuild(only: [roomID]) }
+                self.peeks[roomID] = peek
+                await peek.start()
+            }
+            guard let self, generation == self.generation else { return }
+            self.peekOpener = nil
+        }
+    }
+
+    private func trimPeeks() {
+        var excess = peeks.count - Self.peekLimit
+        guard excess > 0 else { return }
+        for roomID in peekOrder where excess > 0 && !visibleRows.contains(roomID) {
+            guard let peek = peeks.removeValue(forKey: roomID) else { continue }
+            peek.stop()
+            excess -= 1
+            scheduleRebuild(only: [roomID])
+        }
+        peekOrder.removeAll { peeks[$0] == nil && !peekQueue.contains($0) && !visibleRows.contains($0) }
+    }
+
+    private func stopPeeks() {
+        peekOpener?.cancel()
+        peekOpener = nil
+        peekQueue = []
+        peeks.values.forEach { $0.stop() }
+        peeks = [:]
+        peekOrder = []
+        visibleRows = []
+    }
+
+    /// How far your own messages in each room are known to have been read — by when they were
+    /// sent. Told by the chat itself when it is open (`TimelineStore.onOwnMessagesRead`), because
+    /// the receipts are in a timeline and the room list has none.
+    private var readUpTo: [String: Date] = [:]
+
+    /// A chat saw your messages read up to `date`. The row is rebuilt if that is news.
+    public func noteRead(roomID: String, upTo date: Date) {
+        guard readUpTo[roomID].map({ date > $0 }) ?? true else { return }
+        readUpTo[roomID] = date
+        scheduleRebuild(only: [roomID])
     }
 
     /// Keeps one typing subscription per room in the list: new rooms are listened to, rooms that
@@ -890,6 +1380,44 @@ private final class NotificationSettingsWatcher: NotificationSettingsDelegate {
     }
 }
 
+/// Says only that some room's send queue stopped itself. Which room and why are dropped: the
+/// answer is the same call for every room, and the error is the SDK's to report on the message.
+private final class SyncIndicatorListener: RoomListServiceSyncIndicatorListener {
+    private let onIndicator: @Sendable (RoomListServiceSyncIndicator) -> Void
+
+    init(onIndicator: @escaping @Sendable (RoomListServiceSyncIndicator) -> Void) {
+        self.onIndicator = onIndicator
+    }
+
+    func onUpdate(syncIndicator: RoomListServiceSyncIndicator) {
+        onIndicator(syncIndicator)
+    }
+}
+
+private final class RoomListStateListener: RoomListServiceStateListener {
+    private let onState: @Sendable (RoomListServiceState) -> Void
+
+    init(onState: @escaping @Sendable (RoomListServiceState) -> Void) {
+        self.onState = onState
+    }
+
+    func onUpdate(state: RoomListServiceState) {
+        onState(state)
+    }
+}
+
+private final class SendQueueErrorListener: SendQueueRoomErrorListener {
+    private let onError: @Sendable () -> Void
+
+    init(onError: @escaping @Sendable () -> Void) {
+        self.onError = onError
+    }
+
+    func onError(roomId: String, error: ClientError) {
+        onError()
+    }
+}
+
 /// Bridges the SDK's callback protocol into a Swift closure.
 private final class EntriesListener: RoomListEntriesListener {
     private let onDiff: @Sendable ([RoomListEntriesUpdate]) -> Void
@@ -903,11 +1431,11 @@ private final class EntriesListener: RoomListEntriesListener {
     }
 }
 
-/// Says only that the send queue moved, not how.
+/// Says which room's send queue moved, and not how.
 ///
 /// The update itself is dropped on purpose. Every one of them — enqueued, sent, failed,
-/// cancelled — means the same thing here: some room's newest message is not what we last
-/// thought it was. `rebuildSummaries` then asks the rooms themselves, which is the answer
+/// cancelled — means the same thing here: that room's newest message is not what we last
+/// thought it was. `rebuildSummaries` then asks the room itself, which is the answer
 /// we would have had to go and fetch anyway. Nothing about the message travels across this
 /// hop, which also means nothing non-`Sendable` does.
 /// The sync loop reporting on itself. `SyncServiceState` is a plain enum and already `Sendable`, so
@@ -925,13 +1453,13 @@ private final class SyncStateObserver: SyncServiceStateObserver {
 }
 
 private final class SendQueueListener: SendQueueRoomUpdateListener {
-    private let onUpdate: @Sendable () -> Void
+    private let onUpdate: @Sendable (String) -> Void
 
-    init(onUpdate: @escaping @Sendable () -> Void) {
+    init(onUpdate: @escaping @Sendable (String) -> Void) {
         self.onUpdate = onUpdate
     }
 
     func onUpdate(roomId: String, update: RoomSendQueueUpdate) {
-        onUpdate()
+        onUpdate(roomId)
     }
 }

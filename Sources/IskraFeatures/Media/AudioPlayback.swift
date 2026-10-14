@@ -145,6 +145,19 @@ final class AudioPlayback: SpeakerClaimant {
         Speaker.release(self)
     }
 
+    /// How long the clip is, once it is open — a music file's own length, which its event often
+    /// does not carry.
+    var duration: TimeInterval? { player.map(\.duration) }
+
+    /// Moves the playhead — for a song, which unlike a voice message *is* a track and is
+    /// scrubbed. Nothing to move until the file is open.
+    func seek(to fraction: Double) {
+        guard let player, player.duration > 0 else { return }
+        let clamped = min(max(fraction, 0), 1)
+        player.currentTime = clamped * player.duration
+        progress = clamped
+    }
+
     private func startTicking() {
         ticker?.invalidate()
 

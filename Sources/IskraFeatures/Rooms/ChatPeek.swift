@@ -354,6 +354,10 @@ private struct ChatPeekCard: View {
         .overlay { placeholder }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .chatWallpaper()
+        // The page itself, under the wallpaper. Without a wallpaper `chatWallpaper` draws nothing,
+        // and the card's conversation was see-through: the bubbles floated on the darkened chat
+        // list behind it, under a header that did have a background of its own.
+        .background(Color.page)
     }
 
     /// How near the top, in points, before the next page is asked for. A screen's worth, so the
@@ -394,7 +398,7 @@ private struct ChatPeekCard: View {
                                    opensDay: previousWasDivider,
                                    id: timeline.viewIdentity(of: row))
             if case .event = row { previousWasEvent = true } else { previousWasEvent = false }
-            if case .dayDivider = row { previousWasDivider = true } else { previousWasDivider = false }
+            previousWasDivider = row.isDivider
             return placed
         }
     }
@@ -406,6 +410,8 @@ private struct ChatPeekCard: View {
         switch placed.row {
         case let .dayDivider(divider):
             DayDividerView(date: divider.date)
+        case .unreadDivider:
+            UnreadDividerView()
         case let .event(event):
             RoomEventRow(event: event, followsEvent: placed.followsEvent, opensDay: placed.opensDay)
         case let .message(message):

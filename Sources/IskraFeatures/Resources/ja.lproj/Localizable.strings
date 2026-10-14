@@ -1,0 +1,1233 @@
+/* Iskra — user-facing text.
+   Edit the values, never the keys. The keys are referenced from Strings.swift.
+   Language: ja */
+
+/* Accessibility label for the avatar button in the toolbar, which opens the settings. */
+"account.settings" = "設定";
+
+"account.signOut" = "サインアウト";
+
+"message.deleted" = "メッセージは削除されました";
+
+/* VoiceOver: the cross in the ring over a photo or file that is still uploading. */
+"message.delivery.cancelUpload" = "送信をキャンセル";
+
+/* Names the red badge beside a message. Deliberately does not promise a retry: most of
+   these failures wait on the user, and the reason that follows says so. */
+"message.delivery.failed" = "未送信";
+
+/* The other button in the badge's popover, and the only one on a failure nothing will
+   clear. The message never left the device, so this throws it away rather than taking it
+   back from anyone — hence plain "Delete", with nothing about "for everyone". */
+"message.delivery.discard" = "削除";
+
+/* The button in the badge's popover. Only shown where trying again can actually work. */
+"message.delivery.sendAgain" = "もう一度送信";
+
+"message.delivery.read" = "既読";
+
+"message.delivery.sending" = "送信中";
+
+"message.delivery.sent" = "送信済み";
+
+/* VoiceOver: what someone did, read as part of a sentence. */
+"message.spoken.deletedMessage" = "削除されたメッセージ";
+
+"message.spoken.sentAudio" = "オーディオファイル";
+
+"message.spoken.sentFile" = "ファイル";
+
+"message.spoken.sentPhoto" = "写真";
+
+"message.spoken.sentSticker" = "ステッカー";
+
+/* %@ — how the sender described the sticker: an emoji, or a word. */
+"message.spoken.sentStickerNamed" = "ステッカー「%@」";
+
+"message.spoken.sentUnreadable" = "開けないメッセージ";
+
+"message.spoken.sentUnsupported" = "Iskra でまだ表示できないもの";
+
+"message.spoken.sentVideo" = "ビデオ";
+
+"message.spoken.sentVideoNote" = "ビデオメッセージ";
+
+"message.spoken.sentVoice" = "ボイスメッセージ";
+
+/* VoiceOver: how the user's own messages are attributed. */
+"message.spoken.you" = "あなた";
+
+/* Shown in place of a message this device has no key for. Must not mention keys or decryption. */
+"message.unreadable" = "このメッセージは開けません。このデバイスには鍵がありません。";
+
+"message.unsupported" = "Iskra ではこのメッセージをまだ表示できません。";
+
+/* Accessibility label for the attachment button in the composer. */
+"room.attach" = "写真やファイルを追加";
+
+"room.composerPlaceholder" = "メッセージ";
+
+/* The banner shown in place of the composer when posting is not allowed. */
+"room.readOnly" = "このチャットにはメッセージを送れません";
+
+"room.noRoomSelectedMessage" = "読みたい会話を選んでください。";
+
+"room.noRoomSelectedTitle" = "チャットを選択";
+
+"problem.ok" = "了解";
+
+/* Accessibility label for the send button. */
+"room.send" = "送信";
+
+"room.sendFailedTitle" = "メッセージを送信できませんでした";
+
+"roomList.emptyMessage" = "誰かからメッセージが届くと、ここに表示されます。";
+
+"roomList.emptyTitle" = "チャットはまだありません";
+
+/* The chat list's title in place of "Chats", while the list catches up and while there is no network. */
+"roomList.updating" = "更新中…";
+"roomList.waitingForNetwork" = "ネットワークを待っています…";
+
+/* Accessibility label for the lock icon. The only place encryption is named, and it is named as privacy. */
+"roomList.privateChat" = "保護されたチャット";
+
+/* Accessibility label for the pin icon on a pinned chat. */
+"roomList.pinned" = "ピン留めしたチャット";
+"roomList.hasUnread" = "未読あり";
+
+"roomList.searchPrompt" = "メッセージを検索";
+
+/* Accessibility label for the button that empties the search field. */
+"roomList.clearSearch" = "検索をクリア";
+
+"roomList.title" = "チャット";
+
+/* Accessibility label for the "+" button in the top-left corner. */
+"roomList.newConversation" = "新規チャットまたはルーム";
+
+/* A conversation with one other person. */
+"roomList.newChat" = "新規チャット";
+
+/* A conversation several people can join. */
+"roomList.newRoom" = "新規ルーム";
+
+/* The headings of the native macOS sidebar, which is the one place this app groups the
+   conversations at all — see `BetaFeatures.nativeSidebarKey`. The plain list keeps them in the
+   order the server sends, because a phone screen is not a place to be filing things. */
+"roomList.section.invitations" = "招待";
+
+"roomList.section.spaces" = "スペース";
+
+"roomList.section.pinned" = "ピン留め";
+
+"roomList.section.chats" = "チャット";
+
+"settings.title" = "設定";
+
+/* The back button settings draws for itself in a sidebar, where the system gives it none.
+   Never shown on iPhone — there the back button is the system's. */
+"settings.back" = "戻る";
+
+"settings.notifications" = "通知";
+
+"settings.encryption" = "暗号化";
+
+"settings.appearance" = "外観";
+
+/* The settings row that leads to the emoji a double tap leaves. One word, and it is the one
+   people go looking for. */
+"settings.reactions" = "ステッカーとリアクション";
+
+/* The settings row that leads to the app's icon. iPhone and iPad only. */
+"settings.appIcon" = "アイコン";
+
+/* When the system refuses, which it does where a management profile forbids alternate icons. */
+"appIcon.failed" = "アイコンを変更できませんでした。このデバイスでは許可されていないようです。";
+"appIcon.failedOK" = "了解";
+
+/* The icons' names. Things rather than colours: "dark grey" is a description, and a name is
+   something you can say out loud. */
+"appIcon.spark" = "スパーク";
+"appIcon.chrome" = "クローム";
+"appIcon.garnet" = "ガーネット";
+"appIcon.pine" = "パイン";
+"appIcon.rio" = "リオデジャネイロ";
+"appIcon.blackWhite" = "モノクロ";
+"appIcon.retro" = "レトロ";
+"appIcon.letters" = "文字";
+"beta.title" = "ベータ機能";
+
+/* Said once at the top of the screen, so that every switch below it is read as an offer
+   rather than as a setting somebody forgot to finish. */
+"beta.intro" = "まだ仕上がっていない機能はここにあります。邪魔ならオフに、気が変わったらまたオンにしてください。何も壊れず、何も失われません。";
+
+"beta.nativeSidebar" = "ネイティブのサイドバー";
+
+"beta.nativeSidebarHelp" = "チャット一覧が普通の macOS のサイドバーになります。チャットはセクションにまとまり、検索は上に、行の間隔は詰まります。メールやメモのように、スマホらしさは控えめに。";
+
+"beta.blobatar" = "イニシャルの代わりにキャラクター";
+
+/* Says the two things a person actually wants to know before flipping it: that the face
+   belongs to that person and will not change, and that nothing left the device to draw it. */
+"beta.blobatarHelp" = "自分の写真がない人には、代わりに小さなキャラクターが付きます。その人だけの、いつも同じ顔です。このデバイス上で描かれ、どこにも何も送られません。グループには文字の代わりにメンバーの顔が集まります。";
+
+"beta.blobatarForce" = "写真の代わりにも";
+
+/* Sits under the first switch and appears only with it. The second sentence is not a
+   detail: this is the only way to see the creatures in a real account, where nearly
+   everybody has a picture, and it answers "are the photographs still being fetched?". */
+"beta.blobatarForceHelp" = "写真を設定している人も含め、全員にキャラクターが付きます。その写真は一切読み込まれません。";
+
+"beta.mockBackend" = "デモサーバー";
+
+/* The last sentence is the one that matters: whoever turns this on is first of all afraid
+   of losing their real account. */
+"beta.mockBackendHelp" = "あなたのアカウントの代わりに、チャットや写真、ボイスメッセージ、招待まで入った架空のアカウントになります。サーバーはアプリの中にあり、ネットには一切つながりません。あなたのアカウントはそのままです。オフにすれば元に戻ります。";
+
+
+
+
+"settings.storage" = "ストレージ";
+
+/* Photos and videos: what happens to them before they are sent. */
+"settings.media" = "写真とビデオ";
+"media.title" = "写真とビデオ";
+"media.stripMetadata" = "メタデータなしで送信";
+"media.compress" = "写真とビデオを圧縮";
+"media.compression" = "圧縮率";
+"media.compression.strong" = "強 (540p)";
+"media.compression.balanced" = "中 (720p)";
+"media.compression.light" = "弱 (1080p)";
+
+"settings.connection" = "接続";
+
+/* The Connection screen: through a bridge, or straight to the server. */
+"connection.title" = "接続";
+"connection.bridge" = "ブリッジ経由";
+"connection.bridgeFooter" = "通信は直接ではなく、ブリッジを経由してサーバーに届きます。サーバーにつながらない場所のための機能です。";
+
+"connection.status" = "状態";
+"connection.statusDirect" = "直接";
+"connection.statusLocal" = "ローカル層経由";
+"connection.statusBridged" = "ブリッジ経由、リレー: %lld";
+"connection.statusFailed" = "オンにできませんでした";
+"connection.pending" = "この画面を離れると新しい設定が有効になります。アプリが自動で再接続します。";
+"connection.applyNow" = "今すぐ再接続";
+
+/* The bridge's address. While the field is empty the switch changes nothing, and that is
+   said here rather than only in the status: this is what somebody is looking at. */
+"connection.address" = "ブリッジのアドレス";
+"connection.addressPrompt" = "npub1… または 16 進 64 文字";
+"connection.addressFooter" = "ブリッジは起動時にアドレスを表示します。「bridge address for Iskra: npub1…」という行です。この欄が空のあいだはスイッチは何もせず、通信は直接サーバーへ向かいます。";
+"connection.addressBad" = "ブリッジの鍵ではないようです";
+"connection.addressSecret" = "それは秘密鍵です。ここに入れるのは公開鍵、npub で始まるほうです。";
+
+"connection.relays" = "リレー";
+"connection.relaysPrompt" = "wss://nos.lol, wss://relay.primal.net";
+"connection.relaysFooter" = "アプリとブリッジはここで互いを見つけます。複数あるのは予備ではありません。リクエストは全部に同時に送られ、いちばん速かったところから返事が来ます。空欄ならデフォルトの 3 つを使います。";
+
+"connection.myKey" = "このデバイスの鍵";
+"connection.myKeyFooter" = "ブリッジが非公開なら、この鍵をその ALLOWED_PUBKEYS に追加してください。そうしないと、まったく応答しません。";
+"connection.copy" = "コピー";
+"connection.copied" = "コピーしました";
+
+"connection.check" = "ブリッジを確認";
+"connection.checking" = "確認中…";
+"connection.checkOK" = "ブリッジが応答し、サーバーもつながっています — %lld ms";
+"connection.checkNoRelay" = "応答するリレーがありません";
+"connection.checkSilent" = "ブリッジが応答しません。起動していますか？鍵は正しいですか？";
+"connection.checkRefused" = "ブリッジに断られました。このサーバーには対応していません";
+"connection.checkFailed" = "うまくいきませんでした: %@";
+
+/* Not "what is unfinished" but what to expect: the numbers come from measuring a whole session
+   through the bridge (Bridge/README.md), and whoever turns the bridge on should know them first. */
+"connection.unfinished" = "知っておきたいこと";
+"connection.unfinishedBody" = "リクエストはすべてリレーを回り道するため 200〜350 ms かかります。そのためサインインや初めてチャットを開くときは、直接接続より目に見えて遅くなります。一瞬だったところに 1 秒ほど。一方、新しいメッセージは直接とほぼ同じ速さで届きます。大きな添付ファイルも届きますが、公開リレーは避けたほうがいいでしょう。メディア用にはブリッジ専用のリレーを用意してください。";
+
+"connection.sees" = "ブリッジから見えるもの";
+"connection.seesBody" = "ブリッジはサーバーへのリクエストを開いて中継するので、あなたのトークン、参加しているルーム、暗号化されていないチャットのメッセージ本文が見えます。暗号化された会話は読めません。だからブリッジは他人のものではなく、自分で用意するのがおすすめです。";
+
+/* App lock by Face ID / device passcode. */
+"settings.lock" = "アプリのロック";
+"settings.lockEnable" = "Face ID またはパスコードを要求";
+"settings.lockTimeout" = "要求するタイミング";
+"settings.lockExplanation" = "戻ってきたときに、Face ID、Touch ID、またはデバイスのパスコードを求めます。";
+"settings.lockUnavailable" = "先にデバイスのパスコードを設定してください。";
+"settings.lockTimeout.immediately" = "すぐに";
+"settings.lockTimeout.afterMinute" = "1 分後";
+"settings.lockTimeout.afterFiveMinutes" = "5 分後";
+
+/* The lock screen — the shield over the app. */
+"lock.title" = "Iskra はロックされています";
+"lock.unlock" = "ロックを解除";
+"lock.reason" = "Iskra のロックを解除";
+
+"settings.blocked" = "ブロックしたユーザー";
+"settings.blockedEmptyTitle" = "ブロック中の人はいません";
+"settings.blockedEmptyMessage" = "ブロックした人はここに表示されます。その人のメッセージは表示されません。";
+"settings.unblock" = "ブロックを解除";
+
+/* The storage screen: how much room the app is taking, what is taking it, and which part of it
+   can be thrown away. Each kind gets a sentence as well as a name — a row reading "Cache, 412 MB"
+   and nothing else invites a blind press. */
+"storage.title" = "ストレージ";
+"storage.total" = "このデバイス上";
+"storage.measuring" = "計算中…";
+
+"storage.session" = "鍵とルーム";
+"storage.session.explained" = "暗号鍵です。これがないと過去のメッセージは開けません。";
+
+"storage.cache" = "メッセージとメディア";
+"storage.cache.explained" = "ダウンロードしたもの。必要になれば再び読み込まれます。";
+
+"storage.search" = "検索インデックス";
+"storage.search.explained" = "デバイス上でメッセージを検索するためのものです。";
+
+"storage.clear" = "キャッシュを消去";
+"storage.clearing" = "消去中…";
+"storage.confirm.title" = "キャッシュを消去しますか？";
+"storage.confirm.body" = "アプリが再読み込みされます。メッセージ、写真、ファイルは開いたときに再びダウンロードされ、しばらくは検索ですべてが見つからないことがあります。サインインはそのままです。";
+"storage.confirm.action" = "消去";
+"storage.cancel" = "キャンセル";
+"storage.failed" = "キャッシュを消去できませんでした。もう一度お試しください。";
+
+"storage.search.clear" = "検索インデックスを消去";
+"storage.search.confirm.title" = "検索インデックスを消去しますか？";
+"storage.search.confirm.body" = "アプリが再読み込みされます。しばらくは検索ですべてが見つからないことがあります。インデックスは読み進めるうちに作り直されます。メッセージや写真はそのまま残ります。";
+"storage.search.failed" = "インデックスを消去できませんでした。もう一度お試しください。";
+
+/* The last row of settings, the way through to the About screen. */
+"settings.about" = "Iskraについて";
+
+/* The app's name under the icon on the About screen. Not translated — it is what the app is
+   called in both languages. */
+"settings.appName" = "Iskra App";
+
+/* The About screen, the last row in settings: what the app is, which build this is, and whose
+   work it stands on. */
+"about.title" = "Iskra について";
+"about.tagline" = "Swift で書かれた、iPhone・iPad・Mac 向けのオープンソースの Matrix クライアント。";
+
+/* Three rows you can select and copy. The build is the number with the commit in brackets,
+   the device is the model with the system in brackets. */
+"about.version" = "バージョン";
+"about.build" = "ビルド";
+"about.device" = "デバイス";
+
+/* The app's own page. The address shows under the label — nobody presses a link whose
+   destination is invisible. */
+"about.website" = "Iskra のサイト";
+"about.sourceCode" = "ソースコード";
+
+/* The row that leads to the list of licences, and that screen's title. They are not politeness:
+   Apache 2.0 and MIT travel with the binary, so a person holding the app has to be able to read
+   about them inside the app. */
+"about.licences" = "ライセンス";
+
+/* The screen where the double-tap reaction is chosen: the heading over the six emoji, and
+   the line under them. */
+"reactions.quick" = "クイックリアクション";
+
+/* Names the gesture rather than the setting — the emoji is useless until you know how to send it. */
+"reactions.quickHelp" = "メッセージをダブルタップすると、このリアクションが付きます。";
+
+/* Accessibility label for the address field. */
+"signIn.addressLabel" = "アカウントのアドレス";
+
+/* Placeholder in the address field. A real, working example, not a format string. */
+"signIn.addressPlaceholder" = "matrix.org";
+
+"signIn.continue" = "続ける";
+
+"signIn.differentAddress" = "別のアドレスを使う";
+
+/* Separator between the single sign-on button and the password form. */
+
+"signIn.password" = "パスワード";
+
+"signIn.problem.badCredentials" = "ユーザー名またはパスワードが違います。もう一度お試しください。";
+
+/* The address is wrong. Must send the user back to the address field, and must not say 'homeserver'. */
+"signIn.problem.notFound" = "このアドレスでは何も見つかりませんでした。綴りを確認して、もう一度お試しください。";
+
+"signIn.problem.ssoIncomplete" = "サインインが完了しませんでした。もう一度お試しください。";
+
+/* Nothing to do with what the user typed, so it must not send them back to the address field. */
+"signIn.problem.storageUnavailable" = "Iskra はこのデバイスに安全な保存領域を用意できなかったため、安全にサインインできません。";
+
+"signIn.problem.unreachable" = "このアドレスに接続できませんでした。接続を確認して、もう一度お試しください。";
+
+"signIn.problem.unsupportedMethod" = "このサービスは、Iskra がまだ対応していないサインイン方法を使っています。";
+
+/* The app started, could not reach the server, and nobody has been signed out. Must not say
+   anything about signing in: the account is fine and the messages are on the device. */
+"session.offlineTitle" = "接続がありません";
+
+"session.offlineMessage" = "会話はこのデバイスにちゃんとあります。今はサーバーにつながらないだけです。ネットワークを確認してください。";
+
+"session.tryAgain" = "再試行";
+
+/* The strip at the top of the screen while the app cannot reach the server. Short: it sits above
+   the conversations and must not push them off the screen. */
+"connection.offline" = "ネットワークなし";
+
+"signIn.readyHelp" = "いつもの方法でサインインできるよう、ブラウザを開きます。";
+
+"signIn.readyTitle" = "準備ができました";
+
+"signIn.signIn" = "サインイン";
+
+"signIn.signInWithPassword" = "パスワードでサインイン";
+
+/* A quiet link under the sign-in button, not a second equal path. A server with OAuth usually
+   accepts a password too — but somebody offered two ways into one account has to solve a problem
+   they did not have. One way, and a hint for the people it does not work for. */
+"signIn.usePasswordInstead" = "ユーザー名とパスワードしかありません";
+
+"signIn.tagline" = "プライベートなメッセージを、あなたの思うままに。";
+
+"signIn.title" = "Iskra";
+
+"signIn.username" = "ユーザー名";
+
+/* The question that replaces asking for a 'homeserver URL'. */
+"signIn.whereIsAccount" = "アカウントはどこにありますか？";
+
+"signIn.whereIsAccountHelp" = "サーバーのアドレスを教わっている場合は入力してください。わからなければ matrix.org のままで大丈夫です。";
+
+"room.attachPhoto" = "写真またはビデオ";
+
+"room.attachFile" = "ファイル";
+
+/* The choice under the "+" that appears when a photo or video has been copied. */
+"room.pasteImage" = "写真またはビデオをペースト";
+
+/* Read aloud for a photo waiting in the composer to be sent. */
+"room.attachedPhoto" = "メッセージに添付する写真";
+
+/* Read aloud for a video waiting in the composer to be sent. */
+"room.attachedVideo" = "メッセージに添付するビデオ";
+
+/* The cross on a photo or video waiting in the composer. */
+"room.removeAttachment" = "メッセージから外す";
+
+/* Over the room while a photo or video is dragged over it. */
+"room.dropToAttach" = "離すと添付します";
+
+"videoNote.title" = "ビデオメッセージ";
+
+"videoNote.holdToRecord" = "押したままで録画、離すと送信します。最長 1 分。";
+
+"videoNote.sending" = "送信中…";
+
+"videoNote.needsCamera" = "これには、カメラとマイクへのアクセスを Iskra に許可する必要があります。";
+
+"videoNote.noCamera" = "このデバイスにはカメラがありません。";
+
+"videoNote.record" = "ビデオメッセージを録画";
+
+/* A conversation with no messages in it. Not a problem — an invitation. */
+"room.emptyTitle" = "まだ何もありません";
+
+"room.emptyMessage" = "最初のメッセージを送りましょう。すべてはそこから始まります。";
+
+/* The chat could not be opened at all. Must not be confused with an empty chat: the
+   messages are there, we just can't show them. */
+"room.loadFailedTitle" = "チャットを開けませんでした";
+
+"room.loadFailedMessage" = "メッセージが消えたわけではありません。読み込めなかっただけです。接続を確認してください。";
+
+"room.tryAgain" = "再試行";
+
+/* Accessibility hint on the chat header. Says what pressing it does. */
+"room.openDetails" = "チャットの情報を開く";
+
+/* Title of the screen behind the chat header. */
+"room.detailsTitle" = "このチャットについて";
+
+/* Section header above the room's topic — what the room is for. */
+"room.about" = "説明";
+
+/* Shown beside the people who run the room. Never a number: Matrix calls this a power
+   level, and "power level 100" is the data model talking, not a person. */
+"room.administrator" = "管理者";
+
+"room.moderator" = "モデレーター";
+
+/* Long press (right click on a Mac) on a message. */
+"message.menu.copy" = "コピー";
+
+"message.menu.delete" = "削除";
+
+/* Asked before a message is deleted. The one thing in the menu that cannot be undone. */
+"message.menu.deleteConfirmTitle" = "このメッセージを削除しますか？";
+
+/* Must say plainly that it disappears for everyone, not just for the person deleting it. */
+"message.menu.deleteConfirmMessage" = "チャットの全員から消え、元に戻すことはできません。";
+
+/* Accessibility hints on a reaction. Say what pressing it will do — the pill itself can't. */
+"message.menu.addReaction" = "リアクションを付ける";
+"message.menu.addQuick" = "%@ を付ける";
+"message.menu.removeQuick" = "%@ を外す";
+"message.menu.moreReactions" = "ほかのリアクション";
+
+"message.menu.removeReaction" = "自分のリアクションを外す";
+
+/* At the foot of a message's menu: the exact moment. The clock beside the bubble has room
+   for the hour and nothing else; this is the whole date, formatted by the system. */
+"message.menu.sentAt" = "送信: %@";
+
+/* And when it was read, when the server said when. A receipt can arrive with no moment
+   on it at all, and then this line is simply not there. */
+"message.menu.readAt" = "既読: %@";
+
+/* And, on a message that is gone, when it went. */
+"message.menu.deletedAt" = "削除: %@";
+
+/* The day divider in a conversation. Nobody uses the weekday to work out when something
+   was said: the two nearest days get a word, everything else gets a date. */
+"room.today" = "今日";
+
+"room.yesterday" = "昨日";
+
+/* The Appearance screen: light or dark. "System" is the ordinary case and the default; the
+   other two are for people whose phone is light while their messages ought to be dark. */
+"appearance.theme" = "テーマ";
+"appearance.mode.system" = "システムに合わせる";
+"appearance.mode.light" = "ライト";
+"appearance.mode.dark" = "ダーク";
+
+/* The switch that turns the plain column on or off. */
+"appearance.compact" = "コンパクト表示";
+
+/* The Appearance screen: the colour the app is painted in. The seven colours of the
+   rainbow, and a mono theme with no colour at all. */
+"appearance.accent" = "アプリの色";
+"appearance.avatars" = "アバター";
+
+/* The switch under the swatches. Washes the chosen colour across the whole interface — every
+   screen's background, the text, the messages themselves. Off by default: a colour that is
+   everywhere emphasises nothing. */
+"appearance.tintInterface" = "画面全体に色を付ける";
+
+/* The names of the colours. They are never seen: a circle of colour has nothing to read
+   out, and VoiceOver names it by its colour. */
+"appearance.color.red" = "赤";
+
+"appearance.color.orange" = "オレンジ";
+
+"appearance.color.yellow" = "黄";
+
+"appearance.color.green" = "緑";
+
+"appearance.color.cyan" = "水色";
+
+"appearance.color.blue" = "青";
+
+"appearance.color.violet" = "紫";
+
+"appearance.color.mono" = "モノクロ";
+
+/* The Appearance screen: what lies behind a conversation. Nothing, six gradients, or a photo
+   of the user's own. */
+"appearance.wallpaper" = "壁紙";
+
+
+/* The slider under the wallpapers: how far to take the picture down so that messages read on it. */
+"appearance.wallpaperDimming" = "暗さ";
+
+/* The button under the slider — swap your photograph for a different one. */
+"appearance.wallpaperChoose" = "別の写真を選ぶ";
+
+/* The names of the wallpapers. They are never seen: a picture has nothing to read out, and
+   VoiceOver names it. */
+"appearance.wallpaper.none" = "壁紙なし";
+
+"appearance.wallpaper.sunset" = "夕焼け";
+
+"appearance.wallpaper.sea" = "海";
+
+"appearance.wallpaper.forest" = "森";
+
+"appearance.wallpaper.dusk" = "たそがれ";
+
+"appearance.wallpaper.sand" = "砂";
+
+"appearance.wallpaper.night" = "夜";
+
+"appearance.wallpaper.photo" = "自分の写真";
+
+/* The photo was picked and could not be read — a refusal that happens before anything is
+   sent, so blaming the server would be a lie. Usually it is still in iCloud, not on the phone. */
+"room.attachmentUnreadable" = "この写真を読み込めませんでした。まだ iCloud にある場合に起こります。「写真」で開いてから、もう一度お試しください。";
+
+/* A link in a message: ask before opening. The dialog's title is the address itself. */
+"message.link.open" = "開く";
+"message.link.cancel" = "キャンセル";
+
+/* The report menu item and form. */
+"message.menu.report" = "報告";
+"message.menu.forward" = "転送";
+"message.forward.title" = "転送先…";
+"message.forward.prompt" = "チャットを検索";
+"message.forward.cancel" = "キャンセル";
+"message.forward.comment" = "コメントを追加…";
+"message.forward.send" = "送信";
+"message.menu.block" = "ブロック";
+"message.menu.blockConfirm" = "%@ をブロックしますか？";
+"message.menu.blockConfirmMessage" = "この人からのメッセージは届かなくなります。ブロックは設定で解除できます。";
+"message.report.title" = "メッセージを報告";
+"message.report.explanation" = "報告はサーバーのモデレーターに届きます。何が問題か簡単に書いても、書かずに送ってもかまいません。";
+"message.report.reasonPrompt" = "何がありましたか？（任意）";
+"message.report.submit" = "送信";
+"message.report.cancel" = "キャンセル";
+
+"message.media.close" = "閉じる";
+
+/* The video would not download. Not an alarm and not a dialog — a line on the message
+   itself, because there is nothing to be done about it but press again. */
+"message.media.loadFailed" = "ビデオを読み込めませんでした";
+
+/* The button on the preview circle: point the camera at yourself, or away. */
+"videoNote.flipCamera" = "カメラを切り替え";
+
+/* The mark on a message its author went back and changed. */
+"message.edited" = "編集済み";
+
+/* The long press on a message. */
+"message.menu.reply" = "返信";
+"message.menu.edit" = "編集";
+"message.menu.pin" = "ピン留め";
+"message.menu.unpin" = "ピン留めを外す";
+
+/* The strip above the composer: answering somebody, or going back to change your own message. */
+"room.replyingTo" = "返信";
+"room.editingMessage" = "編集中";
+"room.stopReplying" = "キャンセル";
+
+/* Pinned messages: the strip at the top of the room, and the screen behind it. */
+"room.pinned" = "ピン留め";
+"room.pinnedTitle" = "ピン留めしたメッセージ";
+"room.pinnedEmpty" = "まだ何もピン留めされていません";
+
+/* Searching within one chat. */
+"room.searchInChat" = "チャット内を検索";
+"room.searchPrompt" = "このチャットを検索";
+"room.searchClose" = "閉じる";
+"room.searchEmptyTitle" = "見つかりませんでした";
+
+/* The room's media: a grid of photos and videos, a list of files. */
+"room.sharedMedia" = "メディアとファイル";
+"room.sharedMediaEmptyTitle" = "メディアはまだありません";
+"room.sharedMediaEmptyMessage" = "このチャットの写真、ビデオ、ファイルがここに表示されます。";
+
+/* Spaces and what is inside them. */
+"room.spaceLabel" = "スペース";
+"room.spaceEmptyTitle" = "このスペースは空です";
+"room.spaceEmptyMessage" = "このスペースのルームがここに表示されます。";
+"room.unpin" = "ピン留めを外す";
+
+/* The opened photo or video: what you can do with it besides look at it. */
+"message.media.share" = "共有";
+"message.media.save" = "写真に保存";
+"message.media.play" = "再生";
+"message.media.pause" = "一時停止";
+"message.media.openFile" = "ファイルを開く";
+
+/* The one button in the composer that records: tap to choose voice or video, hold to record. */
+"recording.hint" = "タップで音声かビデオかを選べます。押したままで録音し、上にスワイプすると手を離して録音を続けられます。";
+"recording.switchToVoice" = "ボイスメッセージに切り替え";
+"recording.switchToVideo" = "ビデオメッセージに切り替え";
+"recording.cancel" = "キャンセル";
+"recording.send" = "送信";
+
+/* Recording a spoken message by holding the microphone in the composer. */
+"voice.record" = "ボイスメッセージを録音";
+"voice.needsMicrophone" = "ボイスメッセージを録音するには、マイクへのアクセスを許可してください";
+
+/* Sending a place. */
+/* The sticker sheet's title, and the composer button that opens it. */
+"stickers.title" = "ステッカー";
+"stickers.open" = "ステッカー";
+"stickers.close" = "閉じる";
+
+/* The row of stickers sent last. */
+"stickers.recent" = "最近";
+
+/* The account's own sticker pack — the one stickers are added to. */
+"stickers.mine" = "マイステッカー";
+
+/* A room's sticker pack that has no name of its own. */
+"stickers.roomPack" = "チャットのステッカー";
+
+/* The sticker pack the app comes with: round faces, a heart and a star. */
+"stickers.builtIn" = "スパークス";
+
+/* The sticker sheet with nothing in it. */
+"stickers.empty.title" = "ステッカーはまだありません";
+"stickers.empty.message" = "チャットで気に入ったステッカーがあれば、長押しして「マイステッカーに追加」を選んでください。";
+
+/* In a sticker's menu: put it into, or take it out of, the account's own pack. */
+"stickers.add" = "マイステッカーに追加";
+"stickers.remove" = "マイステッカーから削除";
+
+"location.title" = "位置情報";
+"location.send" = "送信";
+"location.cancel" = "キャンセル";
+"location.myLocation" = "現在地";
+"location.attach" = "位置情報";
+"message.spoken.sentLocation" = "位置情報";
+
+/* Running a room. Shown only to whoever the room allows to do it. */
+"room.manage.namePlaceholder" = "チャット名";
+"room.manage.topicPlaceholder" = "このチャットについて";
+"room.manage.openToAnyone" = "オープンなチャット";
+"room.manage.openToAnyoneHelp" = "このチャットを見つけた人は誰でも参加できます。オフなら招待制です。";
+"room.manage.invite" = "招待";
+"room.manage.inviteTitle" = "誰を招待しますか？";
+"room.manage.inviteHelp" = "Matrix のアドレスは @名前:サーバー の形式です。";
+"room.manage.invitePlaceholder" = "@名前:サーバー";
+"room.manage.role" = "役割";
+"room.manage.roleHeader" = "できること";
+"room.manage.roleQuestion" = "%@ にできること";
+"room.manage.member" = "メンバー";
+"room.manage.write" = "メッセージを送る";
+"room.manage.goToChat" = "チャットへ移動";
+"room.manage.remove" = "退出させる";
+"room.manage.block" = "チャットから追放";
+"room.manage.blockQuestion" = "%@ をこのチャットから追放しますか？";
+"room.manage.blockHelp" = "チャットから外され、あなたが解除するまで戻れません。";
+"room.manage.leave" = "チャットを退出";
+"room.manage.leaveQuestion" = "このチャットを退出しますか？";
+"room.manage.leaveHelp" = "新しいメッセージは届かなくなります。戻るには招待が必要です。";
+
+/* Why everything on the room-settings screen is greyed out. Shown only while offline. Must say
+   what still works — reading and writing — rather than only what does not. */
+"room.manage.offline" = "オフラインでもチャットを読んだり書いたりはできますが、設定は変更できません。";
+"room.manage.cancel" = "キャンセル";
+"problem.title" = "うまくいきませんでした";
+
+/* Starting a new chat, or a new room. */
+"roomList.new.create" = "作成";
+"roomList.new.openMeansUnencrypted" = "オープンなルームは参加した人なら誰でも読めるので、暗号化されません。非公開のルームは暗号化されます。";
+"roomList.new.searchPrompt" = "ユーザーを検索";
+"roomList.new.createRoom" = "ルームを作成";
+"roomList.new.publicRooms" = "公開ルーム";
+"roomList.new.joinByAddress" = "アドレスで参加";
+"roomList.new.yourChats" = "やり取りしている人";
+"roomList.new.onServer" = "サーバー上";
+"roomList.new.writeTo" = "このアドレスに送る";
+"roomList.new.nobodyFound" = "見つかりませんでした";
+"roomList.new.searchFailed" = "サーバーが検索に応答しませんでした";
+"roomList.new.roomsPrompt" = "ルームを検索";
+"roomList.new.inviteOnly" = "招待制";
+"roomList.new.noRooms" = "ルームが見つかりませんでした";
+"roomList.new.directoryFailed" = "ディレクトリを開けませんでした。";
+"roomList.new.retry" = "もう一度";
+"roomList.new.join" = "参加";
+"roomList.new.addressPlaceholder" = "#ルーム:サーバー";
+"roomList.new.addressHelp" = "ルームのアドレスは #名前:サーバー の形です。「!」で始まるルームIDでも参加できます。";
+
+/* Swipe actions on a chat row, and their VoiceOver twins. */
+"roomList.swipe.markRead" = "既読";
+"roomList.swipe.markUnread" = "未読";
+"roomList.swipe.pin" = "ピン留め";
+"roomList.swipe.unpin" = "ピン留めを外す";
+"roomList.swipe.archive" = "アーカイブ";
+"roomList.swipe.unarchive" = "アーカイブ解除";
+"roomList.swipe.delete" = "削除";
+"roomList.swipe.leaveConfirmTitle" = "このチャットを退出しますか？";
+"roomList.swipe.leaveConfirmMessage" = "ルームから退出し、メッセージは届かなくなります。Matrix では共有のチャットを削除することはできず、自分が退出することしかできません。";
+"roomList.swipe.leaveConfirm" = "退出";
+"roomList.swipe.cancel" = "キャンセル";
+
+/* The chat preview a long press opens in the chat list: a look inside that marks nothing as read. */
+"roomList.peek.peek" = "のぞき見";
+"roomList.peek.open" = "チャットを開く";
+"roomList.peek.markRead" = "既読にする";
+"roomList.peek.markUnread" = "未読にする";
+"roomList.peek.staysUnread" = "のぞいているだけなので、既読にはなりません";
+"roomList.peek.close" = "プレビューを閉じる";
+
+/* The archive: the shelf for set-aside chats and the way back to them. */
+"roomList.archive.title" = "アーカイブ";
+"roomList.archive.entry" = "アーカイブ (%lld)";
+"roomList.archive.emptyTitle" = "アーカイブは空です";
+"roomList.archive.emptyMessage" = "チャットを左にスワイプしてアーカイブすると、一覧からは外れますが、消えはしません。";
+
+/* How loudly a room may interrupt you. */
+"room.manage.alerts" = "通知";
+"room.manage.alertsAll" = "すべてのメッセージ";
+"room.manage.alertsMentions" = "メンションのみ";
+"room.manage.alertsMuted" = "オフ";
+
+/* The profile: name and picture. */
+"account.namePlaceholder" = "あなたの名前";
+"account.edit" = "編集";
+"account.editTitle" = "プロフィール";
+"account.nameHeader" = "名前";
+"account.editOffline" = "オフラインではプロフィールを変更できません。サーバーにつながらないためです。";
+"account.nameChangeNotice" = "名前を変えると、やり取りしている全員に伝わります。共通のチャットそれぞれにお知らせが表示されます。";
+"account.usernameHeader" = "ユーザー名";
+"account.usernameFixed" = "ユーザー名はアカウント作成時に一度だけ決めるものです。ここでも、ほかのどこでも変更できません。";
+
+/* The menu on a picture that can be changed: in your profile and in a chat. */
+"picture.edit" = "写真を変更";
+"picture.change" = "変更";
+"picture.remove" = "削除";
+"room.manage.edit" = "編集";
+"room.manage.editTitle" = "チャットを編集";
+"room.manage.nameHeader" = "名前";
+"room.manage.deleteChat" = "チャットを削除";
+"room.manage.deleteChatQuestion" = "このチャットを削除しますか？";
+"room.manage.deleteChatHelp" = "会話はこのデバイスから消えます。相手には知らされず、相手がまた書いてくると、チャットは空の状態で戻ってきます。";
+"room.tabs.members" = "メンバー";
+"room.tabs.media" = "写真";
+"room.tabs.voice" = "音声";
+"room.tabs.videoNotes" = "ビデオメッセージ";
+"room.tabs.files" = "ファイル";
+"room.tabs.links" = "リンク";
+"room.tabs.label" = "中身";
+"room.localName.header" = "このデバイスでの名前";
+"room.localName.help" = "この名前はあなただけに、このデバイスでだけ表示されます。相手には知らされず、ほかのデバイスでは元の名前のまま、サインアウトすると消えます。";
+"room.localName.reset" = "「%@」に戻す";
+
+/* Encryption: whether your messages will still be readable on your next device. */
+"encryption.title" = "暗号化";
+
+"encryption.on" = "メッセージは保護されています";
+"encryption.onHelp" = "会話は暗号化されたバックアップとしてサーバーに保管されています。復元コードがあれば、新しいデバイスでも読めます。";
+
+"encryption.off" = "メッセージは保護されていません";
+"encryption.offHelp" = "このデバイスをなくすと、過去のメッセージは誰にも読めなくなります。あなた自身もです。保護すれば、メッセージを取り戻すためのコードをお渡しします。";
+"encryption.protect" = "メッセージを保護";
+
+"encryption.keyNeeded" = "復元コードが必要です";
+"encryption.keyNeededHelp" = "過去のメッセージは暗号化されていて、このデバイスではまだ開けません。バックアップをオンにしたときに保存したコードを入力してください。";
+"encryption.keyPlaceholder" = "復元コード";
+"encryption.restore" = "メッセージを取り戻す";
+
+"encryption.newKey" = "新しい復元コードを作成";
+"encryption.newKeyHelp" = "以前のコードは使えなくなります。コードが他人の手に渡ったときにどうぞ。";
+
+"encryption.saveKey" = "コードを保存してください";
+"encryption.saveKeyHelp" = "このコードは一度しか表示しません。書き留めるか、パスワードマネージャーに保存してください。これがないと、過去のメッセージは戻りません。";
+"encryption.copyKey" = "コードをコピー";
+"encryption.keyCopied" = "コピーしました";
+"encryption.saved" = "コードを保存しました";
+
+"encryption.deviceUnverified" = "新しいデバイス";
+
+/* The bar across the conversation: what you have not read yet starts here. */
+"room.unreadMessages" = "未読メッセージ";
+
+/* A room invitation: who asked, and the two answers. */
+"roomList.invite.from" = "%@ からの招待";
+"roomList.invite.unattributed" = "招待が届いています";
+"roomList.invite.accept" = "参加";
+"roomList.invite.decline" = "辞退";
+
+/* "Typing…" under the room's name. */
+"room.typing" = "入力中…";
+"room.typingBy" = "%@ が入力中…";
+
+"room.scrollToBottom" = "最新のメッセージへ";
+"room.loadEarlier" = "それ以前を表示";
+
+/* Stands where the "show earlier" button would be, when the older messages could not be fetched —
+   offline, this is where the cached history runs out. Explains; does not promise. */
+"room.earlierUnavailable" = "それ以前のメッセージは、オンラインに戻ったら表示します";
+"appearance.previewAsk" = "何色にしたの？";
+"appearance.previewAnswer" = "これ。どう？";
+"appearance.previewReply" = "すごくいいね";
+
+/* A second line from Anna in a row, there only so the preview shows a run: in the compact
+   layout the name sits above a run, and one line cannot show that. */
+"appearance.previewFollowUp" = "ぴったりだよ";
+
+/* The other person's name in the preview. The bubbles never show it — the side of the screen
+   says who spoke — and in the compact layout it is the only thing that does. The reader's own
+   line is labelled "You": the same word VoiceOver reads, not a second one like it. */
+"appearance.previewSender" = "アンナ";
+"appearance.previewLabel" = "メッセージはこのように表示されます";
+
+/* The session was ended somewhere else — from another device, or because the account is gone.
+   Somebody dropped back onto the sign-in screen with no explanation assumes the app lost their
+   account, so this names the cause rather than merely stating the fact. */
+"session.ended.title" = "サインインが無効になりました";
+"session.ended.message" = "サーバーがこのセッションを受け付けなくなりました。おそらく別のデバイスで終了したのでしょう。もう一度サインインしてください。会話はどこにも消えていません。";
+
+/* What the media bubbles are called for VoiceOver. A photo and a video note are opened by a tap
+   gesture, and a tap gesture does not exist in the accessibility tree at all — with no name and no
+   action there was nothing there to press. */
+"message.media.photo" = "写真";
+"message.media.video" = "ビデオ";
+"message.media.videoNote" = "ビデオメッセージ";
+"message.media.openFullScreen" = "開く";
+
+/* Verifying this device by comparing seven emoji with a device the account already trusts. Not a
+   word about cross-signing or keys: the user is asked to look at two screens and say whether they
+   show the same thing, which is the whole of it, and is explicable without a single term. */
+"verification.verify" = "このデバイスを承認";
+"verification.title" = "承認";
+"verification.why" = "このデバイスを承認するまで、アカウントには本当にあなたなのか分からず、過去の会話もここには届きません。すでにサインインしているスマホやパソコンから承認できます。";
+"verification.waiting.title" = "もう一方のデバイスを見てください";
+"verification.waiting.message" = "もう一方のデバイスでアプリを今開いておいてください。そうしないとリクエストが届きません。";
+"verification.asked.message" = "このデバイスがたった今あなたのアカウントにサインインし、承認を求めています。あなたなら同意して、絵文字を照らし合わせてください。違うなら拒否してください。誰かがあなたのパスワードを知っています。";
+"verification.unnamedDevice" = "名前のないデバイス";
+"verification.mine" = "自分です";
+"verification.notMine" = "自分ではありません";
+"verification.negotiating.title" = "少々お待ちください";
+"verification.negotiating.message" = "2 つのデバイスがやり取りしています。まもなく両方の画面に絵文字が表示されます。";
+"verification.compare" = "もう一方のデバイスにも同じ 7 つの絵文字が表示されています。一致しているか、並び順も同じか確認してください。";
+"verification.match" = "一致しています";
+"verification.noMatch" = "一致しません";
+"verification.done.title" = "このデバイスは承認されました";
+"verification.done.message" = "アカウントはこのデバイスを信頼するようになりました。過去の会話は自動的にここに表示されます。";
+"verification.declined.title" = "承認を中止しました";
+"verification.declined.message" = "絵文字が本当に一致しなかったなら、この接続は信頼せず、もう一度お試しください。単に承認を 2 回開始しただけかもしれません。";
+"verification.refused.title" = "拒否しました";
+"verification.refused.message" = "そのデバイスには会話へのアクセスは与えられていません。ただ、サインインしたのがあなたでないなら、誰かがパスワードを知っています。今すぐ変更してください。";
+"verification.refused.endSession" = "このセッションを終了";
+"verification.failed.title" = "うまくいきませんでした";
+"verification.failed.message" = "承認が完了しませんでした。もう一度お試しください。";
+"verification.close" = "閉じる";
+"verification.signIn.title" = "アカウントへのサインイン";
+
+/* --- Getting your messages back ----------------------------------------------
+   The screen between signing in and the conversations, and the strip that reminds
+   you about it. The words are chosen so that nobody ever meets "verification",
+   "cross-signing" or "secret storage". There is exactly one thing — a recovery
+   code — and it behaves like a backup code from an authenticator app. */
+
+/* While the SDK works out what this device knows. Seconds, but saying nothing is not an option. */
+"recovery.preparing" = "少々お待ちください。メッセージを確認しています";
+
+/* Flow 1. The backup turns itself on, without asking, and the wait is a real one:
+   the whole history goes up to the server. Promising "instant" would be a lie. */
+"recovery.creating.title" = "バックアップを準備しています";
+"recovery.creating.message" = "どのデバイスからでも読めるよう、メッセージをバックアップしています。1 分ほどかかることがあります。";
+
+/* The button under the code. Skipping is allowed — but the strip in the chat list won’t let you forget. */
+
+/* Flow 2. Two buttons of equal weight. Neither is "the main one": somebody who picks the
+   picture check should not feel they picked the fallback. */
+"recovery.new.title" = "新しいコードを作成しますか？";
+"recovery.new.message" = "以前のコードはすぐに使えなくなり、元には戻せません。どこかに書き留めてあっても、そのメモは役に立たなくなります。";
+"recovery.new.confirm" = "新しいコードを作成";
+"recovery.new.keepOld" = "あとで。以前のコードを探してみます";
+"recovery.approve.title" = "承認しましたか？";
+"recovery.approve.message" = "リセットはサーバーのページで承認する必要があります。承認したなら続けてください。過去のメッセージは完全に失われます。気が変わったなら、何も起きません。";
+"recovery.approve.confirm" = "過去のメッセージを完全に消去";
+"recovery.approve.cancel" = "やめておきます";
+"recovery.choose.title" = "メッセージのロックを解除";
+"recovery.choose.message" = "以前のメッセージは暗号化されていて、このデバイスではまだ開けません。方法は 2 つあり、どちらでも大丈夫です。";
+"recovery.choose.haveCode" = "復元コードを持っています";
+"recovery.choose.otherDevice" = "別のデバイスから承認";
+"recovery.choose.neither" = "どちらもありません";
+
+/* Entering the code. The keyboard has no business helping here — this arrives by paste. */
+"recovery.enter.title" = "復元コードを入力";
+"recovery.enter.message" = "バックアップをオンにしたときに表示したコードです。";
+"recovery.enter.unlock" = "メッセージのロックを解除";
+"recovery.enter.lost" = "コードが見つかりません";
+
+/* Flow 3, the branch where another device exists. Losing the code is not a disaster, and the tone says so. */
+"recovery.lost.title" = "見つかりませんか？";
+"recovery.lost.hasDevices" = "大丈夫です。すでにサインインしているスマホやパソコンからこのデバイスを承認すれば、なくしたコードの代わりに新しいコードをすぐにお渡しします。";
+
+/* Flow 3, the branch where there is nothing else. Said plainly, without frightening anyone:
+   losing your messages is bad, but being frightened and not knowing what to do is worse. */
+"recovery.lost.alone.title" = "最初からやり直しましょう";
+"recovery.lost.alone.message" = "コードもほかのデバイスもない場合、過去のメッセージは戻りません。ずっと暗号化されたままになります。新しいメッセージはいつも通り届き、新しい復元コードもお渡しします。";
+
+/* The design note asks for this to be separated from a password reset explicitly, so that
+   nobody — the developer included — confuses the two. A password opens the account, not the messages. */
+"recovery.lost.alone.notPassword" = "アカウントのパスワードはこれとは関係ありません。パスワードで開くのはアカウントで、過去のメッセージではありません。";
+"recovery.lost.alone.start" = "最初からやり直す";
+
+/* The server wants to see the person again before it allows the reset. */
+"recovery.password.title" = "パスワードを入力";
+"recovery.password.message" = "本当にあなたかどうか、サーバーが確認を求めています。";
+"recovery.password.placeholder" = "パスワード";
+"recovery.password.confirm" = "確認";
+
+/* The strip in the chat list. It stays until the reason is gone: the code is shown once, and
+   somebody who didn’t save it finds out six months later — unless they’re reminded. */
+"recovery.banner.locked" = "過去のメッセージはロックされています";
+"recovery.save.warning" = "このコードをなくし、ほかのデバイスもない場合、過去のメッセージは誰にも戻せません。私たちにも、サーバーにもです。ずっと暗号化されたままになります。";
+"recovery.save.confirm" = "コードを安全な場所に書き留めました";
+"recovery.lost.noAccess" = "そのデバイスを使えません";
+"recovery.banner.hint" = "復元の設定を開きます";
+"recovery.close" = "閉じる";
+
+
+/* The button appears only where the server itself says it can make accounts. */
+"signIn.createAccount" = "アカウントを作成";
+
+/* The message menu is ours rather than the system's — see MessageMenu. The darkened room behind
+   a lifted message is a way out of it, and VoiceOver has no other way of being told. */
+"message.menu.close" = "メニューを閉じる";
+
+/* The plus at the end of the six: everything else is behind it. */
+"reactions.more" = "ほかの絵文字";
+
+/* Closes that panel when it is opened from settings as a sheet of its own. */
+"reactions.cancel" = "キャンセル";
+
+/* The groups in the emoji panel. Short — they are headings over a grid, not chapter titles. */
+"reactions.recent" = "最近";
+"reactions.smileys" = "スマイリーと人々";
+"reactions.animals" = "動物と自然";
+"reactions.food" = "食べ物と飲み物";
+"reactions.activity" = "アクティビティ";
+"reactions.places" = "旅行と場所";
+"reactions.objects" = "物";
+"reactions.symbols" = "記号";
+"reactions.flags" = "旗";
+
+/* The Security tab — what used to be Encryption. Everything that answers "who can get at this"
+   lives under one roof now: recovery, this device, my devices, the Face ID lock and the bridge.
+   Apart they read as five small things; together they are one conversation. */
+"settings.security" = "セキュリティ";
+
+/* The round buttons under a person's portrait. */
+"profile.message" = "メッセージ";
+"profile.share" = "共有";
+/* The label beside a person's Matrix address on their profile. */
+"profile.matrixID" = "Matrix ID";
+"profile.loading" = "プロフィールを読み込んでいます…";
+"profile.notInRoom" = "この人はチャットにいません。";
+
+/* The settings row and the title of the screen listing every session on the account. */
+"devices.title" = "デバイス";
+"devices.thisDevice" = "このデバイス";
+/* Under this device, in place of when it was last seen. */
+"devices.online" = "オンライン";
+"devices.endOthers" = "ほかのすべてのセッションを終了";
+"devices.endOthersFooter" = "このデバイス以外のすべてのデバイスでアカウントからサインアウトします。";
+"devices.endOthersConfirm" = "ほかのすべてのセッションを終了しますか？";
+"devices.others" = "アクティブなセッション";
+"devices.noOthers" = "ほかのセッションはありません。サインインしているのはここだけです。";
+"devices.end" = "終了";
+"devices.endConfirm" = "このセッションを終了しますか？";
+/* Under the list, when sessions are ended on the server's website (browser sign-in). */
+"devices.managedFooter" = "このアカウントのセッションはサーバーのウェブサイトで終了します。「終了」を押すとサイトが開きます。";
+"devices.passwordTitle" = "パスワードが必要です";
+"devices.passwordMessage" = "セッションを終了するには、アカウントのパスワードが必要です。";
+"devices.passwordField" = "パスワード";
+"devices.cancel" = "キャンセル";
+"devices.retry" = "再試行";
+
+/* The Notifications screen: what arrives by default, until a particular chat says otherwise.
+   Two things have to be said out loud about these rules — they live on the server, so they apply
+   to every device at once, and a chat's own setting always wins over them. */
+"notifications.title" = "通知";
+
+"notifications.defaults" = "デフォルト";
+"notifications.direct" = "個人チャット";
+"notifications.groups" = "グループ";
+"notifications.defaultsFooter" = "チャットごとの通知設定は、デフォルトより優先されます。";
+
+"notifications.mentions" = "メンション";
+"notifications.mentionsMe" = "自分がメンションされたとき";
+"notifications.roomMentions" = "チャット全員への呼びかけ (@room)";
+
+"notifications.other" = "その他";
+"notifications.invitations" = "チャットへの招待";
+"notifications.calls" = "通話";
+"notifications.otherFooter" = "Iskra にはまだ通話機能はありませんが、ほかのアプリから電話がかかってくることはあります。";
+
+"notifications.system" = "許可";
+"notifications.systemOn" = "システムは通知を許可しています";
+"notifications.systemOff" = "システムが通知をブロックしています";
+"notifications.systemUnknown" = "まだ許可を求めていません";
+"notifications.openSystem" = "設定を開く";
+"notifications.systemFooter" = "システムが通知をブロックしているあいだは、下のルールはどれも働きません。";
+
+"notifications.failed" = "通知の設定を読み込めませんでした。サーバーが応答していません。あとでもう一度お試しください。";
+
+/* The first run. Six slides before the sign-in — the only place the app talks about itself,
+   so the lines are short and no protocol word appears on any of them. See `WelcomeView`. */
+"onboarding.slide.iskra.title" = "Iskra";
+"onboarding.slide.iskra.body" = "あなただけのものになる会話";
+
+"onboarding.slide.encryption.title" = "標準でエンドツーエンド暗号化";
+"onboarding.slide.encryption.body" = "読めるのはあなたと相手だけ。CIA にも読めません";
+
+"onboarding.slide.decentralised.title" = "分散型";
+"onboarding.slide.decentralised.body" = "Iskra は、コミュニティが育てるオープンなプロトコル Matrix で動いています";
+
+"onboarding.slide.appleWay.title" = "Apple way";
+"onboarding.slide.appleWay.body" = "すべてのプラットフォーム向けのネイティブな Swift アプリ。サクサク動いて、バッテリーにもやさしい";
+
+"onboarding.slide.freedom.title" = "自由に選べる";
+"onboarding.slide.freedom.body" = "既存のサーバーを使っても、自分で立ててもかまいません。ひとつのエコシステムに縛られることはありません";
+
+"onboarding.slide.anonymous.title" = "匿名";
+"onboarding.slide.anonymous.body" = "アカウントは電話番号にもメールにも結びつきません。ユーザー名とパスワードだけです";
+
+"onboarding.start" = "はじめる";
+
+/* VoiceOver for the row of dots under a slide, which says nothing on its own. */
+"onboarding.slidePosition" = "スライド %1$lld / %2$lld";
+
+"onboarding.continue" = "続ける";
+
+/* Both screens after the sign-in ask about taste rather than about anything that matters,
+   so there is a way straight past them. */
+"onboarding.skip" = "スキップ";
+
+"room.identity.changedTitle" = "%@: 新しい暗号鍵";
+"room.identity.changedBody" = "この人へのメッセージは、新しい鍵で暗号化されるようになりました。新しいスマホでサインインしたときによく起こります。心当たりがなければ、本人に直接確認してください。";
+"room.identity.understood" = "了解";
+"room.identity.violationTitle" = "%@: 確認済みの鍵と一致しません";
+"room.identity.violationBody" = "この人は確認済みですが、その後鍵が変わりました。本人だと確かめられるまで、大事なことは書かないでください。";
+"room.identity.withdraw" = "確認済みを取り消す";
+"room.identity.failed" = "うまくいきませんでした。接続を確認して、もう一度お試しください。";
+"message.delivery.sendAnyway" = "このまま送信";
+"message.delivery.sendAnywayFailed" = "メッセージはまだ送れていません。接続を確認して、もう一度お試しください。";
+"onboarding.greeting" = "こんにちは、%@ さん！";
+"onboarding.greetingNameless" = "こんにちは！";
+
+"onboarding.appearance.title" = "Iskra を何色にしますか？";
+"onboarding.appearance.body" = "あなたのメッセージや、タップするものすべてがこの色になります。設定の「外観」でいつでも変えられます。";
+
+"onboarding.faces.title" = "キャラクターを付ける相手";
+"onboarding.faces.body" = "キャラクターは相手のアドレスからデバイス上で作られます。一人ひとり違い、いつも同じ顔です。どこにも何も送られません。";
+
+"onboarding.faces.pictures" = "写真";
+"onboarding.faces.picturesHelp" = "そのまま表示します。写真を設定している人は写真、ほかの人はイニシャルです。";
+
+"onboarding.faces.mixed" = "写真とキャラクター";
+"onboarding.faces.mixedHelp" = "自分の写真がない人にはキャラクターを。";
+
+"onboarding.faces.faces" = "キャラクター";
+"onboarding.faces.facesHelp" = "写真を設定している人も含め、全員にキャラクターを。";
+
+"onboarding.faces.withPicture" = "写真あり";
+"onboarding.faces.withoutPicture" = "写真なし";
+
+"onboarding.faces.picturedName" = "さくら";
+"onboarding.faces.unpicturedName" = "たける";
+
+/* More than one account */
+"accounts.section" = "アカウント";
+"accounts.add" = "アカウントを追加";
+"accounts.cancel" = "キャンセル";
+"accounts.switchHint" = "アプリをこのアカウントに切り替えます";
+"accounts.current" = "表示中";
+"accounts.unread" = "未読: %lld";
+"accounts.signOutOf" = "%@ からサインアウト";
+"session.endedOther.message" = "サーバーが %@ のセッションを受け付けなくなりました。おそらく別のデバイスで終了されたのでしょう。ほかのアカウントはそのままで、このアカウントはもう一度追加できます。";
+"signIn.problem.alreadySignedIn" = "このアカウントはすでにこのデバイスにあります。設定から切り替えられます。";
+
+/* Settings → Chats: service lines, the Return key, the account in the Share menu. */
+"settings.chats" = "チャット";
+"chats.title" = "チャット";
+"chats.serviceSection" = "システムメッセージ";
+"chats.hideNameChanges" = "名前の変更を隠す";
+"chats.hideMembershipChanges" = "参加・退出を隠す";
+"chats.serviceHelp" = "誰が名前を変えたか、誰が参加・退出・招待されたかを知らせるグレーの行です。チャット名や写真の変更は常に表示されます。";
+"chats.keyboardSection" = "キーボード";
+"chats.commandReturn" = "⌘ + Return で送信";
+"chats.commandReturnOnHelp" = "Return で改行、⌘ + Return で送信します。";
+"chats.commandReturnOffHelp" = "Return で送信、Shift + Return で改行します。";
+"chats.shareSection" = "共有メニュー";
+"chats.shareAccount" = "アカウント";
+"chats.shareActive" = "使用中";
+"chats.shareAll" = "すべて";
+"chats.shareHelp" = "ほかのアプリから共有するときに、どのアカウントのチャットを表示するか。「使用中」は今 Iskra で開いているアカウントです。";
+
+/* Settings → Privacy. */
+"privacy.title" = "プライバシー";
+"privacy.hidePresence" = "最終オンラインを隠す";
+"privacy.hidePresenceHelp" = "ほかの人には、あなたが最後にオンラインだった時刻が見えなくなります。あなたにも、ほかの人の時刻は見えなくなります。";
+"privacy.hideTyping" = "「入力中…」を隠す";
+"privacy.hideTypingHelp" = "ほかの人には、あなたが入力中であることが見えなくなります。";
+
+/* Photos & videos: auto-download. */
+"media.download" = "ダウンロード";
+"media.autoDownload" = "自動ダウンロード";
+"media.autoDownload.always" = "常に";
+"media.autoDownload.wifi" = "Wi-Fi のみ";
+"media.autoDownload.never" = "しない";
+"media.autoDownload.alwaysHelp" = "チャットの写真、ビデオ、ビデオメッセージは、画面に現れるとすぐ自動でダウンロードされます。";
+"media.autoDownload.wifiHelp" = "モバイルデータ通信時や省データモードでは、写真やビデオは自動でダウンロードされません。代わりにぼかした輪郭とダウンロードボタンが表示されます。";
+"media.autoDownload.neverHelp" = "写真やビデオは、ダウンロードボタンをタップするか開いたときだけダウンロードされます。アバターとステッカーは常にダウンロードされます。";
+
+/* The session card and the new sign-in banner. */
+"devices.application" = "アプリ";
+"devices.lastSeen" = "最終アクティビティ";
+"devices.ipAddress" = "IP アドレス";
+"devices.deviceID" = "デバイス ID";
+"devices.unknown" = "不明";
+"devices.endSession" = "セッションを終了";
+"devices.done" = "完了";
+"devices.newSignInTitle" = "アカウントへの新しいサインイン";
+"devices.newSignInMore" = "ほか %lld 件";
+"devices.newSignInYes" = "はい、自分です";
+"devices.newSignInNo" = "自分ではありません";
+
+/* Who reacted: the "everybody" tab. */
+"message.menu.reactorsAll" = "すべて %lld";
+
+/* Media viewer: the counter and video skipping. */
+"message.media.counter" = "%lld / %lld";
+"message.media.skipBack" = "15 秒戻る";
+"message.media.skipForward" = "15 秒進む";
+"signIn.server" = "サーバー: %@";
+"signIn.changeServer" = "変更";
+"signIn.serverDone" = "完了";
+"signIn.signInTo" = "%@ にサインイン";
+"signIn.back" = "戻る";
+"signIn.continueInBrowser" = "ブラウザで続ける";
+"signIn.browserHelp" = "サーバーのサインインページが開きます。いつも通りに操作できます。";
+"signIn.passwordHelp" = "アカウントのユーザー名とパスワード。";
+"signIn.problem.noRegistration" = "このサーバーではアプリからアカウントを作成できません。別のサーバーを選ぶか、サーバーのサイトで登録してください。";
+"profile.search" = "検索";
+"profile.mute" = "ミュート";
+"profile.unmute" = "ミュート解除";
+"profile.blockUser" = "ユーザーをブロック";
+"profile.unblockUser" = "ブロックを解除";
+"profile.blockedNotice" = "このユーザーをブロックしています。新しいメッセージは届きません。";
+
+"accounts.signOut" = "サインアウト";
+"accounts.signOutTitle" = "%@ からサインアウトしますか？";
+"accounts.signOutMessage" = "このアカウントのチャットはこのデバイスから削除されます。暗号化されたメッセージをもう一度読むには、復元キーかほかのデバイスが必要です。";
+"stickers.subscribe" = "追加";
+"stickers.settings.sheetSection" = "表示するもの";
+"stickers.settings.builtIn" = "スパークス";
+"stickers.settings.roomPacks" = "チャットのステッカー";
+"stickers.settings.roomPacksHelp" = "チャットに独自のステッカーがあれば、そのチャットにいる間は表示されます。上の「追加」をタップすると、すべてのチャットで使えます。";
+"stickers.settings.subscriptions" = "追加したステッカー";
+"stickers.settings.subscriptionsHelp" = "左にスワイプすると削除できます。ステッカー自体は元のチャットに残ります。";
+"stickers.settings.unsubscribe" = "削除";
+"stickers.settings.mineHelp" = "チャットから追加したステッカーがここに入ります。長押しで削除できます。このステッカーはほかの Matrix アプリにも表示されます。";
+"stickers.settings.clearRecent" = "最近使ったものを消去";
+"stickers.settings.clearRecentHelp" = "最近使ったものはアカウントに保存されているため、すべてのデバイスで消去されます。";
+"message.forwarded" = "転送されたメッセージ";
+"message.forwardedFrom" = "%@ から転送";
+
+/* The line under somebody's name in a one-to-one chat — see PresenceLabel. */
+"presence.online" = "オンライン";
+"presence.justNow" = "たった今オンライン";
+"presence.minutesAgo" = "%lld分前にオンライン";
+"presence.hoursAgo" = "%lld時間前にオンライン";
+"presence.atTime" = "%@にオンライン";
+"presence.yesterday" = "昨日オンライン";
+"presence.at" = "%@にオンライン";
+
+/* QR codes: your own, a chat's, and the scanner in New chat. */
+"qr.title" = "QRコード";
+"qr.scan" = "QRコードをスキャン";
+"qr.scanHint" = "人またはルームのQRコードにカメラを向けてください";
+"qr.notMatrix" = "Matrixのリンクではありません";
+"qr.choosePicture" = "画像を選ぶ";
+"qr.noCamera" = "カメラにアクセスできません。設定で許可するか、コードの画像を選んでください。";
+"qr.nothingFound" = "画像にQRコードがありません";
+"qr.joinRoom" = "ルームに参加";
+"qr.openRoom" = "開く";
+"qr.roomUnknown" = "サーバーはこのルームについて何も教えてくれませんでしたが、参加を試すことはできます。";
+"qr.inviteOnlyRoom" = "このルームは招待制です。";

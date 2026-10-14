@@ -106,6 +106,84 @@ public final class VoiceRecorder {
     /// the first voice message anyone ever tries to send used to go.
     private var generation = 0
 
+    // MARK: Warming up while the finger decides
+
+    /// The microphone being opened ahead of time, from the moment a finger lands on the record
+    /// button — see `prewarm()`. What it yields is a recorder ready to `record()` at once.
+    private var warming: Task<Warm?, Never>?
+
+    /// A recorder that has been made and primed, and the file it will write.
+    ///
+    /// `@unchecked Sendable` because it is made on a background thread and handed to the main
+    /// actor once, by nobody else holding it — the one crossing it ever makes.
+    private struct Warm: @unchecked Sendable {
+        let recorder: AVAudioRecorder
+        let url: URL
+    }
+
+    /// Opens the microphone's way while the press is still only a press.
+    ///
+    /// The second between a hold and a running clock was never the hold: it was the audio session
+    /// waking — two round-trips to `mediaserverd` — and then `AVAudioRecorder` making its file and
+    /// its encoder, all begun only once the hold had committed. Begun here, at touch-down, it runs
+    /// while the finger is still deciding, and `start()` picks up what is ready. A tap throws it
+    /// away again (`discardPrewarm()`).
+    ///
+    /// Only with permission already given: a permission alert is not something a tap that meant
+    /// "switch to video" should raise.
+    public func prewarm() {
+        guard state == .idle, warming == nil,
+              AVCaptureDevice.authorizationStatus(for: .audio) == .authorized else { return }
+        warming = Task {
+            await AudioSession.prepare(for: .recording)
+            guard !Task.isCancelled else { return nil }
+            return await Self.makeRecorder()
+        }
+    }
+
+    /// The press was a tap after all: the primed recorder and the session go back.
+    public func discardPrewarm() {
+        guard state == .idle, let warming else { return }
+        self.warming = nil
+        warming.cancel()
+        Task {
+            if let warm = await warming.value {
+                warm.recorder.deleteRecording()
+            }
+            AudioSession.release()
+        }
+    }
+
+    /// Off the main thread: making the file and the encoder is the slow half of a recording
+    /// starting, and on the main actor it was a frozen screen under the thumb.
+    private static func makeRecorder() async -> Warm? {
+        await Task.detached(priority: .userInitiated) { makeRecorderNow() }.value
+    }
+
+    nonisolated private static func makeRecorderNow() -> Warm? {
+        let url = URL.temporaryDirectory.appending(component: "\(UUID().uuidString).m4a")
+        let settings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatMPEG4AAC,
+            // Voice, not music. 24 kHz mono at 48 kbps is what a phone call has always been and
+            // is perfectly clear; twice that would double the upload for something nobody would
+            // hear the difference in.
+            AVSampleRateKey: 24_000,
+            AVNumberOfChannelsKey: 1,
+            AVEncoderBitRateKey: 48_000,
+            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+        ]
+        do {
+            let recorder = try AVAudioRecorder(url: url, settings: settings)
+            recorder.isMeteringEnabled = true
+            // The file and the encoder, made now rather than inside `record()`.
+            recorder.prepareToRecord()
+            return Warm(recorder: recorder, url: url)
+        } catch {
+            Log.media.error("the recorder would not open: \(Log.describe(error), privacy: .public)")
+            return nil
+        }
+    }
+
     public func start() async {
         guard state == .idle else { return }
 
@@ -127,33 +205,45 @@ public final class VoiceRecorder {
         // `State.starting`.
         state = .starting
 
-        await AudioSession.prepare(for: .recording)
+        // What the touch-down began, if it did — usually finished or nearly by now. Otherwise the
+        // whole of it, here.
+        let warm: Warm?
+        if let warming {
+            self.warming = nil
+            warm = await warming.value
+        } else {
+            await AudioSession.prepare(for: .recording)
+            warm = await Self.makeRecorder()
+        }
 
         // And again on the other side of it. Waking the session is a round-trip to another process
         // (see `AudioSession`), and a thumb can be lifted while it is in flight — recording then
         // would leave a microphone running that nothing on screen admits to.
         guard generation == self.generation, state == .starting else {
+            warm?.recorder.deleteRecording()
             AudioSession.release()
             return
         }
 
-        let url = URL.temporaryDirectory.appending(component: "\(UUID().uuidString).m4a")
-        let settings: [String: Any] = [
-            AVFormatIDKey: kAudioFormatMPEG4AAC,
-            // Voice, not music. 24 kHz mono at 48 kbps is what a phone call has always been and
-            // is perfectly clear; twice that would double the upload for something nobody would
-            // hear the difference in.
-            AVSampleRateKey: 24_000,
-            AVNumberOfChannelsKey: 1,
-            AVEncoderBitRateKey: 48_000,
-            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
-        ]
-
         do {
-            let recorder = try AVAudioRecorder(url: url, settings: settings)
-            recorder.isMeteringEnabled = true
+            guard let warm else { throw CocoaError(.fileWriteUnknown) }
+            let recorder = warm.recorder
+            let url = warm.url
 
-            guard recorder.record(forDuration: Self.maximumDuration) else {
+            // `record` starts the audio unit, which is a wait on another process — off the main
+            // actor for the same reason the recorder is made off it.
+            let primed = warm
+            let cap = Self.maximumDuration
+            let started = await Task.detached(priority: .userInitiated) {
+                primed.recorder.record(forDuration: cap)
+            }.value
+            guard generation == self.generation, state == .starting else {
+                recorder.stop()
+                recorder.deleteRecording()
+                AudioSession.release()
+                return
+            }
+            guard started else {
                 Log.media.error("the microphone would not start")
                 // The session was activated just above and is now ours for nothing — hand it back,
                 // or whatever was playing before the recording never comes back. The two guards

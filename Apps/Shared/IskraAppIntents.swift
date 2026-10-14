@@ -9,9 +9,10 @@ import IskraCore
 // it launches; sending a message drops it in the outbox the app flushes when it comes up — which is
 // why both open the app rather than reaching the network from here.
 //
-// The user-facing strings are English defaults for now: Siri phrases and intent titles localise
-// through the *app* bundle's catalog, which this app does not yet carry (its words live in the
-// IskraFeatures package), so translating them is a follow-up rather than a `Strings` lookup.
+// The words here are keys, not English: an intent's title and parameters are looked up in the *app*
+// bundle's `Localizable.strings`, and Siri's phrases in its `AppShortcuts.strings` — both in
+// `Apps/Shared/<lang>.lproj`, not in IskraFeatures, because that is where the system looks. It is
+// the one place in the app where the words are not a `Strings` lookup, and the only reason.
 
 /// A chat, as an intent parameter.
 ///

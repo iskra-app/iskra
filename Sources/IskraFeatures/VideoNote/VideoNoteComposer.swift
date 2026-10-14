@@ -91,6 +91,9 @@ struct VideoNoteComposer: View {
     /// over before the camera woke.
     @Binding var isHolding: Bool
 
+    /// Where the zoom stood when the pinch in progress began — see the circle's gesture.
+    @State private var zoomAtPinch: CGFloat?
+
     /// Set when the user has swiped up to record without holding. The sheet then keeps recording
     /// after the finger lifts, and the shutter becomes a stop button.
     @Binding var isLocked: Bool
@@ -216,6 +219,17 @@ struct VideoNoteComposer: View {
                 .rotationEffect(.degrees(-90))
                 .animation(.linear(duration: 0.1), value: recorder.progress)
         }
+        // Pinch the circle to bring the camera closer — with the second hand, or with both once
+        // the recording is locked. From wherever the last pinch left it, not from 1 each time.
+        .contentShape(.circle)
+        .gesture(
+            MagnifyGesture()
+                .onChanged { value in
+                    if zoomAtPinch == nil { zoomAtPinch = recorder.zoom }
+                    recorder.setZoom((zoomAtPinch ?? 1) * value.magnification)
+                }
+                .onEnded { _ in zoomAtPinch = nil }
+        )
         .accessibilityLabel(Text(Strings.VideoNote.title))
     }
 

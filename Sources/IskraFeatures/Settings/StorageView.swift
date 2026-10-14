@@ -85,8 +85,6 @@ struct StorageView: View {
                     }
                 }
                 .disabled(storage.isClearing || storage.reclaimable == 0)
-            } footer: {
-                Text(Strings.Storage.cacheExplained)
             }
 
             // Its own section, because it answers a different question. The button above is about
@@ -190,26 +188,29 @@ struct StorageView: View {
     }
 
     private func row(for amount: StorageAmount) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-            LabeledContent {
-                Text(size(amount.bytes))
-                    .monospacedDigit()
-            } label: {
-                // The symbol wears the band's colour, which is what makes the bar above legible
-                // without a key of its own: the row *is* the key.
-                Label {
+        // The symbol wears the band's colour, which is what makes the bar above legible without a
+        // key of its own: the row *is* the key. The second line is one short phrase — what the
+        // thing is for — and not the paragraph it used to be. The size sits level with the name,
+        // not centred against both lines.
+        HStack(alignment: .firstTextBaseline) {
+            Label {
+                VStack(alignment: .leading, spacing: Theme.Spacing.withinRun) {
                     Text(name(of: amount.kind))
-                } icon: {
-                    Image(systemName: symbol(of: amount.kind))
-                        .foregroundStyle(colour(of: amount.kind))
+                    Text(explanation(of: amount.kind))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
+            } icon: {
+                Image(systemName: symbol(of: amount.kind))
+                    .foregroundStyle(colour(of: amount.kind))
             }
 
-            Text(explanation(of: amount.kind))
-                .font(.footnote)
+            Spacer(minLength: Theme.Spacing.close)
+
+            Text(size(amount.bytes))
+                .monospacedDigit()
                 .foregroundStyle(.secondary)
         }
-        .padding(.vertical, Theme.Spacing.tight)
     }
 
     private func clear() async {

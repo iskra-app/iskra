@@ -59,13 +59,19 @@ struct MessageMenuOverlay: View {
                         region: region,
                         isOwn: presentation.isOwn,
                         aboveHeight: aboveHeight(for: presentation),
-                        listHeight: listHeight(for: presentation))
+                        listHeight: listHeight(for: presentation),
+                        barWidth: ReactionBar.naturalWidth)
+
+                    // Picked up, not faded in — Telegram's. The arrangement is first drawn with the
+                    // message exactly where it stood in the conversation, and springs from there to
+                    // where the menu needs it; on closing it springs back into its gap. The bar and
+                    // the verbs unfold out of the message on the same value, below. See
+                    // `MessageMenuLayout.lift` and `MessageMenuPresenter.isOut`.
+                    let away = presenter.isOut ? CGSize.zero : layout.lift
 
                     ZStack(alignment: .topLeading) {
                         column(presentation, layout: layout)
-                            .offset(x: layout.origin.x, y: layout.origin.y)
-                            .transition(.scale(scale: 0.92, anchor: presentation.isOwn ? .topTrailing : .topLeading)
-                                .combined(with: .opacity))
+                            .offset(x: layout.origin.x + away.width, y: layout.origin.y + away.height)
                     }
                     .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
                     #if os(macOS)
@@ -105,7 +111,8 @@ struct MessageMenuOverlay: View {
             .accessibilityLabel(Text(Strings.Message.Menu.close))
             .accessibilityAddTraits(.isButton)
             .accessibilityAction { close() }
-            .transition(.opacity)
+            // Darkening on the same spring the message rises on, and clearing as it lands.
+            .opacity(presenter.isOut ? 1 : 0)
     }
 
     // MARK: - The arrangement
@@ -117,7 +124,7 @@ struct MessageMenuOverlay: View {
 
         // One container for both sheets of glass, which is what keeps them from stacking into
         // soup where they nearly touch — see `IskraDesign/Glass.swift`.
-        GlassEffectContainer(spacing: MessageMenu.gap) {
+        NavigationGlassGroup(spacing: MessageMenu.gap) {
             VStack(alignment: alignment, spacing: MessageMenu.gap) {
                 if presentation.canReact {
                     if isPickingEmoji {
@@ -133,17 +140,26 @@ struct MessageMenuOverlay: View {
                             .offset(x: layout.emojiOffset)
                             .transition(.scale(scale: 0.9, anchor: .bottom).combined(with: .opacity))
                     } else {
-                        // As wide as the panel the "+" opens, not as narrow as the verbs:
-                        // seven round targets in the width of a column of words came out at
-                        // thumb-and-a-half apart, and a reaction is the thing people reach for
-                        // most. Slid onto the screen by the same correction as the panel.
-                        ReactionBar(width: layout.emojiWidth,
+                        // As wide as its own seven cells: wider than the column of verbs, so
+                        // the targets are never squeezed, and no wider, so the emoji sit
+                        // together as one strip. Slid onto the screen like the panel.
+                        ReactionBar(width: layout.barWidth,
                                     mine: presentation.mine,
+                                    growsFromTrailing: presentation.isOwn,
+                                    isFilled: presenter.isFilled,
                                     onPick: { react($0, in: presentation) },
                                     onMore: {
                                         withAnimation(Theme.Timing.menuOpens) { isPickingEmoji = true }
                                     })
-                            .offset(x: layout.emojiOffset)
+                            .offset(x: layout.barOffset)
+                            // Unrolled from the message's own corner, as Telegram's is: the capsule
+                            // opens sideways out of the edge the bubble hangs from, and the emoji
+                            // in it pop up one after another from that side (`ReactionBar`).
+                            .opacity(presenter.isOut ? 1 : 0)
+                            .animation(presenter.isOut ? Theme.Timing.menuBarFades : Theme.Timing.menuCloses,
+                                       value: presenter.isOut)
+                            .scaleEffect(presenter.isOut ? 1 : 0.2,
+                                         anchor: presentation.isOwn ? .bottomTrailing : .bottomLeading)
                             .transition(.scale(scale: 0.9, anchor: .bottom).combined(with: .opacity))
                     }
                 }
@@ -154,8 +170,23 @@ struct MessageMenuOverlay: View {
                 // with no conversation left on it, and the panel is a detour that ends in a
                 // reaction rather than in a menu item.
                 if !isPickingEmoji {
+                    // Grown out of the message's corner, from almost nothing — Telegram scales its
+                    // actions from 0.01 at the edge nearest the bubble and shows them at once (a
+                    // 0.05 s fade), so what the eye follows is the list *unfolding* from the message
+                    // and not a list fading up somewhere near it. Going, it folds back the same way
+                    // and fades with the fold.
                     actions(presentation, layout: layout)
-                        .transition(.opacity.combined(with: .move(edge: .top)))
+                        .opacity(presenter.isOut ? 1 : 0)
+                        .animation(presenter.isOut ? Theme.Timing.menuListShows : Theme.Timing.menuCloses,
+                                   value: presenter.isOut)
+                        .scaleEffect(presenter.isOut ? 1 : 0.01,
+                                     anchor: presentation.isOwn ? .topTrailing : .topLeading)
+                        // And standing aside for the emoji panel and back, while the menu is open.
+                        .transition(.asymmetric(
+                            insertion: .scale(scale: 0.01, anchor: presentation.isOwn ? .topTrailing : .topLeading)
+                                .combined(with: .opacity.animation(Theme.Timing.menuListShows)),
+                            removal: .scale(scale: 0.01, anchor: presentation.isOwn ? .topTrailing : .topLeading)
+                                .combined(with: .opacity)))
                 }
             }
             .frame(width: layout.width,
@@ -169,44 +200,52 @@ struct MessageMenuOverlay: View {
 
     /// The message, exactly where it was, and now the only sharp thing on screen.
     ///
-    /// Given *at least* the room it had in the conversation and never less, which is a
-    /// correction to how this was first written. It used to be pinned to the exact width it had
-    /// been measured at, on the reasoning that an identical width means identical line breaks;
-    /// what it actually meant was a bubble handed the tightest proposal it could still satisfy,
-    /// which is the one proposal where a rounded point either way costs a line — and the lifted
-    /// message came out narrower than the one underneath it, with its last line cut off. A
-    /// maximum can only ever be looser than what the row proposed, so nothing wraps that did not
-    /// wrap before, and a short message still sizes to its own words.
+    /// The same shape, the same colours, the same lines: what the eye follows out of the list
+    /// has to be recognisably the thing that was pressed, and Telegram's menu never so much as
+    /// re-wraps it. Three things used to change on the way up and none of them does now:
     ///
-    /// Its height is left alone for the same reason — unless it is taller than the screen has
-    /// room for. Then it is given the height `MessageMenuLayout` allows and *scrolls* in it, at
-    /// full size. It used to be scaled down to fit instead, and a scaled page of text is a page
-    /// of text too small to read; the long message is often the very one somebody opened the
-    /// menu to copy a piece of, or to read again before answering.
+    /// - **The width.** It was offered the wider of itself and the menu — and a message that
+    ///   sizes to what it is offered (a voice message, a reply with its quote) came out stretched
+    ///   to the menu's 240 points the moment it was lifted, while one wider than the menu was
+    ///   squeezed to it. It is given its own width now, plus a point, as a fixed frame. Not exactly its own: that is the tightest proposal it can still satisfy, where a
+    ///   rounding either way costs a line, and the lifted message once came out with its last line
+    ///   cut off. A point more can only ever be looser than what the row gave it, so nothing wraps
+    ///   that did not wrap before, and nothing is wide enough to un-wrap.
+    /// - **The background.** The bubble's fill depends on the room's wallpaper, which the room
+    ///   says and the app does not — see `MessageActions.lifted`, which brings the room's
+    ///   environment along. And with no wallpaper the fill is a translucent tint, which over the
+    ///   curtain is see-through; the lifted bubble carries the page under it (`bubbleIsLifted`).
+    /// - **A shadow.** Gone. The scrim already sets the message apart, and a bubble that grows a
+    ///   shadow as it is picked up is a bubble that changed.
+    ///
+    /// Its height is left alone — unless it is taller than the screen has room for. Then it is
+    /// given the height `MessageMenuLayout` allows and *scrolls* in it, at full size. It used to
+    /// be scaled down to fit instead, and a scaled page of text is a page of text too small to
+    /// read; the long message is often the very one somebody opened the menu to copy a piece of.
     @ViewBuilder
     private func lifted(_ presentation: MessageMenuPresentation,
                         layout: MessageMenuLayout) -> some View {
         let alignment: Alignment = presentation.isOwn ? .trailing : .leading
+        let width = presentation.anchor.width + 1
+        // A *fixed* width, not a maximum. The column around it is the menu's 240 points wide, and
+        // a maximum is clamped by what the parent offers — so a message wider than the menu was
+        // squeezed to 240 and re-wrapped narrower than the one in the conversation. A fixed frame
+        // offers its own width whatever it is offered; a message wider than the column overhangs
+        // it on the side away from its anchored edge, which is where it hung in the conversation.
         let message = presentation.content
             .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: max(layout.width, presentation.anchor.width), alignment: alignment)
+            .frame(width: width, alignment: alignment)
 
         Group {
             if layout.contentHeight < presentation.anchor.height {
-                // As wide as the bubble was, not as the menu is: a scroll view takes the width it
-                // is offered, and offered the column's it would re-wrap the message narrower
-                // than the one it was lifted from.
                 ScrollView(.vertical) { message }
                     .scrollIndicators(.visible)
-                    .frame(width: max(layout.width, presentation.anchor.width),
-                           height: layout.contentHeight,
-                           alignment: .top)
+                    .frame(width: width, height: layout.contentHeight, alignment: .top)
                     .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.bubble, style: .continuous))
             } else {
                 message
             }
         }
-        .shadow(color: .black.opacity(Theme.Backdrop.wash), radius: Theme.Spacing.normal, y: Theme.Spacing.tight)
         // It is a copy of something that is still in the list underneath, so VoiceOver is
         // told about it once — by the menu — and not twice.
         .accessibilityHidden(true)
@@ -237,6 +276,11 @@ struct MessageMenuOverlay: View {
             // as the whole panel lighting up.
             .padding(.vertical, Self.listPadding)
             .padding(.horizontal, Self.listInset)
+            // The verbs land on the glass once it has opened, not with it — see
+            // `Theme.Timing.menuFills`. The panel itself is drawn from the first frame.
+            .opacity(presenter.isFilled ? 1 : 0)
+            .animation(presenter.isFilled ? Theme.Timing.menuContentShows : Theme.Timing.menuCloses,
+                       value: presenter.isFilled)
         }
         .scrollBounceBehavior(.basedOnSize)
         .frame(width: layout.width)
@@ -392,48 +436,88 @@ private struct MessageMenuRowStyle: ButtonStyle {
 /// The same six as the double tap chooses from — see `QuickReaction`, which is the one list —
 /// and a "+" at the end for everything else. Capsule, glass, floating: the navigation layer
 /// doing exactly what the material is for.
-private struct ReactionBar: View {
+struct ReactionBar: View {
     let width: CGFloat
     let mine: Set<String>
+    /// Which end the bar unrolls from — the bubble's own edge — and so which emoji pops first.
+    let growsFromTrailing: Bool
+    /// Whether the emoji are on the capsule yet. The capsule opens empty and they pop onto it
+    /// once it has — see `MessageMenuPresenter.isFilled`.
+    let isFilled: Bool
     let onPick: (String) -> Void
     let onMore: () -> Void
 
     @Environment(\.accent) private var accent
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// Seven things in the width of the menu: six emoji and the "+".
+    /// How long after the bar opens one emoji pops in, by how far it is from the end the bar opens
+    /// from, counted from the moment the capsule has opened (`isFilled`). Telegram's spacing
+    /// (`ReactionContextNode.animateIn`): a hair after the first, then up to
+    /// 0.3 s across the full width — so the row fills like something being laid out, not switched on.
+    private func popDelay(_ index: Int, of count: Int) -> Double {
+        let fromEdge = growsFromTrailing ? count - 1 - index : index
+        return 0.01 + Double(fromEdge) / Double(max(1, count)) * 0.3
+    }
+
+    /// One emoji, or the "+", popping into the bar — see `popDelay`.
+    private func pops(_ view: some View, index: Int, of count: Int) -> some View {
+        view
+            .scaleEffect(isFilled || reduceMotion ? 1 : 0.01)
+            .opacity(isFilled ? 1 : 0)
+            // Popping on, one after another; going, all at once with the glass.
+            .animation(isFilled ? Theme.Timing.reactionPops.delay(popDelay(index, of: count)) : Theme.Timing.menuCloses,
+                       value: isFilled)
+    }
+
+    private static var cells: CGFloat { CGFloat(QuickReaction.allCases.count + 1) }
+
+    /// Seven full cells and the capsule's padding: the width the bar asks for when the screen
+    /// has the room. It used to be stretched to the emoji panel's 360 points, which spread the
+    /// six across the capsule with a thumb's width of nothing between each pair — a row of
+    /// separate buttons rather than one strip. Hugging its cells, the gap between two emoji is
+    /// the same on every phone and the strip reads as one thing.
+    static var naturalWidth: CGFloat {
+        cells * Theme.Size.reactionCell + Theme.Spacing.close * 2
+    }
+
+    /// Seven things in the width of the bar: six emoji and the "+".
     ///
-    /// Worked out rather than fixed, because six 44-point circles and a seventh come to more
-    /// than a narrow menu is wide — and an `HStack` handed more than it has room for does not
+    /// Worked out rather than fixed, because on the narrowest screen seven 44-point circles
+    /// come to more than there is — and an `HStack` handed more than it has room for does not
     /// shrink politely, it draws past the capsule it is inside and out over the conversation.
     private var cell: CGFloat {
-        let count = CGFloat(QuickReaction.allCases.count + 1)
-        return min(Theme.Size.reactionCell, (width - Theme.Spacing.close * 2) / count)
+        min(Theme.Size.reactionCell, (width - Theme.Spacing.close * 2) / Self.cells)
     }
 
     var body: some View {
+        let count = QuickReaction.allCases.count + 1
+
         HStack(spacing: 0) {
-            ForEach(QuickReaction.allCases) { reaction in
-                EmojiButton(emoji: reaction.key,
-                            isMine: mine.contains(reaction.key),
-                            size: cell,
-                            accent: accent) { onPick(reaction.key) }
-                    .frame(maxWidth: .infinity)
+            ForEach(Array(QuickReaction.allCases.enumerated()), id: \.element) { index, reaction in
+                pops(EmojiButton(emoji: reaction.key,
+                                 isMine: mine.contains(reaction.key),
+                                 size: cell,
+                                 accent: accent) { onPick(reaction.key) },
+                     index: index, of: count)
             }
 
-            Button(action: onMore) {
-                Image(systemName: "plus")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: cell, height: cell)
-                    .background(Circle().fill(.primary.opacity(0.08)))
-                    .contentShape(.circle)
-            }
-            .buttonStyle(.plain)
-            .frame(maxWidth: .infinity)
-            .accessibilityLabel(Text(Strings.Reactions.more))
+            pops(moreButton, index: count - 1, of: count)
         }
         .padding(.horizontal, Theme.Spacing.close)
         .frame(width: width, height: Theme.Size.reactionBar)
         .navigationGlass(in: .capsule)
+    }
+
+    private var moreButton: some View {
+        Button(action: onMore) {
+            Image(systemName: "plus")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: cell, height: cell)
+                .background(Circle().fill(.primary.opacity(0.08)))
+                .contentShape(.circle)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(Strings.Reactions.more))
     }
 }

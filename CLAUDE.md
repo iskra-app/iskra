@@ -173,9 +173,12 @@ and `NostrTunnelTests` pins that JSON as text.
 `NostrTunnelUpstream` is an `HTTPUpstream`, which is the whole trick: it stands exactly where
 `DirectUpstream` stands, behind the same `LocalHTTPProxy` that puts the SDK's requests in front of
 us in the clear, and nothing above the transport learns anything. The bridge's address is
-`TunnelSettings.addressKey` in `UserDefaults` (Settings → Connection); this device's own nostr key
-is in the Keychain, under a **service of its own** — `SessionStore.clear` empties the session's
-service on sign-out, and a key regenerated there would have to be re-added to every closed bridge
+`TunnelSettings.addressKey` in the **App Group's** defaults (`TunnelSettings.store`, Settings →
+Connection) — the notification extension routes by it too, and with it in `.standard` every push
+went straight to the homeserver with the bridge switched on; this device's own nostr key
+is in the Keychain, under a **service of its own** — the session's service is emptied on the way
+out (`SessionStore.remove(sessionID:)` per account, `SessionStore.clear` for all), and a key
+regenerated there would have to be re-added to every closed bridge
 before the user could sign in again, through the bridge they can no longer reach.
 
 A message longer than 24 KiB travels in several events (`TunnelChunker`, `TunnelReassembler`), and
@@ -374,6 +377,16 @@ avatar. Switching is `UserSession.close()` + `setActiveAccount` + the root's ord
 words live in `Resources/<lang>.lproj/Localizable.strings`, **which is the file to edit**. English
 and Russian are both complete; neither is a fallback.
 
+German, Spanish, French, Japanese and Chinese (`de`, `es`, `fr`, `ja`, `zh-Hans`) are complete too —
+every string, every plural, and Siri's phrases in `Apps/Shared/<lang>.lproj`. They are translated
+from the Russian as much as from the English, so they keep its plain voice — and its «вы»: `Sie`,
+`usted`, `vous`, `您`, and Japanese in です/ます. Two exceptions, both on purpose: the chat in the
+Appearance preview, which is two friends talking (`du`/`tú`/`tu`/`你`, as «выбрал?» is in Russian),
+and Siri's phrases, which are said *to Siri* and are as informal as «Открой…». A key *missing* from a `.lproj` does not
+fall back to English, it is shown as the key, so a string added to `en` has to be added to all
+seven — in English as a placeholder if there is no translation yet, which
+`otherLanguagesAreComplete` will not notice and a reader will.
+
 **Write the Russian first, then the English.** Not the other way round, however natural that feels.
 A sentence composed in English and then translated arrives in Russian with its tone stripped out:
 the result is grammatical, and it reads like a machine talking — stiff, official, nothing like the
@@ -425,8 +438,17 @@ otherwise empty pushed `Form` is enough to reproduce it.
 `IskraDesign/Theme.swift`, all multiples of 4, corners `.continuous`. A view that hard-codes
 `.padding(12)` is a bug waiting to drift.
 
-**Deployment target is iOS 26 / macOS 26.** This is what allows Liquid Glass with no availability
-checks, and it matches the SDK's prebuilt macOS objects, which are compiled against the 26.x SDK.
+**Deployment target is iOS 18 / macOS 15**, set by `Mutex`. Liquid Glass and everything else that
+is OS 26 (`.buttonStyle(.glass)`, `GlassEffectContainer`, `glassEffectID`,
+`sharedBackgroundVisibility`, the scroll edge effect, `role: .close`) is reached **only** through
+`IskraDesign/Glass.swift` — `.navigationGlass()`, `.navigationGlassButton()`, `NavigationGlassGroup`,
+`.navigationGlassID`, `.outsideToolbarGlass()`, `.softScrollEdge`, `.scrollEdgeHidden`,
+`ButtonRole.leaving` — which is the one file that says `#available(iOS 26, macOS 26, *)` and decides
+what the older systems draw instead. Calling the system's glass API from a view compiles only
+inside an availability check, so the build itself refuses the shortcut. Any other OS 26 API
+takes an `#available` where it is used, with the iOS 18 path next to it (`LocationView.openInMaps`).
+The ~200 linker warnings about SDK objects "built for newer macOS version (26.5)" on the Mac are
+expected: vendored C code with no deployment target of its own, calling only libc and pthreads.
 
 **Round video messages are recognised by shape, not by a flag** (`IskraCore/Media/VideoNote.swift`).
 Exactly square, ≤60 s. Tagging them with a custom field would mean `Client.uploadMedia` +
@@ -459,7 +481,10 @@ uploads the user's face to the homeserver in the clear. Send ordinary `m.video` 
   camera, dates, author, every track that is not picture or sound) and compressed, both on by
   default (`MediaSettings`, applied by `MediaPreparation` in `TimelineStore.send(photo:)` and
   `send(video:)`, which every path — composer, Share outbox, forward, video note — goes through).
-  A new way to send media goes through those two, not around them. **A video note ignores the
+  A new way to send media goes through those two, not around them. **A WebP is the one photo
+  that skips compression** — it is a sticker (`StickerPicture`), always stripped, never squeezed —
+  and in an *encrypted* room it goes as an encrypted `m.image`, never as an `m.sticker`, because
+  `uploadMedia` would put it on the server in the clear. **A video note ignores the
   settings** (`asVideoNote: true` → `MediaSettings.videoNote`): always stripped, and never
   compressed twice, because `SquareVideoExporter` already did. A stripped result is read back
   against an allow-list, and one that is not clean is **not sent**: ImageIO's "copy without

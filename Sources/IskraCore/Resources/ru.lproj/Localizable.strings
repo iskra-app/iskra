@@ -59,6 +59,15 @@
 /* Shown when a message could not be sent. The SDK retries, so this reassures rather than alarms. */
 "timeline.sendFailed" = "Сообщение не отправилось. Попробуем ещё раз автоматически.";
 
+/* A sticker that did not go. Unlike a message, it is not retried. */
+"timeline.stickerFailed" = "Стикер не отправился. Проверьте связь и попробуйте ещё раз.";
+
+/* The account's sticker pack would not take a new sticker. */
+"stickers.addFailed" = "Не получилось добавить стикер. Попробуйте ещё раз.";
+
+/* The account's sticker pack would not let a sticker go. */
+"stickers.removeFailed" = "Не получилось убрать стикер. Попробуйте ещё раз.";
+
 /* Shown when an emoji reaction could not be sent. Must not say "message" — nothing the user wrote is at stake. */
 "timeline.reactionFailed" = "Реакция не отправилась. Попробуйте ещё раз.";
 
@@ -67,12 +76,18 @@
 
 /* Why a message is stuck, tapped from the badge beside it. Each names what to do next:
    the user is the only one who can clear these. No cryptography vocabulary. */
-"sendFailure.insecureDevices" = "Кто-то здесь вошёл с устройства, которое вы ещё не подтвердили. Подтвердите его — и сообщение уйдёт.";
-"sendFailure.identityChanged" = "Кто-то в этом чате вошёл с нового места, и его личность изменилась. Убедитесь, что это правда он, — и сообщение уйдёт.";
+"sendFailure.insecureDevices" = "Проверенный вами собеседник вошёл с устройства, которое сам ещё не подтвердил. Если доверяете этому устройству — отправьте всё равно.";
+"sendFailure.identityChanged" = "Ключи шифрования у проверенного вами собеседника сменились. Если уверены, что это тот же человек, — отправьте всё равно.";
 "sendFailure.verificationRequired" = "Подтвердите это устройство, чтобы писать в защищённый чат. Это делается в настройках.";
 "sendFailure.missingMedia" = "Файла больше нет на этом устройстве — отправлять нечего.";
 "sendFailure.unsupportedFileType" = "Такие файлы отправлять нельзя.";
 "sendFailure.server" = "Ваш сервер не принял это сообщение.";
+
+/* Экран «Устройства», когда что-то не вышло. */
+"devices.loadFailed" = "Не получилось загрузить список устройств. Проверьте связь и попробуйте ещё раз.";
+"devices.endFailed" = "Сеанс не завершился. Попробуйте ещё раз.";
+"devices.wrongPassword" = "Пароль не подошёл.";
+"devices.managedElsewhere" = "На этом сервере сеансы завершаются на его сайте.";
 
 /* The strip above a message that answers another one. */
 "reply.loading" = "Загружаем сообщение…";
@@ -117,6 +132,8 @@
 "roomAction.roleFailed" = "Роль не изменилась. Возможно, у вас нет на это прав.";
 "roomAction.leaveFailed" = "Не получилось выйти из чата. Попробуйте ещё раз.";
 "roomAction.createFailed" = "Чат не создался. Возможно, сервер не ответил — попробуйте ещё раз.";
+"roomAction.joinAddressInvalid" = "Адрес комнаты выглядит как #название:сервер или !id:сервер.";
+"roomAction.joinFailed" = "Не получилось войти в комнату. Возможно, её нет, она закрыта или сервер не ответил.";
 "roomAction.alertsFailed" = "Уведомления этого чата не изменились. Попробуйте ещё раз.";
 
 /* Аккаунт: имя, фото и шифрование. */
@@ -145,7 +162,13 @@
 "share.title" = "Отправить в…";
 "share.cancel" = "Отмена";
 "share.empty" = "Сначала откройте Iskra и войдите — тогда здесь появятся чаты.";
-"share.willSendOnOpen" = "Отправится, когда вы откроете Iskra.";
+"share.willSendOnOpen" = "Уйдёт сразу — Iskra откроется, чтобы отправить.";
+"share.comment" = "Добавить комментарий…";
+"share.send" = "Отправить";
+"share.locked" = "Iskra заперта";
+"share.lockedBody" = "Разблокируйте её — и появятся ваши чаты.";
+"share.unlock" = "Разблокировать";
+"share.unlockReason" = "Чтобы отправить это в Iskra";
 
 /* Приглашения в комнату. */
 "roomAction.acceptInviteFailed" = "Не получилось войти в чат. Возможно, приглашение отозвали.";
@@ -166,6 +189,10 @@
 "notificationRules.directFailed" = "Не получилось изменить уведомления для личных чатов. Переключатель вернулся на место — попробуйте ещё раз.";
 "notificationRules.groupFailed" = "Не получилось изменить уведомления для групп. Переключатель вернулся на место — попробуйте ещё раз.";
 "notificationRules.mentionFailed" = "Не получилось изменить уведомления об упоминаниях. Попробуйте ещё раз.";
-"notificationRules.roomMentionFailed" = "Не получилось изменить уведомления про @room. Попробуйте ещё раз.";
+"notificationRules.roomMentionFailed" = "Не получилось изменить уведомления об обращениях ко всем (@room). Попробуйте ещё раз.";
 "notificationRules.invitationFailed" = "Не получилось изменить уведомления о приглашениях. Попробуйте ещё раз.";
 "notificationRules.callFailed" = "Не получилось изменить уведомления о звонках. Попробуйте ещё раз.";
+
+"stickers.subscribeFailed" = "Не получилось добавить набор. Попробуйте ещё раз.";
+"stickers.unsubscribeFailed" = "Не получилось убрать набор. Попробуйте ещё раз.";
+"stickers.clearRecentFailed" = "Не получилось очистить недавние. Попробуйте ещё раз.";

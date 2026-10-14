@@ -35,7 +35,11 @@ struct MessageRow: View {
     /// arrival — it is the whole room twitching. What this exists for is the one message that
     /// lands in a conversation somebody is already reading: their own, going out, and the answer
     /// coming back. `RoomView` knows which of the two is happening and says so.
-    var arrivesAnimated: Bool = true
+    ///
+    /// False unless said otherwise. An arriving row starts with no height and claims it as it lands
+    /// (`MessageArrival`), so a row built anywhere that never runs the landing — a snapshot, a
+    /// preview — would be built flat. A row arrives only when somebody who knows says it does.
+    var arrivesAnimated: Bool = false
 
     /// Whether the conversation has just jumped *to* this message, and it is briefly lit so that
     /// the eye can find it.
@@ -48,6 +52,9 @@ struct MessageRow: View {
 
     /// The wash that lights a message the conversation has just jumped to.
     @Environment(\.accent) private var accent
+
+    /// Where a pressed face goes — the sender's page. See `EnvironmentValues.openProfile`.
+    @Environment(\.openProfile) private var openProfile
 
     /// How wide the conversation is, measured by `RoomView` and handed down. A playing video
     /// note grows to fill it.
@@ -125,16 +132,19 @@ struct MessageRow: View {
         // and the row's height follows them. Scoped to the set of emoji and nothing else, so a
         // tick or an edit landing in the same pass is not caught by it.
         .animation(.smooth(duration: Theme.Timing.reaction), value: message.reactions.map(\.key))
-        // Nothing else about a message is animated, and that is the rule rather than an
-        // omission. A message arrives once; after that it only ever *changes* — a tick turns
-        // over when it is read, a reaction lands under it, an edit rewrites it, a redaction
-        // replaces it with the grey line. None of those are things the message does, they are
-        // facts becoming true, and a fact that eases into place asks the eye to watch a row
-        // the reader had finished with.
+        // And the row's height with them, which the line above cannot do: an implicit animation
+        // moves what is inside the row, and the list around it still jumped by a line of pills.
+        .animatesHeight(when: message.reactions.map(\.key))
+        // Nothing else about a message is animated *from here*, and that is the rule rather than
+        // an omission. A message arrives once; after that it only ever *changes* — an edit
+        // rewrites it, a redaction replaces it with the grey line. Those are facts becoming true,
+        // and a fact that eases into place asks the eye to watch a row the reader had finished
+        // with. The one small exception carries its own scope: the delivery mark turns over in
+        // place, clock to tick to eye, as Telegram's does — see `DeliveryTick`.
         //
         // The arrival, which is the one thing that does move, is `arrives` below. It is not a
         // `.transition`, and that is the point of it.
-        .arrives(arrivesAnimated)
+        .arrives(arrivesAnimated, outgoing: message.isOwn)
     }
 
     // MARK: - The bubble, and what can be done to it
@@ -182,8 +192,13 @@ struct MessageRow: View {
                 if message.isContinuation {
                     Color.clear.frame(width: avatarSize)
                 } else {
+                    // Pressing a face goes to the person — Telegram's. A button only where a room
+                    // is there to open the page; in a peek it is a picture.
                     Avatar(name: message.senderName, url: message.senderAvatarURL,
                            size: Theme.Size.avatarSmall, seed: message.senderID)
+                        .contentShape(.circle)
+                        .onTapGesture { openProfile?(message.senderID) }
+                        .accessibilityAddTraits(openProfile == nil ? [] : .isButton)
                 }
             }
 
@@ -193,6 +208,7 @@ struct MessageRow: View {
                         .font(.caption.weight(.medium))
                         .foregroundStyle(.secondary)
                         .padding(.leading, Theme.Spacing.close)
+                        .onTapGesture { openProfile?(message.senderID) }
                 }
 
                 if case let .failed(failure)? = message.delivery {
@@ -205,6 +221,7 @@ struct MessageRow: View {
                     HStack(alignment: .center, spacing: Theme.Spacing.close) {
                         SendFailureBadge(failure: failure,
                                          onRetry: handlers.onRetry,
+                                         onSendAnyway: handlers.onSendAnyway,
                                          onDiscard: handlers.onDiscard)
                         actionableContent
                     }
@@ -228,9 +245,12 @@ struct MessageRow: View {
                        style: style,
                        playingDiameter: playingDiameter,
                        onOpenReply: handlers.onOpenReply)
+            .uploadProgress(of: message, onCancel: handlers.onDiscard)
+            // One of ours comes across from where it was typed — Telegram's send. See
+            // `ComposerTravel`. On the bubble rather than the row, which spans the screen.
+            .travelsFromComposer(arrivesAnimated && message.isOwn)
             .messageActions(message, isPinned: isPinned, handlers: handlers)
     }
-
 
     // MARK: - Reactions
 
@@ -407,28 +427,44 @@ struct DeliveryTick: View {
 
     var body: some View {
         Group {
-            switch status {
-            case .sending:
-                Image(systemName: "clock")
-            case .sent:
-                Image(systemName: "checkmark")
-            case .read where !carriesReadMark:
-                // Read, and the eye below it already said so. Nothing to add.
-                EmptyView()
-            case .read:
-                // A glance, not a second tick: "sent" and "read" as one checkmark and two, or a
-                // checkmark and a ringed checkmark, are the same small mark twice and the eye is
-                // the difference read at a distance.
-                Image(systemName: "eye.fill")
-            case .failed:
-                // Never drawn: `MessageRow` sends failures to `SendFailureBadge`. Progress
-                // is worth a whisper; a message that never left is not.
-                EmptyView()
+            if let symbol {
+                // One image whose symbol changes, rather than a different image per state, so the
+                // change can be *seen*: the clock turns into the tick, and the tick into the eye,
+                // the way Telegram's status turns over in place when a message lands and when it is
+                // read. A different view per state could only blink.
+                Image(systemName: symbol)
+                    .contentTransition(.symbolEffect(.replace))
+                    .transition(.scale(scale: 0.5).combined(with: .opacity))
             }
         }
         .font(.caption2)
-        .foregroundStyle(.secondary)
+        // Grey on the app's page; on a wallpaper, ink chosen against it — see `onWallpaperInk`.
+        .onWallpaperInk()
+        // Scoped to the mark and to the symbol it shows, and to nothing else in the row: the rest of
+        // a message that is merely changing still changes at once (see `MessageRow`).
+        .animation(.smooth(duration: Theme.Timing.chrome), value: symbol)
         .accessibilityLabel(Text(label))
+    }
+
+    private var symbol: String? {
+        switch status {
+        case .sending:
+            "clock"
+        case .sent:
+            "checkmark"
+        case .read where !carriesReadMark:
+            // Read, and the eye below it already said so. Nothing to add.
+            nil
+        case .read:
+            // A glance, not a second tick: "sent" and "read" as one checkmark and two, or a
+            // checkmark and a ringed checkmark, are the same small mark twice and the eye is
+            // the difference read at a distance.
+            "eye.fill"
+        case .failed:
+            // Never drawn: `MessageRow` sends failures to `SendFailureBadge`. Progress
+            // is worth a whisper; a message that never left is not.
+            nil
+        }
     }
 
     private var label: LocalizedStringResource {
@@ -453,6 +489,9 @@ struct SendFailureBadge: View {
     /// Sends this one message again. Only ever offered where that can work — see
     /// `SendFailure.canRetry`.
     let onRetry: () -> Void
+
+    /// Sends it past a verification that no longer holds — see `SendFailure.canSendAnyway`.
+    var onSendAnyway: () -> Void = {}
 
     /// Throws the message away. Always offered, because it always works.
     let onDiscard: () -> Void
@@ -485,13 +524,16 @@ struct SendFailureBadge: View {
         }
         .buttonStyle(.plain)
         .popover(isPresented: $isShowingReason) {
-            SendFailureReason(failure: failure) {
+            SendFailureReason(failure: failure, onRetry: {
                 isShowingReason = false
                 onRetry()
-            } onDiscard: {
+            }, onSendAnyway: {
+                isShowingReason = false
+                onSendAnyway()
+            }, onDiscard: {
                 isShowingReason = false
                 onDiscard()
-            }
+            })
             // Without this an iPhone turns the popover into a half-height sheet, which is
             // a whole ceremony for one sentence.
             .presentationCompactAdaptation(.popover)
@@ -512,6 +554,7 @@ struct SendFailureBadge: View {
 struct SendFailureReason: View {
     let failure: SendFailure
     let onRetry: () -> Void
+    var onSendAnyway: () -> Void = {}
     let onDiscard: () -> Void
 
     var body: some View {
@@ -535,6 +578,17 @@ struct SendFailureReason: View {
                 if failure.canRetry {
                     Button(action: onRetry) {
                         Label(Strings.Message.Delivery.sendAgain, systemImage: "arrow.clockwise")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.primaryAction)
+                }
+
+                // In place of "Send again" where sending again would stop on the same thing: a
+                // person the user verified no longer checks out. The sentence above says what
+                // pressing this means; the button only says what it does.
+                if failure.canSendAnyway {
+                    Button(action: onSendAnyway) {
+                        Label(Strings.Message.Delivery.sendAnyway, systemImage: "paperplane")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.primaryAction)
@@ -589,7 +643,7 @@ struct VideoNoteView: View {
             if let player = playback.player {
                 VideoSurface(player: player)
             } else {
-                MediaThumbnail(attachment: attachment, size: 400)
+                MediaThumbnail(attachment: attachment, size: 400, obeysAutoDownload: true)
             }
         }
         // It grows while it plays and settles back when it ends. The frame is animated, not
@@ -672,6 +726,114 @@ struct VideoNoteView: View {
             playback.stop()
         } else {
             Task { await playback.play(attachment, using: loader, stopsAtEnd: true) }
+        }
+    }
+}
+
+/// A music file, or any sound that is not a voice message: played in the bubble, the way a voice
+/// message is, and not opened as a document somewhere else.
+///
+/// A round play button, the track's name, and a bar that fills as it plays — draggable, because a
+/// song, unlike a voice message, is a thing people skip about in. The time under it counts up
+/// while playing and shows the whole length otherwise.
+struct AudioFileView: View {
+    let attachment: Attachment
+
+    @Environment(\.mediaLoader) private var loader
+    @Environment(\.accent) private var accent
+
+    @State private var playback = AudioPlayback()
+
+    /// Where the finger is on the bar while it drags, so the bar follows it rather than the
+    /// player, which only catches up when the finger comes up.
+    @State private var scrubbing: Double?
+
+    private var title: String {
+        let name = (attachment.filename as NSString).deletingPathExtension
+        return name.isEmpty ? attachment.filename : name
+    }
+
+    private var length: TimeInterval? { attachment.duration ?? playback.duration }
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.normal) {
+            Button {
+                Task { await playback.toggle(attachment, using: loader) }
+            } label: {
+                Group {
+                    if playback.isLoading {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill")
+                            .font(.body.weight(.semibold))
+                            .contentTransition(.symbolEffect(.replace))
+                    }
+                }
+                .frame(width: Theme.Size.minimumTapTarget, height: Theme.Size.minimumTapTarget)
+                .background(Circle().fill(.primary.opacity(0.12)))
+                .contentShape(.circle)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(playback.isPlaying ? Strings.Message.Media.pause
+                                                        : Strings.Message.Media.play))
+
+            VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                Text(title)
+                    .font(.subheadline.weight(.medium))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+
+                bar
+
+                time
+                    .font(.caption.monospacedDigit())
+                    .opacity(0.7)
+            }
+            .frame(minWidth: Theme.Size.audioTrack, alignment: .leading)
+        }
+        .onDisappear { playback.stop() }
+    }
+
+    private var shown: Double { scrubbing ?? playback.progress }
+
+    private var bar: some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                Capsule().opacity(0.25)
+                Capsule().frame(width: proxy.size.width * shown)
+            }
+            .frame(height: Theme.Size.waveformBar * 2)
+            .frame(maxHeight: .infinity)
+            .contentShape(.rect)
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        guard playback.duration != nil else { return }
+                        scrubbing = min(max(value.location.x / max(proxy.size.width, 1), 0), 1)
+                    }
+                    .onEnded { _ in
+                        if let scrubbing { playback.seek(to: scrubbing) }
+                        scrubbing = nil
+                    }
+            )
+        }
+        .frame(height: Theme.Size.audioScrubber)
+        .animation(.linear(duration: 0.05), value: playback.progress)
+        .accessibilityHidden(true)
+    }
+
+    @ViewBuilder
+    private var time: some View {
+        if let length {
+            if playback.isPlaying || shown > 0 {
+                // Two clock readings and a slash — numbers, not words, so nothing to translate.
+                let pattern = Duration.TimeFormatStyle(pattern: .minuteSecond)
+                Text(verbatim: Duration.seconds(length * shown).formatted(pattern)
+                     + " / " + Duration.seconds(length).formatted(pattern))
+            } else {
+                Text(Duration.seconds(length), format: .time(pattern: .minuteSecond))
+            }
         }
     }
 }
@@ -774,6 +936,9 @@ struct VoiceMessageView: View {
 struct StickerView: View {
     let attachment: Attachment
 
+    /// The longest edge. The timeline's size unless the sticker sheet or its tabs ask for less.
+    var side: CGFloat = Theme.Size.sticker
+
     @Environment(\.mediaLoader) private var loader
 
     @State private var image: Image?
@@ -785,11 +950,11 @@ struct StickerView: View {
     /// sent no dimensions is assumed square, which is what almost all of them are.
     private var size: CGSize {
         let ratio = CGFloat(attachment.aspectRatio ?? 1)
-        guard ratio > 0 else { return CGSize(width: Theme.Size.sticker, height: Theme.Size.sticker) }
+        guard ratio > 0 else { return CGSize(width: side, height: side) }
 
         return ratio >= 1
-            ? CGSize(width: Theme.Size.sticker, height: Theme.Size.sticker / ratio)
-            : CGSize(width: Theme.Size.sticker * ratio, height: Theme.Size.sticker)
+            ? CGSize(width: side, height: side / ratio)
+            : CGSize(width: side * ratio, height: side)
     }
 
     var body: some View {
@@ -827,6 +992,9 @@ struct StickerView: View {
 /// is the right shape *before* the picture arrives and the timeline does not jump
 /// around as things load.
 struct PictureBubble: View {
+    /// The conversation's height with the keyboard down — see `EnvironmentValues.timelineHeight`.
+    @Environment(\.timelineHeight) private var timelineHeight
+
     let attachment: Attachment
 
     /// Which message this is, so that the viewer it opens can find this picture among the room's
@@ -841,7 +1009,7 @@ struct PictureBubble: View {
     /// Who sent it and when — carried through the bubble to the viewer, which puts them at the
     /// top of the screen. A photo opened full-screen has none of what the timeline was saying
     /// around it: no side of the conversation, no name above it, no clock beside it. See
-    /// `MediaViewer`.
+    /// `MediaPager`.
     let sender: String
     let timestamp: Date
 
@@ -859,6 +1027,9 @@ struct PictureBubble: View {
 
     /// The room's pictures, asked for at the moment one is opened — see `RoomMediaSource`.
     @Environment(\.roomMedia) private var roomMedia
+
+    /// Tells the room the viewer is over it — see `EnvironmentValues.coversRoom`.
+    @Environment(\.coversRoom) private var coversRoom
 
     /// What the viewer was opened on: the whole run of the room's media, and which of them the
     /// finger landed on.
@@ -908,6 +1079,10 @@ struct PictureBubble: View {
                 // system's card behind it would be a grey rectangle showing at the corners.
                 .presentationBackground(.black)
         }
+        // A cover makes the room underneath "disappear" as far as SwiftUI is concerned, and the
+        // room used to take that for the reader leaving: the draft saved, the timeline stopped,
+        // and — worse — a latch left set so that the *real* way out later did none of it.
+        .onChange(of: opened != nil) { _, isOpen in coversRoom(isOpen) }
         #else
         .sheet(item: $opened) { opened in
             MediaPager(items: opened.items, startIndex: opened.index)
@@ -940,7 +1115,7 @@ struct PictureBubble: View {
     /// The picture itself, sharp, sitting on the blur of itself. It keeps the image it fetched,
     /// which is the one `backdrop` blurs — see there.
     private var picture: some View {
-        MediaThumbnail(attachment: attachment, onLoad: { loaded = $0 })
+        MediaThumbnail(attachment: attachment, onLoad: { loaded = $0 }, obeysAutoDownload: true)
             .aspectRatio(aspectRatio, contentMode: .fit)
             .frame(maxWidth: Theme.Size.picture)
                 // Half the *timeline's* height, not half the screen's: on a Mac the window
@@ -954,7 +1129,7 @@ struct PictureBubble: View {
                 // picture in it.
                 .containerRelativeFrame(.vertical) { height, _ in
                     min(Theme.Size.picture / aspectRatio,
-                        height * Theme.Size.pictureHeightFraction)
+                        (timelineHeight > 0 ? timelineHeight : height) * Theme.Size.pictureHeightFraction)
                 }
                 .overlay {
                     if isPlayable {
@@ -1024,5 +1199,39 @@ extension AnyTransition {
     /// and fades, while the row's height eases open or shut behind it — see `MessageRow.body`.
     static var reactionsAppear: AnyTransition {
         .scale(scale: 0.6, anchor: .top).combined(with: .opacity)
+    }
+}
+
+/// Animates a view's height when `trigger` changes, and only then — so a reaction coming or going
+/// opens or closes the row smoothly and pushes its neighbours along with it, while a photo landing
+/// or an edit changes the height at once, as before.
+///
+/// The natural height is measured inside, unconstrained, and the frame is set outside it, so the
+/// measurement never depends on the frame it sets.
+private struct AnimatesHeight<Trigger: Equatable>: ViewModifier {
+    let trigger: Trigger
+
+    @State private var height: CGFloat?
+    @State private var measuredFor: Trigger?
+
+    func body(content: Content) -> some View {
+        content
+            .fixedSize(horizontal: false, vertical: true)
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { natural in
+                if let measuredFor, measuredFor != trigger, height != nil {
+                    withAnimation(.smooth(duration: Theme.Timing.reaction)) { height = natural }
+                } else {
+                    height = natural
+                }
+                measuredFor = trigger
+            }
+            .frame(height: height, alignment: .top)
+    }
+}
+
+extension View {
+    /// See `AnimatesHeight`.
+    func animatesHeight<Trigger: Equatable>(when trigger: Trigger) -> some View {
+        modifier(AnimatesHeight(trigger: trigger))
     }
 }

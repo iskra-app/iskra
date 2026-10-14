@@ -3,7 +3,8 @@ import PhotosUI
 import IskraCore
 import IskraDesign
 
-/// The chat's picture, its name and what it is for — on a screen that exists to change them.
+/// The chat's picture, its name, what it is for and who may walk in — on a screen that exists to
+/// change them.
 ///
 /// Reached by the pencil in the corner of `RoomInfoView`, and only ever shown to somebody the
 /// room actually lets change something: the pencil is not drawn otherwise. Each field appears on
@@ -52,6 +53,16 @@ struct RoomEditView: View {
     var body: some View {
         Form {
             if !isRoom {
+                // Their face at the top, as on every person's page — and what the screen's layout
+                // assumes (`profileScreen()` lifts the form under the bar to meet a portrait). With
+                // nothing there the name field itself went up under the toolbar.
+                Section {
+                    RoomAvatar(name: details.name, url: details.avatarURL,
+                               size: Theme.Size.avatarProfile, seed: details.avatarSeed)
+                        .frame(maxWidth: .infinity)
+                        .padding(.bottom, Theme.Spacing.roomy)
+                        .profileHeaderRow()
+                }
                 contactName
             }
 
@@ -83,10 +94,31 @@ struct RoomEditView: View {
                         .disabled(isOffline)
                 } header: {
                     Text(Strings.Room.about)
-                } footer: {
-                    if isOffline {
-                        Text(Strings.Room.Manage.offline)
+                }
+            }
+
+            // Whether anybody can find the room and walk in. A setting of the room, like its name,
+            // so it lives here with the name rather than on the screen people read.
+            if isRoom, details.permissions.canChangeVisibility {
+                Section {
+                    Toggle(isOn: Binding(get: { details.isPublic },
+                                         set: { open in Task { await details.setPublic(open) } })) {
+                        VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                            Text(Strings.Room.Manage.openToAnyone)
+                            Text(Strings.Room.Manage.openToAnyoneHelp)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
+                    .accentControl()
+                    .disabled(isOffline)
+                }
+            }
+
+            if isRoom, isOffline {
+                Section {
+                } footer: {
+                    Text(Strings.Room.Manage.offline)
                 }
             }
         }
@@ -163,7 +195,7 @@ struct RoomEditView: View {
                     draftLocalName = ""
                     details.renameLocally(to: nil)
                 } label: {
-                    Text(Strings.Room.LocalName.reset)
+                    Text(Strings.Room.LocalName.reset(details.serverName))
                 }
             }
         } header: {
@@ -173,34 +205,18 @@ struct RoomEditView: View {
         }
     }
 
-    /// The picture, and the two things that can be done to it spelled out underneath rather
-    /// than hidden in a menu on the image.
+    /// The picture, dimmed under a pencil — tapping it offers to change it or remove it.
     private var picture: some View {
-        VStack(spacing: Theme.Spacing.normal) {
-            Avatar(name: details.name, url: details.avatarURL, size: Theme.Size.avatarProfile,
-                   seed: details.kind == .space ? nil : details.avatarSeed)
-
-            VStack(spacing: Theme.Spacing.close) {
-                Button {
-                    isChoosingPicture = true
-                } label: {
-                    Text(Strings.Room.Manage.changePicture)
-                }
-                .disabled(isOffline)
-
-                if details.avatarURL != nil {
-                    Button(role: .destructive) {
-                        Task { await details.removePicture() }
-                    } label: {
-                        Text(Strings.Room.Manage.removePicture)
-                    }
-                    .disabled(isOffline)
-                }
-            }
-            .font(.callout)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, Theme.Spacing.roomy)
+        EditableAvatar(name: details.name,
+                       url: details.avatarURL,
+                       shape: details.kind == .space ? .roundedSquare : .circle,
+                       seed: details.kind == .space ? nil : details.avatarSeed,
+                       canRemove: details.avatarURL != nil,
+                       onChange: { isChoosingPicture = true },
+                       onRemove: { Task { await details.removePicture() } })
+            .disabled(isOffline)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, Theme.Spacing.roomy)
     }
 
     private func setPicture(_ item: PhotosPickerItem) async {

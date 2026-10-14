@@ -60,9 +60,24 @@ enum MetadataStripper {
         let count = CGImageSourceGetCount(source)
         guard count > 0 else { return false }
 
+        // A picture inside the picture. An embedded thumbnail is made when the photo is taken and
+        // not when it is edited, so it can show exactly what the crop was for. ImageIO does not
+        // list it among an image's properties — only in the container's table of contents, which
+        // is where it is looked for.
+        if hasEmbeddedThumbnail(source) { return false }
+
         for index in 0..<count {
             guard let properties = CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [String: Any]
             else { return false }
+
+            // And the images HEIC keeps beside the main one: depth, disparity, the portrait matte,
+            // the segmentation masks — a map of the shape of whoever was photographed, with the
+            // camera's calibration attached. The HDR gain map stays: it is how bright the picture
+            // is, and nothing about the person in it.
+            for type in Self.refusedAuxiliary
+            where CGImageSourceCopyAuxiliaryDataInfoAtIndex(source, index, type) != nil {
+                return false
+            }
             for (key, value) in properties where key.hasPrefix("{") {
                 guard let allowed = allowedProperties[key] else { return false }
                 guard let allowed else { continue }
@@ -120,6 +135,30 @@ enum MetadataStripper {
             kCGImagePropertyHEICSCanvasPixelWidth, kCGImagePropertyHEICSCanvasPixelHeight,
         ].strings,
     ]
+
+    /// Whether any image in the file carries a thumbnail of its own — read from `{FileContents}`,
+    /// the one place ImageIO reports it.
+    private static func hasEmbeddedThumbnail(_ source: CGImageSource) -> Bool {
+        guard let container = CGImageSourceCopyProperties(source, nil) as? [String: Any],
+              let contents = container[kCGImagePropertyFileContentsDictionary as String] as? [String: Any],
+              let images = contents[kCGImagePropertyImages as String] as? [[String: Any]]
+        else { return false }
+        return images.contains { image in
+            !((image[kCGImagePropertyThumbnailImages as String] as? [Any]) ?? []).isEmpty
+        }
+    }
+
+    /// Auxiliary images a photo is not sent with. See `isClean`.
+    private static var refusedAuxiliary: [CFString] {[
+        kCGImageAuxiliaryDataTypeDepth,
+        kCGImageAuxiliaryDataTypeDisparity,
+        kCGImageAuxiliaryDataTypePortraitEffectsMatte,
+        kCGImageAuxiliaryDataTypeSemanticSegmentationSkinMatte,
+        kCGImageAuxiliaryDataTypeSemanticSegmentationHairMatte,
+        kCGImageAuxiliaryDataTypeSemanticSegmentationTeethMatte,
+        kCGImageAuxiliaryDataTypeSemanticSegmentationGlassesMatte,
+        kCGImageAuxiliaryDataTypeSemanticSegmentationSkyMatte,
+    ]}
 
     /// The same facts, as ImageIO mirrors them into XMP.
     private static let allowedXMP: Set<String> = [
@@ -218,7 +257,6 @@ enum MetadataStripper {
         return "\(stem.isEmpty ? UUID().uuidString : stem).\(suffix)"
     }
 
-
     // MARK: - Videos
 
     /// A copy of the video with only its pictures and its sound in it, moved rather than
@@ -232,12 +270,15 @@ enum MetadataStripper {
     /// any track, and no track of any other kind.
     static func isClean(video url: URL) async throws -> Bool {
         let asset = AVURLAsset(url: url)
+        // Not `for … where`: the condition awaits, and a `where` clause cannot.
         for format in try await asset.load(.availableMetadataFormats) {
+            // swiftlint:disable:next for_where
             if try await !asset.loadMetadata(for: format).isEmpty { return false }
         }
         for track in try await asset.load(.tracks) {
             guard track.mediaType == .video || track.mediaType == .audio else { return false }
             for format in try await track.load(.availableMetadataFormats) {
+                // swiftlint:disable:next for_where
                 if try await !track.loadMetadata(for: format).isEmpty { return false }
             }
         }

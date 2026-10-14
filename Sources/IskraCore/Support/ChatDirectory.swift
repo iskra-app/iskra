@@ -17,11 +17,19 @@ public struct ChatDirectoryEntry: Codable, Sendable, Equatable, Identifiable {
     /// because the share extension has no session to ask.
     public let accountName: String?
 
-    public init(id: String, name: String, accountID: String? = nil, accountName: String? = nil) {
+    /// What the chat's stand-in face is drawn from — `RoomSummary.avatarSeed`, the other person's ID
+    /// in a personal chat. For the share sheet's grid, which draws the same creature the chat list
+    /// does: the extension cannot fetch a picture (that takes the account's token, and it runs no
+    /// session), but it can draw a face from a seed. Nil in a directory written before it was kept.
+    public let avatarSeed: String?
+
+    public init(id: String, name: String, accountID: String? = nil, accountName: String? = nil,
+                avatarSeed: String? = nil) {
         self.id = id
         self.name = name
         self.accountID = accountID
         self.accountName = accountName
+        self.avatarSeed = avatarSeed
     }
 }
 
@@ -65,9 +73,44 @@ public enum ChatDirectory {
         let kept = directory(from: defaults).filter { $0.accountID != account }
         guard let data = try? JSONEncoder().encode(kept) else { return }
         defaults?.set(data, forKey: directoryKey)
-        let outbox = outbox(from: defaults).filter { $0.accountID != account }
+        let all = outbox(from: defaults)
+        let outbox = all.filter { $0.accountID != account }
         if let data = try? JSONEncoder().encode(outbox) {
             defaults?.set(data, forKey: outboxKey)
+        }
+        // And the files: forgetting the entries and leaving the copies behind left somebody's
+        // photos in the clear in the shared container, after the account they were for had gone.
+        if let folder = try? outboxFolder() {
+            for item in all where item.accountID == account {
+                for attachment in item.attachments {
+                    if let slot = attachment.location(in: folder)?.slot {
+                        try? FileManager.default.removeItem(at: slot)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Throws away every copy in the outbox that no queued item points at and that is older than
+    /// `age` — what a share sheet swiped away, killed for memory, or opened with nothing to send to
+    /// leaves behind. Called at launch.
+    ///
+    /// The age is there for the one copy that is *meant* to be unreferenced: the Share extension
+    /// copies a file the moment it is shown, before the user has picked a chat, and a share sheet
+    /// may be open beside the app on an iPad while it launches.
+    public static func sweepOutbox(olderThan age: TimeInterval = 3600,
+                                   in defaults: UserDefaults? = sharedDefaults, now: Date = .now) {
+        guard let folder = try? outboxFolder() else { return }
+        let referenced = Set(outbox(from: defaults).flatMap(\.attachments).compactMap {
+            $0.location(in: folder)?.slot.lastPathComponent
+        })
+        let slots = (try? FileManager.default.contentsOfDirectory(
+            at: folder, includingPropertiesForKeys: [.creationDateKey])) ?? []
+        for slot in slots where !referenced.contains(slot.lastPathComponent) {
+            let created = (try? slot.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? .distantPast
+            if now.timeIntervalSince(created) > age {
+                try? FileManager.default.removeItem(at: slot)
+            }
         }
     }
 
@@ -76,6 +119,78 @@ public enum ChatDirectory {
               let entries = try? JSONDecoder().decode([ChatDirectoryEntry].self, from: data)
         else { return [] }
         return entries
+    }
+
+    // MARK: - Whose chats the share sheet shows
+
+    /// Which account the share sheet offers chats from — Settings → Chats.
+    public enum ShareAccount: Sendable, Equatable, Hashable {
+        /// Whoever is on screen in the app right now. The default: sharing is nearly always "to
+        /// the person I was just talking to", and they are in the account that is open.
+        case active
+        /// One account, always, whichever is open — the work account for a work phone's Share.
+        case account(String)
+        /// Every account, a block each — how the sheet behaved before there was a choice.
+        case all
+
+        init(stored: String?) {
+            switch stored {
+            case nil, "", Self.activeValue: self = .active
+            case Self.allValue: self = .all
+            case let id?: self = .account(id)
+            }
+        }
+
+        var stored: String {
+            switch self {
+            case .active: Self.activeValue
+            case .all: Self.allValue
+            case let .account(id): id
+            }
+        }
+
+        private static let activeValue = "active"
+        private static let allValue = "all"
+    }
+
+    private static let shareAccountKey = "share.account"
+    private static let activeAccountKey = "accounts.active"
+
+    public static func shareAccount(in defaults: UserDefaults? = sharedDefaults) -> ShareAccount {
+        ShareAccount(stored: defaults?.string(forKey: shareAccountKey))
+    }
+
+    public static func setShareAccount(_ choice: ShareAccount, in defaults: UserDefaults? = sharedDefaults) {
+        defaults?.set(choice.stored, forKey: shareAccountKey)
+    }
+
+    /// The account on screen, written down for the share extension — which has no session, and no
+    /// business reading the Keychain's account index to find out who is open.
+    public static func recordActiveAccount(_ sessionID: String, in defaults: UserDefaults? = sharedDefaults) {
+        defaults?.set(sessionID, forKey: activeAccountKey)
+    }
+
+    /// The chats the share sheet lists, by the choice above.
+    ///
+    /// A choice that no longer points anywhere — the account it named was signed out, or nothing
+    /// has said yet who is active — falls back to the next widest answer rather than to an empty
+    /// sheet: the chosen account becomes the active one, and an unknown active one becomes all.
+    public static func shareDirectory(from defaults: UserDefaults? = sharedDefaults) -> [ChatDirectoryEntry] {
+        let all = directory(from: defaults)
+        let accounts = Set(all.map(\.accountID))
+        guard accounts.count > 1 else { return all }
+
+        func only(_ account: String?) -> [ChatDirectoryEntry]? {
+            guard let account, accounts.contains(account) else { return nil }
+            return all.filter { $0.accountID == account }
+        }
+        let active = only(defaults?.string(forKey: activeAccountKey))
+
+        switch shareAccount(in: defaults) {
+        case .all: return all
+        case .active: return active ?? all
+        case let .account(id): return only(id) ?? active ?? all
+        }
     }
 
     // MARK: - Opening a chat
@@ -154,6 +269,24 @@ public enum ChatDirectory {
         public init(kind: Kind, filename: String) {
             self.kind = kind
             self.filename = filename
+        }
+
+        /// Where the file is, and the folder of its own it sits in — or `nil` if `filename` is
+        /// anything but `<folder>/<name>` directly inside the outbox.
+        ///
+        /// The outbox entry is written by another process, and its name came from another app;
+        /// the folder returned here is what gets *deleted* once the file is sent. So nothing is
+        /// resolved that could climb out: two components, both plain names.
+        public func location(in outbox: URL) -> (file: URL, slot: URL)? {
+            let parts = filename.split(separator: "/", omittingEmptySubsequences: false).map(String.init)
+            guard parts.count == 2, parts.allSatisfy(SafeFilename.isSafe) else { return nil }
+            let slot = outbox.appending(component: parts[0], directoryHint: .isDirectory)
+            return (slot.appending(component: parts[1]), slot)
+        }
+
+        /// The name the file goes out under — its own, without the folder it waited in.
+        public var displayName: String {
+            (filename as NSString).lastPathComponent
         }
     }
 

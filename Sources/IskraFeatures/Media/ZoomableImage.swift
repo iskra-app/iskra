@@ -146,8 +146,11 @@ struct ZoomableImage: UIViewRepresentable {
                 let fitted = AVMakeRect(aspectRatio: image.size,
                                         insideRect: CGRect(origin: .zero, size: bounds))
                 scroll.zoomScale = 1
-                imageView.frame = CGRect(origin: .zero, size: fitted.size)
+                // Bounds, not frame: the zooming view carries the scroll view's transform, and a
+                // frame set through a transform is undefined.
+                imageView.bounds = CGRect(origin: .zero, size: fitted.size)
                 scroll.contentSize = fitted.size
+                scroll.contentInset = .zero
             }
 
             centreImage()
@@ -156,16 +159,18 @@ struct ZoomableImage: UIViewRepresentable {
         /// Keeps the picture in the middle of the screen while it is smaller than the screen.
         ///
         /// A scroll view pins its content to the top left, so a photograph narrower than the window
-        /// sits in the corner. The inset is the usual cure and the right one: it keeps the *content*
-        /// where it is, so a zoom that outgrows the screen simply eats the inset rather than jumping.
+        /// sits in the corner. This used to be cured with `contentInset`, recomputed on every step
+        /// of a pinch — and a pinch keeps the point under the fingers still by moving the content
+        /// offset against the insets *it started with*. Changing them under it is what made the
+        /// zoom crooked: the photograph slid away from the fingers, and jumped as it grew past the
+        /// screen's edge and the inset fell to zero. Now the picture's *centre* is moved instead,
+        /// within content that is at least as big as the screen, and the insets are never touched.
         private func centreImage() {
             guard let scroll = scrollView, let imageView else { return }
 
-            let content = imageView.frame.size
-            let horizontal = max(0, (scroll.bounds.width - content.width) / 2)
-            let vertical = max(0, (scroll.bounds.height - content.height) / 2)
-            scroll.contentInset = UIEdgeInsets(top: vertical, left: horizontal,
-                                               bottom: vertical, right: horizontal)
+            let content = scroll.contentSize
+            imageView.center = CGPoint(x: max(content.width, scroll.bounds.width) / 2,
+                                       y: max(content.height, scroll.bounds.height) / 2)
         }
 
         // MARK: Zooming
@@ -174,6 +179,13 @@ struct ZoomableImage: UIViewRepresentable {
 
         func scrollViewDidZoom(_ scrollView: UIScrollView) {
             centreImage()
+        }
+
+        /// Said at the *start* of a pinch, not at its end. The gallery around this pages sideways,
+        /// and until it hears that a zoom has begun its own pan is live — so a pinch that drifted
+        /// sideways dragged the next photograph in while this one was growing.
+        func scrollViewWillBeginZooming(_ scrollView: UIScrollView, with view: UIView?) {
+            parent.onZoomChanged(true)
         }
 
         func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) {
@@ -268,6 +280,8 @@ struct ZoomableImage: UIViewRepresentable {
                   let scroll = scrollView else { return true }
 
             guard scroll.zoomScale <= scroll.minimumZoomScale + 0.01 else { return false }
+            // One finger. Two is a pinch that has not been recognised as one yet.
+            guard pan.numberOfTouches <= 1 else { return false }
 
             let velocity = pan.velocity(in: scroll)
             return velocity.y > 0 && abs(velocity.y) > abs(velocity.x)

@@ -128,5 +128,34 @@ public struct MediaSettings: Sendable, Equatable {
                                                 compression: compressionByDefault)
 
     /// Every key, for `AppSettings.forget`.
-    public static let keys = [stripsMetadataKey, compressesKey, compressionKey]
+    public static let keys = [stripsMetadataKey, compressesKey, compressionKey, autoDownloadKey]
+
+    /// Whether photos and videos in a conversation come down by themselves — see `MediaAutoDownload`.
+    /// Not part of the value above: that one is about what is *sent*, and this is about what is
+    /// received; they only share a screen.
+    public static let autoDownloadKey = "media.autoDownload"
+    public static let autoDownloadByDefault = MediaAutoDownload.always
+}
+
+/// When a picture in a conversation is fetched without being asked for.
+///
+/// Telegram's three answers. "Never" is not "never show": the bubble keeps its shape and its blur
+/// (the blurhash travels in the event, so it costs nothing), and a tap fetches it. Avatars, stickers
+/// and what the person sends themselves are outside it — they are small, or already here.
+public enum MediaAutoDownload: String, CaseIterable, Identifiable, Sendable {
+    case always
+    /// On Wi-Fi and wired networks; not on mobile data or a hotspot the system calls expensive.
+    case wifi
+    case never
+
+    public var id: String { rawValue }
+
+    /// Whether to fetch now, given whether the network is one that costs money.
+    public func allows(onExpensiveNetwork expensive: Bool) -> Bool {
+        switch self {
+        case .always: true
+        case .wifi: !expensive
+        case .never: false
+        }
+    }
 }

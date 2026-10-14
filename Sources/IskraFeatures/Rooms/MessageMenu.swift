@@ -46,7 +46,69 @@ enum MessageMenu {
 
     /// And between the whole arrangement and the edge of the screen.
     static let margin = Theme.Spacing.roomy
+
 }
+
+/// How far a conversation has moved since SwiftUI last measured it — the one thing SwiftUI's
+/// geometry cannot see.
+///
+/// A message reports where it stands through `onGeometryChange`, and SwiftUI re-takes that when
+/// the message moves *inside SwiftUI* — a scroll, a relayout — and not when the UIKit view hosting
+/// the whole conversation moves. A room is pushed: its hosting view starts a screen's width to the
+/// right and slides in, every row was measured at the start of that slide, and nothing measured it
+/// again until the first scroll. A message held before then was "standing" past the right edge,
+/// and the menu lifted it from there — it flew in from beyond the edge instead of rising from its
+/// place.
+///
+/// So the probe answers one question, and it is a *difference*: where UIKit has the conversation
+/// now, against where UIKit had it when the message last measured itself (`MessageActions`
+/// notes it down in the same breath). Most of the time that is nothing, and the message's own
+/// measurement is used untouched, exactly as before.
+///
+/// Two attempts to use UIKit's numbers *outright* failed, and the reason is worth keeping. UIKit
+/// and SwiftUI do not agree on where things are in absolute terms: measured on a phone, a probe
+/// behind the root of the app was 62 points down by UIKit — the status bar — and at the very top
+/// of the window by SwiftUI, and before that, a probe on the message itself sat inside a list that
+/// is turned upside down (`flippedForTimeline`). Each time the lifted copy appeared away from the
+/// gap it left and flew to it. A difference of two UIKit readings of the same view cannot carry
+/// any such disagreement, whatever it turns out to be.
+@MainActor
+final class WindowProbe {
+    #if os(iOS)
+    fileprivate weak var view: UIView?
+    #endif
+
+    /// Where UIKit has the conversation right now, in its window. Only ever compared with another
+    /// reading of itself — see above. Nil on a Mac, where nothing slides under SwiftUI.
+    var position: CGPoint? {
+        #if os(iOS)
+        guard let view, view.window != nil else { return nil }
+        return view.convert(CGPoint.zero, to: nil)
+        #else
+        return nil
+        #endif
+    }
+}
+
+#if os(iOS)
+/// The view a `WindowProbe` asks. Invisible, deaf to touches, and laid out behind the
+/// conversation, so it moves with it.
+private struct WindowProbeView: UIViewRepresentable {
+    let probe: WindowProbe
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        view.isUserInteractionEnabled = false
+        view.backgroundColor = .clear
+        probe.view = view
+        return view
+    }
+
+    func updateUIView(_ view: UIView, context: Context) {
+        probe.view = view
+    }
+}
+#endif
 
 // MARK: - What is in the menu
 
@@ -124,15 +186,90 @@ final class MessageMenuPresenter {
     /// optional that was already non-nil.
     private(set) var lifts = 0
 
+    /// The message that is out of its place in the conversation — the one whose row is drawn
+    /// empty, because it is in the menu.
+    ///
+    /// Not the same as `presentation?.id`, and the difference is the landing. Telegram does not lay
+    /// a copy of the message over the original; it *takes the message out* of the list, and the
+    /// list has a gap where it was until it comes back. Here the thing in the menu is a second
+    /// drawing of the same message (SwiftUI cannot move one view between two parents), so the
+    /// original is hidden while it is away — and hidden for exactly as long as the trip home
+    /// takes, not merely while the menu is open. Shown again the moment the menu closed, it would
+    /// stand in its place while the copy was still flying back to it: two of the same message for
+    /// a third of a second, which is the very thing this is here to stop.
+    private(set) var liftedID: String?
+
+    /// Whether the message has *arrived* in the menu — the one number the whole flight runs on.
+    ///
+    /// False, the overlay draws the arrangement with the message standing exactly where it stood
+    /// in the conversation: the bar folded into its corner, the verbs folded into theirs, the
+    /// curtain clear. True, everything is where the menu wants it. Opening is two steps: the menu
+    /// appears in the first state, and a frame later this is sprung to true; closing springs it
+    /// back, and only when the message has landed is the presentation let go.
+    ///
+    /// It used to be a `.transition` on the arrangement, and a transition is a promise SwiftUI
+    /// keeps only for the view that is actually inserted. Here that view was a container *around*
+    /// the arrangement, the transition sat on its child, and SwiftUI quietly did not run it — so
+    /// the menu simply appeared, with the message already at its destination: no flight at all,
+    /// which is the whole of what Telegram's menu is. A plain value being animated has nothing to
+    /// be quietly not run.
+    private(set) var isOut = false
+
+    /// Whether what is *on* the menu's glass — the emoji, the verbs — has appeared. A beat after
+    /// `isOut`, so the glass opens empty and is then filled: see `Theme.Timing.menuFills`.
+    private(set) var isFilled = false
+
+    /// Whether the message is on its way home — the menu is still drawn, but it is going.
+    private var isClosing = false
+
     func present(_ presentation: MessageMenuPresentation) {
-        guard self.presentation?.id != presentation.id else { return }
+        guard self.presentation?.id != presentation.id || isClosing else { return }
         lifts += 1
-        withAnimation(Theme.Timing.menuOpens) { self.presentation = presentation }
+        isClosing = false
+
+        // All of it without animation: the row empties in the same frame the copy appears over
+        // it, standing exactly in its place, so there is never a frame with both and never one
+        // with neither.
+        var still = Transaction()
+        still.disablesAnimations = true
+        withTransaction(still) {
+            liftedID = presentation.id
+            isOut = false
+            isFilled = false
+            self.presentation = presentation
+        }
+
+        // And then it flies — a frame later, so that the place it flies *from* has been drawn
+        // once. Set in the same frame, SwiftUI would see only the destination.
+        let id = presentation.id
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: Theme.Timing.aFrame)
+            guard let self, self.presentation?.id == id, !self.isClosing else { return }
+            withAnimation(Theme.Timing.menuOpens) { self.isOut = true }
+
+            // And once the glass is mostly open, what goes on it.
+            try? await Task.sleep(for: Theme.Timing.menuFills)
+            guard self.presentation?.id == id, !self.isClosing else { return }
+            withAnimation(Theme.Timing.menuContentShows) { self.isFilled = true }
+        }
     }
 
     func dismiss() {
-        guard presentation != nil else { return }
-        withAnimation(.smooth(duration: Theme.Timing.chrome)) { presentation = nil }
+        guard presentation != nil, !isClosing else { return }
+        isClosing = true
+        let id = presentation?.id
+
+        withAnimation(Theme.Timing.menuCloses) {
+            isOut = false
+            isFilled = false
+        } completion: { [weak self] in
+            // Only if nothing else has been lifted in the meantime — a second message pressed
+            // while the first was still on its way home owns the menu, and the gap, now.
+            guard let self, self.isClosing, self.presentation?.id == id else { return }
+            self.isClosing = false
+            self.presentation = nil
+            self.liftedID = nil
+        }
     }
 }
 
@@ -141,6 +278,11 @@ public extension EnvironmentValues {
     /// ever in — see `messageMenuLayer()` — but it is left optional so a preview of a single
     /// row is not a crash.
     @Entry internal var messageMenu: MessageMenuPresenter?
+
+    /// The conversation a message is in, for correcting its measurement by how far the
+    /// conversation has moved since — see `WindowProbe`. Nil outside one, and then there is
+    /// nothing to correct.
+    @Entry internal var messageMenuRoom: WindowProbe?
 }
 
 // MARK: - Where it goes
@@ -185,6 +327,16 @@ struct MessageMenuLayout: Equatable {
     /// naturally sit, and it is zero for every message that is not near an edge.
     var emojiOffset: CGFloat
 
+    /// The bar of six, which is as wide as its seven cells and no wider — see `ReactionBar`.
+    ///
+    /// It used to be stretched to the panel's width, which spread six emoji across 360 points
+    /// with a thumb's width of nothing between each pair: a row of separate buttons rather than
+    /// one strip of reactions. Hugging its cells, it reads as the strip it is.
+    var barWidth: CGFloat
+
+    /// And its slide back onto the screen, worked out exactly as `emojiOffset` is.
+    var barOffset: CGFloat
+
     /// How tall the lifted message is allowed to be. Its own height, unless it is a very long
     /// message on a very short screen — and then it keeps its size and *scrolls* inside this
     /// height, rather than being shrunk to fit, which is what it used to do. A shrunken page of
@@ -194,6 +346,17 @@ struct MessageMenuLayout: Equatable {
     /// The most the list of actions may take. Beyond that it scrolls — a menu with eleven items
     /// on an iPhone SE with a tall message above it is a real arrangement, not a hypothetical.
     var listMaxHeight: CGFloat
+
+    /// How far the lifted message is from where it stood in the conversation — the distance the
+    /// whole arrangement travels on its way in and back on its way out.
+    ///
+    /// Telegram does not fade a menu up over the message it is about; it *picks the message up*:
+    /// the bubble leaves its place in the list and springs to wherever the menu needs it, the verbs
+    /// growing out of its corner as it goes, and on closing it springs back down into the gap it
+    /// left. Most of the time this is nothing at all — the menu puts the message exactly where it
+    /// was — and it is a real distance only for a message near the top or bottom of the screen,
+    /// which is exactly the one that otherwise appeared to jump.
+    var lift: CGSize = .zero
 
     /// A message is never given less height than this. Past it the window onto the message is too
     /// small to read through,
@@ -210,7 +373,8 @@ struct MessageMenuLayout: Equatable {
                         region: CGRect,
                         isOwn: Bool,
                         aboveHeight: CGFloat,
-                        listHeight: CGFloat) -> MessageMenuLayout {
+                        listHeight: CGFloat,
+                        barWidth: CGFloat = Theme.Size.emojiPanelWidth) -> MessageMenuLayout {
         let gap = MessageMenu.gap
         let margin = MessageMenu.margin
 
@@ -249,17 +413,32 @@ struct MessageMenuLayout: Equatable {
 
         // The emoji grid, which is the one part of the menu that is wider than the rest. Same
         // anchored edge, same margins — only the width differs, so the sum is the same sum.
-        let emojiWidth = min(Theme.Size.emojiPanelWidth, max(0, container.width - margin * 2))
-        let wantedEmojiX = isOwn ? x + width - emojiWidth : x
-        let furthestEmojiX = max(margin, container.width - margin - emojiWidth)
-        let emojiX = min(max(wantedEmojiX, margin), furthestEmojiX)
+        func overhang(_ wide: CGFloat) -> (width: CGFloat, offset: CGFloat) {
+            let fitted = min(wide, max(0, container.width - margin * 2))
+            let wantedX = isOwn ? x + width - fitted : x
+            let furthestX = max(margin, container.width - margin - fitted)
+            return (fitted, min(max(wantedX, margin), furthestX) - wantedX)
+        }
+        let emoji = overhang(Theme.Size.emojiPanelWidth)
+        let bar = overhang(barWidth)
+
+        // Where the lifted message ends up, against where it was. It sits under the bar when there
+        // is one (and the gap after it), and it hangs from its own edge of the column — its right if
+        // it is yours, its left if it is not — so that is the edge measured.
+        let liftedY = y + (aboveHeight > 0 ? aboveHeight + gap : 0)
+        let liftedEdge = isOwn ? x + width : x
+        let anchorEdge = isOwn ? anchor.maxX : anchor.minX
 
         return MessageMenuLayout(origin: CGPoint(x: x, y: y),
                                  width: width,
-                                 emojiWidth: emojiWidth,
-                                 emojiOffset: emojiX - wantedEmojiX,
+                                 emojiWidth: emoji.width,
+                                 emojiOffset: emoji.offset,
+                                 barWidth: bar.width,
+                                 barOffset: bar.offset,
                                  contentHeight: contentHeight,
-                                 listMaxHeight: listMaxHeight)
+                                 listMaxHeight: listMaxHeight,
+                                 lift: CGSize(width: anchorEdge - liftedEdge,
+                                              height: anchor.minY - liftedY))
     }
 }
 
@@ -274,6 +453,26 @@ extension View {
     /// and the conversation behind it would darken while the bar above it stayed bright.
     func messageMenuLayer() -> some View {
         modifier(MessageMenuLayer())
+    }
+}
+
+extension View {
+    /// Marks the conversation the messages are in, so that a message lifted while it is still
+    /// sliding into place is lifted from where it really is — see `WindowProbe`.
+    func messageMenuRoom() -> some View {
+        modifier(MessageMenuRoom())
+    }
+}
+
+private struct MessageMenuRoom: ViewModifier {
+    @State private var probe = WindowProbe()
+
+    func body(content: Content) -> some View {
+        content
+            #if os(iOS)
+            .background { WindowProbeView(probe: probe) }
+            #endif
+            .environment(\.messageMenuRoom, probe)
     }
 }
 

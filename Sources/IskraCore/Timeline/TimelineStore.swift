@@ -95,12 +95,24 @@ public final class TimelineStore {
 
     /// The other person's Matrix ID, in a chat that has exactly one other person.
     ///
-    /// This is what the header shows under their name. It is deliberately *not* a "last
-    /// seen" time: the Rust SDK exposes no presence at all over FFI, and a timestamp
-    /// invented from their last message would say "online 5 minutes ago" about someone
-    /// who has been reading over your shoulder in silence all day. The Matrix ID is the
-    /// thing people actually ask each other for.
+    /// What the header shows under their name when the server will not say where they are — see
+    /// `counterpartPresence`. Never a time made up from their last message: that would say
+    /// "online 5 minutes ago" about someone who has been reading over your shoulder in silence
+    /// all day.
     public private(set) var directCounterpartID: String?
+
+    /// Where the other person in a one-to-one chat is, as the homeserver tells it. Nil when it
+    /// says nothing worth showing — presence switched off on the server is the common case, and
+    /// it answers `offline` with no timestamp about everybody. See `watchPresence()`.
+    public private(set) var counterpartPresence: Presence?
+
+    /// `GET /presence/{userId}/status`, handed down by the session. Nil for a store that has no
+    /// business asking — the chat list's peek, the demo.
+    @ObservationIgnored var askPresence: (@Sendable (_ userID: String) async throws -> Presence?)?
+
+    /// How often the open chat asks again. Presence is a fact about minutes and the line is
+    /// written in minutes; a room left open all afternoon costs about forty requests.
+    private static let presenceInterval: Duration = .seconds(60)
 
     /// Whether this account may add to the conversation. Starts true: until the room's
     /// power levels arrive, the safe assumption is the one that keeps the composer on
@@ -125,6 +137,21 @@ public final class TimelineStore {
     private let room: Room
     private let ownUserID: String
     private var timeline: Timeline?
+
+    /// `Client.uploadMedia`, handed down by the session: bytes onto the homeserver as they are,
+    /// **unencrypted**. Used for one thing — a WebP sent as an `m.sticker` into a room that is not
+    /// encrypted (see `StickerPicture`). Nil where nobody set it, and then a WebP goes the
+    /// encrypted way, which is right in every room.
+    @ObservationIgnored var uploadMedia: (@Sendable (_ mimeType: String, _ data: Data) async throws -> String)?
+
+    /// `Client.getMediaContent`, handed down by the session: a pack sticker's picture, fetched so
+    /// that it can go into an encrypted room through the send queue — see `send(sticker:)`.
+    @ObservationIgnored var downloadMedia: (@Sendable (_ url: String) async throws -> Data)?
+
+    /// Told when your newest read message changes — the chat list's read mark comes from here,
+    /// since the room list holds no receipts. See `RoomListStore.noteRead`.
+    @ObservationIgnored var onOwnMessagesRead: ((Date) -> Void)?
+    @ObservationIgnored private var reportedReadUpTo: Date?
 
     /// The SDK timeline, for the media-sending extension in `TimelineStore+Media`.
     /// Nil until `start()` has run.
@@ -186,6 +213,8 @@ public final class TimelineStore {
         localNameObserver = LocalNames.observe { [weak self] changed in
             guard let self, changed == nil || changed == self.roomID else { return }
             self.roomName = LocalNames.name(for: self.roomID) ?? self.serverRoomName
+            // And the messages, which carry the name too — see `applyingLocalName`.
+            self.rebuildRows()
         }
     }
 
@@ -369,13 +398,28 @@ public final class TimelineStore {
             continuation.yield(UnsafeTransfer(value: batch))
         }
 
+        // Guarded on the generation, because finishing the stream is not emptying it. `stop()`
+        // finishes it and cancels this task, and an `AsyncStream` that has been finished still
+        // hands over every batch already buffered — so the old timeline's last diffs arrived after
+        // `stop()` had emptied `items`, addressed a list of zero, and tripped `desynced`. It took
+        // somebody leaving a room while messages were landing in it; a sent sticker's echo, with
+        // the room closed straight after, is what `DemoBackendTests` caught it with.
         diffTask = Task { @MainActor [weak self] in
             for await batch in diffs {
-                self?.apply(diffs: batch.value)
+                guard let self, generation == self.generation else { return }
+                self.apply(diffs: batch.value)
             }
         }
 
-        listenerHandle = await timeline.addListener(listener: listener)
+        // Each subscription below is an await, and a `stop()` inside one has already run by the
+        // time the handle comes back — finding nothing to cancel. Kept, the handle would go on
+        // feeding a room nobody is reading, so it is taken straight back down instead.
+        let listening = await timeline.addListener(listener: listener)
+        guard generation == self.generation else {
+            listening.cancel()
+            return
+        }
+        listenerHandle = listening
 
         // What tells us a reaction never made it. `RoomSendQueueUpdate` is `Sendable` — unlike
         // the timeline's diffs — so it crosses the hop from the Rust callback thread on its own.
@@ -384,7 +428,12 @@ public final class TimelineStore {
                 self?.handle(sendQueueUpdate: update)
             }
         }
-        sendQueueHandle = try? await room.subscribeToSendQueueUpdates(listener: queueListener)
+        let queueHandle = try? await room.subscribeToSendQueueUpdates(listener: queueListener)
+        guard generation == self.generation else {
+            queueHandle?.cancel()
+            return
+        }
+        sendQueueHandle = queueHandle
 
         // Who is typing. `[String]` is `Sendable`, so it crosses from the Rust callback thread on
         // its own — no `UnsafeTransfer` needed, unlike the timeline's diffs.
@@ -471,7 +520,11 @@ public final class TimelineStore {
         // back to nothing (rather than to our own ID) is right: a note-to-self room
         // has no counterpart, and claiming one would put your own address in the
         // header of your own chat.
-        directCounterpartID = isOneToOne ? info.counterpart(besides: ownUserID)?.userId : nil
+        let counterpart = isOneToOne ? info.counterpart(besides: ownUserID)?.userId : nil
+        // Somebody else's presence must not stay under a new name — invite a third person and the
+        // line goes, exactly as it should.
+        if counterpart != directCounterpartID { counterpartPresence = nil }
+        directCounterpartID = counterpart
 
         // Sending is governed by the room's power levels. If the levels are not in the
         // info we just received, leave the previous answer alone: it may have arrived in an
@@ -510,7 +563,12 @@ public final class TimelineStore {
         // has finished by the time we look again, so the next turn fetches — but a loop whose
         // termination depends on that reasoning being right is a loop that hangs the moment it is
         // not.
-        while latestRows.count < minimumRows,
+        //
+        // And it is the opening's loop, or the refill's: once the reader has left, every further
+        // turn would be a page of the *next* opening's timeline, paid for out of this one's budget.
+        let generation = self.generation
+        while generation == self.generation,
+              latestRows.count < minimumRows,
               canLoadMore,
               fetched < maximumPages,
               waited < maximumPages {
@@ -575,6 +633,42 @@ public final class TimelineStore {
                         maximumPages: Self.maximumOpeningPages)
     }
 
+    /// Keeps `counterpartPresence` fresh until the calling task is cancelled — the room screen's
+    /// `.task(id:)` on the counterpart, so it runs only while somebody is looking at the answer.
+    ///
+    /// **It polls, and there is no alternative.** Presence reaches a Matrix client in the
+    /// `m.presence` block of `/sync`, which the SDK reads and the FFI does not forward, so there
+    /// is no stream to subscribe to — only a question to ask again.
+    ///
+    /// Not at all while your own last-seen time is hidden — see `PrivacySettings.seesOthersPresence`.
+    ///
+    /// A refusal (presence switched off, or no shared room) is permanent for as long as the room is
+    /// open, so the loop stops on it. A timeout or a dropped connection keeps the last answer:
+    /// "был(а) 5 мин назад" going briefly stale is better than it flickering out every time the
+    /// train enters a tunnel.
+    public func watchPresence() async {
+        guard let ask = askPresence, let userID = directCounterpartID,
+              PrivacySettings.seesOthersPresence() else {
+            counterpartPresence = nil
+            return
+        }
+
+        while !Task.isCancelled {
+            do {
+                let presence = try await withTimeout(.seconds(10)) { try await ask(userID) }
+                guard !Task.isCancelled, userID == directCounterpartID else { return }
+                counterpartPresence = presence
+            } catch is PresenceDeclined {
+                counterpartPresence = nil
+                return
+            } catch {
+                Log.session.debug("presence request failed; keeping the last answer")
+            }
+
+            try? await Task.sleep(for: Self.presenceInterval)
+        }
+    }
+
     /// The network came back, or went away. Told to us by `UserSession`, which hears it from the one
     /// thing in the app that knows — the sync loop. See `RoomListStore.syncStateChanged`.
     ///
@@ -633,6 +727,10 @@ public final class TimelineStore {
         // in an await inside the SDK; the number does. See `generation`.
         generation += 1
         opening = nil
+
+        // Putting the room down is leaving it — for the info screen, for the pocket, for another
+        // room — and leaving is when the bar moves. See `hasReadToEnd`.
+        moveReadMarkerIfRead()
 
         // The second timeline over this room goes down with the first. Nothing else was ever going
         // to do it: the pinned store is handed to a view, and a view has no idea that the account
@@ -742,7 +840,8 @@ public final class TimelineStore {
         // already emptied and a conversation that has not changed. The app appears to have
         // swallowed what they wrote. So the bubble is ours until the real one arrives; see
         // `PendingSends`, which also explains how the two are told apart.
-        let pendingID = pending.add(text: trimmed, replyingTo: replyID)
+        let shown = Set(rows.compactMap { $0.message?.isOwn == true ? $0.message?.id : nil })
+        let pendingID = pending.add(text: trimmed, replyingTo: replyID, alreadyShown: shown)
         rebuildRows()
         forgetPending(pendingID, after: PendingSends.lifetime)
 
@@ -775,6 +874,70 @@ public final class TimelineStore {
             rebuildRows()
             failure = .send
         }
+    }
+
+    /// Sends a sticker from a pack — see `Sticker`.
+    ///
+    /// Two roads, by the room:
+    ///
+    /// - **not encrypted**: an `m.sticker` through `Room.sendRaw`, pointing at the pack's picture.
+    ///   Every client draws it as a sticker.
+    /// - **encrypted** — which is nearly every real conversation: the picture is fetched and goes
+    ///   back out as an encrypted image through the send queue, named so this app draws it as a
+    ///   sticker (`StickerPicture.isSticker`), exactly as a WebP does.
+    ///
+    /// It used to be `sendRaw` in both, and in an encrypted room that is the call that failed. Raw
+    /// is outside the send queue, so everything the queue does quietly and with retries — loading
+    /// the room's members, asking for their keys, sharing the room key, and stopping for a verified
+    /// person's unconfirmed device (`EncryptionPolicy`) — happened inline, under one timeout, and
+    /// any of it going wrong was "the sticker was not sent". The demo never showed it: its rooms
+    /// are not encrypted. Through the queue a sticker waits for the network like a message does,
+    /// and a hold-up is the message's own "Not sent" with "Send anyway" on it.
+    public func send(sticker: Sticker, replyingTo replyID: String? = nil) async {
+        if await isKnownUnencrypted() {
+            await sendRaw(sticker: sticker, replyingTo: replyID)
+        } else {
+            stopTellingThemWeType()
+            await sendSealed(sticker: sticker, replyingTo: replyID)
+        }
+    }
+
+    /// An `m.sticker` pointing at the pack's own picture — for a room that is not encrypted only.
+    func sendRaw(sticker: Sticker, replyingTo replyID: String?) async {
+        let eventID = replyID.flatMap { eventID(for: $0) }
+        let content = sticker.eventContent(replyingTo: eventID)
+
+        guard let data = try? JSONSerialization.data(withJSONObject: content) else {
+            failure = .sticker
+            return
+        }
+        guard let json = String(bytes: data, encoding: .utf8) else {
+            failure = .sticker
+            return
+        }
+
+        stopTellingThemWeType()
+
+        do {
+            let room = room
+            try await withTimeout(Self.sdkTimeout) {
+                try await room.sendRaw(eventType: "m.sticker", content: json)
+            }
+        } catch {
+            Log.media.error("could not send a sticker: \(Log.describe(error), privacy: .public)")
+            failure = .sticker
+        }
+    }
+
+    /// Whether the room is known *not* to be encrypted — asked of the server, not of the last
+    /// sync, when it has to be. Anything short of a definite "no" is an encrypted room: this is
+    /// what decides whether a picture may leave unencrypted (`StickerPicture`), and "probably not
+    /// encrypted" is not an answer to that.
+    func isKnownUnencrypted() async -> Bool {
+        let room = room
+        let state = try? await withTimeout(Self.sdkTimeout) { try await room.latestEncryptionState() }
+        guard let state, case .notEncrypted = state else { return false }
+        return true
     }
 
     /// Gives up on a stand-in that nothing ever came to replace.
@@ -899,6 +1062,42 @@ public final class TimelineStore {
         _ = try? await handle.abort()
     }
 
+    /// Sends a message the queue stopped on because somebody the user verified no longer checks
+    /// out — having been told so, and having said "send it anyway".
+    ///
+    /// The two ways the SDK offers, one per reason, and each is a real change of trust rather than
+    /// a retry: `withdrawVerificationAndResend` takes back the verification of the people whose
+    /// keys changed (they become merely known, as everybody unverified is), and
+    /// `ignoreDeviceTrustAndResend` trusts the devices their owner never confirmed. Both then send
+    /// the message that was waiting. Throws when the SDK refuses, so the screen can say so.
+    public func sendAnyway(messageID: String) async throws {
+        guard let (handle, wedge) = failedSend(for: messageID) else { return }
+        room.enableSendQueue(enable: true)
+        requeueUnsentReactions()
+        switch wedge {
+        case let .identityViolations(users):
+            try await room.withdrawVerificationAndResend(userIds: users, sendHandle: handle)
+        case let .insecureDevices(devices):
+            try await room.ignoreDeviceTrustAndResend(devices: devices, sendHandle: handle)
+        default:
+            try await handle.tryResend()
+        }
+    }
+
+    /// The handle and the SDK's own reason for a message stuck in the queue — the reason with
+    /// the people and devices in it, which `SendFailure` leaves out because a reader of the chat
+    /// has no use for a list of device IDs.
+    private func failedSend(for messageID: String) -> (SendHandle, QueueWedgeError)? {
+        for item in items {
+            guard let event = item.asEvent(),
+                  TimelineMapper.identifier(for: event.eventOrTransactionId) == messageID,
+                  case let .sendingFailed(error, _) = event.localSendState,
+                  let handle = event.lazyProvider.getSendHandle() else { continue }
+            return (handle, error)
+        }
+        return nil
+    }
+
     /// The SDK's handle on a local echo — the message we sent that never landed. Remote
     /// events have none, which is the SDK's way of saying there is nothing left to retry.
     private func sendHandle(for messageID: String) -> SendHandle? {
@@ -911,6 +1110,31 @@ public final class TimelineStore {
     }
 
     // MARK: - Reacting and unsending
+
+    /// Everybody who reacted to a message, named the way this room names them — the list a group's
+    /// message menu opens. Emoji in the order they first appeared, people in the order they pressed.
+    ///
+    /// Asked for when the list is opened, not kept on every message: a name costs a lookup in the
+    /// room's member list, and a pill only ever needs a count.
+    public func reactors(of messageID: String) async -> [Reactor] {
+        let message = rows.lazy.compactMap(\.message).first { $0.id == messageID }
+        guard let message else { return [] }
+
+        var names: [String: (String, String?)] = [:]
+        var reactors: [Reactor] = []
+        for reaction in message.reactions {
+            for userID in reaction.senders {
+                if names[userID] == nil {
+                    let name = (try? await room.memberDisplayName(userId: userID))
+                    let avatar = (try? await room.memberAvatarUrl(userId: userID))
+                    names[userID] = (name ?? userID, avatar)
+                }
+                let (name, avatar) = names[userID] ?? (userID, nil)
+                reactors.append(Reactor(key: reaction.key, userID: userID, name: name, avatarURL: avatar))
+            }
+        }
+        return reactors
+    }
 
     /// Adds an emoji to a message, or takes it back if it is already ours.
     ///
@@ -989,8 +1213,14 @@ public final class TimelineStore {
     /// to whatever the queue choked on, which may well be somebody's message. It does not
     /// matter. A send error stops the room's queue dead, and the queue is first-in-first-out —
     /// so whatever the error was about, a reaction still waiting behind it is going nowhere.
+    ///
+    /// Except a *recoverable* one. That is the queue pausing on a failure that may pass — the
+    /// network, a server timing out — and it is started again by itself (`SendQueueRecovery`), the
+    /// reactions behind it with it. Taking the pills off then would be wrong twice: the reaction is
+    /// on its way, and when it lands the pill would stay hidden, subtracted by `unsentReactions`
+    /// from a reaction everybody else in the room can see. Like a message, it waits with the queue.
     private func handle(sendQueueUpdate update: RoomSendQueueUpdate) {
-        guard case .sendError = update else { return }
+        guard case .sendError(_, _, isRecoverable: false) = update else { return }
         reactionsDidFail()
     }
 
@@ -1133,7 +1363,12 @@ public final class TimelineStore {
     public func forward(_ message: Message, loader: MediaLoader) async {
         switch message.kind {
         case let .text(body), let .notice(body), let .emote(body):
-            await send(text: body)
+            // Marked as a forward where it can be — see `sendMarkedForward`.
+            if await isKnownUnencrypted(), let content = Forwarded.content(forwarding: message) {
+                await sendMarkedForward(content)
+            } else {
+                await send(text: body)
+            }
 
         case let .image(attachment):
             guard let data = try? await loader.data(for: attachment) else { failure = .send; return }
@@ -1154,6 +1389,31 @@ public final class TimelineStore {
         default:
             // Voice, video note, location, sticker, and anything gone or unsendable. Nothing sent.
             break
+        }
+    }
+
+    /// Words forwarded with `m.forwarded` on them, so the reader sees whose they were.
+    ///
+    /// Only into a room that is not encrypted, and for the same reason a sticker is only sent raw
+    /// into one (see `send(sticker:)`): the field is not one the send queue can carry — it takes
+    /// a message's content as the SDK spells it, and the SDK has no word for this — so it goes by
+    /// `Room.sendRaw`, outside the queue. In an encrypted room that road is the one that failed for
+    /// stickers, and a forward that does not arrive is worse than one that arrives unmarked. There
+    /// it is an ordinary message, as every forward was before.
+    private func sendMarkedForward(_ content: [String: Any]) async {
+        guard let data = try? JSONSerialization.data(withJSONObject: content),
+              let json = String(bytes: data, encoding: .utf8) else {
+            failure = .send
+            return
+        }
+        do {
+            let room = room
+            try await withTimeout(Self.sdkTimeout) {
+                try await room.sendRaw(eventType: "m.room.message", content: json)
+            }
+        } catch {
+            Log.media.error("could not forward a message: \(Log.describe(error), privacy: .public)")
+            failure = .send
         }
     }
 
@@ -1234,8 +1494,28 @@ public final class TimelineStore {
     /// outlives being read — so a room marked unread on purpose, then opened and read to the
     /// bottom, went on wearing its badge with nothing in it left to read.
     public func markAsRead() async {
+        hasReadToEnd = true
         try? await room.markAsRead(receiptType: .read)
         try? await room.setUnreadFlag(newValue: false)
+    }
+
+    /// Whether the reader got to the end of the conversation while it was open, which is what
+    /// moves the "Unread messages" bar — on the way *out*. See `TimelineRow.unreadDivider`.
+    ///
+    /// Two markers, and they are not the same thing. The read receipt (`.read`) tells the others
+    /// how far you have got, and goes the moment you have got there. The fully-read marker
+    /// (`.fullyRead`) is the account's own note of where to put the bar next time — and if it moved
+    /// the moment you reached the end, the SDK would take the bar away under the reader's eyes, and
+    /// the conversation would jump by its height while they were reading what it pointed at.
+    /// Telegram keeps the bar for the whole visit and drops it on the next one. So does this.
+    private var hasReadToEnd = false
+
+    /// The reader is leaving having read it all: the bar goes to the end, for next time.
+    private func moveReadMarkerIfRead() {
+        guard hasReadToEnd else { return }
+        hasReadToEnd = false
+        let room = room
+        Task { try? await room.markAsRead(receiptType: .fullyRead) }
     }
 
     // MARK: - Drafts
@@ -1313,6 +1593,8 @@ public final class TimelineStore {
     /// leaves the other person watching "Аня печатает…" for as long as the server's own timeout —
     /// while Аня has put her phone down mid-word and gone to lunch.
     public func typed() {
+        // Hidden in Settings → Privacy: nothing is sent, and so there is nothing to take back.
+        guard !PrivacySettings.hidesTyping() else { return }
         typingStopper?.cancel()
 
         if !isTellingThemWeType {
@@ -1588,11 +1870,16 @@ public final class TimelineStore {
         Log.rooms.error("Timeline out of step with the SDK: \(what, privacy: .public). Reading the room again.")
         assertionFailure("Timeline desynchronised: \(what)")
 
+        // Only the room that went out of step is read again. The reader may have left it between
+        // the bad diff and this task getting to run, and a `stop()` then `start()` here would open
+        // a conversation nobody is looking at — with a live sync behind it.
+        let generation = self.generation
         Task { @MainActor [weak self] in
             guard let self else { return }
+            defer { isResyncing = false }
+            guard generation == self.generation else { return }
             stop()
             try? await start()
-            isResyncing = false
         }
     }
 
@@ -1613,8 +1900,30 @@ public final class TimelineStore {
     /// stays on the screen, and the rebuilt one is published when it is at least as complete as
     /// what it replaces — same rows, same identities, same scroll position, and the deleted
     /// message quietly becomes "message deleted" in place.
+    /// Settings → Chats changed which grey lines are shown; the conversation on screen follows at
+    /// once rather than on its next diff.
+    public func serviceEventSettingsChanged() {
+        rebuildRows()
+    }
+
+    /// In a personal chat you have named, the other person goes by that name in the conversation
+    /// too — on their messages and on every quote of them — and not only in the header and the
+    /// list. Their own name used to come back in the strip over a reply, which is the one place a
+    /// nickname is most obviously missing: you are answering *Мама*, and it said `anna_1987`.
+    private func applyingLocalName(to rows: [TimelineRow]) -> [TimelineRow] {
+        guard isOneToOne, let counterpart = directCounterpartID,
+              let local = LocalNames.name(for: roomID) else { return rows }
+        return rows.map { row in
+            guard case var .message(message) = row else { return row }
+            if message.senderID == counterpart { message.senderName = local }
+            if message.replyTo?.senderID == counterpart { message.replyTo?.senderName = local }
+            return .message(message)
+        }
+    }
+
     private func rebuildRows() {
-        var built = TimelineMapper.rows(from: items, ownUserID: ownUserID, unsent: unsentReactions)
+        var built = TimelineMapper.rows(from: items, ownUserID: ownUserID, unsent: unsentReactions,
+                                        hiding: ServiceEventSettings.current())
 
         // The messages we have sent and not yet been shown, added to the end of the conversation —
         // and dropped again the moment the SDK's own echo of one turns up among the rows above.
@@ -1636,7 +1945,14 @@ public final class TimelineStore {
             adopted = adopted.filter { present.contains($0.key) }
         }
 
-        latestRows = built
+        latestRows = applyingLocalName(to: built)
+
+        if let onOwnMessagesRead,
+           let read = built.last(where: { $0.message?.isOwn == true && $0.message?.delivery == .read })?.message?.timestamp,
+           read != reportedReadUpTo {
+            reportedReadUpTo = read
+            onOwnMessagesRead(read)
+        }
 
         // A reply whose original the SDK is holding nothing for is not a lost message — it is a
         // message nobody has asked for. Ask.
@@ -1738,6 +2054,7 @@ public final class TimelineStore {
 
         return ReplyPreview(eventID: eventID,
                             senderName: original.senderName,
+                            senderID: original.senderID,
                             text: MessagePreview.text(for: original.kind))
     }
 

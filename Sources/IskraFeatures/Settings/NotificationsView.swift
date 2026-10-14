@@ -134,8 +134,6 @@ struct NotificationsView: View {
                    isOn: rules.roomMentions) { await rules.setRoomMentions($0) }
         } header: {
             Text(Strings.Notifications.mentions)
-        } footer: {
-            Text(Strings.Notifications.mentionsFooter)
         }
     }
 

@@ -43,6 +43,19 @@ enum Clipboard {
         // actually run have agreed on. Marking it costs nothing and is the only thing standing
         // between a recovery key and a searchable history of it.
         NSPasteboard.general.setString("", forType: .init("org.nspasteboard.ConcealedType"))
+        // "Do not keep this at all", by the same convention — and some sync tools read it as
+        // "do not carry it to the other devices" too.
+        NSPasteboard.general.setString("", forType: .init("org.nspasteboard.TransientType"))
+        // AppKit has no `expirationDate`, so the key is taken back by hand: after the same ninety
+        // seconds, and only if it is still what is there — anything the user copied since is
+        // theirs, and is left alone.
+        let copied = NSPasteboard.general.changeCount
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(secretLifetime))
+            if NSPasteboard.general.changeCount == copied {
+                NSPasteboard.general.clearContents()
+            }
+        }
         #else
         UIPasteboard.general.setItems(
             [[UTType.utf8PlainText.identifier: text]],

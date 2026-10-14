@@ -22,7 +22,8 @@ struct MetadataStripperTests {
         let original = try Fixture.photo(type)
         #expect(!MetadataStripper.isClean(photo: original), "the fixture must carry metadata to begin with")
 
-        let stripped = try #require(MetadataStripper.photo(original, filename: "IMG_0042.\(type.preferredFilenameExtension!)"))
+        let ext = try #require(type.preferredFilenameExtension)
+        let stripped = try #require(MetadataStripper.photo(original, filename: "IMG_0042.\(ext)"))
         #expect(MetadataStripper.isClean(photo: stripped.data))
 
         let properties = try Fixture.properties(of: stripped.data)
@@ -45,7 +46,7 @@ struct MetadataStripperTests {
     @Test("the picture itself survives: size, orientation, colour profile, name",
           arguments: [UTType.jpeg, .heic, .png])
     func pictureSurvives(type: UTType) throws {
-        let name = "IMG_0042.\(type.preferredFilenameExtension!)"
+        let name = "IMG_0042.\(try #require(type.preferredFilenameExtension))"
         let stripped = try #require(MetadataStripper.photo(try Fixture.photo(type), filename: name))
         let properties = try Fixture.properties(of: stripped.data)
 
@@ -89,6 +90,34 @@ struct MetadataStripperTests {
         let clean = try Fixture.photo(.png, tagged: false)
         #expect(MetadataStripper.isClean(photo: clean))
         #expect(MetadataStripper.photo(clean, filename: "a.png") != nil)
+    }
+
+    /// A thumbnail is made when the photo is taken, not when it is cropped — so it can show exactly
+    /// what the crop was for. It was a key without a brace, which the check never looked at.
+    @Test("a photo goes without the thumbnail embedded in it")
+    func embeddedThumbnailIsRemoved() throws {
+        let clean = try Fixture.photo(.heic, tagged: false)
+        let source = try #require(CGImageSourceCreateWithData(clean as CFData, nil))
+        let output = NSMutableData()
+        let destination = try #require(CGImageDestinationCreateWithData(output, UTType.heic.identifier as CFString, 1, nil))
+        CGImageDestinationAddImageFromSource(destination, source, 0,
+                                             [kCGImageDestinationEmbedThumbnail: true] as CFDictionary)
+        #expect(CGImageDestinationFinalize(destination))
+        let withThumbnail = output as Data
+        // Counted the way anybody receiving the file would find it: in the container's contents.
+        let thumbnails = { (data: Data) -> Int in
+            guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+                  let container = CGImageSourceCopyProperties(source, nil) as? [String: Any],
+                  let contents = container[kCGImagePropertyFileContentsDictionary as String] as? [String: Any],
+                  let images = contents[kCGImagePropertyImages as String] as? [[String: Any]]
+            else { return 0 }
+            return images.reduce(0) { $0 + (($1[kCGImagePropertyThumbnailImages as String] as? [Any])?.count ?? 0) }
+        }
+        try #require(thumbnails(withThumbnail) > 0, "ImageIO did not embed a thumbnail to test against")
+
+        #expect(!MetadataStripper.isClean(photo: withThumbnail))
+        let sent = try #require(MetadataStripper.photo(withThumbnail, filename: "a.heic"))
+        #expect(thumbnails(sent.data) == 0)
     }
 
     @Test("bytes that are not a picture are refused, not sent as they are")
@@ -222,8 +251,9 @@ enum Fixture {
     /// has detail in it and is not a flat colour every encoder squeezes to nothing.
     private static func image(width: Int, height: Int, opaque: Bool) throws -> CGImage {
         let alpha = opaque ? CGImageAlphaInfo.noneSkipLast : .premultipliedLast
+        let space = try #require(CGColorSpace(name: CGColorSpace.displayP3))
         let context = try #require(CGContext(data: nil, width: width, height: height, bitsPerComponent: 8,
-                                             bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.displayP3)!,
+                                             bytesPerRow: 0, space: space,
                                              bitmapInfo: alpha.rawValue))
         context.setFillColor(red: 1, green: 0.4, blue: 0, alpha: 1)
         context.fill(CGRect(x: 0, y: 0, width: width / 2, height: height))

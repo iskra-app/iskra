@@ -21,10 +21,27 @@ public extension TimelineStore {
     /// What goes is what the settings say: compressed, and with where it was taken, when and on
     /// what taken out — see `MediaSettings` and `MediaPreparation`. A photo the settings want
     /// stripped and that cannot be is not sent at all.
+    ///
+    /// Except a WebP, which is a sticker and goes as one — see `StickerPicture`. Here, because
+    /// every way a picture leaves (picker, paste, drop, the Share outbox, forward) comes through
+    /// this one call.
     func send(photo original: Data, filename originalName: String, replyingTo replyID: String? = nil) async {
         guard let timeline = liveTimeline else {
             Log.media.error("photo dropped: the room has no live timeline")
             failure = .send
+            return
+        }
+
+        let sticker = await Task.detached(priority: .userInitiated) { StickerPicture.prepare(original) }.value
+        switch sticker {
+        case .notASticker:
+            break
+        case .refused:
+            Log.media.error("sticker refused: its metadata could not be removed")
+            failure = .sticker
+            return
+        case let .ready(picture):
+            await send(stickerPicture: picture, through: timeline, replyingTo: replyID)
             return
         }
 
@@ -72,8 +89,9 @@ public extension TimelineStore {
     /// What goes is what the settings say — compressed, and with the location, the camera and the
     /// dates taken out; see `MediaSettings` and `MediaPreparation`. A video note ignores them: it
     /// is always stripped, and it was compressed when it was recorded (`MediaSettings.videoNote`).
-    /// Any copy made here is plaintext on disk and lives exactly as long as this call: the send
-    /// queue has taken its own copy of the file by the time `sendVideo` returns.
+    /// Any copy made here is plaintext on disk and lives exactly as long as this call — which is
+    /// safe only because the SDK is handed the *bytes*, not the path (see `owned`): it reads a
+    /// path later, from its queue, by which time the copy is gone.
     func send(video original: URL, asVideoNote: Bool = false, replyingTo replyID: String? = nil) async {
         guard let timeline = liveTimeline else {
             // Not a silent return. The user pressed send; if nothing is going to happen, they are
@@ -107,7 +125,12 @@ public extension TimelineStore {
             Log.media.error("sending a video with no sound in it")
         }
 
-        let parameters = UploadParameters(source: .file(filename: url.path(percentEncoded: false)),
+        guard let source = try? Self.owned(url) else {
+            Log.media.error("nothing was sent: the file could not be read")
+            failure = .send
+            return
+        }
+        let parameters = UploadParameters(source: source,
                                           caption: nil,
                                           formattedCaption: nil,
                                           mentions: nil,
@@ -157,7 +180,12 @@ public extension TimelineStore {
             return
         }
 
-        let parameters = UploadParameters(source: .file(filename: url.path(percentEncoded: false)),
+        guard let source = try? Self.owned(url) else {
+            Log.media.error("nothing was sent: the file could not be read")
+            failure = .send
+            return
+        }
+        let parameters = UploadParameters(source: source,
                                           caption: nil,
                                           formattedCaption: nil,
                                           mentions: nil,
@@ -185,7 +213,12 @@ public extension TimelineStore {
             return
         }
 
-        let parameters = UploadParameters(source: .file(filename: url.path(percentEncoded: false)),
+        guard let source = try? Self.owned(url) else {
+            Log.media.error("nothing was sent: the file could not be read")
+            failure = .send
+            return
+        }
+        let parameters = UploadParameters(source: source,
                                           caption: nil,
                                           formattedCaption: nil,
                                           mentions: nil,
@@ -249,6 +282,22 @@ public extension TimelineStore {
 
     // MARK: - Private
 
+    /// The file, as bytes the SDK owns from this moment — not as a path it will read later.
+    ///
+    /// `.file(filename:)` looked like the SDK taking the file, and was the SDK taking *the name
+    /// of* the file: `sendFile` and its siblings return at once and read the path afterwards, in a
+    /// task of the send queue's. Every caller deletes the file the moment the send returns — the
+    /// stripped copy of a video, the Share outbox's copy, a picked file's security scope — so by
+    /// the time the queue looked, there was nothing there, no local echo was ever made, and the
+    /// video or the file simply did not exist. `DemoBackendTests` sends a file, deletes it at once,
+    /// and waits for it to arrive, which is what it now does.
+    ///
+    /// Mapped rather than read where the system allows, so a large file is not copied once more
+    /// on its way into the SDK than it has to be.
+    private static func owned(_ url: URL) throws -> UploadSource {
+        .data(bytes: try Data(contentsOf: url, options: .mappedIfSafe), filename: url.lastPathComponent)
+    }
+
     /// Every send goes through here, and what it does *not* do is the whole of it: it does not wait
     /// for the attachment to reach the server.
     ///
@@ -271,6 +320,81 @@ public extension TimelineStore {
     ///
     /// What is logged is the *error*, never the attachment: a `RoomError` says "the file was
     /// too large" or "the server said no", and none of it is the picture.
+    /// A WebP, as a sticker: an `m.sticker` where the room is not encrypted, an encrypted
+    /// `m.image` of type `image/webp` where it is — see `StickerPicture` for why both.
+    private func send(stickerPicture picture: StickerPicture, through timeline: Timeline,
+                      replyingTo replyID: String?) async {
+        if let uploadMedia, await isKnownUnencrypted() {
+            do {
+                let url = try await withTimeout(Self.stickerUploadTimeout) {
+                    try await uploadMedia(picture.mimeType, picture.data)
+                }
+                let sticker = Sticker(url: url,
+                                      shortcode: "",
+                                      body: String(core: CoreStrings.Preview.sticker),
+                                      width: picture.width,
+                                      height: picture.height,
+                                      mimeType: picture.mimeType,
+                                      size: picture.data.count)
+                await sendRaw(sticker: sticker, replyingTo: replyID)
+            } catch {
+                Log.media.error("could not upload a sticker: \(Log.describe(error), privacy: .public)")
+                failure = .sticker
+            }
+            return
+        }
+
+        sendSealed(stickerPicture: picture, through: timeline, replyingTo: replyID)
+    }
+
+    /// A pack sticker into an encrypted room: its picture fetched, checked as any sticker is, and
+    /// sent as an encrypted image through the queue — see `send(sticker:)`.
+    func sendSealed(sticker: Sticker, replyingTo replyID: String?) async {
+        guard let timeline = liveTimeline, let downloadMedia else {
+            failure = .sticker
+            return
+        }
+        do {
+            let url = sticker.url
+            let data = try await withTimeout(Self.stickerUploadTimeout) { try await downloadMedia(url) }
+            let picture = await Task.detached(priority: .userInitiated) { StickerPicture.fromPack(data) }.value
+            guard let picture else {
+                Log.media.error("sticker refused: its picture could not be read or cleaned")
+                failure = .sticker
+                return
+            }
+            sendSealed(stickerPicture: picture, through: timeline, replyingTo: replyID)
+        } catch {
+            Log.media.error("could not fetch a sticker: \(Log.describe(error), privacy: .public)")
+            failure = .sticker
+        }
+    }
+
+    private func sendSealed(stickerPicture picture: StickerPicture, through timeline: Timeline,
+                            replyingTo replyID: String?) {
+        let info = MediaMetadata.image(data: picture.data, filename: picture.filename)
+        let parameters = UploadParameters(source: .data(bytes: picture.data, filename: picture.filename),
+                                          caption: nil,
+                                          formattedCaption: nil,
+                                          mentions: nil,
+                                          inReplyTo: replyID.flatMap { eventID(for: $0) })
+        let imageInfo = ImageInfo(height: info.height,
+                                  width: info.width,
+                                  mimetype: picture.mimeType,
+                                  size: info.size,
+                                  thumbnailInfo: nil,
+                                  thumbnailSource: nil,
+                                  blurhash: info.blurhash,
+                                  isAnimated: picture.isAnimated)
+        upload {
+            try timeline.sendImage(params: parameters, thumbnailSource: nil, imageInfo: imageInfo)
+        }
+    }
+
+    /// A sticker is tens of kilobytes, but it may be going through the bridge, where one request
+    /// is several relay round trips.
+    private static var stickerUploadTimeout: Duration { .seconds(60) }
+
     private func upload(_ start: () throws -> SendAttachmentJoinHandle) {
         do {
             _ = try start()

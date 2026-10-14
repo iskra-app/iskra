@@ -51,6 +51,10 @@ public struct RoomView: View {
     @State private var pinned: PinnedStore?
     @State private var isShowingPinned = false
 
+    /// Who here has keys this device does not recognise — see `IdentityChangesStore`. Handed in
+    /// by the session, which stops it on sign-out; started and stopped with the room.
+    @State private var identityChanges: IdentityChangesStore?
+
     /// The two attachment pickers, owned by the screen rather than by the composer that asks
     /// for them. The composer is a `safeAreaInset` floating over this view, and a
     /// presentation put there has already gone missing once (see `MessageComposer`); from
@@ -58,6 +62,7 @@ public struct RoomView: View {
     @State private var isChoosingPhoto = false
     @State private var isChoosingFile = false
     @State private var isChoosingLocation = false
+    @State private var isChoosingSticker = false
     @State private var pickedItems: [PhotosPickerItem] = []
 
     /// Pictures pasted or dropped into the room, waiting in the composer for send. Here and not in
@@ -116,6 +121,12 @@ public struct RoomView: View {
     /// room. See `Theme.Timing.roomWaitsToBeSeen` for the ceiling on the wait.
     @State private var isRevealed = false
 
+    /// The wait for the room has gone on long enough to be seen — a spinner goes up in the middle
+    /// of it. Not at once: almost every room is out of the SDK's store in a frame, and a spinner
+    /// that flashes for that frame is the app saying "wait" about nothing. But a room fetched over
+    /// a slow network used to be a black screen for seconds, which reads as the app having hung.
+    @State private var isWaitingVisibly = false
+
     /// What "arriving" means here, and why it is not "new".
     ///
     /// A time limit was not enough, and the reason is worth writing down: a conversation does
@@ -145,6 +156,8 @@ public struct RoomView: View {
     /// so the message rises into the place it stood instead of appearing under a bubble on its way
     /// out.
     @State private var showsTyping = false
+    /// The names the compact typing row last showed, kept for its fade — see `typingNames`.
+    @State private var lastTypingNames: [String] = []
     @State private var typingHide: Task<Void, Never>?
 
     private static let typingGrace: Duration = .milliseconds(700)
@@ -163,17 +176,33 @@ public struct RoomView: View {
     /// drives it still runs, so turning it back on is this one line.
     private static let showsHistorySpinner = false
 
-    /// A message arrived while the reader was somewhere else in the conversation.
+    /// How many messages arrived while the reader was somewhere else in the conversation —
+    /// the number on the way-down button, Telegram's.
     ///
     /// The other half of not dragging them to the bottom. Left on its own, "we no longer follow
     /// the newest message" would be a room that goes quiet on you: something is said, nothing
-    /// moves, and you find out ten minutes later. So the room stays where it is and *offers*.
-    @State private var hasUnseenBelow = false
+    /// moves, and you find out ten minutes later. It used to be a pill of its own, "New messages",
+    /// in the middle of the screen beside the round button that goes to the same place; one
+    /// button with a count on it says the same thing once.
+    @State private var unseenBelow = 0
 
     /// The colour the user chose. The pill that takes you to a new message is the one thing on the
     /// screen asking to be pressed, so it wears it — the same reason the send button does.
     @Environment(\.accent) private var accent
+
+    /// For the count on the way-down button — `AccentTheme.foreground(in:)`.
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.messageMenu) private var messageMenu
+
+    /// What the line under the name says before anything else — see `headerSubtitle`.
+    @Environment(\.isOffline) private var isOffline
+    @Environment(\.isUpdating) private var isUpdating
+
+    /// Your own last-seen time hidden means nobody else's is shown — see `watchPresence`.
+    @AppStorage(PrivacySettings.hidesPresenceKey) private var hidesPresence = PrivacySettings.hidesPresenceByDefault
+
+    /// The account's stickers — see `StickerPicker`. Nil only where no session put one up.
+    @Environment(\.stickers) private var stickers
 
     /// A message the room has been asked to go to from *outside* the scrolling view — the pinned
     /// strip, or a search result the room was opened on.
@@ -187,7 +216,10 @@ public struct RoomView: View {
     /// Searching within this conversation. The store is made when the search opens and let go when
     /// it closes — see `openRoomSearch`. Its results jump through the same `jumpTarget` road a reply
     /// or a global-search hit takes.
-    @State private var isSearchingRoom = false
+    ///
+    /// The store *is* the sheet's item, rather than a flag beside it. With `isPresented:` and an
+    /// `if let` inside, both set in one tap, the sheet was built from the store as it was before the
+    /// tap — `nil` — and opened onto nothing at all: a blank sheet, with the chat behind it.
     @State private var roomSearch: RoomSearchStore?
 
     /// Whether the reader is standing at the newest message, which is what decides if an
@@ -209,14 +241,15 @@ public struct RoomView: View {
     /// rubber band, where the arithmetic finally went negative.
     ///
     /// Starts true, because a room opens on its newest message — see `hasAnchored`.
-    private var isAtNewest: Bool { isNearBottom || endIsOnScreen }
+    ///
+    /// **One signal, from the scroll geometry** — see the sum where it is taken. There used to be a
+    /// second, a marker under the last row reporting whether it was on screen, propping up a sum
+    /// that was wrong; with the sum right, the marker only added its own mistakes (a lazy stack
+    /// builds rows it is not showing, and the marker said "on screen" from three screens up).
+    private var isAtNewest: Bool { isNearBottom }
 
     /// Distance to the end, from the scroll view.
     @State private var isNearBottom = true
-
-    /// The end of the conversation, as a thing that is either on the screen or is not — see the
-    /// marker under the last row.
-    @State private var endIsOnScreen = true
 
     /// The room-info screen, built when the header is first pressed and kept afterwards.
     ///
@@ -227,9 +260,31 @@ public struct RoomView: View {
     @State private var details: RoomDetailsStore?
     @State private var isShowingDetails = false
 
+    /// The person whose page is open, pushed over the room — see `openProfile(_:)`.
+    @State private var profileUserID: String?
+
+    /// Opens a person's page — from their name in a grey line, or their face beside a message.
+    /// The room details are what the page is made of, so they are made here if nothing has yet.
+    ///
+    /// In a personal chat, the person it is with *is* the chat: their page is the chat's info, the
+    /// one screen Telegram has for both, rather than a second page about the same person.
+    private func openProfile(_ userID: String) {
+        if details == nil { details = makeDetails() }
+        guard details != nil else { return }
+        if timeline.isOneToOne, userID == timeline.directCounterpartID {
+            isShowingDetails = true
+        } else {
+            profileUserID = userID
+        }
+    }
+
     /// Whether the room has already been put down. See `tearDown()` — there are two ways out and
     /// they can both fire.
     @State private var hasTornDown = false
+
+    /// A photo is open over the whole room — see `EnvironmentValues.coversRoom`. The room is still
+    /// there under it, and must not be shut down because SwiftUI says it has disappeared.
+    @State private var isCoveredByMedia = false
 
     /// Something the *device* refused — the microphone, an unreadable file. It lives here, with the
     /// alert that shows it, and not in the store: see `RoomProblem`.
@@ -238,16 +293,56 @@ public struct RoomView: View {
     /// The width the messages have to live in. See `EnvironmentValues.timelineWidth`.
     @State private var timelineWidth: CGFloat = 0
 
+    /// What the picture height limit is taken from — see `EnvironmentValues.timelineHeight`.
+    @State private var timelineSize: CGSize = .zero
+
+    /// The leading edge of the composer's text, on the screen — reported by `MessageComposer` and
+    /// handed down for `ComposerTravel`. Nil until the composer has been laid out, and in a room the
+    /// account cannot post in, where nothing of ours will ever travel.
+    @State private var composerTextLeading: CGFloat?
+
+    /// The dates above the top of the screen, and so the one to float there — see `FloatingDates`.
+    @State private var floatingDates = FloatingDates()
+    /// Whether the floating date is showing: while the reader is moving the list, and a moment after.
+    @State private var showsFloatingDate = false
+    @State private var floatingDateHide: Task<Void, Never>?
+    /// The line a date has to pass to count as above — the top of what can be seen, plus the date's
+    /// own room. See `EnvironmentValues.floatingDateLine`.
+    @State private var floatingDateLine: CGFloat = 0
+
     /// How the conversation is drawn: bubbles on two sides, or one plain column. Chosen once in
     /// settings and read here, which is the only place in the app that acts on it — see
     /// `MessageLayout` and `messageRow(_:in:)`.
     @AppStorage(MessageLayout.storageKey) private var messageLayout: MessageLayout = .default
 
+    /// Which grey lines the conversation leaves out — Settings → Chats. Watched only so the room on
+    /// screen follows a change at once; `TimelineStore` reads the settings itself.
+    @AppStorage(ServiceEventSettings.hidesNameChangesKey) private var hidesNameChanges = false
+    @AppStorage(ServiceEventSettings.hidesMembershipChangesKey) private var hidesMembershipChanges = false
+
     /// How tall the conversation is and how far into it the reader has come.
     private struct ScrollMetrics: Equatable {
         let contentHeight: CGFloat
         let offset: CGFloat
+        /// How far the oldest loaded message is from coming into view — the far end of the
+        /// content, which is the top of the screen.
+        var toOldest: CGFloat = .infinity
     }
+
+    /// What the screen keeps clear around the conversation — see the margins on the scroll view.
+    struct TimelineInsets: Equatable {
+        var top: CGFloat = 0
+        var globalTop: CGFloat = 0
+    }
+
+    @State private var timelineInsets = TimelineInsets()
+
+    /// Where the reader's finger took hold of the conversation, while it holds — what the drag that
+    /// puts the keyboard away is measured from. See `.scrollDismissesKeyboard`.
+    @State private var keyboardDragStart: CGFloat?
+
+    /// Where the composer is on screen — the line the conversation fades out at, at the bottom.
+    @State private var composerFrame: CGRect = .zero
 
     @State private var metrics = ScrollMetrics(contentHeight: 0, offset: 0)
 
@@ -255,7 +350,17 @@ public struct RoomView: View {
     /// are not looking at — the one place the bottom anchor has to be overruled, and the only
     /// thing this view moves the scroll view *in points* for. Everything else it does through the
     /// `ScrollViewReader`, which speaks in rows.
+    ///
+    /// **It expires**, and that is the cure for the timeline jumping in the middle of a scroll. It
+    /// used to be cleared only by the conversation growing — and a change of the last row does not
+    /// always grow it: the SDK's echo taking over from our own bubble changes the last ID and not
+    /// the height, and so does a deletion. The note then sat there, and the next time the content
+    /// grew for any reason — the reader scrolling up and a page of history landing — the reader
+    /// was put back where they had been when that message arrived, mid-flick. So it is good for
+    /// `Timing.placeIsHeld` and no longer, and it is dropped the moment the reader moves the list
+    /// or history starts to arrive: either way the place it remembers is not theirs any more.
     @State private var held: ScrollMetrics?
+    @State private var heldSince: ContinuousClock.Instant?
 
     @State private var scrollPosition = ScrollPosition()
 
@@ -312,11 +417,13 @@ public struct RoomView: View {
     var onClose: () -> Void
 
     public init(timeline: TimelineStore,
+                identityChanges: IdentityChangesStore? = nil,
                 makeDetails: @escaping () -> RoomDetailsStore?,
                 openAt: Binding<String?> = .constant(nil),
                 onLeave: @escaping () -> Void,
                 onClose: @escaping () -> Void = {}) {
         _timeline = State(initialValue: timeline)
+        _identityChanges = State(initialValue: identityChanges)
         self.makeDetails = makeDetails
         _openAt = openAt
         self.onLeave = onLeave
@@ -326,6 +433,45 @@ public struct RoomView: View {
     /// The message this room is being opened *on*, if it is being opened on one — a search result.
     /// Consumed once and cleared, so that returning to the room by ordinary means goes nowhere.
     @Binding private var openAt: String?
+
+    /// The conversation's opacity down the screen: solid in the middle, fading out over the same
+    /// distance at both ends — into the title bar at the top, into the composer at the bottom — so
+    /// the two edges read as one effect. Each fade *ends* at its bar's edge and runs under the bar,
+    /// never out over the open conversation. `screen` is the mask's own frame, in the same global
+    /// coordinates the composer was measured in.
+    private func timelineFade(in screen: CGRect) -> LinearGradient {
+        let height = max(screen.height, 1)
+        func at(_ y: CGFloat) -> CGFloat { min(max((y - screen.minY) / height, 0), 1) }
+        let titleBarEdge = screen.minY + timelineInsets.top
+        let topClear = at(titleBarEdge - Theme.Size.timelineFade)
+        let topSolid = at(titleBarEdge)
+        let hasComposer = composerFrame.height > 0
+        let bottomSolid = hasComposer ? max(at(composerFrame.minY), topSolid) : 1
+        let bottomClear = hasComposer ? max(at(composerFrame.minY + Theme.Size.timelineFade), bottomSolid) : 1
+        return LinearGradient(stops: [.init(color: .clear, location: topClear),
+                                      .init(color: .black, location: topSolid),
+                                      .init(color: .black, location: bottomSolid),
+                                      .init(color: .clear, location: bottomClear)],
+                              startPoint: .top, endPoint: .bottom)
+    }
+
+    /// Whether the conversation runs on under the title bar, fading as it goes — everywhere but
+    /// the Mac.
+    ///
+    /// On the Mac it stops at the bar instead. Running under a macOS 26 window toolbar, the list
+    /// was given the system's scroll-edge blur, and the system works that band out from a list the
+    /// right way up: turned over, it stretched it across the whole conversation. `scrollEdgeHidden`
+    /// keeps it away on iOS and did not on the Mac, where the toolbar shows its edge whenever the
+    /// pointer is in the window — so moving the mouse onto a chat blurred every message in it, and
+    /// moving it away left the room's name printed over the top message with nothing behind it. A
+    /// list that does not reach under the bar gives the system nothing to blur.
+    private var runsUnderTitleBar: Bool {
+        #if os(macOS)
+        false
+        #else
+        true
+        #endif
+    }
 
     /// A phone-shaped title bar: an iPhone, or an iPad window squeezed narrow enough to be
     /// one. Never the Mac, which has no size class worth asking.
@@ -352,8 +498,7 @@ public struct RoomView: View {
     }
 
     private func openRoomSearch() {
-        if roomSearch == nil { roomSearch = timeline.makeSearch() }
-        isSearchingRoom = true
+        roomSearch = timeline.makeSearch()
     }
 
     /// The room's media, handed to every picture in it — see `RoomMediaSource`.
@@ -366,48 +511,36 @@ public struct RoomView: View {
     public var body: some View {
         ScrollViewReader { scroll in
             ScrollView {
+                // **Upside down, like Telegram's** (`ChatHistoryListNode`: the list is rotated half a
+                // turn and every message turned back). The newest message is the *first* thing in
+                // the content, and history is added at its *end* — which on the screen is the top.
+                //
+                // That is the whole cure for the conversation jumping while history loads. The other
+                // way up, a page of history is inserted at the start of the content, and everything
+                // being read has to be pushed down by exactly its height at exactly that moment.
+                // Measured on a phone, SwiftUI does not do that while a finger or momentum is moving
+                // the list — the offset stayed put while the content grew by two thousand points —
+                // and no correction made from outside kept up. Added at the end, a page moves
+                // nothing on the screen at all, so there is nothing to correct.
                 LazyVStack(spacing: 0) {
-                    loadEarlier
+                    endMarker
 
-                    ForEach(placedRows) { placed in
+                    // Someone writing — first, which is the very bottom of the conversation on screen.
+                    typingBubble
+                        .flippedForTimeline()
+
+                    ForEach(placedRows.reversed()) { placed in
                         view(for: placed.row,
                              followsEvent: placed.followsEvent,
                              opensDay: placed.opensDay,
                              arrives: placed.arrives,
                              in: scroll)
+                            .flippedForTimeline()
                             .id(placed.id)
                     }
 
-                    // Someone writing, shown as an unfinished incoming message at the foot of the
-                    // conversation — the header says who, this is the animation of it. It comes up
-                    // from below and fades, exactly as a message does (`AnyTransition.arrival`),
-                    // and goes back down the same way when they stop.
-                    //
-                    // The `VStack` is load-bearing and must not go back to being a `Group`. A
-                    // `Group` is not a container: it hands every modifier to each of its members,
-                    // so the `.animation` below landed on `TypingBubble` itself rather than around
-                    // the `if` that inserts it — no animated transaction, no transition, and the
-                    // bubble popped in and out while the modifier that was supposed to stop it sat
-                    // right there looking correct.
-                    //
-                    // This is the one implicit animation scope in the conversation, and it is
-                    // allowed because of how little it wraps: a single bubble whose only other
-                    // animatable state, the pulse of the dots, carries an `.animation` of its own
-                    // further in and therefore wins. Nothing else can be caught by it.
-                    //
-                    // The animation is explicit now, in `setTyping`, rather than a scope here —
-                    // see `showsTyping` for why the bubble no longer follows the store directly.
-                    VStack(spacing: 0) {
-                        if showsTyping {
-                            TypingBubble()
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.top, Theme.Spacing.withinRun)
-                                .transition(.asymmetric(insertion: .arrival,
-                                                        removal: .opacity.animation(.easeOut(duration: Theme.Timing.chrome / 2))))
-                        }
-                    }
-
-                    endMarker
+                    loadEarlier
+                        .flippedForTimeline()
                 }
                 // **No `.animation` here, and none may be added.** This modifier wraps the
                 // whole conversation, and an implicit scope animates *every* animatable value in
@@ -430,36 +563,79 @@ public struct RoomView: View {
                 // The composer floats over the timeline on glass, so the last message
                 // must be able to scroll clear of it — but only just. The composer already
                 // carries its own padding, and a generous gap on top of that reads as the
-                // conversation having ended some way above the bar you answer it in.
-                .padding(.bottom, Theme.Spacing.close)
+                // conversation having ended some way above the bar you answer it in. (The top
+                // of the content, upside down, is the bottom of the screen.)
+                .padding(.top, Theme.Spacing.close)
             }
-            // Drag the conversation and the keyboard goes down with your finger.
+            // The list is turned over, and so are its margins: the title bar the conversation runs
+            // under is at the top of the screen, which is the *bottom* of the content.
+            .contentMargins(.bottom, runsUnderTitleBar ? timelineInsets.top : 0, for: .scrollContent)
+            // No scroll indicator, as in Telegram — and not only for the look. Measured on a phone
+            // (the watchdog's crash report): with the list turned over, the indicator's insets were
+            // recomputed on every frame of the keyboard's animation and never settled, and the app
+            // was killed for hanging the moment the text field was pressed.
+            .scrollIndicators(.hidden)
+            .flippedForTimeline()
+            // So a message held while the room is still sliding in lifts from where it is — see
+            // `WindowProbe`. Outside the turn, so the probe is the right way up.
+            .messageMenuRoom()
+            // Under the title bar, and *only* under it. The bottom — the composer, the keyboard, the
+            // home indicator — is left to the safe area, and the list simply ends above them. Measured
+            // on a phone (counting what changed on every layout pass while the app hung): a list
+            // that went under the composer and the keyboard had to be handed their height as a
+            // margin, read off the layout, and the margin moved the layout it was read from — two
+            // states, flipping, for as long as the keyboard was up. Turned over, the list needs no
+            // help at the bottom anyway: the newest message is its top, offset zero, and stays put
+            // when the keyboard makes the frame shorter.
             //
-            // `.interactively` rather than `.immediately` because the keyboard should follow the
-            // hand rather than vanish at the first pixel of movement: pulling down takes it down
-            // with you, and changing your mind halfway puts it back. Reaching for something further
-            // up the conversation is the one gesture that plainly means "I have stopped typing for
-            // a moment", and until now it left half the screen covered by a keyboard nobody was
-            // using.
-            .scrollDismissesKeyboard(.interactively)
-            .defaultScrollAnchor(.bottom)
-            // What keeps the conversation still while history lands on top of it.
+            // Not on the Mac — see `runsUnderTitleBar`.
+            .ignoresSafeArea(.container, edges: runsUnderTitleBar ? .top : [])
+            // The title bar's height, read by a view of its own that nothing on the screen depends
+            // on. Read off the scroll view itself it was a loop: a margin set from a measurement of
+            // the view the margin is set on.
+            .background {
+                Color.clear
+                    .ignoresSafeArea(.container, edges: .top)
+                    .onGeometryChange(for: TimelineInsets.self) { proxy in
+                        TimelineInsets(top: proxy.safeAreaInsets.top,
+                                       globalTop: proxy.frame(in: .global).minY)
+                    } action: { insets in
+                        timelineInsets = insets
+                        floatingDateLine = insets.globalTop + insets.top + Theme.Spacing.roomy
+                    }
+            }
+            // The conversation fades out as it passes under the title bar and under the composer —
+            // not blurred, not washed in a colour, but simply less and less there, so whatever the
+            // room stands on (the page, a gradient, somebody's photograph) shows through unchanged.
             //
-            // A scroll view holds its offset from the *top* of the content, so anything added
-            // above the reader pushes what they are reading down the screen — and a page of
-            // history is nothing but twenty-five things added above the reader. Anchoring size
-            // changes to the bottom inverts that: the end of the conversation is what stays put,
-            // and the content grows away from it, upwards, out of sight.
+            // Drawn over the whole screen, in screen coordinates, because the messages are drawn
+            // under the composer and past the edge of the list's own frame. Both lines it fades at
+            // are measured elsewhere, and a mask is only drawing: nothing here can move the layout
+            // those measurements are read from.
+            .mask {
+                GeometryReader { proxy in
+                    timelineFade(in: proxy.frame(in: .global))
+                }
+                .ignoresSafeArea()
+            }
+            // The keyboard goes down once the reader has dragged the conversation a little way back
+            // into its history — a deliberate pull, not the first pixel of movement, which is what
+            // `.immediately` reacts to and why it felt like the keyboard vanished on a touch. It goes
+            // with the system's own animation, and the list, sitting above it, follows.
             //
-            // This is what an anchor kept by hand could never do, and it is worth knowing why.
-            // A page does not arrive as one change. The SDK hands its diffs over in batches, each
-            // batch crosses to the main actor as its own `Task`, and each publishes `rows` again —
-            // so the content grows in several steps across several frames. Then the older events
-            // *decrypt*, and their rows change height where they stand, above the reader, after
-            // they have already been laid out. Then the photos in them arrive and change height
-            // again. There is no single moment to measure and put back; there are a dozen, and the
-            // only cure is to make the scroll view hold the end it is not being changed at.
-            .defaultScrollAnchor(.bottom, for: .sizeChanges)
+            // Not `.interactively`, which would be the nicer gesture and hangs the app: tracking the
+            // keyboard under the finger, with the list turned over, sent the main thread round the
+            // scroll view's layout until the watchdog killed it — twice, on a phone, both times the
+            // moment the keyboard was pulled (the stack ends in `UICoreKeyboardTracking`).
+            .scrollDismissesKeyboard(.never)
+            .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, offset in
+                // Turned over, the offset grows as the reader goes back in time.
+                guard let start = keyboardDragStart,
+                      offset - start > Theme.Size.keyboardDismissDrag else { return }
+                keyboardDragStart = nil
+                Keyboard.dismiss()
+            }
+            .defaultScrollAnchor(.top)
             .scrollPosition($scrollPosition)
             // The spinner floats over the top of the conversation rather than standing at the
             // head of it.
@@ -503,6 +679,10 @@ public struct RoomView: View {
                 spinnerRest?.cancel()
 
                 guard !isPaginating else {
+                    // History grows the conversation from the top, and a noted place is measured
+                    // from the top: putting it back after a page lands would be wrong by a page.
+                    held = nil
+                    heldSince = nil
                     withAnimation(.smooth) { isFetchingHistory = true }
                     return
                 }
@@ -523,6 +703,27 @@ public struct RoomView: View {
                 timelineWidth = width
             }
             .environment(\.timelineWidth, timelineWidth)
+            // The height pictures are limited by: the tallest the conversation has been at this
+            // width. The keyboard only ever makes it shorter, so it does not move this; a turn of
+            // the phone or a window resized changes the width, and starts it again.
+            .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
+                if size.width != timelineSize.width || size.height > timelineSize.height {
+                    timelineSize = size
+                }
+            }
+            .environment(\.timelineHeight, timelineSize.height)
+            // Where a message of ours starts its journey to its bubble — see `ComposerTravel`.
+            .environment(\.composerTextLeading, composerTextLeading)
+            // A name in a grey line, a face beside a message: both go to that person's page.
+            .environment(\.openProfile) { userID in openProfile(userID) }
+            // The floating date — see `FloatingDates`. Written only when a date crosses the line, so
+            // a scroll costs a couple of updates per day passed, not one per frame.
+            .environment(\.floatingDateLine, floatingDateLine)
+            .environment(\.dayPassesTop) { date, isAbove in
+                var dates = floatingDates
+                dates.date(date, isAbove: isAbove)
+                if dates != floatingDates { floatingDates = dates }
+            }
             // The room's pictures, for the viewer a tapped photograph opens — so that it can be
             // swiped through the conversation's media the way the media tab's can. Built once, and
             // not on every pass of this body: see `RoomMediaSource`.
@@ -541,7 +742,10 @@ public struct RoomView: View {
             // above its first message and the iPhone did not. A chat has nothing to separate
             // there: the toolbar is already a glass surface, and the rule only fenced the top
             // message off from the name of the person who sent it.
-            .scrollEdgeEffectStyle(.soft, for: .top)
+            // No scroll-edge effect at all. The system works out where its blurred band goes from a
+            // list the right way up; turned over and running under the bars, it stretched the band
+            // across nearly the whole conversation. The bars are glass of their own.
+            .scrollEdgeHidden(true, for: .all)
             // Reaching the top is the request for older messages — the gesture people
             // already make, rather than a spinner they have to notice. `loadMore` ignores
             // a call while it is already paginating and once the room has no more history,
@@ -575,45 +779,36 @@ public struct RoomView: View {
             // in flight, and does nothing once the room has no more history.
             .onScrollGeometryChange(for: ScrollMetrics.self) { geometry in
                 ScrollMetrics(contentHeight: geometry.contentSize.height,
-                              offset: geometry.contentOffset.y)
+                              offset: geometry.contentOffset.y,
+                              toOldest: geometry.contentSize.height
+                                - geometry.contentOffset.y
+                                - geometry.contentInsets.top
+                                - geometry.containerSize.height)
             } action: { _, metrics in
                 self.metrics = metrics
 
-                if metrics.offset < Theme.Size.paginationReach, hasAnchored {
+                if metrics.toOldest < Theme.Size.paginationReach, hasAnchored {
                     Task { await timeline.loadMore() }
                 }
 
-                // A room opens on its newest message, and *stays* there until the reader takes
-                // hold of it. One `scrollTo` at the moment the first page lands is not enough and
-                // this is why: opening a room is not one change of size, it is a long series of
-                // them. The store keeps fetching until it has a screenful, each batch of diffs
-                // publishes its own rows, the events then decrypt and their rows change height,
-                // and the photos in them arrive and change height again. Scrolling to the bottom
-                // once, in the middle of that, lands on a conversation that is still growing —
-                // which is precisely the room that opened a few messages short of the end. So the
-                // end is *held* until the reader disagrees by scrolling.
-                //
-                // Deferred: calling `scrollTo` synchronously inside `onScrollGeometryChange`
-                // changes the scroll position, which fires the callback again — a re-entrant
-                // loop that produced "tried to update multiple times per frame" and hung the
-                // app. A `Task` breaks the cycle: the current callback finishes, and the scroll
-                // lands on the next pass through the run loop.
-                if isOpening {
-                    Task { scrollPosition.scrollTo(edge: .bottom) }
-                    return
-                }
+                // No hold on the end here any more — neither while the room opens nor after a
+                // message lands. Upside down, the newest message is the start of the content, and
+                // a list resting at its start stays there by itself while history piles up at the
+                // other end. The holds were a `scrollTo` on every change of geometry, and with the
+                // list turned over and the keyboard resizing it, they answered each other until
+                // the app hung.
 
-                // The same hold, for the moments after a message lands rather than the moments
-                // after the room opens. See `followsEnd`. Deferred for the same reason as above:
-                // scrolling from inside this callback calls it again.
-                if followsEnd {
-                    Task { scrollPosition.scrollTo(edge: .bottom) }
-                    return
+                if let since = heldSince, ContinuousClock.now - since > Theme.Timing.placeIsHeld {
+                    held = nil
+                    heldSince = nil
                 }
-
                 guard let place = held, metrics.contentHeight > place.contentHeight else { return }
                 held = nil
-                scrollPosition.scrollTo(y: place.offset)
+                heldSince = nil
+                // Upside down, a message arriving goes in at the *start* of the content, under the
+                // reader, and pushes what they are reading along by its height; they are put back
+                // by the same amount.
+                scrollPosition.scrollTo(y: place.offset + metrics.contentHeight - place.contentHeight)
             }
             // Moving the conversation is what says the reader wants it left where they put it.
             // An arriving message is not the reader, and neither is a photo finishing its
@@ -628,9 +823,15 @@ public struct RoomView: View {
             //
             // So every phase counts except the two that are not the reader: `.idle`, and the
             // `.animating` of a scroll this view asked for itself — including the hold's own.
-            .onScrollPhaseChange { _, phase in
+            .onScrollPhaseChange { _, phase, context in
+                floatingDateFollows(phase)
+                keyboardDragStart = phase == .interacting ? context.geometry.contentOffset.y : nil
                 guard phase != .idle, phase != .animating else { return }
                 isOpening = false
+                // The reader has the list now; a place noted for them a moment ago is not where
+                // they are going. See `held`.
+                held = nil
+                heldSince = nil
                 // Moving the conversation yourself outranks the room's wish to stay at the end —
                 // the same rule the opening hold follows, and for the same reason. See
                 // `followsEnd`.
@@ -656,6 +857,9 @@ public struct RoomView: View {
             .onChange(of: timeline.typing.isEmpty, initial: true) { _, isEmpty in
                 setTyping(!isEmpty)
             }
+            .onChange(of: timeline.typing) { _, names in
+                if !names.isEmpty { lastTypingNames = names }
+            }
             .onChange(of: timeline.rows.last?.id) { _, _ in
                 guard showsTyping, timeline.rows.last?.message?.isOwn == false else { return }
                 typingHide?.cancel()
@@ -675,7 +879,9 @@ public struct RoomView: View {
             // network. A conversation half-fetched is worth more than an empty screen that goes
             // on being empty, so past this point the room is shown with whatever it has.
             .task {
-                try? await Task.sleep(for: Theme.Timing.roomWaitsToBeSeen)
+                try? await Task.sleep(for: Theme.Timing.roomWaitIsShown)
+                if !isRevealed { withAnimation(.smooth) { isWaitingVisibly = true } }
+                try? await Task.sleep(for: Theme.Timing.roomWaitsToBeSeen - Theme.Timing.roomWaitIsShown)
                 isRevealed = true
             }
             .onChange(of: isReady, initial: true) { _, ready in
@@ -684,7 +890,7 @@ public struct RoomView: View {
                 // Not animated: this is where the room *opens*, not somewhere it travels to. The
                 // hold above keeps it there while the conversation finishes arriving; this is
                 // only the first of those moves, made as soon as there is a row to make it to.
-                scroll.scrollTo(last, anchor: .bottom)
+                scroll.scrollTo(last, anchor: .top)
 
                 // The room may now move — but not this instant. The batches still in flight, the
                 // decryptions and the pictures all land in the moments after the first page is
@@ -704,6 +910,21 @@ public struct RoomView: View {
                 if let openAt {
                     jumpTarget = openAt
                     self.openAt = nil
+                } else if timeline.rows.contains(.unreadDivider) {
+                    // …and otherwise on the first thing the reader has not seen, the way Telegram
+                    // opens a chat: the "Unread messages" bar at the top of the screen and the new
+                    // messages under it, rather than the last of them and the rest above, to be
+                    // scrolled back up to and read in the wrong direction. Where everything new fits
+                    // on one screen, the scroll view stops at the end of the conversation by itself,
+                    // which is the right answer there too.
+                    //
+                    // The hold on the end is let go of, because this *is* the reader's place now —
+                    // left on, it would haul the room straight back down on the next batch. And the
+                    // move is made on the next pass, after the anchor above has landed, for the reason
+                    // `jumpTarget` waits for the same thing.
+                    isOpening = false
+                    // `.bottom` of the turned-over list is the top of the screen.
+                    Task { scroll.scrollTo(TimelineRow.unreadDividerID, anchor: .bottom) }
                 }
             }
             // A search hit in a room that is *already* open. On iPhone this never arises: going back
@@ -755,11 +976,17 @@ public struct RoomView: View {
             // is, from the other end of the scroll view. Half of the answer — the other half is the
             // marker under the last row, and `isAtNewest` says why there are two.
             .onScrollGeometryChange(for: Bool.self) { geometry in
-                let distanceFromBottom = geometry.contentSize.height
-                    + geometry.contentInsets.bottom
-                    - geometry.contentOffset.y
-                    - geometry.containerSize.height
-                return distanceFromBottom < Theme.Size.newestReach
+                // Measured on a phone, and this is the sum that comes out at zero against the last
+                // message, keyboard up or down: `containerSize` is what is left *between* the insets
+                // — the title bar above, the composer and the keyboard below — so the bottom of what
+                // can be seen sits at offset + top inset + container. The sum it replaces added the
+                // bottom inset and left out the top one, and came out two hundred points short at
+                // rest and a keyboard's height short with it up; the way-down button, "typing…" and
+                // the arrival animation all asked it and all got "no".
+                // Upside down, the newest message is at the start of the content: the reader is at
+                // the end of the conversation when the offset is back at the start, past its margin.
+                let distanceFromNewest = geometry.contentOffset.y + geometry.contentInsets.top
+                return distanceFromNewest < Theme.Size.newestReach
             } action: { _, isNear in
                 isNearBottom = isNear
             }
@@ -775,8 +1002,12 @@ public struct RoomView: View {
                 guard atNewest else { return }
                 Task { await timeline.markAsRead() }
 
-                guard hasUnseenBelow else { return }
-                withAnimation(.smooth) { hasUnseenBelow = false }
+                // Back at the end: the typing bubble catches up with whatever happened while the
+                // reader was away from it. See `setTyping`.
+                setTyping(!timeline.typing.isEmpty)
+
+                guard unseenBelow > 0 else { return }
+                withAnimation(.smooth) { unseenBelow = 0 }
             }
             // And afterwards, a message arriving brings the conversation with it — but *only*
             // if the reader is standing at the end of it. Somebody reading last week's messages
@@ -786,14 +1017,22 @@ public struct RoomView: View {
             // Your own message is the exception, and it is not really an exception: sending one
             // is a request to be where it lands. The composer is at the bottom, so you are
             // answering the newest message by definition.
-            .onChange(of: timeline.rows.last?.id) { _, last in
+            // `last` is used — by `guard let last`, the shorthand SwiftLint does not read as a use.
+            // swiftlint:disable:next unused_closure_parameter
+            .onChange(of: timeline.rows.last?.id) { previous, last in
                 guard hasAnchored, let last else { return }
 
                 guard isAtNewest || timeline.rows.last?.message?.isOwn == true else {
                     // Not going anywhere — but something *did* arrive, and the reader is not
-                    // looking at it. That is what the pill is for: the room no longer drags them
-                    // to the bottom, so it has to offer.
-                    withAnimation(.smooth) { hasUnseenBelow = true }
+                    // looking at it. That is what the count on the way-down button is for: the
+                    // room no longer drags them to the bottom, so it has to say so. Messages
+                    // from other people only, after the end the reader last had.
+                    let rows = timeline.rows
+                    let after = previous.flatMap { id in rows.lastIndex { $0.id == id } }.map { $0 + 1 } ?? rows.count - 1
+                    let arrived = rows[max(0, after)...].filter { $0.message.map { !$0.isOwn } ?? false }.count
+                    if arrived > 0 {
+                        withAnimation(.smooth) { unseenBelow += arrived }
+                    }
 
                     // And the anchor has to be overruled, this once. It holds the *bottom* of the
                     // conversation still, which is exactly right while history piles up above the
@@ -804,6 +1043,7 @@ public struct RoomView: View {
                     // arriving row is laid out — `onChange` runs on the change, not on the frame
                     // it produces — so this is the conversation as it was without it.
                     held = metrics
+                    heldSince = .now
                     return
                 }
 
@@ -833,6 +1073,14 @@ public struct RoomView: View {
             // bottom of a conversation that is still arriving. Built only at the end, it would
             // have to do all of that in front of the reader, which is the thing being cured.
             .opacity(isRevealed ? 1 : 0)
+            .overlay(alignment: .top) {
+                if showsFloatingDate, let date = floatingDates.current {
+                    FloatingDateLabel(date: date)
+                        .transition(.opacity)
+                        // A new day passing under it changes the words, not the capsule.
+                        .contentTransition(.numericText())
+                }
+            }
             // Over the timeline but *under* the composer, which is a safe-area inset added
             // further down: a placeholder that covered the box you type into would be
             // telling you to say something and hiding the way to say it.
@@ -840,16 +1088,6 @@ public struct RoomView: View {
             // The way back down. Inside the `ScrollViewReader`, because that is the only place the
             // proxy exists — and at the bottom of the conversation rather than floating in the
             // middle of it, because that is the direction it takes you.
-            .overlay(alignment: .bottom) {
-                Group {
-                    if hasUnseenBelow {
-                        jumpToNewest()
-                            .padding(.bottom, Theme.Spacing.close)
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
-                    }
-                }
-                .animation(.smooth(duration: Theme.Timing.chrome), value: hasUnseenBelow)
-            }
             // And the plain way down, for when nothing has been said and you are simply a long
             // way up. This did not exist, and its absence is only invisible on a short
             // conversation: reading back through a year of a room left the only route to the
@@ -881,13 +1119,20 @@ public struct RoomView: View {
         }
         .safeAreaInset(edge: .bottom) {
             Group {
-                if timeline.canPost {
+                if let blockedID {
+                    BlockedBanner {
+                        Task { await blockStore?.unblock(userID: blockedID) }
+                    }
+                } else if timeline.canPost {
                     composer
                 } else {
                     readOnlyBanner
                 }
             }
             .animation(.smooth, value: timeline.canPost)
+            .animation(.smooth, value: blockedID)
+            // Where the conversation fades out at the bottom — see the mask on the scroll view.
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { composerFrame = $0 }
         }
         // A picture dragged anywhere onto the room — the conversation, the composer, the header's
         // underside — lands in the composer. The whole room and not the field, because the field
@@ -918,6 +1163,23 @@ public struct RoomView: View {
         // The strip at the top of the room, above the conversation and below the toolbar.
         // Present only when there is something pinned — a room with nothing pinned should not
         // give up a row of its screen to say so.
+        // Somebody's keys changed: above the pinned strip, because it is about who is reading
+        // what you write here, which matters more than what was pinned. One person at a time.
+        .safeAreaInset(edge: .top) {
+            Group {
+                if let identityChanges, let change = identityChanges.changes.first {
+                    IdentityChangeBanner(change: change) {
+                        Task {
+                            do { try await identityChanges.acknowledge(change) } catch {
+                                problem = .identityNotAcknowledged
+                            }
+                        }
+                    }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
+            .animation(.smooth, value: identityChanges?.changes.first?.id)
+        }
         .safeAreaInset(edge: .top) {
             Group {
                 if !timeline.pinnedEventIDs.isEmpty, let pinned {
@@ -935,10 +1197,10 @@ public struct RoomView: View {
             // Opening a pinned room therefore set every message in it sliding.
             .animation(.smooth, value: timeline.pinnedEventIDs)
         }
-        // Above the pinned strip, because it is about the whole app rather than about this room —
-        // and because somebody reading a conversation should not have to go back to the list to find
-        // out why nothing new is arriving in it. See `OfflineBanner`.
-        .offlineBanner()
+        // No offline strip here: the line under the room's name says "Waiting for network…" instead,
+        // the way the chat list's title does — see `headerSubtitle`.
+        .onChange(of: hidesNameChanges) { timeline.serviceEventSettingsChanged() }
+        .onChange(of: hidesMembershipChanges) { timeline.serviceEventSettingsChanged() }
         // Opened the first time the room reports anything pinned, and kept afterwards. A room
         // with nothing pinned never opens a second timeline at all.
         .onChange(of: timeline.pinnedEventIDs.isEmpty, initial: true) { _, isEmpty in
@@ -977,7 +1239,7 @@ public struct RoomView: View {
                 // Out of the toolbar's shared glass. A title is the heading of the screen,
                 // not a control hovering over it, and a capsule of glass around these words
                 // says the opposite.
-                .sharedBackgroundVisibility(.hidden)
+                .outsideToolbarGlass()
 
                 // Out of the shared background, and — unlike the title above — *not* because
                 // it should be bare. It carries a glass circle of its own instead, cut to the
@@ -991,7 +1253,7 @@ public struct RoomView: View {
                                      faces: timeline.roomFaces,
                                      onOpenDetails: openDetails)
                 }
-                .sharedBackgroundVisibility(.hidden)
+                .outsideToolbarGlass()
             } else {
                 // Mac and iPad. Room enough for the picture and the name together, at the
                 // leading edge — lined up with the conversation below rather than floating
@@ -1005,17 +1267,15 @@ public struct RoomView: View {
                                subtitle: headerSubtitle,
                                onOpenDetails: openDetails)
                 }
-                .sharedBackgroundVisibility(.hidden)
+                .outsideToolbarGlass()
             }
         }
-        .sheet(isPresented: $isSearchingRoom) {
-            if let roomSearch {
-                RoomSearchView(store: roomSearch) { eventID in
-                    isSearchingRoom = false
-                    // The same road a reply takes: paginate back until the message is loaded, then
-                    // scroll to it and light it.
-                    jumpTarget = eventID
-                }
+        .sheet(item: $roomSearch) { search in
+            RoomSearchView(store: search) { eventID in
+                roomSearch = nil
+                // The same road a reply takes: paginate back until the message is loaded, then
+                // scroll to it and light it.
+                jumpTarget = eventID
             }
         }
         .navigationDestination(isPresented: $isShowingDetails) {
@@ -1041,6 +1301,13 @@ public struct RoomView: View {
                 PinnedMessagesView(pinned: pinned, isOneToOne: timeline.isOneToOne)
             }
         }
+        // A person's page, from a name in a grey line or a face beside a message — Telegram's. The
+        // same page the member list opens, over the same room details, built on the first press.
+        .navigationDestination(item: $profileUserID) { userID in
+            if let details {
+                RoomMemberProfile(details: details, userID: userID)
+            }
+        }
         .photosPicker(isPresented: $isChoosingPhoto,
                       selection: $pickedItems,
                       maxSelectionCount: Self.pickLimit,
@@ -1056,6 +1323,21 @@ public struct RoomView: View {
         .fileImporter(isPresented: $isChoosingFile, allowedContentTypes: [.item]) { result in
             guard case let .success(url) = result else { return }
             Task { await sendPickedFile(url) }
+        }
+        .sheet(isPresented: $isChoosingSticker) {
+            StickerPicker(roomID: timeline.roomID) { sticker in
+                // Read now, before `cancelContext` clears it: the sticker answers what was being
+                // answered when the sheet was opened.
+                let reply = replyID
+                cancelContext()
+                Task {
+                    await timeline.send(sticker: sticker, replyingTo: reply)
+                    if timeline.failure == nil { await stickers?.used(sticker) }
+                }
+            }
+            // Here as well as on the room: an alert hung on a screen *under* a sheet is never
+            // shown, and adding a sticker from the sheet is one of the two ways to need it.
+            .failureAlert(stickerFailure)
         }
         .sheet(isPresented: $isChoosingLocation) {
             LocationPicker { location in
@@ -1077,7 +1359,24 @@ public struct RoomView: View {
                 timeline.typed()
             }
         }
+        // Where the other person is — asked again every minute for as long as this room is open,
+        // and started afresh when the counterpart changes (it arrives with the room's info, a
+        // moment after the screen). An explicit call, not a side effect of drawing the line.
+        // Hiding your own last-seen time in Settings stops it at once, and showing it starts it again.
+        .task(id: PresenceWatch(counterpart: timeline.directCounterpartID, hidesOwn: hidesPresence)) {
+            await timeline.watchPresence()
+        }
         .task {
+            // Back on screen, so alive again: whatever put the room down on the way here — a
+            // cover this screen was not told about, a disappearance nobody anticipated — must not
+            // leave the latch set, or the reader's real way out later saves no draft and stops
+            // no timeline. The latch is there to stop two tear-downs of one visit, not every
+            // tear-down after the first.
+            hasTornDown = false
+            // And nothing is over the room if the room is on screen — even if the row that opened
+            // the viewer was taken away while it was open and never got to say it had closed.
+            isCoveredByMedia = false
+
             // Whatever was half-written here last time. Restored *before* the room opens, because
             // it costs nothing and it means the composer is never briefly empty in front of
             // somebody who left a sentence in it.
@@ -1089,6 +1388,9 @@ public struct RoomView: View {
                 draft = saved
             }
 
+            // Before the history: subscribing is quick and fetching the first pages may not be, and
+            // a warning about who is reading this room should not wait on either.
+            await identityChanges?.start()
             try? await timeline.start()
             await timeline.markAsRead()
         }
@@ -1169,9 +1471,10 @@ public struct RoomView: View {
         // is in the room. The flags are the honest signal — we know when we are pushing, because
         // we are the ones who pushed.
         .onDisappear {
-            guard !isShowingDetails, !isShowingPinned else { return }
+            guard !isShowingDetails, !isShowingPinned, profileUserID == nil, !isCoveredByMedia else { return }
             tearDown()
         }
+        .environment(\.coversRoom) { isCoveredByMedia = $0 }
         // Two alerts, because there are two kinds of bad news and they come from different places.
         // The room refusing something is the store's (`TimelineActionFailure`); the device refusing
         // something is this screen's (`RoomProblem`) — see that type for why the second one no
@@ -1179,6 +1482,10 @@ public struct RoomView: View {
         // be seven lines of hand-rolled `.alert` doing, slightly differently, what three other
         // screens already had a modifier for.
         .failureAlert($timeline.failure)
+        .failureAlert(stickerFailure)
+        // So that a sticker's menu knows whether it is already yours. Once a session, and from
+        // the SDK's store — see `StickerLibrary.prepare`.
+        .task { await stickers?.prepare() }
         .failureAlert($problem)
     }
 
@@ -1196,8 +1503,16 @@ public struct RoomView: View {
     /// it — see `onScrollPhaseChange`.
     /// Puts the typing bubble up at once, or takes it down after `typingGrace` — see
     /// `showsTyping`.
+    ///
+    /// Only while the reader is at the end. The bubble is the last thing in the conversation, and
+    /// the scroll view holds the conversation's *bottom* still when its size changes — so a bubble
+    /// coming or going below somebody reading further up moved everything they were reading by its
+    /// height: the timeline jumped every time somebody in the room started or stopped typing.
+    /// Up there the header already says who is writing; the bubble catches up when the reader comes
+    /// back down (see the `isAtNewest` observer).
     private func setTyping(_ isTyping: Bool) {
         typingHide?.cancel()
+        guard isAtNewest else { return }
         if isTyping {
             guard !showsTyping else { return }
             withAnimation(Theme.Timing.arrival) { showsTyping = true }
@@ -1227,14 +1542,10 @@ public struct RoomView: View {
         followingEnd?.cancel()
         followsEnd = true
 
-        followingEnd = Task {
-            let deadline = ContinuousClock.now + Theme.Timing.endIsHeld
-            while !Task.isCancelled, ContinuousClock.now < deadline {
-                scrollPosition.scrollTo(edge: .bottom)
-                try? await Task.sleep(for: Theme.Timing.endIsCheckedEvery)
-            }
-            followsEnd = false
-        }
+        // Once, not held: upside down the end does not drift away from a message still settling
+        // into its height — it grows at the start, where the list is resting.
+        scrollPosition.scrollTo(edge: .top)
+        followsEnd = false
     }
 
     /// Putting the room down: the draft, the listeners, the camera, the microphone.
@@ -1266,6 +1577,7 @@ public struct RoomView: View {
         Task { await timeline.saveDraft(unsent) }
 
         timeline.stop()
+        identityChanges?.stop()
         videoNote.cancel()
         voice.cancel()
         lighting?.cancel()
@@ -1300,6 +1612,11 @@ public struct RoomView: View {
                 }
                 .buttonStyle(.primaryAction)
             }
+        } else if !isRevealed {
+            if isWaitingVisibly {
+                ProgressView()
+                    .transition(.opacity)
+            }
         } else if !timeline.hasLoaded {
             EmptyView()
         } else if timeline.rows.isEmpty {
@@ -1309,31 +1626,32 @@ public struct RoomView: View {
         }
     }
 
-    /// The line under the room's name in the header.
+    /// The line under the room's name in the header — one fact, the most urgent one.
     ///
-    /// In a room, how many people are in it. In a chat with one other person, their Matrix
-    /// ID — *not* "last seen five minutes ago", which this app cannot honestly say: the
-    /// Rust SDK exposes no presence over FFI at all, and the only timestamp we could reach
-    /// for is the last message in the conversation, which is a different fact wearing
-    /// presence's clothes. Someone who has been reading all morning without typing is not
-    /// "last seen at 09:14".
+    /// First, whether this screen is current at all: "Waiting for network…" or "Updating…", the
+    /// same words and the same rule as the chat list's title (`RoomListStatus`). Somebody reading a
+    /// conversation should not have to go back to the list to find out why nothing new arrives.
     ///
-    /// Nil until the room has synced enough to say. A header that reads "0 participants"
-    /// for a moment is worse than one that is briefly just a name.
-    /// What the line under the room's name says.
+    /// Then somebody typing, because it is true for four seconds and about to become a message. In
+    /// a one-to-one chat their name is already the title, so the line just says that writing is
+    /// happening; in a room it names them.
     ///
-    /// Somebody typing displaces it, and displaces it rather than joining it, because the line has
-    /// room for one fact and this is the more urgent one — a member count is true all day, and
-    /// "Аня печатает…" is true for four seconds and is about to become a message.
-    ///
-    /// In a one-to-one chat their name is already the *title*, so naming them again here would say
-    /// it twice; the line just says that writing is happening. In a room full of people it names
-    /// them, because that is the whole of what you want to know.
+    /// Then, with one other person, where they were last seen — from the homeserver's presence and
+    /// nothing else (`PresenceLabel`) — or, when the server will not say, their Matrix ID. In a
+    /// room, how many people are in it. Nil until the room has synced enough to say: a header that
+    /// reads "0 participants" for a moment is worse than one that is briefly just a name.
     private var headerSubtitle: String? {
+        if let status = RoomListStatus(isOffline: isOffline, isUpdating: isUpdating) {
+            return String(app: status.title)
+        }
         if let typing = typingSubtitle {
             return typing
         }
         if timeline.isOneToOne {
+            if let presence = timeline.counterpartPresence,
+               let line = PresenceLabel.label(for: presence) {
+                return line
+            }
             return timeline.directCounterpartID
         }
         guard timeline.memberCount > 0 else { return nil }
@@ -1350,10 +1668,26 @@ public struct RoomView: View {
         return String(app: Strings.Room.typingBy(names.formatted(.list(type: .and))))
     }
 
+    /// The composer, inside a view of its own that is the only thing reading the voice recorder.
+    ///
+    /// The recorder's clock and waveform change twenty times a second, and they used to be read
+    /// *here*, in the room's body — so for as long as somebody was speaking, the entire room, every
+    /// row of the conversation with it, was rebuilt twenty times a second. That was the stutter at
+    /// the start of every recording and the stiffness all the way through it. Read inside
+    /// `VoiceScope`, they rebuild the composer and nothing else.
     private var composer: some View {
+        VoiceScope(voice: voice) { recording in
+            composer(voice: recording)
+        }
+    }
+
+    private func composer(voice recording: VoiceRecording?) -> some View {
         MessageComposer(draft: $draft,
                         context: composerContext,
                         onCancelContext: cancelContext,
+                        onTextLeading: { leading in
+                            if composerTextLeading != leading { composerTextLeading = leading }
+                        },
                         onSend: send,
                         onStartVideoNote: startVideoNote,
                         onFinishVideoNote: finishVideoNote,
@@ -1365,11 +1699,21 @@ public struct RoomView: View {
                         onStartVoice: { Task { await startVoice() } },
                         onFinishVoice: { Task { await finishVoice() } },
                         onCancelVoice: cancelVoice,
+                        // The microphone only. The camera is not woken ahead of a hold: its light
+                        // comes on, and a camera that switches on under a press that may yet be a
+                        // tap is a camera somebody sees turning on for no reason.
+                        onPrewarm: { mode in
+                            if mode == .voice { voice.prewarm() }
+                        },
+                        onDiscardPrewarm: { mode in
+                            if mode == .voice { voice.discardPrewarm() }
+                        },
                         onLockGesture: { lock = $0 },
-                        voice: voiceRecording,
+                        voice: recording,
                         onChoosePhoto: { isChoosingPhoto = true },
                         onChooseFile: { isChoosingFile = true },
                         onChooseLocation: { isChoosingLocation = true },
+                        onChooseSticker: stickers == nil ? nil : { isChoosingSticker = true },
                         attachments: attachments,
                         onRemoveAttachment: { image in attachments.removeAll { $0.id == image.id } },
                         onPasteImage: { Task { await pasteImages() } })
@@ -1472,6 +1816,17 @@ public struct RoomView: View {
         ReadOnlyBanner()
     }
 
+    /// The account's block list — see `BlockedBanner`.
+    @Environment(\.blockStore) private var blockStore
+
+    /// The person this personal chat is with, when the account has blocked them. Nil in a group,
+    /// where one blocked member does not stop anybody writing to the rest.
+    private var blockedID: String? {
+        guard timeline.isOneToOne, let id = timeline.directCounterpartID,
+              blockStore?.isBlocked(id) == true else { return nil }
+        return id
+    }
+
     /// The camera, over the conversation rather than instead of it.
     ///
     /// An overlay on the *screen* and not on the composer, which is the whole reason it is up
@@ -1543,7 +1898,7 @@ public struct RoomView: View {
     /// belongs on the screen for all of them — the hold has taken, the phone has said so with a tap
     /// on the hand, and the one thing that must not happen next is nothing. The clock reads 0:00 and
     /// the waveform is empty, because that is exactly what has been recorded so far.
-    private var voiceRecording: VoiceRecording? {
+    static func recording(of voice: VoiceRecorder) -> VoiceRecording? {
         guard voice.state == .starting || voice.state == .recording || voice.state == .stopped else {
             return nil
         }
@@ -1583,10 +1938,11 @@ public struct RoomView: View {
         // Safe to delete the moment the send returns, and it is worth knowing *why*, because it
         // stopped being safe for the obvious reason. `send(voice:)` no longer waits for the upload —
         // an attachment goes into the send queue and leaves when the network does — so this file is
-        // no longer being held open by anybody we are waiting on. What makes it safe is the queue
-        // itself: the SDK copies the content into its own encrypted store the instant the attachment
-        // is queued ("the file's content is immediately cached in the EventCacheStore"), before any
-        // upload is attempted. The recording on disk has done its job by then.
+        // no longer being held open by anybody we are waiting on. What makes it safe is that the SDK
+        // is handed the recording's *bytes*, read before `send(voice:)` returns — see
+        // `TimelineStore.owned`. It used to be handed the path, on the belief that the queue copies
+        // the file the instant it is queued; it reads the path later, from a queue task, and a file
+        // deleted here was a voice message that was never sent. The recording has done its job.
         //
         // And it must go. It is a minute of somebody's voice sitting unencrypted in a temporary
         // directory; the copy the queue keeps is inside the encrypted store, and this one is not.
@@ -1619,6 +1975,8 @@ public struct RoomView: View {
         switch row {
         case let .dayDivider(divider):
             DayDividerView(date: divider.date)
+        case .unreadDivider:
+            UnreadDividerView()
         case let .event(event):
             RoomEventRow(event: event, followsEvent: followsEvent, opensDay: opensDay)
         case let .message(message):
@@ -1664,10 +2022,17 @@ public struct RoomView: View {
             let placed = PlacedRow(row: row,
                                    followsEvent: previousWasEvent,
                                    opensDay: previousWasDivider,
-                                   arrives: hasSettled && index >= firstArrival,
+                                   // And only where the reader can see it happen. An arrival opens
+                                   // a place at the foot of the conversation and pushes the column up
+                                   // to make it (`MessageArrival`), which is the arrival when the
+                                   // reader is at the end — and a drift under somebody reading last
+                                   // week's messages. One of ours always counts: sending takes the
+                                   // reader to the end (`followEnd`).
+                                   arrives: hasSettled && index >= firstArrival
+                                       && (isAtNewest || row.message?.isOwn == true),
                                    id: timeline.viewIdentity(of: row))
             if case .event = row { previousWasEvent = true } else { previousWasEvent = false }
-            if case .dayDivider = row { previousWasDivider = true } else { previousWasDivider = false }
+            previousWasDivider = row.isDivider
             return placed
         }
     }
@@ -1712,6 +2077,11 @@ public struct RoomView: View {
     private func handlers(for message: Message, in scroll: ScrollViewProxy) -> MessageHandlers {
         MessageHandlers(
             onRetry: { Task { await timeline.retrySending(messageID: message.id) } },
+            onSendAnyway: {
+                Task {
+                    do { try await timeline.sendAnyway(messageID: message.id) } catch { problem = .sendAnywayFailed }
+                }
+            },
             onToggleReaction: { emoji in
                 Task { await timeline.toggleReaction(messageID: message.id, key: emoji) }
             },
@@ -1732,41 +2102,35 @@ public struct RoomView: View {
                 Keyboard.dismiss()
                 jumpTarget = eventID
             },
-            onReport: { reason in Task { await timeline.report(messageID: message.id, reason: reason) } }
+            onReport: { reason in Task { await timeline.report(messageID: message.id, reason: reason) } },
+            loadReactors: timeline.isOneToOne ? nil : { await timeline.reactors(of: message.id) }
         )
     }
 
     /// The pill that says something was said while you were reading further up, and takes you to
     /// it. Glass, and on the navigation layer where glass belongs: it floats over the conversation
     /// and is not part of it.
-    private func jumpToNewest() -> some View {
-        Button {
-            goToNewest()
-            // Not cleared here — arriving is what clears it, and arriving is what the scroll
-            // geometry reports. Clearing it on the press would take the pill away from somebody
-            // whose scroll had not started yet.
-        } label: {
-            HStack(spacing: Theme.Spacing.tight) {
-                Image(systemName: "arrow.down")
-                    .font(.caption.weight(.semibold))
-                Text(Strings.Room.jumpToNewest)
-                    .font(.caption.weight(.medium))
+    /// The floating date comes in when the reader moves the list and goes once it has been still for
+    /// a moment — Telegram's rule. Only the reader's own scrolling brings it: a scroll this view asked
+    /// for (`.animating`) is the room putting itself somewhere, not somebody looking for a day.
+    private func floatingDateFollows(_ phase: ScrollPhase) {
+        switch phase {
+        case .interacting, .tracking, .decelerating:
+            floatingDateHide?.cancel()
+            floatingDateHide = nil
+            guard !showsFloatingDate else { return }
+            withAnimation(Theme.Timing.floatingDateIn) { showsFloatingDate = true }
+        case .idle, .animating:
+            guard showsFloatingDate, floatingDateHide == nil else { return }
+            floatingDateHide = Task {
+                try? await Task.sleep(for: Theme.Timing.floatingDateLingers)
+                guard !Task.isCancelled else { return }
+                floatingDateHide = nil
+                withAnimation(Theme.Timing.floatingDateOut) { showsFloatingDate = false }
             }
-            .padding(.horizontal, Theme.Spacing.normal)
-            .padding(.vertical, Theme.Spacing.close)
-            // Plain glass, not the accent.
-            //
-            // The tint is reserved for *the* primary action — the send button, "Continue" on
-            // sign-in — and this is not one. It is a notice that something was said while you
-            // were reading, and it is offering to take you there; painting it in the same colour
-            // as the button that sends a message put two loudest-things-on-the-screen on the
-            // screen at once, a few points apart, both round, both accented. The eye had to be
-            // told which was which. Glass says "floating control" without claiming to be the
-            // point of the room, and the point of the room is the conversation behind it.
-            .navigationGlass(in: .capsule)
-            .contentShape(.capsule)
+        @unknown default:
+            break
         }
-        .buttonStyle(.plain)
     }
 
     /// The way to the rest of a conversation the reader cannot scroll to.
@@ -1817,19 +2181,35 @@ public struct RoomView: View {
         }
     }
 
-    /// The end of the conversation, asked of the screen rather than worked out from it.
-    ///
-    /// Everything that turns on "is the reader at the end" — following an arriving message,
-    /// offering the way down — used to be answered by a sum over content size, offset, container
-    /// and insets, and that sum has one answer per convention about what those four things mean.
-    /// This has one answer: the floor under the last message is either in front of the reader or
-    /// it is not. See `isAtNewest`.
+    /// Grows its own room and rises into it — the arrival a message has (`ClaimedHeight`), rather
+    /// than a transition: inserted into a list that is upside down, a transition came in from
+    /// somewhere in the middle. Always there and sized by `showsTyping`, animated by `setTyping`.
+    private var typingBubble: some View {
+        ClaimedHeight(fraction: showsTyping ? 1 : 0) {
+            Group {
+                switch messageLayout {
+                case .bubbles:
+                    TypingBubble()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, Theme.Spacing.withinRun)
+                case .compact:
+                    CompactTypingRow(names: typingNames)
+                }
+            }
+            .opacity(showsTyping ? 1 : 0)
+        }
+        .accessibilityHidden(!showsTyping)
+    }
+
+    /// Who the compact row names: whoever is typing now, or, while it fades out, whoever was.
+    private var typingNames: [String] {
+        timeline.typing.isEmpty ? lastTypingNames : timeline.typing
+    }
+
+    /// A hairline under the last message — the floor the conversation rests against.
     private var endMarker: some View {
         Color.clear
             .frame(height: Theme.Border.hairline)
-            .onScrollVisibilityChange(threshold: 0.01) { visible in
-                endIsOnScreen = visible
-            }
     }
 
     /// The way back down when nothing has arrived — just a room you have read a long way up.
@@ -1847,9 +2227,23 @@ public struct RoomView: View {
                 .frame(width: Theme.Size.composerControl, height: Theme.Size.composerControl)
                 .navigationGlass(in: .circle)
                 .contentShape(.circle)
+                // How many arrived while the reader was up here — see `unseenBelow`.
+                .overlay(alignment: .top) {
+                    if unseenBelow > 0 {
+                        Text(unseenBelow, format: .number)
+                            .font(.caption2.weight(.semibold).monospacedDigit())
+                            .foregroundStyle(accent.foreground(in: colorScheme))
+                            .padding(.horizontal, Theme.Spacing.tight)
+                            .frame(minWidth: Theme.Size.unreadBadge, minHeight: Theme.Size.unreadBadge)
+                            .background(accent.color, in: Capsule())
+                            .offset(y: -Theme.Size.unreadBadge / 2)
+                            .transition(.scale.combined(with: .opacity))
+                    }
+                }
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text(Strings.Room.scrollToBottom))
+        .accessibilityValue(unseenBelow > 0 ? Text(Strings.RoomList.unread(unseenBelow)) : Text(""))
     }
 
     private func goToNewest() {
@@ -1857,7 +2251,7 @@ public struct RoomView: View {
         // here it decided whether the button could put itself away. Sent to the last message,
         // the reader landed a composer's height short of the end, the end marker stayed off
         // screen, and the button that had just taken them there was still on top of it.
-        withAnimation(.smooth) { scrollPosition.scrollTo(edge: .bottom) }
+        withAnimation(.smooth) { scrollPosition.scrollTo(edge: .top) }
     }
 
     /// How far back a jump is willing to dig for a message that is not loaded. Ten pages of
@@ -1889,6 +2283,11 @@ public struct RoomView: View {
     /// nothing. An *edit* is not a reply, which is why this is not simply "the context's
     /// message": starting an edit and then sending a photo must not quietly attach the photo
     /// as an answer to the message being edited.
+    /// The sticker library's refusals, as the shared alert takes them.
+    private var stickerFailure: Binding<StickerFailure?> {
+        Binding(get: { stickers?.failure }, set: { stickers?.failure = $0 })
+    }
+
     private var replyID: String? {
         guard case let .replying(message)? = composerContext else { return nil }
         return message.id
@@ -2009,13 +2408,56 @@ public struct RoomView: View {
 // button is ambiguous to the eye and a mess for VoiceOver — and the sentence it used to
 // show has a row to itself on `RoomInfoView`, one press away.
 
+/// "Unread messages" — the bar across the conversation where the reader left off. See
+/// `TimelineRow.unreadDivider`.
+///
+/// A band the width of the screen rather than a word in the middle of it, the way Telegram draws
+/// it, because it is not a date and must not be read as one: a date is a quiet label that is always
+/// there, and this is the one line in the room that says *start here*. Faint, and not the accent —
+/// the accent is what the reader can press, and this is somewhere to look.
+struct UnreadDividerView: View {
+    var body: some View {
+        Text(Strings.Room.unreadMessages)
+            .font(.caption.weight(.medium))
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, Theme.Spacing.tight)
+            .background(.secondary.opacity(Theme.Backdrop.wash))
+            // Out to the edges of the screen, past the margin the conversation keeps — a bar that
+            // stopped where the bubbles stop would be one more shape in a column of them.
+            .padding(.horizontal, -Theme.Spacing.normal)
+            .padding(.top, Theme.Spacing.roomy)
+            .padding(.bottom, Theme.Spacing.close)
+            .accessibilityAddTraits(.isHeader)
+    }
+}
+
 struct DayDividerView: View {
     let date: Date
 
+    /// Told when this date passes above the top of the conversation, or comes back below it — what
+    /// the floating date over a scrolling room is worked out from. See `FloatingDate`.
+    @Environment(\.dayPassesTop) private var dayPassesTop
+    @Environment(\.floatingDateLine) private var floatingDateLine
+
     var body: some View {
+        label
+            // A Bool, not the position: it changes twice per date per pass of the reader's thumb,
+            // where a position would change every frame and redraw the room with it.
+            .onGeometryChange(for: Bool.self) { proxy in
+                // On the screen, not in the scroll view: the conversation is laid out upside down,
+                // and only the window's coordinates say which way is up.
+                proxy.frame(in: .global).minY < floatingDateLine
+            } action: { isAbove in
+                dayPassesTop?(date, isAbove)
+            }
+    }
+
+    private var label: some View {
         Text(Self.label(for: date))
             .font(.caption.weight(.medium))
-            .foregroundStyle(.secondary)
+            // Bare words, like the time beside a bubble — see `onWallpaperInk`.
+            .onWallpaperInk()
             // Enough air to read as a break in the conversation, and no more. At `roomy` on both
             // sides the date was holding a band of empty screen the height of a message either
             // side of it, so a day with two lines in it looked like a day with a hole in it.
@@ -2047,4 +2489,28 @@ struct DayDividerView: View {
         return date.formatted(sameYear ? .dateTime.day().month(.wide)
                                        : .dateTime.day().month(.wide).year())
     }
+}
+
+/// Reads the voice recorder so that the room does not have to — see `RoomView.composer`.
+private struct VoiceScope<Content: View>: View {
+    let voice: VoiceRecorder
+    @ViewBuilder let content: (VoiceRecording?) -> Content
+
+    var body: some View {
+        content(RoomView.recording(of: voice))
+    }
+}
+
+extension View {
+    /// Turned upside down — the conversation, and each row in it turned back. See `RoomView.body`.
+    func flippedForTimeline() -> some View {
+        scaleEffect(x: 1, y: -1, anchor: .center)
+    }
+}
+
+/// What the presence request in a room depends on — who the other person is, and whether you are
+/// hiding from them (and so not looking at them either).
+private struct PresenceWatch: Equatable {
+    let counterpart: String?
+    let hidesOwn: Bool
 }

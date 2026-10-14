@@ -17,6 +17,10 @@ public enum TimelineActionFailure: String, CaseIterable, ActionFailure {
     /// the room and did not get there.
     case send
 
+    /// A sticker that did not go. Not `send`, whose sentence promises another try: a sticker
+    /// leaves outside the send queue (see `TimelineStore.send(sticker:)`), and nothing will.
+    case sticker
+
     /// A message that would not be changed. Distinct from `send`: the original is still standing in
     /// the room, saying what it always said, which is the fact the user needs.
     case edit
@@ -40,6 +44,7 @@ public enum TimelineActionFailure: String, CaseIterable, ActionFailure {
     public var explanation: LocalizedStringResource {
         switch self {
         case .send: CoreStrings.Timeline.sendFailed
+        case .sticker: CoreStrings.Timeline.stickerFailed
         case .edit: CoreStrings.Timeline.editFailed
         case .reaction: CoreStrings.Timeline.reactionFailed
         case .delete: CoreStrings.Timeline.deleteFailed

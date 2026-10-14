@@ -96,6 +96,10 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
     public let unreadMessageCount: Int
     public let lastMessage: String?
     public let lastActivity: Date?
+    /// The attachment the last message is, if it is one — see `PreviewKind`.
+    public let lastMessageKind: PreviewKind?
+    /// Your own last message's progress; nil when the last message is somebody else's.
+    public let lastMessageMark: LastMessageMark?
 
     /// A space, not a chat. The list shows it as an ordinary row — a square-cornered avatar and
     /// a tap that opens the space's rooms rather than a conversation — so what tells the two
@@ -152,11 +156,32 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
     /// can be missing when the invite event itself is not in the store.
     public let invitedBy: String?
 
-    public var hasUnread: Bool { unreadCount > 0 || unreadMessageCount > 0 || isMarkedUnread }
+    /// Unread reactions, told apart from unread messages.
+    ///
+    /// The SDK has no count of them; it has to be worked out. `ReactionPushRule` makes every
+    /// reaction *notify*, so each one lands in `unreadCount` — and a reaction is not a message, so
+    /// none lands in `unreadMessageCount`. What notified beyond the messages there are is, give or
+    /// take, reactions. It errs towards too few, never too many: a room that notifies only on
+    /// mentions has more messages than notifications, and its reactions read as nought, which is
+    /// a missing heart rather than a heart for nothing.
+    ///
+    /// It used to be no distinction at all: a reaction put a number on the chat's badge, the chat
+    /// opened on nothing new, and the number meant nothing anybody could find.
+    public var unreadReactionCount: Int { max(0, unreadCount - unreadMessageCount) }
+
+    /// Unread messages that would have notified — `unreadCount` without the reactions in it.
+    /// What the number on the badge says.
+    public var unreadNotifyingMessages: Int { unreadCount - unreadReactionCount }
+
+    public var hasUnreadReactions: Bool { unreadReactionCount > 0 }
+
+    /// Something to read — messages, or a flag set by hand. Reactions alone are not this: they
+    /// have a mark of their own (`hasUnreadReactions`).
+    public var hasUnread: Bool { unreadNotifyingMessages > 0 || unreadMessageCount > 0 || isMarkedUnread }
     /// There is a number to show. A muted room, or a room flagged unread by hand, has unread
     /// *something* and nothing to count — it gets a dot instead, and asking this is how the row
     /// tells the two apart.
-    public var hasUnreadCount: Bool { unreadCount > 0 }
+    public var hasUnreadCount: Bool { unreadNotifyingMessages > 0 }
     public var isMentioned: Bool { mentionCount > 0 }
 
     /// How loudly the unread badge should say so — three answers, and the view turns them into
@@ -194,6 +219,8 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
                 mentionCount: Int = 0,
                 lastMessage: String? = nil,
                 lastActivity: Date? = nil,
+                lastMessageKind: PreviewKind? = nil,
+                lastMessageMark: LastMessageMark? = nil,
                 isFavourite: Bool = false,
                 isLowPriority: Bool = false,
                 isMarkedUnread: Bool = false,
@@ -214,6 +241,8 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
         self.mentionCount = mentionCount
         self.lastMessage = lastMessage
         self.lastActivity = lastActivity
+        self.lastMessageKind = lastMessageKind
+        self.lastMessageMark = lastMessageMark
         self.isFavourite = isFavourite
         self.isLowPriority = isLowPriority
         self.isMarkedUnread = isMarkedUnread
@@ -226,6 +255,8 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
           ownUserID: String,
           lastMessage: String?,
           lastActivity: Date?,
+          lastMessageKind: PreviewKind? = nil,
+          lastMessageMark: LastMessageMark? = nil,
           isMuted: Bool = false) {
         // A room that is neither joined nor invited is not a row. Failing here rather than
         // defaulting to `.joined` is the point: a left or banned room rendered as an ordinary chat
@@ -258,6 +289,8 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
         self.unreadMessageCount = Int(info.numUnreadMessages)
         self.lastMessage = lastMessage
         self.lastActivity = lastActivity
+        self.lastMessageKind = lastMessageKind
+        self.lastMessageMark = lastMessageMark
         self.isFavourite = info.isFavourite
         self.isLowPriority = info.isLowPriority
         self.isMarkedUnread = info.isMarkedUnread

@@ -7,7 +7,12 @@
 #   ./device.sh --device 'iPhone (Боря)'
 #   ./device.sh --here                # собрать текущее рабочее дерево, а не dev
 #   ./device.sh --no-launch           # только поставить
+#   ./device.sh --verbose             # весь вывод xcodegen, xcodebuild и devicectl
 #   ./device.sh -- --probe-signin matrix.org   # всё после -- уходит приложению
+#
+# Без --verbose вывод инструментов пишется в .build/logs/<шаг>.log, а в консоли остаются
+# шаги, сколько каждый занял и — если какой-то упал — его строки с ошибками и путь к логу.
+# Логи самого приложения после запуска печатаются всегда: ради них скрипт и запускают.
 #
 # Сборка идёт не в рабочем дереве, а в отдельном git worktree с чистой веткой dev
 # (.build/dev-src): «собрать из dev» не должно зависеть от того, что сейчас лежит
@@ -26,11 +31,13 @@ BUNDLE_ID="moscow.swag.iskra"
 BRANCH="dev"
 DERIVED="$REPO/.build/xcode-device"
 SRC="$REPO/.build/dev-src"
+LOGS="$REPO/.build/logs"
 
 device="${ISKRA_DEVICE:-}"
 fetch=0
 here=0
 launch=1
+verbose=0
 app_args=()
 
 while [ $# -gt 0 ]; do
@@ -39,14 +46,36 @@ while [ $# -gt 0 ]; do
     --fetch) fetch=1; shift ;;
     --here) here=1; shift ;;
     --no-launch) launch=0; shift ;;
+    --verbose) verbose=1; shift ;;
     --) shift; app_args=("$@"); break ;;
-    -h|--help) sed -n '2,18p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,24p' "$0"; exit 0 ;;
     *) echo "Неизвестный аргумент: $1 (аргументы приложения — после --)" >&2; exit 2 ;;
   esac
 done
 
 say() { printf '\n\033[1;34m==> %s\033[0m\n' "$1"; }
 die() { printf '\n\033[1;31m!! %s\033[0m\n' "$1" >&2; exit 1; }
+
+# quietly <имя лога> <команда...>: вывод команды уходит в .build/logs/<имя>.log, на экран —
+# только сколько она шла. Если упала — строки с ошибками из лога, а если инструмент не
+# написал ни одной в привычном виде, то хвост лога: причина должна быть на экране, а не
+# в двух тысячах строк вызовов компилятора над ней.
+quietly() {
+  local name="$1"; shift
+  if [ "$verbose" -eq 1 ]; then "$@"; return; fi
+  mkdir -p "$LOGS"
+  local log="$LOGS/$name.log" start=$SECONDS status
+  if "$@" >"$log" 2>&1; then
+    printf '    готово за %d с\n' $((SECONDS - start))
+  else
+    status=$?
+    printf '\033[1;31m    упало через %d с:\033[0m\n' $((SECONDS - start)) >&2
+    { grep -E '(^|[: ])(fatal )?error:|\*\* [A-Z ]+ FAILED \*\*' "$log" || tail -n 30 "$log"; } \
+      | awk '!seen[$0]++' | head -n 50 >&2
+    printf '    весь лог: %s\n' "$log" >&2
+    return "$status"
+  fi
+}
 
 # ---------------------------------------------------------------- устройство
 
@@ -138,13 +167,13 @@ fi
 # ---------------------------------------------------------------- сборка
 
 say "Генерирую Iskra.xcodeproj"
-(cd "$src/Apps" && xcodegen)
+(cd "$src/Apps" && quietly xcodegen xcodegen)
 
 say "xcodebuild для устройства"
 # -allowProvisioningUpdates: подпись автоматическая, и профиль на новый App ID
 # (например, у share-расширения) Xcode обязан выписать сам — иначе сборка встанет
 # с «no profiles found» там, где в GUI всё чинится одной галочкой.
-xcodebuild -project "$src/Apps/Iskra.xcodeproj" -scheme 'Iskra (iOS)' \
+quietly build-device xcodebuild -project "$src/Apps/Iskra.xcodeproj" -scheme 'Iskra (iOS)' \
   -destination "id=$device_id" -derivedDataPath "$DERIVED" \
   -allowProvisioningUpdates build
 
@@ -154,7 +183,7 @@ app="$DERIVED/Build/Products/Debug-iphoneos/Iskra.app"
 # ---------------------------------------------------------------- установка
 
 say "Ставлю на $device_name"
-xcrun devicectl device install app --device "$device_id" "$app"
+quietly install xcrun devicectl device install app --device "$device_id" "$app"
 
 if [ "$launch" -eq 1 ]; then
   say "Запускаю"

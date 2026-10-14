@@ -40,7 +40,29 @@ public enum RichText {
         return attributed
     }
 
+    /// The same, from the message's HTML when it has some — `MatrixHTML` draws the formatting, and
+    /// then mentions and bare addresses are found in the words exactly as they are in a plain body.
+    /// Falls back to the plain body when the HTML has nothing in it worth drawing.
+    public static func attributed(body: String,
+                                  formattedBody: String?,
+                                  mentionedUserIDs: Set<String> = [],
+                                  displayNames: [String: String] = [:],
+                                  ownUserID: String? = nil) -> AttributedString {
+        guard let formattedBody, var attributed = MatrixHTML.attributed(formattedBody, ownUserID: ownUserID) else {
+            return Self.attributed(body: body, mentionedUserIDs: mentionedUserIDs,
+                                   displayNames: displayNames, ownUserID: ownUserID)
+        }
+        let text = String(attributed.characters)
+        applyMentions(to: &attributed, body: text, mentionedUserIDs: mentionedUserIDs,
+                      displayNames: displayNames, ownUserID: ownUserID)
+        applyLinks(to: &attributed, body: text)
+        return attributed
+    }
+
     // MARK: - Links
+
+    /// How many links, and how many sightings of one mention, a single message gets marked.
+    static let linkLimit = 256
 
     /// The one detector, built once. `NSDataDetector` is not cheap to spin up, and it is not
     /// mutable state — the same instance is safe to reuse across calls and threads.
@@ -70,7 +92,10 @@ public enum RichText {
     static func applyLinks(to attributed: inout AttributedString, body: String) {
         guard let linkDetector, !body.isEmpty else { return }
         let full = NSRange(body.startIndex..., in: body)
-        for match in linkDetector.matches(in: body, options: [], range: full) {
+        // At most `linkLimit` of them: each costs a walk of the text to find its place, and a
+        // message is somebody else's to fill with ten thousand addresses. Nobody reads past a few
+        // hundred links in one bubble, and the rest stay words.
+        for match in linkDetector.matches(in: body, options: [], range: full).prefix(linkLimit) {
             guard let url = match.url,
                   let stringRange = Range(match.range, in: body),
                   let range = attributedRange(for: stringRange, in: body, attributed: attributed)
@@ -78,6 +103,9 @@ public enum RichText {
             // Skip anything sitting on top of a mention — the "matrix.org" inside "@alice:matrix.org"
             // is part of a name, not a link the user meant to post.
             if attributed[range].runs.contains(where: { $0.iskra.mentionUserID != nil }) { continue }
+            // Or already a link — the sender's own `<a>`, whose words may well be an address that
+            // is not where it goes. Theirs wins; the confirmation shows where it really leads.
+            if attributed[range].runs.contains(where: { $0.link != nil }) { continue }
             attributed[range].link = url
         }
     }
@@ -114,7 +142,10 @@ public enum RichText {
                              userID: String,
                              isSelf: Bool) {
         var searchStart = body.startIndex
-        while let found = body.range(of: token, range: searchStart..<body.endIndex) {
+        var marked = 0
+        // Capped for the same reason as links — see `linkLimit`.
+        while marked < linkLimit, let found = body.range(of: token, range: searchStart..<body.endIndex) {
+            marked += 1
             if let range = attributedRange(for: found, in: body, attributed: attributed) {
                 attributed[range].iskra.mentionUserID = userID
                 attributed[range].iskra.mentionIsSelf = isSelf
@@ -163,6 +194,10 @@ public extension AttributeScopes {
     struct IskraScope: AttributeScope {
         public let mentionUserID: MentionUserIDAttribute
         public let mentionIsSelf: MentionIsSelfAttribute
+        public let underline: UnderlineAttribute
+        public let spoiler: SpoilerAttribute
+        public let quote: QuoteAttribute
+        public let heading: HeadingAttribute
     }
 
     var iskra: IskraScope.Type { IskraScope.self }

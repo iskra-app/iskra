@@ -10,6 +10,9 @@ use crate::ProtoError;
 
 pub const PROTOCOL_VERSION: u8 = 1;
 
+/// Longest message id either side accepts. Mirrored by `TunnelEnvelope.maxIDLength` in Swift.
+pub const MAX_ID_LEN: usize = 64;
+
 /// One chunk of one HTTP message.
 ///
 /// `method`, `path` and `headers` (request) and `status` (response) ride on `seq == 0` only.
@@ -64,6 +67,11 @@ impl Envelope {
         }
         if self.id.is_empty() {
             return Err(ProtoError::Malformed("id is empty"));
+        }
+        // The id is kept as a key while a message is half-arrived and after it is refused, so its
+        // length is memory a stranger chooses. A client sends a UUID; 64 is room to spare.
+        if self.id.len() > MAX_ID_LEN {
+            return Err(ProtoError::Malformed("id is too long"));
         }
         let is_head = self.seq == 0;
         let carries_head = self.method.is_some()

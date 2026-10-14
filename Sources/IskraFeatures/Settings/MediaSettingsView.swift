@@ -7,23 +7,39 @@ import SwiftUI
 ///
 /// Written straight to `@AppStorage`, under the keys and defaults `MediaSettings` spells out, and
 /// read by `TimelineStore` at the moment of sending — so there is no "done", and the next photo
-/// already goes the new way. Video notes are outside all of it (`MediaSettings.videoNote`), and
-/// both footers say so, because a switch that visibly does not apply to one kind of message is a
-/// switch somebody will otherwise think is broken.
+/// already goes the new way. Video notes are outside all of it (`MediaSettings.videoNote`).
+///
+/// One footer, under auto-download. The switches below it are named for what they do — "Send
+/// without metadata" — and a sentence under each repeated the name at greater length.
 struct MediaSettingsView: View {
     @AppStorage(MediaSettings.stripsMetadataKey) private var stripsMetadata = MediaSettings.stripsMetadataByDefault
     @AppStorage(MediaSettings.compressesKey) private var compresses = MediaSettings.compressesByDefault
     @AppStorage(MediaSettings.compressionKey) private var compression = MediaSettings.compressionByDefault
+    @AppStorage(MediaSettings.autoDownloadKey) private var autoDownload = MediaSettings.autoDownloadByDefault
 
     var body: some View {
         Form {
+            // First, because it is the one about what *arrives* — and the one people come to this
+            // screen with on a roaming tariff.
+            Section {
+                Picker(selection: $autoDownload.animation(.smooth(duration: Theme.Timing.reaction))) {
+                    ForEach(MediaAutoDownload.allCases) { choice in
+                        Text(Strings.Media.autoDownloadLabel(choice)).tag(choice)
+                    }
+                } label: {
+                    Label(Strings.Media.autoDownload, systemImage: "arrow.down.circle")
+                }
+            } footer: {
+                // The one footer kept: "Wi-Fi only" does not say what is shown instead, and the
+                // answer — a blurred outline and a button — is worth knowing before choosing it.
+                Text(Strings.Media.autoDownloadHelp(autoDownload))
+            }
+
             Section {
                 Toggle(isOn: $stripsMetadata.animation(.smooth(duration: Theme.Timing.reaction))) {
                     Label(Strings.Media.stripMetadata, systemImage: "location.slash")
                 }
                 .accentControl()
-            } footer: {
-                Text(stripsMetadata ? Strings.Media.stripMetadataHelp : Strings.Media.stripMetadataOffHelp)
             }
 
             Section {
@@ -43,8 +59,6 @@ struct MediaSettingsView: View {
                         Label(Strings.Media.compression, systemImage: "slider.horizontal.3")
                     }
                 }
-            } footer: {
-                Text(compresses ? Strings.Media.compressionHelp(compression) : Strings.Media.compressOffHelp)
             }
         }
         .formStyle(.grouped)

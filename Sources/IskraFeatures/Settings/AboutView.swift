@@ -13,6 +13,10 @@ import IskraDesign
 struct AboutView: View {
     @Environment(\.accent) private var accent
 
+    /// Whether the beta features are pushed — by three taps on the spark, which is the only way
+    /// to them. See `BetaView`.
+    @State private var isShowingBeta = false
+
     var body: some View {
         Form {
             Section {
@@ -54,6 +58,16 @@ struct AboutView: View {
                     }
                 }
 
+                Link(destination: URL(string: "https://github.com/iskra-app/iskra")!) {
+                    LabeledContent {
+                        Image(systemName: "arrow.up.right")
+                            .foregroundStyle(.secondary)
+                    } label: {
+                        Text(Strings.About.sourceCode)
+                        Text(verbatim: "github.com/iskra-app/iskra")
+                    }
+                }
+
                 // A closure destination is fine here: `LicensesView` holds nothing but constants,
                 // so building it eagerly costs nothing. And it must not read `dismiss` — this
                 // screen is itself pushed onto the settings stack. See CLAUDE.md.
@@ -67,6 +81,12 @@ struct AboutView: View {
         .formStyle(.grouped)
         .tint(accent.color)
         .navigationTitle(Text(Strings.About.title))
+        // Bound to a flag rather than a value, because nothing on this screen is a row that leads
+        // there: the way in is a gesture on the icon. `BetaView` reads no `dismiss` — this stack
+        // can be the sidebar's, see CLAUDE.md.
+        .navigationDestination(isPresented: $isShowingBeta) {
+            BetaView()
+        }
     }
 
     /// The icon, the name and the one sentence that says what the thing is.
@@ -76,6 +96,8 @@ struct AboutView: View {
     private var header: some View {
         VStack(spacing: Theme.Spacing.close) {
             AppIconView(size: Theme.Size.avatarProfile)
+                .contentShape(.rect)
+                .onTapGesture(count: 3) { isShowingBeta = true }
 
             Text(Strings.Settings.appName)
                 .font(.title2.weight(.semibold))
@@ -186,8 +208,6 @@ struct LicensesView: View {
                         }
                     }
                 }
-            } footer: {
-                Text(Strings.About.cryptography)
             }
         }
         .formStyle(.grouped)

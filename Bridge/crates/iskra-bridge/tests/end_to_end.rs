@@ -696,3 +696,109 @@ async fn a_path_that_climbs_out_never_reaches_the_homeserver() {
         seen.len()
     );
 }
+
+/// A redirect is judged like the request it answers. Left to reqwest, one `302` pointing off the
+/// list — at the operator's LAN, at a cloud metadata address — had the bridge fetch that and hand
+/// the body back. It is a 502, and the place it pointed at is never asked.
+#[tokio::test]
+async fn a_redirect_off_the_list_is_not_followed() {
+    let elsewhere = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/_matrix/client/versions"))
+        .respond_with(ResponseTemplate::new(200).set_body_string("should never be reached"))
+        .mount(&elsewhere)
+        .await;
+
+    let harness = Harness::start().await;
+    Mock::given(method("GET"))
+        .and(path("/_matrix/client/versions"))
+        .respond_with(ResponseTemplate::new(302).insert_header(
+            "location",
+            format!("{}/_matrix/client/versions", elsewhere.uri()),
+        ))
+        .mount(&harness.homeserver)
+        .await;
+
+    let client = harness.client().await;
+    let response = client
+        .request("GET", "/_matrix/client/versions", None, BTreeMap::new(), Vec::new(), TIMEOUT)
+        .await
+        .expect("an answer");
+
+    // Not the 302 either: handed back, the SDK would follow it itself, around the tunnel.
+    assert_eq!(response.status, 502);
+    assert_eq!(
+        elsewhere.received_requests().await.unwrap_or_default().len(),
+        0
+    );
+}
+
+/// A redirect that stays within what the bridge is for is followed, as it always was.
+#[tokio::test]
+async fn a_redirect_within_the_homeserver_is_followed() {
+    let harness = Harness::start().await;
+    Mock::given(method("GET"))
+        .and(path("/_matrix/media/old"))
+        .respond_with(ResponseTemplate::new(307).insert_header("location", "/_matrix/media/new"))
+        .mount(&harness.homeserver)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/_matrix/media/new"))
+        .respond_with(ResponseTemplate::new(200).set_body_string("moved here"))
+        .mount(&harness.homeserver)
+        .await;
+
+    let client = harness.client().await;
+    let response = client
+        .request("GET", "/_matrix/media/old", None, BTreeMap::new(), Vec::new(), TIMEOUT)
+        .await
+        .expect("an answer");
+
+    assert_eq!(response.status, 200);
+    assert_eq!(response.body, b"moved here");
+}
+
+/// Same host, but out of `/_matrix/`: a redirect cannot reach what a request could not.
+#[tokio::test]
+async fn a_redirect_out_of_matrix_is_not_followed() {
+    let harness = Harness::start().await;
+    Mock::given(method("GET"))
+        .and(path("/_matrix/client/versions"))
+        .respond_with(ResponseTemplate::new(302).insert_header("location", "/admin/secrets"))
+        .mount(&harness.homeserver)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/admin/secrets"))
+        .respond_with(ResponseTemplate::new(200).set_body_string("secret"))
+        .expect(0)
+        .mount(&harness.homeserver)
+        .await;
+
+    let client = harness.client().await;
+    let response = client
+        .request("GET", "/_matrix/client/versions", None, BTreeMap::new(), Vec::new(), TIMEOUT)
+        .await
+        .expect("an answer");
+
+    assert_eq!(response.status, 502);
+}
+
+/// Past the 8 MB the client's reassembler accepts, the bridge stops reading rather than holding
+/// it all and publishing it to every relay.
+#[tokio::test]
+async fn a_response_over_the_ceiling_is_a_502() {
+    let harness = Harness::start().await;
+    Mock::given(method("GET"))
+        .and(path("/_matrix/media/huge"))
+        .respond_with(ResponseTemplate::new(200).set_body_bytes(vec![0u8; 8 * 1024 * 1024 + 1]))
+        .mount(&harness.homeserver)
+        .await;
+
+    let client = harness.client().await;
+    let response = client
+        .request("GET", "/_matrix/media/huge", None, BTreeMap::new(), Vec::new(), TIMEOUT)
+        .await
+        .expect("an answer");
+
+    assert_eq!(response.status, 502);
+}

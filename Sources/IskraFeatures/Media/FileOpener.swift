@@ -84,7 +84,9 @@ final class FileOpener {
         let directory = Self.handOffDirectory
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
 
-        let destination = directory.appending(component: filename)
+        // The sender chose this name, and a name is not a path: `../../Library/…` was a file the
+        // other side of a chat could overwrite in our sandbox with one click on the bubble.
+        let destination = directory.appending(component: SafeFilename.make(filename, fallback: "file"))
         try? FileManager.default.removeItem(at: destination)
         try FileManager.default.copyItem(at: file.url, to: destination)
 

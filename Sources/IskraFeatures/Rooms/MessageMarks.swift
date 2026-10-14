@@ -22,12 +22,12 @@ struct MessageMarks: View {
             if message.isEdited {
                 Text(Strings.Message.edited)
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .onWallpaperInk()
             }
 
             Text(message.timestamp, format: .dateTime.hour().minute())
                 .font(.caption2.monospacedDigit())
-                .foregroundStyle(.secondary)
+                .onWallpaperInk()
 
             // A failure is not a delivery state among others, and it does not belong in
             // this quiet grey row: it gets the badge beside the message instead.

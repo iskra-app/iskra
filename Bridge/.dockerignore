@@ -1,3 +1,5 @@
 target/
 .git/
 *.md
+.env
+.bridge-key

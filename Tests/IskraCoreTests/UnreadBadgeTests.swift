@@ -83,6 +83,26 @@ struct UnreadBadgeTests {
         #expect(!room.hasUnreadCount, "nothing to count — the same shape a muted room has")
         #expect(room.unreadEmphasis == .ordinary, "nobody silenced this one")
     }
+
+    /// A reaction notifies (see `ReactionPushRule`) and is not a message, so it shows as what
+    /// notified beyond the messages — a heart, not a number on the badge.
+    @Test("reactions are counted apart from messages")
+    func reactionsApart() {
+        let onlyReactions = RoomSummary.preview(unreadCount: 2, unreadMessageCount: 0)
+        #expect(onlyReactions.unreadReactionCount == 2)
+        #expect(!onlyReactions.hasUnread, "nothing new to read")
+        #expect(!onlyReactions.hasUnreadCount)
+        #expect(onlyReactions.hasUnreadReactions)
+
+        let both = RoomSummary.preview(unreadCount: 5, unreadMessageCount: 3)
+        #expect(both.unreadReactionCount == 2)
+        #expect(both.unreadNotifyingMessages == 3)
+
+        // Mentions only: more messages than notifications, and no reactions invented from that.
+        let quiet = RoomSummary.preview(unreadCount: 1, mentionCount: 1, unreadMessageCount: 7)
+        #expect(quiet.unreadReactionCount == 0)
+        #expect(quiet.unreadNotifyingMessages == 1)
+    }
 }
 
 private extension RoomSummary {

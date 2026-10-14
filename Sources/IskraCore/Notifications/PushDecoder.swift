@@ -69,7 +69,7 @@ public actor PushDecoder {
             let client: Client
             do {
                 guard let restored = try await AuthenticationService(environment: environment)
-                    .restoreClient(sessionID: candidate) else {
+                    .restoreClient(sessionID: candidate, forPushIn: roomID) else {
                     if isLast { return .notSignedIn }
                     continue
                 }
@@ -84,9 +84,6 @@ public actor PushDecoder {
                 continue
             }
 
-            // The nicknames of the person this push is for, not of whoever the app last had open.
-            LocalNames.use(account: candidate)
-
             // `.multipleProcesses` is the reason the store lives in an App Group at all. It tells the
             // SDK that the app may be awake and holding the same SQLite file right now, so the two take
             // a cross-process lock instead of writing over each other. `.singleProcess` here would be a
@@ -98,7 +95,7 @@ public actor PushDecoder {
             // Not this account's event — only possible when the push did not say whose it was.
             if case .eventNotFound = status, !isLast { continue }
 
-            return try await present(status, roomID: roomID, eventID: eventID,
+            return try await present(status, Push(roomID: roomID, eventID: eventID, account: candidate),
                                      client: client, notifications: notifications)
         }
         return .notSignedIn
@@ -117,7 +114,7 @@ public actor PushDecoder {
     /// What to call the account a push is for, when there is more than one on the device and the
     /// reader needs telling which of them it arrived for. Nil with one account: then it goes without
     /// saying, and a line saying it anyway is a line of noise on every notification.
-    public nonisolated func accountLabel(for accountID: String?) -> String? {
+    nonisolated public func accountLabel(for accountID: String?) -> String? {
         guard let accountID,
               let accounts = try? SessionStore(environment: environment).accounts(),
               accounts.count > 1,
@@ -125,21 +122,31 @@ public actor PushDecoder {
         return account.displayName ?? account.userID
     }
 
+    /// Which push this is: the room, the event, and whose account it came for.
+    private struct Push {
+        let roomID: String
+        let eventID: String
+        let account: String
+    }
+
     /// The found event, made into what is shown.
     private func present(_ status: NotificationStatus,
-                         roomID: String,
-                         eventID: String,
+                         _ push: Push,
                          client: Client,
                          notifications: NotificationClient) async throws -> PushOutcome {
         // A reaction to somebody else's message is not this reader's news. Checked here rather
         // than in the mapper because answering it takes a second event and a second round trip,
         // and the mapper is a pure function of the one event it is given.
         if case let .event(item) = status,
-           await isSomebodyElsesBusiness(item, roomID: roomID, client: client, notifications: notifications) {
+           await isSomebodyElsesBusiness(item, roomID: push.roomID, client: client, notifications: notifications) {
             return .silence(.notWorthWaking)
         }
 
-        let outcome = PushMapper.outcome(for: status, roomID: roomID, eventID: eventID)
+        // The nicknames of the account this push is for — passed, not set: a process-wide "current
+        // account" was one push for account A and one for B, decrypting side by side, reading each
+        // other's names for their chats.
+        let outcome = PushMapper.outcome(for: status, roomID: push.roomID, eventID: push.eventID,
+                                         account: push.account)
 
         // If the app lock is on and the app is locked, the message decrypts but its words never reach
         // the screen: the extension reads the same lock facts the app wrote to the shared defaults
@@ -181,7 +188,11 @@ public actor PushDecoder {
         do {
             let data = try await withTimeout(Self.avatarBudget) {
                 let source = try MediaSource.fromUrl(url: url)
-                return try await client.getMediaContent(mediaSource: source)
+                // The server's own resizer, as `MediaLoader.avatar` uses on screen — an avatar is
+                // public by construction. The whole file was fetched before the size check could
+                // refuse it, and a sender with a forty-megabyte avatar put a 24 MB extension over
+                // its limit: killed, and every notification from them a bare "New message".
+                return try await client.getMediaThumbnail(mediaSource: source, width: 256, height: 256)
             }
 
             guard data.count <= Self.avatarLimit else {

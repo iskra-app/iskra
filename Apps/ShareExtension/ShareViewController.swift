@@ -3,6 +3,7 @@ import SwiftUI
 import ImageIO
 import UniformTypeIdentifiers
 import IskraCore
+import IskraDesign
 
 /// The principal class of the Share extension — what iOS launches when someone shares something to
 /// Iskra from another app: words, a link, photos, videos, files.
@@ -29,21 +30,39 @@ final class ShareViewController: UIViewController {
         Task { await present() }
     }
 
+    /// With the app lock on, nothing is copied and no chat is listed until the owner has proved it
+    /// is them. The share sheet used to be a way round the lock: anyone holding the unlocked phone
+    /// saw every account's chat names and could queue a message, which the app then sent the next
+    /// time it came to the front — still behind its shield.
     private func present() async {
+        let defaults = UserDefaults(suiteName: AppEnvironment.appGroupIdentifier)
+        guard AppLock.isLockedNow(defaults: defaults) else { return await presentPicker() }
+
+        let lock = AppLock(defaults: defaults)
+        show(ShareLockedView(
+            onUnlock: { [weak self] in
+                guard await lock.authenticate(reason: String(localized: CoreStrings.Share.unlockReason)) else { return }
+                await self?.presentPicker()
+            },
+            onCancel: { [weak self] in self?.cancel() }
+        ))
+    }
+
+    private func presentPicker() async {
         let shared = await extractShared()
 
         let picker = SharePickerView(
             shared: shared,
-            chats: ChatDirectory.directory(),
-            onSend: { [weak self] chat in
-                if !shared.isEmpty {
-                    // Whose chat it is travels with it: the app sends it from that account, and
-                    // opens that account to do so if another one is on screen.
-                    ChatDirectory.enqueue(.init(roomID: chat.id,
-                                                text: shared.text,
-                                                attachments: shared.attachments.map(\.attachment),
-                                                accountID: chat.accountID))
+            chats: ChatDirectory.shareDirectory(),
+            onSend: { [weak self] chats, comment in
+                Self.enqueue(shared, comment: comment, to: chats)
+                // Straight on to the app, which sends what is in the outbox the moment it is active
+                // — so the message goes now, not whenever Iskra is next opened. One chat is opened
+                // to show it went; several leave the app where it was.
+                if chats.count == 1, let chat = chats.first {
+                    ChatDirectory.requestOpen(roomID: chat.id, accountID: chat.accountID)
                 }
+                self?.openApp()
                 self?.finish()
             },
             onCancel: { [weak self] in
@@ -52,7 +71,16 @@ final class ShareViewController: UIViewController {
             }
         )
 
-        let host = UIHostingController(rootView: picker)
+        show(picker)
+    }
+
+    private func show(_ screen: some View) {
+        for child in children {
+            child.willMove(toParent: nil)
+            child.view.removeFromSuperview()
+            child.removeFromParent()
+        }
+        let host = UIHostingController(rootView: screen)
         addChild(host)
         host.view.frame = view.bounds
         host.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -158,13 +186,67 @@ final class ShareViewController: UIViewController {
         let ext = source.pathExtension.isEmpty ? (type?.preferredFilenameExtension ?? "") : source.pathExtension
         let stem = suggested.map { ($0 as NSString).deletingPathExtension }
             ?? source.deletingPathExtension().lastPathComponent
-        let base = stem.isEmpty ? photoName : stem
-        return ext.isEmpty ? base : "\(base).\(ext)"
+        // The suggestion is the sharing app's to make, and nothing stops it being `../../x`.
+        let base = SafeFilename.make(stem, fallback: photoName)
+        let safeExt = SafeFilename.make(ext, fallback: "")
+        return safeExt.isEmpty ? base : "\(base).\(safeExt)"
     }
 
     nonisolated private static var photoName: String {
         "Iskra \(Date.now.formatted(.iso8601.year().month().day().time(includingFractionalSeconds: false)))"
             .replacingOccurrences(of: ":", with: "-")
+    }
+
+    /// What was shared, into the outbox once per chat it is going to, with the comment after it.
+    ///
+    /// Each chat gets its *own* copy of every file: the app deletes a file from the outbox once it
+    /// has been sent, so two chats pointing at one copy would leave the second with nothing to send.
+    private static func enqueue(_ shared: SharedContent, comment: String, to chats: [ChatDirectoryEntry]) {
+        let comment = comment.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        for (index, chat) in chats.enumerated() {
+            let attachments: [ChatDirectory.OutboxAttachment] = index == 0
+                ? shared.attachments.map(\.attachment)
+                : shared.attachments.compactMap {
+                    try? SharedAttachment.copy($0.url, named: $0.name, kind: $0.attachment.kind).attachment
+                }
+
+            // Whose chat it is travels with it: the app sends it from that account, and opens that
+            // account to do so if another one is on screen.
+            if !shared.isEmpty {
+                ChatDirectory.enqueue(.init(roomID: chat.id, text: shared.text,
+                                            attachments: attachments, accountID: chat.accountID))
+            }
+            // The comment as a message of its own, after what it is about — Telegram's order.
+            if !comment.isEmpty {
+                ChatDirectory.enqueue(.init(roomID: chat.id, text: comment,
+                                            attachments: [], accountID: chat.accountID))
+            }
+        }
+    }
+
+    /// Brings Iskra to the front, so that it sends the outbox now.
+    ///
+    /// **Why the app sends, and not this extension.** Sending encrypts, and encrypting advances the
+    /// room's Megolm session in the crypto store — which the app may be holding in memory at this
+    /// very moment. Two processes advancing one ratchet is the one failure here that cannot be undone
+    /// afterwards: messages nobody can decrypt. The SDK's cross-process lock covers the tokens and the
+    /// notification extension's *reading*; it is not a promise about a second process sending. So
+    /// the extension hands over, and the app — the one process that sends — does it at once. This is
+    /// also how Element X's share extension works, and for the same reason.
+    ///
+    /// An extension has no `UIApplication.shared`; the application is reached up the responder chain,
+    /// which is the way an extension that is allowed to open its app does it.
+    private func openApp() {
+        let url = AppEnvironment.shareHandoffURL
+        var responder: UIResponder? = self
+        while let current = responder {
+            if let application = current as? UIApplication {
+                application.open(url, options: [:], completionHandler: nil)
+                return
+            }
+            responder = current.next
+        }
     }
 
     private func finish() {
@@ -224,16 +306,48 @@ struct SharedAttachment: Sendable, Identifiable {
     }
 }
 
+/// What the share sheet shows while Iskra is locked: nothing of the user's, and the one way on.
+private struct ShareLockedView: View {
+    let onUnlock: @MainActor () async -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            ContentUnavailableView {
+                Label { Text(CoreStrings.Share.locked) } icon: { Image(systemName: "lock.fill") }
+            } description: {
+                Text(CoreStrings.Share.lockedBody)
+            } actions: {
+                Button(String(localized: CoreStrings.Share.unlock)) {
+                    Task { await onUnlock() }
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(String(localized: CoreStrings.Share.cancel), action: onCancel)
+                }
+            }
+        }
+        // Asked straight away, as the app's own shield does; the button is the retry.
+        .task { await onUnlock() }
+    }
+}
+
 /// The room picker the extension shows: a preview of what is being shared, and the list of chats to
 /// send it to, read from the App-Group directory. Empty when nobody is signed in — the honest state
 /// for an extension that has no session of its own to check.
 private struct SharePickerView: View {
     let shared: SharedContent
     let chats: [ChatDirectoryEntry]
-    let onSend: (ChatDirectoryEntry) -> Void
+    /// The chats chosen, in the order they were chosen, and the comment to go after it.
+    let onSend: ([ChatDirectoryEntry], String) -> Void
     let onCancel: () -> Void
 
     @State private var query = ""
+    /// Telegram's share sheet chooses, and only the button sends — so several chats can be picked,
+    /// and a comment written, before anything goes.
+    @State private var chosen: [ChatDirectoryEntry] = []
+    @State private var comment = ""
 
     private var shownChats: [ChatDirectoryEntry] {
         let trimmed = query.trimmingCharacters(in: .whitespaces)
@@ -251,44 +365,49 @@ private struct SharePickerView: View {
         return seen
     }
 
+    /// Telegram's share sheet: what is going at the top, the chats as a grid of faces under it, and
+    /// — once any are chosen — a comment line and the send button at the foot. See `ShareTargetGrid`.
     var body: some View {
         NavigationStack {
-            List {
-                if !shared.isEmpty {
-                    Section {
-                        if !shared.attachments.isEmpty {
-                            attachmentStrip
-                        }
-                        if !shared.text.isEmpty {
-                            Text(shared.text)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(4)
-                        }
-                    } footer: {
-                        Text(CoreStrings.Share.willSendOnOpen)
-                    }
-                }
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Spacing.roomy) {
+                    if !shared.isEmpty { preview }
 
-                // A section per account when there is more than one on the device, headed with its
-                // name — the same room can be in both, and which of them sends it matters.
-                ForEach(accounts, id: \.self) { account in
-                    Section {
-                        ForEach(shownChats.filter { $0.accountID == account }) { chat in
-                            Button {
-                                onSend(chat)
-                            } label: {
-                                Text(chat.name)
-                            }
-                        }
-                    } header: {
+                    // A block per account when there is more than one on the device, headed with
+                    // its name — the same room can be in both, and which of them sends it matters.
+                    ForEach(accounts, id: \.self) { account in
                         if accounts.count > 1,
                            let name = chats.first(where: { $0.accountID == account })?.accountName {
                             Text(verbatim: name)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+
+                        ShareTargetGrid(items: shownChats.filter { $0.accountID == account },
+                                        title: \.name,
+                                        selection: Set(chosen.filter { $0.accountID == account }.map(\.id)),
+                                        onToggle: toggle) { chat in
+                            BlobatarView(seed: chat.avatarSeed ?? chat.id, backdrop: .circle)
+                                .clipShape(.circle)
                         }
                     }
                 }
+                .padding(.horizontal, Theme.Spacing.roomy)
+                .padding(.vertical, Theme.Spacing.close)
             }
+            .safeAreaInset(edge: .bottom) {
+                if !chosen.isEmpty {
+                    ShareSendBar(comment: $comment,
+                                 placeholder: String(localized: CoreStrings.Share.comment),
+                                 sendLabel: String(localized: CoreStrings.Share.send),
+                                 count: chosen.count,
+                                 isSending: false) {
+                        onSend(chosen, comment)
+                    }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .animation(.smooth(duration: Theme.Timing.chrome), value: chosen.isEmpty)
             .searchable(text: $query)
             .overlay {
                 if chats.isEmpty {
@@ -306,6 +425,32 @@ private struct SharePickerView: View {
                     Button(String(localized: CoreStrings.Share.cancel), action: onCancel)
                 }
             }
+        }
+    }
+
+    /// A chat chosen or let go of. The same room can be in two accounts with the same ID, so a chat
+    /// is told apart by both.
+    private func toggle(_ chat: ChatDirectoryEntry) {
+        if let index = chosen.firstIndex(where: { $0.id == chat.id && $0.accountID == chat.accountID }) {
+            chosen.remove(at: index)
+        } else {
+            chosen.append(chat)
+        }
+    }
+
+    /// What is going: the pictures as pictures, the words under them, and a line saying it goes now.
+    private var preview: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.close) {
+            if !shared.attachments.isEmpty { attachmentStrip }
+            if !shared.text.isEmpty {
+                Text(shared.text)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(4)
+            }
+            Text(CoreStrings.Share.willSendOnOpen)
+                .font(.caption)
+                .foregroundStyle(.tertiary)
         }
     }
 

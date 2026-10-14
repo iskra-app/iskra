@@ -12,8 +12,44 @@ public enum TunnelSettings {
     /// The relays to meet it on, one per line or separated by commas.
     public static let relaysKey = "transport.bridgeRelays"
 
-    public static func isEnabled(_ defaults: UserDefaults = .standard) -> Bool {
+    /// Where the three settings are kept: the App Group's defaults, not `.standard`.
+    ///
+    /// Because the notification extension builds a client too. Inside an `.appex`, `.standard` is
+    /// the extension's own and empty, so with the settings kept there the extension read "no
+    /// bridge" and fetched and decrypted every push **straight from the homeserver** — for a user
+    /// who had turned the bridge on precisely because that route is watched or blocked, while the
+    /// screen said "through the bridge". The same trap as `BetaFeatures.faceStore`, on the setting
+    /// where it matters most.
+    ///
+    /// `.standard` where there is no App Group, which is a standalone build with no extension.
+    /// Reading it carries whatever an older build left in `.standard` across, once.
+    public static var store: UserDefaults {
+        _ = adopted
+        return ChatDirectory.sharedDefaults ?? .standard
+    }
+
+    /// Once per process, and only for a key the shared suite has no value for yet — so a setting
+    /// changed after the move is never undone by the value it used to have.
+    private static let adopted: Void = {
+        guard let shared = ChatDirectory.sharedDefaults else { return }
+        let local = UserDefaults.standard
+        for key in [enabledKey, addressKey, relaysKey] {
+            guard shared.object(forKey: key) == nil, let value = local.object(forKey: key) else { continue }
+            shared.set(value, forKey: key)
+        }
+    }()
+
+    public static func isEnabled(_ defaults: UserDefaults = store) -> Bool {
         defaults.bool(forKey: enabledKey)
+    }
+
+    /// Whether anything at all is written in the address field.
+    ///
+    /// Not the same question as `bridgeKey() != nil`, and the difference is the whole point: an
+    /// empty field is "no bridge yet", while a field holding a mistyped `npub` is a bridge the user
+    /// meant to use and cannot — which must be a refusal, never a quiet direct connection.
+    public static func hasAddress(_ defaults: UserDefaults = store) -> Bool {
+        !(defaults.string(forKey: addressKey) ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     // MARK: - Which bridge, and where to meet it
@@ -22,7 +58,7 @@ public enum TunnelSettings {
     ///
     /// `nil` is not an error state — it is the ordinary case of somebody turning the switch on
     /// before pasting an address. What it must never come to mean is "carry on without a bridge".
-    public static func bridgeKey(_ defaults: UserDefaults = .standard) -> Data? {
+    public static func bridgeKey(_ defaults: UserDefaults = store) -> Data? {
         guard let text = defaults.string(forKey: addressKey),
               case .success(let key) = BridgeAddress.publicKey(from: text)
         else { return nil }
@@ -40,13 +76,11 @@ public enum TunnelSettings {
                                        "wss://relay.primal.net",
                                        "wss://relay.nostr.band"]
 
-    public static func relays(_ defaults: UserDefaults = .standard) -> [URL] {
+    public static func relays(_ defaults: UserDefaults = store) -> [URL] {
         let parsed = parseRelays(defaults.string(forKey: relaysKey) ?? "")
         return parsed.isEmpty ? defaultRelays.compactMap(URL.init(string:)) : parsed
     }
 
-    /// Split on commas and newlines, and keep what is actually a relay address.
-    ///
     // MARK: - Applying a change
 
     /// What a connection is built from, as it would be read at the moment of building.
@@ -60,7 +94,7 @@ public enum TunnelSettings {
         public var relays: [URL]
     }
 
-    public static func snapshot(_ defaults: UserDefaults = .standard) -> Snapshot {
+    public static func snapshot(_ defaults: UserDefaults = store) -> Snapshot {
         Snapshot(enabled: isEnabled(defaults), bridgeKey: bridgeKey(defaults), relays: relays(defaults))
     }
 
@@ -75,6 +109,8 @@ public enum TunnelSettings {
     /// stopped loading messages the moment somebody reached for the thing that would fix it.
     public static let changed = Notification.Name("moscow.swag.iskra.tunnelSettingsChanged")
 
+    /// Split on commas and newlines, and keep what is actually a relay address.
+    ///
     /// `https://` is dropped rather than corrected. A relay is reached over `wss://`, and quietly
     /// rewriting one scheme into another turns a typo into a relay that merely looks down.
     public static func parseRelays(_ text: String) -> [URL] {
@@ -82,7 +118,10 @@ public enum TunnelSettings {
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
             .compactMap { URL(string: $0) }
-            .filter { $0.scheme == "wss" || $0.scheme == "ws" }
+            // `ws://` only to this machine, which is how a relay under test is reached. Anywhere
+            // else it is both keys, the timing and the sizes of every request in clear text on
+            // the network — the content is sealed, the fact of it is not.
+            .filter { $0.scheme == "wss" || ($0.scheme == "ws" && isLoopback($0.absoluteString)) }
     }
 
     /// Turn what the user typed into something to connect to.

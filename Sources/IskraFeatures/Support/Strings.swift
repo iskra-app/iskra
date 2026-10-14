@@ -162,6 +162,24 @@ public enum Strings {
         public static let usePasswordInstead = LocalizedStringResource("signIn.usePasswordInstead", bundle: bundle)
         public static let differentAddress = LocalizedStringResource("signIn.differentAddress", bundle: bundle)
 
+        /// The one line on the opening screen that says where the account will be — matrix.org
+        /// unless somebody changes it — and the word that changes it.
+        public static func server(_ name: String) -> LocalizedStringResource {
+            LocalizedStringResource("signIn.server", defaultValue: "Server: \(name)", bundle: bundle)
+        }
+        public static let changeServer = LocalizedStringResource("signIn.changeServer", bundle: bundle)
+        public static let serverDone = LocalizedStringResource("signIn.serverDone", bundle: bundle)
+
+        /// The second screen, reached only on a server with nothing but a password, or after the
+        /// browser was closed half way: whose sign-in it is, and the way back.
+        public static func signInTo(_ name: String) -> LocalizedStringResource {
+            LocalizedStringResource("signIn.signInTo", defaultValue: "Sign in to \(name)", bundle: bundle)
+        }
+        public static let back = LocalizedStringResource("signIn.back", bundle: bundle)
+        public static let continueInBrowser = LocalizedStringResource("signIn.continueInBrowser", bundle: bundle)
+        public static let browserHelp = LocalizedStringResource("signIn.browserHelp", bundle: bundle)
+        public static let passwordHelp = LocalizedStringResource("signIn.passwordHelp", bundle: bundle)
+
         /// Errors. Each says what happened and what to do; none names a protocol.
         public enum Problem {
             public static let notFound = LocalizedStringResource("signIn.problem.notFound", bundle: bundle)
@@ -172,6 +190,8 @@ public enum Strings {
             public static let badCredentials = LocalizedStringResource("signIn.problem.badCredentials", bundle: bundle)
             /// Signing in, from "Add account", to somebody who is already on the device.
             public static let alreadySignedIn = LocalizedStringResource("signIn.problem.alreadySignedIn", bundle: bundle)
+            /// "Create an account" on a server that will not make one through an app.
+            public static let noRegistration = LocalizedStringResource("signIn.problem.noRegistration", bundle: bundle)
         }
     }
 
@@ -260,7 +280,6 @@ public enum Strings {
         public static let mentions = LocalizedStringResource("notifications.mentions", bundle: bundle)
         public static let mentionsMe = LocalizedStringResource("notifications.mentionsMe", bundle: bundle)
         public static let roomMentions = LocalizedStringResource("notifications.roomMentions", bundle: bundle)
-        public static let mentionsFooter = LocalizedStringResource("notifications.mentionsFooter", bundle: bundle)
 
         public static let other = LocalizedStringResource("notifications.other", bundle: bundle)
         public static let invitations = LocalizedStringResource("notifications.invitations", bundle: bundle)
@@ -288,7 +307,10 @@ public enum Strings {
         public static let title = LocalizedStringResource("roomList.title", bundle: bundle)
         public static let searchPrompt = LocalizedStringResource("roomList.searchPrompt", bundle: bundle)
         public static let clearSearch = LocalizedStringResource("roomList.clearSearch", bundle: bundle)
-        public static let loading = LocalizedStringResource("roomList.loading", bundle: bundle)
+        /// The title while the list is catching up, and while there is no network — see
+        /// `RoomListStatus`.
+        public static let updating = LocalizedStringResource("roomList.updating", bundle: bundle)
+        public static let waitingForNetwork = LocalizedStringResource("roomList.waitingForNetwork", bundle: bundle)
         public static let emptyTitle = LocalizedStringResource("roomList.emptyTitle", bundle: bundle)
         public static let emptyMessage = LocalizedStringResource("roomList.emptyMessage", bundle: bundle)
         public static let privateChat = LocalizedStringResource("roomList.privateChat", bundle: bundle)
@@ -342,11 +364,37 @@ public enum Strings {
         /// person, and the button ought to say which of those is about to happen.
         public enum New {
             public static let create = LocalizedStringResource("roomList.new.create", bundle: bundle)
-            public static let start = LocalizedStringResource("roomList.new.start", bundle: bundle)
             /// What "open chat" costs, said once, where the switch is. Encryption is not a
             /// switch of its own in this app — see `UserSession.createRoom`.
             public static let openMeansUnencrypted = LocalizedStringResource("roomList.new.openMeansUnencrypted",
                                                                              bundle: bundle)
+
+            /// "New chat", Telegram's way: one field to find a person by, three ways into a room
+            /// beneath it, then everybody there is already a conversation with.
+            public static let searchPrompt = LocalizedStringResource("roomList.new.searchPrompt", bundle: bundle)
+            public static let createRoom = LocalizedStringResource("roomList.new.createRoom", bundle: bundle)
+            public static let publicRooms = LocalizedStringResource("roomList.new.publicRooms", bundle: bundle)
+            public static let joinByAddress = LocalizedStringResource("roomList.new.joinByAddress", bundle: bundle)
+            /// The two halves of a search: people already written to, and people the server knows.
+            public static let yourChats = LocalizedStringResource("roomList.new.yourChats", bundle: bundle)
+            public static let onServer = LocalizedStringResource("roomList.new.onServer", bundle: bundle)
+            /// Under a Matrix ID typed in full that the directory did not turn up — still somebody
+            /// you can write to.
+            public static let writeTo = LocalizedStringResource("roomList.new.writeTo", bundle: bundle)
+            public static let nobodyFound = LocalizedStringResource("roomList.new.nobodyFound", bundle: bundle)
+            public static let searchFailed = LocalizedStringResource("roomList.new.searchFailed", bundle: bundle)
+
+            /// The public room directory.
+            public static let roomsPrompt = LocalizedStringResource("roomList.new.roomsPrompt", bundle: bundle)
+            public static let inviteOnly = LocalizedStringResource("roomList.new.inviteOnly", bundle: bundle)
+            public static let noRooms = LocalizedStringResource("roomList.new.noRooms", bundle: bundle)
+            public static let directoryFailed = LocalizedStringResource("roomList.new.directoryFailed", bundle: bundle)
+            public static let retry = LocalizedStringResource("roomList.new.retry", bundle: bundle)
+
+            /// Joining a room by its address.
+            public static let join = LocalizedStringResource("roomList.new.join", bundle: bundle)
+            public static let addressPlaceholder = LocalizedStringResource("roomList.new.addressPlaceholder", bundle: bundle)
+            public static let addressHelp = LocalizedStringResource("roomList.new.addressHelp", bundle: bundle)
         }
 
         /// Pluralised. Russian needs one/few/many, which is why these go through the
@@ -361,6 +409,11 @@ public enum Strings {
 
         public static func mentions(_ count: Int) -> LocalizedStringResource {
             LocalizedStringResource("roomList.mentions", defaultValue: "\(count) mentioning you", bundle: bundle)
+        }
+
+        /// Reactions nobody has seen yet — the heart beside a chat's badge, for VoiceOver.
+        public static func reactions(_ count: Int) -> LocalizedStringResource {
+            LocalizedStringResource("roomList.reactions", defaultValue: "\(count) new reactions", bundle: bundle)
         }
 
         /// The swipe actions on a chat row, and their VoiceOver twins. Each verb has both
@@ -407,13 +460,68 @@ public enum Strings {
         }
     }
 
+    /// Where somebody was last seen — the line under their name in a one-to-one chat.
+    ///
+    /// «был(а)», not «был» — Matrix knows nothing about anyone's gender and inventing one in a
+    /// sentence about them would be a strange place for this app to start guessing. The units are
+    /// abbreviated («мин», «ч») because that is how the line is read at a glance, and because an
+    /// abbreviation does not decline: `5 мин назад` is right where `5 минут назад` needs a plural
+    /// rule and `2 минуты` to go with it. See `PresenceLabel`.
+    public enum Presence {
+        public static let online = LocalizedStringResource("presence.online", bundle: bundle)
+        public static let justNow = LocalizedStringResource("presence.justNow", bundle: bundle)
+        public static let yesterday = LocalizedStringResource("presence.yesterday", bundle: bundle)
+
+        public static func minutesAgo(_ minutes: Int) -> LocalizedStringResource {
+            LocalizedStringResource("presence.minutesAgo",
+                                    defaultValue: "last seen \(minutes) min ago",
+                                    bundle: bundle)
+        }
+
+        public static func hoursAgo(_ hours: Int) -> LocalizedStringResource {
+            LocalizedStringResource("presence.hoursAgo",
+                                    defaultValue: "last seen \(hours) hr ago",
+                                    bundle: bundle)
+        }
+
+        /// A clock time, for earlier the same day.
+        public static func atTime(_ time: String) -> LocalizedStringResource {
+            LocalizedStringResource("presence.atTime",
+                                    defaultValue: "last seen at \(time)",
+                                    bundle: bundle)
+        }
+
+        /// A date, for anything older than yesterday.
+        public static func at(_ date: String) -> LocalizedStringResource {
+            LocalizedStringResource("presence.at",
+                                    defaultValue: "last seen \(date)",
+                                    bundle: bundle)
+        }
+    }
+
     public enum Room {
-        /// The button that appears when a message arrives while you are reading further up.
-        ///
-        /// It exists because the conversation no longer drags you to the bottom against your will
-        /// — so something has to say that there is a bottom to go to. One without the other would
-        /// be worse than either: the old behaviour at least told you a message had come.
-        public static let jumpToNewest = LocalizedStringResource("room.jumpToNewest", bundle: bundle)
+        /// Somebody in the room has new keys — see `IdentityChangeBanner`. Written so that no name
+        /// has to be declined and nobody's gender guessed: the name stands alone before a colon.
+        public enum Identity {
+            public static func changedTitle(_ name: String) -> LocalizedStringResource {
+                LocalizedStringResource("room.identity.changedTitle", defaultValue: "\(name): new encryption keys",
+                                        bundle: bundle)
+            }
+            public static let changedBody = LocalizedStringResource("room.identity.changedBody", bundle: bundle)
+            public static let understood = LocalizedStringResource("room.identity.understood", bundle: bundle)
+            public static func violationTitle(_ name: String) -> LocalizedStringResource {
+                LocalizedStringResource("room.identity.violationTitle",
+                                        defaultValue: "\(name): keys no longer match the ones you verified",
+                                        bundle: bundle)
+            }
+            public static let violationBody = LocalizedStringResource("room.identity.violationBody", bundle: bundle)
+            /// Takes back a verification that no longer holds. Not "OK": it changes something.
+            public static let withdraw = LocalizedStringResource("room.identity.withdraw", bundle: bundle)
+            public static let failed = LocalizedStringResource("room.identity.failed", bundle: bundle)
+        }
+
+        /// The bar where the reader left off — see `UnreadDividerView`.
+        public static let unreadMessages = LocalizedStringResource("room.unreadMessages", bundle: bundle)
 
         /// The round button in the corner that takes you to the bottom of a room you have read a
         /// long way up. Read aloud only — the arrow in it is the whole of what it says on screen.
@@ -503,7 +611,6 @@ public enum Strings {
         public static let sharedMedia = LocalizedStringResource("room.sharedMedia", bundle: bundle)
         public static let sharedMediaEmptyTitle = LocalizedStringResource("room.sharedMediaEmptyTitle", bundle: bundle)
         public static let sharedMediaEmptyMessage = LocalizedStringResource("room.sharedMediaEmptyMessage", bundle: bundle)
-        public static let galleryLoadEarlier = LocalizedStringResource("room.galleryLoadEarlier", bundle: bundle)
 
         /// Spaces — «пространства» — the rooms grouped inside one, and the empty state of a space with
         /// nothing in it yet. The word is the plain one, never "space" the Matrix jargon.
@@ -546,7 +653,10 @@ public enum Strings {
         public enum LocalName {
             public static let header = LocalizedStringResource("room.localName.header", bundle: bundle)
             public static let help = LocalizedStringResource("room.localName.help", bundle: bundle)
-            public static let reset = LocalizedStringResource("room.localName.reset", bundle: bundle)
+            /// Names the name that comes back — "Вернуть «Anna»" — so the button says what it does.
+            public static func reset(_ name: String) -> LocalizedStringResource {
+                LocalizedStringResource("room.localName.reset", defaultValue: "Restore “\(name)”", bundle: bundle)
+            }
         }
         public static let administrator = LocalizedStringResource("room.administrator", bundle: bundle)
         public static let moderator = LocalizedStringResource("room.moderator", bundle: bundle)
@@ -580,9 +690,6 @@ public enum Strings {
             public static let deleteChatQuestion = LocalizedStringResource("room.manage.deleteChatQuestion", bundle: bundle)
             public static let deleteChatHelp = LocalizedStringResource("room.manage.deleteChatHelp", bundle: bundle)
             public static let topicPlaceholder = LocalizedStringResource("room.manage.topicPlaceholder", bundle: bundle)
-
-            public static let changePicture = LocalizedStringResource("room.manage.changePicture", bundle: bundle)
-            public static let removePicture = LocalizedStringResource("room.manage.removePicture", bundle: bundle)
 
             /// Who may walk in. The switch is the plain-language half of the join rules —
             /// the protocol's other answers (knocking, restricted to a space) are not
@@ -668,6 +775,12 @@ public enum Strings {
     public enum Message {
         public static let unreadable = LocalizedStringResource("message.unreadable", bundle: bundle)
         public static let deleted = LocalizedStringResource("message.deleted", bundle: bundle)
+        /// Over a forwarded message whose original sender it does not name.
+        public static let forwarded = LocalizedStringResource("message.forwarded", bundle: bundle)
+        /// Over a forwarded message: who wrote it in the first place.
+        public static func forwardedFrom(_ name: String) -> LocalizedStringResource {
+            LocalizedStringResource("message.forwardedFrom", defaultValue: "Forwarded from \(name)", bundle: bundle)
+        }
         public static let unsupported = LocalizedStringResource("message.unsupported", bundle: bundle)
         /// The mark beside a message whose author went back and changed it. One word, so it can
         /// sit inside the bubble beside the text without becoming a second line.
@@ -675,6 +788,14 @@ public enum Strings {
 
         /// The long press (right-click, on a Mac) on a message.
         public enum Menu {
+            /// "5 reactions" — the line that opens who reacted, and the title of that list.
+            public static func reactors(_ count: Int) -> LocalizedStringResource {
+                LocalizedStringResource("message.menu.reactors", defaultValue: "\(count) reactions", bundle: bundle)
+            }
+            /// The "everybody" tab in that list, with the total.
+            public static func reactorsAll(_ count: Int) -> LocalizedStringResource {
+                LocalizedStringResource("message.menu.reactorsAll", defaultValue: "All \(count)", bundle: bundle)
+            }
             public static let copy = LocalizedStringResource("message.menu.copy", bundle: bundle)
             public static let reply = LocalizedStringResource("message.menu.reply", bundle: bundle)
             public static let edit = LocalizedStringResource("message.menu.edit", bundle: bundle)
@@ -691,6 +812,15 @@ public enum Strings {
             /// appearance cannot say out loud.
             public static let addReaction = LocalizedStringResource("message.menu.addReaction", bundle: bundle)
             public static let removeReaction = LocalizedStringResource("message.menu.removeReaction", bundle: bundle)
+            /// The quick reaction, as a VoiceOver action — see `MessageActions.spokenActions`.
+            public static func addQuick(_ emoji: String) -> LocalizedStringResource {
+                LocalizedStringResource("message.menu.addQuick", defaultValue: "React with \(emoji)", bundle: bundle)
+            }
+            public static func removeQuick(_ emoji: String) -> LocalizedStringResource {
+                LocalizedStringResource("message.menu.removeQuick", defaultValue: "Remove \(emoji)", bundle: bundle)
+            }
+            /// Opens the menu with the whole bar of emoji — the one way VoiceOver reaches the rest.
+            public static let moreReactions = LocalizedStringResource("message.menu.moreReactions", bundle: bundle)
 
             /// Flagging somebody else's message to the moderators.
             public static let report = LocalizedStringResource("message.menu.report", bundle: bundle)
@@ -748,6 +878,9 @@ public enum Strings {
             public static let title = LocalizedStringResource("message.forward.title", bundle: bundle)
             public static let prompt = LocalizedStringResource("message.forward.prompt", bundle: bundle)
             public static let cancel = LocalizedStringResource("message.forward.cancel", bundle: bundle)
+            /// The comment line and the send button at the foot of the share sheet.
+            public static let comment = LocalizedStringResource("message.forward.comment", bundle: bundle)
+            public static let send = LocalizedStringResource("message.forward.send", bundle: bundle)
         }
 
         /// A link in a message, and the question asked before it opens. The address itself is the
@@ -798,6 +931,14 @@ public enum Strings {
             /// The video would not come down. Said on the bubble, not in an alert — there is
             /// nothing to do about it but press it again.
             public static let loadFailed = LocalizedStringResource("message.media.loadFailed", bundle: bundle)
+
+            /// "3 of 12" — where in the room's pictures the gallery is.
+            public static func counter(_ position: Int, _ total: Int) -> LocalizedStringResource {
+                LocalizedStringResource("message.media.counter", defaultValue: "\(position) of \(total)", bundle: bundle)
+            }
+            /// A video's fifteen seconds back and forward, said aloud.
+            public static let skipBack = LocalizedStringResource("message.media.skipBack", bundle: bundle)
+            public static let skipForward = LocalizedStringResource("message.media.skipForward", bundle: bundle)
         }
 
         public enum Delivery {
@@ -807,12 +948,18 @@ public enum Strings {
             public static let failed = LocalizedStringResource("message.delivery.failed", bundle: bundle)
             /// Offered only where trying again can actually work — see `SendFailure.canRetry`.
             public static let sendAgain = LocalizedStringResource("message.delivery.sendAgain", bundle: bundle)
+            /// Offered where the queue stopped because a verified person no longer checks out —
+            /// see `SendFailure.canSendAnyway`. A decision, and worded as one.
+            public static let sendAnyway = LocalizedStringResource("message.delivery.sendAnyway", bundle: bundle)
+            public static let sendAnywayFailed = LocalizedStringResource("message.delivery.sendAnywayFailed", bundle: bundle)
             /// Throws the message out of the send queue. Its own word rather than
             /// `Menu.delete`, even though both read "Удалить": that one redacts an event the
             /// whole room has already seen, this one drops a message nobody ever received.
             /// The user sees the same word because to them it *is* the same word — but the
             /// two must be free to diverge in translation without dragging each other along.
             public static let discard = LocalizedStringResource("message.delivery.discard", bundle: bundle)
+            /// The cross in the ring over an attachment still going up — see `UploadRing`.
+            public static let cancelUpload = LocalizedStringResource("message.delivery.cancelUpload", bundle: bundle)
         }
 
         /// What VoiceOver reads instead of a bubble it cannot describe.
@@ -886,6 +1033,47 @@ public enum Strings {
         public static let myLocation = LocalizedStringResource("location.myLocation", bundle: bundle)
         /// The third thing the "+" can attach.
         public static let attach = LocalizedStringResource("location.attach", bundle: bundle)
+    }
+
+    /// The sticker sheet, the button that opens it, and adding a sticker from a conversation.
+    public enum Stickers {
+        public static let title = LocalizedStringResource("stickers.title", bundle: bundle)
+        /// The button in the composer's field, as VoiceOver says it.
+        public static let open = LocalizedStringResource("stickers.open", bundle: bundle)
+        public static let close = LocalizedStringResource("stickers.close", bundle: bundle)
+        public static let recent = LocalizedStringResource("stickers.recent", bundle: bundle)
+        /// The account's own pack — the one a sticker is added to.
+        public static let mine = LocalizedStringResource("stickers.mine", bundle: bundle)
+        /// A room's pack that did not say what it is called.
+        public static let roomPack = LocalizedStringResource("stickers.roomPack", bundle: bundle)
+        /// The pack the app comes with — see `StickerArt`.
+        public static let builtIn = LocalizedStringResource("stickers.builtIn", bundle: bundle)
+        public static let emptyTitle = LocalizedStringResource("stickers.empty.title", bundle: bundle)
+        /// Says how to get the first one, because the sheet itself has no way to.
+        public static let emptyMessage = LocalizedStringResource("stickers.empty.message", bundle: bundle)
+        public static let add = LocalizedStringResource("stickers.add", bundle: bundle)
+        public static let remove = LocalizedStringResource("stickers.remove", bundle: bundle)
+        /// Over a chat's pack in the sheet: keep it for every chat, not only this one.
+        public static let subscribe = LocalizedStringResource("stickers.subscribe", bundle: bundle)
+
+        /// The sticker sections of Settings → Stickers & reactions.
+        public enum Settings {
+            public static let sheetSection = LocalizedStringResource("stickers.settings.sheetSection", bundle: bundle)
+            public static let builtIn = LocalizedStringResource("stickers.settings.builtIn", bundle: bundle)
+            public static let roomPacks = LocalizedStringResource("stickers.settings.roomPacks", bundle: bundle)
+            public static let roomPacksHelp = LocalizedStringResource("stickers.settings.roomPacksHelp", bundle: bundle)
+            public static let subscriptionsSection = LocalizedStringResource("stickers.settings.subscriptions", bundle: bundle)
+            public static let subscriptionsHelp = LocalizedStringResource("stickers.settings.subscriptionsHelp", bundle: bundle)
+            public static let unsubscribe = LocalizedStringResource("stickers.settings.unsubscribe", bundle: bundle)
+            public static let mineHelp = LocalizedStringResource("stickers.settings.mineHelp", bundle: bundle)
+            public static let clearRecent = LocalizedStringResource("stickers.settings.clearRecent", bundle: bundle)
+            public static let clearRecentHelp = LocalizedStringResource("stickers.settings.clearRecentHelp", bundle: bundle)
+
+            /// How many stickers are in a pack. Plural, so it is in the `.stringsdict`.
+            public static func count(_ count: Int) -> LocalizedStringResource {
+                LocalizedStringResource("stickers.settings.count", defaultValue: "\(count) stickers", bundle: bundle)
+            }
+        }
     }
 
     /// The apology every screen shares — see `View.failureAlert`, which is the only thing
@@ -1027,6 +1215,17 @@ public enum Strings {
         public static func signOut(of account: String) -> LocalizedStringResource {
             LocalizedStringResource("accounts.signOutOf", defaultValue: "Sign out of \(account)", bundle: bundle)
         }
+
+        /// The swipe on another account's row, and the button that confirms it.
+        public static let signOutShort = LocalizedStringResource("accounts.signOut", bundle: bundle)
+
+        /// Asked before an account that is not on screen is signed out of.
+        public static func signOutTitle(of account: String) -> LocalizedStringResource {
+            LocalizedStringResource("accounts.signOutTitle", defaultValue: "Sign out of \(account)?", bundle: bundle)
+        }
+
+        /// What goes with it — said before, because nothing can bring it back from here.
+        public static let signOutMessage = LocalizedStringResource("accounts.signOutMessage", bundle: bundle)
     }
 
     public enum Account {
@@ -1040,8 +1239,6 @@ public enum Strings {
         /// an invitation rather than as a label — the row has no label, because the thing
         /// you are looking at is your own name.
         public static let namePlaceholder = LocalizedStringResource("account.namePlaceholder", bundle: bundle)
-        public static let changePicture = LocalizedStringResource("account.changePicture", bundle: bundle)
-        public static let removePicture = LocalizedStringResource("account.removePicture", bundle: bundle)
 
         /// The pencil in the corner of settings, and the screen it opens.
         ///
@@ -1058,6 +1255,20 @@ public enum Strings {
         public static let nameHeader = LocalizedStringResource("account.nameHeader", bundle: bundle)
         /// Why the field will not take anything at the moment.
         public static let editOffline = LocalizedStringResource("account.editOffline", bundle: bundle)
+        /// Under the name: a new one is announced in every chat the account is in.
+        public static let nameChangeNotice = LocalizedStringResource("account.nameChangeNotice", bundle: bundle)
+        /// Over the Matrix ID on the same screen, and the greyed field's placeholder.
+        public static let usernameHeader = LocalizedStringResource("account.usernameHeader", bundle: bundle)
+        /// Under it: why the field is grey.
+        public static let usernameFixed = LocalizedStringResource("account.usernameFixed", bundle: bundle)
+    }
+
+    /// The menu on a picture that can be changed — a profile's or a room's. See `EditableAvatar`.
+    public enum Picture {
+        /// What VoiceOver calls the picture, since its pencil has no words on it.
+        public static let edit = LocalizedStringResource("picture.edit", bundle: bundle)
+        public static let change = LocalizedStringResource("picture.change", bundle: bundle)
+        public static let remove = LocalizedStringResource("picture.remove", bundle: bundle)
     }
 
     /// Getting your messages back: the screen between signing in and the conversations, and the
@@ -1199,18 +1410,7 @@ public enum Strings {
         public static let keyCopied = LocalizedStringResource("encryption.keyCopied", bundle: bundle)
         public static let saved = LocalizedStringResource("encryption.saved", bundle: bundle)
 
-        public static let thisDevice = LocalizedStringResource("encryption.thisDevice", bundle: bundle)
-        public static let deviceVerified = LocalizedStringResource("encryption.deviceVerified", bundle: bundle)
         public static let deviceUnverified = LocalizedStringResource("encryption.deviceUnverified", bundle: bundle)
-        /// Why this screen lists one device and not all of them. The honest sentence — see
-        /// `ROADMAP.md`, stage 6.
-        /// What to say about the *other* devices, and there are two answers because there are two
-        /// worlds. On a server that hands over an account page there is a "My devices" row to point
-        /// at; on one that does not, there is no such row — and a footer that cited it anyway would
-        /// send the reader hunting through settings for a section that is not there. Which is
-        /// precisely what it did, until somebody went looking.
-        public static let otherDevicesHere = LocalizedStringResource("encryption.otherDevicesHere", bundle: bundle)
-        public static let otherDevices = LocalizedStringResource("encryption.otherDevices", bundle: bundle)
     }
 
     /// The screen where the unfinished things are switched on — see `BetaView`.
@@ -1240,13 +1440,9 @@ public enum Strings {
         public static let title = LocalizedStringResource("media.title", bundle: bundle)
 
         public static let stripMetadata = LocalizedStringResource("media.stripMetadata", bundle: bundle)
-        public static let stripMetadataHelp = LocalizedStringResource("media.stripMetadataHelp", bundle: bundle)
-        /// Said only while the switch is off, because that is when there is something to warn about.
-        public static let stripMetadataOffHelp = LocalizedStringResource("media.stripMetadataOffHelp", bundle: bundle)
 
         public static let compress = LocalizedStringResource("media.compress", bundle: bundle)
         public static let compression = LocalizedStringResource("media.compression", bundle: bundle)
-        public static let compressOffHelp = LocalizedStringResource("media.compressOffHelp", bundle: bundle)
 
         public static func compressionLabel(_ level: MediaCompression) -> LocalizedStringResource {
             switch level {
@@ -1256,15 +1452,115 @@ public enum Strings {
             }
         }
 
-        /// What a step actually does, in numbers — the footer under the picker says it for the step
-        /// that is chosen, so the choice is never a guess between three adjectives.
-        public static func compressionHelp(_ level: MediaCompression) -> LocalizedStringResource {
-            switch level {
-            case .strong: LocalizedStringResource("media.compression.strongHelp", bundle: bundle)
-            case .balanced: LocalizedStringResource("media.compression.balancedHelp", bundle: bundle)
-            case .light: LocalizedStringResource("media.compression.lightHelp", bundle: bundle)
+        /// The button on a picture that automatic download left alone.
+        public static let download = LocalizedStringResource("media.download", bundle: bundle)
+        public static let autoDownload = LocalizedStringResource("media.autoDownload", bundle: bundle)
+
+        public static func autoDownloadLabel(_ choice: MediaAutoDownload) -> LocalizedStringResource {
+            switch choice {
+            case .always: LocalizedStringResource("media.autoDownload.always", bundle: bundle)
+            case .wifi: LocalizedStringResource("media.autoDownload.wifi", bundle: bundle)
+            case .never: LocalizedStringResource("media.autoDownload.never", bundle: bundle)
             }
         }
+
+        public static func autoDownloadHelp(_ choice: MediaAutoDownload) -> LocalizedStringResource {
+            switch choice {
+            case .always: LocalizedStringResource("media.autoDownload.alwaysHelp", bundle: bundle)
+            case .wifi: LocalizedStringResource("media.autoDownload.wifiHelp", bundle: bundle)
+            case .never: LocalizedStringResource("media.autoDownload.neverHelp", bundle: bundle)
+            }
+        }
+    }
+
+    /// Settings → Security → Privacy — see `SecurityView`.
+    public enum Privacy {
+        public static let title = LocalizedStringResource("privacy.title", bundle: bundle)
+        public static let hidePresence = LocalizedStringResource("privacy.hidePresence", bundle: bundle)
+        public static let hidePresenceHelp = LocalizedStringResource("privacy.hidePresenceHelp", bundle: bundle)
+        public static let hideTyping = LocalizedStringResource("privacy.hideTyping", bundle: bundle)
+        public static let hideTypingHelp = LocalizedStringResource("privacy.hideTypingHelp", bundle: bundle)
+    }
+
+    /// Settings → Chats — see `ChatSettingsView`.
+    public enum Chats {
+        public static let title = LocalizedStringResource("chats.title", bundle: bundle)
+        public static let serviceSection = LocalizedStringResource("chats.serviceSection", bundle: bundle)
+        public static let hideNameChanges = LocalizedStringResource("chats.hideNameChanges", bundle: bundle)
+        public static let hideMembershipChanges = LocalizedStringResource("chats.hideMembershipChanges", bundle: bundle)
+        public static let serviceHelp = LocalizedStringResource("chats.serviceHelp", bundle: bundle)
+        public static let keyboardSection = LocalizedStringResource("chats.keyboardSection", bundle: bundle)
+        public static let commandReturn = LocalizedStringResource("chats.commandReturn", bundle: bundle)
+        public static let commandReturnOnHelp = LocalizedStringResource("chats.commandReturnOnHelp", bundle: bundle)
+        public static let commandReturnOffHelp = LocalizedStringResource("chats.commandReturnOffHelp", bundle: bundle)
+        public static let shareSection = LocalizedStringResource("chats.shareSection", bundle: bundle)
+        public static let shareAccount = LocalizedStringResource("chats.shareAccount", bundle: bundle)
+        public static let shareActive = LocalizedStringResource("chats.shareActive", bundle: bundle)
+        public static let shareAll = LocalizedStringResource("chats.shareAll", bundle: bundle)
+        public static let shareHelp = LocalizedStringResource("chats.shareHelp", bundle: bundle)
+    }
+
+    /// A person's page — see `MemberProfileView`.
+    public enum Profile {
+        public static let message = LocalizedStringResource("profile.message", bundle: bundle)
+        public static let share = LocalizedStringResource("profile.share", bundle: bundle)
+        public static let matrixID = LocalizedStringResource("profile.matrixID", bundle: bundle)
+        /// While the room's member list is still being fetched for a profile opened from the chat.
+        public static let loading = LocalizedStringResource("profile.loading", bundle: bundle)
+        /// The person has left the room, or was never in it.
+        public static let notInRoom = LocalizedStringResource("profile.notInRoom", bundle: bundle)
+
+        /// The tiles a personal chat adds to a person's page: finding something in the chat, and
+        /// how loudly it reaches you.
+        public static let search = LocalizedStringResource("profile.search", bundle: bundle)
+        public static let mute = LocalizedStringResource("profile.mute", bundle: bundle)
+        public static let unmute = LocalizedStringResource("profile.unmute", bundle: bundle)
+
+        /// The account's block — Matrix's ignore — at the foot of a person's page. Not the room's
+        /// ban, which is `Room.Manage.block` and only for whoever runs a group.
+        public static let blockUser = LocalizedStringResource("profile.blockUser", bundle: bundle)
+        public static let unblockUser = LocalizedStringResource("profile.unblockUser", bundle: bundle)
+
+        /// What a personal chat says about a person you have blocked — on their page, and over the
+        /// field where you would otherwise write to them.
+        public static let blockedNotice = LocalizedStringResource("profile.blockedNotice", bundle: bundle)
+    }
+
+    /// Settings → Devices — see `DevicesView`.
+    public enum Devices {
+        public static let title = LocalizedStringResource("devices.title", bundle: bundle)
+        public static let thisDevice = LocalizedStringResource("devices.thisDevice", bundle: bundle)
+        public static let online = LocalizedStringResource("devices.online", bundle: bundle)
+        public static let endOthers = LocalizedStringResource("devices.endOthers", bundle: bundle)
+        public static let endOthersFooter = LocalizedStringResource("devices.endOthersFooter", bundle: bundle)
+        public static let endOthersConfirm = LocalizedStringResource("devices.endOthersConfirm", bundle: bundle)
+        public static let others = LocalizedStringResource("devices.others", bundle: bundle)
+        public static let noOthers = LocalizedStringResource("devices.noOthers", bundle: bundle)
+        public static let end = LocalizedStringResource("devices.end", bundle: bundle)
+        public static let endConfirm = LocalizedStringResource("devices.endConfirm", bundle: bundle)
+        public static let managedFooter = LocalizedStringResource("devices.managedFooter", bundle: bundle)
+        public static let passwordTitle = LocalizedStringResource("devices.passwordTitle", bundle: bundle)
+        public static let passwordMessage = LocalizedStringResource("devices.passwordMessage", bundle: bundle)
+        public static let passwordField = LocalizedStringResource("devices.passwordField", bundle: bundle)
+        public static let cancel = LocalizedStringResource("devices.cancel", bundle: bundle)
+        public static let retry = LocalizedStringResource("devices.retry", bundle: bundle)
+
+        /// The card for one session — see `DeviceDetailSheet`.
+        public static let application = LocalizedStringResource("devices.application", bundle: bundle)
+        public static let lastSeen = LocalizedStringResource("devices.lastSeen", bundle: bundle)
+        public static let ipAddress = LocalizedStringResource("devices.ipAddress", bundle: bundle)
+        public static let deviceID = LocalizedStringResource("devices.deviceID", bundle: bundle)
+        public static let unknown = LocalizedStringResource("devices.unknown", bundle: bundle)
+        public static let endSession = LocalizedStringResource("devices.endSession", bundle: bundle)
+        public static let done = LocalizedStringResource("devices.done", bundle: bundle)
+
+        /// The banner at the top of the chat list — see `NewSignInBanner`.
+        public static let newSignInTitle = LocalizedStringResource("devices.newSignInTitle", bundle: bundle)
+        public static func newSignInMore(_ count: Int) -> LocalizedStringResource {
+            LocalizedStringResource("devices.newSignInMore", defaultValue: "and \(count) more", bundle: bundle)
+        }
+        public static let newSignInYes = LocalizedStringResource("devices.newSignInYes", bundle: bundle)
+        public static let newSignInNo = LocalizedStringResource("devices.newSignInNo", bundle: bundle)
     }
 
     public enum Settings {
@@ -1279,6 +1575,9 @@ public enum Strings {
         /// See `NotificationsView`.
         public static let notifications = LocalizedStringResource("settings.notifications", bundle: bundle)
 
+        /// See `ChatSettingsView` and `SecurityView`.
+        public static let chats = LocalizedStringResource("settings.chats", bundle: bundle)
+
         /// What used to be called "Encryption", and was too narrow a name for what was already
         /// on it. The screen has always answered "who can get at this" rather than "is this
         /// encrypted" — which in this app is never a question, because it always is. It now also
@@ -1291,14 +1590,6 @@ public enum Strings {
         /// that was misnamed.
         public static let encryption = LocalizedStringResource("settings.encryption", bundle: bundle)
 
-        /// The row that leads out of the app entirely, to the server's own page — because there is
-        /// no native list of devices to lead to instead. The FFI does not export one, and on a
-        /// server running the authentication service the endpoint that would delete a device is
-        /// gone rather than merely guarded. A link to the page that *can* do it is the honest
-        /// answer; a screen that listed nothing would be a dishonest one.
-        public static let devices = LocalizedStringResource("settings.devices", bundle: bundle)
-        public static let devicesHelp = LocalizedStringResource("settings.devicesHelp", bundle: bundle)
-
         public static let appearance = LocalizedStringResource("settings.appearance", bundle: bundle)
 
         /// The row that leads to the emoji a double tap leaves — see `ReactionsView`. A screen of
@@ -1306,13 +1597,9 @@ public enum Strings {
         /// app looks like, and it is the word people come looking for.
         public static let reactions = LocalizedStringResource("settings.reactions", bundle: bundle)
 
-        /// The row that leads to the six icons — see `HomeIconView`. iPhone and iPad only, and
+        /// The row that leads to the six icons — see `HomeIconPicker`. iPhone and iPad only, and
         /// the row is not drawn elsewhere, so this string is never read on a Mac.
         public static let appIcon = LocalizedStringResource("settings.appIcon", bundle: bundle)
-
-        /// The row that leads to the things that are not finished. Shown only where there is
-        /// something behind it — see `BetaFeatures.hasAnything`.
-        public static let beta = LocalizedStringResource("settings.beta", bundle: bundle)
 
         /// The last row, and the only one that changes nothing — see `Strings.About`.
         public static let about = LocalizedStringResource("settings.about", bundle: bundle)
@@ -1322,7 +1609,6 @@ public enum Strings {
         public static let media = LocalizedStringResource("settings.media", bundle: bundle)
         /// Where the bridge is switched on — see `Strings.Connection`.
         public static let connection = LocalizedStringResource("settings.connection", bundle: bundle)
-        public static let moreSoon = LocalizedStringResource("settings.moreSoon", bundle: bundle)
 
         /// The blocked-people screen, reached from settings.
         public static let blocked = LocalizedStringResource("settings.blocked", bundle: bundle)
@@ -1373,11 +1659,11 @@ public enum Strings {
         /// The app's own page. The address is shown under the label rather than hidden behind
         /// it: a link whose destination is invisible is one nobody presses.
         public static let website = LocalizedStringResource("about.website", bundle: bundle)
+        /// Where the code is. Shown with its address for the same reason as `website`.
+        public static let sourceCode = LocalizedStringResource("about.sourceCode", bundle: bundle)
 
         /// The row that leads to `LicensesView`, and that screen's title.
         public static let licences = LocalizedStringResource("about.licences", bundle: bundle)
-        /// Under the list of licences: whose the cryptography is.
-        public static let cryptography = LocalizedStringResource("about.cryptography", bundle: bundle)
     }
 
     /// What the app is keeping on the device, and the one part of it the user can throw away.
@@ -1434,24 +1720,22 @@ public enum Strings {
         /// heading in the grid and the name VoiceOver gives the tab that jumps to it.
         public static let recent = LocalizedStringResource("reactions.recent", bundle: bundle)
         public static let smileys = LocalizedStringResource("reactions.smileys", bundle: bundle)
-        public static let gestures = LocalizedStringResource("reactions.gestures", bundle: bundle)
-        public static let hearts = LocalizedStringResource("reactions.hearts", bundle: bundle)
         public static let animals = LocalizedStringResource("reactions.animals", bundle: bundle)
         public static let food = LocalizedStringResource("reactions.food", bundle: bundle)
         public static let activity = LocalizedStringResource("reactions.activity", bundle: bundle)
         public static let places = LocalizedStringResource("reactions.places", bundle: bundle)
         public static let objects = LocalizedStringResource("reactions.objects", bundle: bundle)
         public static let symbols = LocalizedStringResource("reactions.symbols", bundle: bundle)
+        public static let flags = LocalizedStringResource("reactions.flags", bundle: bundle)
     }
 
-    /// Choosing which icon the app wears on the home screen — see `HomeIconView`.
+    /// Choosing which icon the app wears on the home screen — see `HomeIconPicker`.
     ///
     /// The names are the one part of this the tiles cannot say for themselves. They are things
     /// rather than colours — хром, гранат, хвоя — because "dark grey" is a description and a
     /// name is something you can ask somebody for. The rest name what the picture *is*, because
     /// that is the whole of what sets them apart: «Ретро», «Буквы», «Ч/б».
     public enum HomeIcon {
-        public static let help = LocalizedStringResource("appIcon.help", bundle: bundle)
 
         /// When the system refuses. It does on a device where alternate icons are switched off
         /// by a management profile, and there is nothing the app can do about it beyond saying
@@ -1507,7 +1791,6 @@ public enum Strings {
 
         /// What lies behind a conversation — see `Wallpaper`.
         public static let wallpaper = LocalizedStringResource("appearance.wallpaper", bundle: bundle)
-        public static let wallpaperFooter = LocalizedStringResource("appearance.wallpaperFooter", bundle: bundle)
         public static let wallpaperDimming = LocalizedStringResource("appearance.wallpaperDimming", bundle: bundle)
         public static let wallpaperChoose = LocalizedStringResource("appearance.wallpaperChoose", bundle: bundle)
 
@@ -1568,6 +1851,24 @@ public enum Strings {
             }
         }
     }
+
+    /// QR codes: the one that says who you are (or what a room is), and the camera that reads
+    /// somebody else's. What is in the code is a `matrix.to` link — see `MatrixLink`.
+    public enum QR {
+        public static let title = LocalizedStringResource("qr.title", bundle: bundle)
+        public static let scan = LocalizedStringResource("qr.scan", bundle: bundle)
+        public static let scanHint = LocalizedStringResource("qr.scanHint", bundle: bundle)
+        /// A code that is not a person or a room — a menu, a Wi-Fi password.
+        public static let notMatrix = LocalizedStringResource("qr.notMatrix", bundle: bundle)
+        public static let choosePicture = LocalizedStringResource("qr.choosePicture", bundle: bundle)
+        public static let noCamera = LocalizedStringResource("qr.noCamera", bundle: bundle)
+        public static let nothingFound = LocalizedStringResource("qr.nothingFound", bundle: bundle)
+        /// A room a link pointed at: walk in, or — if you are in it already — open it.
+        public static let joinRoom = LocalizedStringResource("qr.joinRoom", bundle: bundle)
+        public static let openRoom = LocalizedStringResource("qr.openRoom", bundle: bundle)
+        public static let roomUnknown = LocalizedStringResource("qr.roomUnknown", bundle: bundle)
+        public static let inviteOnlyRoom = LocalizedStringResource("qr.inviteOnlyRoom", bundle: bundle)
+    }
 }
 
 extension String {
@@ -1575,4 +1876,5 @@ extension String {
     init(app resource: LocalizedStringResource) {
         self.init(localized: resource)
     }
+
 }

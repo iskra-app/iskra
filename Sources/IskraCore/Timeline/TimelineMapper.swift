@@ -32,7 +32,8 @@ enum TimelineMapper {
     /// reporting them as though they had, so they are subtracted here — see `UnsentReactions`.
     static func rows(from items: [TimelineItem],
                      ownUserID: String,
-                     unsent: UnsentReactions = UnsentReactions()) -> [TimelineRow] {
+                     unsent: UnsentReactions = UnsentReactions(),
+                     hiding hidden: ServiceEventSettings = ServiceEventSettings()) -> [TimelineRow] {
         var rows: [TimelineRow] = []
         rows.reserveCapacity(items.count)
 
@@ -68,6 +69,11 @@ enum TimelineMapper {
                     rows.append(.dayDivider(DayDivider(id: "divider-\(timestamp)", date: date)))
                     // A date divider breaks the visual grouping.
                     previous = nil
+                } else if case .readMarker = virtual {
+                    // Where the reader left off. A bar across the conversation, so it breaks a run
+                    // the same way a date does. See `TimelineRow.unreadDivider`.
+                    rows.append(.unreadDivider)
+                    previous = nil
                 }
                 continue
             }
@@ -78,6 +84,9 @@ enum TimelineMapper {
             // grey line — and it may not go in at all, because two people joining one after
             // the other is one line and not two. See `append`.
             if let roomEvent = roomEvent(from: event) {
+                // Switched off in Settings → Chats: dropped like any event this app never shows, so
+                // it neither breaks a run of messages nor keeps an empty day's header alive.
+                if hidden.hides(roomEvent.kind) { continue }
                 append(roomEvent, to: &rows)
                 // A note across the conversation breaks a run of messages: the one below it
                 // is no longer "the same person still talking".
@@ -99,7 +108,37 @@ enum TimelineMapper {
             previous = message
         }
 
-        return withoutEmptyDays(withReadPropagated(rows, readUpTo: readPrefix, at: readPrefixAt))
+        // The bar first, then the empty days: a date whose only row was an unearned bar is a date
+        // over nothing, and the second pass is the one that knows what to do about that.
+        return withoutEmptyDays(withUnreadDividerIfEarned(
+            withReadPropagated(rows, readUpTo: readPrefix, at: readPrefixAt)))
+    }
+
+    /// Keeps the "Unread messages" bar only where there is something unread under it.
+    ///
+    /// The SDK places its read marker after the last event the account has read, and this app drops
+    /// most of what the SDK holds — so the bar can end up over nothing but a member joining, or over
+    /// nothing at all. And it can sit over messages that are only *ours*: the marker is the account's
+    /// `m.fully_read`, which moves when a room is left (`TimelineStore.stop`), so a reply written on
+    /// another device lands below it. "Unread" over your own words is the app not knowing who you
+    /// are. Telegram shows the bar only above something somebody else said, and so does this.
+    ///
+    /// Not private: tested directly, for the same reason `withoutEmptyDays` is.
+    static func withUnreadDividerIfEarned(_ rows: [TimelineRow]) -> [TimelineRow] {
+        guard let index = rows.firstIndex(of: .unreadDivider) else { return rows }
+
+        let earned = rows[(index + 1)...].contains { row in
+            guard case let .message(message) = row else { return false }
+            return !message.isOwn
+        }
+
+        var rows = rows
+        rows.remove(at: index)
+        // Only the first: there is one read marker in a timeline, and a second bar would be the
+        // same fact said twice.
+        rows.removeAll { $0 == .unreadDivider }
+        if earned { rows.insert(.unreadDivider, at: index) }
+        return rows
     }
 
     /// Marks your earlier messages read once a later one has been.
@@ -260,9 +299,33 @@ enum TimelineMapper {
                        isEdited: isEdited(event.content),
                        replyTo: replyPreview(from: event.content),
                        reactions: unsent.applied(to: reactions(from: event.content, ownUserID: ownUserID),
-                                                 messageID: id),
+                                                 messageID: id, ownUserID: ownUserID),
                        deletedAt: kind == .deleted ? redaction(of: event) : nil,
-                       mentionedUserIDs: mentionedUserIDs(from: event.content))
+                       mentionedUserIDs: mentionedUserIDs(from: event.content),
+                       formattedBody: formattedBody(from: event.content),
+                       forwardedFrom: forwardOrigin(of: event, kind: kind),
+                       uploadProgress: event.isOwn ? uploadProgress(of: event.localSendState) : nil)
+    }
+
+    /// The `m.forwarded` the event carries, if it is a forward — see `ForwardOrigin`. Read off the
+    /// event's own JSON, the one place the SDK keeps a field it has no name for, and only for the
+    /// kinds that can be forwarded at all; once per event, see `Forwarded.origin(eventID:json:)`.
+    private static func forwardOrigin(of event: EventTimelineItem, kind: MessageKind) -> ForwardOrigin? {
+        switch kind {
+        case .text, .notice, .emote, .image, .video, .file: break
+        default: return nil
+        }
+        guard case let .eventId(eventID) = event.eventOrTransactionId else { return nil }
+        return Forwarded.origin(eventID: eventID) { event.lazyProvider.debugInfo().originalJson }
+    }
+
+    /// How far an attachment of ours has got on its way up — see `Message.uploadProgress`.
+    ///
+    /// Nil until the SDK has a total to divide by: a ring that starts at an invented zero and then
+    /// leaps is worse than one that appears when there is something true to draw.
+    static func uploadProgress(of state: EventSendState?) -> Double? {
+        guard case let .notSentYet(upload?)? = state, upload.progress.total > 0 else { return nil }
+        return min(1, Double(upload.progress.current) / Double(upload.progress.total))
     }
 
     /// The IDs an event says it mentions — its `m.mentions` set. Only message events carry them;
@@ -292,7 +355,8 @@ enum TimelineMapper {
 
         return RoomEvent(id: identifier(for: event.eventOrTransactionId),
                          kind: kind,
-                         timestamp: MessagePreview.date(from: event.timestamp))
+                         timestamp: MessagePreview.date(from: event.timestamp),
+                         actorID: event.sender)
     }
 
     private static func roomEventKind(from content: TimelineItemContent, sender: String) -> RoomEventKind? {
@@ -301,7 +365,7 @@ enum TimelineMapper {
             // The name the room knows them by, and their Matrix ID when it knows none. A line
             // reading "@alice:matrix.org joined" is worse than nothing to nobody: it is exactly
             // what somebody without a display name looks like everywhere else in the app.
-            let who = userDisplayName ?? userId
+            let who = RoomEventPerson(userID: userId, name: userDisplayName ?? userId)
 
             return switch change {
             case .joined, .invitationAccepted, .knockAccepted: .joined([who])
@@ -380,7 +444,7 @@ enum TimelineMapper {
         case let .ready(content, sender, senderProfile, _, _):
             let (name, _) = profile(from: senderProfile, fallback: sender)
             let text = MessagePreview.text(for: content) ?? String(core: CoreStrings.Reply.unavailable)
-            return ReplyPreview(eventID: eventID, senderName: name, text: text)
+            return ReplyPreview(eventID: eventID, senderName: name, senderID: sender, text: text)
 
         case .pending:
             return ReplyPreview(eventID: eventID,
@@ -441,7 +505,8 @@ enum TimelineMapper {
             .map { reaction in
                 MessageReaction(key: reaction.key,
                                 count: reaction.senders.count,
-                                isMine: reaction.senders.contains { $0.senderId == ownUserID })
+                                isMine: reaction.senders.contains { $0.senderId == ownUserID },
+                                senders: reaction.senders.sorted { $0.timestamp < $1.timestamp }.map(\.senderId))
             }
     }
 
@@ -479,6 +544,20 @@ enum TimelineMapper {
         }
     }
 
+    /// The HTML a text, emote or notice carries beside its plain body, when it carries HTML.
+    private static func formattedBody(from content: TimelineItemContent) -> String? {
+        guard case let .msgLike(msgLike) = content, case let .message(message) = msgLike.kind else { return nil }
+        let formatted: FormattedBody?
+        switch message.msgType {
+        case let .text(content): formatted = content.formatted
+        case let .emote(content): formatted = content.formatted
+        case let .notice(content): formatted = content.formatted
+        default: formatted = nil
+        }
+        guard let formatted, case .html = formatted.format else { return nil }
+        return formatted.body
+    }
+
     private static func kind(from message: MessageContent) -> MessageKind {
         switch message.msgType {
         case let .text(content):
@@ -489,15 +568,20 @@ enum TimelineMapper {
             return .notice(content.body)
 
         case let .image(content):
-            return .image(Attachment(source: content.source,
-                                     thumbnailSource: content.info?.thumbnailSource,
-                                     filename: content.filename,
-                                     caption: content.caption,
-                                     width: content.info?.width.map(Int.init),
-                                     height: content.info?.height.map(Int.init),
-                                     duration: nil,
-                                     mimeType: content.info?.mimetype,
-                                     blurhash: content.info?.blurhash))
+            let attachment = Attachment(source: content.source,
+                                        thumbnailSource: content.info?.thumbnailSource,
+                                        filename: content.filename,
+                                        caption: content.caption,
+                                        width: content.info?.width.map(Int.init),
+                                        height: content.info?.height.map(Int.init),
+                                        duration: nil,
+                                        mimeType: content.info?.mimetype,
+                                        blurhash: content.info?.blurhash)
+            // A WebP is a sticker however it came: in an encrypted room this app sends one as an
+            // encrypted image, because a real `m.sticker` would go up unencrypted — see
+            // `StickerPicture`.
+            return StickerPicture.isSticker(mimeType: content.info?.mimetype, filename: content.filename) ? .sticker(attachment)
+                                                                              : .image(attachment)
 
         case let .video(content):
             let attachment = Attachment(source: content.source,
@@ -585,9 +669,24 @@ enum TimelineMapper {
         switch event.localSendState {
         case .notSentYet:
             return .sending
-        case let .sendingFailed(error, _):
-            // The SDK's `isRecoverable` is dropped on purpose: it describes what the *queue*
-            // did, not whether the user can get the message moving. See `SendFailure.canRetry`.
+        case .sendingFailed(_, isRecoverable: true):
+            // Still on its way, and that is the truth rather than a kindness. A recoverable failure
+            // is the SDK saying the request did not get through — the network went, the server timed
+            // out — and that it has *paused the room's queue* rather than given up on the message.
+            // Nothing about the message is wrong. The queue is started again when sync comes back
+            // and, while sync is running, on a backoff of its own (`SendQueueRecovery`), and the
+            // message goes with it.
+            //
+            // It used to be drawn as a failure, which is the one thing Telegram is careful never to
+            // do: write a message in a lift and it sits there with a clock until there is a network,
+            // and then it goes. Here it got the red badge — about a message that was going to be sent
+            // anyway, a few seconds later, with nobody pressing anything. And people did press:
+            // "Send again" on a message already going, "Discard" on one that would have gone.
+            return .sending
+        case let .sendingFailed(error, isRecoverable: false):
+            // Parked: the queue has stepped round this one message and will not try it again by
+            // itself. That is a real failure, and its reason is the fix — `SendFailure.canRetry`
+            // says which of them a second press can clear.
             return .failed(reason(for: error))
         case .sent, .none:
             // Sent, and possibly read. A receipt from anyone but us means read.

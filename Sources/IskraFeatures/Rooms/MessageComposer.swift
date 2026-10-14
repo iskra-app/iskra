@@ -57,6 +57,9 @@ struct MessageComposer: View {
     /// are their own and survive.
     var onCancelContext: () -> Void = {}
 
+    /// Where the text begins on the screen, reported as it moves — see `ComposerTravel`.
+    var onTextLeading: (CGFloat) -> Void = { _ in }
+
     var onSend: () -> Void
 
     /// The four moments of a hold on the record button, in video: it began, it ended (send), it
@@ -84,6 +87,13 @@ struct MessageComposer: View {
     var onFinishVoice: () -> Void = {}
     var onCancelVoice: () -> Void = {}
 
+    /// A finger has landed on the record button, and it may be a hold: open the microphone or the
+    /// camera *now*, so it is ready by the time the hold is certain. And the press turned out to
+    /// be a tap: put it away again. The slow part of a recording beginning was never the wait for
+    /// the hold — it was the hardware waking after it. See `VoiceRecorder.prewarm()`.
+    var onPrewarm: (RecordingMode) -> Void = { _ in }
+    var onDiscardPrewarm: (RecordingMode) -> Void = { _ in }
+
     /// The swipe up, reported outward on every movement of the finger and not merely when it
     /// arrives.
     ///
@@ -110,6 +120,11 @@ struct MessageComposer: View {
     var onChoosePhoto: () -> Void
     var onChooseFile: () -> Void
     var onChooseLocation: () -> Void = {}
+
+    /// Asking for the sticker sheet — presented by the screen, like the pickers above. Nil leaves
+    /// the button out: a room this account cannot post to has no use for it, and neither has a
+    /// composer drawn on its own for a test.
+    var onChooseSticker: (() -> Void)?
 
     /// Photos and videos — picked, pasted or dropped into the room — waiting to go with the next
     /// press of send. See `PendingAttachment` for why they wait at all. The screen owns them,
@@ -153,6 +168,7 @@ struct MessageComposer: View {
     init(draft: Binding<String>,
          context: ComposerContext? = nil,
          onCancelContext: @escaping () -> Void = {},
+         onTextLeading: @escaping (CGFloat) -> Void = { _ in },
          onSend: @escaping () -> Void,
          onStartVideoNote: @escaping () -> Void = {},
          onFinishVideoNote: @escaping () -> Void = {},
@@ -161,11 +177,14 @@ struct MessageComposer: View {
          onStartVoice: @escaping () -> Void = {},
          onFinishVoice: @escaping () -> Void = {},
          onCancelVoice: @escaping () -> Void = {},
+         onPrewarm: @escaping (RecordingMode) -> Void = { _ in },
+         onDiscardPrewarm: @escaping (RecordingMode) -> Void = { _ in },
          onLockGesture: @escaping (LockGesture) -> Void = { _ in },
          voice: VoiceRecording? = nil,
          onChoosePhoto: @escaping () -> Void,
          onChooseFile: @escaping () -> Void,
          onChooseLocation: @escaping () -> Void = {},
+         onChooseSticker: (() -> Void)? = nil,
          attachments: [PendingAttachment] = [],
          onRemoveAttachment: @escaping (PendingAttachment) -> Void = { _ in },
          onPasteImage: @escaping () -> Void = {},
@@ -174,6 +193,7 @@ struct MessageComposer: View {
         _draft = draft
         self.context = context
         self.onCancelContext = onCancelContext
+        self.onTextLeading = onTextLeading
         self.onSend = onSend
         self.onStartVideoNote = onStartVideoNote
         self.onFinishVideoNote = onFinishVideoNote
@@ -182,11 +202,14 @@ struct MessageComposer: View {
         self.onStartVoice = onStartVoice
         self.onFinishVoice = onFinishVoice
         self.onCancelVoice = onCancelVoice
+        self.onPrewarm = onPrewarm
+        self.onDiscardPrewarm = onDiscardPrewarm
         self.onLockGesture = onLockGesture
         self.voice = voice
         self.onChoosePhoto = onChoosePhoto
         self.onChooseFile = onChooseFile
         self.onChooseLocation = onChooseLocation
+        self.onChooseSticker = onChooseSticker
         self.attachments = attachments
         self.onRemoveAttachment = onRemoveAttachment
         self.onPasteImage = onPasteImage
@@ -195,6 +218,9 @@ struct MessageComposer: View {
     }
 
     @FocusState private var isFocused: Bool
+
+    /// Where the cursor is in the field — for a newline put in by hand, see `ComposerReturnKey`.
+    @State private var selection: TextSelection?
 
     @Environment(\.accent) private var accent
 
@@ -227,7 +253,7 @@ struct MessageComposer: View {
         // inside a `GlassEffectContainer`, glass with a `glassEffectID` that appears or
         // disappears is interpolated into its neighbours — the material stretches, splits
         // and merges the way the system's own controls do.
-        GlassEffectContainer(spacing: Theme.Spacing.close) {
+        NavigationGlassGroup(spacing: Theme.Spacing.close) {
             VStack(alignment: .leading, spacing: Theme.Spacing.close) {
                 if let context {
                     contextStrip(context)
@@ -267,16 +293,37 @@ struct MessageComposer: View {
                             // it does with it.
                             .transition(.scale(scale: 0.94).combined(with: .opacity))
                     } else {
-                        TextField(String(app: Strings.Room.composerPlaceholder), text: $draft, axis: .vertical)
-                            .transition(.opacity)
-                            .textFieldStyle(.plain)
-                            .lineLimit(1...5)
-                            .focused($isFocused)
-                            .padding(.horizontal, Theme.Spacing.roomy)
-                            .padding(.vertical, Theme.Spacing.normal)
-                            .frame(minHeight: control)
-                            .navigationGlass(in: .rect(cornerRadius: Theme.Radius.bubble, style: .continuous))
-                            .onSubmit(onSend)
+                        // The sticker button sits *inside* the field, at its trailing end, as
+                        // Telegram's does — not as a fourth circle in the row, which would take its
+                        // width out of the line being typed on every message to offer something
+                        // sent on a few. Centred on the field, at any number of lines: it belongs
+                        // to the field, not to the last line of what is being typed.
+                        HStack(alignment: .center, spacing: 0) {
+                            TextField(String(app: Strings.Room.composerPlaceholder), text: $draft,
+                                      selection: $selection, axis: .vertical)
+                                .textFieldStyle(.plain)
+                                // Where the words start on the screen — the point a sent message
+                                // travels across from. Measured on the bare field, inside its
+                                // padding, so it is the first letter's edge and not the glass
+                                // around it.
+                                .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minX } action: {
+                                    onTextLeading($0)
+                                }
+                                .lineLimit(1...5)
+                                .focused($isFocused)
+                                .padding(.leading, Theme.Spacing.roomy)
+                                .padding(.trailing, offersStickers ? 0 : Theme.Spacing.roomy)
+                                .padding(.vertical, Theme.Spacing.normal)
+                                .frame(minHeight: control)
+                                // Return or ⌘-Return, by Settings → Chats — see `ComposerReturnKey`.
+                                .composerReturnKey(text: $draft, selection: $selection, send: onSend)
+
+                            if offersStickers, let onChooseSticker {
+                                stickerButton(onChooseSticker)
+                            }
+                        }
+                        .transition(.opacity)
+                        .navigationGlass(in: .rect(cornerRadius: Theme.Radius.bubble, style: .continuous))
                     }
 
                     // With nothing typed, there is one button where the send button sits, and it
@@ -302,6 +349,11 @@ struct MessageComposer: View {
                                label: Strings.Room.send,
                                isPrimary: true,
                                action: onSend)
+                            #if os(iOS)
+                            // ⌘-Return on an iPad keyboard. On a Mac the field's own key handler
+                            // takes it, and a shortcut here as well would send twice.
+                            .keyboardShortcut(.return, modifiers: .command)
+                            #endif
                     }
                 }
             }
@@ -395,6 +447,7 @@ struct MessageComposer: View {
         // Heavy and at full intensity. A medium tap is what a button gives you, and the button is
         // not what happened here — the hold took, and the phone started listening. It should land
         // like the shutter of a camera, not like a keypress.
+        .sensoryFeedback(.impact(weight: .light, intensity: 0.6), trigger: beats.pressed)
         .sensoryFeedback(.impact(weight: .heavy, intensity: 1), trigger: beats.began)
         .sensoryFeedback(.success, trigger: beats.locked)
         .sensoryFeedback(.impact(flexibility: .rigid, intensity: 0.9), trigger: beats.cancelled)
@@ -408,6 +461,30 @@ struct MessageComposer: View {
         .onChange(of: isFocused) { _, focused in
             if focused { close() }
         }
+    }
+
+    /// Whether the field carries the sticker button. Not while editing: an edit changes the words
+    /// of a message already sent, and a sticker is not words.
+    private var offersStickers: Bool {
+        onChooseSticker != nil && context?.isEditing != true
+    }
+
+    /// The face at the end of the field. Quiet — secondary, no glass of its own — because it is
+    /// part of the field and not a control standing beside it. An SF Symbol, as every icon in the
+    /// app is: SF Symbols has no sticker, and a drawn one was tried and taken out again.
+    private func stickerButton(_ open: @escaping () -> Void) -> some View {
+        Button {
+            close()
+            open()
+        } label: {
+            Image(systemName: "face.smiling")
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .frame(width: control, height: control)
+                .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(Strings.Stickers.open))
     }
 
     // MARK: - Answering and changing
@@ -570,7 +647,15 @@ struct MessageComposer: View {
         // it — and the hold survives with it.
         Color.clear
             .frame(width: control, height: control)
-            .overlay { icon(glyph, isPrimary: voice != nil, tint: .red) }
+            .overlay {
+                icon(glyph, isPrimary: voice != nil || hold == .holding, tint: .red)
+                    // The answer to the finger, the instant it lands — before anybody knows
+                    // whether it is a tap or a hold. It used to be nothing for the length of
+                    // `holdBegins`, and a quarter of a second of a button not moving under a
+                    // thumb reads as a button that did not notice. Telegram's grows; so does this.
+                    .scaleEffect(hold == .none || hold == .over ? 1 : Self.heldScale)
+                    .animation(.spring(response: 0.18, dampingFraction: 0.6), value: hold)
+            }
             .contentShape(.circle)
             .gesture(
                 DragGesture(minimumDistance: 0)
@@ -585,6 +670,8 @@ struct MessageComposer: View {
                         switch hold {
                         case .none:
                             hold = .pressing
+                            isPrewarmed = false
+                            beats.pressed += 1
 
                             // A press while a hands-free recording is running means stop, not
                             // start another — the button has become a stop button and looks like
@@ -592,7 +679,15 @@ struct MessageComposer: View {
                             guard voice == nil else { return }
 
                             arming = Task {
-                                try? await Task.sleep(for: Theme.Timing.holdBegins)
+                                // The warm-up waits out a tap first. Begun at touch-down, every
+                                // tap that only meant "switch to video" switched the camera on and
+                                // off again, and the composer stuttered under it.
+                                try? await Task.sleep(for: Theme.Timing.prewarmAfter)
+                                guard !Task.isCancelled, hold == .pressing else { return }
+                                onPrewarm(mode)
+                                isPrewarmed = true
+
+                                try? await Task.sleep(for: Theme.Timing.holdBegins - Theme.Timing.prewarmAfter)
                                 guard !Task.isCancelled, hold == .pressing else { return }
                                 hold = .holding
                                 start()
@@ -645,6 +740,7 @@ struct MessageComposer: View {
                             // is running, and otherwise flips the button to the other kind of
                             // message.
                             if voice == nil {
+                                if isPrewarmed { onDiscardPrewarm(mode) }
                                 withAnimation(.smooth(duration: Theme.Timing.chrome)) { mode.toggle() }
                             } else {
                                 onFinishVoice()
@@ -850,6 +946,12 @@ struct MessageComposer: View {
 
     @State private var hold: Hold = .none
 
+    /// Whether this press got far enough to warm the recorder up — see `Timing.prewarmAfter`.
+    @State private var isPrewarmed = false
+
+    /// How much the record button swells under a finger — see `recordButton`.
+    private static let heldScale: CGFloat = 1.25
+
     /// The timer that turns a press into a hold, held onto so that lifting the finger can call
     /// it off. Cancelled on release, and cancelled again when the view goes away with the finger
     /// still down — a task that outlives the composer would start a recording into a room the
@@ -896,6 +998,7 @@ struct MessageComposer: View {
     /// The three things the phone taps back at, counted rather than flagged — see the feedback
     /// modifiers on the body for why.
     private struct Beats: Equatable {
+        var pressed = 0
         var began = 0
         var locked = 0
         var cancelled = 0
@@ -928,7 +1031,7 @@ struct MessageComposer: View {
             icon("plus", isPrimary: false, rotation: .degrees(isAttaching ? 45 : 0))
         }
         .buttonStyle(.plain)
-        .glassEffectID("attach", in: glass)
+        .navigationGlassID("attach", in: glass)
         .accessibilityLabel(Text(Strings.Room.attach))
         .accessibilityAddTraits(isAttaching ? .isSelected : [])
     }
@@ -987,7 +1090,7 @@ struct MessageComposer: View {
             .contentShape(.capsule)
         }
         .buttonStyle(.plain)
-        .glassEffectID(id, in: glass)
+        .navigationGlassID(id, in: glass)
         // Each choice grows out of the button that produced it, rather than fading in
         // somewhere above it.
         .transition(.scale(scale: 0.1, anchor: .bottomLeading).combined(with: .opacity))

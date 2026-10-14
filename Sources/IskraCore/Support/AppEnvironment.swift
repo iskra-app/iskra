@@ -83,6 +83,12 @@ public struct AppEnvironment: Sendable {
     /// The App Group container. Shared files — the encrypted store — live here.
     public static let appGroupIdentifier = "group.moscow.swag.iskra"
 
+    /// What the Share extension opens to hand a message over to the app, which then sends the outbox
+    /// the moment it is in front — see `ShareViewController.openApp()`. The same scheme as
+    /// `oauthRedirectURI`, declared once in `Apps/project.yml`; the path says nothing the app acts
+    /// on, because coming to the front is the whole of the message.
+    public static let shareHandoffURL = URL(string: "moscow.swag.iskra:/share")!
+
     /// The Keychain access group, which is *not* the App Group.
     ///
     /// It would be tidier if one identifier did both jobs, and on iOS an App Group can

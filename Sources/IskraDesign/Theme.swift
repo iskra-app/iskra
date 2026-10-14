@@ -62,6 +62,12 @@ public enum Theme {
         public static let circle: CGFloat = .infinity
     }
 
+    public enum Opacity {
+        /// A warning's colour spread under its words — enough to be told apart from an ordinary
+        /// notice at a glance, little enough that the words on it stay the words' own colour.
+        public static let warningWash: Double = 0.14
+    }
+
     public enum Spacing {
         public static let tight: CGFloat = 4
         public static let close: CGFloat = 8
@@ -133,9 +139,9 @@ public enum Theme {
         ///
         /// A quarter of a second is the number that is actually about the gesture rather than
         /// about a bug behind it. Half the system's wait, so it still reads as quick; long enough
-        /// that holding is a decision. And now that the wait is real, it is *shown* — the bubble
-        /// sinks through exactly this long and arrives at the lift, so the quarter second is spent
-        /// watching something happen rather than waiting for it. See `Scale.pressedMessage`.
+        /// that holding is a decision. Nothing is drawn during it: the bubble used to sink through
+        /// this quarter second as a countdown, and a message that changes shape under a finger is
+        /// exactly what the menu must not show.
         public static let menuLift: TimeInterval = 0.25
 
         /// How long a finger stays on a chat in the list before the peek lifts it — see `ChatPeek`.
@@ -146,20 +152,52 @@ public enum Theme {
         /// way to a tap should open the chat and not a preview of it. The system's own half second.
         public static let peekLift: TimeInterval = 0.5
 
-        /// The bubble coming back up when a press is abandoned — the finger lifted early, or the
-        /// press turned into a scroll.
-        ///
-        /// A spring with some bounce in it, which is the one place in this app a bounce is right:
-        /// the message was pushed and let go, and a thing let go comes back past where it started.
-        /// The sink itself is not a spring — it is a plain ease-out lasting exactly `menuLift`,
-        /// because it is a progress bar wearing a better costume and a progress bar must not
-        /// overshoot the thing it is measuring.
-        public static let menuReleases: Animation = .spring(response: 0.3, dampingFraction: 0.55)
-
         /// The menu arriving: the bubble rising off the page, the bar and the list opening
         /// around it. A spring, because the lift is the one moment in a conversation where the
         /// app is *picking something up*, and things that are picked up have weight.
-        public static let menuOpens: Animation = .spring(response: 0.34, dampingFraction: 0.78)
+        ///
+        /// Telegram's spring, number for number. Its context menu runs every part of the opening on
+        /// one `CASpringAnimation` (`ContextControllerExtractedPresentationNode`): mass 5, stiffness
+        /// 900, damping 104 — a damping ratio of 0.775 — and then *played faster*, squeezed from its
+        /// natural settling time of 0.741 s into 0.42 s. Squeezing a spring in time is the same as
+        /// making it stiffer at the same ratio: it comes out as a response of 0.265 s.
+        ///
+        /// This used to be `.spring(duration: 0.42, bounce: 0.12)`, which reads as the same
+        /// thing and is not: SwiftUI's `duration` is the *response*, not the time to settle, so it
+        /// was a spring more than half as slow again as Telegram's — and with less damping. The
+        /// message drifted up into the menu where Telegram's snaps into it and lands.
+        public static let menuOpens: Animation = .spring(response: 0.265, dampingFraction: 0.775)
+
+        /// And the menu going away: no spring at all. Telegram puts a message back on a plain
+        /// 0.2 s ease-in-ease-out — a thing being put down is not thrown.
+        public static let menuCloses: Animation = .easeInOut(duration: 0.2)
+
+        /// The verbs becoming visible as they unfold out of the message: almost at once. Telegram
+        /// fades its actions in over 0.05 s, so the eye follows the *unfolding* and never watches a
+        /// list fade up.
+        public static let menuListShows: Animation = .linear(duration: 0.05)
+
+        /// How far into the flight the menu's glass is left empty before what is on it appears.
+        ///
+        /// The capsule and the panel arrive first, as shapes — glass growing out of the message's
+        /// corner with nothing on it yet — and the emoji and the verbs land on them once they have
+        /// mostly opened. Both at once is a menu that *scales its words*: six lines of text
+        /// swelling from a dot read as the list being zoomed, and an emoji at a tenth of its size
+        /// is a smudge. Empty glass growing reads as a surface opening, and then there is
+        /// something on it. Most of the way through the opening spring's response, which is when
+        /// the glass is nearly its full size.
+        public static let menuFills: Duration = .milliseconds(150)
+
+        /// What is on the glass appearing, once it is there — quick, it is only being shown.
+        public static let menuContentShows: Animation = .easeOut(duration: 0.15)
+
+        /// The bar of emoji becoming visible as it unrolls — Telegram's 0.15 s.
+        public static let menuBarFades: Animation = .easeOut(duration: 0.15)
+
+        /// One emoji popping into the bar, Telegram's 0.4 s spring from almost nothing, with a
+        /// little bounce: these are the most pressable things in the app, and they are allowed to
+        /// say so as they arrive. Staggered by the bar — see `ReactionBar.popDelay`.
+        public static let reactionPops: Animation = .spring(duration: 0.4, bounce: 0.3)
 
         /// Reactions arriving and leaving.
         public static let reaction: TimeInterval = 0.25
@@ -185,6 +223,39 @@ public enum Theme {
         /// reacted to, edited, deleted — changes at once.
         public static let arrival: Animation = .spring(duration: 0.32, bounce: 0.18)
 
+        /// A message opening its place at the foot of the conversation — the whole column moving up
+        /// by its height, and the message coming up from under the composer into the room it made.
+        ///
+        /// Telegram's numbers, taken as they are: `ChatMessageTransitionNode` moves a sent message
+        /// vertically on this bezier over 0.3 s. It starts slowly and then commits — the column is
+        /// seen to *make room* before the message is seen to take it — which is the difference
+        /// between a message arriving and a list being redrawn. See `MessageArrival`.
+        public static let messageMakesRoom: Animation = .timingCurve(0.199, 0.011, 0.279, 0.910,
+                                                                     duration: 0.3)
+
+        /// A message of ours travelling across from the composer to its own side of the screen.
+        ///
+        /// Telegram's horizontal curve for the same transition, deliberately not the vertical one:
+        /// it is fast off the mark and long in the settling, so the words leave the box the instant
+        /// send is pressed and ease into the bubble rather than arriving at both ends at once.
+        public static let messageCrosses: Animation = .timingCurve(0.23, 1, 0.32, 1, duration: 0.3)
+
+        /// Somebody else's message coming up into the space the column has made for it. A fade, and
+        /// a short one — Telegram's 0.2 s — because the movement is the column's; this only keeps
+        /// the bubble from being seen to slide in solid from under the composer.
+        public static let messageAppears: Animation = .easeOut(duration: 0.2)
+
+        /// The date floating over a conversation coming in as the list starts to move — Telegram's
+        /// 0.3 s (`ChatMessageDateHeader.updateFlashing`).
+        public static let floatingDateIn: Animation = .easeOut(duration: 0.3)
+
+        /// …and going once the list has come to rest, a little slower — Telegram's 0.4 s.
+        public static let floatingDateOut: Animation = .easeIn(duration: 0.4)
+
+        /// How long the list has to be still before the floating date goes. Long enough that a
+        /// flick followed by a second flick does not blink it out between them.
+        public static let floatingDateLingers: Duration = .milliseconds(800)
+
         /// How long the conversation stays pinned to its end after a message has landed there.
         ///
         /// A row is not its final height when it is inserted — the picture in it arrives, the
@@ -192,6 +263,12 @@ public enum Theme {
         /// for an attachment to size itself; short enough that it is over before anybody could
         /// want to scroll away. See `RoomView.followsEnd`.
         public static let endIsHeld: Duration = .milliseconds(700)
+
+        /// How long the reader's place, noted when a message lands below them, may still be put
+        /// back. The message makes the conversation taller within a frame or two; a note older than
+        /// this is about a moment that has passed, and putting it back moves the reader somewhere
+        /// they no longer are. See `RoomView.held`.
+        public static let placeIsHeld: Duration = .milliseconds(600)
 
         /// How often the end is asked for again while it is being held. See
         /// `Timing.endIsHeld` and `RoomView.followEnd()`.
@@ -213,7 +290,14 @@ public enum Theme {
         /// done — see `RoomView.isRevealed`. That is a promise about somebody else's server, so
         /// there is a floor under it: past this, the room shows what it has, because a partly
         /// fetched conversation beats an empty screen that goes on being empty.
-        public static let roomWaitsToBeSeen: Duration = .milliseconds(2500)
+        ///
+        /// It was two and a half seconds, which on a dark appearance is two and a half seconds of a
+        /// black screen; it is shorter now, and the wait shows a spinner after `roomWaitIsShown`.
+        public static let roomWaitsToBeSeen: Duration = .milliseconds(1500)
+
+        /// How long a room may stay blank before the wait for it is shown — see
+        /// `RoomView.isWaitingVisibly`.
+        public static let roomWaitIsShown: Duration = .milliseconds(400)
 
         /// A video note growing as it starts, and settling back when it ends.
         ///
@@ -245,9 +329,17 @@ public enum Theme {
         /// It was briefly shortened to 180 ms, to cure a hold that seemed to do nothing for about
         /// a second. It was not the culprit: the second was the microphone being opened behind an
         /// unchanged screen, and it is cured where it was caused — see `VoiceRecorder.State.starting`.
-        /// So this is a quarter of a second again, which is the number that keeps the widest margin
-        /// between a hold and the tap that flips the button between voice and video.
-        public static let holdBegins: Duration = .milliseconds(250)
+        /// It was a quarter of a second after that, which kept the widest margin between a hold
+        /// and the tap that flips the button between voice and video — and the quarter of a
+        /// second was itself the lag people felt: nothing on screen moved until it was over. Now
+        /// the button answers the touch itself (it swells, and the phone ticks — see
+        /// `MessageComposer.recordButton`), and this is what is left of the wait: as short as a
+        /// deliberate tap allows, which in practice is well under 150 ms.
+        public static let holdBegins: Duration = .milliseconds(150)
+
+        /// How long a press on the record button has to last before the microphone is woken for
+        /// it — longer than a tap, so switching between voice and video wakes nothing.
+        public static let prewarmAfter: Duration = .milliseconds(90)
 
         /// How long one slide of the welcome carousel stands still before the next one comes.
         ///
@@ -300,20 +392,9 @@ public enum Theme {
         public static let greeting: Duration = .seconds(3)
     }
 
-    /// Things drawn smaller than they are, as feedback. There is exactly one so far, and it has a
-    /// name here for the same reason every spacing does: the next view to squeeze something under a
-    /// finger should squeeze it by the same amount.
+    /// Things drawn at another size than they are, as feedback — named here for the same reason
+    /// every spacing is.
     public enum Scale {
-        /// How far a message gives under a finger on its way into the menu.
-        ///
-        /// Deeper than the 0.97 a button gives (`View.pressed(_:)`), and deliberately: a button's
-        /// squeeze says "heard you" about a press that is already over, while this one is a
-        /// *countdown* — it starts when the finger lands and finishes exactly as the menu lifts, so
-        /// the wait has something to look at. At 0.97 that journey is invisible; at 0.94 it reads
-        /// as the message being picked up, and it is still far from the cartoon squash that a
-        /// deeper number would give a wall of text.
-        public static let pressedMessage: CGFloat = 0.94
-
         /// How far the first run's preview bubble swells when a new accent lands on it.
         ///
         /// Four percent, and upward. It is the smallest movement that is still seen on a bubble
@@ -431,6 +512,10 @@ public enum Theme {
         /// The height of the unread badge in the chat list, and the width of the "@" beside it —
         /// one number, so the circle and the capsule stand exactly level.
         public static let unreadBadge: CGFloat = 20
+        /// The dot that says "unread" with no number to show. Off the four-point grid, and kept
+        /// there: it is the size the list has always drawn, moved here from a literal in the row
+        /// rather than redesigned in passing.
+        public static let unreadDot: CGFloat = 10
         public static let avatarSmall: CGFloat = 28
         /// A picture that *is* a button in the title bar: the chat's, at the end of a room's
         /// bar, and the user's own at the end of the room list's.
@@ -477,6 +562,13 @@ public enum Theme {
         /// poster.
         public static let sticker: CGFloat = 160
 
+        /// One sticker in the sheet that sends them: four across on a phone with room between,
+        /// and big enough to tell one face from another without opening it.
+        public static let stickerCell: CGFloat = 72
+
+        /// A pack's picture in the row of tabs along the top of that sheet.
+        public static let stickerTab: CGFloat = 32
+
         /// How much bigger a video note gets while it plays, where it is not simply filling
         /// the screen — a Mac or an iPad. Twice: enough to be watched from across a desk,
         /// small enough to still be a message in a conversation.
@@ -491,6 +583,18 @@ public enum Theme {
         /// generous fit for "23:59" with its padding, and being a little generous is the safe
         /// direction: too small and the circle would shoulder the clock off the screen.
         public static let clockColumn: CGFloat = 56
+        /// The ring over a photo or video of ours that is still going up — `UploadRing`. Telegram's
+        /// is 48 on a photo, and 48 is also comfortably more than the tap floor below, which
+        /// matters because the cross in it is a button.
+        public static let uploadRing: CGFloat = 48
+        /// One of the round glass buttons under a person's portrait — `ProfileActionTile`. A size a
+        /// thumb lands on without aiming, with the word under it rather than inside.
+        public static let profileAction: CGFloat = 56
+        /// The QR code on its own screen — `QRCodeSheet`. Large enough for a camera across a table,
+        /// small enough to leave the name and the face above it on a small phone.
+        public static let qrCode: CGFloat = 240
+        /// A chat's face in the share sheet's grid — four to a row on a phone, Telegram's size.
+        public static let shareFace: CGFloat = 60
         /// Nothing tappable is ever smaller than this. Apple's floor, and ours.
         public static let minimumTapTarget: CGFloat = 44
 
@@ -520,6 +624,11 @@ public enum Theme {
         /// long press, the double tap, the reaction — and growing this to 44pt would push the
         /// waveform out of the bubble rather than making anything easier to hit.
         public static let voiceButton: CGFloat = 28
+
+        /// A music file's bubble: how wide its name and bar are at least, and how tall the strip
+        /// the bar is dragged along — taller than the bar, so a thumb can find it.
+        public static let audioTrack: CGFloat = 160
+        public static let audioScrubber: CGFloat = 20
         public static let waveform: CGFloat = 24
 
         /// One bar of that waveform: how wide it is drawn, and the shortest it may be so that a
@@ -585,6 +694,15 @@ public enum Theme {
         /// size of the spinner it starts out showing.
         public static let viewer: CGFloat = 480
 
+        /// The black between two pages of the media viewer while one slides over the next —
+        /// Telegram's gallery leaves a gap, so two photographs never touch edge to edge.
+        public static let galleryPageGap: CGFloat = 20
+
+        /// The strip of little pictures along the foot of the viewer: a tile, and the wider one
+        /// the current picture gets, so the strip says where in the room you are.
+        public static let galleryThumbnail = CGSize(width: 28, height: 40)
+        public static let galleryThumbnailCurrent: CGFloat = 56
+
         /// The sheet that shows the recovery key, once and never again. Fixed rather than
         /// flexible because of the Mac, where a sheet is as wide as it is allowed to be and
         /// a key allowed to stretch across it stops being a thing you can read back one
@@ -608,6 +726,15 @@ public enum Theme {
         /// not text, it is a picture, and it is the one place in the app where something is drawn
         /// large simply to be looked at.
         public static let signInMark: CGFloat = 56
+
+        /// One line of `.body` at the default text size, rounded to the grid — what a one-line
+        /// bubble is as tall as. Scaled from there with Dynamic Type (see
+        /// `MessageBubble.minimumContentWidth`).
+        public static let bodyLine: CGFloat = 24
+
+        /// The app's icon at the top of the opening screen — the one picture on it, so it can be
+        /// big enough to be the screen's subject.
+        public static let signInLogo: CGFloat = 112
 
         /// The mark over a welcome slide. A placeholder for now — the illustrations that go
         /// there are not drawn yet — and sized as the picture it will be rather than as the
@@ -684,9 +811,12 @@ public enum Theme {
         /// How close to the top of a conversation counts as asking for more of it.
         ///
         /// Not zero, deliberately: fetching only once the user has hit the very top means
-        /// they watch a spinner. A screenful of slack ahead of them means the next page is
-        /// usually already there by the time they get to where it goes.
-        public static let paginationReach: CGFloat = 400
+        /// they watch a spinner. And not one screenful either, which is what it was: a flick
+        /// travels further than that, so the conversation hit its top and bounced *before* the
+        /// page landed, and the page then arrived under a scroll view in the middle of its bounce
+        /// — the jump people kept reporting. Several screens of slack means the history is in
+        /// place long before a thumb can get there.
+        public static let paginationReach: CGFloat = 2400
 
         /// How close to the newest message counts as standing on it — and therefore as having
         /// asked to be brought along when the next one arrives.
@@ -697,6 +827,14 @@ public enum Theme {
         /// under somebody's eyes*, and the cost of guessing wrong is losing their place in a
         /// conversation they were reading. A screenful of slack would do exactly that.
         public static let newestReach: CGFloat = 80
+
+        /// How far the conversation has to be dragged back into its history before the keyboard
+        /// goes down. Enough to be a decision, not a twitch of the thumb.
+        public static let keyboardDismissDrag: CGFloat = 48
+
+        /// How far the conversation takes to fade out under a bar — the same at the title bar and
+        /// at the composer, so the two edges match.
+        public static let timelineFade: CGFloat = 56
 
         /// How much of the title bar the chat's name and avatar may take.
         ///
@@ -781,6 +919,10 @@ public enum Theme {
         /// four rows at once — fewer and it reads as a scrap of a keyboard rather than a
         /// keyboard — and short enough to leave the message it belongs to on screen.
         public static let emojiPanel: CGFloat = 268
+
+        /// A group's heading in that panel — fixed, so where each group starts can be worked out
+        /// rather than measured (`EmojiPanel.offset(of:)`).
+        public static let emojiHeader: CGFloat = 28
 
         /// And how wide it is — half again as wide as the menu of verbs beside it.
         ///
@@ -870,7 +1012,6 @@ public extension ShapeStyle where Self == Color {
         Color.primary.opacity(0.16)
     }
 }
-
 
 public extension Color {
     /// One colour for the light appearance and another for the dark one.

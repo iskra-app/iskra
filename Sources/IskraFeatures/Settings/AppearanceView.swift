@@ -93,14 +93,17 @@ struct AppearanceView: View {
                 Text(Strings.Appearance.accent)
             }
 
-            // Who gets a drawn face — the slider the first run asks with, so that the answer given
-            // then can be changed somewhere other than the beta features.
-            Section {
-                FaceModePicker()
-                    .padding(.vertical, Theme.Spacing.close)
-            } header: {
-                Text(Strings.Appearance.avatars)
+            // iPhone and iPad only, and not drawn at all where the device forbids it.
+            // `setAlternateIconName` is UIKit's and AppKit has no equivalent — see `HomeIcon`.
+            #if os(iOS)
+            if HomeIcons.areSupported {
+                Section {
+                    HomeIconPicker()
+                } header: {
+                    Text(Strings.Settings.appIcon)
+                }
             }
+            #endif
 
             Section {
                 wallpaperRow
@@ -110,8 +113,6 @@ struct AppearanceView: View {
                 }
             } header: {
                 Text(Strings.Appearance.wallpaper)
-            } footer: {
-                Text(Strings.Appearance.wallpaperFooter)
             }
         }
         .formStyle(.grouped)
@@ -194,6 +195,7 @@ struct AppearanceView: View {
         // Told, so the bubbles inside it draw the way they will in a room. The whole point of the
         // card is that it does not lie about this.
         .environment(\.hasWallpaper, wallpaper.isSet)
+        .environment(\.wallpaperIsDark, wallpapers.isDark(wallpaper, dimming: dimming))
         // The picture is read off the disk once per launch, and this screen can be the first thing
         // to want it — somebody who has a wallpaper and opens Appearance before opening a room.
         .task { await wallpapers.load() }

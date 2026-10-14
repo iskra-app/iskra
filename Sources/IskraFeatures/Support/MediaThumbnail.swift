@@ -1,5 +1,6 @@
 import SwiftUI
 import IskraCore
+import IskraDesign
 
 #if os(macOS)
 import AppKit
@@ -35,6 +36,15 @@ public extension EnvironmentValues {
         get { self[TimelineWidthKey.self] }
         set { self[TimelineWidthKey.self] = newValue }
     }
+}
+
+extension EnvironmentValues {
+    /// How tall the conversation is with the keyboard *down* — what a picture's height limit is
+    /// a fraction of. Zero where nobody measured, and a picture then asks its container.
+    ///
+    /// Not the scroll view's height as it stands: the keyboard takes half of that away, and every
+    /// photograph on the screen shrank the moment somebody started to type.
+    @Entry var timelineHeight: CGFloat = 0
 }
 
 private struct TimelineWidthKey: EnvironmentKey {
@@ -76,10 +86,30 @@ struct MediaThumbnail: View {
     /// different size is a different entry. The picture is already in hand; this passes it over.
     var onLoad: (Image) -> Void = { _ in }
 
+    /// Whether this one waits for Settings → Photos & videos → Auto-download. Only the pictures in
+    /// a conversation do; a grid somebody opened to look at pictures has already been asked.
+    var obeysAutoDownload = false
+
     @Environment(\.mediaLoader) private var loader
+
+    @AppStorage(MediaSettings.autoDownloadKey) private var autoDownload = MediaSettings.autoDownloadByDefault
 
     @State private var image: Image?
     @State private var failed = false
+
+    /// Whether the bytes may be fetched now. Read through two observable singletons, so a tap on
+    /// one bubble, or walking out of Wi-Fi, is noticed by every bubble on screen.
+    private var mayFetch: Bool {
+        !obeysAutoDownload
+            || ManualDownloads.shared.contains(attachment.mediaID)
+            || autoDownload.allows(onExpensiveNetwork: NetworkCost.shared.isExpensive)
+    }
+
+    /// The sender's blur, drawn — what stands in for the picture until it is here.
+    private var blur: Image? {
+        guard let hash = attachment.blurhash, let image = Blurhash.decode(hash) else { return nil }
+        return Image(decorative: image, scale: 1)
+    }
 
     var body: some View {
         Group {
@@ -89,12 +119,16 @@ struct MediaThumbnail: View {
                     .scaledToFill()
             } else if failed {
                 placeholder(systemImage: "photo.badge.exclamationmark")
+            } else if !mayFetch {
+                waiting
             } else {
                 placeholder(systemImage: nil)
             }
         }
-        .task(id: attachment.filename) {
-            guard image == nil, let loader else { return }
+        // Keyed on the bytes *and* on being allowed to fetch them, so the tap that allows it is
+        // also what starts it. The media ID, not the filename: every sticker is called "sticker".
+        .task(id: "\(attachment.mediaID)|\(mayFetch)") {
+            guard image == nil, mayFetch, let loader else { return }
             do {
                 let data = try await loader.thumbnail(for: attachment, size: size)
                 image = Image(mediaData: data)
@@ -108,10 +142,42 @@ struct MediaThumbnail: View {
         }
     }
 
+    /// Automatic download is off for this network: the blur, and a button that fetches it. The
+    /// button and not the whole picture, because a tap on the picture opens the viewer — which is
+    /// a request for the full file, and fetches it.
+    private var waiting: some View {
+        ZStack {
+            backdrop
+            Button {
+                ManualDownloads.shared.ask(for: attachment.mediaID)
+            } label: {
+                Image(systemName: "arrow.down")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: Theme.Size.composerControl, height: Theme.Size.composerControl)
+                    .background(.black.opacity(Theme.Backdrop.plate), in: .circle)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(Strings.Media.download))
+        }
+    }
+
+    /// The blur when the sender sent one, grey when they did not.
+    @ViewBuilder
+    private var backdrop: some View {
+        if let blur {
+            blur
+                .resizable()
+                .scaledToFill()
+        } else {
+            Rectangle().fill(.quaternary)
+        }
+    }
+
     @ViewBuilder
     private func placeholder(systemImage: String?) -> some View {
         ZStack {
-            Rectangle().fill(.quaternary)
+            backdrop
             if let systemImage {
                 Image(systemName: systemImage)
                     .font(.title2)

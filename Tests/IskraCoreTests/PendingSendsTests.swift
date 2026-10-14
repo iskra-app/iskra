@@ -56,6 +56,21 @@ struct PendingSendsTests {
         #expect(pending.isEmpty)
     }
 
+    @Test("A word said again is not retired against the first time it was said")
+    func repeatedWordWaitsForItsOwnEcho() {
+        let earlier = mine("ок", at: .now.addingTimeInterval(-30))
+        var pending = PendingSends()
+        pending.add(text: "ок", replyingTo: nil, alreadyShown: [earlier.message?.id ?? ""])
+
+        pending.pruneEchoed(in: [earlier])
+        #expect(pending.all.count == 1)
+
+        let echo = mine("ок", at: .now)
+        let taken = pending.pruneEchoed(in: [earlier, echo])
+        #expect(pending.isEmpty)
+        #expect(taken.keys.first == echo.message?.id)
+    }
+
     @Test("The same words from somebody else are not our echo")
     func theirMessageIsNotOurEcho() {
         var pending = PendingSends()

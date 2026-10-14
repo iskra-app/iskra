@@ -97,4 +97,11 @@ public final class PushPermission {
         await session.pushes().unregister(deviceToken: deviceToken)
         registration = nil
     }
+
+    /// An account that is *not* on screen is leaving — swiped away in settings. Its pushers go; the
+    /// registration stays the account on screen's, which is the one still signed in here.
+    public func signingOutInBackground(_ session: UserSession) async {
+        guard let deviceToken else { return }
+        await session.pushes().unregister(deviceToken: deviceToken)
+    }
 }

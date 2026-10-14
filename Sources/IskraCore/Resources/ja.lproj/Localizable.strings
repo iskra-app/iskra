@@ -1,0 +1,195 @@
+/* Iskra — user-facing text.
+   Edit the values, never the keys. The keys are referenced from Strings.swift.
+   Language: ja */
+
+/* Device name shown in the user's list of signed-in devices. */
+"device.generic" = "Iskra";
+
+/* Device name shown in the user's list of signed-in devices. */
+"device.iOS" = "iPhone・iPad の Iskra";
+
+/* Device name shown in the user's list of signed-in devices. */
+"device.mac" = "Mac の Iskra";
+
+/* Summary line for an audio file in the chat list. */
+"preview.audio" = "オーディオ";
+
+/* Summary line for a message that was deleted. */
+"preview.deleted" = "メッセージは削除されました";
+
+/* Summary line for a file attachment in the chat list. */
+"preview.file" = "ファイル";
+
+/* Summary line for a shared location. */
+"preview.location" = "位置情報";
+
+/* Summary line for a photo in the chat list. */
+"preview.photo" = "写真";
+
+/* Summary line for a poll. */
+"preview.poll" = "アンケート";
+
+/* Summary line for a sticker. */
+"preview.sticker" = "ステッカー";
+
+/* Summary line for a message this device has no key for. Deliberately avoids the words 'decrypt' and 'key'. */
+"preview.unreadable" = "まだ開けないメッセージ";
+
+/* Summary line for a video in the chat list. */
+"preview.video" = "ビデオ";
+
+/* Summary line for a round video message. */
+"preview.videoNote" = "ビデオメッセージ";
+
+/* Summary line for a voice message. */
+"preview.voice" = "ボイスメッセージ";
+
+/* Says an unencrypted room is one, in three words. Read as a status, not as a warning. */
+"privacy.notProtected" = "このチャットは暗号化されていません";
+
+/* Says an encrypted room is one. Sits directly under the name, where it is read at a glance. */
+"privacy.protected" = "このチャットは暗号化されています";
+
+/* Shown before we have synced enough to know. Never claim protection we cannot see. */
+"privacy.unknown" = "暗号化を確認しています";
+
+/* Fallback name for a conversation that has none. Most Matrix DMs have no name. */
+"room.untitled" = "チャット";
+
+/* Shown when a message could not be sent. The SDK retries, so this reassures rather than alarms. */
+"timeline.sendFailed" = "メッセージを送れませんでした。自動でもう一度送ります。";
+
+/* A sticker that did not go. Unlike a message, it is not retried. */
+"timeline.stickerFailed" = "ステッカーを送れませんでした。接続を確認して、もう一度お試しください。";
+
+/* The account's sticker pack would not take a new sticker. */
+"stickers.addFailed" = "ステッカーを追加できませんでした。もう一度お試しください。";
+
+/* The account's sticker pack would not let a sticker go. */
+"stickers.removeFailed" = "ステッカーを削除できませんでした。もう一度お試しください。";
+
+/* Shown when an emoji reaction could not be sent. Must not say "message" — nothing the user wrote is at stake. */
+"timeline.reactionFailed" = "リアクションを送れませんでした。もう一度お試しください。";
+
+/* Shown when deleting a message failed. Must be unambiguous: the message is still there, and everyone can still read it. */
+"timeline.deleteFailed" = "メッセージを削除できませんでした。まだチャットに残っています。もう一度お試しください。";
+
+/* Why a message is stuck, tapped from the badge beside it. Each names what to do next:
+   the user is the only one who can clear these. No cryptography vocabulary. */
+"sendFailure.insecureDevices" = "確認済みの相手が、本人もまだ承認していないデバイスでサインインしています。そのデバイスを信頼できるなら、そのまま送信してください。";
+"sendFailure.identityChanged" = "確認済みの相手の暗号鍵が変わりました。同じ人だと確信できるなら、そのまま送信してください。";
+"sendFailure.verificationRequired" = "保護されたチャットに書き込むには、このデバイスを承認してください。設定から行えます。";
+"sendFailure.missingMedia" = "ファイルがこのデバイスにもうないため、送るものがありません。";
+"sendFailure.unsupportedFileType" = "この種類のファイルは送信できません。";
+"sendFailure.server" = "サーバーがこのメッセージを受け付けませんでした。";
+
+/* The Devices screen, when something did not work. */
+"devices.loadFailed" = "デバイスの一覧を読み込めませんでした。接続を確認して、もう一度お試しください。";
+"devices.endFailed" = "セッションを終了できませんでした。もう一度お試しください。";
+"devices.wrongPassword" = "パスワードが違います。";
+"devices.managedElsewhere" = "このサーバーでは、セッションはサーバーのウェブサイトで終了します。";
+
+/* The strip above a message that answers another one. */
+"reply.loading" = "メッセージを読み込んでいます…";
+"reply.unavailable" = "メッセージを表示できません";
+
+/* Shown when an edit could not be sent. The message still says the old thing — say so. */
+"timeline.editFailed" = "変更を保存できませんでした。メッセージは元のままです。もう一度お試しください。";
+
+/* Shown when pinning or unpinning was refused. */
+"timeline.pinFailed" = "ピン留めしたメッセージを変更できませんでした。権限がないのかもしれません。";
+"timeline.reportFailed" = "報告を送れませんでした。もう一度お試しください。";
+
+/* The grey lines across a conversation: people coming and going, the room changing. */
+"roomEvent.joined" = "%@ がチャットに参加しました";
+"roomEvent.left" = "%@ がチャットから退出しました";
+"roomEvent.invited" = "招待: %@";
+"roomEvent.removed" = "削除: %@";
+"roomEvent.banned" = "ブロック: %@";
+"roomEvent.renamedThemselves" = "%1$@ は %2$@ になりました";
+"roomEvent.roomRenamed" = "チャット名が「%@」になりました";
+"roomEvent.roomTopicChanged" = "チャットの説明が変わりました";
+"roomEvent.roomPictureChanged" = "チャットの写真が変わりました";
+"roomEvent.roomCreated" = "チャットが作成されました";
+"roomEvent.encryptionEnabled" = "これからのメッセージは、このチャットのメンバーだけが読めます";
+"roomEvent.pair" = "%1$@ と %2$@";
+
+/* What a client that cannot draw a map shows instead of one. */
+"timeline.locationBody" = "位置情報: %1$.6f, %2$.6f";
+
+/* Changes to a room the homeserver would not make. One sentence each: "something went
+   wrong" tells nobody anything, while "you weren't allowed to" says it was a question of
+   rights and that the room is unchanged. */
+"roomAction.renameFailed" = "名前を変更できませんでした。権限がないのかもしれません。";
+"roomAction.topicFailed" = "説明を変更できませんでした。権限がないのかもしれません。";
+"roomAction.pictureFailed" = "写真を変更できませんでした。権限がないのかもしれません。";
+"roomAction.visibilityFailed" = "チャットに参加できる人を変更できませんでした。";
+"roomAction.inviteFailed" = "招待できませんでした。アドレスを確認してください。@名前:サーバー の形式です。";
+"roomAction.removeFailed" = "退出させられませんでした。まだチャットにいます。";
+"roomAction.banFailed" = "ブロックできませんでした。まだチャットにいます。";
+"roomAction.roleFailed" = "役割を変更できませんでした。権限がないのかもしれません。";
+"roomAction.leaveFailed" = "チャットから退出できませんでした。もう一度お試しください。";
+"roomAction.createFailed" = "チャットを作成できませんでした。サーバーが応答しなかったのかもしれません。もう一度お試しください。";
+"roomAction.joinAddressInvalid" = "ルームのアドレスは #名前:サーバー または !id:サーバー の形です。";
+"roomAction.joinFailed" = "ルームに参加できませんでした。存在しないか、閉じられているか、サーバーが応答しなかったのかもしれません。";
+"roomAction.alertsFailed" = "このチャットの通知を変更できませんでした。もう一度お試しください。";
+
+/* The account: name, picture and encryption. */
+"account.nameFailed" = "名前を変更できませんでした。もう一度お試しください。";
+"account.pictureFailed" = "写真を変更できませんでした。もう一度お試しください。";
+"account.protectFailed" = "メッセージを保護できませんでした。もう一度お試しください。以前のメッセージの鍵は元の場所に残っています。";
+"account.newKeyFailed" = "新しいコードを作成できませんでした。以前のコードは引き続き使えます。";
+"account.restoreFailed" = "コードが合いませんでした。スペースも含めて、すべてコピーしたか確認してください。";
+"account.staleCodeFailed" = "コードの形式は正しいのですが、このアカウントには合いません。復元コードを作り直すと、以前のコードは二度と使えなくなります。";
+
+/* The reset failed — the rare case where failure is the good news: nothing was lost. */
+"account.startOverFailed" = "最初からやり直せませんでした。もう一度お試しください。今のところ何も変わっていません。";
+"account.blockFailed" = "ブロックできませんでした。もう一度お試しください。";
+"account.unblockFailed" = "ブロックを解除できませんでした。もう一度お試しください。";
+
+/* Pushes. A message speaks for itself — there is nothing to translate but the invitation. */
+"push.invite" = "%@ からチャットへの招待が届きました";
+"push.hiddenTitle" = "Iskra";
+"push.hiddenBody" = "新しいメッセージ";
+
+/* Somebody reacted to something you said. Which reaction is not in the push — see Strings.swift. */
+"push.reaction" = "あなたのメッセージへのリアクション";
+
+/* The Share extension. */
+"share.title" = "送信先…";
+"share.cancel" = "キャンセル";
+"share.empty" = "まず Iskra を開いてサインインしてください。ここにチャットが表示されます。";
+"share.willSendOnOpen" = "すぐに送られます。送信のため Iskra が開きます。";
+"share.comment" = "コメントを追加…";
+"share.send" = "送信";
+"share.locked" = "Iskra はロックされています";
+"share.lockedBody" = "ロックを解除すると、チャットが表示されます。";
+"share.unlock" = "ロックを解除";
+"share.unlockReason" = "Iskra に共有するため";
+
+/* Room invitations. */
+"roomAction.acceptInviteFailed" = "チャットに参加できませんでした。招待が取り消されたのかもしれません。";
+"roomAction.declineInviteFailed" = "招待を辞退できませんでした。招待はまだ残っています。もう一度お試しください。";
+
+/* Organising the list: pin, archive, mark read, report. */
+"roomAction.pinFailed" = "チャットをピン留めできませんでした。元の位置に戻りました。もう一度お試しください。";
+"roomAction.archiveFailed" = "チャットをアーカイブできませんでした。まだ一覧にあります。もう一度お試しください。";
+"roomAction.readFailed" = "既読状態を変更できませんでした。";
+"roomAction.reportFailed" = "報告を送れませんでした。もう一度お試しください。";
+
+/* The room would not open at all — the one refusal here that is not about something the user did:
+   they pressed nothing and were refused nothing. The room simply could not be read. */
+"roomAction.loadFailed" = "このチャットを開けませんでした。もう一度お試しください。";
+
+/* Account-wide notification rules — see `NotificationRulesStore`. These are not settings on this
+   phone but push rules on the server: they apply to every device at once. */
+"notificationRules.directFailed" = "個人チャットの通知を変更できませんでした。スイッチは元に戻りました。もう一度お試しください。";
+"notificationRules.groupFailed" = "グループの通知を変更できませんでした。スイッチは元に戻りました。もう一度お試しください。";
+"notificationRules.mentionFailed" = "メンションの通知を変更できませんでした。もう一度お試しください。";
+"notificationRules.roomMentionFailed" = "@room の通知を変更できませんでした。もう一度お試しください。";
+"notificationRules.invitationFailed" = "招待の通知を変更できませんでした。もう一度お試しください。";
+"notificationRules.callFailed" = "通話の通知を変更できませんでした。もう一度お試しください。";
+
+"stickers.subscribeFailed" = "ステッカーを追加できませんでした。もう一度お試しください。";
+"stickers.unsubscribeFailed" = "ステッカーを削除できませんでした。もう一度お試しください。";
+"stickers.clearRecentFailed" = "最近使ったものを消去できませんでした。もう一度お試しください。";

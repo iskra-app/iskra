@@ -9,9 +9,10 @@ import SwiftUI
 /// person who finds "Native sidebar" under Appearance has no way of knowing it is an experiment;
 /// a person who finds it here cannot miss it, and the sentence at the top says the rest.
 ///
-/// It is reached only where there is something on it — see `BetaFeatures.hasAnything`, which
-/// `SettingsView` asks before drawing the row. The sidebar switch is the one thing here that is
-/// Mac-only; the rest of the screen is the same everywhere.
+/// There is no row for it on the settings root. It is reached by tapping the spark on the About
+/// screen three times — see `AboutView` — because the people these switches are for are the
+/// people who will go looking, and everybody else is better off never seeing them. The sidebar
+/// switch is the one thing here that is Mac-only; the rest of the screen is the same everywhere.
 struct BetaView: View {
     @AppStorage(BetaFeatures.nativeSidebarKey) private var nativeSidebar = BetaFeatures.nativeSidebarByDefault
     @AppStorage(BetaFeatures.blobatarKey, store: BetaFeatures.faceStore) private var blobatar = BetaFeatures.blobatarByDefault
@@ -24,6 +25,16 @@ struct BetaView: View {
                 Text(Strings.Beta.intro)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+            }
+
+            // Who gets a drawn face — the slider the first run asks with. It lived under
+            // Appearance; the faces are still an experiment, and the switches below it that
+            // decide whether they are drawn at all were already here.
+            Section {
+                FaceModePicker()
+                    .padding(.vertical, Theme.Spacing.close)
+            } header: {
+                Text(Strings.Appearance.avatars)
             }
 
             #if os(macOS)

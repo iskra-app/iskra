@@ -42,7 +42,8 @@ struct CompactMessageRow: View {
     var opensDay: Bool = false
 
     /// Whether a message appearing here is arriving *now* — see `MessageRow.arrivesAnimated`.
-    var arrivesAnimated: Bool = true
+    /// False unless said otherwise — see `MessageRow.arrivesAnimated`.
+    var arrivesAnimated: Bool = false
 
     /// Whether the conversation has just jumped *to* this message, and it is briefly lit so
     /// that the eye can find it. Owned by `RoomView` — see `MessageRow.isHighlighted`.
@@ -105,7 +106,10 @@ struct CompactMessageRow: View {
         // And nothing else — a message that is only *changing* changes at once, here exactly as
         // in the bubbles, and the arrival is the row's own. See `MessageRow`, where the reasoning
         // is written out, and `MessageArrival`.
-        .arrives(arrivesAnimated)
+        // Every line starts at the leading edge here, yours included, so nothing has anywhere to
+        // travel *to*: a line of ours simply comes up into its place without fading, as it would in
+        // the bubbles, and somebody else's fades up into it.
+        .arrives(arrivesAnimated, outgoing: message.isOwn)
     }
 
     /// The face over a run, and an empty column of exactly its width under it.
@@ -148,6 +152,7 @@ struct CompactMessageRow: View {
             if case let .failed(failure)? = message.delivery {
                 SendFailureBadge(failure: failure,
                                  onRetry: handlers.onRetry,
+                                 onSendAnyway: handlers.onSendAnyway,
                                  onDiscard: handlers.onDiscard)
             }
 
@@ -171,6 +176,7 @@ struct CompactMessageRow: View {
                                      style: .plain,
                                      playingDiameter: playingDiameter,
                                      onOpenReply: handlers.onOpenReply)
+            .uploadProgress(of: message, onCancel: handlers.onDiscard)
             .messageActions(message, isPinned: isPinned, handlers: handlers)
 
         if message.hasPressableContent {
@@ -212,5 +218,36 @@ struct CompactMessageRow: View {
             : min(available, Theme.Size.videoNote * Theme.Size.videoNoteGrowth)
 
         return max(Theme.Size.videoNote, wanted)
+    }
+}
+
+/// Somebody writing, in the plain column: the dots where a face would be, and who it is beside them
+/// in the same small grey the names over a run are set in.
+///
+/// Not the bubble. The compact timeline has no bubbles, and one appearing at its foot would be
+/// the only shape of its kind in the whole column — a piece of the other layout left behind. And
+/// it names people, even in a chat with one other person, for the reason `CompactMessageRow`
+/// always names the sender: nothing else in this column says who.
+struct CompactTypingRow: View {
+    let names: [String]
+
+    @ScaledSize(Theme.Size.avatarSmall) private var avatarSize
+
+    var body: some View {
+        HStack(alignment: .center, spacing: Theme.Spacing.close) {
+            TypingDots(dot: Theme.Spacing.tight, spacing: Theme.Spacing.tight)
+                .frame(width: avatarSize)
+
+            // The last names that were typing, held while the row fades — an empty sentence for
+            // the length of the fade would be worse than a slightly stale one.
+            Text(names.isEmpty ? "" : String(app: Strings.Room.typingBy(names.formatted(.list(type: .and)))))
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.top, Theme.Spacing.betweenSenders)
+        .accessibilityHidden(true)
     }
 }

@@ -70,6 +70,9 @@ struct EmojiPanel: View {
     /// the grid, and the grid is then free to be scrolled somewhere else by hand.
     @State private var selected = EmojiCatalog.categories.first?.id ?? ""
 
+    /// Where the grid is scrolled — moved *by point* when a tab is pressed. See `offset(of:)`.
+    @State private var position = ScrollPosition()
+
     private var columns: [GridItem] {
         [GridItem(.adaptive(minimum: Theme.Size.reactionCell), spacing: 0)]
     }
@@ -87,8 +90,7 @@ struct EmojiPanel: View {
 
     private var grid: some View {
         VStack(spacing: 0) {
-            ScrollViewReader { scroll in
-                ScrollView {
+            ScrollView {
                     LazyVStack(alignment: .leading, spacing: Theme.Spacing.close) {
                         if !recent.isEmpty {
                             // Six across, whatever the panel's width, so the twelve most recent
@@ -112,13 +114,8 @@ struct EmojiPanel: View {
                     .frame(width: width - Theme.Spacing.close * 2)
                     .padding(.horizontal, Theme.Spacing.close)
                     .padding(.bottom, Theme.Spacing.close)
-                }
-                .onChange(of: selected) { _, id in
-                    withAnimation(.smooth(duration: Theme.Timing.chrome)) {
-                        scroll.scrollTo(id, anchor: .top)
-                    }
-                }
             }
+            .scrollPosition($position)
 
             tabs
         }
@@ -146,14 +143,42 @@ struct EmojiPanel: View {
             Text(title)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, Theme.Spacing.tight)
+                .frame(maxWidth: .infinity, minHeight: Theme.Size.emojiHeader,
+                       maxHeight: Theme.Size.emojiHeader, alignment: .leading)
                 // Scrolling away with its group rather than pinned to the top of the panel. A
                 // pinned header needs something opaque behind it or the emoji slide through the
                 // words — and the only thing to put behind it here is another material, over
                 // glass, which is the one thing the glass rules are most insistent about.
                 .id(id)
         }
+    }
+
+    /// Where a category starts, worked out rather than asked for.
+    ///
+    /// `scrollTo(id)` was asked, and it lands wherever the lazy stack *estimates* a group to be —
+    /// with nearly two thousand emoji, the groups below the screen have never been built and
+    /// their heights are guesses, so the flags tab stopped somewhere in the symbols. But every
+    /// row of this grid is one cell tall and every heading one height, so where each group begins
+    /// is plain arithmetic, and the scroll goes to that point exactly.
+    private func offset(of id: String) -> CGFloat {
+        let gap = Theme.Spacing.close
+        let cell = Theme.Size.reactionCell
+        let across = max(1, Int((width - gap * 2) / cell))
+
+        func height(rows count: Int, across: Int) -> CGFloat {
+            Theme.Size.emojiHeader + gap + CGFloat((count + across - 1) / across) * cell + gap
+        }
+
+        var y: CGFloat = 0
+        if !recent.isEmpty {
+            if id == "recent" { return 0 }
+            y += height(rows: recent.count, across: QuickReaction.allCases.count)
+        }
+        for category in EmojiCatalog.categories {
+            if category.id == id { return y }
+            y += height(rows: category.emoji.count, across: across)
+        }
+        return y
     }
 
     /// The row of category buttons along the bottom. SF Symbols rather than a representative
@@ -164,6 +189,9 @@ struct EmojiPanel: View {
             ForEach(EmojiCatalog.categories) { category in
                 Button {
                     selected = category.id
+                    withAnimation(.smooth(duration: Theme.Timing.chrome)) {
+                        position.scrollTo(y: offset(of: category.id))
+                    }
                 } label: {
                     Image(systemName: category.symbol)
                         .font(.footnote)

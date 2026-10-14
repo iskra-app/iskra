@@ -23,6 +23,10 @@ struct MockWorld {
     var media: [String: (data: Data, mime: String)] = [:]
     var publicRoomIDs: [String] = []
 
+    /// The demo's stickers, drawn once and pointed at from the packs and the conversations alike —
+    /// as image entries in the MSC2545 shape, by name.
+    private var stickers: [StickerArt: JSON] = [:]
+
     private let now = Int(Date().timeIntervalSince1970 * 1000)
     private var counter = 0
 
@@ -46,6 +50,7 @@ struct MockWorld {
         person(dima, "Дима", hue: nil)
         person(olga, "Ольга", hue: 0.45)
         person(kostya, "Костя Орлов", hue: 0.3)
+        drawStickers()
 
         let anyaChat = directWithAnya()
         let mishaChat = directWithMisha()
@@ -59,6 +64,9 @@ struct MockWorld {
 
         accountData["m.direct"] = [anya: [anyaChat], misha: [mishaChat], lena: [lenaChat]]
         accountData["m.push_rules"] = Self.pushRules(for: me)
+        // Four of the eight are the account's own; the other four are the development room's,
+        // so that a sticker *not* yet yours turns up in a chat and can be added.
+        accountData["im.ponies.user_emotes"] = ["images": pack([.hello, .love, .joy, .sleepy])]
     }
 
     // MARK: - Conversations
@@ -90,6 +98,7 @@ struct MockWorld {
         react(room, file, anya, "🙏")
         at(room, 12)
         text(room, anya, "😂")
+        sticker(room, anya, .love)
         let long = text(room, anya, """
             Кстати, дочитала ту книгу, что ты советовала. Первая половина прямо тяжело шла, я даже \
             хотела бросить, но потом как разогналось — не могла оторваться до трёх ночи. \
@@ -117,6 +126,7 @@ struct MockWorld {
         text(room, misha, "Кажется «Имаджинариум», но не уверен")
         at(room, 25)
         text(room, misha, "Ладно, нашёл, это «Диксит» 😅")
+        sticker(room, misha, .surprise)
         read(room, me, upToIndex: 3)
         return room
     }
@@ -195,9 +205,17 @@ struct MockWorld {
         at(room, 60 * 3)
         formatted(room, kostya, "Список на релиз:\n1. Иконки\n2. Демо-режим\n3. Перевод",
                   "<p>Список на релиз:</p><ol><li>Иконки</li><li>Демо-режим</li><li>Перевод</li></ol>")
+        formatted(room, lena, "> Сначала сделай, потом сделай красиво\nА чем кончится сериал — спойлер",
+                  "<blockquote><p>Сначала сделай, потом сделай <u>красиво</u></p></blockquote>"
+                      + "<p>А чем кончится сериал — <span data-mx-spoiler>все выживут</span></p>")
         let question = mention(room, dima, name: "Саша", "Саша, глянешь мой PR? Там немного, честно")
         reply(room, lena, to: question, "Я уже посмотрела, там всё хорошо 👍")
         text(room, anya, "Ссылка на макеты: https://matrix.org")
+        state(room, me, "im.ponies.room_emotes", [
+            "pack": ["display_name": "Искра", "usage": ["sticker"]],
+            "images": pack([.connected, .unlocked, .surprise, .bypass]),
+        ])
+        sticker(room, kostya, .connected)
 
         rooms[room]?.accountData["m.tag"] = ["tags": ["m.favourite": ["order": 0.1]]]
         read(room, me, upToIndex: (rooms[room]?.events.count ?? 5) - 5)
@@ -302,7 +320,7 @@ struct MockWorld {
         var event: JSON = ["event_id": id, "type": type, "sender": sender, "room_id": room,
                            "origin_server_ts": ts, "content": content, "unsigned": [:] as JSON]
         if let key { event["state_key"] = key }
-        for (k, v) in extra { event[k] = v }
+        for (name, value) in extra { event[name] = value }
         rooms[room]?.events.append(event)
         if let key { rooms[room]?.state["\(type)\u{0}\(key)"] = event }
         // A person has read what they wrote.
@@ -409,6 +427,28 @@ struct MockWorld {
             ],
             "org.matrix.msc1767.text": question,
         ])
+    }
+
+    private mutating func drawStickers() {
+        for art in StickerArt.allCases {
+            let data = art.png()
+            stickers[art] = ["url": store(data, mime: "image/png"), "body": art.emoji,
+                             "info": ["w": StickerArt.side, "h": StickerArt.side, "mimetype": "image/png",
+                                      "size": data.count]]
+        }
+    }
+
+    /// Image entries by shortcode, for a pack's `images`.
+    private func pack(_ arts: [StickerArt]) -> JSON {
+        var images: JSON = [:]
+        for art in arts { images[art.rawValue] = stickers[art] }
+        return images
+    }
+
+    private mutating func sticker(_ room: String, _ sender: String, _ art: StickerArt) {
+        guard let image = stickers[art] else { return }
+        event(room, sender, "m.sticker", ["body": image["body"] ?? "", "url": image["url"] ?? "",
+                                          "info": image["info"] ?? [:]])
     }
 
     /// Marks the room read up to the `index`-th message event, so that what comes after is unread.

@@ -18,6 +18,10 @@ public final class UserSession {
     /// keeps it in step — none of which can wait for one screen to be open. See `BlockStore`.
     public let blocked: BlockStore
 
+    /// The stickers this account can send — see `StickerLibrary`. The session's and not a room's,
+    /// because "my stickers" and the recent row are the same in every conversation.
+    public let stickers: StickerLibrary
+
     /// Proving devices are yours, in both directions — see `VerificationStore`.
     ///
     /// Owned by the session and not made on demand like the stores below it, and the difference is
@@ -133,6 +137,14 @@ public final class UserSession {
         self.blocked = BlockStore(client: client)
         self.verification = VerificationStore(client: client, ownUserID: userID)
         self.recovery = RecoveryStore(encryption: client.encryption())
+        let sender = Self.authorisedSender(client: client, authentication: authentication)
+        self.stickers = StickerLibrary(
+            readAccountData: { [client] type in try await client.accountData(eventType: type) },
+            writeAccountData: { [client] type, content in try await client.setAccountData(eventType: type, content: content) },
+            send: sender,
+            upload: { [client] mimeType, data in
+                try await client.uploadMedia(mimeType: mimeType, data: data, progressWatcher: nil)
+            })
     }
 
     /// The server has stopped accepting this session, and nobody on this device asked it to.
@@ -183,6 +195,10 @@ public final class UserSession {
     /// so here is what keeps it out of the view graph.
     @ObservationIgnored private var openTimelines: [String: WeakBox<TimelineStore>] = [:]
 
+    /// The identity watch of every room on screen, for the same two reasons as `openTimelines`:
+    /// one per room, and every one of them stopped on the way out of the account.
+    @ObservationIgnored private var openIdentityChanges: [String: WeakBox<IdentityChangesStore>] = [:]
+
     private struct WeakBox<T: AnyObject> {
         weak var value: T?
     }
@@ -220,6 +236,11 @@ public final class UserSession {
         // Said first, so that "Add account" signed in to this same person is refused while this
         // session is holding the store it would otherwise replace. See `AuthenticationService.persist`.
         if !isDemo { await authentication.sessionOpened(sessionID) }
+        // Closed while that was being said: say the other thing, so the two arrive in order.
+        guard !closed else {
+            if !isDemo { await authentication.sessionClosed(sessionID) }
+            return
+        }
 
         // Before the sync loop, not after: the token can be refused by the very first request the
         // loop makes, and a delegate registered afterwards would miss it.
@@ -230,11 +251,20 @@ public final class UserSession {
         })
 
         await loadProfile()
+        // Every `await` in here is a moment `close()` or `signOut()` can run in — an account
+        // switch on a cold launch from a push, the bridge changed while the first profile fetch
+        // hung. Carrying on regardless registered listeners and started a sync loop for a session
+        // that had already been closed, on a client nothing would ever stop.
+        guard !closed else { return }
 
         // Before the room list, because it is the only listener in the app that has to be in place
         // for something *other people's devices* do. Everything else here is started so that this
         // device can ask a question; this is started so that it can be asked one.
         await verification.listen()
+        guard !closed else {
+            verification.stop()
+            return
+        }
 
         // Not awaited on the server's behalf — `load()` reads what the SDK already knows and
         // subscribes for the rest. What it knows *now* may well be `.unknown`; the screen that
@@ -248,6 +278,10 @@ public final class UserSession {
         roomList.onConnectivityChange = { [weak self] offline in
             await self?.connectivityChanged(offline: offline)
         }
+
+        // Not awaited: whether the server hears "online" or "offline" first is not worth the chat
+        // list waiting for. See `applyPresence`.
+        Task { [weak self] in await self?.applyPresence() }
 
         try await roomList.start()
     }
@@ -317,6 +351,20 @@ public final class UserSession {
         }
 
         let store = TimelineStore(room: room, ownUserID: userID)
+        store.uploadMedia = { [client] mimeType, data in
+            try await client.uploadMedia(mimeType: mimeType, data: data, progressWatcher: nil)
+        }
+        store.onOwnMessagesRead = { [roomList] date in
+            roomList.noteRead(roomID: roomID, upTo: date)
+        }
+        store.downloadMedia = { [client] url in
+            try await client.getMediaContent(mediaSource: MediaSource.fromUrl(url: url))
+        }
+        if !isDemo {
+            store.askPresence = { [send = authorisedSender()] userID in
+                try await Self.presence(of: userID, send: send)
+            }
+        }
 
         keep(store)
 
@@ -326,6 +374,21 @@ public final class UserSession {
         openTimelines = openTimelines.filter { $0.value.value != nil }
         openTimelines[roomID] = WeakBox(value: store)
 
+        return store
+    }
+
+    /// Who in this room has keys this device does not recognise — see `IdentityChangesStore`.
+    ///
+    /// The one already open, if the room is on screen twice (an iPad's list and detail): two
+    /// subscriptions would each take the warning down on their own, and one of them late.
+    public func identityChanges(forRoomID roomID: String) -> IdentityChangesStore? {
+        if let open = openIdentityChanges[roomID]?.value { return open }
+        guard let room = roomList.room(withID: roomID) ?? (try? client.getRoom(roomId: roomID)) else {
+            return nil
+        }
+        let store = IdentityChangesStore(room: room, encryption: client.encryption(), ownUserID: userID)
+        openIdentityChanges = openIdentityChanges.filter { $0.value.value != nil }
+        openIdentityChanges[roomID] = WeakBox(value: store)
         return store
     }
 
@@ -420,42 +483,97 @@ public final class UserSession {
         return true
     }
 
-    /// Sends something the Share extension left in the outbox — a picture, a video or a file — and
-    /// deletes it from the shared folder once the send queue has it. Returns whether it went.
+    /// What became of one thing from the outbox.
+    public enum OutboxSend: Sendable, Equatable {
+        /// In the room's send queue — encrypted, persistent, and the queue's to deliver from here.
+        case sent
+        /// Not now — the room would not open (offline, and never opened on this device; a store
+        /// that stalled). It goes back in the outbox and is tried the next time the app comes up.
+        case later
+        /// Never: the file is gone, or the room is not one this account knows. Nothing to keep.
+        case impossible
+    }
+
+    /// Sends one item the Share extension or Shortcuts left in the outbox, and hands back what
+    /// could not go yet — to be put back, not thrown away.
     ///
-    /// The file goes whether or not the send succeeded: it is the user's picture in the clear in a
-    /// shared container, and a failed send is reported in the room like any other failed send,
-    /// where it can be tried again. Leaving plaintext lying about in case it is wanted is not a
-    /// retry policy.
-    @discardableResult
-    public func send(_ attachment: ChatDirectory.OutboxAttachment, toRoomID roomID: String) async -> Bool {
-        guard let folder = try? ChatDirectory.outboxFolder() else { return false }
-        // `appending(path:)`, because the name carries a folder of its own — see
-        // `OutboxAttachment.filename` — and the whole folder goes with the file.
-        let url = folder.appending(path: attachment.filename)
-        defer {
-            let parent = url.deletingLastPathComponent()
-            try? FileManager.default.removeItem(at: parent.standardizedFileURL == folder.standardizedFileURL ? url : parent)
+    /// The outbox used to be emptied *before* anything was sent, and a send that could not open
+    /// its room — offline, into a chat never opened on this device — simply returned false to a
+    /// caller that did not look. The photo, the text, the file were gone without a word, when the
+    /// room's own send queue would have held them until the network came back.
+    ///
+    /// The words wait for the pictures, as they always have: the photo first and "look at this"
+    /// after it, so a text is never sent ahead of an attachment that is still waiting.
+    public func sendQueued(_ item: ChatDirectory.OutboxItem) async -> ChatDirectory.OutboxItem? {
+        // A room this account does not know — left, or never joined — is not a room to wait for.
+        // Its copies go, and nothing comes back: an item queued for it would otherwise be retried
+        // on every launch for ever.
+        guard timeline(forRoomID: item.roomID) != nil else {
+            // `send` finds no room either, and throws each copy away on its way to saying so.
+            for attachment in item.attachments {
+                _ = await send(attachment, toRoomID: item.roomID)
+            }
+            return nil
         }
 
+        var waiting: [ChatDirectory.OutboxAttachment] = []
+        for attachment in item.attachments where await send(attachment, toRoomID: item.roomID) == .later {
+            waiting.append(attachment)
+        }
+
+        var text = item.text
+        let hasWords = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        if hasWords, waiting.isEmpty, await sendText(text, toRoomID: item.roomID) {
+            text = ""
+        } else if !hasWords {
+            text = ""
+        }
+
+        guard !waiting.isEmpty || !text.isEmpty else { return nil }
+        return ChatDirectory.OutboxItem(roomID: item.roomID, text: text, attachments: waiting,
+                                        accountID: item.accountID)
+    }
+
+    /// Sends something the Share extension left in the outbox — a picture, a video or a file.
+    ///
+    /// The copy is deleted once the send queue has it, and when it can never be sent — it is the
+    /// user's picture in the clear in a shared container. But *only* then: a send that merely has
+    /// to wait keeps its file, or waiting would be losing it.
+    public func send(_ attachment: ChatDirectory.OutboxAttachment, toRoomID roomID: String) async -> OutboxSend {
+        // The name carries a folder of its own — see `OutboxAttachment.filename` — and the whole
+        // folder goes with the file. It is resolved by `location(in:)` and nothing else: it came
+        // from another process and, before that, from another app, and it used to be resolved
+        // with `appending(path:)`, which follows `..` — up to the App Group's root.
+        guard let folder = try? ChatDirectory.outboxFolder(environment: authentication.environment),
+              let (url, slot) = attachment.location(in: folder) else { return .impossible }
+        let discard = { try? FileManager.default.removeItem(at: slot) }
+
         guard FileManager.default.fileExists(atPath: url.path(percentEncoded: false)),
-              let target = timeline(forRoomID: roomID) else { return false }
+              let target = timeline(forRoomID: roomID) else {
+            discard()
+            return .impossible
+        }
         do {
             try await target.start()
         } catch {
-            return false
+            return .later
         }
 
         switch attachment.kind {
         case .image:
-            guard let data = try? Data(contentsOf: url) else { return false }
-            await target.send(photo: data, filename: attachment.filename)
+            guard let data = try? Data(contentsOf: url) else {
+                discard()
+                return .impossible
+            }
+            await target.send(photo: data, filename: attachment.displayName)
         case .video:
             await target.send(video: url)
         case .file:
             await target.send(file: url)
         }
-        return true
+        // Safe the moment the send returns: the SDK was handed the bytes — see `TimelineStore.owned`.
+        discard()
+        return .sent
     }
 
     /// Fetches media bytes (a photo, a voice message) on demand.
@@ -477,6 +595,103 @@ public final class UserSession {
     ///
     /// `nil` when the session was not obtained through OAuth — the metadata this is built from simply
     /// does not exist then — and the screen above answers that by not offering the row at all.
+    /// The account's sessions, for the Devices screen — see `AccountDevices`, which explains why
+    /// this is a request of the app's own and the two rules that make it safe.
+    public func accountDevices() -> AccountDevices? {
+        guard let deviceID else { return nil }
+
+        let client = client
+        // Signed in through OAuth: the sessions are the server's to end, on its page.
+        let isManagedByServer = ((try? client.session())?.oauthData) != nil
+
+        return AccountDevices(
+            userID: userID,
+            currentDeviceID: deviceID,
+            isManagedByServer: isManagedByServer,
+            send: authorisedSender(),
+            serverPage: { deviceID in
+                let action: AccountManagementAction = deviceID.map { .deviceDelete(deviceId: $0) } ?? .devicesList
+                return (try? await client.accountUrl(action: action)).flatMap { $0 }.flatMap(URL.init(string:))
+            })
+    }
+
+    /// One request of the app's own with the account's token on it, sent the way the SDK's are —
+    /// see `AccountDevices`, which explains why, and the two rules that make it safe.
+    private func authorisedSender() -> @Sendable (ProxiedRequest) async throws -> ProxiedResponse {
+        Self.authorisedSender(client: client, authentication: authentication)
+    }
+
+    /// The same, for a store built in `init`, before there is a `self` to ask.
+    private static func authorisedSender(client: Client,
+                                         authentication: AuthenticationService)
+        -> @Sendable (ProxiedRequest) async throws -> ProxiedResponse {
+        @Sendable func authorised(_ request: ProxiedRequest) throws -> ProxiedRequest {
+            var request = request
+            // Read at the moment of sending, never kept: a token the SDK has since refreshed must
+            // not be replaced by the one it had when the screen opened.
+            request.headers["Authorization"] = "Bearer \(try client.session().accessToken)"
+            return request
+        }
+
+        return { request in
+            let response = try await authentication.send(try authorised(request),
+                                                         toHomeserver: client.homeserver())
+            guard response.status == 401, Self.isExpiredToken(response.body) else { return response }
+
+            // The token ran out, and only the SDK can refresh it — which it does when one of
+            // *its* requests is refused. So one cheap request of its own, and then once more.
+            _ = try? await client.displayName()
+            return try await authentication.send(try authorised(request),
+                                                 toHomeserver: client.homeserver())
+        }
+    }
+
+    /// Tells the homeserver whether this account is online — or, with last seen hidden in
+    /// Settings → Privacy, that it is not, whatever it is doing.
+    ///
+    /// The FFI has no presence call, so this is `PUT /presence/{userId}/status` of the app's own,
+    /// through the same listener as everything else. Said on start and on every return to the
+    /// foreground, because a server that counts a sync as "online" will have moved it back, and
+    /// once more whenever the switch moves. A server with presence turned off answers 403 or 404
+    /// and there is nothing to hide there anyway, so the answer is not looked at.
+    public func applyPresence() async {
+        guard !isDemo, !closed else { return }
+        let hidden = PrivacySettings.hidesPresence()
+        let body = (try? JSONSerialization.data(withJSONObject: ["presence": hidden ? "offline" : "online"])) ?? Data()
+        let user = userID.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed.subtracting(["/", ":"])) ?? userID
+        let request = ProxiedRequest(method: "PUT",
+                                     target: "/_matrix/client/v3/presence/\(user)/status",
+                                     headers: ["Content-Type": "application/json"],
+                                     body: body)
+        _ = try? await authorisedSender()(request)
+    }
+
+    /// What the homeserver says about where somebody is — see `TimelineStore.watchPresence`.
+    ///
+    /// The FFI has no presence call, so like `applyPresence` this is a request of the app's own,
+    /// through the same listener (and the bridge, when there is one) as everything else.
+    nonisolated private static func presence(
+        of userID: String,
+        send: @Sendable (ProxiedRequest) async throws -> ProxiedResponse
+    ) async throws -> Presence? {
+        let user = userID.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed.subtracting(["/", ":"])) ?? userID
+        let response = try await send(ProxiedRequest(method: "GET",
+                                                     target: "/_matrix/client/v3/presence/\(user)/status",
+                                                     headers: [:],
+                                                     body: Data()))
+        guard response.status == 200 else { throw PresenceDeclined(status: response.status) }
+        let json = (try? JSONSerialization.jsonObject(with: response.body)) as? [String: Any] ?? [:]
+        let presence = Presence(json: json)
+        return presence.isWorthShowing ? presence : nil
+    }
+
+    /// A 401 that means "your token has expired" and not "say your password" — the second is a
+    /// question from User-Interactive Auth and carries flows, not this errcode.
+    nonisolated private static func isExpiredToken(_ body: Data) -> Bool {
+        let json = (try? JSONSerialization.jsonObject(with: body)) as? [String: Any]
+        return json?["errcode"] as? String == "M_UNKNOWN_TOKEN"
+    }
+
     public func deviceManagementURL() async -> URL? {
         do {
             guard let address = try await client.accountUrl(action: .devicesList) else {
@@ -620,6 +835,7 @@ public final class UserSession {
         // reports "no network" for as long as its own retry takes to come round.
         if !isDemo { await authentication.wakeTunnels() }
         await roomList.resume()
+        await applyPresence()
     }
 
     /// Everything this session handed out that is still listening to the SDK.
@@ -627,7 +843,12 @@ public final class UserSession {
     /// Called from both ways out — the user signing out, and the server having already signed them
     /// out — because the store on the disk goes away in both, and a room left open in the detail
     /// column does not know that.
+    /// Set on the way out and never cleared: a session that has been closed is not opened again —
+    /// the root builds a new one. What `start()` checks after every `await`.
+    @ObservationIgnored private var closed = false
+
     private func stopEverything() async {
+        closed = true
         if !isDemo { await authentication.sessionClosed(sessionID) }
         verification.stop()
         recovery.stop()
@@ -636,6 +857,10 @@ public final class UserSession {
             box.value?.stop()
         }
         openTimelines = [:]
+        for box in openIdentityChanges.values {
+            box.value?.stop()
+        }
+        openIdentityChanges = [:]
         // The kept conversations go too. They are rooms in a store that is about to be deleted.
         recentTimelines = []
 

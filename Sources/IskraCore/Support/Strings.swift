@@ -88,6 +88,11 @@ public enum CoreStrings {
         /// The room was not created at all — which is not the same as a room created and an
         /// invitation refused, and the user is looking at an empty chat list either way.
         public static let createFailed = LocalizedStringResource("roomAction.createFailed", bundle: bundle)
+        /// What was typed into "Join by address" is not the shape of a room address. Names the
+        /// shape, for the same reason `inviteFailed` does.
+        public static let joinAddressInvalid = LocalizedStringResource("roomAction.joinAddressInvalid", bundle: bundle)
+        /// The server would not let us in, or there was nothing there to let us into.
+        public static let joinFailed = LocalizedStringResource("roomAction.joinFailed", bundle: bundle)
         /// A mute that did not take. Worth its own sentence: the user believes the room has
         /// gone quiet, and it has not.
         public static let alertsFailed = LocalizedStringResource("roomAction.alertsFailed", bundle: bundle)
@@ -187,6 +192,7 @@ public enum CoreStrings {
 
     public enum Timeline {
         public static let sendFailed = LocalizedStringResource("timeline.sendFailed", bundle: bundle)
+        public static let stickerFailed = LocalizedStringResource("timeline.stickerFailed", bundle: bundle)
         /// An edit that did not go through. Its own sentence, because the user is looking at
         /// their message still saying the old thing and needs to know that is what happened —
         /// not that a *new* message failed to send.
@@ -215,6 +221,23 @@ public enum CoreStrings {
         /// deletion that silently did not happen is the worst possible outcome: the user
         /// believes a message is gone when everyone else can still read it.
         public static let deleteFailed = LocalizedStringResource("timeline.deleteFailed", bundle: bundle)
+    }
+
+    /// The account's own sticker pack, refusing a change — see `StickerFailure`.
+    public enum Stickers {
+        public static let addFailed = LocalizedStringResource("stickers.addFailed", bundle: bundle)
+        public static let removeFailed = LocalizedStringResource("stickers.removeFailed", bundle: bundle)
+        public static let subscribeFailed = LocalizedStringResource("stickers.subscribeFailed", bundle: bundle)
+        public static let unsubscribeFailed = LocalizedStringResource("stickers.unsubscribeFailed", bundle: bundle)
+        public static let clearRecentFailed = LocalizedStringResource("stickers.clearRecentFailed", bundle: bundle)
+    }
+
+    /// What the Devices screen says when it could not do something — see `DevicesActionFailure`.
+    public enum Devices {
+        public static let loadFailed = LocalizedStringResource("devices.loadFailed", bundle: bundle)
+        public static let endFailed = LocalizedStringResource("devices.endFailed", bundle: bundle)
+        public static let wrongPassword = LocalizedStringResource("devices.wrongPassword", bundle: bundle)
+        public static let managedElsewhere = LocalizedStringResource("devices.managedElsewhere", bundle: bundle)
     }
 
     /// Why a message is stuck. Each one names the thing the user has to do, because these
@@ -268,6 +291,15 @@ public enum CoreStrings {
         public static let empty = LocalizedStringResource("share.empty", bundle: bundle)
         /// Reassurance that the message is not lost when Iskra is not open: it goes when it opens.
         public static let willSendOnOpen = LocalizedStringResource("share.willSendOnOpen", bundle: bundle)
+        /// The comment line at the foot of the share sheet, and its send button for VoiceOver.
+        public static let comment = LocalizedStringResource("share.comment", bundle: bundle)
+        public static let send = LocalizedStringResource("share.send", bundle: bundle)
+        /// The app lock is on: the chat list waits for Face ID, the same as the app does.
+        public static let locked = LocalizedStringResource("share.locked", bundle: bundle)
+        public static let lockedBody = LocalizedStringResource("share.lockedBody", bundle: bundle)
+        public static let unlock = LocalizedStringResource("share.unlock", bundle: bundle)
+        /// Face ID's own line — the system shows it under the prompt.
+        public static let unlockReason = LocalizedStringResource("share.unlockReason", bundle: bundle)
     }
 
     /// Shown in the user's list of signed-in devices, so it is a name, not a model
