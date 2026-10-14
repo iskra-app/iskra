@@ -32,6 +32,11 @@ struct MemberProfileView: View {
     /// it is still there under this page when it closes. From a name in the conversation there is
     /// nothing under this page that would, so it asks here. See `RoomMemberProfile`.
     var asksBeforeBlocking = false
+
+    /// Whether the room's rungs mean anything here. Not in a personal chat: both people in one are
+    /// made its administrators the moment it is created, and "Administrator" under somebody you
+    /// are simply talking to is a word about the protocol, not about them.
+    var showsRole = true
     @State private var isConfirmingBlock = false
 
     @Environment(\.isOffline) private var isOffline
@@ -98,14 +103,16 @@ struct MemberProfileView: View {
                     Text(Strings.Profile.matrixID)
                 }
 
-                LabeledContent {
-                    Text(name(of: member.role))
-                } label: {
-                    Text(Strings.Room.Manage.role)
+                if showsRole {
+                    LabeledContent {
+                        Text(name(of: member.role))
+                    } label: {
+                        Text(Strings.Room.Manage.role)
+                    }
                 }
             }
 
-            if !roles.isEmpty {
+            if showsRole, !roles.isEmpty {
                 Section {
                     Picker(selection: Binding(get: { member.role }, set: setRole)) {
                         ForEach(roles, id: \.self) { role in

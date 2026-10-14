@@ -23,7 +23,8 @@ struct RoomMemberProfile: View {
                                   setRole: { role in Task { await details.setRole(role, for: member) } },
                                   remove: { Task { await details.remove(member) } },
                                   block: { Task { await details.ban(member) } },
-                                  asksBeforeBlocking: true)
+                                  asksBeforeBlocking: true,
+                                  showsRole: details.kind != .direct)
             } else if details.isLoadingMembers {
                 ProgressView { Text(Strings.Profile.loading) }
             } else {
