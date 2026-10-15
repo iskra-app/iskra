@@ -24,6 +24,11 @@ struct MemberRow: View {
     let remove: () -> Void
     let open: () -> Void
 
+    /// What the red swipe says. Out of the room, from the participants tab; out of the role, from
+    /// the list of people who run it — see `init(member:details:demotes:open:)`.
+    var removeTitle: LocalizedStringResource = Strings.Room.Manage.remove
+    var removeImage = "person.badge.minus"
+
     @Environment(\.isOffline) private var isOffline
 
     /// The role picker, asked for by the swipe. A dialog rather than a submenu, because a swipe
@@ -75,8 +80,11 @@ struct MemberRow: View {
             if canAct {
                 if canRemove {
                     Button(role: .destructive, action: remove) {
-                        Label(String(app: Strings.Room.Manage.remove), systemImage: "person.badge.minus")
+                        Label(String(app: removeTitle), systemImage: removeImage)
                     }
+                    // Said outright. The app's root tint is `.primary`, and a swipe action takes the
+                    // tint over its role — so "destructive" alone came out grey, not red.
+                    .tint(.red)
                 }
 
                 if !roles.isEmpty {
@@ -89,13 +97,15 @@ struct MemberRow: View {
                 }
             }
         }
-        .confirmationDialog(Text(Strings.Room.Manage.roleQuestion(member.name)),
+        .confirmationDialog(Text(Strings.Room.Manage.chooseRole),
                             isPresented: $isChangingRole,
                             titleVisibility: .visible) {
             ForEach(roles, id: \.self) { role in
                 Button(String(localized: RoomRoleName.full(role))) { setRole(role) }
             }
             Button(String(app: Strings.Room.Manage.cancel), role: .cancel) {}
+        } message: {
+            Text(verbatim: member.name)
         }
     }
 
@@ -109,13 +119,30 @@ struct MemberRow: View {
 extension MemberRow {
     /// A row for somebody in the room behind `details`, with the room's own rules about what this
     /// account may do to them.
-    init(member: RoomMemberSummary, details: RoomDetailsStore, open: @escaping () -> Void) {
-        self.init(member: member,
-                  roles: details.assignableRoles(for: member),
-                  canRemove: details.permissions.canRemove && details.canManage(member),
-                  setRole: { role in Task { await details.setRole(role, for: member) } },
-                  remove: { Task { await details.remove(member) } },
-                  open: open)
+    ///
+    /// `demotes` turns the red swipe from "out of the room" into "out of the role": on the list of
+    /// people who run the chat, taking somebody off it means making them an ordinary member again,
+    /// not throwing them out.
+    init(member: RoomMemberSummary, details: RoomDetailsStore, demotes: Bool = false,
+         open: @escaping () -> Void) {
+        let roles = details.assignableRoles(for: member)
+        if demotes {
+            self.init(member: member,
+                      roles: roles,
+                      canRemove: member.role != .member && roles.contains(.member),
+                      setRole: { role in Task { await details.setRole(role, for: member) } },
+                      remove: { Task { await details.setRole(.member, for: member) } },
+                      open: open,
+                      removeTitle: Strings.Room.Rules.demote,
+                      removeImage: "person.crop.circle.badge.minus")
+        } else {
+            self.init(member: member,
+                      roles: roles,
+                      canRemove: details.permissions.canRemove && details.canManage(member),
+                      setRole: { role in Task { await details.setRole(role, for: member) } },
+                      remove: { Task { await details.remove(member) } },
+                      open: open)
+        }
     }
 }
 

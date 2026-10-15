@@ -129,8 +129,6 @@ struct RoomEditView: View {
                             Image(systemName: "person.badge.key")
                         }
                     }
-                } footer: {
-                    Text(Strings.Room.Rules.entryHelp)
                 }
             }
 

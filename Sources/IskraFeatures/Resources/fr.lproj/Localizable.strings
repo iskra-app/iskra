@@ -717,7 +717,6 @@
 "room.manage.invitePlaceholder" = "@nom:serveur";
 "room.manage.role" = "Rôle";
 "room.manage.roleHeader" = "Ce que cette personne peut faire";
-"room.manage.roleQuestion" = "Que peut faire %@ ?";
 "room.manage.member" = "Membre";
 "room.manage.write" = "Écrire";
 "room.manage.goToChat" = "Aller à la discussion";
@@ -733,11 +732,10 @@
    what still works — reading and writing — rather than only what does not. */
 "room.manage.offline" = "Sans réseau, vous pouvez lire cette discussion et y écrire, mais pas la modifier.";
 "room.rules.title" = "Rôles et autorisations";
-"room.rules.entryHelp" = "Qui gère la discussion, et ce que les autres peuvent faire.";
 "room.rules.staffHeader" = "Gèrent la discussion";
 "room.rules.staffFooter" = "Pour changer un rôle, balayez la personne vers la gauche ou ouvrez sa page.";
 "room.rules.rulesHeader" = "Qui peut";
-"room.rules.rulesFooter" = "« Modérateurs » veut dire modérateurs et administrateurs. Vous ne pouvez pas élever une autorisation au-dessus de votre rôle, ni changer une autorisation qui le dépasse déjà.";
+"room.rules.rulesFooter" = "« Modérateurs » veut dire modérateurs et administrateurs.";
 "room.rules.sendMessages" = "Écrire des messages";
 "room.rules.invite" = "Inviter des personnes";
 "room.rules.remove" = "Retirer des membres";
@@ -749,6 +747,11 @@
 "room.rules.everyone" = "Tout le monde";
 "room.rules.moderators" = "Modérateurs";
 "room.rules.administrators" = "Administrateurs";
+"room.manage.chooseRole" = "Choisissez un rôle";
+"room.rules.addStaff" = "Ajouter";
+"room.rules.appointTitle" = "Nommer";
+"room.rules.nobodyToAppoint" = "Il n’y a plus personne à nommer.";
+"room.rules.demote" = "Retirer le rôle";
 "room.manage.cancel" = "Annuler";
 "problem.title" = "Ça n’a pas marché";
 
