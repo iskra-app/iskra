@@ -463,6 +463,14 @@ struct MessageActions<Content: View>: View {
                                              perform: onSelect))
         }
 
+        // Taking a vote back: a response with no answers in it, which the poll counts as no vote at
+        // all (MSC3381). Only while the poll is open, and only for somebody who has voted.
+        if case let .poll(poll) = message.kind, poll.hasVoted, !poll.isEnded, !isOffline {
+            actions.append(MessageMenuAction(title: Strings.Poll.retract,
+                                             systemImage: "arrow.uturn.backward.circle",
+                                             perform: { handlers.onVote([]) }))
+        }
+
         // Only the sender may close a poll — the room ignores an end from anybody else — and only
         // one the server has.
         if message.canEndPoll && !isOffline {

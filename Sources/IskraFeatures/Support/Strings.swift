@@ -1197,6 +1197,8 @@ public enum Strings {
 
     /// A poll in the conversation, and the sheet that writes one.
     public enum Poll {
+        /// Taking one's vote back, from the poll's menu.
+        public static let retract = LocalizedStringResource("poll.retract", bundle: bundle)
         /// The small line above the question: what sort of poll it is, or that it is over.
         public static let kind = LocalizedStringResource("poll.kind", bundle: bundle)
         public static let kindAnonymous = LocalizedStringResource("poll.kindAnonymous", bundle: bundle)
