@@ -1401,3 +1401,11 @@
 
 "location.liveForMinutes" = "%lld 分钟";
 "location.liveForHours" = "%lld 小时";
+
+/* Voice transcription */
+"message.transcript.show" = "转写";
+"message.transcript.hide" = "隐藏文字";
+"message.transcript.notAllowed" = "未允许语音识别。可以在“设置”中允许。";
+"message.transcript.unavailable" = "此设备无法离线识别您的语言——Iskra 不会把语音发送到服务器。";
+"message.transcript.nothingHeard" = "听不出任何字词。";
+"message.transcript.failed" = "没能转写。请再试一次。";

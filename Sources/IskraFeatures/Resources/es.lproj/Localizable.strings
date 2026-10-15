@@ -1401,3 +1401,11 @@
 
 "location.liveForMinutes" = "%lld minutos";
 "location.liveForHours" = "%lld horas";
+
+/* Voice transcription */
+"message.transcript.show" = "Transcribir";
+"message.transcript.hide" = "Ocultar texto";
+"message.transcript.notAllowed" = "El reconocimiento de voz no está permitido. Puede permitirlo en Ajustes.";
+"message.transcript.unavailable" = "Este dispositivo no reconoce su idioma sin conexión, e Iskra no enviará la voz a ningún servidor.";
+"message.transcript.nothingHeard" = "No se distinguen palabras.";
+"message.transcript.failed" = "No se ha podido transcribir. Inténtelo de nuevo.";

@@ -1401,3 +1401,11 @@
 
 "location.liveForMinutes" = "%lld分間";
 "location.liveForHours" = "%lld時間";
+
+/* Voice transcription */
+"message.transcript.show" = "文字起こし";
+"message.transcript.hide" = "テキストを隠す";
+"message.transcript.notAllowed" = "音声認識が許可されていません。設定で許可できます。";
+"message.transcript.unavailable" = "このデバイスではあなたの言語をオフラインで認識できません。Iskraは音声をサーバーに送りません。";
+"message.transcript.nothingHeard" = "言葉を聞き取れませんでした。";
+"message.transcript.failed" = "文字起こしできませんでした。もう一度お試しください。";
