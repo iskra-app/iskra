@@ -111,7 +111,7 @@
 "roomEvent.roomTopicChanged" = "聊天简介已更改";
 "roomEvent.roomPictureChanged" = "聊天换了新头像";
 "roomEvent.roomCreated" = "聊天已创建";
-"roomEvent.encryptionEnabled" = "从现在起，只有聊天成员能读这些消息";
+"roomEvent.encryptionEnabled" = "已开启加密";
 "roomEvent.pair" = "%1$@ 和 %2$@";
 
 /* What a client that cannot draw a map shows instead of one. */

@@ -832,9 +832,8 @@
 "room.typingBy" = "%@ schreibt…";
 
 "room.scrollToBottom" = "Zur neuesten Nachricht";
-"room.loadEarlier" = "Frühere Nachrichten zeigen";
 
-/* Stands where the "show earlier" button would be, when the older messages could not be fetched —
+/* Stands at the top of the conversation when the older messages could not be fetched —
    offline, this is where the cached history runs out. Explains; does not promise. */
 "room.earlierUnavailable" = "Frühere Nachrichten zeigen wir, sobald Sie wieder online sind";
 "appearance.previewAsk" = "Welche Farbe hast du genommen?";

@@ -875,6 +875,15 @@ public struct RoomView: View {
             .onChange(of: timeline.hasLoaded, initial: true) { _, loaded in
                 if loaded { isRevealed = true }
             }
+            // A room shorter than the screen cannot be scrolled, so nothing in the geometry will
+            // ever ask it for more — `needsMoreHistory` is the store saying so, and this is the
+            // fetch, made explicitly rather than hung off something drawn. It ends by itself: a
+            // fetch either fills the screen, reaches the room's beginning, or fails, and each of
+            // those turns the flag off.
+            .task(id: timeline.needsMoreHistory) {
+                guard timeline.needsMoreHistory else { return }
+                await timeline.loadMoreHistory()
+            }
             // …and a floor under it, because "when the store is done" is a promise about a
             // network. A conversation half-fetched is worth more than an empty screen that goes
             // on being empty, so past this point the room is shown with whatever it has.
@@ -2133,39 +2142,17 @@ public struct RoomView: View {
         }
     }
 
-    /// The way to the rest of a conversation the reader cannot scroll to.
+    /// What stands at the head of the list when the older messages could not be fetched.
     ///
-    /// Everywhere else, older messages are asked for by scrolling to the top, and that is the right
-    /// gesture: it is the one people already make. But it is a gesture only a scrollable room can
-    /// receive — and a room that came up holding two messages is shorter than the screen it is on.
-    /// There is nothing to pull, the geometry never changes, so nothing ever asks for history
-    /// again and the room stays two messages long for as long as it is open. The store knows when
-    /// it is in that state (`needsMoreHistory`); this is what it offers when it is.
-    ///
-    /// A real row at the head of the list, not an overlay like the spinner. The spinner is a thing
-    /// that comes and goes twice a page and must not shove the conversation about; this appears
-    /// once, in a room with nothing above the first message anyway, and stays until it is pressed
-    /// or until it has done its job. It *is* the top of the conversation, so that is where it goes.
+    /// A room too short to scroll asks for its history by itself — see the `.task` on
+    /// `timeline.needsMoreHistory` — so there is no button to press for it any more. What is left
+    /// here is the one case nothing automatic can mend: the fetch failed, and the line says so.
     @ViewBuilder
     private var loadEarlier: some View {
-        if timeline.needsMoreHistory {
-            Button {
-                Task { await timeline.loadMoreHistory() }
-            } label: {
-                Text(Strings.Room.loadEarlier)
-                    .font(.subheadline.weight(.medium))
-                    .padding(.horizontal, Theme.Spacing.normal)
-                    .padding(.vertical, Theme.Spacing.close)
-                    .navigationGlass(in: .capsule)
-                    .contentShape(.capsule)
-            }
-            .buttonStyle(.plain)
-            .padding(.vertical, Theme.Spacing.normal)
-        } else if timeline.historyIsStranded {
-            // The same place, and deliberately not the same thing. There is more of this
-            // conversation and we could not fetch it — so what goes here is the reason, not an
-            // offer we cannot keep. Pressing it is still allowed, because a network can come back
-            // between one glance at the screen and the next.
+        if timeline.historyIsStranded {
+            // There is more of this conversation and we could not fetch it — so what goes here is
+            // the reason, not an offer we cannot keep. Pressing it is still allowed, because a
+            // network can come back between one glance at the screen and the next.
             Button {
                 Task { await timeline.loadMoreHistory() }
             } label: {

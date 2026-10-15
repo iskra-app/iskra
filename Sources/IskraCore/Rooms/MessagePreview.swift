@@ -71,13 +71,13 @@ enum MessagePreview {
     static func text(for messageType: MessageType) -> String? {
         switch messageType {
         // The body of a text message is the user's own words, so it is not a string
-        // to translate — it is passed through untouched.
+        // to translate — but it is read off the formatting, not the markup: see `words`.
         case let .text(content):
-            return content.body
+            return words(content.body, formatted: content.formatted)
         case let .notice(content):
-            return content.body
+            return words(content.body, formatted: content.formatted)
         case let .emote(content):
-            return content.body
+            return words(content.body, formatted: content.formatted)
         case let .image(content):
             return String(core: StickerPicture.isSticker(mimeType: content.info?.mimetype, filename: content.filename) ? CoreStrings.Preview.sticker
                                                                                          : CoreStrings.Preview.photo)
@@ -96,6 +96,35 @@ enum MessagePreview {
             return String(core: CoreStrings.Preview.location)
         default:
             return nil
+        }
+    }
+
+    /// The words of a formatted message, without the marks that formatted it.
+    ///
+    /// A message written in Markdown carries it twice: as HTML, and as the Markdown itself in the
+    /// plain `body` — which is the fallback for clients that draw no formatting, and which is
+    /// exactly what the chat list and the lock screen were drawing: `**важно**`, stars and all. One
+    /// line of text cannot be bold, but it can at least not be a lesson in syntax, so where there
+    /// is HTML the words are read out of it. (`MatrixHTML` also drops a reply's quoted fallback,
+    /// which the plain body drags along from older clients.)
+    static func words(_ body: String, formatted: FormattedBody?) -> String {
+        guard let formatted, case .html = formatted.format else { return body }
+        return words(body, html: formatted.body)
+    }
+
+    static func words(_ body: String, html: String?) -> String {
+        guard let html, let attributed = MatrixHTML.attributed(html) else { return body }
+        return String(attributed.characters)
+    }
+
+    /// One message on the screen, in a line — `text(for: MessageKind)`, read off its HTML when it
+    /// has some.
+    static func text(for message: Message) -> String {
+        switch message.kind {
+        case let .text(body), let .notice(body), let .emote(body):
+            return words(body, html: message.formattedBody)
+        default:
+            return text(for: message.kind)
         }
     }
 

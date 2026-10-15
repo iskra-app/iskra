@@ -811,7 +811,7 @@ public final class TimelineStore {
     // MARK: - Sending
 
     /// Sends a plain text message. Markdown is honoured, because people type `*this*`
-    /// and expect it to work.
+    /// and expect it to work — as a messenger reads it, one star bold; see `ComposerMarkdown`.
     ///
     /// `replyingTo` is a *message* ID, which is what the rest of the app deals in. It is only
     /// ever an answer to something the server already has: `sendReply` names an event, and a
@@ -858,7 +858,7 @@ public final class TimelineStore {
         stopTellingThemWeType()
 
         // Not logged, not stored anywhere but the SDK's encrypted send queue.
-        let content = messageEventContentFromMarkdown(md: trimmed)
+        let content = messageEventContentFromMarkdown(md: ComposerMarkdown.commonMark(from: trimmed))
 
         do {
             if let replyID, let eventID = eventID(for: replyID) {
@@ -978,7 +978,7 @@ public final class TimelineStore {
         guard !trimmed.isEmpty, let timeline, let id = eventOrTransactionID(for: messageID) else { return }
 
         do {
-            let content = messageEventContentFromMarkdown(md: trimmed)
+            let content = messageEventContentFromMarkdown(md: ComposerMarkdown.commonMark(from: trimmed))
             try await timeline.edit(eventOrTransactionId: id, newContent: .roomMessage(content: content))
         } catch {
             failure = .edit
@@ -2055,7 +2055,7 @@ public final class TimelineStore {
         return ReplyPreview(eventID: eventID,
                             senderName: original.senderName,
                             senderID: original.senderID,
-                            text: MessagePreview.text(for: original.kind))
+                            text: MessagePreview.text(for: original))
     }
 
     /// The replies we have already asked the SDK to finish, so that a rebuild does not ask again.

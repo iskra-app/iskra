@@ -17,7 +17,9 @@ import IskraDesign
 /// That is deliberate: the long press lifts what it is attached to, and a menu attached to the
 /// row would lift the avatar, the clock and the width of the screen along with the message.
 /// The one gesture that does belong to the whole row is the swipe, which is why it is a
-/// separate modifier — see `SwipeToReply`.
+/// separate modifier — see `SwipeToReply`. The compact row is the exception, and on purpose: a
+/// plain line has no shape to say whose it is, so there the face, the name and the clock go up
+/// with it — see `CompactMessageRow.heading`.
 ///
 /// It is a view that *wraps* the content rather than a modifier applied to it, and that is not
 /// a matter of taste. The menu lifts a copy of the message out of the scroll view and draws it

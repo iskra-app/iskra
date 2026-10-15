@@ -113,7 +113,7 @@
 "roomEvent.roomTopicChanged" = "Описание чата изменилось";
 "roomEvent.roomPictureChanged" = "У чата новое фото";
 "roomEvent.roomCreated" = "Чат создан";
-"roomEvent.encryptionEnabled" = "Теперь эти сообщения читают только участники чата";
+"roomEvent.encryptionEnabled" = "Шифрование включено";
 "roomEvent.pair" = "%1$@ и %2$@";
 
 /* What a client that cannot draw a map shows instead of one. */
