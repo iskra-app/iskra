@@ -189,10 +189,13 @@ struct MessageRow: View {
                 timestamp
             }
 
-            // Only the first message in a run carries an avatar; the rest are indented
-            // to line up under it.
+            // Only the last message in a run carries an avatar, at the foot of it — Telegram's:
+            // the name opens the run and the face closes it, so the two are never on one bubble
+            // unless the run is one message long. The rest keep an empty column of the same
+            // width, so the whole run stands on one edge. The row is bottom-aligned, which is
+            // what puts the face level with the bubble's last line rather than its first.
             if showsSender {
-                if message.isContinuation {
+                if message.isContinued {
                     Color.clear.frame(width: avatarSize)
                 } else {
                     // Pressing a face goes to the person — Telegram's. A button only where a room

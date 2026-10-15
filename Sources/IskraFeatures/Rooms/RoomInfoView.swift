@@ -60,7 +60,10 @@ struct RoomInfoView: View {
     /// The picture pressed in the media tab. Held here rather than in the grid, because the grid is
     /// a run of rows of the form and a sheet hung on those would be one sheet per row.
     @State private var openedMedia: OpenedIndex?
-    @State private var invitee = ""
+
+    /// The contacts and the directory "Invite" picks from. Nil only where no session put it up,
+    /// and there the tile is not drawn.
+    @Environment(\.personalChats) private var personalChats
 
     /// The person whose page is open, pushed from their row — see `MemberRow`.
     @State private var openedMember: String?
@@ -176,22 +179,11 @@ struct RoomInfoView: View {
             guard !isEditing else { return }
             details.stop()
         }
-        .alert(Text(Strings.Room.Manage.inviteTitle), isPresented: $isInviting) {
-            TextField(String(app: Strings.Room.Manage.invitePlaceholder), text: $invitee)
-                .textContentType(.username)
-                #if os(iOS)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                #endif
-
-            Button(String(app: Strings.Room.Manage.cancel), role: .cancel) { invitee = "" }
-            Button(String(app: Strings.Room.Manage.invite)) {
-                let userID = invitee
-                invitee = ""
-                Task { await details.invite(userID) }
+        // The people to invite are chosen from the same list "New chat" opens on — see `InviteView`.
+        .sheet(isPresented: $isInviting) {
+            if let personalChats {
+                InviteView(details: details, people: personalChats)
             }
-        } message: {
-            Text(Strings.Room.Manage.inviteHelp)
         }
         // Two questions, because there are two acts. Leaving a room is leaving a group of people,
         // and it is reversible by anybody who invites you back. Deleting a personal chat is not
@@ -265,7 +257,7 @@ struct RoomInfoView: View {
                 }
                 .disabled(isOffline)
 
-                if isRoom, details.permissions.canInvite {
+                if isRoom, details.permissions.canInvite, personalChats != nil {
                     ProfileActionTile(title: Strings.Room.Manage.invite,
                                       systemImage: "person.badge.plus",
                                       isBusy: false) {

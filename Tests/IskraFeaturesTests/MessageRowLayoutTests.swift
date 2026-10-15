@@ -27,6 +27,7 @@ struct MessageRowLayoutTests {
                          at minute: Int,
                          delivery: DeliveryStatus? = nil,
                          isContinuation: Bool = false,
+                         isContinued: Bool = false,
                          reactions: [MessageReaction] = [],
                          kind: MessageKind? = nil,
                          deletedAt: Date? = nil) -> Message {
@@ -42,6 +43,7 @@ struct MessageRowLayoutTests {
                 reactions: reactions,
                 deletedAt: deletedAt,
                 isContinuation: isContinuation)
+            .continued(isContinued)
     }
 
     /// A one-line message must come out a capsule and a wrapped one a rounded rectangle,
@@ -52,7 +54,7 @@ struct MessageRowLayoutTests {
     /// under it — and under your own they line up with its right.
     private var conversation: [Message] {
         [
-            message("Hey", isOwn: false, at: 0),
+            message("Hey", isOwn: false, at: 0, isContinued: true),
             message("Are you around this evening? I wanted to show you the thing we were talking about.",
                     isOwn: false, at: 1, isContinuation: true,
                     reactions: [MessageReaction(key: "👍", count: 2, isMine: true),
@@ -220,7 +222,7 @@ struct MessageRowLayoutTests {
     func aRunIsShorterWithoutBubbles() throws {
         let run = (0..<5).map {
             message("Same person, still talking, line \($0)",
-                    isOwn: false, at: $0, isContinuation: $0 > 0)
+                    isOwn: false, at: $0, isContinuation: $0 > 0, isContinued: $0 < 4)
         }
 
         let bubbles = try #require(rendered(run) { MessageRow(message: $0, isOneToOne: false) })
@@ -280,4 +282,12 @@ struct MessageRowLayoutTests {
         return renderer.nsImage
     }
     #endif
+}
+
+private extension Message {
+    func continued(_ isContinued: Bool) -> Message {
+        var copy = self
+        copy.isContinued = isContinued
+        return copy
+    }
 }

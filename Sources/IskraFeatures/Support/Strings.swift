@@ -713,6 +713,22 @@ public enum Strings {
             public static let demote = LocalizedStringResource("room.rules.demote", bundle: bundle)
         }
 
+        /// "Invite": the people picked from the contacts and the directory — see `InviteView`.
+        public enum Invite {
+            /// The button in the corner once somebody is ticked: "Invite (3)".
+            public static func inviteCount(_ count: Int) -> LocalizedStringResource {
+                LocalizedStringResource("room.invite.inviteCount",
+                                        defaultValue: "Invite (\(count))",
+                                        bundle: bundle)
+            }
+            /// Over the people ticked from a search, once the search is cleared.
+            public static let chosen = LocalizedStringResource("room.invite.chosen", bundle: bundle)
+            /// Under somebody who is in the room already, in place of their address.
+            public static let alreadyHere = LocalizedStringResource("room.invite.alreadyHere", bundle: bundle)
+            /// Under a full Matrix ID typed into the field.
+            public static let byAddress = LocalizedStringResource("room.invite.byAddress", bundle: bundle)
+        }
+
         public enum Manage {
             /// The name and the description, as fields rather than as labels. What the
             /// reader sees is what they can change, in place, with no "Edit" mode in front
@@ -747,9 +763,6 @@ public enum Strings {
             public static let openToAnyoneHelp = LocalizedStringResource("room.manage.openToAnyoneHelp", bundle: bundle)
 
             public static let invite = LocalizedStringResource("room.manage.invite", bundle: bundle)
-            public static let inviteTitle = LocalizedStringResource("room.manage.inviteTitle", bundle: bundle)
-            public static let inviteHelp = LocalizedStringResource("room.manage.inviteHelp", bundle: bundle)
-            public static let invitePlaceholder = LocalizedStringResource("room.manage.invitePlaceholder", bundle: bundle)
 
             public static let role = LocalizedStringResource("room.manage.role", bundle: bundle)
 

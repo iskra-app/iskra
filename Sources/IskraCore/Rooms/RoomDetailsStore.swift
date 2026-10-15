@@ -734,6 +734,28 @@ public final class RoomDetailsStore {
         }
     }
 
+    /// Invites several people, one after another, and answers with the ones the server refused.
+    ///
+    /// Sets no `failure` of its own: the screen that asks is a sheet over this store's screen, and
+    /// an alert raised from under a sheet is an alert nobody sees. The sheet says it instead, and
+    /// keeps the refused people chosen so that "again" is one press.
+    public func invite(_ userIDs: [String]) async -> [String] {
+        var refused: [String] = []
+        for userID in userIDs {
+            guard Self.isMatrixID(userID) else {
+                refused.append(userID)
+                continue
+            }
+            do {
+                try await room.inviteUserById(userId: userID)
+            } catch {
+                Log.rooms.error("invitation refused: \(Log.describe(error), privacy: .public)")
+                refused.append(userID)
+            }
+        }
+        return refused
+    }
+
     public func remove(_ member: RoomMemberSummary) async {
         guard permissions.canRemove, canManage(member) else { return }
 

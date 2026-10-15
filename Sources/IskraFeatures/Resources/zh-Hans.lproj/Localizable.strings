@@ -712,9 +712,10 @@
 "room.manage.openToAnyone" = "公开聊天";
 "room.manage.openToAnyoneHelp" = "任何找到这个聊天的人都能加入。否则仅限受邀者。";
 "room.manage.invite" = "邀请";
-"room.manage.inviteTitle" = "邀请谁？";
-"room.manage.inviteHelp" = "Matrix 地址的格式是 @名字:服务器。";
-"room.manage.invitePlaceholder" = "@名字:服务器";
+"room.invite.inviteCount" = "邀请（%lld）";
+"room.invite.chosen" = "已选择";
+"room.invite.alreadyHere" = "已在聊天室中";
+"room.invite.byAddress" = "邀请此地址";
 "room.manage.role" = "角色";
 "room.manage.roleHeader" = "可以做什么";
 "room.manage.member" = "成员";

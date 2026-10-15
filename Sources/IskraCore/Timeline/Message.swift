@@ -325,6 +325,14 @@ public struct Message: Sendable, Identifiable, Equatable {
     public var forwardedFrom: ForwardOrigin?
     /// Grouped under one avatar with the message above it, iMessage-style.
     public var isContinuation: Bool = false
+    /// And the other end of the same fact: the message *below* this one is a continuation of it.
+    ///
+    /// The bubbles put the face beside the last message of a run, at its foot, the way Telegram
+    /// does — where the run ends is where the eye arrives — so the row has to know it is not the
+    /// last. A row cannot work that out from itself, and the screen should not be asked to look
+    /// at its neighbours, so it is set over the finished rows by `TimelineMapper.markRunEnds`.
+    /// The compact layout keeps its face at the top and does not read this.
+    public var isContinued: Bool = false
     /// The one message that wears the "read" mark on behalf of all of them.
     ///
     /// A receipt is monotonic, so every message of yours above the watermark is equally read, and
