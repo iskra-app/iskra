@@ -394,7 +394,7 @@
 /* The question that replaces asking for a 'homeserver URL'. */
 "signIn.whereIsAccount" = "您的账户在哪里？";
 
-"signIn.whereIsAccountHelp" = "如果有人给了您服务器地址，请输入。否则保留 matrix.org——大多数账户都在那里。";
+"signIn.whereIsAccountHelp" = "请输入您账户所在的服务器地址，或您想创建账户的服务器地址。";
 
 "room.attachPhoto" = "照片或视频";
 
@@ -1229,3 +1229,30 @@
 "qr.openRoom" = "打开";
 "qr.roomUnknown" = "服务器没有提供这个房间的信息，但您仍然可以尝试加入。";
 "qr.inviteOnlyRoom" = "这个房间仅限邀请加入。";
+
+/* Under the empty address field on the sign-in screen: opens the list of public servers. */
+"signIn.chooseServer" = "不知道该选哪个服务器？";
+/* The main button under the address field. */
+"signIn.next" = "下一步";
+
+/* The list of public servers, opened from the sign-in screen. */
+"servers.title" = "选择服务器";
+"servers.intro" = "您的账户位于一个服务器上，但可以和任何其他服务器上的人交流——就像电子邮件一样。下面的服务器都可以直接在 Iskra 中创建账户。";
+"servers.matrixOrg" = "最大的 Matrix 服务器，由开发 Matrix 本身的基金会运营。";
+/* Country · languages the server is run in. */
+"servers.matrixOrgWhere" = "英国 · 英语";
+/* A warning on matrix.org: it is blocked in Russia. */
+"servers.matrixOrgBlocked" = "在俄罗斯无法访问";
+"servers.tchncs" = "最早的社区服务器之一。运营者还提供其他自由服务。";
+"servers.tchncsWhere" = "德国 · 英语、德语";
+"servers.quassel" = "面向日常交流的开放服务器，对所有人免费。";
+"servers.quasselWhere" = "德国，服务器位于芬兰 · 英语";
+"servers.nopeChat" = "由 adminForge 团队运营，他们也提供其他自由服务。支持与其他通讯软件的桥接。";
+"servers.nopeChatWhere" = "德国 · 德语";
+/* The last entry: running a server of your own. Opens a page about it in the browser. */
+"servers.ownTitle" = "自建服务器";
+"servers.ownAbout" = "您可以搭建自己的服务器——这样您的对话只保存在您自己那里。您需要一个域名和一点时间。";
+
+/* Under the "open to anyone" switch when making a room: what the room will be. Changes with the switch. */
+"roomList.new.willBeEncrypted" = "该房间将加密";
+"roomList.new.willNotBeEncrypted" = "该房间将不加密";

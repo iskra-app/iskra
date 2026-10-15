@@ -6,9 +6,9 @@ import IskraDesign
 ///
 /// The copy here is doing real work. A person arriving at a Matrix client is
 /// typically asked for a "homeserver URL", which is a sentence that means nothing to
-/// them. Here they are asked nothing: two buttons — sign in, create an account — on a server
-/// already filled in, and every protocol word kept off the screen. The address is one quiet
-/// line for the people who were given one.
+/// them. Here it is asked plainly — where is your account, or where do you want it — with
+/// "Not sure which server to choose?" right under the field for everybody who has no answer, and
+/// the two buttons, sign in and create an account, appearing in its place once the server is found.
 public struct SignInView: View {
     @State private var model: SignInModel
     @FocusState private var focus: Field?
@@ -39,7 +39,7 @@ public struct SignInView: View {
             ScrollView {
                 VStack(spacing: Theme.Spacing.generous) {
                     switch model.step {
-                    case .enteringAddress:
+                    case .enteringAddress, .found:
                         door
                     case let .ready(options):
                         signInForm(options)
@@ -53,22 +53,24 @@ public struct SignInView: View {
         }
         .animation(.smooth, value: model.step)
         .animation(.smooth, value: model.problem)
-        .animation(.smooth, value: isEditingServer)
+        .sheet(isPresented: $isPickingServer) {
+            ServerPickerView { model.address = $0 }
+        }
     }
 
     // MARK: - The door
 
-    /// Whether the server line has been opened up into a field.
-    @State private var isEditingServer = false
+    /// Whether the list of public servers is open.
+    @State private var isPickingServer = false
 
-    /// The opening screen: the app, a sentence, and two buttons — the shape every messenger's first
-    /// screen has, because it is the shape nobody needs explaining.
+    /// The opening screen: the app, a sentence, and under them first the address with "Next", then —
+    /// in the same place, once the server has answered — the two buttons every messenger's first
+    /// screen has.
     ///
-    /// It used to open on a question — "where is your account?" — over an empty field, which is a
-    /// fair question to somebody who knows what a homeserver is and a wall to everybody else. Now
-    /// the answer most people want, matrix.org, is already given, in one quiet line at the bottom
-    /// with "Change" beside it. Somebody who was handed an address knows to press it; nobody else
-    /// has to read it.
+    /// It once opened on matrix.org already filled in, with "Change" in small print. That made the
+    /// choice for everybody, and the server it made it for is not reachable from everywhere; so the
+    /// field is empty, and the help for people who have never heard the word "server" is a button
+    /// right under it, not a paragraph above it.
     private var door: some View {
         VStack(spacing: Theme.Spacing.generous) {
             Spacer(minLength: Theme.Spacing.generous)
@@ -77,34 +79,100 @@ public struct SignInView: View {
 
             Spacer(minLength: Theme.Spacing.generous)
 
-            VStack(spacing: Theme.Spacing.normal) {
-                if let problem = model.problem {
-                    problemPanel(problem)
-                }
-
-                Button {
-                    Task { await model.begin(.signIn) }
-                } label: {
-                    busyLabel(Strings.SignIn.signIn, when: model.pending == .signIn)
-                }
-                .buttonStyle(.glassAction)
-                .controlSize(.large)
-                .frame(maxWidth: .infinity)
-                .disabled(!model.canContinue)
-
-                Button {
-                    Task { await model.begin(.createAccount) }
-                } label: {
-                    busyLabel(Strings.SignIn.createAccount, when: model.pending == .createAccount)
-                }
-                .navigationGlassButton()
-                .controlSize(.large)
-                .frame(maxWidth: .infinity)
-                .disabled(!model.canContinue)
-
-                server
+            if case .found = model.step {
+                choice
+            } else {
+                address
             }
         }
+    }
+
+    /// The field, and the two buttons under it.
+    private var address: some View {
+        VStack(spacing: Theme.Spacing.normal) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.close) {
+                Text(Strings.SignIn.whereIsAccount)
+                    .font(.headline)
+
+                Text(Strings.SignIn.whereIsAccountHelp)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                TextField(String(app: Strings.SignIn.addressPlaceholder), text: $model.address)
+                    .textContentType(.URL)
+                    #if !os(macOS)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.URL)
+                    #endif
+                    .autocorrectionDisabled()
+                    .focused($focus, equals: .address)
+                    .submitLabel(.next)
+                    .onSubmit { Task { await model.findServer() } }
+                    .disabled(model.isBusy)
+                    .entryField()
+                    .accessibilityLabel(Text(Strings.SignIn.addressLabel))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if let problem = model.problem {
+                problemPanel(problem)
+            }
+
+            Button {
+                isPickingServer = true
+            } label: {
+                Text(Strings.SignIn.chooseServer).frame(maxWidth: .infinity)
+            }
+            .navigationGlassButton()
+            .controlSize(.large)
+            .frame(maxWidth: .infinity)
+            .disabled(model.isBusy)
+
+            Button {
+                Task { await model.findServer() }
+            } label: {
+                busyLabel(Strings.SignIn.next)
+            }
+            .buttonStyle(.glassAction)
+            .controlSize(.large)
+            .frame(maxWidth: .infinity)
+            .disabled(!model.canContinue)
+        }
+        .transition(.opacity.combined(with: .move(edge: .bottom)))
+    }
+
+    /// Once the server has answered: sign in, or make an account — and the server they go to, with
+    /// the way back to the field.
+    private var choice: some View {
+        VStack(spacing: Theme.Spacing.normal) {
+            if let problem = model.problem {
+                problemPanel(problem)
+            }
+
+            Button {
+                Task { await model.begin(.signIn) }
+            } label: {
+                busyLabel(Strings.SignIn.signIn, when: model.pending == .signIn)
+            }
+            .buttonStyle(.glassAction)
+            .controlSize(.large)
+            .frame(maxWidth: .infinity)
+            .disabled(model.isBusy)
+
+            Button {
+                Task { await model.begin(.createAccount) }
+            } label: {
+                busyLabel(Strings.SignIn.createAccount, when: model.pending == .createAccount)
+            }
+            .navigationGlassButton()
+            .controlSize(.large)
+            .frame(maxWidth: .infinity)
+            .disabled(model.isBusy)
+
+            server
+        }
+        .transition(.opacity.combined(with: .move(edge: .bottom)))
     }
 
     private var header: some View {
@@ -133,60 +201,24 @@ public struct SignInView: View {
         .multilineTextAlignment(.center)
     }
 
-    /// Where the account will be: one line, or — once "Change" is pressed — the field for it.
-    @ViewBuilder
+    /// Where the account will be, in one line, and "Change" to go back to the field.
     private var server: some View {
-        if isEditingServer {
-            VStack(alignment: .leading, spacing: Theme.Spacing.close) {
-                Text(Strings.SignIn.whereIsAccount)
-                    .font(.headline)
-
-                Text(Strings.SignIn.whereIsAccountHelp)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                HStack(spacing: Theme.Spacing.close) {
-                    TextField(String(app: Strings.SignIn.addressPlaceholder), text: $model.address)
-                        .textContentType(.URL)
-                        #if !os(macOS)
-                        .textInputAutocapitalization(.never)
-                        .keyboardType(.URL)
-                        #endif
-                        .autocorrectionDisabled()
-                        .focused($focus, equals: .address)
-                        .submitLabel(.done)
-                        .onSubmit { isEditingServer = false }
-                        .entryField()
-                        .accessibilityLabel(Text(Strings.SignIn.addressLabel))
-
-                    Button(String(app: Strings.SignIn.serverDone)) {
-                        isEditingServer = false
-                    }
-                    .font(.body.weight(.semibold))
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.tint)
-                    .disabled(model.serverName.isEmpty)
+        HStack(spacing: Theme.Spacing.tight) {
+            Text(Strings.SignIn.server(model.serverName))
+                .foregroundStyle(.secondary)
+            Button(String(app: Strings.SignIn.changeServer)) {
+                Task {
+                    await model.startOver()
+                    focus = .address
                 }
             }
-            .padding(.top, Theme.Spacing.close)
-            .transition(.opacity.combined(with: .move(edge: .bottom)))
-            .onAppear { focus = .address }
-        } else {
-            HStack(spacing: Theme.Spacing.tight) {
-                Text(Strings.SignIn.server(model.serverName))
-                    .foregroundStyle(.secondary)
-                Button(String(app: Strings.SignIn.changeServer)) {
-                    isEditingServer = true
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.tint)
-                .disabled(model.isBusy)
-            }
-            .font(.footnote)
-            .frame(maxWidth: .infinity)
-            .padding(.top, Theme.Spacing.close)
+            .buttonStyle(.plain)
+            .foregroundStyle(.tint)
+            .disabled(model.isBusy)
         }
+        .font(.footnote)
+        .frame(maxWidth: .infinity)
+        .padding(.top, Theme.Spacing.close)
     }
 
     /// What went wrong, said so that somebody sees it.
@@ -252,7 +284,7 @@ public struct SignInView: View {
                 // The disclosure goes back with the address. It was a decision about *that* server,
                 // and the next one may not even have a password to offer.
                 isUsingPassword = false
-                Task { await model.startOver() }
+                model.back()
             } label: {
                 Label(String(app: Strings.SignIn.back), systemImage: "chevron.backward")
                     .font(.body.weight(.medium))

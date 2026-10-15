@@ -394,7 +394,7 @@
 /* The question that replaces asking for a 'homeserver URL'. */
 "signIn.whereIsAccount" = "アカウントはどこにありますか？";
 
-"signIn.whereIsAccountHelp" = "サーバーのアドレスを教わっている場合は入力してください。わからなければ matrix.org のままで大丈夫です。";
+"signIn.whereIsAccountHelp" = "アカウントがあるサーバー、またはアカウントを作りたいサーバーのアドレスを入力してください。";
 
 "room.attachPhoto" = "写真またはビデオ";
 
@@ -1229,3 +1229,30 @@
 "qr.openRoom" = "開く";
 "qr.roomUnknown" = "サーバーはこのルームについて何も教えてくれませんでしたが、参加を試すことはできます。";
 "qr.inviteOnlyRoom" = "このルームは招待制です。";
+
+/* Under the empty address field on the sign-in screen: opens the list of public servers. */
+"signIn.chooseServer" = "どのサーバーを選べばいいかわかりませんか？";
+/* The main button under the address field. */
+"signIn.next" = "次へ";
+
+/* The list of public servers, opened from the sign-in screen. */
+"servers.title" = "サーバーを選ぶ";
+"servers.intro" = "アカウントは1つのサーバーにありますが、ほかのどのサーバーの人ともやり取りできます。メールと同じです。以下のサーバーなら、Iskraからそのままアカウントを作れます。";
+"servers.matrixOrg" = "最大のMatrixサーバーです。Matrix自体を開発している財団が運営しています。";
+/* Country · languages the server is run in. */
+"servers.matrixOrgWhere" = "イギリス · 英語";
+/* A warning on matrix.org: it is blocked in Russia. */
+"servers.matrixOrgBlocked" = "ロシアからは利用できません";
+"servers.tchncs" = "最も古いコミュニティサーバーの1つです。運営者はほかの自由なサービスも提供しています。";
+"servers.tchncsWhere" = "ドイツ · 英語、ドイツ語";
+"servers.quassel" = "日常の会話のための開かれたサーバーです。誰でも無料で使えます。";
+"servers.quasselWhere" = "ドイツ、サーバーはフィンランド · 英語";
+"servers.nopeChat" = "ほかの自由なサービスも提供しているadminForgeのチームが運営しています。ほかのメッセンジャーへのブリッジがあります。";
+"servers.nopeChatWhere" = "ドイツ · ドイツ語";
+/* The last entry: running a server of your own. Opens a page about it in the browser. */
+"servers.ownTitle" = "自分のサーバー";
+"servers.ownAbout" = "自分でサーバーを立てることもできます。そうすれば、会話はあなたの手元だけに保存されます。ドメインと少しの時間が必要です。";
+
+/* Under the "open to anyone" switch when making a room: what the room will be. Changes with the switch. */
+"roomList.new.willBeEncrypted" = "このルームは暗号化されます";
+"roomList.new.willNotBeEncrypted" = "このルームは暗号化されません";

@@ -394,7 +394,7 @@
 /* The question that replaces asking for a 'homeserver URL'. */
 "signIn.whereIsAccount" = "Where’s your account?";
 
-"signIn.whereIsAccountHelp" = "If you were given a server address, type it in. If not, keep matrix.org — that's where most accounts are.";
+"signIn.whereIsAccountHelp" = "Type the address of the server where your account is, or where you’d like to create one.";
 
 "room.attachPhoto" = "Photo or video";
 
@@ -1229,3 +1229,30 @@
 "qr.openRoom" = "Open";
 "qr.roomUnknown" = "The server didn’t say anything about this room, but you can still try to join.";
 "qr.inviteOnlyRoom" = "This room is invite only.";
+
+/* Under the empty address field on the sign-in screen: opens the list of public servers. */
+"signIn.chooseServer" = "Not sure which server to choose?";
+/* The main button under the address field. */
+"signIn.next" = "Next";
+
+/* The list of public servers, opened from the sign-in screen. */
+"servers.title" = "Choose a server";
+"servers.intro" = "Your account lives on one server, and you can write to people on any other — just like email. On every server below you can create an account right in Iskra.";
+"servers.matrixOrg" = "The largest Matrix server, run by the foundation that develops Matrix itself.";
+/* Country · languages the server is run in. */
+"servers.matrixOrgWhere" = "United Kingdom · English";
+/* A warning on matrix.org: it is blocked in Russia. */
+"servers.matrixOrgBlocked" = "Not available from Russia";
+"servers.tchncs" = "One of the oldest community servers. Its owner runs other free services too.";
+"servers.tchncsWhere" = "Germany · English, German";
+"servers.quassel" = "An open server for everyday conversation, free for everyone.";
+"servers.quasselWhere" = "Germany, server in Finland · English";
+"servers.nopeChat" = "Run by the adminForge team, who host other free services too. Has bridges to other messengers.";
+"servers.nopeChatWhere" = "Germany · German";
+/* The last entry: running a server of your own. Opens a page about it in the browser. */
+"servers.ownTitle" = "Your own server";
+"servers.ownAbout" = "You can run a server of your own — then your conversations are kept only by you. You’ll need a domain and a little time.";
+
+/* Under the "open to anyone" switch when making a room: what the room will be. Changes with the switch. */
+"roomList.new.willBeEncrypted" = "The room will be encrypted";
+"roomList.new.willNotBeEncrypted" = "The room won’t be encrypted";
