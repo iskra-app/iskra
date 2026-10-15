@@ -1365,3 +1365,5 @@
 /* Which account a notification came for */
 "chats.namesAccount" = "Аккаунт в уведомлениях";
 "chats.namesAccountHelp" = "В заголовке уведомления будет видно, на какой из ваших аккаунтов оно пришло.";
+
+"poll.retract" = "Отменить голос";

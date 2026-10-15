@@ -267,6 +267,15 @@ struct DemoBackendTests {
         #expect(voted, "poll: \(String(describing: poll()?.poll))")
         #expect(poll()?.poll.showsResults == true)
 
+        // Taken back: an empty response, which the poll counts as no vote at all.
+        await timeline.vote(inPoll: id, answerIDs: [])
+        #expect(timeline.failure == nil)
+        let retracted = await eventually {
+            guard let poll = poll()?.poll else { return false }
+            return !poll.hasVoted && poll.voters == 2
+        }
+        #expect(retracted, "poll: \(String(describing: poll()?.poll))")
+
         // Not ours to close — Лена started it. One of our own is.
         await timeline.send(poll: {
             var draft = PollDraft()

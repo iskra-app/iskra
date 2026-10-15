@@ -1369,3 +1369,5 @@
 /* Which account a notification came for */
 "chats.namesAccount" = "Cuenta en las notificaciones";
 "chats.namesAccountHelp" = "El título de la notificación indica a cuál de sus cuentas llegó.";
+
+"poll.retract" = "Retirar voto";
