@@ -130,6 +130,7 @@
 "roomAction.removeFailed" = "No se ha podido expulsar a esta persona. Sigue en el chat.";
 "roomAction.banFailed" = "No se ha podido bloquear a esta persona. Sigue en el chat.";
 "roomAction.roleFailed" = "El rol no ha cambiado. Quizá no tenga permiso para hacerlo.";
+"roomAction.rulesFailed" = "El permiso no ha cambiado. Puede que no tenga derecho a hacerlo.";
 "roomAction.leaveFailed" = "No ha podido salir del chat. Inténtelo de nuevo.";
 "roomAction.createFailed" = "El chat no se ha creado. Puede que el servidor no haya respondido: inténtelo de nuevo.";
 "roomAction.joinAddressInvalid" = "La dirección de una sala tiene la forma #nombre:servidor o !id:servidor.";

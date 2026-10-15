@@ -732,6 +732,23 @@
 /* Why everything on the room-settings screen is greyed out. Shown only while offline. Must say
    what still works — reading and writing — rather than only what does not. */
 "room.manage.offline" = "没有网络时，您可以阅读这个聊天、在里面发消息，但不能修改它。";
+"room.rules.title" = "角色与权限";
+"room.rules.entryHelp" = "谁管理这个聊天，其他人可以做什么。";
+"room.rules.staffHeader" = "管理聊天的人";
+"room.rules.staffFooter" = "要更改角色，请在此人上向左轻扫，或打开其页面。";
+"room.rules.rulesHeader" = "谁可以";
+"room.rules.rulesFooter" = "“版主”指版主和管理员。不能把权限提到自己的角色之上，也不能更改已经高于它的权限。";
+"room.rules.sendMessages" = "发送消息";
+"room.rules.invite" = "邀请他人";
+"room.rules.remove" = "移除成员";
+"room.rules.ban" = "封禁他人";
+"room.rules.deleteOthers" = "删除他人的消息";
+"room.rules.rename" = "更改名称";
+"room.rules.changeTopic" = "更改简介";
+"room.rules.changePicture" = "更改照片";
+"room.rules.everyone" = "所有人";
+"room.rules.moderators" = "版主";
+"room.rules.administrators" = "管理员";
 "room.manage.cancel" = "取消";
 "problem.title" = "没成功";
 

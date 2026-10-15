@@ -683,6 +683,30 @@ public enum Strings {
         /// Running the room. Every one of these appears only for somebody the room's own
         /// power levels allow to use it — see `RoomPermissions`, and the reason the ones
         /// that do not apply are *absent* rather than greyed out.
+        /// The screen behind "Roles and permissions" on the editing screen: who runs the room, and
+        /// which rung may do what.
+        public enum Rules {
+            public static let title = LocalizedStringResource("room.rules.title", bundle: bundle)
+            public static let entryHelp = LocalizedStringResource("room.rules.entryHelp", bundle: bundle)
+            public static let staffHeader = LocalizedStringResource("room.rules.staffHeader", bundle: bundle)
+            public static let staffFooter = LocalizedStringResource("room.rules.staffFooter", bundle: bundle)
+            public static let rulesHeader = LocalizedStringResource("room.rules.rulesHeader", bundle: bundle)
+            public static let rulesFooter = LocalizedStringResource("room.rules.rulesFooter", bundle: bundle)
+            public static let sendMessages = LocalizedStringResource("room.rules.sendMessages", bundle: bundle)
+            public static let invite = LocalizedStringResource("room.rules.invite", bundle: bundle)
+            public static let remove = LocalizedStringResource("room.rules.remove", bundle: bundle)
+            public static let ban = LocalizedStringResource("room.rules.ban", bundle: bundle)
+            public static let deleteOthers = LocalizedStringResource("room.rules.deleteOthers", bundle: bundle)
+            public static let rename = LocalizedStringResource("room.rules.rename", bundle: bundle)
+            public static let changeTopic = LocalizedStringResource("room.rules.changeTopic", bundle: bundle)
+            public static let changePicture = LocalizedStringResource("room.rules.changePicture", bundle: bundle)
+            /// The lowest rung that may do a thing, as a choice: plural, and "moderators" includes
+            /// the administrators above them — the footer says so.
+            public static let everyone = LocalizedStringResource("room.rules.everyone", bundle: bundle)
+            public static let moderators = LocalizedStringResource("room.rules.moderators", bundle: bundle)
+            public static let administrators = LocalizedStringResource("room.rules.administrators", bundle: bundle)
+        }
+
         public enum Manage {
             /// The name and the description, as fields rather than as labels. What the
             /// reader sees is what they can change, in place, with no "Edit" mode in front

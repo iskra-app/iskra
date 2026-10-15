@@ -115,6 +115,7 @@ public enum CoreStrings {
         public static let readFailed = LocalizedStringResource("roomAction.readFailed", bundle: bundle)
         /// A report that did not reach the moderators.
         public static let reportFailed = LocalizedStringResource("roomAction.reportFailed", bundle: bundle)
+        public static let rulesFailed = LocalizedStringResource("roomAction.rulesFailed", bundle: bundle)
     }
 
     /// The strip above a message that is answering another one.

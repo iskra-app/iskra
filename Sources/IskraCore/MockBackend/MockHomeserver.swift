@@ -386,10 +386,16 @@ public actor MockHomeserver: HTTPUpstream {
 
     private func updatedRoom(_ room: Room, from delivered: Int) -> JSON {
         var entry = summary(room)
-        entry["timeline"] = Array(room.events[min(delivered, room.events.count)...])
+        let fresh = Array(room.events[min(delivered, room.events.count)...])
+        entry["timeline"] = fresh
         entry["limited"] = false
         entry["num_live"] = room.events.count - delivered
-        entry["required_state"] = []
+        // State that changed since the last answer, as a real server sends it: simplified sliding
+        // sync carries room state in `required_state`, and the SDK reads it from there, not from the
+        // timeline — with this empty, a change to the room's power levels was stored here and never
+        // reached the client, and the rules screen put the old answer back.
+        let changed = Set(fresh.compactMap { $0["state_key"] != nil ? $0["event_id"] as? String : nil })
+        entry["required_state"] = room.state.values.filter { changed.contains($0["event_id"] as? String ?? "") }
         return entry
     }
 

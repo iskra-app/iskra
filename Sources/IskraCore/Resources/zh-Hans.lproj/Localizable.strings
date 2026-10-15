@@ -130,6 +130,7 @@
 "roomAction.removeFailed" = "没能移出此人。对方还在聊天里。";
 "roomAction.banFailed" = "没能封禁此人。对方还在聊天里。";
 "roomAction.roleFailed" = "角色没有更改。您可能没有这个权限。";
+"roomAction.rulesFailed" = "权限没有改变。您可能没有这个权利。";
 "roomAction.leaveFailed" = "没能退出聊天。请再试一次。";
 "roomAction.createFailed" = "聊天没有创建成功。可能是服务器没有响应，请再试一次。";
 "roomAction.joinAddressInvalid" = "房间地址的格式是 #名称:服务器 或 !id:服务器。";

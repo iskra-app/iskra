@@ -432,6 +432,12 @@ public struct Message: Sendable, Identifiable, Equatable {
         return delivery == .sent || delivery == .read
     }
 
+    /// Whether somebody who may delete other people's messages may delete this one: anybody else's,
+    /// as long as there is still something there. One's own go by `canDelete`.
+    public var canBeDeletedByModerator: Bool {
+        !isOwn && !isDeleted
+    }
+
     /// Whether the user may close this poll: their own, still open, and on the server.
     public var canEndPoll: Bool {
         guard case let .poll(poll) = kind, isOwn, !poll.isEnded else { return false }

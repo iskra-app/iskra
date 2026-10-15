@@ -471,7 +471,8 @@ struct MessageActions<Content: View>: View {
     private var reporting: [MessageMenuAction] {
         var actions: [MessageMenuAction] = []
 
-        if message.canDelete && !isOffline {
+        // Your own, or — for a moderator the room allows it — anybody's.
+        if (message.canDelete || (handlers.canDeleteOthers && message.canBeDeletedByModerator)) && !isOffline {
             actions.append(MessageMenuAction(title: Strings.Message.Menu.delete,
                                              systemImage: "trash",
                                              manner: .destructive,

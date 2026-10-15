@@ -130,6 +130,7 @@
 "roomAction.removeFailed" = "Die Person konnte nicht entfernt werden. Sie ist noch im Chat.";
 "roomAction.banFailed" = "Die Person konnte nicht blockiert werden. Sie ist noch im Chat.";
 "roomAction.roleFailed" = "Die Rolle hat sich nicht geändert. Vielleicht haben Sie dazu keine Berechtigung.";
+"roomAction.rulesFailed" = "Die Berechtigung hat sich nicht geändert. Vielleicht fehlen Ihnen die Rechte dafür.";
 "roomAction.leaveFailed" = "Sie konnten den Chat nicht verlassen. Versuchen Sie es noch einmal.";
 "roomAction.createFailed" = "Der Chat wurde nicht erstellt. Vielleicht hat der Server nicht geantwortet – versuchen Sie es noch einmal.";
 "roomAction.joinAddressInvalid" = "Eine Raumadresse sieht so aus: #name:server oder !id:server.";

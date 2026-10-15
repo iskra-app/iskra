@@ -92,6 +92,8 @@ public enum RoomActionFailure: String, CaseIterable, ActionFailure {
     case remove
     case ban
     case role
+    /// A rule of the room — who may write, invite, remove — that would not change.
+    case rules
     case leave
     case alerts
 
@@ -134,6 +136,7 @@ public enum RoomActionFailure: String, CaseIterable, ActionFailure {
         case .remove: CoreStrings.RoomAction.removeFailed
         case .ban: CoreStrings.RoomAction.banFailed
         case .role: CoreStrings.RoomAction.roleFailed
+        case .rules: CoreStrings.RoomAction.rulesFailed
         case .leave: CoreStrings.RoomAction.leaveFailed
         case .acceptInvite: CoreStrings.RoomAction.acceptInviteFailed
         case .declineInvite: CoreStrings.RoomAction.declineInviteFailed
@@ -233,6 +236,10 @@ public final class RoomDetailsStore {
     public private(set) var isLoadingMembers = true
 
     public private(set) var permissions = RoomPermissions()
+
+    /// Who may do what here, by role — the table behind `permissions`, for the screen that changes
+    /// it. Nil until the power levels have been read.
+    public private(set) var rules: RoomRules?
 
     /// What this room is allowed to interrupt you with. Everybody has this, whatever their
     /// power level — it is a rule about your own device, not about the room.
@@ -468,6 +475,10 @@ public final class RoomDetailsStore {
         canonicalAlias = info.canonicalAlias
         memberCount = Int(info.joinedMembersCount)
         counterpartID = isOneToOne ? info.counterpart(besides: ownUserID)?.userId : nil
+        // The rules follow the room like its name does: a moderator handed a power from another
+        // device sees it here without reopening the screen, and a rule changed on *this* screen is
+        // confirmed by the room's own echo rather than by re-reading a cache that has not heard yet.
+        if let levels = info.powerLevels { adopt(levels) }
     }
 
     /// Closing the screen. Kept alive by the handle, and dropping the handle is what unsubscribes —
@@ -487,7 +498,10 @@ public final class RoomDetailsStore {
     /// room may rename it and in another may not, and only this table knows which.
     private func loadPermissions() async {
         guard let levels = try? await room.getPowerLevels() else { return }
+        adopt(levels)
+    }
 
+    private func adopt(_ levels: RoomPowerLevels) {
         permissions = RoomPermissions(canRename: levels.canOwnUserSendState(stateEvent: .roomName),
                                       canChangeTopic: levels.canOwnUserSendState(stateEvent: .roomTopic),
                                       canChangePicture: levels.canOwnUserSendState(stateEvent: .roomAvatar),
@@ -496,6 +510,7 @@ public final class RoomDetailsStore {
                                       canRemove: levels.canOwnUserKick(),
                                       canBan: levels.canOwnUserBan(),
                                       canChangeRoles: levels.canOwnUserSendState(stateEvent: .roomPowerLevels))
+        rules = RoomRules(levels.values())
     }
 
     private func apply(_ loaded: [RoomMemberSummary]) {
@@ -546,8 +561,50 @@ public final class RoomDetailsStore {
         return Self.roles(grantableBy: ownAuthority)
     }
 
-    static func roles(grantableBy own: Authority) -> [RoomRole] {
+    nonisolated static func roles(grantableBy own: Authority) -> [RoomRole] {
         RoomRole.allCases.filter { authority(of: $0) <= own }
+    }
+
+    /// The people who run the room — administrators and moderators, in the list's order.
+    public var staff: [RoomMemberSummary] {
+        members.filter { $0.role != .member }
+    }
+
+    /// The roles this account may set a rule to — none at all when the rule is out of its reach.
+    ///
+    /// The homeserver's two rules again, applied to thresholds instead of people: you may not move
+    /// a threshold that stands above you, and you may not raise one past yourself. An administrator
+    /// can therefore hand banning to moderators and take it back, and a moderator cannot touch it.
+    public func roles(for rule: RoomRule) -> [RoomRole] {
+        guard let rules, permissions.canChangeRoles else { return [] }
+        return Self.roles(for: rule, in: rules, holding: ownAuthority)
+    }
+
+    nonisolated static func roles(for rule: RoomRule, in rules: RoomRules, holding own: Authority) -> [RoomRole] {
+        guard .level(rules.levels[rule] ?? 0) <= own else { return [] }
+        return roles(grantableBy: own)
+    }
+
+    /// Changes who may do one thing. Shown at once and put back if the room says no.
+    public func setRule(_ rule: RoomRule, to role: RoomRole) async {
+        guard roles(for: rule).contains(role), let before = rules,
+              case let .level(level) = Self.authority(of: role) else { return }
+        guard before.role(for: rule) != role else { return }
+
+        var levels = before.levels
+        levels[rule] = level
+        rules = RoomRules(levels: levels)
+
+        do {
+            // Not re-read here: the room's cache has not heard of the change until the next sync,
+            // and re-reading it put the old answer back on the screen. The room's echo arrives
+            // through `adopt(_ info:)`.
+            try await room.applyPowerLevelChanges(changes: rule.change(to: Int64(level)))
+        } catch {
+            Log.rooms.error("rule change refused: \(Log.describe(error), privacy: .public)")
+            if rules?.levels[rule] == level { rules = before }
+            failure = .rules
+        }
     }
 
     // MARK: - Changing the room
@@ -788,14 +845,14 @@ public final class RoomDetailsStore {
 
     /// The power level the SDK suggests for a role, as an `Authority` — so that "may I
     /// grant this?" is asked in the same currency as "does this person outrank me?".
-    static func authority(of role: RoomRole) -> Authority {
+    nonisolated static func authority(of role: RoomRole) -> Authority {
         guard case .value(let level) = try? suggestedPowerLevelForRole(role: sdkRole(role)) else {
             return .unlimited
         }
         return .level(Int(level))
     }
 
-    private static func sdkRole(_ role: RoomRole) -> RoomMemberRole {
+    nonisolated private static func sdkRole(_ role: RoomRole) -> RoomMemberRole {
         switch role {
         case .administrator: .administrator
         case .moderator: .moderator

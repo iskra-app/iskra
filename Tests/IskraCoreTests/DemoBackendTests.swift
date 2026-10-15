@@ -299,6 +299,46 @@ struct DemoBackendTests {
         #expect(await MockHomeserver.shared.unrecognized.isEmpty)
     }
 
+    @Test("an administrator hands a rule to the moderators, and the room keeps it")
+    func roomRules() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(component: "iskra-rules-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let client = try await DemoBackend.makeClient(data: root.appending(component: "data"),
+                                                      cache: root.appending(component: "cache"),
+                                                      search: root.appending(component: "search"))
+        let session = UserSession(client: client, authentication: AuthenticationService(), sessionID: "demo", isDemo: true)
+        try await session.start()
+        defer { Task { await session.close() } }
+        let devID = "!iskra-dev:iskra.demo"
+        _ = await eventually { session.roomList.rooms.contains { $0.id == devID } }
+
+        let details = try #require(session.details(forRoomID: devID))
+        await details.load()
+        defer { details.stop() }
+        let loaded = await eventually { details.rules != nil && !details.members.isEmpty }
+        #expect(loaded)
+        #expect(details.permissions.canChangeRoles)
+        #expect(details.staff.contains { $0.id == "@sasha:iskra.demo" })
+
+        let before = try #require(details.rules?.role(for: .ban))
+        let target: RoomRole = before == .moderator ? .administrator : .moderator
+        #expect(details.roles(for: .ban).contains(target))
+        await details.setRule(.ban, to: target)
+        #expect(details.failure == nil)
+
+        // Read back from the room, not from what the store put on the screen.
+        _ = await eventually { details.rules?.role(for: .ban) == target }
+        let again = try #require(session.details(forRoomID: devID))
+        await again.load()
+        defer { again.stop() }
+        let kept = await eventually { again.rules?.role(for: .ban) == target }
+        // And the screen that made the change kept showing it — it was not put back by a stale read.
+        #expect(details.rules?.role(for: .ban) == target, "before: \(before), now: \(String(describing: details.rules?.levels[.ban]))")
+        #expect(kept, "ban: \(String(describing: again.rules?.levels[.ban]))")
+        #expect(await MockHomeserver.shared.unrecognized.isEmpty)
+    }
+
     @Test("stickers: packs are read, one is sent, and one somebody sent is added")
     func stickers() async throws {
         let root = FileManager.default.temporaryDirectory.appending(component: "iskra-stickers-\(UUID().uuidString)")

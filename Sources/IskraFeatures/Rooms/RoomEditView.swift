@@ -115,6 +115,25 @@ struct RoomEditView: View {
                 }
             }
 
+            // Who runs the room and what everybody else may do — for whoever may change the room's
+            // power levels, which in practice is its administrators. A screen of its own, because
+            // it is two lists, not a field.
+            if isRoom, details.permissions.canChangeRoles {
+                Section {
+                    NavigationLink {
+                        RoomRulesView(details: details)
+                    } label: {
+                        Label {
+                            Text(Strings.Room.Rules.title)
+                        } icon: {
+                            Image(systemName: "person.badge.key")
+                        }
+                    }
+                } footer: {
+                    Text(Strings.Room.Rules.entryHelp)
+                }
+            }
+
             if isRoom, isOffline {
                 Section {
                 } footer: {

@@ -130,6 +130,7 @@
 "roomAction.removeFailed" = "退出させられませんでした。まだチャットにいます。";
 "roomAction.banFailed" = "ブロックできませんでした。まだチャットにいます。";
 "roomAction.roleFailed" = "役割を変更できませんでした。権限がないのかもしれません。";
+"roomAction.rulesFailed" = "権限は変わりませんでした。その権利がないのかもしれません。";
 "roomAction.leaveFailed" = "チャットから退出できませんでした。もう一度お試しください。";
 "roomAction.createFailed" = "チャットを作成できませんでした。サーバーが応答しなかったのかもしれません。もう一度お試しください。";
 "roomAction.joinAddressInvalid" = "ルームのアドレスは #名前:サーバー または !id:サーバー の形です。";

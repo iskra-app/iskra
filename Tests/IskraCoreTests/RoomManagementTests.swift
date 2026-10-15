@@ -69,6 +69,32 @@ struct RoomManagementTests {
         #expect(RoomDetailsStore.roles(grantableBy: .level(0)) == [.member])
     }
 
+    /// A threshold between two rungs belongs to the higher one: at 75, a moderator on 50 cannot
+    /// do it, so the screen must not say "moderators".
+    @Test("a rule's threshold reads as the lowest role that clears it")
+    func rulesReadAsTheRoleThatClearsThem() {
+        #expect(RoomRules.role(clearing: 0) == .member)
+        #expect(RoomRules.role(clearing: -5) == .member)
+        #expect(RoomRules.role(clearing: 1) == .moderator)
+        #expect(RoomRules.role(clearing: 50) == .moderator)
+        #expect(RoomRules.role(clearing: 75) == .administrator)
+        #expect(RoomRules.role(clearing: 100) == .administrator)
+        #expect(RoomRules.role(clearing: 150) == .administrator)
+    }
+
+    /// The same two limits as for people: a rule above you is not yours to move, and you cannot
+    /// raise one past yourself.
+    @Test("a rule can be moved only from and to your own rung or below")
+    func rulesMoveWithinYourReach() {
+        let rules = RoomRules(levels: [.ban: 50, .rename: 100, .sendMessages: 0])
+
+        #expect(RoomDetailsStore.roles(for: .ban, in: rules, holding: .level(100)) == [.administrator, .moderator, .member])
+        #expect(RoomDetailsStore.roles(for: .ban, in: rules, holding: .level(50)) == [.moderator, .member])
+        #expect(RoomDetailsStore.roles(for: .rename, in: rules, holding: .level(50)).isEmpty)
+        #expect(RoomDetailsStore.roles(for: .sendMessages, in: rules, holding: .level(0)) == [.member])
+        #expect(RoomDetailsStore.roles(for: .rename, in: rules, holding: .unlimited) == [.administrator, .moderator, .member])
+    }
+
     /// Checked before the invitation is sent, because the homeserver answers a malformed ID
     /// and an ID it has never heard of with the same shrug — and the person who typed it
     /// needs to know which of the two happened.

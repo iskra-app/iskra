@@ -130,6 +130,7 @@
 "roomAction.removeFailed" = "Impossible de retirer cette personne. Elle est toujours dans la discussion.";
 "roomAction.banFailed" = "Impossible de bloquer cette personne. Elle est toujours dans la discussion.";
 "roomAction.roleFailed" = "Le rôle n’a pas changé. Vous n’en avez peut-être pas le droit.";
+"roomAction.rulesFailed" = "L’autorisation n’a pas changé. Vous n’en avez peut-être pas le droit.";
 "roomAction.leaveFailed" = "Impossible de quitter la discussion. Réessayez.";
 "roomAction.createFailed" = "La discussion n’a pas été créée. Le serveur n’a peut-être pas répondu : réessayez.";
 "roomAction.joinAddressInvalid" = "Une adresse de salon ressemble à #nom:serveur ou !id:serveur.";
