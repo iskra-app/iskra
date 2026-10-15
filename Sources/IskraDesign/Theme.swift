@@ -69,6 +69,8 @@ public enum Theme {
         /// A warning's colour spread under its words — enough to be told apart from an ordinary
         /// notice at a glance, little enough that the words on it stay the words' own colour.
         public static let warningWash: Double = 0.14
+        /// The pill under the open folder tab — there, and only just. See `FolderTabs`.
+        public static let selectedTab: Double = 0.2
     }
 
     public enum Spacing {

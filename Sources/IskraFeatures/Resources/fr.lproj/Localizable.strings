@@ -1409,3 +1409,6 @@
 "message.transcript.unavailable" = "Cet appareil ne reconnaît pas votre langue hors ligne — et Iskra n’enverra pas la voix à un serveur.";
 "message.transcript.nothingHeard" = "Aucun mot n’est audible.";
 "message.transcript.failed" = "La transcription a échoué. Réessayez.";
+
+"chats.threads" = "Fils";
+"chats.threadsHelp" = "Les réponses en fil sont regroupées sous leur message (« 3 réponses »). Désactivé, elles apparaissent dans la discussion parmi les autres messages — dès que vous la rouvrez. Les discussions personnelles n’ont pas de fils : les réponses y sont toujours dans la discussion.";

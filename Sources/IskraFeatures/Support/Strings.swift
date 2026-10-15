@@ -1750,6 +1750,8 @@ public enum Strings {
         public static let shareAll = LocalizedStringResource("chats.shareAll", bundle: bundle)
         public static let shareHelp = LocalizedStringResource("chats.shareHelp", bundle: bundle)
         public static let namesAccount = LocalizedStringResource("chats.namesAccount", bundle: bundle)
+        public static let threads = LocalizedStringResource("chats.threads", bundle: bundle)
+        public static let threadsHelp = LocalizedStringResource("chats.threadsHelp", bundle: bundle)
         public static let namesAccountHelp = LocalizedStringResource("chats.namesAccountHelp", bundle: bundle)
     }
 

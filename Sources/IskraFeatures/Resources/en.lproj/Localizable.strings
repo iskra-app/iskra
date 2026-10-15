@@ -1409,3 +1409,6 @@
 "message.transcript.unavailable" = "This device can’t recognise your language offline — and Iskra won’t send the voice to a server.";
 "message.transcript.nothingHeard" = "No words could be made out.";
 "message.transcript.failed" = "It couldn’t be transcribed. Try again.";
+
+"chats.threads" = "Threads";
+"chats.threadsHelp" = "Replies in threads are gathered under their message as “3 replies”. Turn this off and they appear in the chat among the other messages — once you open the chat again. Personal chats have no threads: replies there are always in the chat itself.";

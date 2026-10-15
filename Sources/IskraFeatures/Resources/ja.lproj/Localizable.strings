@@ -1409,3 +1409,6 @@
 "message.transcript.unavailable" = "このデバイスではあなたの言語をオフラインで認識できません。Iskraは音声をサーバーに送りません。";
 "message.transcript.nothingHeard" = "言葉を聞き取れませんでした。";
 "message.transcript.failed" = "文字起こしできませんでした。もう一度お試しください。";
+
+"chats.threads" = "スレッド";
+"chats.threadsHelp" = "スレッドの返信は元のメッセージの下に「返信 3 件」としてまとめられます。オフにすると、チャットを開き直したときから他のメッセージと並んで表示されます。 個人チャットにはスレッドがありません。返信は常にチャット内に表示されます。";

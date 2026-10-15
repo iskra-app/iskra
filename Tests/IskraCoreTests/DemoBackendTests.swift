@@ -277,6 +277,13 @@ struct DemoBackendTests {
         }
         #expect(summarised, "root: \(String(describing: timeline.rows.message(withID: rootMessage.id)?.thread))")
         #expect(!timeline.rows.compactMap(\.message).contains { $0.kind == .text("это в тред") })
+        // No threads between two people: a personal chat opens without them.
+        let anya = try #require(session.timeline(forRoomID: "!anya:iskra.demo"))
+        try await anya.start()
+        defer { anya.stop() }
+        #expect(!anya.usesThreads)
+        #expect(timeline.usesThreads)
+
         // An album can be a thread's root too: one row, three pictures, and the line under it.
         let familyID = "!family:iskra.demo"
         let family = try #require(session.timeline(forRoomID: familyID))

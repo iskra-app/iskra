@@ -21,8 +21,19 @@ struct ChatSettingsView: View {
     /// The same, for the notification extension — see `ChatDirectory.namesAccountInNotifications`.
     @State private var namesAccount = ChatDirectory.namesAccountInNotifications()
 
+    @AppStorage(ThreadSettings.isEnabledKey) private var threadsAreOn = ThreadSettings.isEnabledByDefault
+
     var body: some View {
         Form {
+            Section {
+                Toggle(isOn: $threadsAreOn) {
+                    Label(Strings.Chats.threads, systemImage: "bubble.left.and.text.bubble.right")
+                }
+                .accentControl()
+            } footer: {
+                Text(Strings.Chats.threadsHelp)
+            }
+
             Section {
                 Toggle(isOn: $hidesNameChanges) {
                     Label(Strings.Chats.hideNameChanges, systemImage: "character.cursor.ibeam")

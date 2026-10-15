@@ -1409,3 +1409,6 @@
 "message.transcript.unavailable" = "Este dispositivo no reconoce su idioma sin conexión, e Iskra no enviará la voz a ningún servidor.";
 "message.transcript.nothingHeard" = "No se distinguen palabras.";
 "message.transcript.failed" = "No se ha podido transcribir. Inténtelo de nuevo.";
+
+"chats.threads" = "Hilos";
+"chats.threadsHelp" = "Las respuestas en hilos se agrupan bajo su mensaje como «3 respuestas». Si lo desactiva, aparecerán en el chat entre los demás mensajes, al volver a abrir el chat. Los chats personales no tienen hilos: allí las respuestas siempre están en el propio chat.";
