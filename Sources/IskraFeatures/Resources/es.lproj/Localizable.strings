@@ -1305,3 +1305,21 @@
 /* Under the "open to anyone" switch when making a room: what the room will be. Changes with the switch. */
 "roomList.new.willBeEncrypted" = "La sala estará cifrada";
 "roomList.new.willNotBeEncrypted" = "La sala no estará cifrada";
+
+/* Room access: history, address, blocked (stage 9) */
+"room.access.historyHeader" = "Historial para nuevos miembros";
+"room.access.historyFooter" = "Lo que verá de lo ya dicho quien llegue más tarde. En un chat protegido puede que los mensajes anteriores no se le abran: no tiene sus claves.";
+"room.access.history.shared" = "Todo el historial";
+"room.access.history.invited" = "Desde que fueron invitados";
+"room.access.history.joined" = "Desde que se unieron";
+"room.access.history.worldReadable" = "Cualquiera, incluso sin unirse";
+"room.access.addressHeader" = "Dirección";
+"room.access.addressPlaceholder" = "nombre";
+"room.access.addressFooter" = "Con la dirección el chat se encuentra y se abre desde un enlace. Si la borra, el chat no tendrá ninguna.";
+"room.access.inDirectory" = "Mostrar en el directorio del servidor";
+"room.access.inDirectoryHelp" = "Se encontrará el chat al buscar salas públicas en %@.";
+"room.access.banned" = "Bloqueados";
+"room.access.bannedFooter" = "No pueden entrar en el chat, ni siquiera con invitación.";
+"room.access.unban" = "Desbloquear";
+"room.access.unbanQuestion" = "¿Desbloquear a %@?";
+"room.access.unbanHelp" = "Podrá volver a entrar. No aparecerá en el chat por sí sola: invítela o envíele un enlace.";

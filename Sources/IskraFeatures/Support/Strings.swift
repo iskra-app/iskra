@@ -732,6 +732,39 @@ public enum Strings {
             public static let byAddress = LocalizedStringResource("room.invite.byAddress", bundle: bundle)
         }
 
+        /// Who sees the past, how the room is found, and who is kept out — the room's doors, on the
+        /// edit screen. See `RoomEditView`.
+        public enum Access {
+            public static let historyHeader = LocalizedStringResource("room.access.historyHeader", bundle: bundle)
+            public static let historyFooter = LocalizedStringResource("room.access.historyFooter", bundle: bundle)
+            public static func history(_ visibility: HistoryAccess) -> LocalizedStringResource {
+                switch visibility {
+                case .shared: LocalizedStringResource("room.access.history.shared", bundle: bundle)
+                case .invited: LocalizedStringResource("room.access.history.invited", bundle: bundle)
+                case .joined: LocalizedStringResource("room.access.history.joined", bundle: bundle)
+                case .worldReadable: LocalizedStringResource("room.access.history.worldReadable", bundle: bundle)
+                }
+            }
+
+            public static let addressHeader = LocalizedStringResource("room.access.addressHeader", bundle: bundle)
+            public static let addressPlaceholder = LocalizedStringResource("room.access.addressPlaceholder", bundle: bundle)
+            public static let addressFooter = LocalizedStringResource("room.access.addressFooter", bundle: bundle)
+            public static let inDirectory = LocalizedStringResource("room.access.inDirectory", bundle: bundle)
+            public static func inDirectoryHelp(_ server: String) -> LocalizedStringResource {
+                LocalizedStringResource("room.access.inDirectoryHelp", defaultValue: "\(server)", bundle: bundle)
+            }
+
+            /// The people the room has shut out, and the way to let them back. "Blocked", as the
+            /// ban itself is called everywhere in this app.
+            public static let banned = LocalizedStringResource("room.access.banned", bundle: bundle)
+            public static let bannedFooter = LocalizedStringResource("room.access.bannedFooter", bundle: bundle)
+            public static let unban = LocalizedStringResource("room.access.unban", bundle: bundle)
+            public static func unbanQuestion(_ name: String) -> LocalizedStringResource {
+                LocalizedStringResource("room.access.unbanQuestion", defaultValue: "\(name)", bundle: bundle)
+            }
+            public static let unbanHelp = LocalizedStringResource("room.access.unbanHelp", bundle: bundle)
+        }
+
         public enum Manage {
             /// The name and the description, as fields rather than as labels. What the
             /// reader sees is what they can change, in place, with no "Edit" mode in front

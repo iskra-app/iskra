@@ -52,6 +52,10 @@ public struct RoomPermissions: Sendable, Equatable {
     public var canRemove = false
     public var canBan = false
     public var canChangeRoles = false
+    /// Who may read what was said before they came — `m.room.history_visibility`.
+    public var canChangeHistory = false
+    /// The room's `#address:server`, and whether the server lists it in its directory.
+    public var canChangeAddress = false
 }
 // Every field defaults to `false`, so `RoomPermissions()` is denied everything — which is
 // what the screen holds before the room's power levels have arrived. That is the right way
@@ -121,6 +125,17 @@ public enum RoomActionFailure: String, CaseIterable, ActionFailure {
     /// A report that did not reach the moderators. The user flagged something abusive and needs to
     /// know it did not go through, or they will assume it is handled.
     case report
+    /// A blocked person who could not be let back.
+    case unban
+    /// Who may read the history did not change.
+    case history
+    /// The address could not be set or taken off.
+    case address
+    /// The address is somebody else's already — its own sentence, because it is the one failure
+    /// here the user fixes by typing something else rather than by trying again.
+    case addressTaken
+    /// The room could not be put in the server's list, or taken out of it.
+    case directory
 
     public var id: String { rawValue }
 
@@ -144,6 +159,11 @@ public enum RoomActionFailure: String, CaseIterable, ActionFailure {
         case .archive: CoreStrings.RoomAction.archiveFailed
         case .read: CoreStrings.RoomAction.readFailed
         case .report: CoreStrings.RoomAction.reportFailed
+        case .unban: CoreStrings.RoomAction.unbanFailed
+        case .history: CoreStrings.RoomAction.historyFailed
+        case .address: CoreStrings.RoomAction.addressFailed
+        case .addressTaken: CoreStrings.RoomAction.addressTaken
+        case .directory: CoreStrings.RoomAction.directoryFailed
         }
     }
 }
@@ -225,6 +245,23 @@ public final class RoomDetailsStore {
     /// The room's published address, `#name:server`, when it has one — what a link to it is made of.
     public private(set) var canonicalAlias: String?
 
+    /// Who may read what was said before they arrived. See `HistoryAccess`.
+    public private(set) var history: HistoryAccess = .shared
+
+    /// Whether the server lists the room in its directory — the "Public rooms" search. Not the same
+    /// as `isPublic`: a room anybody may walk into can still be one nobody finds without the link.
+    /// Nil until asked, because only the server knows and it is asked only by the screen that
+    /// changes it.
+    public private(set) var isInDirectory: Bool?
+
+    /// The server addresses for this room are made on: the part after the colon of our own ID.
+    public var addressServer: String {
+        String(ownUserID.drop { $0 != ":" }.dropFirst())
+    }
+
+    /// People shut out of the room, for whoever may let them back. See `unban`.
+    public private(set) var banned: [RoomMemberSummary] = []
+
     /// The other person's Matrix ID, in a chat that has exactly one other person.
     /// Nil in a room, and nil in a chat with only yourself in it.
     public private(set) var counterpartID: String?
@@ -255,6 +292,9 @@ public final class RoomDetailsStore {
 
     private let room: Room
     private let ownUserID: String
+
+    /// The room's other addresses, kept so that changing the main one does not drop them.
+    private var alternativeAliases: [String] = []
 
     /// The room telling us it has changed. Kept alive because dropping it unsubscribes — see
     /// `stop()`, and see `load()` for why this screen needs one at all.
@@ -357,12 +397,12 @@ public final class RoomDetailsStore {
 
         if let cached = try? await room.membersNoSync() {
             guard generation == self.generation else { return }
-            apply(Self.summaries(from: cached))
+            apply(Self.partition(cached))
         }
 
         if let fresh = try? await room.members() {
             guard generation == self.generation else { return }
-            apply(Self.summaries(from: fresh))
+            apply(Self.partition(fresh))
         }
 
         guard generation == self.generation else { return }
@@ -473,6 +513,8 @@ public final class RoomDetailsStore {
         isOneToOne = info.isOneToOne
         isPublic = info.isPublic ?? false
         canonicalAlias = info.canonicalAlias
+        alternativeAliases = info.alternativeAliases
+        history = HistoryAccess(info.historyVisibility)
         memberCount = Int(info.joinedMembersCount)
         counterpartID = isOneToOne ? info.counterpart(besides: ownUserID)?.userId : nil
         // The rules follow the room like its name does: a moderator handed a power from another
@@ -509,8 +551,15 @@ public final class RoomDetailsStore {
                                       canInvite: levels.canOwnUserInvite(),
                                       canRemove: levels.canOwnUserKick(),
                                       canBan: levels.canOwnUserBan(),
-                                      canChangeRoles: levels.canOwnUserSendState(stateEvent: .roomPowerLevels))
+                                      canChangeRoles: levels.canOwnUserSendState(stateEvent: .roomPowerLevels),
+                                      canChangeHistory: levels.canOwnUserSendState(stateEvent: .roomHistoryVisibility),
+                                      canChangeAddress: levels.canOwnUserSendState(stateEvent: .roomCanonicalAlias))
         rules = RoomRules(levels.values())
+    }
+
+    private func apply(_ loaded: (joined: [RoomMemberSummary], banned: [RoomMemberSummary])) {
+        banned = loaded.banned
+        apply(loaded.joined)
     }
 
     private func apply(_ loaded: [RoomMemberSummary]) {
@@ -776,11 +825,123 @@ public final class RoomDetailsStore {
 
         do {
             try await room.banUser(userId: member.id, reason: nil)
-            await refreshMembers()
+            // On the screen at once — out of the members, onto the list of the blocked — and then
+            // read back once the room has heard of it. See `settle`.
+            members.removeAll { $0.id == member.id }
+            if !banned.contains(where: { $0.id == member.id }) { banned.append(member) }
+            await settle(member.id, isBanned: true)
         } catch {
             Log.rooms.error("ban refused: \(Log.describe(error), privacy: .public)")
             failure = .ban
         }
+    }
+
+    /// Lets somebody back: the ban is lifted, and they are free to come in again — not brought
+    /// in. Matrix asks the same power of this as of the ban itself.
+    public func unban(_ member: RoomMemberSummary) async {
+        guard permissions.canBan else { return }
+
+        let previous = banned
+        banned.removeAll { $0.id == member.id }
+        do {
+            try await room.unbanUser(userId: member.id, reason: nil)
+            await settle(member.id, isBanned: false)
+        } catch {
+            Log.rooms.error("unban refused: \(Log.describe(error), privacy: .public)")
+            banned = previous
+            failure = .unban
+        }
+    }
+
+    // MARK: - History and address
+
+    /// Who may read what was said before they came.
+    public func setHistory(_ visibility: HistoryAccess) async {
+        guard permissions.canChangeHistory, visibility != history else { return }
+        let previous = history
+        history = visibility
+        do {
+            try await room.updateHistoryVisibility(visibility: visibility.sdk)
+        } catch {
+            Log.rooms.error("history visibility refused: \(Log.describe(error), privacy: .public)")
+            rollBack(\.history, to: previous, ifStillEqualTo: visibility)
+            failure = .history
+        }
+    }
+
+    /// Asks the server whether the room is in its directory. Only the screen that changes it asks.
+    public func loadDirectory() async {
+        guard let visibility = try? await room.getRoomVisibility() else { return }
+        if case .public = visibility { isInDirectory = true } else { isInDirectory = false }
+    }
+
+    public func setInDirectory(_ listed: Bool) async {
+        guard permissions.canChangeAddress, listed != isInDirectory else { return }
+        let previous = isInDirectory
+        isInDirectory = listed
+        do {
+            try await room.updateRoomVisibility(visibility: listed ? .public : .private)
+        } catch {
+            Log.rooms.error("directory listing refused: \(Log.describe(error), privacy: .public)")
+            isInDirectory = previous
+            failure = .directory
+        }
+    }
+
+    /// Gives the room the address `#name:server`, or takes it away when `name` is empty.
+    ///
+    /// Two things on the server, in this order: the address is claimed in the server's alias table
+    /// (`publishRoomAliasInRoomDirectory` — a misleading name: it is the alias, not the room list),
+    /// and only then named in the room's state as its main address. The other way round would put
+    /// in the room an address that points nowhere, or at somebody else's room. A claim that comes
+    /// back `false` is an address already taken, and that is said in so many words.
+    ///
+    /// The old address is let go of afterwards, so a renamed room does not keep its old name
+    /// reserved for ever — but only if it was this server's to let go.
+    public func setAddress(_ name: String) async {
+        guard permissions.canChangeAddress else { return }
+        let local = Self.addressName(name)
+        let alias = local.isEmpty ? nil : "#\(local):\(addressServer)"
+        guard alias != canonicalAlias else { return }
+        if let alias, !isRoomAliasFormatValid(alias: alias) {
+            failure = .address
+            return
+        }
+
+        let previous = canonicalAlias
+        do {
+            if let alias {
+                guard try await room.publishRoomAliasInRoomDirectory(alias: alias) else {
+                    failure = .addressTaken
+                    return
+                }
+            }
+            try await room.updateCanonicalAlias(alias: alias,
+                                                altAliases: alternativeAliases.filter { $0 != alias })
+            canonicalAlias = alias
+            if let previous, previous.hasSuffix(":\(addressServer)") {
+                _ = try? await room.removeRoomAliasFromRoomDirectory(alias: previous)
+            }
+        } catch {
+            Log.rooms.error("address refused: \(Log.describe(error), privacy: .public)")
+            failure = .address
+        }
+    }
+
+    /// What an address may be made of, from whatever was typed: the SDK's own rule for turning a
+    /// room's name into one — lower case, dashes for spaces, nothing a URL would choke on. A typed
+    /// `#` or `:server` is forgiven, because people paste whole addresses.
+    nonisolated public static func addressName(_ typed: String) -> String {
+        var text = typed.trimmingCharacters(in: .whitespacesAndNewlines)
+        if text.hasPrefix("#") { text.removeFirst() }
+        if let colon = text.firstIndex(of: ":") { text = String(text[..<colon]) }
+        return text.isEmpty ? "" : roomAliasNameFromRoomDisplayName(roomName: text)
+    }
+
+    /// The name of the address, without the `#` and the server — what the field shows.
+    public var addressName: String {
+        guard let alias = canonicalAlias else { return "" }
+        return String(alias.dropFirst().prefix { $0 != ":" })
     }
 
     /// Promotes or demotes somebody.
@@ -824,6 +985,29 @@ public final class RoomDetailsStore {
         }
     }
 
+    /// Re-reads the members until the room agrees that `userID` is, or is no longer, blocked.
+    ///
+    /// A ban is accepted by the server long before this device's copy of the room hears of it: the
+    /// change comes back through sync, and until then `members()` answers from a store that has not
+    /// seen it — a list with the blocked person still in it, read straight back over the screen
+    /// that had just taken them off. So the list is read a few times, briefly, and the first answer
+    /// that has caught up is the one kept. One that never does leaves the screen as it was put.
+    private func settle(_ userID: String, isBanned: Bool) async {
+        let generation = self.generation
+        for _ in 0..<Self.settleAttempts {
+            guard let fresh = try? await room.members() else { return }
+            let loaded = Self.partition(fresh)
+            guard generation == self.generation else { return }
+            if loaded.banned.contains(where: { $0.id == userID }) == isBanned {
+                apply(loaded)
+                return
+            }
+            try? await Task.sleep(for: .milliseconds(400))
+        }
+    }
+
+    private static let settleAttempts = 10
+
     /// Re-reads the member list after we have changed it.
     ///
     /// `members()`, not `membersNoSync()`: the cached list is precisely the one that has
@@ -831,7 +1015,7 @@ public final class RoomDetailsStore {
     /// straight back onto the screen.
     private func refreshMembers() async {
         guard let fresh = try? await room.members() else { return }
-        apply(Self.summaries(from: fresh))
+        apply(Self.partition(fresh))
     }
 
     // MARK: - Reading the SDK
@@ -842,27 +1026,41 @@ public final class RoomDetailsStore {
     /// counting one would put a face in the list for someone who has never been in the
     /// room, and a number in the header that no one else's client agrees with.
     static func summaries(from iterator: RoomMembersIterator) -> [RoomMemberSummary] {
+        partition(iterator).joined
+    }
+
+    /// The members, and apart from them the people the room has shut out — one pass, because an
+    /// iterator is drained once.
+    static func partition(_ iterator: RoomMembersIterator) -> (joined: [RoomMemberSummary], banned: [RoomMemberSummary]) {
         var summaries: [RoomMemberSummary] = []
+        var banned: [RoomMemberSummary] = []
         summaries.reserveCapacity(Int(iterator.len()))
 
         while let chunk = iterator.nextChunk(chunkSize: 100) {
-            for member in chunk where member.membership == .join && !member.isServiceMember {
-                summaries.append(RoomMemberSummary(id: member.userId,
-                                                   name: member.displayName ?? member.userId,
-                                                   avatarURL: member.avatarUrl,
-                                                   role: RoomRole(member.suggestedRoleForPowerLevel),
-                                                   authority: Authority(member.powerLevel),
-                                                   isNameAmbiguous: member.isNameAmbiguous))
+            for member in chunk where !member.isServiceMember {
+                let summary = RoomMemberSummary(id: member.userId,
+                                                name: member.displayName ?? member.userId,
+                                                avatarURL: member.avatarUrl,
+                                                role: RoomRole(member.suggestedRoleForPowerLevel),
+                                                authority: Authority(member.powerLevel),
+                                                isNameAmbiguous: member.isNameAmbiguous)
+                switch member.membership {
+                case .join: summaries.append(summary)
+                case .ban: banned.append(summary)
+                default: break
+                }
             }
         }
+        banned.sort { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
 
         // Whoever runs the room first, then everyone else by name — and by the *locale's*
         // idea of order, so a Russian room does not sort its members as if they were
         // English.
-        return summaries.sorted { first, second in
+        let joined = summaries.sorted { first, second in
             if first.role.rank != second.role.rank { return first.role.rank < second.role.rank }
             return first.name.localizedStandardCompare(second.name) == .orderedAscending
         }
+        return (joined, banned)
     }
 
     /// The power level the SDK suggests for a role, as an `Authority` — so that "may I

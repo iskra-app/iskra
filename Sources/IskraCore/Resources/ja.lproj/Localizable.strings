@@ -196,3 +196,10 @@
 "stickers.subscribeFailed" = "ステッカーを追加できませんでした。もう一度お試しください。";
 "stickers.unsubscribeFailed" = "ステッカーを削除できませんでした。もう一度お試しください。";
 "stickers.clearRecentFailed" = "最近使ったものを消去できませんでした。もう一度お試しください。";
+
+/* Room settings: unban, history, address (stage 9) */
+"roomAction.unbanFailed" = "ブロックを解除できませんでした。まだ参加できません。";
+"roomAction.historyFailed" = "履歴の公開範囲を変更できませんでした。元のままです。";
+"roomAction.addressFailed" = "アドレスを変更できませんでした。もう一度お試しください。";
+"roomAction.addressTaken" = "このアドレスはすでに使われています。別のものをお試しください。";
+"roomAction.directoryFailed" = "サーバーのディレクトリへの掲載を変更できませんでした。";

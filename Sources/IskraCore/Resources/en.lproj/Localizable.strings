@@ -196,3 +196,10 @@
 "stickers.subscribeFailed" = "Couldn’t add the pack. Please try again.";
 "stickers.unsubscribeFailed" = "Couldn’t remove the pack. Please try again.";
 "stickers.clearRecentFailed" = "Couldn’t clear recent stickers. Please try again.";
+
+/* Room settings: unban, history, address (stage 9) */
+"roomAction.unbanFailed" = "They couldn’t be unblocked. They still can’t come in.";
+"roomAction.historyFailed" = "Who can see the history didn’t change. It’s as it was.";
+"roomAction.addressFailed" = "The address couldn’t be changed. Try again.";
+"roomAction.addressTaken" = "That address is already taken. Try another.";
+"roomAction.directoryFailed" = "Whether the room is listed in the server’s directory didn’t change.";

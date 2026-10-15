@@ -73,6 +73,9 @@ public actor MockHomeserver: HTTPUpstream {
     var media: [String: (data: Data, mime: String)] = [:]
     var sentTransactions: [String: String] = [:]
     var publicRoomIDs: [String] = []
+    /// Addresses made on this server, `#name:server` → room ID. The rooms' own `canonical_alias` is
+    /// state; this is the server's table that makes the address resolve.
+    var aliases: [String: String] = [:]
 
     // Keys, which the SDK insists on setting up whether or not anybody encrypts anything.
     var deviceID = "IKSRADEMO"
@@ -153,6 +156,43 @@ public actor MockHomeserver: HTTPUpstream {
         }
     }
 
+    // MARK: - Directory
+
+    /// `directory/room/{alias}` — the address table — and `directory/list/room/{id}`, whether the
+    /// room is in the public list.
+    private func directory(_ method: String, _ rest: [String], _ body: JSON) -> ProxiedResponse {
+        if rest.count == 2, rest[0] == "room" {
+            let alias = rest[1].removingPercentEncoding ?? rest[1]
+            switch method {
+            case "GET":
+                guard let id = aliases[alias] else { return Self.error(404, "M_NOT_FOUND", "Room alias not found") }
+                return Self.ok(["room_id": id, "servers": [Self.serverName]])
+            case "PUT":
+                guard aliases[alias] == nil else { return Self.error(409, "M_UNKNOWN", "Room alias already exists") }
+                aliases[alias] = body["room_id"] as? String ?? ""
+                return Self.ok([:])
+            case "DELETE":
+                guard aliases.removeValue(forKey: alias) != nil else { return Self.error(404, "M_NOT_FOUND") }
+                return Self.ok([:])
+            default:
+                break
+            }
+        }
+        if rest.count == 3, rest[0] == "list", rest[1] == "room" {
+            let id = rest[2].removingPercentEncoding ?? rest[2]
+            if method == "GET" {
+                return Self.ok(["visibility": publicRoomIDs.contains(id) ? "public" : "private"])
+            }
+            if method == "PUT" {
+                publicRoomIDs.removeAll { $0 == id }
+                if (body["visibility"] as? String) == "public" { publicRoomIDs.append(id) }
+                revision += 1
+                return Self.ok([:])
+            }
+        }
+        return Self.error(404, "M_UNRECOGNIZED")
+    }
+
     // MARK: - Routing
 
     // swiftlint:disable:next cyclomatic_complexity function_body_length
@@ -221,8 +261,8 @@ public actor MockHomeserver: HTTPUpstream {
             return searchDirectory(body)
         case (_, "publicRooms"):
             return publicRooms()
-        case ("GET", "directory"):
-            return Self.error(404, "M_NOT_FOUND", "Room alias not found")
+        case (_, "directory"):
+            return directory(method, Array(segments.dropFirst()), body)
         case (_, "pushrules"):
             return try pushRules(method, Array(segments.dropFirst()), body)
         case ("GET", "pushers"):

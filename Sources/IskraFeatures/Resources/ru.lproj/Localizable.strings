@@ -1301,3 +1301,21 @@
 /* Under the "open to anyone" switch when making a room: what the room will be. Changes with the switch. */
 "roomList.new.willBeEncrypted" = "Комната будет с шифрованием";
 "roomList.new.willNotBeEncrypted" = "Комната будет без шифрования";
+
+/* Room access: history, address, blocked (stage 9) */
+"room.access.historyHeader" = "История для новых участников";
+"room.access.historyFooter" = "Что из уже сказанного увидит тот, кто придёт позже. В защищённом чате старые сообщения могут у него не открыться: ключей к ним у него нет.";
+"room.access.history.shared" = "Вся история";
+"room.access.history.invited" = "С момента приглашения";
+"room.access.history.joined" = "С момента вступления";
+"room.access.history.worldReadable" = "Всем, даже без вступления";
+"room.access.addressHeader" = "Адрес";
+"room.access.addressPlaceholder" = "название";
+"room.access.addressFooter" = "По адресу чат находят и открывают по ссылке. Если стереть его, адреса не будет.";
+"room.access.inDirectory" = "Показывать в каталоге сервера";
+"room.access.inDirectoryHelp" = "Чат найдут в поиске публичных комнат на %@.";
+"room.access.banned" = "Заблокированные";
+"room.access.bannedFooter" = "Они не могут войти в чат, даже по приглашению.";
+"room.access.unban" = "Разблокировать";
+"room.access.unbanQuestion" = "Разблокировать %@?";
+"room.access.unbanHelp" = "Человек снова сможет войти. Сам в чате он не появится — его нужно пригласить или дать ссылку.";

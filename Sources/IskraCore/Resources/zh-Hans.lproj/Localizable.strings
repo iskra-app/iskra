@@ -196,3 +196,10 @@
 "stickers.subscribeFailed" = "没能添加贴纸包。请再试一次。";
 "stickers.unsubscribeFailed" = "没能移除贴纸包。请再试一次。";
 "stickers.clearRecentFailed" = "没能清除最近使用的贴纸。请再试一次。";
+
+/* Room settings: unban, history, address (stage 9) */
+"roomAction.unbanFailed" = "没能解除封禁。对方仍然无法加入。";
+"roomAction.historyFailed" = "没能更改历史记录的可见范围。保持原样。";
+"roomAction.addressFailed" = "没能更改地址。请再试一次。";
+"roomAction.addressTaken" = "这个地址已被占用。请换一个。";
+"roomAction.directoryFailed" = "没能更改房间是否显示在服务器目录中。";

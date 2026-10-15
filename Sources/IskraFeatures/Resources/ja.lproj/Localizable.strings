@@ -1305,3 +1305,21 @@
 /* Under the "open to anyone" switch when making a room: what the room will be. Changes with the switch. */
 "roomList.new.willBeEncrypted" = "このルームは暗号化されます";
 "roomList.new.willNotBeEncrypted" = "このルームは暗号化されません";
+
+/* Room access: history, address, blocked (stage 9) */
+"room.access.historyHeader" = "新しいメンバーへの履歴";
+"room.access.historyFooter" = "後から参加した人が、それまでの会話をどこまで見られるか。保護されたチャットでは、鍵がないため古いメッセージを開けない場合があります。";
+"room.access.history.shared" = "すべての履歴";
+"room.access.history.invited" = "招待された時点から";
+"room.access.history.joined" = "参加した時点から";
+"room.access.history.worldReadable" = "参加していない人にも";
+"room.access.addressHeader" = "アドレス";
+"room.access.addressPlaceholder" = "名前";
+"room.access.addressFooter" = "アドレスがあると、チャットを検索したりリンクから開いたりできます。消すとアドレスはなくなります。";
+"room.access.inDirectory" = "サーバーのディレクトリに表示";
+"room.access.inDirectoryHelp" = "%@ の公開ルーム検索で見つかるようになります。";
+"room.access.banned" = "ブロック中";
+"room.access.bannedFooter" = "招待されても、このチャットには参加できません。";
+"room.access.unban" = "ブロック解除";
+"room.access.unbanQuestion" = "%@ のブロックを解除しますか？";
+"room.access.unbanHelp" = "また参加できるようになります。自動では戻らないので、招待するかリンクを送ってください。";

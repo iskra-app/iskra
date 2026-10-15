@@ -85,6 +85,11 @@ public enum CoreStrings {
         public static let banFailed = LocalizedStringResource("roomAction.banFailed", bundle: bundle)
         public static let roleFailed = LocalizedStringResource("roomAction.roleFailed", bundle: bundle)
         public static let leaveFailed = LocalizedStringResource("roomAction.leaveFailed", bundle: bundle)
+        public static let unbanFailed = LocalizedStringResource("roomAction.unbanFailed", bundle: bundle)
+        public static let historyFailed = LocalizedStringResource("roomAction.historyFailed", bundle: bundle)
+        public static let addressFailed = LocalizedStringResource("roomAction.addressFailed", bundle: bundle)
+        public static let addressTaken = LocalizedStringResource("roomAction.addressTaken", bundle: bundle)
+        public static let directoryFailed = LocalizedStringResource("roomAction.directoryFailed", bundle: bundle)
         /// The room was not created at all — which is not the same as a room created and an
         /// invitation refused, and the user is looking at an empty chat list either way.
         public static let createFailed = LocalizedStringResource("roomAction.createFailed", bundle: bundle)

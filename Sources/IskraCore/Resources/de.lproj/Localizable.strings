@@ -196,3 +196,10 @@
 "stickers.subscribeFailed" = "Das Set konnte nicht hinzugefügt werden. Versuchen Sie es noch einmal.";
 "stickers.unsubscribeFailed" = "Das Set konnte nicht entfernt werden. Versuchen Sie es noch einmal.";
 "stickers.clearRecentFailed" = "Die zuletzt verwendeten Sticker konnten nicht gelöscht werden. Versuchen Sie es noch einmal.";
+
+/* Room settings: unban, history, address (stage 9) */
+"roomAction.unbanFailed" = "Die Blockierung ließ sich nicht aufheben. Die Person kann weiterhin nicht beitreten.";
+"roomAction.historyFailed" = "Wer den Verlauf sieht, ließ sich nicht ändern. Es bleibt, wie es war.";
+"roomAction.addressFailed" = "Die Adresse ließ sich nicht ändern. Versuchen Sie es noch einmal.";
+"roomAction.addressTaken" = "Diese Adresse ist schon vergeben. Versuchen Sie eine andere.";
+"roomAction.directoryFailed" = "Ob der Raum im Verzeichnis des Servers steht, ließ sich nicht ändern.";

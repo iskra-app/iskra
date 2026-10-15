@@ -196,3 +196,10 @@
 "stickers.subscribeFailed" = "Impossible d’ajouter le pack. Réessayez.";
 "stickers.unsubscribeFailed" = "Impossible de retirer le pack. Réessayez.";
 "stickers.clearRecentFailed" = "Impossible d’effacer les récents. Réessayez.";
+
+/* Room settings: unban, history, address (stage 9) */
+"roomAction.unbanFailed" = "Impossible de débloquer cette personne. Elle ne peut toujours pas entrer.";
+"roomAction.historyFailed" = "Impossible de changer qui voit l’historique. Rien n’a changé.";
+"roomAction.addressFailed" = "Impossible de changer l’adresse. Réessayez.";
+"roomAction.addressTaken" = "Cette adresse est déjà prise. Essayez-en une autre.";
+"roomAction.directoryFailed" = "Impossible de changer la présence de la salle dans l’annuaire du serveur.";

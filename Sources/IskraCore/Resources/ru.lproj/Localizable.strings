@@ -199,3 +199,10 @@
 "stickers.subscribeFailed" = "Не получилось добавить набор. Попробуйте ещё раз.";
 "stickers.unsubscribeFailed" = "Не получилось убрать набор. Попробуйте ещё раз.";
 "stickers.clearRecentFailed" = "Не получилось очистить недавние. Попробуйте ещё раз.";
+
+/* Room settings: unban, history, address (stage 9) */
+"roomAction.unbanFailed" = "Не получилось разблокировать. Человек по-прежнему не может войти.";
+"roomAction.historyFailed" = "Не получилось изменить, кому видна история. Осталось как было.";
+"roomAction.addressFailed" = "Не получилось изменить адрес. Попробуйте ещё раз.";
+"roomAction.addressTaken" = "Этот адрес уже занят. Попробуйте другой.";
+"roomAction.directoryFailed" = "Не получилось изменить, видна ли комната в каталоге сервера.";

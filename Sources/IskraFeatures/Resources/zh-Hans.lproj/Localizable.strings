@@ -1305,3 +1305,21 @@
 /* Under the "open to anyone" switch when making a room: what the room will be. Changes with the switch. */
 "roomList.new.willBeEncrypted" = "该房间将加密";
 "roomList.new.willNotBeEncrypted" = "该房间将不加密";
+
+/* Room access: history, address, blocked (stage 9) */
+"room.access.historyHeader" = "新成员可见的历史";
+"room.access.historyFooter" = "之后加入的人能看到多少已有的内容。在受保护的聊天中，旧消息可能打不开：他们没有对应的密钥。";
+"room.access.history.shared" = "全部历史";
+"room.access.history.invited" = "从被邀请时起";
+"room.access.history.joined" = "从加入时起";
+"room.access.history.worldReadable" = "任何人，无需加入";
+"room.access.addressHeader" = "地址";
+"room.access.addressPlaceholder" = "名称";
+"room.access.addressFooter" = "有了地址，聊天就能被找到，也能通过链接打开。清空后就没有地址了。";
+"room.access.inDirectory" = "在服务器目录中显示";
+"room.access.inDirectoryHelp" = "在 %@ 搜索公开房间时就能找到这个聊天。";
+"room.access.banned" = "已封禁";
+"room.access.bannedFooter" = "即使被邀请，他们也无法进入这个聊天。";
+"room.access.unban" = "解除封禁";
+"room.access.unbanQuestion" = "解除对 %@ 的封禁？";
+"room.access.unbanHelp" = "对方可以再次加入，但不会自动出现在聊天中——请邀请对方或发送链接。";

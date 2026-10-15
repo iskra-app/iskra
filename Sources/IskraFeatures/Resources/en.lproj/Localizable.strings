@@ -1305,3 +1305,21 @@
 /* Under the "open to anyone" switch when making a room: what the room will be. Changes with the switch. */
 "roomList.new.willBeEncrypted" = "The room will be encrypted";
 "roomList.new.willNotBeEncrypted" = "The room won’t be encrypted";
+
+/* Room access: history, address, blocked (stage 9) */
+"room.access.historyHeader" = "History for new members";
+"room.access.historyFooter" = "What someone who joins later will see of what was already said. In a protected chat older messages may not open for them: they don’t have the keys.";
+"room.access.history.shared" = "All of it";
+"room.access.history.invited" = "From when they were invited";
+"room.access.history.joined" = "From when they joined";
+"room.access.history.worldReadable" = "Anyone, even without joining";
+"room.access.addressHeader" = "Address";
+"room.access.addressPlaceholder" = "name";
+"room.access.addressFooter" = "The address is how the chat is found and opened from a link. Clear it and the chat has none.";
+"room.access.inDirectory" = "List in the server’s directory";
+"room.access.inDirectoryHelp" = "People will find the chat when they search public rooms on %@.";
+"room.access.banned" = "Blocked";
+"room.access.bannedFooter" = "They can’t come into the chat, even if invited.";
+"room.access.unban" = "Unblock";
+"room.access.unbanQuestion" = "Unblock %@?";
+"room.access.unbanHelp" = "They’ll be able to come in again. They won’t appear in the chat by themselves — invite them or send a link.";
