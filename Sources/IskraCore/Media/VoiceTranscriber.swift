@@ -1,5 +1,6 @@
 import Foundation
 import Speech
+import Synchronization
 
 /// A voice message, as words — on this device, and nowhere else.
 ///
@@ -57,7 +58,7 @@ public final class VoiceTranscriber {
     }
 
     /// The first of the person's languages with an on-device model.
-    private static func recognizer() -> SFSpeechRecognizer? {
+    nonisolated private static func recognizer() -> SFSpeechRecognizer? {
         let candidates = [Locale.current] + Locale.preferredLanguages.map(Locale.init(identifier:))
         for locale in candidates {
             if let recognizer = SFSpeechRecognizer(locale: locale),
@@ -69,13 +70,16 @@ public final class VoiceTranscriber {
         return nil
     }
 
-    private static func authorize() async -> Bool {
+    /// `nonisolated`, and that is the fix for a crash: TCC answers on a queue of its own, and a
+    /// closure written inside this `@MainActor` type inherits the main actor — Swift checks that on
+    /// the way in and traps (`dispatch_assert_queue`) the moment the person answers the question.
+    nonisolated private static func authorize() async -> Bool {
         switch SFSpeechRecognizer.authorizationStatus() {
         case .authorized: return true
         case .denied, .restricted: return false
         case .notDetermined:
             return await withCheckedContinuation { continuation in
-                SFSpeechRecognizer.requestAuthorization { status in
+                SFSpeechRecognizer.requestAuthorization { @Sendable status in
                     continuation.resume(returning: status == .authorized)
                 }
             }
@@ -83,22 +87,32 @@ public final class VoiceTranscriber {
         }
     }
 
-    private static func recognize(_ url: URL, with recognizer: SFSpeechRecognizer) async throws(Failure) -> String {
+    /// `nonisolated` for the same reason as `authorize`: the result handler runs on the
+    /// recogniser's queue.
+    nonisolated private static func recognize(_ url: URL, with recognizer: SFSpeechRecognizer) async throws(Failure) -> String {
         let request = SFSpeechURLRecognitionRequest(url: url)
         request.requiresOnDeviceRecognition = true
         request.shouldReportPartialResults = false
         request.addsPunctuation = true
 
         let result: Result<String, Failure> = await withCheckedContinuation { continuation in
-            var answered = false
-            recognizer.recognitionTask(with: request) { result, error in
-                guard !answered else { return }
+            // The handler is called more than once — partial results, then the final one or an
+            // error — and the continuation may be resumed once.
+            let answered = Mutex(false)
+            /// True for the one call that gets to resume.
+            let claim: @Sendable () -> Bool = {
+                answered.withLock { done in
+                    defer { done = true }
+                    return !done
+                }
+            }
+            recognizer.recognitionTask(with: request) { @Sendable result, error in
                 if let result, result.isFinal {
-                    answered = true
+                    guard claim() else { return }
                     let text = result.bestTranscription.formattedString.trimmingCharacters(in: .whitespacesAndNewlines)
                     continuation.resume(returning: text.isEmpty ? .failure(.nothingHeard) : .success(text))
                 } else if let error {
-                    answered = true
+                    guard claim() else { return }
                     // "No speech detected" is an error to the framework and an answer to the person.
                     let nsError = error as NSError
                     let nothing = nsError.domain == "kAFAssistantErrorDomain" && nsError.code == 1110

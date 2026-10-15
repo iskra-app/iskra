@@ -538,7 +538,10 @@ public final class RoomListStore {
     private func watchPath() {
         guard pathMonitor == nil else { return }
         let monitor = NWPathMonitor()
-        monitor.pathUpdateHandler = { [weak self] path in
+        // `@Sendable`, and not for tidiness: written inside this `@MainActor` class the closure would
+        // otherwise inherit the main actor, and it is called on the monitor's own queue — Swift
+        // checks that and traps, on the first change of network. See `VoiceTranscriber.authorize`.
+        monitor.pathUpdateHandler = { @Sendable [weak self] path in
             let satisfied = path.status == .satisfied
             Task { @MainActor [weak self] in
                 guard let self else { return }
