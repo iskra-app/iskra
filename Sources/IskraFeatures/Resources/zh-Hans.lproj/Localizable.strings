@@ -1323,3 +1323,11 @@
 "room.access.unban" = "解除封禁";
 "room.access.unbanQuestion" = "解除对 %@ 的封禁？";
 "room.access.unbanHelp" = "对方可以再次加入，但不会自动出现在聊天中——请邀请对方或发送链接。";
+
+/* Choosing several messages (stage 9) */
+"message.menu.select" = "选择";
+"message.selection.count" = "已选 %lld 条";
+"message.selection.cancel" = "取消";
+"message.selection.deleteTitle" = "删除所选消息？";
+"message.selection.deleteMessage" = "它们会对聊天中的所有人消失，且无法恢复。";
+"message.selection.copied" = "已复制";

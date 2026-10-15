@@ -1323,3 +1323,11 @@
 "room.access.unban" = "Freigeben";
 "room.access.unbanQuestion" = "%@ freigeben?";
 "room.access.unbanHelp" = "Die Person kann wieder beitreten. Von selbst erscheint sie nicht im Chat – laden Sie sie ein oder schicken Sie einen Link.";
+
+/* Choosing several messages (stage 9) */
+"message.menu.select" = "Auswählen";
+"message.selection.count" = "Ausgewählt: %lld";
+"message.selection.cancel" = "Abbrechen";
+"message.selection.deleteTitle" = "Ausgewählte Nachrichten löschen?";
+"message.selection.deleteMessage" = "Sie verschwinden für alle im Chat. Wiederherstellen lassen sie sich nicht.";
+"message.selection.copied" = "Kopiert";

@@ -1319,3 +1319,11 @@
 "room.access.unban" = "Разблокировать";
 "room.access.unbanQuestion" = "Разблокировать %@?";
 "room.access.unbanHelp" = "Человек снова сможет войти. Сам в чате он не появится — его нужно пригласить или дать ссылку.";
+
+/* Choosing several messages (stage 9) */
+"message.menu.select" = "Выбрать";
+"message.selection.count" = "Выбрано: %lld";
+"message.selection.cancel" = "Отмена";
+"message.selection.deleteTitle" = "Удалить выбранные сообщения?";
+"message.selection.deleteMessage" = "Они исчезнут у всех участников чата. Вернуть их будет нельзя.";
+"message.selection.copied" = "Скопировано";

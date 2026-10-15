@@ -10,8 +10,18 @@ import IskraDesign
 /// through the menu, and gave nowhere to say anything about what was being passed on. Choosing and
 /// sending are separate now, as they are in Telegram; nothing goes until the button is pressed.
 struct ForwardPicker: View {
-    let message: Message
+    /// What goes, in the order it was said — one message from its menu, or several chosen together.
+    let messages: [Message]
     let forwarding: Forwarding
+
+    init(message: Message, forwarding: Forwarding) {
+        self.init(messages: [message], forwarding: forwarding)
+    }
+
+    init(messages: [Message], forwarding: Forwarding) {
+        self.messages = messages
+        self.forwarding = forwarding
+    }
 
     @State private var query = ""
     @State private var chosen: [String] = []
@@ -84,7 +94,9 @@ struct ForwardPicker: View {
         let words = comment.trimmingCharacters(in: .whitespacesAndNewlines)
         Task {
             for roomID in targets {
-                _ = await forwarding.forward(message, to: roomID)
+                for message in messages {
+                    _ = await forwarding.forward(message, to: roomID)
+                }
                 if !words.isEmpty { await forwarding.comment(words, to: roomID) }
             }
             dismiss()

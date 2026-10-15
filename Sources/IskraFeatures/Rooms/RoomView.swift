@@ -47,6 +47,13 @@ public struct RoomView: View {
     /// message — and only the screen can see both ends.
     @State private var composerContext: ComposerContext?
 
+    /// Messages being chosen together, while they are — see `MessageSelection`. Nil the rest of
+    /// the time, which is nearly always.
+    @State private var selection: MessageSelection?
+    @State private var isForwardingSelection = false
+    @State private var isConfirmingSelectionDelete = false
+    @Environment(\.forwarding) private var forwarding
+
     /// The pinned messages, opened when the room has any. Built once and kept, for the same
     /// reason `details` is: `navigationDestination` re-evaluates on every redraw, and a fresh
     /// store each time would open a fresh timeline on every keystroke in the composer.
@@ -1131,7 +1138,9 @@ public struct RoomView: View {
         }
         .safeAreaInset(edge: .bottom) {
             Group {
-                if let blockedID {
+                if let selection {
+                    selectionBar(selection)
+                } else if let blockedID {
                     BlockedBanner {
                         Task { await blockStore?.unblock(userID: blockedID) }
                     }
@@ -1835,6 +1844,49 @@ public struct RoomView: View {
         return true
     }
 
+    /// The bar in the composer's place while messages are chosen. Each act is offered only where it
+    /// applies to *every* chosen message — a delete that would quietly skip somebody else's words is
+    /// a delete that lies about what it did.
+    private func selectionBar(_ selection: MessageSelection) -> some View {
+        let chosen = selection.ordered(in: timeline.rows)
+        let canDelete = !chosen.isEmpty && !isOffline && chosen.allSatisfy { message in
+            message.canDelete || (timeline.canDeleteOthers && message.canBeDeletedByModerator)
+        }
+        let canForward = !chosen.isEmpty && !isOffline && forwarding != nil && chosen.allSatisfy(\.canForward)
+        let transcript = MessageSelection.transcript(of: chosen)
+        return MessageSelectionBar(count: selection.ids.count,
+                                   canDelete: canDelete,
+                                   canForward: canForward,
+                                   canCopy: transcript != nil,
+                                   onCancel: endSelection,
+                                   onDelete: { isConfirmingSelectionDelete = true },
+                                   onForward: { isForwardingSelection = true },
+                                   onCopy: {
+                                       if let transcript { Clipboard.copy(transcript) }
+                                       endSelection()
+                                   })
+            .confirmationDialog(Text(Strings.Message.Selection.deleteTitle),
+                                isPresented: $isConfirmingSelectionDelete,
+                                titleVisibility: .visible) {
+                Button(String(app: Strings.Message.Menu.delete), role: .destructive) {
+                    let ids = chosen.flatMap(\.members).map(\.id)
+                    endSelection()
+                    Task { for id in ids { await timeline.delete(messageID: id) } }
+                }
+            } message: {
+                Text(Strings.Message.Selection.deleteMessage)
+            }
+            .sheet(isPresented: $isForwardingSelection, onDismiss: endSelection) {
+                if let forwarding {
+                    ForwardPicker(messages: chosen, forwarding: forwarding)
+                }
+            }
+    }
+
+    private func endSelection() {
+        withAnimation(.smooth(duration: Theme.Timing.chrome)) { selection = nil }
+    }
+
     private var readOnlyBanner: some View {
         ReadOnlyBanner()
     }
@@ -2068,6 +2120,31 @@ public struct RoomView: View {
                             opensDay: Bool,
                             arrives: Bool,
                             in scroll: ScrollViewProxy) -> some View {
+        if let selection {
+            // While choosing, a tap on a message ticks it and does nothing else: the row underneath
+            // is drawn as ever but takes no touches — no menu, no photo opening, no link.
+            let isOn = selection.contains(message.id)
+            HStack(spacing: Theme.Spacing.close) {
+                SelectionMark(isOn: isOn)
+                plainRow(message, opensDay: opensDay, arrives: arrives, in: scroll)
+                    .allowsHitTesting(false)
+            }
+            .contentShape(.rect)
+            .onTapGesture {
+                withAnimation(.smooth(duration: Theme.Timing.chrome)) { self.selection?.toggle(message.id) }
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)
+        } else {
+            plainRow(message, opensDay: opensDay, arrives: arrives, in: scroll)
+        }
+    }
+
+    @ViewBuilder
+    private func plainRow(_ message: Message,
+                          opensDay: Bool,
+                          arrives: Bool,
+                          in scroll: ScrollViewProxy) -> some View {
         let handlers = handlers(for: message, in: scroll)
         let isPinned = timeline.isPinned(messageID: message.id)
         let isHighlighted = highlighted == message.id
@@ -2131,6 +2208,10 @@ public struct RoomView: View {
             onReport: { reason in Task { await timeline.report(messageID: message.id, reason: reason) } },
             onVote: { answers in Task { await timeline.vote(inPoll: message.id, answerIDs: answers) } },
             onEndPoll: { Task { await timeline.endPoll(message.id) } },
+            onSelect: {
+                Keyboard.dismiss()
+                withAnimation(.smooth(duration: Theme.Timing.chrome)) { selection = MessageSelection(message.id) }
+            },
             canDeleteOthers: timeline.canDeleteOthers,
             loadReactors: timeline.isOneToOne ? nil : { await timeline.reactors(of: message.id) }
         )
