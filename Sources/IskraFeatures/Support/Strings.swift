@@ -523,17 +523,10 @@ public enum Strings {
         /// long way up. Read aloud only — the arrow in it is the whole of what it says on screen.
         public static let scrollToBottom = LocalizedStringResource("room.scrollToBottom", bundle: bundle)
 
-        /// The way into a conversation that is too short to scroll and yet has more behind it.
-        ///
-        /// Older messages are asked for by scrolling to the top, and a room showing two messages
-        /// cannot be scrolled at all — so when the opening fetch comes up short, this is the only
-        /// thing left that can ask. See `TimelineStore.needsMoreHistory`.
-        public static let loadEarlier = LocalizedStringResource("room.loadEarlier", bundle: bundle)
-
-        /// What stands in `loadEarlier`'s place when the older messages could not be fetched — see
-        /// `TimelineStore.historyIsStranded`. It has to explain rather than offer: the button next
-        /// to it would fail, and a reader who presses a button twice and sees nothing concludes the
-        /// app has lost the conversation.
+        /// What stands at the head of the conversation when the older messages could not be
+        /// fetched — see `TimelineStore.historyIsStranded`. It has to explain rather than offer: a
+        /// reader who presses a button twice and sees nothing concludes the app has lost the
+        /// conversation.
         public static let earlierUnavailable = LocalizedStringResource("room.earlierUnavailable", bundle: bundle)
 
         /// Somebody is writing. In a one-to-one chat their name is already the title of the screen,

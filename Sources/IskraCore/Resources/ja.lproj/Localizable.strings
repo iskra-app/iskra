@@ -111,7 +111,7 @@
 "roomEvent.roomTopicChanged" = "チャットの説明が変わりました";
 "roomEvent.roomPictureChanged" = "チャットの写真が変わりました";
 "roomEvent.roomCreated" = "チャットが作成されました";
-"roomEvent.encryptionEnabled" = "これからのメッセージは、このチャットのメンバーだけが読めます";
+"roomEvent.encryptionEnabled" = "暗号化がオンになりました";
 "roomEvent.pair" = "%1$@ と %2$@";
 
 /* What a client that cannot draw a map shows instead of one. */

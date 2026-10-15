@@ -142,7 +142,7 @@ public struct RoomListView: View {
         // on iOS and on the Mac; `navigationBarTitleDisplayMode` would only say it on iOS.
         .toolbarTitleDisplayMode(.inline)
         .toolbar {
-            if isSidebar {
+            if hasSidebarChrome {
                 ToolbarItem(placement: .primaryAction) { newConversationMenu }
                 ToolbarItem(placement: .primaryAction) { settingsButton }
             } else {
@@ -293,6 +293,21 @@ public struct RoomListView: View {
 
     private var isSearching: Bool {
         !searchText.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    /// Whether the bar carries the sidebar's buttons — "+" beside the gear — or the phone's: "+" at
+    /// the left, the face at the right.
+    ///
+    /// Never the sidebar's on an iPhone, whatever the size class says. An iPhone is `.regular`
+    /// wide in landscape on the big models, and for a moment whenever the system draws the app
+    /// sideways for the app switcher — and the list, told it was a sidebar, moved its "+" over to
+    /// the right beside a gear the phone never shows, and left it there when it came back.
+    private var hasSidebarChrome: Bool {
+        #if os(iOS)
+        isSidebar && UIDevice.current.userInterfaceIdiom != .phone
+        #else
+        isSidebar
+        #endif
     }
 
     /// Whether this list is drawn as the Mac's own sidebar.

@@ -111,7 +111,7 @@
 "roomEvent.roomTopicChanged" = "La description de la discussion a changé";
 "roomEvent.roomPictureChanged" = "La discussion a une nouvelle photo";
 "roomEvent.roomCreated" = "Discussion créée";
-"roomEvent.encryptionEnabled" = "Désormais, seuls les membres de la discussion peuvent lire ces messages";
+"roomEvent.encryptionEnabled" = "Chiffrement activé";
 "roomEvent.pair" = "%1$@ et %2$@";
 
 /* What a client that cannot draw a map shows instead of one. */

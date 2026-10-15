@@ -32,7 +32,7 @@ public struct PeekLine: Sendable, Equatable {
             case let .message(message):
                 if message.kind == .unsupported { return nil }
                 let isDeleted = message.kind == .deleted
-                return PeekLine(text: MessagePreview.text(for: message.kind),
+                return PeekLine(text: MessagePreview.text(for: message),
                                 kind: PreviewKind(message.kind),
                                 // A deleted message is not one anybody is waiting to have read.
                                 mark: message.isOwn && !isDeleted ? message.delivery.map(LastMessageMark.init) : nil,
