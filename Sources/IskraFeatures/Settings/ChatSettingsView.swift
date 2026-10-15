@@ -18,6 +18,8 @@ struct ChatSettingsView: View {
     /// In the App Group's defaults, not `.standard` — the share extension is the one that reads it,
     /// and an extension's `.standard` is its own and empty. So it is plain state, written through.
     @State private var shareAccount = ChatDirectory.shareAccount()
+    /// The same, for the notification extension — see `ChatDirectory.namesAccountInNotifications`.
+    @State private var namesAccount = ChatDirectory.namesAccountInNotifications()
 
     var body: some View {
         Form {
@@ -71,6 +73,18 @@ struct ChatSettingsView: View {
                 }
                 .onChange(of: shareAccount) { _, choice in
                     ChatDirectory.setShareAccount(choice)
+                }
+
+                Section {
+                    Toggle(isOn: $namesAccount) {
+                        Label(Strings.Chats.namesAccount, systemImage: "person.crop.circle.badge")
+                    }
+                    .accentControl()
+                } footer: {
+                    Text(Strings.Chats.namesAccountHelp)
+                }
+                .onChange(of: namesAccount) { _, names in
+                    ChatDirectory.setNamesAccountInNotifications(names)
                 }
             }
             #endif

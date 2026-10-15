@@ -1365,3 +1365,7 @@
 "folders.membershipFooter" = "勾选后，即使不符合规则，聊天也会在文件夹中；取消勾选则永远不会。";
 "folders.emptyTitle" = "文件夹里还没有内容";
 "folders.emptyMessage" = "符合规则的聊天会出现在这里。";
+
+/* Which account a notification came for */
+"chats.namesAccount" = "通知中显示账号";
+"chats.namesAccountHelp" = "通知标题会显示它发给了您的哪个账号。";

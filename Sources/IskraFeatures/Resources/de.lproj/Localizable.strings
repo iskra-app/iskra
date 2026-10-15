@@ -1365,3 +1365,7 @@
 "folders.membershipFooter" = "Mit Häkchen ist der Chat im Ordner, auch wenn er nicht zu den Regeln passt. Ohne Häkchen nie.";
 "folders.emptyTitle" = "Dieser Ordner ist noch leer";
 "folders.emptyMessage" = "Hier erscheinen Chats, die zu seinen Regeln passen.";
+
+/* Which account a notification came for */
+"chats.namesAccount" = "Konto in Mitteilungen";
+"chats.namesAccountHelp" = "Im Titel der Mitteilung steht, an welches Ihrer Konten sie ging.";

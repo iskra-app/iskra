@@ -1696,6 +1696,8 @@ public enum Strings {
         public static let shareActive = LocalizedStringResource("chats.shareActive", bundle: bundle)
         public static let shareAll = LocalizedStringResource("chats.shareAll", bundle: bundle)
         public static let shareHelp = LocalizedStringResource("chats.shareHelp", bundle: bundle)
+        public static let namesAccount = LocalizedStringResource("chats.namesAccount", bundle: bundle)
+        public static let namesAccountHelp = LocalizedStringResource("chats.namesAccountHelp", bundle: bundle)
     }
 
     /// A person's page — see `MemberProfileView`.
