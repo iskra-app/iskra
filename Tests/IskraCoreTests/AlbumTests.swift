@@ -64,11 +64,14 @@ struct AlbumTests {
         #expect(shape([try photo("a", at: 0), text("t", at: 1), try photo("b", at: 2)]) == ["a", "t", "b"])
     }
 
-    @Test("a caption closes the album it is under")
-    func captionCloses() throws {
-        let rows = [try photo("a", at: 0), try photo("b", at: 1, caption: "море"), try photo("c", at: 2)]
-        #expect(shape(rows) == ["a+b", "c"])
+    @Test("a caption may only open an album")
+    func captionOpens() throws {
+        let rows = [try photo("a", at: 0, caption: "море"), try photo("b", at: 1), try photo("c", at: 2)]
+        #expect(shape(rows) == ["a+b+c"])
         #expect(Album.grouping(rows).first?.message?.albumCaption == "море")
+        // One further in starts the next album.
+        let two = [try photo("a", at: 0), try photo("b", at: 1, caption: "пляж"), try photo("c", at: 2)]
+        #expect(shape(two) == ["a", "b+c"])
     }
 
     @Test("a reply may only start an album")

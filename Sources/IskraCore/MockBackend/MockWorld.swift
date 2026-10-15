@@ -151,10 +151,10 @@ struct MockWorld {
         let pinned = text(room, mama, "Код от калитки на даче: 2580. Не теряйте!")
         text(room, papa, "Принято")
         at(room, 60 * 24 * 6)
-        // An album — three photos a second apart, the caption on the last, as this app sends one.
-        image(room, papa, "грядка.png", hue: 0.24, width: 800, height: 1200)
+        // An album — three photos a second apart, the caption on the first, as this app sends one.
+        image(room, papa, "грядка.png", hue: 0.24, width: 800, height: 1200, caption: "Первые кабачки в этом году")
         image(room, papa, "урожай.png", hue: 0.28)
-        image(room, papa, "кабачки.png", hue: 0.32, caption: "Первые кабачки в этом году")
+        image(room, papa, "кабачки.png", hue: 0.32)
         react(room, pinned, papa, "👌")
         at(room, 60 * 2)
         text(room, mama, "Саша, ты в воскресенье приедешь?")

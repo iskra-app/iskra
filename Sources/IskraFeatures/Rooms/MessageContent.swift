@@ -91,7 +91,7 @@ struct MessageContent: View {
         if let album = message.album, album.count > 1 {
             quoted {
                 AlbumBubble(items: album, style: style,
-                            caption: message.albumCaption.map { AnyView(messageText($0, from: album[album.count - 1])) })
+                            caption: message.albumCaption.map { AnyView(messageText($0)) })
             }
         } else {
             single

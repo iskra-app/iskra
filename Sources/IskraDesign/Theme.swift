@@ -81,6 +81,11 @@ public enum Theme {
         /// Between the pictures of an album — a hairline of the bubble showing through, as in
         /// Telegram, so the set reads as one thing made of several. See `AlbumMosaic`.
         public static let albumGap: CGFloat = 2
+        /// Around a caption under a picture, inside the bubble's own `tight` frame — so that the
+        /// words stand exactly as far from the bubble's edges as a text message's do (`roomy` to the
+        /// sides, `normal` above and below; see `MessageBubble`).
+        public static let captionHorizontal: CGFloat = roomy - tight
+        public static let captionVertical: CGFloat = normal - tight
 
         /// How far the emoji under a message climb back onto it.
         ///
