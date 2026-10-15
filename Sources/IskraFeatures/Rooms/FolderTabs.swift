@@ -15,12 +15,18 @@ struct FolderTabs: View {
     @Binding var selection: String
     let onEdit: () -> Void
 
-    @Environment(\.accent) private var accent
-    @Environment(\.colorScheme) private var colorScheme
-
     /// One pill under the selected tab, which slides to the next — rather than one pill going out
     /// and another coming in.
     @Namespace private var pill
+
+    /// Where the pill is drawn — the selection, one frame late, on purpose.
+    ///
+    /// A tap changes two things: which chats the list shows, and where the pill is. The first is a
+    /// rebuild of the whole list, and done in the same frame as the start of the slide it took that
+    /// frame and the next few with it — the slide ran at what looked like half the frame rate. So
+    /// the list changes at once, unanimated, and the pill starts moving on the frame after, when
+    /// the heavy part is already over.
+    @State private var shown: String?
 
     var body: some View {
         ScrollViewReader { scroll in
@@ -40,6 +46,12 @@ struct FolderTabs: View {
             .padding(.horizontal, Theme.Spacing.normal)
             .padding(.vertical, Theme.Spacing.tight)
             .onChange(of: selection) { _, id in
+                if shown != id, shown != nil {
+                    Task { @MainActor in
+                        await Task.yield()
+                        withAnimation(Theme.Timing.folderSwitches) { shown = id }
+                    }
+                }
                 withAnimation(.smooth(duration: Theme.Timing.chrome)) { scroll.scrollTo(id, anchor: .center) }
             }
         }
@@ -51,9 +63,14 @@ struct FolderTabs: View {
     }
 
     private func tab(id: String, title: String, unread: Int) -> some View {
-        let isSelected = selection == id
+        let isSelected = (shown ?? selection) == id
         return Button {
-            withAnimation(Theme.Timing.folderSwitches) { selection = id }
+            guard selection != id else { return }
+            selection = id
+            Task { @MainActor in
+                await Task.yield()
+                withAnimation(Theme.Timing.folderSwitches) { shown = id }
+            }
         } label: {
             HStack(spacing: Theme.Spacing.tight) {
                 Text(title)
@@ -63,18 +80,20 @@ struct FolderTabs: View {
                         .font(.caption2.weight(.semibold).monospacedDigit())
                         .padding(.horizontal, Theme.Spacing.tight)
                         .frame(minWidth: Theme.Size.unreadDot * 2)
-                        .background(isSelected ? AnyShapeStyle(.background.opacity(0.3)) : AnyShapeStyle(.quaternary),
-                                    in: Capsule())
+                        .background(.quaternary, in: Capsule())
                 }
             }
             .font(.subheadline.weight(isSelected ? .semibold : .regular))
             .padding(.horizontal, Theme.Spacing.normal)
             .padding(.vertical, Theme.Spacing.close)
-            .foregroundStyle(isSelected ? accent.foreground(in: colorScheme) : AnyShapeStyle(.primary))
+            .foregroundStyle(.primary)
+            // Grey, and only just there: the tab is where you are, not a button to press — the
+            // accent is for what can be pressed. A plain colour, not a hierarchical style, which
+            // glass would turn vibrant (see `AccentTheme.solid`).
             .background {
                 if isSelected {
                     Capsule()
-                        .fill(accent.solid(in: colorScheme))
+                        .fill(Color.gray.opacity(Theme.Opacity.selectedTab))
                         .matchedGeometryEffect(id: "selected", in: pill)
                 }
             }

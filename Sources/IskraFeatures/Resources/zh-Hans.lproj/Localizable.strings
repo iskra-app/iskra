@@ -1409,3 +1409,6 @@
 "message.transcript.unavailable" = "此设备无法离线识别您的语言——Iskra 不会把语音发送到服务器。";
 "message.transcript.nothingHeard" = "听不出任何字词。";
 "message.transcript.failed" = "没能转写。请再试一次。";
+
+"chats.threads" = "话题";
+"chats.threadsHelp" = "话题中的回复会以“3 条回复”的形式收在原消息下面。关闭后，重新打开聊天时，它们会和其他消息一起显示在聊天中。 私聊没有话题：回复始终显示在聊天里。";

@@ -214,6 +214,14 @@ public final class TimelineStore {
     /// whatever is sent from it — words, pictures, a reply — goes into the thread.
     public let threadRootID: String?
 
+    /// Whether this room keeps answers in threads under their message: switched on in settings, and
+    /// not a personal chat — between two people a thread is a second conversation with the same
+    /// person, and the one room they already have reads better top to bottom. Decided from the room
+    /// info read just before the timeline opens (`kind`), and fixed for as long as it is open.
+    public var usesThreads: Bool {
+        ThreadSettings.isEnabled() && kind != .direct
+    }
+
     init(room: Room, ownUserID: String, threadRootID: String? = nil) {
         self.room = room
         self.ownUserID = ownUserID
@@ -374,7 +382,8 @@ public final class TimelineStore {
         let configuration = TimelineConfiguration(
             // The room's own leaves thread answers out — they are a line under their root, as in
             // Element and Telegram's comments, and a thread is opened to read them.
-            focus: threadRootID.map { .thread(rootEventId: $0) } ?? .live(hideThreadedEvents: true),
+            focus: threadRootID.map { .thread(rootEventId: $0) }
+                ?? .live(hideThreadedEvents: usesThreads),
             filter: .all,
             internalIdPrefix: threadRootID.map { "thread-\($0)-" },
             dateDividerMode: .daily,

@@ -1409,3 +1409,6 @@
 "message.transcript.unavailable" = "Dieses Gerät erkennt Ihre Sprache nicht offline – und Iskra schickt die Stimme an keinen Server.";
 "message.transcript.nothingHeard" = "Keine Worte zu verstehen.";
 "message.transcript.failed" = "Das Transkribieren hat nicht geklappt. Versuchen Sie es noch einmal.";
+
+"chats.threads" = "Threads";
+"chats.threadsHelp" = "Antworten in Threads werden unter ihrer Nachricht als „3 Antworten“ gesammelt. Ausgeschaltet erscheinen sie zwischen den anderen Nachrichten im Chat – sobald Sie den Chat erneut öffnen. Private Chats haben keine Threads: Antworten stehen dort immer im Chat selbst.";
