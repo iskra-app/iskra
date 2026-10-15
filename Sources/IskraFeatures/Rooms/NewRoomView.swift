@@ -48,8 +48,26 @@ struct NewRoomView: View {
                 }
                 .accentControl()
             } footer: {
-                // The one thing the switch does that its own label does not say.
-                Text(Strings.RoomList.New.openMeansUnencrypted)
+                VStack(alignment: .leading, spacing: Theme.Spacing.close) {
+                    // What the room will be, said the way the info screen says what a room is —
+                    // the same padlock, the same tint, the same small print — and turning over
+                    // the moment the switch does.
+                    HStack(spacing: Theme.Spacing.tight) {
+                        Image(systemName: privacy.iconName)
+                            .foregroundStyle(privacy == .protected ? .secondary : Color.orange)
+                            .contentTransition(.symbolEffect(.replace))
+                        Text(isPublic ? Strings.RoomList.New.willNotBeEncrypted
+                                      : Strings.RoomList.New.willBeEncrypted)
+                            .contentTransition(.opacity)
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityElement(children: .combine)
+
+                    // The one thing the switch does that its own label does not say.
+                    Text(Strings.RoomList.New.openMeansUnencrypted)
+                }
+                .animation(.smooth, value: isPublic)
             }
         }
         .formStyle(.grouped)
@@ -73,6 +91,9 @@ struct NewRoomView: View {
         .failureAlert($failure)
         .onAppear { isFocused = true }
     }
+
+    /// What `UserSession.createRoom` will make of the switch: an open room goes unencrypted.
+    private var privacy: PrivacyStatus { isPublic ? .notProtected : .protected }
 
     private var isReady: Bool {
         !name.trimmingCharacters(in: .whitespaces).isEmpty

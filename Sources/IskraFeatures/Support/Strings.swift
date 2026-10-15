@@ -139,6 +139,9 @@ public enum Strings {
         public static let addressPlaceholder = LocalizedStringResource("signIn.addressPlaceholder", bundle: bundle)
         public static let addressLabel = LocalizedStringResource("signIn.addressLabel", bundle: bundle)
         public static let `continue` = LocalizedStringResource("signIn.continue", bundle: bundle)
+        /// Under the empty address field: the button for people who have no address to type.
+        public static let chooseServer = LocalizedStringResource("signIn.chooseServer", bundle: bundle)
+        public static let next = LocalizedStringResource("signIn.next", bundle: bundle)
 
         public static let readyTitle = LocalizedStringResource("signIn.readyTitle", bundle: bundle)
         public static let readyHelp = LocalizedStringResource("signIn.readyHelp", bundle: bundle)
@@ -193,6 +196,24 @@ public enum Strings {
             /// "Create an account" on a server that will not make one through an app.
             public static let noRegistration = LocalizedStringResource("signIn.problem.noRegistration", bundle: bundle)
         }
+    }
+
+    /// "Not sure which server to choose?" — the public servers, and running your own.
+    /// See `PublicServer` for why these four.
+    public enum Servers {
+        public static let title = LocalizedStringResource("servers.title", bundle: bundle)
+        public static let intro = LocalizedStringResource("servers.intro", bundle: bundle)
+        public static let matrixOrg = LocalizedStringResource("servers.matrixOrg", bundle: bundle)
+        public static let matrixOrgWhere = LocalizedStringResource("servers.matrixOrgWhere", bundle: bundle)
+        public static let matrixOrgBlocked = LocalizedStringResource("servers.matrixOrgBlocked", bundle: bundle)
+        public static let tchncs = LocalizedStringResource("servers.tchncs", bundle: bundle)
+        public static let tchncsWhere = LocalizedStringResource("servers.tchncsWhere", bundle: bundle)
+        public static let quassel = LocalizedStringResource("servers.quassel", bundle: bundle)
+        public static let quasselWhere = LocalizedStringResource("servers.quasselWhere", bundle: bundle)
+        public static let nopeChat = LocalizedStringResource("servers.nopeChat", bundle: bundle)
+        public static let nopeChatWhere = LocalizedStringResource("servers.nopeChatWhere", bundle: bundle)
+        public static let ownTitle = LocalizedStringResource("servers.ownTitle", bundle: bundle)
+        public static let ownAbout = LocalizedStringResource("servers.ownAbout", bundle: bundle)
     }
 
     /// The state of the connection, said out loud. See `OfflineBanner`.
@@ -368,6 +389,9 @@ public enum Strings {
             /// switch of its own in this app — see `UserSession.createRoom`.
             public static let openMeansUnencrypted = LocalizedStringResource("roomList.new.openMeansUnencrypted",
                                                                              bundle: bundle)
+            /// Under the "open to anyone" switch on the new-room screen: what the room will be.
+            public static let willBeEncrypted = LocalizedStringResource("roomList.new.willBeEncrypted", bundle: bundle)
+            public static let willNotBeEncrypted = LocalizedStringResource("roomList.new.willNotBeEncrypted", bundle: bundle)
 
             /// "New chat", Telegram's way: one field to find a person by, three ways into a room
             /// beneath it, then everybody there is already a conversation with.

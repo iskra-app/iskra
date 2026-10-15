@@ -394,7 +394,7 @@
 /* The question that replaces asking for a 'homeserver URL'. */
 "signIn.whereIsAccount" = "Où est votre compte ?";
 
-"signIn.whereIsAccountHelp" = "Si on vous a donné l’adresse d’un serveur, saisissez-la. Sinon, gardez matrix.org : c’est là que sont la plupart des comptes.";
+"signIn.whereIsAccountHelp" = "Saisissez l’adresse du serveur où se trouve votre compte, ou celui où vous souhaitez en créer un.";
 
 "room.attachPhoto" = "Photo ou vidéo";
 
@@ -1229,3 +1229,30 @@
 "qr.openRoom" = "Ouvrir";
 "qr.roomUnknown" = "Le serveur n’a rien dit de ce salon, mais vous pouvez quand même essayer de le rejoindre.";
 "qr.inviteOnlyRoom" = "On n’entre dans ce salon que sur invitation.";
+
+/* Under the empty address field on the sign-in screen: opens the list of public servers. */
+"signIn.chooseServer" = "Vous ne savez pas quel serveur choisir ?";
+/* The main button under the address field. */
+"signIn.next" = "Suivant";
+
+/* The list of public servers, opened from the sign-in screen. */
+"servers.title" = "Choisir un serveur";
+"servers.intro" = "Votre compte vit sur un serveur, mais vous pouvez écrire aux personnes de n’importe quel autre, comme avec l’e-mail. Sur tous les serveurs ci-dessous, vous pouvez créer un compte directement dans Iskra.";
+"servers.matrixOrg" = "Le plus grand serveur Matrix, géré par la fondation qui développe Matrix.";
+/* Country · languages the server is run in. */
+"servers.matrixOrgWhere" = "Royaume-Uni · anglais";
+/* A warning on matrix.org: it is blocked in Russia. */
+"servers.matrixOrgBlocked" = "Inaccessible depuis la Russie";
+"servers.tchncs" = "L’un des plus anciens serveurs communautaires. Son propriétaire héberge aussi d’autres services libres.";
+"servers.tchncsWhere" = "Allemagne · anglais, allemand";
+"servers.quassel" = "Un serveur ouvert pour les conversations de tous les jours, gratuit pour tous.";
+"servers.quasselWhere" = "Allemagne, serveur en Finlande · anglais";
+"servers.nopeChat" = "Tenu par l’équipe d’adminForge, qui héberge aussi d’autres services libres. Avec des passerelles vers d’autres messageries.";
+"servers.nopeChatWhere" = "Allemagne · allemand";
+/* The last entry: running a server of your own. Opens a page about it in the browser. */
+"servers.ownTitle" = "Votre propre serveur";
+"servers.ownAbout" = "Vous pouvez installer votre propre serveur : vos conversations ne sont alors conservées que chez vous. Il vous faudra un nom de domaine et un peu de temps.";
+
+/* Under the "open to anyone" switch when making a room: what the room will be. Changes with the switch. */
+"roomList.new.willBeEncrypted" = "Le salon sera chiffré";
+"roomList.new.willNotBeEncrypted" = "Le salon ne sera pas chiffré";

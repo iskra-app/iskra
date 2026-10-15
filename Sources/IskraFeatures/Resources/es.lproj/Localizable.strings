@@ -394,7 +394,7 @@
 /* The question that replaces asking for a 'homeserver URL'. */
 "signIn.whereIsAccount" = "¿Dónde está su cuenta?";
 
-"signIn.whereIsAccountHelp" = "Si le dieron la dirección de un servidor, escríbala. Si no, deje matrix.org: ahí está la mayoría de las cuentas.";
+"signIn.whereIsAccountHelp" = "Escriba la dirección del servidor donde tiene su cuenta o donde quiere crearla.";
 
 "room.attachPhoto" = "Foto o vídeo";
 
@@ -1229,3 +1229,30 @@
 "qr.openRoom" = "Abrir";
 "qr.roomUnknown" = "El servidor no ha dicho nada de esta sala, pero puede intentar entrar igualmente.";
 "qr.inviteOnlyRoom" = "A esta sala solo se entra por invitación.";
+
+/* Under the empty address field on the sign-in screen: opens the list of public servers. */
+"signIn.chooseServer" = "¿No sabe qué servidor elegir?";
+/* The main button under the address field. */
+"signIn.next" = "Siguiente";
+
+/* The list of public servers, opened from the sign-in screen. */
+"servers.title" = "Elegir servidor";
+"servers.intro" = "Su cuenta vive en un servidor, pero puede escribir a personas de cualquier otro, como con el correo. En todos los servidores de abajo puede crear una cuenta directamente en Iskra.";
+"servers.matrixOrg" = "El mayor servidor de Matrix, gestionado por la fundación que desarrolla Matrix.";
+/* Country · languages the server is run in. */
+"servers.matrixOrgWhere" = "Reino Unido · inglés";
+/* A warning on matrix.org: it is blocked in Russia. */
+"servers.matrixOrgBlocked" = "No disponible desde Rusia";
+"servers.tchncs" = "Uno de los servidores comunitarios más antiguos. Su dueño mantiene también otros servicios libres.";
+"servers.tchncsWhere" = "Alemania · inglés, alemán";
+"servers.quassel" = "Un servidor abierto para conversar a diario, gratis para todos.";
+"servers.quasselWhere" = "Alemania, servidor en Finlandia · inglés";
+"servers.nopeChat" = "Lo mantiene el equipo de adminForge, que ofrece también otros servicios libres. Tiene puentes a otras aplicaciones de mensajería.";
+"servers.nopeChatWhere" = "Alemania · alemán";
+/* The last entry: running a server of your own. Opens a page about it in the browser. */
+"servers.ownTitle" = "Su propio servidor";
+"servers.ownAbout" = "Puede montar su propio servidor; así sus conversaciones quedan solo con usted. Necesitará un dominio y algo de tiempo.";
+
+/* Under the "open to anyone" switch when making a room: what the room will be. Changes with the switch. */
+"roomList.new.willBeEncrypted" = "La sala estará cifrada";
+"roomList.new.willNotBeEncrypted" = "La sala no estará cifrada";
