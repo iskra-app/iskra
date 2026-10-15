@@ -1244,7 +1244,7 @@
 "accounts.signOutTitle" = "退出 %@？";
 "accounts.signOutMessage" = "这个账号的聊天将从此设备上删除。要再次阅读加密消息，需要您的恢复密钥或您的其他设备。";
 "stickers.subscribe" = "添加";
-"stickers.settings.sheetSection" = "显示内容";
+"stickers.settings.sheetSection" = "贴纸显示";
 "stickers.settings.builtIn" = "小火花";
 "stickers.settings.roomPacks" = "聊天贴纸包";
 "stickers.settings.roomPacksHelp" = "如果聊天有自己的贴纸包，您在这个聊天里时就能看到。点按上方的“添加”，它就会出现在所有聊天里。";
@@ -1371,3 +1371,5 @@
 "chats.namesAccountHelp" = "通知标题会显示它发给了您的哪个账号。";
 
 "poll.retract" = "撤回投票";
+
+"stickers.settings.mine" = "我的贴纸";

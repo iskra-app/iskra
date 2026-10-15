@@ -1240,7 +1240,7 @@
 "accounts.signOutTitle" = "Выйти из %@?";
 "accounts.signOutMessage" = "Чаты этого аккаунта удалятся с устройства. Чтобы снова читать зашифрованные сообщения, понадобится ключ восстановления или другое ваше устройство.";
 "stickers.subscribe" = "Добавить себе";
-"stickers.settings.sheetSection" = "Что показывать";
+"stickers.settings.sheetSection" = "Отображение стикеров";
 "stickers.settings.builtIn" = "Искорки";
 "stickers.settings.roomPacks" = "Наборы чатов";
 "stickers.settings.roomPacksHelp" = "Если у чата есть свой набор, он виден, пока вы в этом чате. Нажмите «Добавить себе» над ним — и он будет во всех чатах.";
@@ -1367,3 +1367,5 @@
 "chats.namesAccountHelp" = "В заголовке уведомления будет видно, на какой из ваших аккаунтов оно пришло.";
 
 "poll.retract" = "Отменить голос";
+
+"stickers.settings.mine" = "Мои стикеры";

@@ -124,7 +124,9 @@ public final class StickerLibrary {
             return found.sorted { $0.0 < $1.0 }.map(\.1)
         }
 
-        packs = ([mine] + roomPacks).filter { !$0.stickers.isEmpty }
+        // Your own pack is still known (`self.mine`, for "add to mine") with it switched off — it is
+        // only not offered in the sheet.
+        packs = ((StickerSettings.showsMine() ? [mine] : []) + roomPacks).filter { !$0.stickers.isEmpty }
 
         let recentContent = await object(ofAccountData: Self.recentType) ?? [:]
         recent = Self.recent(in: recentContent)

@@ -47,6 +47,13 @@ public struct RoomView: View {
     /// message — and only the screen can see both ends.
     @State private var composerContext: ComposerContext?
 
+    /// The three sources of the sticker sheet — with all of them off there is no sheet worth a
+    /// button. See `StickerSettings.showsAnything`.
+    @AppStorage(StickerSettings.showsBuiltInKey) private var showsBuiltInStickers = true
+    @AppStorage(StickerSettings.showsRoomPackKey) private var showsRoomStickers = true
+    @AppStorage(StickerSettings.showsMineKey) private var showsMyStickers = true
+    private var showsStickers: Bool { showsBuiltInStickers || showsRoomStickers || showsMyStickers }
+
     /// Messages being chosen together, while they are — see `MessageSelection`. Nil the rest of
     /// the time, which is nearly always.
     @State private var selection: MessageSelection?
@@ -1740,7 +1747,7 @@ public struct RoomView: View {
                         onChooseFile: { isChoosingFile = true },
                         onChooseLocation: { isChoosingLocation = true },
                         onCreatePoll: { isCreatingPoll = true },
-                        onChooseSticker: stickers == nil ? nil : { isChoosingSticker = true },
+                        onChooseSticker: stickers == nil || !showsStickers ? nil : { isChoosingSticker = true },
                         attachments: attachments,
                         onRemoveAttachment: { image in attachments.removeAll { $0.id == image.id } },
                         onPasteImage: { Task { await pasteImages() } },

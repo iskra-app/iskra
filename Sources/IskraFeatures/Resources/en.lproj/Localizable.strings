@@ -1244,7 +1244,7 @@
 "accounts.signOutTitle" = "Sign out of %@?";
 "accounts.signOutMessage" = "This account’s chats will be removed from this device. To read encrypted messages again, you’ll need your recovery key or another of your devices.";
 "stickers.subscribe" = "Add to mine";
-"stickers.settings.sheetSection" = "What to show";
+"stickers.settings.sheetSection" = "Sticker display";
 "stickers.settings.builtIn" = "Sparks";
 "stickers.settings.roomPacks" = "Chat packs";
 "stickers.settings.roomPacksHelp" = "If a chat has its own pack, you see it while you’re in that chat. Tap “Add to mine” above it to have it in every chat.";
@@ -1371,3 +1371,5 @@
 "chats.namesAccountHelp" = "The notification’s title shows which of your accounts it came to.";
 
 "poll.retract" = "Retract vote";
+
+"stickers.settings.mine" = "My stickers";

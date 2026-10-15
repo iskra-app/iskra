@@ -1261,6 +1261,7 @@ public enum Strings {
             public static let sheetSection = LocalizedStringResource("stickers.settings.sheetSection", bundle: bundle)
             public static let builtIn = LocalizedStringResource("stickers.settings.builtIn", bundle: bundle)
             public static let roomPacks = LocalizedStringResource("stickers.settings.roomPacks", bundle: bundle)
+            public static let mine = LocalizedStringResource("stickers.settings.mine", bundle: bundle)
             public static let roomPacksHelp = LocalizedStringResource("stickers.settings.roomPacksHelp", bundle: bundle)
             public static let subscriptionsSection = LocalizedStringResource("stickers.settings.subscriptions", bundle: bundle)
             public static let subscriptionsHelp = LocalizedStringResource("stickers.settings.subscriptionsHelp", bundle: bundle)
