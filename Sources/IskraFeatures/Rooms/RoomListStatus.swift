@@ -9,7 +9,7 @@ import IskraDesign
 /// current?", and a word there costs the list nothing: no strip pushing the first conversation down,
 /// no screen in front of the chats while they are being read. Offline outranks updating, because an
 /// update cannot happen without the network it is waiting for.
-enum RoomListStatus: Equatable {
+enum RoomListStatus: Hashable {
     case waitingForNetwork
     case updating
 
@@ -31,12 +31,27 @@ enum RoomListStatus: Equatable {
     }
 }
 
-/// The title bar's middle: "Chats", or the status with a spinner beside it. Changes cross-fade, so
-/// a catch-up that comes and goes reads as the word changing rather than the bar blinking.
+/// The title bar's middle: "Chats", or the status with a spinner beside it.
+///
+/// The three never jump sideways into each other. The bar's middle is as wide as whatever is in
+/// it, and the bar re-centres it *without* animation — so a word that grew or shrank, and a spinner
+/// arriving to its left, used to snap the whole title to a new place. Here the slot is as wide as
+/// the widest of the three, laid out and not drawn, and never changes; inside it the title slides
+/// to its new centre, the spinner fades in or out at its side, and the words cross-fade.
 struct RoomListTitle: View {
     let status: RoomListStatus?
 
     var body: some View {
+        ZStack {
+            ForEach(Self.all, id: \.self) { label($0).hidden() }
+            label(status)
+        }
+        .animation(.easeInOut(duration: Theme.Timing.chrome), value: status)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
+    }
+
+    private func label(_ status: RoomListStatus?) -> some View {
         HStack(spacing: Theme.Spacing.close) {
             if status != nil {
                 ProgressView()
@@ -45,12 +60,13 @@ struct RoomListTitle: View {
             }
             Text(status?.title ?? Strings.RoomList.title)
                 .font(.headline)
+                .lineLimit(1)
+                .fixedSize()
                 .contentTransition(.opacity)
         }
-        .animation(.easeInOut(duration: Theme.Timing.chrome), value: status)
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isHeader)
     }
+
+    private static let all: [RoomListStatus?] = [nil, .updating, .waitingForNetwork]
 }
 
 /// The chat list before the first conversation has been read out of the store — the shapes of rows,
