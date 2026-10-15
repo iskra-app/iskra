@@ -68,8 +68,7 @@ struct RecoveryCodeView: View {
                       systemImage: hasCopied ? "checkmark" : "doc.on.doc")
                     .frame(maxWidth: .infinity)
             }
-            .navigationGlassButton()
-            .controlSize(.large)
+            .buttonStyle(.glassSecondary)
 
             // The tick, and then the way out. In this order, because the button is the consequence of
             // the tick and not a thing sitting beside it.

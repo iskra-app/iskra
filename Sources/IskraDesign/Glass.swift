@@ -56,6 +56,17 @@ public extension View {
         }
     }
 
+    /// Untinted glass behind a secondary action that has to stand beside a `.glassAction` — the
+    /// same capsule, as tall, with the glass and nothing in it. See `GlassSecondaryStyle`.
+    @ViewBuilder
+    func secondaryActionGlass(in shape: some Shape = .capsule) -> some View {
+        if #available(iOS 26, macOS 26, *) {
+            glassEffect(.regular.interactive(), in: shape)
+        } else {
+            background(.quaternary, in: shape)
+        }
+    }
+
     /// The system's untinted glass button, for the secondary actions on a screen that
     /// is itself navigation — "Create account" beside "Continue", a close button over a
     /// sheet. Before glass, a bordered capsule, which is what that button was.

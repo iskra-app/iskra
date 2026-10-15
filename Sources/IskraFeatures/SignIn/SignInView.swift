@@ -36,25 +36,50 @@ public struct SignInView: View {
 
     public var body: some View {
         GeometryReader { proxy in
-            ScrollView {
-                VStack(spacing: Theme.Spacing.generous) {
-                    switch model.step {
-                    case .enteringAddress, .found:
-                        door
-                    case let .ready(options):
-                        signInForm(options)
+            ScrollViewReader { scroll in
+                ScrollView {
+                    VStack(spacing: Theme.Spacing.generous) {
+                        switch model.step {
+                        case .enteringAddress, .found:
+                            door
+                        case let .ready(options):
+                            signInForm(options)
+                        }
+                        // The foot of the form — what is scrolled to when the keyboard comes up.
+                        Color.clear.frame(height: 0).id(Self.foot)
                     }
+                    .padding(Theme.Spacing.generous)
+                    .frame(maxWidth: Theme.Size.signInColumn)
+                    .frame(maxWidth: .infinity, minHeight: proxy.size.height)
                 }
-                .padding(Theme.Spacing.generous)
-                .frame(maxWidth: Theme.Size.signInColumn)
-                .frame(maxWidth: .infinity, minHeight: proxy.size.height)
+                .scrollBounceBehavior(.basedOnSize)
+                // The keyboard takes the bottom half of the screen, which is exactly where "Next" is:
+                // the column is centred in the whole height, and nothing moved it out from under the
+                // keys. So whenever a field is focused, or the keyboard changes size, the foot of the
+                // form — the button that answers the field — is brought into view above it.
+                .onChange(of: focus) { _, field in
+                    guard field != nil else { return }
+                    showFoot(scroll)
+                }
+                .onChange(of: proxy.size.height) { _, _ in
+                    if focus != nil { showFoot(scroll) }
+                }
             }
-            .scrollBounceBehavior(.basedOnSize)
         }
         .animation(.smooth, value: model.step)
         .animation(.smooth, value: model.problem)
         .sheet(isPresented: $isPickingServer) {
             ServerPickerView { model.address = $0 }
+        }
+    }
+
+    private static let foot = "sign-in-foot"
+
+    private func showFoot(_ scroll: ScrollViewProxy) {
+        Task {
+            // After the keyboard's own animation has settled the new height.
+            try? await Task.sleep(for: Theme.Timing.timelineSettles)
+            withAnimation(.smooth(duration: Theme.Timing.chrome)) { scroll.scrollTo(Self.foot, anchor: .bottom) }
         }
     }
 
@@ -124,8 +149,7 @@ public struct SignInView: View {
             } label: {
                 Text(Strings.SignIn.chooseServer).frame(maxWidth: .infinity)
             }
-            .navigationGlassButton()
-            .controlSize(.large)
+            .buttonStyle(.glassSecondary)
             .frame(maxWidth: .infinity)
             .disabled(model.isBusy)
 
@@ -135,7 +159,6 @@ public struct SignInView: View {
                 busyLabel(Strings.SignIn.next)
             }
             .buttonStyle(.glassAction)
-            .controlSize(.large)
             .frame(maxWidth: .infinity)
             .disabled(!model.canContinue)
         }
@@ -156,7 +179,6 @@ public struct SignInView: View {
                 busyLabel(Strings.SignIn.signIn, when: model.pending == .signIn)
             }
             .buttonStyle(.glassAction)
-            .controlSize(.large)
             .frame(maxWidth: .infinity)
             .disabled(model.isBusy)
 
@@ -165,8 +187,7 @@ public struct SignInView: View {
             } label: {
                 busyLabel(Strings.SignIn.createAccount, when: model.pending == .createAccount)
             }
-            .navigationGlassButton()
-            .controlSize(.large)
+            .buttonStyle(.glassSecondary)
             .frame(maxWidth: .infinity)
             .disabled(model.isBusy)
 
@@ -379,7 +400,7 @@ public struct SignInView: View {
         if prominent {
             button.buttonStyle(.glassAction)
         } else {
-            button.navigationGlassButton()
+            button.buttonStyle(.glassSecondary)
         }
     }
 

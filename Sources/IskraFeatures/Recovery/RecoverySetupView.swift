@@ -225,8 +225,7 @@ struct RecoverySetupView: View {
                 Text(Strings.Recovery.approveCancel)
                     .frame(maxWidth: .infinity)
             }
-            .navigationGlassButton()
-            .controlSize(.large)
+            .buttonStyle(.glassSecondary)
             .frame(maxWidth: .infinity)
         }
     }
@@ -277,8 +276,7 @@ struct RecoverySetupView: View {
                 Text(Strings.Recovery.haveCode)
                     .frame(maxWidth: .infinity)
             }
-            .navigationGlassButton()
-            .controlSize(.large)
+            .buttonStyle(.glassSecondary)
 
             Button {
                 isConfirming = true
@@ -287,8 +285,7 @@ struct RecoverySetupView: View {
                 Text(Strings.Recovery.otherDevice)
                     .frame(maxWidth: .infinity)
             }
-            .navigationGlassButton()
-            .controlSize(.large)
+            .buttonStyle(.glassSecondary)
 
             // The quiet third way out, for the person for whom neither of the two above is true. It
             // has to be here, and it has to be findable: without it this screen is a locked door.
