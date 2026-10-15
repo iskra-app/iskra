@@ -18,6 +18,10 @@ struct FolderTabs: View {
     @Environment(\.accent) private var accent
     @Environment(\.colorScheme) private var colorScheme
 
+    /// One pill under the selected tab, which slides to the next — rather than one pill going out
+    /// and another coming in.
+    @Namespace private var pill
+
     var body: some View {
         ScrollViewReader { scroll in
             ScrollView(.horizontal) {
@@ -49,7 +53,7 @@ struct FolderTabs: View {
     private func tab(id: String, title: String, unread: Int) -> some View {
         let isSelected = selection == id
         return Button {
-            withAnimation(.smooth(duration: Theme.Timing.chrome)) { selection = id }
+            withAnimation(Theme.Timing.folderSwitches) { selection = id }
         } label: {
             HStack(spacing: Theme.Spacing.tight) {
                 Text(title)
@@ -69,7 +73,9 @@ struct FolderTabs: View {
             .foregroundStyle(isSelected ? accent.foreground(in: colorScheme) : AnyShapeStyle(.primary))
             .background {
                 if isSelected {
-                    Capsule().fill(accent.color)
+                    Capsule()
+                        .fill(accent.solid(in: colorScheme))
+                        .matchedGeometryEffect(id: "selected", in: pill)
                 }
             }
             .contentShape(Capsule())

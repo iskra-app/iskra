@@ -571,14 +571,22 @@ public actor MockHomeserver: HTTPUpstream {
         if let existing = sentTransactions[key] { return ["event_id": existing] }
         let eventID = append(roomID, sender: me, type: type, content: content, transactionID: txn)
         sentTransactions[key] = eventID
-        if type == "m.room.message" || type == "m.room.encrypted" { scheduleReply(in: roomID, to: eventID) }
+        if type == "m.room.message" || type == "m.room.encrypted" {
+            scheduleReply(in: roomID, to: eventID, thread: Self.threadRoot(of: content))
+        }
         return ["event_id": eventID]
     }
 
     /// Somebody answers. Not cleverly — the point is to watch "typing…" come and go, a receipt move
     /// onto your message, and a new one land, which are three screens' worth of behaviour nobody
     /// can see in a chat where nobody else is.
-    private func scheduleReply(in roomID: String, to eventID: String) {
+    /// The thread a message was written in, if any — so the answer goes there too.
+    private static func threadRoot(of content: JSON) -> String? {
+        guard let relation = content["m.relates_to"] as? JSON, relation["rel_type"] as? String == "m.thread" else { return nil }
+        return relation["event_id"] as? String
+    }
+
+    private func scheduleReply(in roomID: String, to eventID: String, thread: String? = nil) {
         guard let room = rooms[roomID] else { return }
         let others = room.state.values
             .filter { $0["type"] as? String == "m.room.member" && $0["state_key"] as? String != me }
@@ -595,8 +603,13 @@ public actor MockHomeserver: HTTPUpstream {
             self.setTyping(roomID, responder, true)
             try? await Task.sleep(for: delay)
             self.setTyping(roomID, responder, false)
-            self.append(roomID, sender: responder, type: "m.room.message",
-                              content: ["msgtype": "m.text", "body": MockWorld.replies.randomElement() ?? "🙂"])
+            var content: JSON = ["msgtype": "m.text", "body": MockWorld.replies.randomElement() ?? "🙂"]
+            // Written in a thread, answered in the thread — see `TimelineStore.threadRootID`.
+            if let thread {
+                content["m.relates_to"] = ["rel_type": "m.thread", "event_id": thread,
+                                           "is_falling_back": true, "m.in_reply_to": ["event_id": eventID]]
+            }
+            self.append(roomID, sender: responder, type: "m.room.message", content: content)
         }
     }
 

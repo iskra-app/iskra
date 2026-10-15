@@ -39,6 +39,9 @@ public enum Theme {
         /// own radius inside the bubble's own inset would run *outside* the shape it sits in,
         /// and the eye reads that as a picture pushing through its frame.
         public static let picture: CGFloat = 20
+        /// The bottom corners of an album's pictures when words follow them: the pictures end and
+        /// the caption begins, and a full bubble's curve there reads as two bubbles stacked.
+        public static let pictureAboveCaption: CGFloat = 8
 
         /// The corner of an app icon drawn at some size — see `Size.appIconTile`.
         ///
@@ -86,6 +89,9 @@ public enum Theme {
         /// sides, `normal` above and below; see `MessageBubble`).
         public static let captionHorizontal: CGFloat = roomy - tight
         public static let captionVertical: CGFloat = normal - tight
+        /// Between an album's pictures and the caption under them — more than a single photo
+        /// gives, because a mosaic is busy right up to its edge.
+        public static let albumCaptionTop: CGFloat = normal
 
         /// How far the emoji under a message climb back onto it.
         ///
@@ -174,6 +180,8 @@ public enum Theme {
         /// thing and is not: SwiftUI's `duration` is the *response*, not the time to settle, so it
         /// was a spring more than half as slow again as Telegram's — and with less damping. The
         /// message drifted up into the menu where Telegram's snaps into it and lands.
+        /// The pill under the folder tabs sliding from one tab to the next — see `FolderTabs`.
+        public static let folderSwitches: Animation = .spring(duration: 0.35, bounce: 0.15)
         public static let menuOpens: Animation = .spring(response: 0.265, dampingFraction: 0.775)
 
         /// And the menu going away: no spring at all. Telegram puts a message back on a plain
