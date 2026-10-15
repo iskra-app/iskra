@@ -114,5 +114,21 @@
 				<string>%lld Sticker</string>
 		</dict>
 	</dict>
+	<key>poll.voters</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+				<key>one</key>
+				<string>%lld Stimme</string>
+				<key>other</key>
+				<string>%lld Stimmen</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

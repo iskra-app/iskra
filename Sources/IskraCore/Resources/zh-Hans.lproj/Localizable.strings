@@ -99,6 +99,8 @@
 /* Shown when pinning or unpinning was refused. */
 "timeline.pinFailed" = "没能修改置顶消息。您可能没有这个权限。";
 "timeline.reportFailed" = "举报没发出去。请再试一次。";
+"timeline.pollFailed" = "没成功，投票还是原样。请再试一次。";
+"timeline.pollEndedBody" = "投票已结束";
 
 /* The grey lines across a conversation: people coming and going, the room changing. */
 "roomEvent.joined" = "%@ 加入了聊天";

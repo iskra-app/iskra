@@ -27,6 +27,9 @@ struct MessageContent: View {
     /// actually scroll the conversation, so it is reported upward.
     let onOpenReply: (String) -> Void
 
+    /// Casts this account's answer to a poll — the whole new choice. See `PollBubble`.
+    var onVote: ([String]) -> Void = { _ in }
+
     @Environment(\.accent) private var accent
 
     /// The real opener, captured before the message text overrides `openURL` to intercept taps.
@@ -147,6 +150,9 @@ struct MessageContent: View {
             quoted {
                 LocationBubble(location: location, style: style)
             }
+
+        case let .poll(poll):
+            bubble { PollBubble(poll: poll, style: style, onVote: onVote) }
 
         case .unreadable:
             // Not an error the user caused, and not one they can fix. Say what

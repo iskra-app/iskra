@@ -99,6 +99,8 @@
 /* Shown when pinning or unpinning was refused. */
 "timeline.pinFailed" = "ピン留めしたメッセージを変更できませんでした。権限がないのかもしれません。";
 "timeline.reportFailed" = "報告を送れませんでした。もう一度お試しください。";
+"timeline.pollFailed" = "うまくいきませんでした。投票はそのままです。もう一度お試しください。";
+"timeline.pollEndedBody" = "投票は終了しました";
 
 /* The grey lines across a conversation: people coming and going, the room changing. */
 "roomEvent.joined" = "%@ がチャットに参加しました";

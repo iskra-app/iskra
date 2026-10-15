@@ -595,6 +595,11 @@ public enum Theme {
         public static let qrCode: CGFloat = 240
         /// A chat's face in the share sheet's grid — four to a row on a phone, Telegram's size.
         public static let shareFace: CGFloat = 60
+        /// How wide a poll's bubble is. Fixed, not hugging its words: the bars are a comparison,
+        /// and a bar is only comparable to another drawn against the same width.
+        public static let poll: CGFloat = 264
+        /// The thickness of a result bar under an answer.
+        public static let pollBar: CGFloat = 4
         /// Nothing tappable is ever smaller than this. Apple's floor, and ours.
         public static let minimumTapTarget: CGFloat = 44
 

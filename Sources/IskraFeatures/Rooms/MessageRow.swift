@@ -247,7 +247,8 @@ struct MessageRow: View {
         MessageContent(message: message,
                        style: style,
                        playingDiameter: playingDiameter,
-                       onOpenReply: handlers.onOpenReply)
+                       onOpenReply: handlers.onOpenReply,
+                       onVote: handlers.onVote)
             .uploadProgress(of: message, onCancel: handlers.onDiscard)
             // One of ours comes across from where it was typed — Telegram's send. See
             // `ComposerTravel`. On the bubble rather than the row, which spans the screen.

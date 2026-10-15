@@ -120,6 +120,8 @@ struct MessageComposer: View {
     var onChoosePhoto: () -> Void
     var onChooseFile: () -> Void
     var onChooseLocation: () -> Void = {}
+    /// Asking for the sheet that writes a poll. Nil leaves the item out.
+    var onCreatePoll: (() -> Void)?
 
     /// Asking for the sticker sheet — presented by the screen, like the pickers above. Nil leaves
     /// the button out: a room this account cannot post to has no use for it, and neither has a
@@ -196,6 +198,7 @@ struct MessageComposer: View {
          onChoosePhoto: @escaping () -> Void,
          onChooseFile: @escaping () -> Void,
          onChooseLocation: @escaping () -> Void = {},
+         onCreatePoll: (() -> Void)? = nil,
          onChooseSticker: (() -> Void)? = nil,
          attachments: [PendingAttachment] = [],
          onRemoveAttachment: @escaping (PendingAttachment) -> Void = { _ in },
@@ -223,6 +226,7 @@ struct MessageComposer: View {
         self.onChoosePhoto = onChoosePhoto
         self.onChooseFile = onChooseFile
         self.onChooseLocation = onChooseLocation
+        self.onCreatePoll = onCreatePoll
         self.onChooseSticker = onChooseSticker
         self.attachments = attachments
         self.onRemoveAttachment = onRemoveAttachment
@@ -1118,6 +1122,13 @@ struct MessageComposer: View {
                          label: Strings.Location.attach,
                          id: "location",
                          action: onChooseLocation)
+
+            if let onCreatePoll {
+                attachOption(systemImage: "chart.bar",
+                             label: Strings.Poll.attach,
+                             id: "poll",
+                             action: onCreatePoll)
+            }
 
             if canPasteImage {
                 attachOption(systemImage: "doc.on.clipboard",

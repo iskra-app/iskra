@@ -203,6 +203,9 @@ public enum CoreStrings {
         public static let pinFailed = LocalizedStringResource("timeline.pinFailed", bundle: bundle)
         /// A report that did not reach the moderators.
         public static let reportFailed = LocalizedStringResource("timeline.reportFailed", bundle: bundle)
+        public static let pollFailed = LocalizedStringResource("timeline.pollFailed", bundle: bundle)
+        /// The fallback text of an `m.poll.end`, for clients that do not understand polls.
+        public static let pollEndedBody = LocalizedStringResource("timeline.pollEndedBody", bundle: bundle)
 
         /// What a client that cannot draw a map shows instead of one. Coordinates, spelled out,
         /// because they are the one thing about a place that anybody can do something with —

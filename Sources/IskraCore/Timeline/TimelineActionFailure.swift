@@ -39,6 +39,9 @@ public enum TimelineActionFailure: String, CaseIterable, ActionFailure {
     /// know it did not go through, or they will assume it is being dealt with.
     case report
 
+    /// A vote that was not counted, or a poll that would not close. The poll itself is as it was.
+    case poll
+
     public var id: String { rawValue }
 
     public var explanation: LocalizedStringResource {
@@ -50,6 +53,7 @@ public enum TimelineActionFailure: String, CaseIterable, ActionFailure {
         case .delete: CoreStrings.Timeline.deleteFailed
         case .pin: CoreStrings.Timeline.pinFailed
         case .report: CoreStrings.Timeline.reportFailed
+        case .poll: CoreStrings.Timeline.pollFailed
         }
     }
 }

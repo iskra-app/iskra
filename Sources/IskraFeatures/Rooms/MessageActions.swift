@@ -69,6 +69,9 @@ struct MessageActions<Content: View>: View {
     /// other item in that menu can.
     @State private var isConfirmingDelete = false
 
+    /// Whether "End the poll?" is up. Closing a poll cannot be undone, so it asks, as deleting does.
+    @State private var isConfirmingEndPoll = false
+
     /// Whether the report form is up for this message.
     @State private var isReporting = false
 
@@ -208,6 +211,13 @@ struct MessageActions<Content: View>: View {
                 Button(String(app: Strings.Message.Menu.delete), role: .destructive, action: handlers.onDelete)
             } message: {
                 Text(Strings.Message.Menu.deleteConfirmMessage)
+            }
+            .confirmationDialog(Text(Strings.Poll.endConfirmTitle),
+                                isPresented: $isConfirmingEndPoll,
+                                titleVisibility: .visible) {
+                Button(String(app: Strings.Poll.end), role: .destructive, action: handlers.onEndPoll)
+            } message: {
+                Text(Strings.Poll.endConfirmMessage)
             }
             .sheet(isPresented: $isReporting) {
                 ReportSheet(onReport: handlers.onReport)
@@ -443,6 +453,14 @@ struct MessageActions<Content: View>: View {
             actions.append(MessageMenuAction(title: isPinned ? Strings.Message.Menu.unpin : Strings.Message.Menu.pin,
                                              systemImage: isPinned ? "pin.slash" : "pin",
                                              perform: handlers.onTogglePin))
+        }
+
+        // Only the sender may close a poll — the room ignores an end from anybody else — and only
+        // one the server has.
+        if message.canEndPoll && !isOffline {
+            actions.append(MessageMenuAction(title: Strings.Poll.end,
+                                             systemImage: "stop.circle",
+                                             perform: { isConfirmingEndPoll = true }))
         }
 
         return actions

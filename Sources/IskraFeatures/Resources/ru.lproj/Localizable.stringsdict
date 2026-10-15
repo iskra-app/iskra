@@ -142,5 +142,25 @@
 				<string>%lld стикера</string>
 		</dict>
 	</dict>
+	<key>poll.voters</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+				<key>one</key>
+				<string>%lld голос</string>
+				<key>few</key>
+				<string>%lld голоса</string>
+				<key>many</key>
+				<string>%lld голосов</string>
+				<key>other</key>
+				<string>%lld голоса</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

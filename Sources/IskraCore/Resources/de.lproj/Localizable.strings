@@ -99,6 +99,8 @@
 /* Shown when pinning or unpinning was refused. */
 "timeline.pinFailed" = "Die angehefteten Nachrichten konnten nicht geändert werden. Vielleicht haben Sie dazu keine Berechtigung.";
 "timeline.reportFailed" = "Die Meldung ist nicht rausgegangen. Versuchen Sie es noch einmal.";
+"timeline.pollFailed" = "Das hat nicht geklappt – die Umfrage ist unverändert. Versuchen Sie es noch einmal.";
+"timeline.pollEndedBody" = "Die Umfrage ist beendet";
 
 /* The grey lines across a conversation: people coming and going, the room changing. */
 "roomEvent.joined" = "%@ ist jetzt im Chat";

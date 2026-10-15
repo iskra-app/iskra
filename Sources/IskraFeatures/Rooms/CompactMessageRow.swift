@@ -163,7 +163,8 @@ struct CompactMessageRow: View {
             MessageContent(message: message,
                            style: .plain,
                            playingDiameter: playingDiameter,
-                           onOpenReply: handlers.onOpenReply)
+                           onOpenReply: handlers.onOpenReply,
+                       onVote: handlers.onVote)
                 .uploadProgress(of: message, onCancel: handlers.onDiscard)
 
             Spacer(minLength: 0)

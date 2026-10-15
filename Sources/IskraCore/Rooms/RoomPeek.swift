@@ -59,6 +59,7 @@ extension PreviewKind {
         case .audio: self = .audio
         case .file: self = .file
         case .location: self = .location
+        case .poll: self = .poll
         case .text, .emote, .notice, .unreadable, .deleted, .unsupported: return nil
         }
     }

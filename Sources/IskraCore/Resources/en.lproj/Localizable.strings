@@ -99,6 +99,8 @@
 /* Shown when pinning or unpinning was refused. */
 "timeline.pinFailed" = "The pinned messages couldn’t be changed. You may not be allowed to.";
 "timeline.reportFailed" = "The report didn’t go through. Try again.";
+"timeline.pollFailed" = "That didn’t work — the poll is as it was. Try again.";
+"timeline.pollEndedBody" = "The poll has ended";
 
 /* The grey lines across a conversation: people coming and going, the room changing. */
 "roomEvent.joined" = "%@ joined";
