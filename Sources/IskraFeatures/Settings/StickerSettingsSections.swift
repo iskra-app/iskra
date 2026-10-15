@@ -14,6 +14,7 @@ struct StickerSettingsSections: View {
 
     @AppStorage(StickerSettings.showsBuiltInKey) private var showsBuiltIn = true
     @AppStorage(StickerSettings.showsRoomPackKey) private var showsRoomPack = true
+    @AppStorage(StickerSettings.showsMineKey) private var showsMine = true
 
     private var columns: [GridItem] {
         [GridItem(.adaptive(minimum: Theme.Size.stickerCell), spacing: Theme.Spacing.close)]
@@ -24,6 +25,10 @@ struct StickerSettingsSections: View {
             Section {
                 Toggle(isOn: $showsBuiltIn) {
                     Label(Strings.Stickers.Settings.builtIn, systemImage: "sparkles")
+                }
+                .accentControl()
+                Toggle(isOn: $showsMine) {
+                    Label(Strings.Stickers.Settings.mine, systemImage: "person.crop.square")
                 }
                 .accentControl()
                 Toggle(isOn: $showsRoomPack) {

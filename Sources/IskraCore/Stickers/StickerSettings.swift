@@ -13,7 +13,10 @@ public enum StickerSettings {
     public static let showsRoomPackKey = "stickers.showsRoomPack"
 
     /// Every key, for `AppSettings.forget`.
-    public static let keys = [showsBuiltInKey, showsRoomPackKey]
+    /// The account's own pack, "Мои стикеры", in the sheet.
+    public static let showsMineKey = "stickers.showsMine"
+
+    public static let keys = [showsBuiltInKey, showsRoomPackKey, showsMineKey]
 
     public static func showsBuiltIn(_ defaults: UserDefaults = .standard) -> Bool {
         defaults.object(forKey: showsBuiltInKey) as? Bool ?? true
@@ -21,5 +24,15 @@ public enum StickerSettings {
 
     public static func showsRoomPack(_ defaults: UserDefaults = .standard) -> Bool {
         defaults.object(forKey: showsRoomPackKey) as? Bool ?? true
+    }
+
+    public static func showsMine(_ defaults: UserDefaults = .standard) -> Bool {
+        defaults.object(forKey: showsMineKey) as? Bool ?? true
+    }
+
+    /// Whether the sheet would show anything at all. With every source turned off the button that
+    /// opens it is not drawn — a button onto an empty sheet is a button that does nothing.
+    public static func showsAnything(_ defaults: UserDefaults = .standard) -> Bool {
+        showsBuiltIn(defaults) || showsRoomPack(defaults) || showsMine(defaults)
     }
 }

@@ -1244,7 +1244,7 @@
 "accounts.signOutTitle" = "%@ からサインアウトしますか？";
 "accounts.signOutMessage" = "このアカウントのチャットはこのデバイスから削除されます。暗号化されたメッセージをもう一度読むには、復元キーかほかのデバイスが必要です。";
 "stickers.subscribe" = "追加";
-"stickers.settings.sheetSection" = "表示するもの";
+"stickers.settings.sheetSection" = "ステッカーの表示";
 "stickers.settings.builtIn" = "スパークス";
 "stickers.settings.roomPacks" = "チャットのステッカー";
 "stickers.settings.roomPacksHelp" = "チャットに独自のステッカーがあれば、そのチャットにいる間は表示されます。上の「追加」をタップすると、すべてのチャットで使えます。";
@@ -1371,3 +1371,5 @@
 "chats.namesAccountHelp" = "通知のタイトルに、どのアカウント宛てかが表示されます。";
 
 "poll.retract" = "投票を取り消す";
+
+"stickers.settings.mine" = "マイステッカー";

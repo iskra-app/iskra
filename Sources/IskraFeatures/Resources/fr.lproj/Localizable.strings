@@ -1244,7 +1244,7 @@
 "accounts.signOutTitle" = "Se déconnecter de %@ ?";
 "accounts.signOutMessage" = "Les discussions de ce compte seront supprimées de cet appareil. Pour relire les messages chiffrés, il vous faudra votre clé de récupération ou un autre de vos appareils.";
 "stickers.subscribe" = "Ajouter";
-"stickers.settings.sheetSection" = "Ce qui s’affiche";
+"stickers.settings.sheetSection" = "Affichage des stickers";
 "stickers.settings.builtIn" = "Étincelles";
 "stickers.settings.roomPacks" = "Packs des discussions";
 "stickers.settings.roomPacksHelp" = "Si une discussion a son propre pack, vous le voyez tant que vous êtes dans cette discussion. Touchez « Ajouter » au-dessus pour l’avoir dans toutes les discussions.";
@@ -1371,3 +1371,5 @@
 "chats.namesAccountHelp" = "Le titre de la notification indique sur lequel de vos comptes elle est arrivée.";
 
 "poll.retract" = "Retirer le vote";
+
+"stickers.settings.mine" = "Mes stickers";

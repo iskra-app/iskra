@@ -1244,7 +1244,7 @@
 "accounts.signOutTitle" = "¿Cerrar sesión de %@?";
 "accounts.signOutMessage" = "Los chats de esta cuenta se borrarán de este dispositivo. Para volver a leer los mensajes cifrados, necesitará su clave de recuperación u otro de sus dispositivos.";
 "stickers.subscribe" = "Añadir";
-"stickers.settings.sheetSection" = "Qué mostrar";
+"stickers.settings.sheetSection" = "Visualización de stickers";
 "stickers.settings.builtIn" = "Chispitas";
 "stickers.settings.roomPacks" = "Paquetes de chats";
 "stickers.settings.roomPacksHelp" = "Si un chat tiene su propio paquete, lo verá mientras esté en ese chat. Pulse «Añadir» encima y lo tendrá en todos los chats.";
@@ -1371,3 +1371,5 @@
 "chats.namesAccountHelp" = "El título de la notificación indica a cuál de sus cuentas llegó.";
 
 "poll.retract" = "Retirar voto";
+
+"stickers.settings.mine" = "Mis stickers";

@@ -1244,7 +1244,7 @@
 "accounts.signOutTitle" = "Von %@ abmelden?";
 "accounts.signOutMessage" = "Die Chats dieses Kontos werden von diesem Gerät entfernt. Um verschlüsselte Nachrichten wieder zu lesen, brauchen Sie Ihren Wiederherstellungsschlüssel oder ein anderes Ihrer Geräte.";
 "stickers.subscribe" = "Hinzufügen";
-"stickers.settings.sheetSection" = "Was angezeigt wird";
+"stickers.settings.sheetSection" = "Sticker-Anzeige";
 "stickers.settings.builtIn" = "Fünkchen";
 "stickers.settings.roomPacks" = "Chat-Sets";
 "stickers.settings.roomPacksHelp" = "Hat ein Chat ein eigenes Set, sehen Sie es, solange Sie in diesem Chat sind. Tippen Sie darüber auf „Hinzufügen“, dann haben Sie es in jedem Chat.";
@@ -1371,3 +1371,5 @@
 "chats.namesAccountHelp" = "Im Titel der Mitteilung steht, an welches Ihrer Konten sie ging.";
 
 "poll.retract" = "Stimme zurückziehen";
+
+"stickers.settings.mine" = "Meine Sticker";
