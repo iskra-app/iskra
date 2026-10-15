@@ -1011,9 +1011,17 @@ public final class RoomListStore {
         var activity: Date?
         var kind: PreviewKind?
         var mark: LastMessageMark?
+        var sender: String?
 
         switch await room.latestEvent() {
-        case let .remote(timestamp, _, isOwn, _, content):
+        case let .remote(timestamp, senderID, isOwn, profile, content):
+            if !isOwn {
+                if case let .ready(displayName, _, _) = profile, let displayName, !displayName.isEmpty {
+                    sender = displayName
+                } else {
+                    sender = senderID
+                }
+            }
             preview = MessagePreview.text(for: content)
             kind = MessagePreview.kind(for: content)
             let date = MessagePreview.date(from: timestamp)
@@ -1045,6 +1053,7 @@ public final class RoomListStore {
             kind = line.kind
             mark = line.mark
             activity = line.date
+            sender = line.sender
         }
 
         if drafts[info.id] == nil {
@@ -1062,6 +1071,7 @@ public final class RoomListStore {
                                   lastMessageMark: mark,
                                   isMuted: mutedRoomIDs.contains(info.id))
         summary?.draft = drafts[info.id] ?? nil
+        summary?.lastSender = sender
         return summary
     }
 

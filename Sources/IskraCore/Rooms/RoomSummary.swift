@@ -103,6 +103,10 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
     /// What you started writing here and did not send. Shown in place of the last message —
     /// "Draft: …", as every messenger does — because it is the thing you came back for.
     public var draft: String?
+    /// Who wrote the last message, when it was somebody else — what a group's row puts on a line
+    /// of its own over the words, as Telegram does: in a group "приду в семь" says nothing without
+    /// whose it is. Nil for your own, and for a grey line, which names its people already.
+    public var lastSender: String?
 
     /// A space, not a chat. The list shows it as an ordinary row — a square-cornered avatar and
     /// a tap that opens the space's rooms rather than a conversation — so what tells the two
