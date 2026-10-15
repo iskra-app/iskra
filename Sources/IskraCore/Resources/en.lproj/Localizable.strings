@@ -210,3 +210,5 @@
 /* Live location */
 "liveLocation.startFailed" = "Live location couldn’t be started. Try again.";
 "liveLocation.denied" = "Iskra isn’t allowed to use your location. You can allow it in Settings.";
+
+"liveLocation.stopFailed" = "No more points are being sent, but the server didn’t hear it stop — others may see it as live until it runs out.";

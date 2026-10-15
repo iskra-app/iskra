@@ -75,6 +75,7 @@ public enum CoreStrings {
     public enum LiveLocation {
         public static let startFailed = LocalizedStringResource("liveLocation.startFailed", bundle: bundle)
         public static let denied = LocalizedStringResource("liveLocation.denied", bundle: bundle)
+        public static let stopFailed = LocalizedStringResource("liveLocation.stopFailed", bundle: bundle)
     }
 
     public enum Folders {

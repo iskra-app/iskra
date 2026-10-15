@@ -210,3 +210,5 @@
 /* Live location */
 "liveLocation.startFailed" = "没能开始实时共享位置。请再试一次。";
 "liveLocation.denied" = "Iskra 无权使用您的位置。可以在“设置”中允许。";
+
+"liveLocation.stopFailed" = "已不再发送位置，但服务器没有收到停止通知——在到期前，其他人可能仍会看到它在实时共享。";
