@@ -709,9 +709,10 @@
 "room.manage.openToAnyone" = "Открытый чат";
 "room.manage.openToAnyoneHelp" = "Войти сможет любой, кто найдёт чат. Иначе — только по приглашению.";
 "room.manage.invite" = "Пригласить";
-"room.manage.inviteTitle" = "Кого пригласить?";
-"room.manage.inviteHelp" = "Адрес в Matrix выглядит как @имя:сервер.";
-"room.manage.invitePlaceholder" = "@имя:сервер";
+"room.invite.inviteCount" = "Пригласить (%lld)";
+"room.invite.chosen" = "Выбранные";
+"room.invite.alreadyHere" = "Уже в комнате";
+"room.invite.byAddress" = "Пригласить по этому адресу";
 "room.manage.role" = "Роль";
 "room.manage.roleHeader" = "Что может в чате";
 "room.manage.member" = "Участник";

@@ -110,8 +110,27 @@ enum TimelineMapper {
 
         // The bar first, then the empty days: a date whose only row was an unearned bar is a date
         // over nothing, and the second pass is the one that knows what to do about that.
-        return withoutEmptyDays(withUnreadDividerIfEarned(
+        var finished = withoutEmptyDays(withUnreadDividerIfEarned(
             withReadPropagated(rows, readUpTo: readPrefix, at: readPrefixAt)))
+        markRunEnds(&finished)
+        return finished
+    }
+
+    /// Marks every message that has a continuation directly under it — see `Message.isContinued`.
+    ///
+    /// Done over the *finished* rows, after the passes that drop an unearned bar or an empty day,
+    /// because what decides it is the row that really ends up below. And done again by whoever
+    /// appends more rows — `TimelineStore`, with the messages still on their way — since a line
+    /// sent under our own last message moves our face down onto it.
+    static func markRunEnds(_ rows: inout [TimelineRow]) {
+        for index in rows.indices {
+            guard case var .message(message) = rows[index] else { continue }
+            let next = rows.index(after: index)
+            let continued = next < rows.endIndex && rows[next].message?.isContinuation == true
+            guard message.isContinued != continued else { continue }
+            message.isContinued = continued
+            rows[index] = .message(message)
+        }
     }
 
     /// Keeps the "Unread messages" bar only where there is something unread under it.

@@ -1994,6 +1994,7 @@ public final class TimelineStore {
             // the row rather than replace it. See `viewIdentity(of:)`.
             adopted.merge(pending.pruneEchoed(in: built)) { _, new in new }
             built.append(contentsOf: pendingRows(after: built))
+            TimelineMapper.markRunEnds(&built)
         }
 
         // Only for as long as the message it belongs to is on the screen. A conversation

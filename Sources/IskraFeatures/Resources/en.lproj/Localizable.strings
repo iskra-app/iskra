@@ -712,9 +712,10 @@
 "room.manage.openToAnyone" = "Open chat";
 "room.manage.openToAnyoneHelp" = "Anyone who finds this chat can join it. Otherwise, by invitation only.";
 "room.manage.invite" = "Invite";
-"room.manage.inviteTitle" = "Who should join?";
-"room.manage.inviteHelp" = "A Matrix address looks like @name:server.";
-"room.manage.invitePlaceholder" = "@name:server";
+"room.invite.inviteCount" = "Invite (%lld)";
+"room.invite.chosen" = "Chosen";
+"room.invite.alreadyHere" = "Already here";
+"room.invite.byAddress" = "Invite by this address";
 "room.manage.role" = "Role";
 "room.manage.roleHeader" = "What they can do";
 "room.manage.member" = "Member";

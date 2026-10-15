@@ -119,7 +119,9 @@ public struct ShareSendBar: View {
                     if isSending {
                         ProgressView().tint(accent.foreground(in: colorScheme))
                     } else {
-                        Image(systemName: "paperplane.fill")
+                        // The composer's arrow, not a paper plane: it is the same act — this goes
+                        // out now — and one app should not have two pictures for it.
+                        Image(systemName: "arrow.up")
                     }
                     if count > 1 {
                         Text(verbatim: "\(count)")
@@ -129,9 +131,11 @@ public struct ShareSendBar: View {
                 }
                 .font(.body.weight(.semibold))
                 .foregroundStyle(accent.foreground(in: colorScheme))
-                .padding(.horizontal, Theme.Spacing.roomy)
+                // A circle, as in the composer, while it is going to one chat; a capsule once it
+                // has a number to carry beside the arrow.
+                .padding(.horizontal, count > 1 ? Theme.Spacing.roomy : 0)
                 .frame(minWidth: Theme.Size.minimumTapTarget, minHeight: Theme.Size.minimumTapTarget)
-                .primaryActionGlass(tint: accent.color)
+                .primaryActionGlass(tint: accent.color, in: .capsule)
                 .accessibilityLabel(Text(verbatim: sendLabel))
             }
             .buttonStyle(.plain)

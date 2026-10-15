@@ -712,9 +712,10 @@
 "room.manage.openToAnyone" = "Discussion ouverte";
 "room.manage.openToAnyoneHelp" = "Toute personne qui trouve cette discussion peut la rejoindre. Sinon, uniquement sur invitation.";
 "room.manage.invite" = "Inviter";
-"room.manage.inviteTitle" = "Qui inviter ?";
-"room.manage.inviteHelp" = "Une adresse Matrix ressemble à @nom:serveur.";
-"room.manage.invitePlaceholder" = "@nom:serveur";
+"room.invite.inviteCount" = "Inviter (%lld)";
+"room.invite.chosen" = "Choisis";
+"room.invite.alreadyHere" = "Déjà là";
+"room.invite.byAddress" = "Inviter à cette adresse";
 "room.manage.role" = "Rôle";
 "room.manage.roleHeader" = "Ce que cette personne peut faire";
 "room.manage.member" = "Membre";

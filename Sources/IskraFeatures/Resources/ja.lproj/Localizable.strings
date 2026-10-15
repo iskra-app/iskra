@@ -712,9 +712,10 @@
 "room.manage.openToAnyone" = "オープンなチャット";
 "room.manage.openToAnyoneHelp" = "このチャットを見つけた人は誰でも参加できます。オフなら招待制です。";
 "room.manage.invite" = "招待";
-"room.manage.inviteTitle" = "誰を招待しますか？";
-"room.manage.inviteHelp" = "Matrix のアドレスは @名前:サーバー の形式です。";
-"room.manage.invitePlaceholder" = "@名前:サーバー";
+"room.invite.inviteCount" = "招待（%lld）";
+"room.invite.chosen" = "選択済み";
+"room.invite.alreadyHere" = "参加済み";
+"room.invite.byAddress" = "このアドレスで招待";
 "room.manage.role" = "役割";
 "room.manage.roleHeader" = "できること";
 "room.manage.member" = "メンバー";
