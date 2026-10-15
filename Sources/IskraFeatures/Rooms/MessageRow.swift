@@ -15,6 +15,9 @@ struct MessageRow: View {
     /// where each one is explained.
     var handlers = MessageHandlers()
 
+    /// The "who reacted" list a held pill has opened — see `ReactionPill.onShowReactors`.
+    @State private var reactorsRequest: ReactorsRequest?
+
     /// Whether this message is currently pinned, which is the whole of what the menu item
     /// needs to know to say the right word.
     var isPinned: Bool = false
@@ -266,7 +269,10 @@ struct MessageRow: View {
         FlowLayout(spacing: Theme.Spacing.tight,
                    alignment: message.isOwn ? .trailing : .leading) {
             ForEach(message.reactions) { reaction in
-                ReactionPill(reaction: reaction) {
+                ReactionPill(reaction: reaction,
+                             onShowReactors: handlers.loadReactors == nil ? nil : {
+                                 reactorsRequest = ReactorsRequest(filter: reaction.key)
+                             }) {
                     handlers.onToggleReaction(reaction.key)
                 }
                 // Each pill grows from nothing rather than fading in on the spot, so an
@@ -280,6 +286,7 @@ struct MessageRow: View {
         // Drawn after the bubble and therefore over it — which is the whole point, and is
         // only true because this comes second in the stack.
         .zIndex(1)
+        .reactorsSheet($reactorsRequest, reactions: message.reactions, load: handlers.loadReactors)
     }
 
     /// Two different things, added together, and worth keeping apart in the head.
@@ -371,12 +378,38 @@ struct MessageRow: View {
 /// the navigation layer — see `IskraDesign/Glass.swift`.
 struct ReactionPill: View {
     let reaction: MessageReaction
+    /// Who left it, and who else left what — a hold on the pill, as in Signal. Nil where nobody can
+    /// be asked (`MessageHandlers.loadReactors`), and then a hold does nothing.
+    var onShowReactors: (() -> Void)?
     let onToggle: () -> Void
 
     @Environment(\.accent) private var accent
 
+    /// A tap and a hold, and not a `Button`: a button takes the whole touch for itself, and a hold
+    /// on one ends in its action as soon as the finger lifts — the reaction toggled under the list
+    /// that was opened to look at it.
     var body: some View {
-        Button(action: onToggle) {
+        pill
+            .onTapGesture(perform: onToggle)
+            .onLongPressGesture {
+                guard let onShowReactors else { return }
+                holds += 1
+                onShowReactors()
+            }
+            .sensoryFeedback(.impact(weight: .medium), trigger: holds)
+            .accessibilityAction(.default, onToggle)
+            .accessibilityActions {
+                if let onShowReactors {
+                    Button(action: onShowReactors) { Text(Strings.Message.Menu.reactors(reaction.count)) }
+                }
+            }
+    }
+
+    /// Counts holds that opened the list, only so the phone can answer each one.
+    @State private var holds = 0
+
+    private var pill: some View {
+        Group {
             HStack(spacing: Theme.Spacing.tight) {
                 Text(reaction.key)
                     .font(.caption)
@@ -404,7 +437,7 @@ struct ReactionPill: View {
             }
             .contentShape(.capsule)
         }
-        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(Strings.Message.Menu.reaction(reaction.key, reaction.count)))
         // What pressing it will do, which is the one thing the pill's appearance cannot
         // say out loud.

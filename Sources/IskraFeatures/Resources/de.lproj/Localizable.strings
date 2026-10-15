@@ -66,6 +66,7 @@
 "room.attach" = "Foto oder Datei hinzufügen";
 
 "room.composerPlaceholder" = "Nachricht";
+"room.mentionSuggestions" = "Wen erwähnen";
 
 /* The banner shown in place of the composer when posting is not allowed. */
 "room.readOnly" = "In diesem Chat können Sie keine Nachrichten senden";
@@ -94,6 +95,7 @@
 
 /* Accessibility label for the pin icon on a pinned chat. */
 "roomList.pinned" = "Angehefteter Chat";
+"roomList.draft" = "Entwurf: %@";
 "roomList.hasUnread" = "Ungelesen";
 
 "roomList.searchPrompt" = "Nachrichten durchsuchen";
@@ -1169,7 +1171,7 @@
 "devices.newSignInNo" = "Das war ich nicht";
 
 /* Who reacted: the "everybody" tab. */
-"message.menu.reactorsAll" = "Alle %lld";
+"message.menu.reactorsAll" = "Alle · %lld";
 
 /* Media viewer: the counter and video skipping. */
 "message.media.counter" = "%lld von %lld";

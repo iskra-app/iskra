@@ -66,6 +66,7 @@
 "room.attach" = "写真やファイルを追加";
 
 "room.composerPlaceholder" = "メッセージ";
+"room.mentionSuggestions" = "メンションする相手";
 
 /* The banner shown in place of the composer when posting is not allowed. */
 "room.readOnly" = "このチャットにはメッセージを送れません";
@@ -94,6 +95,7 @@
 
 /* Accessibility label for the pin icon on a pinned chat. */
 "roomList.pinned" = "ピン留めしたチャット";
+"roomList.draft" = "下書き：%@";
 "roomList.hasUnread" = "未読あり";
 
 "roomList.searchPrompt" = "メッセージを検索";
@@ -1169,7 +1171,7 @@
 "devices.newSignInNo" = "自分ではありません";
 
 /* Who reacted: the "everybody" tab. */
-"message.menu.reactorsAll" = "すべて %lld";
+"message.menu.reactorsAll" = "すべて · %lld";
 
 /* Media viewer: the counter and video skipping. */
 "message.media.counter" = "%lld / %lld";

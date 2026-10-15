@@ -66,6 +66,7 @@
 "room.attach" = "添加照片或文件";
 
 "room.composerPlaceholder" = "消息";
+"room.mentionSuggestions" = "要提及的人";
 
 /* The banner shown in place of the composer when posting is not allowed. */
 "room.readOnly" = "您不能在这个聊天中发消息";
@@ -94,6 +95,7 @@
 
 /* Accessibility label for the pin icon on a pinned chat. */
 "roomList.pinned" = "已置顶的聊天";
+"roomList.draft" = "草稿：%@";
 "roomList.hasUnread" = "有未读";
 
 "roomList.searchPrompt" = "搜索消息";
@@ -1169,7 +1171,7 @@
 "devices.newSignInNo" = "不是我";
 
 /* Who reacted: the "everybody" tab. */
-"message.menu.reactorsAll" = "全部 %lld";
+"message.menu.reactorsAll" = "全部 · %lld";
 
 /* Media viewer: the counter and video skipping. */
 "message.media.counter" = "%lld / %lld";

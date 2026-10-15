@@ -66,6 +66,7 @@
 "room.attach" = "Добавить фото или файл";
 
 "room.composerPlaceholder" = "Сообщение";
+"room.mentionSuggestions" = "Кого упомянуть";
 
 /* Плашка вместо поля ввода, когда в чат нельзя писать. */
 "room.readOnly" = "В этот чат нельзя отправлять сообщения";
@@ -94,6 +95,7 @@
 
 /* Accessibility label for the pin icon on a pinned chat. */
 "roomList.pinned" = "Закреплённый чат";
+"roomList.draft" = "Черновик: %@";
 "roomList.hasUnread" = "Есть непрочитанные";
 
 "roomList.searchPrompt" = "Поиск по сообщениям";
@@ -1165,7 +1167,7 @@
 "devices.newSignInNo" = "Это не я";
 
 /* Кто поставил реакции: вкладка «все». */
-"message.menu.reactorsAll" = "Все %lld";
+"message.menu.reactorsAll" = "Все · %lld";
 
 /* Просмотрщик медиа: счётчик и перемотка видео. */
 "message.media.counter" = "%lld из %lld";

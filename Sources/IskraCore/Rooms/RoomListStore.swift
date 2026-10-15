@@ -1047,13 +1047,22 @@ public final class RoomListStore {
             activity = line.date
         }
 
-        return RoomSummary(info: info,
-                           ownUserID: ownUserID,
-                           lastMessage: preview,
-                           lastActivity: activity,
-                           lastMessageKind: kind,
-                           lastMessageMark: mark,
-                           isMuted: mutedRoomIDs.contains(info.id))
+        if drafts[info.id] == nil {
+            let saved = (try? await room.loadComposerDraft(threadRoot: nil))?.plainText
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            // A draft noted while the store was being read is newer than what the store said.
+            if drafts[info.id] == nil { drafts[info.id] = .some(saved?.isEmpty == false ? saved : nil) }
+        }
+
+        var summary = RoomSummary(info: info,
+                                  ownUserID: ownUserID,
+                                  lastMessage: preview,
+                                  lastActivity: activity,
+                                  lastMessageKind: kind,
+                                  lastMessageMark: mark,
+                                  isMuted: mutedRoomIDs.contains(info.id))
+        summary?.draft = drafts[info.id] ?? nil
+        return summary
     }
 
     // MARK: - Peeks
@@ -1151,6 +1160,18 @@ public final class RoomListStore {
     private var readUpTo: [String: Date] = [:]
 
     /// A chat saw your messages read up to `date`. The row is rebuilt if that is news.
+    /// A chat's draft was saved or cleared — see `RoomSummary.draft`.
+    public func noteDraft(roomID: String, text: String?) {
+        guard drafts[roomID] != .some(text) else { return }
+        drafts[roomID] = .some(text)
+        scheduleRebuild(only: [roomID])
+    }
+
+    /// Each chat's unsent words, read from the SDK's store the first time its row is built and then
+    /// kept up to date by `noteDraft`. `.some(nil)` is "asked, and there is none" — so a list of a
+    /// few hundred chats asks the store once each, not once per rebuild.
+    private var drafts: [String: String?] = [:]
+
     public func noteRead(roomID: String, upTo date: Date) {
         guard readUpTo[roomID].map({ date > $0 }) ?? true else { return }
         readUpTo[roomID] = date

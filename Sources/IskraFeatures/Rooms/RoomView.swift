@@ -7,6 +7,8 @@ import IskraDesign
 public struct RoomView: View {
     @State private var timeline: TimelineStore
     @State private var draft = ""
+    /// Who the draft's `@Name`s are — see `ComposerMention`.
+    @State private var draftMentions: [ComposerMention] = []
     /// Recording a round video message.
     ///
     /// The recorder lives here and not in the sheet that shows the camera, because the gesture
@@ -1725,7 +1727,9 @@ public struct RoomView: View {
                         onChooseSticker: stickers == nil ? nil : { isChoosingSticker = true },
                         attachments: attachments,
                         onRemoveAttachment: { image in attachments.removeAll { $0.id == image.id } },
-                        onPasteImage: { Task { await pasteImages() } })
+                        onPasteImage: { Task { await pasteImages() } },
+                        mentions: $draftMentions,
+                        loadMentionCandidates: timeline.isOneToOne ? nil : { await timeline.mentionCandidates() })
     }
 
     /// What the room looks like while a picture is held over it: an outline, and a sentence saying
@@ -2290,7 +2294,9 @@ public struct RoomView: View {
     private func startEditing(_ message: Message) {
         guard let text = message.editableText else { return }
         composerContext = .editing(message)
-        draft = text
+        let (words, mentions) = ComposerMentions.unlinked(text)
+        draft = words
+        draftMentions = mentions
     }
 
     /// Backs out of a reply or an edit.
@@ -2301,7 +2307,10 @@ public struct RoomView: View {
     /// message you were editing sitting in the composer, ready to be sent again as a new one.
     /// An abandoned reply keeps the draft, because every word in it is the user's own.
     private func cancelContext() {
-        if case .editing = composerContext { draft = "" }
+        if case .editing = composerContext {
+            draft = ""
+            draftMentions = []
+        }
         composerContext = nil
     }
 
@@ -2332,6 +2341,7 @@ public struct RoomView: View {
     /// have to stand guard over it.
     private func send() {
         let text = draft
+        let mentions = draftMentions
         let context = composerContext
 
         // An empty edit is the one thing the send button refuses — it disables itself, because a
@@ -2350,6 +2360,7 @@ public struct RoomView: View {
         guard hasText || !images.isEmpty || context?.isEditing == true else { return }
 
         draft = ""
+        draftMentions = []
         composerContext = nil
         if !images.isEmpty { attachments = [] }
 
@@ -2371,15 +2382,15 @@ public struct RoomView: View {
 
             switch context {
             case let .editing(message):
-                await timeline.edit(messageID: message.id, text: text)
+                await timeline.edit(messageID: message.id, text: text, mentions: mentions)
             case .replying:
                 if let replyingTo {
-                    await timeline.send(text: text, replyingTo: replyingTo)
+                    await timeline.send(text: text, replyingTo: replyingTo, mentions: mentions)
                 } else {
-                    await timeline.send(text: text)
+                    await timeline.send(text: text, mentions: mentions)
                 }
             case nil:
-                await timeline.send(text: text)
+                await timeline.send(text: text, mentions: mentions)
             }
 
             // The words have gone; there is nothing left to come back to. Without this the room

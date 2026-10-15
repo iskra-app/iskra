@@ -33,6 +33,9 @@ struct CompactMessageRow: View {
     /// Everything the row can ask the conversation to do — see `MessageHandlers`.
     var handlers = MessageHandlers()
 
+    /// The "who reacted" list a held pill has opened — see `ReactionPill.onShowReactors`.
+    @State private var reactorsRequest: ReactorsRequest?
+
     /// Whether this message is currently pinned, which is the whole of what the menu item
     /// needs to know to say the right word.
     var isPinned: Bool = false
@@ -212,12 +215,16 @@ struct CompactMessageRow: View {
     private var reactions: some View {
         FlowLayout(spacing: Theme.Spacing.tight, alignment: .leading) {
             ForEach(message.reactions) { reaction in
-                ReactionPill(reaction: reaction) {
+                ReactionPill(reaction: reaction,
+                             onShowReactors: handlers.loadReactors == nil ? nil : {
+                                 reactorsRequest = ReactorsRequest(filter: reaction.key)
+                             }) {
                     handlers.onToggleReaction(reaction.key)
                 }
                 .transition(.scale(scale: 0.3).combined(with: .opacity))
             }
         }
+        .reactorsSheet($reactorsRequest, reactions: message.reactions, load: handlers.loadReactors)
     }
 
     /// How big a video note goes while it plays.
