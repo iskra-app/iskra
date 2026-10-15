@@ -345,6 +345,16 @@ struct DemoBackendTests {
         // And the screen that made the change kept showing it — it was not put back by a stale read.
         #expect(details.rules?.role(for: .ban) == target, "before: \(before), now: \(String(describing: details.rules?.levels[.ban]))")
         #expect(kept, "ban: \(String(describing: again.rules?.levels[.ban]))")
+
+        // Somebody appointed shows among the staff on the same screen, without reopening it.
+        if let member = details.members.first(where: { $0.role == .member && details.assignableRoles(for: $0).contains(.moderator) }) {
+            await details.setRole(.moderator, for: member)
+            #expect(details.failure == nil)
+            #expect(details.staff.contains { $0.id == member.id })
+            #expect(await eventually { details.staff.contains { $0.id == member.id && $0.role == .moderator } })
+        } else {
+            Issue.record("nobody in the room to appoint")
+        }
         #expect(await MockHomeserver.shared.unrecognized.isEmpty)
     }
 
