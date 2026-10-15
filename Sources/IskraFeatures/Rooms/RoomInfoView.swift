@@ -380,6 +380,9 @@ struct RoomInfoView: View {
             || details.permissions.canChangePicture
             || details.permissions.canChangeVisibility
             || details.permissions.canChangeRoles
+            || details.permissions.canChangeHistory
+            || details.permissions.canChangeAddress
+            || (details.permissions.canBan && !details.banned.isEmpty)
     }
 
     /// Whether the pencil needs the network to be worth pressing.

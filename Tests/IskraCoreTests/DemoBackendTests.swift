@@ -339,6 +339,61 @@ struct DemoBackendTests {
         #expect(await MockHomeserver.shared.unrecognized.isEmpty)
     }
 
+    @Test("blocked, let back, history changed, an address given and listed")
+    func roomAccess() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(component: "iskra-access-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let client = try await DemoBackend.makeClient(data: root.appending(component: "data"),
+                                                      cache: root.appending(component: "cache"),
+                                                      search: root.appending(component: "search"))
+        let session = UserSession(client: client, authentication: AuthenticationService(), sessionID: "demo", isDemo: true)
+        try await session.start()
+        defer { Task { await session.close() } }
+        let devID = "!iskra-dev:iskra.demo"
+        _ = await eventually { session.roomList.rooms.contains { $0.id == devID } }
+
+        let details = try #require(session.details(forRoomID: devID))
+        await details.load()
+        defer { details.stop() }
+        _ = await eventually { details.permissions.canBan && !details.members.isEmpty }
+        #expect(details.permissions.canChangeHistory)
+        #expect(details.permissions.canChangeAddress)
+
+        // Blocked, and found on the list of the blocked.
+        let target = try #require(details.members.first { details.canManage($0) })
+        await details.ban(target)
+        #expect(details.failure == nil)
+        #expect(await eventually { details.banned.contains { $0.id == target.id } })
+        #expect(!details.members.contains { $0.id == target.id })
+
+        // Let back: off the list, and not brought in.
+        await details.unban(target)
+        #expect(details.failure == nil)
+        #expect(await eventually { !details.banned.contains { $0.id == target.id } })
+
+        // Who may read the past — kept by the room, not just by the screen.
+        let history: HistoryAccess = details.history == .joined ? .invited : .joined
+        await details.setHistory(history)
+        #expect(details.failure == nil)
+        #expect(await eventually { details.history == history })
+
+        // An address, written however it was typed.
+        await details.setAddress("#Iskra Dev:elsewhere.org")
+        #expect(details.failure == nil)
+        #expect(details.canonicalAlias == "#iskra-dev:iskra.demo")
+        #expect(await MockHomeserver.shared.aliases["#iskra-dev:iskra.demo"] == devID)
+
+        // And in the server's list.
+        await details.loadDirectory()
+        await details.setInDirectory(true)
+        #expect(details.failure == nil)
+        await details.loadDirectory()
+        #expect(details.isInDirectory == true)
+
+        #expect(await MockHomeserver.shared.unrecognized.isEmpty)
+    }
+
     @Test("stickers: packs are read, one is sent, and one somebody sent is added")
     func stickers() async throws {
         let root = FileManager.default.temporaryDirectory.appending(component: "iskra-stickers-\(UUID().uuidString)")

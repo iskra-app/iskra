@@ -196,3 +196,10 @@
 "stickers.subscribeFailed" = "No se ha podido añadir el paquete. Inténtelo de nuevo.";
 "stickers.unsubscribeFailed" = "No se ha podido quitar el paquete. Inténtelo de nuevo.";
 "stickers.clearRecentFailed" = "No se han podido borrar los recientes. Inténtelo de nuevo.";
+
+/* Room settings: unban, history, address (stage 9) */
+"roomAction.unbanFailed" = "No se ha podido desbloquear. Esta persona sigue sin poder entrar.";
+"roomAction.historyFailed" = "No se ha podido cambiar quién ve el historial. Sigue como estaba.";
+"roomAction.addressFailed" = "No se ha podido cambiar la dirección. Inténtelo de nuevo.";
+"roomAction.addressTaken" = "Esa dirección ya está ocupada. Pruebe con otra.";
+"roomAction.directoryFailed" = "No se ha podido cambiar si la sala aparece en el directorio del servidor.";
