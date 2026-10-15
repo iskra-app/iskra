@@ -151,6 +151,10 @@ public final class TimelineStore {
     /// Told when your newest read message changes — the chat list's read mark comes from here,
     /// since the room list holds no receipts. See `RoomListStore.noteRead`.
     @ObservationIgnored var onOwnMessagesRead: ((Date) -> Void)?
+
+    /// Told when this room's draft is saved or cleared — the chat list's "Draft:" line comes from
+    /// here, because nothing in the room list's own feed changes when a draft does. Nil for none.
+    @ObservationIgnored var onDraftChanged: ((String?) -> Void)?
     @ObservationIgnored private var reportedReadUpTo: Date?
 
     /// The SDK timeline, for the media-sending extension in `TimelineStore+Media`.
@@ -819,7 +823,9 @@ public final class TimelineStore {
     /// is sent as an ordinary message rather than refused — the user wrote words and pressed
     /// send, and swallowing them to protect a quote would be the app losing their message over
     /// a decoration.
-    public func send(text: String, replyingTo replyID: String? = nil) async {
+    ///
+    /// `mentions` are the people picked from the composer's "@" list — see `ComposerMentions`.
+    public func send(text: String, replyingTo replyID: String? = nil, mentions: [ComposerMention] = []) async {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         // An empty box is nothing to send and nothing to report. A room with no timeline is a
         // *failure* to send, and the user pressed the button — see `TimelineStore+Media`, where the
@@ -858,7 +864,7 @@ public final class TimelineStore {
         stopTellingThemWeType()
 
         // Not logged, not stored anywhere but the SDK's encrypted send queue.
-        let content = messageEventContentFromMarkdown(md: ComposerMarkdown.commonMark(from: trimmed))
+        let content = Self.content(of: trimmed, mentions: mentions)
 
         do {
             if let replyID, let eventID = eventID(for: replyID) {
@@ -940,6 +946,18 @@ public final class TimelineStore {
         return true
     }
 
+    /// What the composer typed, as the event the SDK sends: Markdown read the way a messenger reads
+    /// it (`ComposerMarkdown`), with the people picked from the "@" list made links and put in
+    /// `m.mentions`. A message mentioning nobody carries no `m.mentions` at all, as before — the
+    /// set's mere presence switches off the receiver's older "my name is in it" rules, and that is
+    /// a change for a message that asked for one, not for every message.
+    static func content(of text: String, mentions: [ComposerMention]) -> RoomMessageEventContentWithoutRelation {
+        let (markdown, userIDs) = ComposerMentions.markdown(from: text, mentions: mentions)
+        let content = messageEventContentFromMarkdown(md: ComposerMarkdown.commonMark(from: markdown))
+        guard !userIDs.isEmpty else { return content }
+        return content.withMentions(mentions: Mentions(userIds: userIDs, room: false))
+    }
+
     /// Gives up on a stand-in that nothing ever came to replace.
     ///
     /// Nothing is said about it and nothing is lost: the message is in the SDK's encrypted send
@@ -973,12 +991,12 @@ public final class TimelineStore {
     /// Empty is refused rather than sent. An edit to nothing would leave a bubble with no words
     /// in it, which is neither a message nor a deletion — the user who wants the message gone
     /// wants `delete`.
-    public func edit(messageID: String, text: String) async {
+    public func edit(messageID: String, text: String, mentions: [ComposerMention] = []) async {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, let timeline, let id = eventOrTransactionID(for: messageID) else { return }
 
         do {
-            let content = messageEventContentFromMarkdown(md: ComposerMarkdown.commonMark(from: trimmed))
+            let content = Self.content(of: trimmed, mentions: mentions)
             try await timeline.edit(eventOrTransactionId: id, newContent: .roomMessage(content: content))
         } catch {
             failure = .edit
@@ -1134,6 +1152,39 @@ public final class TimelineStore {
             }
         }
         return reactors
+    }
+
+    /// Who can be called with "@" in this room: everybody joined but you, whoever spoke most
+    /// recently first — the person you are answering is nearly always near the top — and then
+    /// everybody else in the room's own order.
+    ///
+    /// The cached member list first, and the server's only if there was none: this is asked the
+    /// moment an "@" is typed, and a list that waits on the network is a list that comes up after
+    /// the name has been typed out by hand.
+    public func mentionCandidates() async -> [RoomMemberSummary] {
+        let room = room
+        var members: [RoomMemberSummary] = []
+        if let cached = try? await room.membersNoSync() {
+            members = RoomDetailsStore.summaries(from: cached)
+        }
+        if members.count <= 1, let fresh = try? await room.members() {
+            members = RoomDetailsStore.summaries(from: fresh)
+        }
+        members.removeAll { $0.id == ownUserID }
+
+        var recency: [String: Int] = [:]
+        for (position, row) in rows.reversed().enumerated() {
+            guard let sender = row.message?.senderID, recency[sender] == nil else { continue }
+            recency[sender] = position
+        }
+        return members.enumerated().sorted { first, second in
+            switch (recency[first.element.id], recency[second.element.id]) {
+            case let (a?, b?): a < b
+            case (.some, nil): true
+            case (nil, .some): false
+            case (nil, nil): first.offset < second.offset
+            }
+        }.map(\.element)
     }
 
     /// Adds an emoji to a message, or takes it back if it is already ours.
@@ -1548,6 +1599,7 @@ public final class TimelineStore {
         // draft of nothing, which is the sort of thing that quietly makes a store grow forever.
         guard !trimmed.isEmpty else {
             try? await room.clearComposerDraft(threadRoot: nil)
+            onDraftChanged?(nil)
             return
         }
 
@@ -1556,11 +1608,13 @@ public final class TimelineStore {
                                   draftType: .newMessage,
                                   attachments: [])
         try? await room.saveComposerDraft(draft: draft, threadRoot: nil)
+        onDraftChanged?(trimmed)
     }
 
     /// The message went. There is nothing left to come back to.
     public func clearDraft() async {
         try? await room.clearComposerDraft(threadRoot: nil)
+        onDraftChanged?(nil)
     }
 
     // MARK: - Typing

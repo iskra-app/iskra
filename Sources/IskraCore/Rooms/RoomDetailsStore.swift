@@ -762,7 +762,7 @@ public final class RoomDetailsStore {
     /// Only people who have joined. An invitation nobody has accepted is not a member —
     /// counting one would put a face in the list for someone who has never been in the
     /// room, and a number in the header that no one else's client agrees with.
-    private static func summaries(from iterator: RoomMembersIterator) -> [RoomMemberSummary] {
+    static func summaries(from iterator: RoomMembersIterator) -> [RoomMemberSummary] {
         var summaries: [RoomMemberSummary] = []
         summaries.reserveCapacity(Int(iterator.len()))
 

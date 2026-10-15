@@ -336,6 +336,10 @@ public enum Strings {
         public static let emptyMessage = LocalizedStringResource("roomList.emptyMessage", bundle: bundle)
         public static let privateChat = LocalizedStringResource("roomList.privateChat", bundle: bundle)
         public static let pinned = LocalizedStringResource("roomList.pinned", bundle: bundle)
+        /// A chat's unsent words, in place of its last message.
+        public static func draft(_ text: String) -> LocalizedStringResource {
+            LocalizedStringResource("roomList.draft", defaultValue: "Draft: \(text)", bundle: bundle)
+        }
 
         /// The headings of the native macOS sidebar, and of nowhere else.
         ///
@@ -567,6 +571,8 @@ public enum Strings {
         }
 
         public static let composerPlaceholder = LocalizedStringResource("room.composerPlaceholder", bundle: bundle)
+        /// The "@" list over the composer, as VoiceOver names it.
+        public static let mentionSuggestions = LocalizedStringResource("room.mentionSuggestions", bundle: bundle)
         public static let send = LocalizedStringResource("room.send", bundle: bundle)
         public static let attach = LocalizedStringResource("room.attach", bundle: bundle)
 
@@ -807,7 +813,7 @@ public enum Strings {
             }
             /// The "everybody" tab in that list, with the total.
             public static func reactorsAll(_ count: Int) -> LocalizedStringResource {
-                LocalizedStringResource("message.menu.reactorsAll", defaultValue: "All \(count)", bundle: bundle)
+                LocalizedStringResource("message.menu.reactorsAll", defaultValue: "All · \(count)", bundle: bundle)
             }
             public static let copy = LocalizedStringResource("message.menu.copy", bundle: bundle)
             public static let reply = LocalizedStringResource("message.menu.reply", bundle: bundle)

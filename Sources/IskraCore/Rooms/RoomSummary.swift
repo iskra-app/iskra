@@ -100,6 +100,9 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
     public let lastMessageKind: PreviewKind?
     /// Your own last message's progress; nil when the last message is somebody else's.
     public let lastMessageMark: LastMessageMark?
+    /// What you started writing here and did not send. Shown in place of the last message —
+    /// "Draft: …", as every messenger does — because it is the thing you came back for.
+    public var draft: String?
 
     /// A space, not a chat. The list shows it as an ordinary row — a square-cornered avatar and
     /// a tap that opens the space's rooms rather than a conversation — so what tells the two

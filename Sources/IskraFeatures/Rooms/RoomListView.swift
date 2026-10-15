@@ -826,9 +826,20 @@ struct RoomRow: View {
     /// a photo, a voice message, a sticker. Part of the same `Text`, so the two lines wrap as one.
     private var preview: Text {
         if isTyping { return Text(Strings.Room.typing) }
+        // A draft is what you came back for, so it stands where the last message would — all of it
+        // in italics, the label and the words alike, so it cannot be mistaken for something sent.
+        if let draft = room.draft {
+            return Text(Strings.RoomList.draft(Self.oneLine(draft))).italic()
+        }
         let words = Text(room.lastMessage ?? " ")
         guard let symbol = room.lastMessageKind.map(Self.symbol(for:)) else { return words }
         return Text(Image(systemName: symbol)) + Text(verbatim: " ") + words
+    }
+
+    /// A draft's lines run together: the row has two lines of its own to give, and a draft that
+    /// begins with a blank line would spend one of them on nothing.
+    static func oneLine(_ text: String) -> String {
+        text.split(whereSeparator: \.isNewline).joined(separator: " ")
     }
 
     static func symbol(for kind: PreviewKind) -> String {
@@ -880,7 +891,9 @@ struct RoomRow: View {
         if room.isPinned {
             parts.append(String(app: Strings.RoomList.pinned))
         }
-        if let message = room.lastMessage { parts.append(message) }
+        if let draft = room.draft {
+            parts.append(String(app: Strings.RoomList.draft(Self.oneLine(draft))))
+        } else if let message = room.lastMessage { parts.append(message) }
 
         // Both, when both are true, and that is the fix rather than a flourish. These used to be
         // an either/or: a mention suppressed the unread count entirely, so a room with twelve

@@ -136,6 +136,18 @@ struct MessageComposer: View {
     /// does the reading, for the same reason it presents the pickers.
     var onPasteImage: () -> Void = {}
 
+    /// The people picked from the "@" list so far, kept beside the draft — the field holds plain
+    /// words, and this is what says which Kai `@Kai` was. The screen owns it, as it owns the draft,
+    /// because the screen is what sends. See `ComposerMention`.
+    @Binding var mentions: [ComposerMention]
+
+    /// Who can be mentioned, asked for the first time an "@" is typed. Nil leaves the list out — a
+    /// personal chat, where there is nobody to call but the one person already listening.
+    var loadMentionCandidates: (() async -> [RoomMemberSummary])?
+
+    /// The room's people, once asked for.
+    @State private var mentionCandidates: [RoomMemberSummary]?
+
     /// Whether the clipboard had a photo or video on it when the "+" was opened, which is when
     /// "Paste" is offered. Looked at then and not continuously: there is no notification
     /// for the clipboard changing on the Mac, and polling it would be the app watching what the
@@ -188,6 +200,8 @@ struct MessageComposer: View {
          attachments: [PendingAttachment] = [],
          onRemoveAttachment: @escaping (PendingAttachment) -> Void = { _ in },
          onPasteImage: @escaping () -> Void = {},
+         mentions: Binding<[ComposerMention]> = .constant([]),
+         loadMentionCandidates: (() async -> [RoomMemberSummary])? = nil,
          isAttaching: Bool = false,
          locking: LockGesture = LockGesture()) {
         _draft = draft
@@ -213,6 +227,8 @@ struct MessageComposer: View {
         self.attachments = attachments
         self.onRemoveAttachment = onRemoveAttachment
         self.onPasteImage = onPasteImage
+        _mentions = mentions
+        self.loadMentionCandidates = loadMentionCandidates
         _isAttaching = State(initialValue: isAttaching)
         _locking = State(initialValue: locking)
     }
@@ -245,6 +261,35 @@ struct MessageComposer: View {
     /// Whether there is anything to send: words, or attachments, or both.
     private var hasSomethingToSend: Bool {
         !isEmpty || !pendingAttachments.isEmpty
+    }
+
+    /// The "@…" the cursor is at the end of, while the room has people to offer for it.
+    private var mentionQuery: MentionQuery? {
+        guard loadMentionCandidates != nil, voice == nil, !isAttaching else { return nil }
+        var cursor = draft.endIndex
+        if case let .selection(range)? = selection?.indices {
+            // An empty range is a cursor. A word *selected* is not being typed, and offering names
+            // over it would replace what the user meant to copy.
+            guard range.isEmpty else { return nil }
+            cursor = range.upperBound
+        }
+        guard cursor <= draft.endIndex else { return nil }
+        return ComposerMentions.query(in: draft, cursor: cursor)
+    }
+
+    /// Who the "@" being typed could mean — empty when nothing is being typed, or nobody matches.
+    private var mentionMatches: [RoomMemberSummary] {
+        guard let mentionQuery, let mentionCandidates else { return [] }
+        return ComposerMentions.matches(mentionQuery.text, in: mentionCandidates)
+    }
+
+    /// A name chosen from the list: into the draft in place of what was typed, the cursor after it.
+    private func pick(_ member: RoomMemberSummary) {
+        guard let mentionQuery else { return }
+        let (text, cursor, mention) = ComposerMentions.insert(member, replacing: mentionQuery, in: draft)
+        draft = text
+        mentions.append(mention)
+        selection = TextSelection(insertionPoint: draft.index(draft.startIndex, offsetBy: min(cursor, draft.count)))
     }
 
     var body: some View {
@@ -421,6 +466,24 @@ struct MessageComposer: View {
         // Lifted by the composer's own measured height, the same arithmetic the attach options
         // use, and centred over the button by taking exactly that button's width off the trailing
         // edge.
+        // Outside the glass container, like the pill below and for the same reason: it has nothing
+        // to morph into, and glass gathered into the container is drawn whether it is wanted or not.
+        // Lifted by the composer's measured height, the arithmetic the attach choices use.
+        .overlay(alignment: .bottom) {
+            let matches = mentionMatches
+            if !matches.isEmpty {
+                MentionPicker(members: matches, onPick: pick)
+                    .padding(.horizontal, Theme.Spacing.normal)
+                    .offset(y: -(height + Theme.Spacing.close))
+                    .transition(.scale(scale: 0.96, anchor: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.smooth(duration: Theme.Timing.chrome), value: mentionMatches.isEmpty)
+        // The room's people are asked for the first time an "@" is typed, and kept.
+        .task(id: mentionQuery != nil) {
+            guard mentionQuery != nil, mentionCandidates == nil, let loadMentionCandidates else { return }
+            mentionCandidates = await loadMentionCandidates()
+        }
         .overlay(alignment: .bottomTrailing) {
             if locking.isVisible {
                 RecordLock(gesture: locking)

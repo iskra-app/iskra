@@ -357,6 +357,9 @@ public final class UserSession {
         store.onOwnMessagesRead = { [roomList] date in
             roomList.noteRead(roomID: roomID, upTo: date)
         }
+        store.onDraftChanged = { [roomList] text in
+            roomList.noteDraft(roomID: roomID, text: text)
+        }
         store.downloadMedia = { [client] url in
             try await client.getMediaContent(mediaSource: MediaSource.fromUrl(url: url))
         }
