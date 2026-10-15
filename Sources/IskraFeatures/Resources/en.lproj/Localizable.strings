@@ -1365,3 +1365,7 @@
 "folders.membershipFooter" = "Ticked, the chat is in the folder even if it doesn’t fit the rules. Unticked, it never is.";
 "folders.emptyTitle" = "Nothing in this folder yet";
 "folders.emptyMessage" = "Chats that fit its rules will appear here.";
+
+/* Which account a notification came for */
+"chats.namesAccount" = "Account in notifications";
+"chats.namesAccountHelp" = "The notification’s title shows which of your accounts it came to.";

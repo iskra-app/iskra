@@ -116,6 +116,7 @@ public actor PushDecoder {
     /// saying, and a line saying it anyway is a line of noise on every notification.
     nonisolated public func accountLabel(for accountID: String?) -> String? {
         guard let accountID,
+              ChatDirectory.namesAccountInNotifications(),
               let accounts = try? SessionStore(environment: environment).accounts(),
               accounts.count > 1,
               let account = accounts.first(where: { $0.sessionID == accountID }) else { return nil }

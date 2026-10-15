@@ -1365,3 +1365,7 @@
 "folders.membershipFooter" = "チェックすると、ルールに合わなくてもフォルダに入ります。外すと入りません。";
 "folders.emptyTitle" = "このフォルダはまだ空です";
 "folders.emptyMessage" = "ルールに合うチャットがここに表示されます。";
+
+/* Which account a notification came for */
+"chats.namesAccount" = "通知にアカウントを表示";
+"chats.namesAccountHelp" = "通知のタイトルに、どのアカウント宛てかが表示されます。";

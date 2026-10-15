@@ -164,6 +164,19 @@ public enum ChatDirectory {
         defaults?.set(choice.stored, forKey: shareAccountKey)
     }
 
+    private static let namesAccountKey = "notifications.namesAccount"
+
+    /// Whether a notification says which account it came for — "@boris:work.example" over the
+    /// message — when more than one is signed in. On unless turned off. In the App Group, because the
+    /// notification extension is what reads it; see `PushDecoder.accountLabel`.
+    public static func namesAccountInNotifications(in defaults: UserDefaults? = sharedDefaults) -> Bool {
+        defaults?.object(forKey: namesAccountKey) as? Bool ?? true
+    }
+
+    public static func setNamesAccountInNotifications(_ names: Bool, in defaults: UserDefaults? = sharedDefaults) {
+        defaults?.set(names, forKey: namesAccountKey)
+    }
+
     /// The account on screen, written down for the share extension — which has no session, and no
     /// business reading the Keychain's account index to find out who is open.
     public static func recordActiveAccount(_ sessionID: String, in defaults: UserDefaults? = sharedDefaults) {

@@ -1361,3 +1361,7 @@
 "folders.membershipFooter" = "С галочкой чат будет в папке, даже если не подходит под её правила. Без галочки — не попадёт в неё никогда.";
 "folders.emptyTitle" = "В папке пока пусто";
 "folders.emptyMessage" = "Сюда попадут чаты, которые подходят под её правила.";
+
+/* Which account a notification came for */
+"chats.namesAccount" = "Аккаунт в уведомлениях";
+"chats.namesAccountHelp" = "В заголовке уведомления будет видно, на какой из ваших аккаунтов оно пришло.";

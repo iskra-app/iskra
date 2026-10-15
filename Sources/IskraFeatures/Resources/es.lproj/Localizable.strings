@@ -1365,3 +1365,7 @@
 "folders.membershipFooter" = "Marcado, el chat estará en la carpeta aunque no cumpla sus reglas. Sin marcar, nunca.";
 "folders.emptyTitle" = "Esta carpeta aún está vacía";
 "folders.emptyMessage" = "Aquí aparecerán los chats que cumplan sus reglas.";
+
+/* Which account a notification came for */
+"chats.namesAccount" = "Cuenta en las notificaciones";
+"chats.namesAccountHelp" = "El título de la notificación indica a cuál de sus cuentas llegó.";

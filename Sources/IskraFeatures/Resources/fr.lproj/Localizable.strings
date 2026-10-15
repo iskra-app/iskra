@@ -1365,3 +1365,7 @@
 "folders.membershipFooter" = "Cochée, la discussion est dans le dossier même hors de ses règles. Décochée, jamais.";
 "folders.emptyTitle" = "Ce dossier est encore vide";
 "folders.emptyMessage" = "Les discussions qui correspondent à ses règles apparaîtront ici.";
+
+/* Which account a notification came for */
+"chats.namesAccount" = "Compte dans les notifications";
+"chats.namesAccountHelp" = "Le titre de la notification indique sur lequel de vos comptes elle est arrivée.";
