@@ -1,4 +1,5 @@
 import Foundation
+import Network
 import Observation
 import MatrixRustSDK
 
@@ -154,6 +155,20 @@ public final class RoomListStore {
     /// `UserSession`, which knows which timelines are on screen. This store does not — and should
     /// not — know that timelines exist.
     var onConnectivityChange: ((Bool) async -> Void)?
+
+    /// Asked before every forced restart of sync — the session wakes the transport there (the
+    /// loopback listener, the relays). See `recoverSync`.
+    var onRecovery: (() async -> Void)?
+
+    // MARK: Getting unstuck
+
+    /// The restart that is waiting to happen while the server will not answer. See `recoverSync`.
+    private var recovery: Task<Void, Never>?
+    private var recoveryAttempts = 0
+    /// The network, as the device sees it — only to notice it coming back. Whether the *server* is
+    /// reachable is still sync's to say; see `syncStateChanged`.
+    private var pathMonitor: NWPathMonitor?
+    private var pathWasSatisfied = true
 
     /// Keeps the previews honest about messages that have not left yet — see `start()`.
     private var sendQueueHandle: TaskHandle?
@@ -411,6 +426,7 @@ public final class RoomListStore {
         isSyncAsleep = false
         await service.start()
         watchFirstAnswer()
+        watchPath()
     }
 
     /// Starts or stops waiting for the server's first answer, whichever the state now says.
@@ -435,6 +451,8 @@ public final class RoomListStore {
             firstAnswerWatch?.cancel()
             firstAnswerWatch = nil
             isStalled = false
+            if roomListAnswered, !isOffline { recovered() }
+            if isPaused || hasStopped { recovery?.cancel(); recovery = nil }
             if isAwaitingFirstAnswer {
                 isAwaitingFirstAnswer = false
                 refreshUpdating()
@@ -454,7 +472,86 @@ public final class RoomListStore {
             guard !Task.isCancelled, generation == self.generation else { return }
             Log.session.error("no answer from the server since sync came up; saying so")
             self.isStalled = true
+            self.scheduleRecovery()
         }
+    }
+
+    /// Restarts sync, again and again with longer pauses, for as long as the list is on the screen
+    /// and the server is not answering — stalled, or what the SDK calls offline.
+    ///
+    /// Saying "Waiting for network" was all this did before, and after a long time in a pocket it
+    /// could go on saying it for ever. The SDK's own retrying runs on its own HTTP connections, and
+    /// after hours of suspension those are dead in a way nothing notices quickly: a pooled connection
+    /// NAT forgot about, a listener iOS reclaimed. Its offline mode pings the server and waits for an
+    /// answer down the same road. The one thing that clears all of it is what a person does by hand
+    /// — kill the app and open it again — and this is the polite version of that: the transport is
+    /// woken (`onRecovery`), the loop stopped and started, and the wait for the first answer begun
+    /// again. 10, 20, 40 seconds, then a minute at a time; and at once when the device says its
+    /// network has come back (`watchPath`).
+    private func scheduleRecovery(now: Bool = false) {
+        guard !hasStopped, !isPaused, isOffline || isStalled else { return }
+        if now { recovery?.cancel(); recovery = nil }
+        guard recovery == nil else { return }
+
+        let delay: Duration = now ? .zero : .seconds(min(60, 10 << min(recoveryAttempts, 3)))
+        let generation = self.generation
+        recovery = Task { [weak self] in
+            try? await Task.sleep(for: delay)
+            guard let self, !Task.isCancelled, generation == self.generation else { return }
+            self.recovery = nil
+            guard !self.hasStopped, !self.isPaused, self.isOffline || self.isStalled else { return }
+            self.recoveryAttempts += 1
+            Log.session.error("sync is not getting through (offline: \(self.isOffline, privacy: .public), stalled: \(self.isStalled, privacy: .public)); restarting it, attempt \(self.recoveryAttempts, privacy: .public)")
+            await self.recoverSync()
+            self.scheduleRecovery()
+        }
+    }
+
+    private func recoverSync() async {
+        await onRecovery?()
+        guard !hasStopped, !isPaused, let service = syncService else { return }
+        // Through the same chain as pause and resume, so a restart never crosses one of them.
+        let previous = syncTransition
+        let task = Task { @MainActor [weak self] in
+            await previous?.value
+            guard let self, !self.hasStopped, !self.isPaused else { return }
+            await service.stop()
+            guard !self.hasStopped, !self.isPaused else { return }
+            self.isSyncAsleep = false
+            await service.start()
+        }
+        syncTransition = task
+        await task.value
+        firstAnswerWatch?.cancel()
+        firstAnswerWatch = nil
+        watchFirstAnswer()
+    }
+
+    /// Everything is fine again — no restart is owed, and the next bad spell starts from the short pause.
+    private func recovered() {
+        recovery?.cancel()
+        recovery = nil
+        recoveryAttempts = 0
+    }
+
+    /// Notices the device's network coming back, and does not wait out the pause for it.
+    private func watchPath() {
+        guard pathMonitor == nil else { return }
+        let monitor = NWPathMonitor()
+        monitor.pathUpdateHandler = { [weak self] path in
+            let satisfied = path.status == .satisfied
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                let cameBack = satisfied && !self.pathWasSatisfied
+                self.pathWasSatisfied = satisfied
+                if cameBack {
+                    Log.session.info("the network came back")
+                    self.scheduleRecovery(now: true)
+                }
+            }
+        }
+        monitor.start(queue: DispatchQueue(label: "moscow.swag.iskra.path"))
+        pathMonitor = monitor
     }
 
     /// The sync loop has stopped and nobody asked it to. Start it again.
@@ -491,6 +588,7 @@ public final class RoomListStore {
         // — and nothing in that room can tell that the network is back. Only this can. See
         // `TimelineStore.connectivityChanged` and `UserSession`, which is what carries it there.
         watchFirstAnswer()
+        if isOffline { scheduleRecovery() } else if state == .running, roomListAnswered { recovered() }
 
         if wasOffline != isOffline {
             await onConnectivityChange?(isOffline)
@@ -566,8 +664,12 @@ public final class RoomListStore {
         guard !hasStopped, isPaused, syncService != nil else { return }
 
         isPaused = false
+        recoveryAttempts = 0
         await settleSync()
         watchFirstAnswer()
+        // Back from the pocket already offline: the SDK may sit in its offline mode waiting on a
+        // ping down a road that died in the pocket. Do not leave it to.
+        scheduleRecovery()
     }
 
     /// Brings the loop to whatever `isPaused` says *now*, after every earlier transition has
@@ -606,6 +708,10 @@ public final class RoomListStore {
     public func stop() async {
         hasStopped = true
         localNameObserver = nil
+        recovery?.cancel()
+        recovery = nil
+        pathMonitor?.cancel()
+        pathMonitor = nil
 
         // Anything already in flight belongs to the account we are leaving. Cancelling a task does
         // not reach one that is awaiting inside the SDK, and the one that matters here is the

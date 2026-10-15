@@ -105,6 +105,14 @@ public actor MockHomeserver: HTTPUpstream {
         replyDelay = delay
     }
 
+    /// While set, a sync request is taken and never answered — the connection that died in a pocket,
+    /// as the SDK sees it. For `DemoBackendTests.recoversFromAHungSync`.
+    private(set) var holdsSync = false
+
+    func setHoldsSync(_ holds: Bool) {
+        holdsSync = holds
+    }
+
     /// The event a user's read receipt stands on in a room — for `DemoBackendTests`, which has to see
     /// that looking at a chat did not move it.
     func receipt(of user: String, in roomID: String) -> String? {
@@ -241,6 +249,7 @@ public actor MockHomeserver: HTTPUpstream {
                                              "m.set_displayname": ["enabled": true],
                                              "m.set_avatar_url": ["enabled": true]]])
         case (_, "org.matrix.simplified_msc3575") where segments.last == "sync":
+            if holdsSync { try await Task.sleep(for: .seconds(600)) }
             return try await slidingSync(query, body)
         case (_, "sync"):
             return try await slidingSync(query, body)

@@ -681,6 +681,33 @@ struct DemoBackendTests {
         #expect(store.changes.isEmpty)
     }
 
+    /// Back from the pocket onto a connection that will never answer: "Waiting for network" for
+    /// ever, until the app was killed by hand. The list restarts sync by itself now
+    /// (`RoomListStore.scheduleRecovery`), and comes back once the server can be reached again.
+    @Test("a sync that hangs after the pocket is restarted, and the list comes back")
+    func recoversFromAHungSync() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(component: "iskra-demo-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let client = try await DemoBackend.makeClient(data: root.appending(component: "data"),
+                                                      cache: root.appending(component: "cache"),
+                                                      search: root.appending(component: "search"))
+        let list = RoomListStore(client: client)
+        try await list.start()
+        defer { Task { await list.stop() } }
+        #expect(await eventually { !list.rooms.isEmpty && !list.isUpdating })
+
+        await list.pause()
+        await MockHomeserver.shared.setHoldsSync(true)
+        await list.resume()
+        let stalled = await eventually(seconds: 30) { list.isUnreachable }
+        await MockHomeserver.shared.setHoldsSync(false)
+        #expect(stalled)
+
+        // Nothing else happens to help it: no network change, no foreground. Only the restart —
+        // well inside the minute the SDK's own request timeout would have taken to give up on it.
+        #expect(await eventually(seconds: 35) { !list.isUnreachable && !list.isUpdating })
+    }
+
     /// `stop()` while `start()` is still on its way: an account switched on a cold launch from a
     /// push, the bridge changed while the first request hung. `start()` used to carry on and end
     /// in `service.start()` — a sync loop for a closed session that nothing would ever stop.

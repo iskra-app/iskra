@@ -283,6 +283,12 @@ public final class UserSession {
         roomList.onConnectivityChange = { [weak self] offline in
             await self?.connectivityChanged(offline: offline)
         }
+        // A forced restart of sync wakes the transport first — the same order as coming back from
+        // the pocket (`enteredForeground`): the listener and the relays, then the loop.
+        roomList.onRecovery = { [weak self] in
+            guard let self, !self.isDemo else { return }
+            await self.authentication.wakeTunnels()
+        }
 
         // Not awaited: whether the server hears "online" or "offline" first is not worth the chat
         // list waiting for. See `applyPresence`.
