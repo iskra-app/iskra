@@ -81,6 +81,9 @@ struct MessageActions<Content: View>: View {
     /// Whether "who reacted" is up — see `ReactorsSheet`.
     @State private var isShowingReactors = false
 
+    /// The event's JSON, while the developer's sheet for it is up — see `BetaFeatures.showsEventSourceKey`.
+    @State private var source: EventSource?
+
     /// Which of the two taps this message's finger turned out to be — see `MessageTaps`.
     @State private var taps = MessageTaps()
 
@@ -231,6 +234,9 @@ struct MessageActions<Content: View>: View {
                 if let load = handlers.loadReactors {
                     ReactorsSheet(reactions: message.reactions, load: load)
                 }
+            }
+            .sheet(item: $source) { source in
+                EventSourceSheet(json: source.json)
             }
     }
 
@@ -461,6 +467,15 @@ struct MessageActions<Content: View>: View {
             actions.append(MessageMenuAction(title: Strings.Message.Menu.select,
                                              systemImage: "checkmark.circle",
                                              perform: onSelect))
+        }
+
+        // For whoever is chasing a message that draws wrong — Beta → for developers.
+        if let loadSource = handlers.loadSource {
+            actions.append(MessageMenuAction(title: Strings.Beta.viewSource,
+                                             systemImage: "curlybraces",
+                                             perform: {
+                                                 source = EventSource(json: loadSource() ?? String(app: Strings.Beta.noSource))
+                                             }))
         }
 
         // Taking a vote back: a response with no answers in it, which the poll counts as no vote at

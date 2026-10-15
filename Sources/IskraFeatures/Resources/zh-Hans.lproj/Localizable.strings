@@ -1373,3 +1373,14 @@
 "poll.retract" = "撤回投票";
 
 "stickers.settings.mine" = "我的贴纸";
+
+/* Beta: for developers */
+"beta.developers" = "开发者选项";
+"beta.showsSource" = "菜单中显示消息 JSON";
+"beta.showsSourceHelp" = "消息菜单中会出现“查看 JSON”——服务器发来的原始事件。消息显示不对时很有用。";
+"beta.viewSource" = "查看 JSON";
+"beta.noSource" = "这条消息在服务器上还没有事件。";
+"beta.demoSignIn" = "演示登录";
+"beta.demoSignInHelp" = "针对应用内服务器的登录界面：alice / password。不会影响您的账号，登录后会立即退出。";
+"beta.demoSignedIn" = "已登录：%@";
+"beta.close" = "关闭";

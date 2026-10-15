@@ -68,6 +68,9 @@ struct MessageHandlers {
     /// Nil where there is nothing to do with a choice: a pinned list, a search result, a peek.
     var onSelect: (() -> Void)?
 
+    /// The event's JSON, for the developer's "View JSON" — nil unless that is switched on in Beta.
+    var loadSource: (() -> String?)?
+
     /// Whether the room lets this account delete other people's messages — see
     /// `TimelineStore.canDeleteOthers`. A fact rather than a closure, but it travels with the acts
     /// it unlocks, to both rows and the menu alike.

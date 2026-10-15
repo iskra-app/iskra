@@ -1373,3 +1373,14 @@
 "poll.retract" = "Retract vote";
 
 "stickers.settings.mine" = "My stickers";
+
+/* Beta: for developers */
+"beta.developers" = "For developers";
+"beta.showsSource" = "Message JSON in the menu";
+"beta.showsSourceHelp" = "A message’s menu gets “View JSON” — the event as the server sent it. Useful when a message shows up wrong.";
+"beta.viewSource" = "View JSON";
+"beta.noSource" = "This message has no event on the server yet.";
+"beta.demoSignIn" = "Demo sign-in";
+"beta.demoSignInHelp" = "The sign-in screen against a server inside the app: alice / password. Your account is untouched, and whoever signs in is signed out at once.";
+"beta.demoSignedIn" = "Signed in: %@";
+"beta.close" = "Close";

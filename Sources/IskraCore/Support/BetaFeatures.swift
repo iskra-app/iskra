@@ -74,6 +74,11 @@ public enum BetaFeatures {
     ///
     /// Off, obviously. And it touches nothing on the way in or out: the real session stays in the
     /// Keychain the whole time, and turning this off goes back to it.
+    /// "View JSON" in a message's menu — the event as the server sent it, for whoever is chasing a
+    /// message that draws wrong. Off by default: it is a developer's tool, and to anybody else a
+    /// screen of braces.
+    public static let showsEventSourceKey = "beta.showsEventSource"
+
     public static let mockBackendKey = "beta.mockBackend"
 
     /// What `Iskra --mock-backend` means: start in the demo, as though the switch were on. The

@@ -52,6 +52,7 @@ public struct RoomView: View {
     @AppStorage(StickerSettings.showsBuiltInKey) private var showsBuiltInStickers = true
     @AppStorage(StickerSettings.showsRoomPackKey) private var showsRoomStickers = true
     @AppStorage(StickerSettings.showsMineKey) private var showsMyStickers = true
+    @AppStorage(BetaFeatures.showsEventSourceKey) private var showsEventSource = false
     private var showsStickers: Bool { showsBuiltInStickers || showsRoomStickers || showsMyStickers }
 
     /// Messages being chosen together, while they are — see `MessageSelection`. Nil the rest of
@@ -2219,6 +2220,7 @@ public struct RoomView: View {
                 Keyboard.dismiss()
                 withAnimation(.smooth(duration: Theme.Timing.chrome)) { selection = MessageSelection(message.id) }
             },
+            loadSource: showsEventSource ? { timeline.sourceJSON(of: message.id) } : nil,
             canDeleteOthers: timeline.canDeleteOthers,
             loadReactors: timeline.isOneToOne ? nil : { await timeline.reactors(of: message.id) }
         )

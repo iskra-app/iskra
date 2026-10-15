@@ -1025,6 +1025,29 @@ public final class TimelineStore {
         }
     }
 
+    /// The event as the server sent it — and the latest edit, when there is one — pretty-printed,
+    /// for the developer's "View JSON". Nil for a message with no event yet, or one the SDK holds no
+    /// source for. Read on demand: it is the message's content, and nothing keeps it.
+    public func sourceJSON(of messageID: String) -> String? {
+        for item in items {
+            guard let event = item.asEvent(),
+                  TimelineMapper.identifier(for: event.eventOrTransactionId) == messageID else { continue }
+            let info = event.lazyProvider.debugInfo()
+            let parts = [info.originalJson, info.latestEditJson].compactMap { $0 }.map(Self.pretty)
+            return parts.isEmpty ? nil : parts.joined(separator: "\n\n")
+        }
+        return nil
+    }
+
+    private static func pretty(_ json: String) -> String {
+        guard let data = json.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data),
+              let out = try? JSONSerialization.data(withJSONObject: object,
+                                                    options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
+        else { return json }
+        return String(decoding: out, as: UTF8.self)
+    }
+
     /// Sends one stuck message again.
     ///
     /// A failure jams things in one of two ways, and the user cannot tell them apart: either

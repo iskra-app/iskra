@@ -1373,3 +1373,14 @@
 "poll.retract" = "投票を取り消す";
 
 "stickers.settings.mine" = "マイステッカー";
+
+/* Beta: for developers */
+"beta.developers" = "開発者向け";
+"beta.showsSource" = "メニューにメッセージのJSON";
+"beta.showsSourceHelp" = "メッセージのメニューに「JSONを表示」が加わり、サーバーから届いたイベントをそのまま見られます。表示がおかしいときに役立ちます。";
+"beta.viewSource" = "JSONを表示";
+"beta.noSource" = "このメッセージにはまだサーバー上のイベントがありません。";
+"beta.demoSignIn" = "デモサインイン";
+"beta.demoSignInHelp" = "アプリ内のサーバーに対するサインイン画面です：alice / password。あなたのアカウントには影響せず、サインインしたらすぐにサインアウトします。";
+"beta.demoSignedIn" = "サインインしました：%@";
+"beta.close" = "閉じる";
