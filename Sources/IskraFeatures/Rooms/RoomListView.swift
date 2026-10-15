@@ -872,9 +872,19 @@ struct RoomRow: View {
         if let draft = room.draft {
             return Text(Strings.RoomList.draft(Self.oneLine(draft))).italic()
         }
-        let words = Text(room.lastMessage ?? " ")
-        guard let symbol = room.lastMessageKind.map(Self.symbol(for:)) else { return words }
-        return Text(Image(systemName: symbol)) + Text(verbatim: " ") + words
+        var words = Text(room.lastMessage ?? " ")
+        if let symbol = room.lastMessageKind.map(Self.symbol(for:)) {
+            words = Text(Image(systemName: symbol)) + Text(verbatim: " ") + words
+        }
+        // In a group, who said it, on a line of its own over the words — Telegram's. Not in a
+        // personal chat, where it can only be the one person the row is named after.
+        if let sender = room.lastSender, room.kind == .group, !compact {
+            return Text(verbatim: sender).foregroundStyle(.primary) + Text(verbatim: "\n") + words
+        }
+        if let sender = room.lastSender, room.kind == .group {
+            return Text(verbatim: "\(sender): ").foregroundStyle(.primary) + words
+        }
+        return words
     }
 
     /// A draft's lines run together: the row has two lines of its own to give, and a draft that
@@ -934,7 +944,9 @@ struct RoomRow: View {
         }
         if let draft = room.draft {
             parts.append(String(app: Strings.RoomList.draft(Self.oneLine(draft))))
-        } else if let message = room.lastMessage { parts.append(message) }
+        } else if let message = room.lastMessage {
+            parts.append(room.kind == .group ? room.lastSender.map { "\($0): \(message)" } ?? message : message)
+        }
 
         // Both, when both are true, and that is the fix rather than a flourish. These used to be
         // an either/or: a mention suppressed the unread count entirely, so a room with twelve

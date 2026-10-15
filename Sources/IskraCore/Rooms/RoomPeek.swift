@@ -23,6 +23,8 @@ public struct PeekLine: Sendable, Equatable {
     /// Your own last message's progress; nil for somebody else's, and for a grey line.
     public let mark: LastMessageMark?
     public let date: Date
+    /// Who said it, when it was somebody else — see `RoomSummary.lastSender`.
+    public var sender: String?
 
     /// The last thing in the chat that the row can say — nil when it is something the mapper has
     /// no words for (a poll, an event it does not render), and then the SDK's summary is asked.
@@ -36,7 +38,8 @@ public struct PeekLine: Sendable, Equatable {
                                 kind: PreviewKind(message.kind),
                                 // A deleted message is not one anybody is waiting to have read.
                                 mark: message.isOwn && !isDeleted ? message.delivery.map(LastMessageMark.init) : nil,
-                                date: message.timestamp)
+                                date: message.timestamp,
+                                sender: message.isOwn ? nil : message.senderName)
             case let .event(event):
                 return PeekLine(text: event.text, kind: nil, mark: nil, date: event.timestamp)
             case .dayDivider, .unreadDivider:
