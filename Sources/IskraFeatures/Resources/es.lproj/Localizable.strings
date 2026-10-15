@@ -1331,3 +1331,37 @@
 "message.selection.deleteTitle" = "¿Eliminar los mensajes seleccionados?";
 "message.selection.deleteMessage" = "Desaparecerán para todos en el chat. No podrá recuperarlos.";
 "message.selection.copied" = "Copiado";
+
+/* Chat folders (stage 9) */
+"folders.all" = "Todos";
+"folders.title" = "Carpetas";
+"folders.explanation" = "Las carpetas reúnen chats según reglas —personales, grupos, sin leer— y aparecen como pestañas sobre la lista. Son las mismas en todos sus dispositivos.";
+"folders.new" = "Nueva carpeta";
+"folders.suggested" = "Puede empezar con estas";
+"folders.add" = "Añadir";
+"folders.edit" = "Carpeta";
+"folders.namePlaceholder" = "Nombre";
+"folders.kindsHeader" = "Qué chats";
+"folders.kind.direct" = "Personales";
+"folders.kind.groups" = "Grupos";
+"folders.kind.spaces" = "Espacios";
+"folders.kind.invitations" = "Invitaciones";
+"folders.suggestion.unread" = "Sin leer";
+"folders.conditionsHeader" = "Condiciones";
+"folders.onlyUnread" = "Solo sin leer";
+"folders.excludesMuted" = "Sin los silenciados";
+"folders.includesArchived" = "Incluir el archivo";
+"folders.includedHeader" = "Mostrar siempre";
+"folders.excludedHeader" = "No mostrar nunca";
+"folders.addChats" = "Añadir chats";
+"folders.chooseChats" = "Elija chats";
+"folders.done" = "Listo";
+"folders.cancel" = "Cancelar";
+"folders.delete" = "Eliminar carpeta";
+"folders.deleteQuestion" = "¿Eliminar la carpeta «%@»?";
+"folders.deleteHelp" = "Los chats se quedan donde están; solo desaparece la pestaña.";
+"folders.addToFolder" = "A una carpeta";
+"folders.membershipTitle" = "Carpetas";
+"folders.membershipFooter" = "Marcado, el chat estará en la carpeta aunque no cumpla sus reglas. Sin marcar, nunca.";
+"folders.emptyTitle" = "Esta carpeta aún está vacía";
+"folders.emptyMessage" = "Aquí aparecerán los chats que cumplan sus reglas.";

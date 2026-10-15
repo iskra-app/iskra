@@ -1331,3 +1331,37 @@
 "message.selection.deleteTitle" = "選択したメッセージを削除しますか？";
 "message.selection.deleteMessage" = "チャットの全員から消え、元に戻すことはできません。";
 "message.selection.copied" = "コピーしました";
+
+/* Chat folders (stage 9) */
+"folders.all" = "すべて";
+"folders.title" = "フォルダ";
+"folders.explanation" = "フォルダは、個人・グループ・未読などのルールでチャットをまとめ、リストの上にタブとして表示します。すべてのデバイスで共通です。";
+"folders.new" = "新しいフォルダ";
+"folders.suggested" = "おすすめ";
+"folders.add" = "追加";
+"folders.edit" = "フォルダ";
+"folders.namePlaceholder" = "名前";
+"folders.kindsHeader" = "対象のチャット";
+"folders.kind.direct" = "個人";
+"folders.kind.groups" = "グループ";
+"folders.kind.spaces" = "スペース";
+"folders.kind.invitations" = "招待";
+"folders.suggestion.unread" = "未読";
+"folders.conditionsHeader" = "条件";
+"folders.onlyUnread" = "未読のみ";
+"folders.excludesMuted" = "ミュート中を除く";
+"folders.includesArchived" = "アーカイブも含める";
+"folders.includedHeader" = "常に表示";
+"folders.excludedHeader" = "表示しない";
+"folders.addChats" = "チャットを追加";
+"folders.chooseChats" = "チャットを選択";
+"folders.done" = "完了";
+"folders.cancel" = "キャンセル";
+"folders.delete" = "フォルダを削除";
+"folders.deleteQuestion" = "フォルダ「%@」を削除しますか？";
+"folders.deleteHelp" = "チャットはそのまま残り、タブだけが消えます。";
+"folders.addToFolder" = "フォルダへ";
+"folders.membershipTitle" = "フォルダ";
+"folders.membershipFooter" = "チェックすると、ルールに合わなくてもフォルダに入ります。外すと入りません。";
+"folders.emptyTitle" = "このフォルダはまだ空です";
+"folders.emptyMessage" = "ルールに合うチャットがここに表示されます。";

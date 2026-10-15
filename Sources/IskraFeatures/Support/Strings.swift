@@ -324,6 +324,54 @@ public enum Strings {
         public static let failed = LocalizedStringResource("notifications.failed", bundle: bundle)
     }
 
+    /// Folders of chats — tabs over the list, and the screen that makes them. See `ChatFolder`.
+    public enum Folders {
+        public static let all = LocalizedStringResource("folders.all", bundle: bundle)
+        public static let title = LocalizedStringResource("folders.title", bundle: bundle)
+        public static let explanation = LocalizedStringResource("folders.explanation", bundle: bundle)
+        public static let new = LocalizedStringResource("folders.new", bundle: bundle)
+        public static let suggested = LocalizedStringResource("folders.suggested", bundle: bundle)
+        public static let add = LocalizedStringResource("folders.add", bundle: bundle)
+        public static let edit = LocalizedStringResource("folders.edit", bundle: bundle)
+        public static let namePlaceholder = LocalizedStringResource("folders.namePlaceholder", bundle: bundle)
+        public static let kindsHeader = LocalizedStringResource("folders.kindsHeader", bundle: bundle)
+        public static func kind(_ kind: ChatFolder.Kind) -> LocalizedStringResource {
+            switch kind {
+            case .direct: LocalizedStringResource("folders.kind.direct", bundle: bundle)
+            case .groups: LocalizedStringResource("folders.kind.groups", bundle: bundle)
+            case .spaces: LocalizedStringResource("folders.kind.spaces", bundle: bundle)
+            case .invitations: LocalizedStringResource("folders.kind.invitations", bundle: bundle)
+            }
+        }
+        public static func suggestion(_ suggestion: ChatFolder.Suggestion) -> LocalizedStringResource {
+            switch suggestion {
+            case .personal: LocalizedStringResource("folders.kind.direct", bundle: bundle)
+            case .groups: LocalizedStringResource("folders.kind.groups", bundle: bundle)
+            case .unread: LocalizedStringResource("folders.suggestion.unread", bundle: bundle)
+            }
+        }
+        public static let conditionsHeader = LocalizedStringResource("folders.conditionsHeader", bundle: bundle)
+        public static let onlyUnread = LocalizedStringResource("folders.onlyUnread", bundle: bundle)
+        public static let excludesMuted = LocalizedStringResource("folders.excludesMuted", bundle: bundle)
+        public static let includesArchived = LocalizedStringResource("folders.includesArchived", bundle: bundle)
+        public static let includedHeader = LocalizedStringResource("folders.includedHeader", bundle: bundle)
+        public static let excludedHeader = LocalizedStringResource("folders.excludedHeader", bundle: bundle)
+        public static let addChats = LocalizedStringResource("folders.addChats", bundle: bundle)
+        public static let chooseChats = LocalizedStringResource("folders.chooseChats", bundle: bundle)
+        public static let done = LocalizedStringResource("folders.done", bundle: bundle)
+        public static let cancel = LocalizedStringResource("folders.cancel", bundle: bundle)
+        public static let delete = LocalizedStringResource("folders.delete", bundle: bundle)
+        public static func deleteQuestion(_ name: String) -> LocalizedStringResource {
+            LocalizedStringResource("folders.deleteQuestion", defaultValue: "\(name)", bundle: bundle)
+        }
+        public static let deleteHelp = LocalizedStringResource("folders.deleteHelp", bundle: bundle)
+        public static let addToFolder = LocalizedStringResource("folders.addToFolder", bundle: bundle)
+        public static let membershipTitle = LocalizedStringResource("folders.membershipTitle", bundle: bundle)
+        public static let membershipFooter = LocalizedStringResource("folders.membershipFooter", bundle: bundle)
+        public static let emptyTitle = LocalizedStringResource("folders.emptyTitle", bundle: bundle)
+        public static let emptyMessage = LocalizedStringResource("folders.emptyMessage", bundle: bundle)
+    }
+
     public enum RoomList {
         public static let title = LocalizedStringResource("roomList.title", bundle: bundle)
         public static let searchPrompt = LocalizedStringResource("roomList.searchPrompt", bundle: bundle)

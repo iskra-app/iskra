@@ -1331,3 +1331,37 @@
 "message.selection.deleteTitle" = "Supprimer les messages sélectionnés ?";
 "message.selection.deleteMessage" = "Ils disparaîtront pour tous les membres de la discussion. Impossible de les récupérer.";
 "message.selection.copied" = "Copié";
+
+/* Chat folders (stage 9) */
+"folders.all" = "Tous";
+"folders.title" = "Dossiers";
+"folders.explanation" = "Les dossiers rassemblent les discussions selon des règles — personnelles, groupes, non lues — et apparaissent en onglets au-dessus de la liste. Ils sont identiques sur tous vos appareils.";
+"folders.new" = "Nouveau dossier";
+"folders.suggested" = "Vous pouvez commencer par ceux-ci";
+"folders.add" = "Ajouter";
+"folders.edit" = "Dossier";
+"folders.namePlaceholder" = "Nom";
+"folders.kindsHeader" = "Quelles discussions";
+"folders.kind.direct" = "Personnelles";
+"folders.kind.groups" = "Groupes";
+"folders.kind.spaces" = "Espaces";
+"folders.kind.invitations" = "Invitations";
+"folders.suggestion.unread" = "Non lues";
+"folders.conditionsHeader" = "Conditions";
+"folders.onlyUnread" = "Seulement non lues";
+"folders.excludesMuted" = "Sans les discussions en sourdine";
+"folders.includesArchived" = "Avec les archives";
+"folders.includedHeader" = "Toujours afficher";
+"folders.excludedHeader" = "Ne jamais afficher";
+"folders.addChats" = "Ajouter des discussions";
+"folders.chooseChats" = "Choisissez des discussions";
+"folders.done" = "OK";
+"folders.cancel" = "Annuler";
+"folders.delete" = "Supprimer le dossier";
+"folders.deleteQuestion" = "Supprimer le dossier « %@ » ?";
+"folders.deleteHelp" = "Les discussions restent où elles sont — seul l’onglet disparaît.";
+"folders.addToFolder" = "Dans un dossier";
+"folders.membershipTitle" = "Dossiers";
+"folders.membershipFooter" = "Cochée, la discussion est dans le dossier même hors de ses règles. Décochée, jamais.";
+"folders.emptyTitle" = "Ce dossier est encore vide";
+"folders.emptyMessage" = "Les discussions qui correspondent à ses règles apparaîtront ici.";

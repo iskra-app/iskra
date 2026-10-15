@@ -203,3 +203,6 @@
 "roomAction.addressFailed" = "Die Adresse ließ sich nicht ändern. Versuchen Sie es noch einmal.";
 "roomAction.addressTaken" = "Diese Adresse ist schon vergeben. Versuchen Sie eine andere.";
 "roomAction.directoryFailed" = "Ob der Raum im Verzeichnis des Servers steht, ließ sich nicht ändern.";
+
+/* Chat folders (stage 9) */
+"folders.saveFailed" = "Die Ordner ließen sich nicht speichern. Versuchen Sie es noch einmal.";

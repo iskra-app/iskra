@@ -206,3 +206,6 @@
 "roomAction.addressFailed" = "Не получилось изменить адрес. Попробуйте ещё раз.";
 "roomAction.addressTaken" = "Этот адрес уже занят. Попробуйте другой.";
 "roomAction.directoryFailed" = "Не получилось изменить, видна ли комната в каталоге сервера.";
+
+/* Chat folders (stage 9) */
+"folders.saveFailed" = "Не получилось сохранить папки. Попробуйте ещё раз.";

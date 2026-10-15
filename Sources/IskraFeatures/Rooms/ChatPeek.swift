@@ -112,8 +112,14 @@ private struct ChatPeekTrigger: ViewModifier {
 
     @Environment(\.chatPeek) private var peek
 
+    /// Which folders this chat is in, opened from its menu — see `FolderMembershipSheet`.
+    @State private var isChoosingFolders = false
+
     func body(content: Content) -> some View {
         content
+            .sheet(isPresented: $isChoosingFolders) {
+                FolderMembershipSheet(room: room, folders: session.folders)
+            }
             // UIKit's hold on the phone, for the reason the message bubble uses it: a SwiftUI long
             // press inside a scrolling list takes the touch, and the list stops scrolling. See
             // `MessageHold`, which has the measurements.
@@ -152,7 +158,7 @@ private struct ChatPeekTrigger: ViewModifier {
         let roomList = session.roomList
         let roomID = room.id
 
-        return [
+        var actions = [
             MessageMenuAction(title: Strings.RoomList.Peek.open,
                               systemImage: "arrow.up.forward.app",
                               perform: onOpen),
@@ -174,6 +180,12 @@ private struct ChatPeekTrigger: ViewModifier {
                                   Task { await roomList.setArchived(roomID: roomID, !isArchived) }
                               }),
         ]
+        if !session.folders.folders.isEmpty, !room.isInvitation {
+            actions.append(MessageMenuAction(title: Strings.Folders.addToFolder,
+                                             systemImage: "folder.badge.plus",
+                                             perform: { isChoosingFolders = true }))
+        }
+        return actions
     }
 }
 

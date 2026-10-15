@@ -21,6 +21,8 @@ public final class UserSession {
     /// The stickers this account can send — see `StickerLibrary`. The session's and not a room's,
     /// because "my stickers" and the recent row are the same in every conversation.
     public let stickers: StickerLibrary
+    /// The account's folders of chats — see `ChatFolder`.
+    public let folders: ChatFolders
 
     /// Proving devices are yours, in both directions — see `VerificationStore`.
     ///
@@ -137,6 +139,9 @@ public final class UserSession {
         self.blocked = BlockStore(client: client)
         self.verification = VerificationStore(client: client, ownUserID: userID)
         self.recovery = RecoveryStore(encryption: client.encryption())
+        self.folders = ChatFolders(
+            readAccountData: { [client] type in try await client.accountData(eventType: type) },
+            writeAccountData: { [client] type, content in try await client.setAccountData(eventType: type, content: content) })
         let sender = Self.authorisedSender(client: client, authentication: authentication)
         self.stickers = StickerLibrary(
             readAccountData: { [client] type in try await client.accountData(eventType: type) },
@@ -282,6 +287,8 @@ public final class UserSession {
         // Not awaited: whether the server hears "online" or "offline" first is not worth the chat
         // list waiting for. See `applyPresence`.
         Task { [weak self] in await self?.applyPresence() }
+        // Not awaited either: the list is drawn whole first, and the folder tabs join it.
+        Task { [weak self] in await self?.folders.load() }
 
         try await roomList.start()
     }
@@ -839,6 +846,8 @@ public final class UserSession {
         if !isDemo { await authentication.wakeTunnels() }
         await roomList.resume()
         await applyPresence()
+        // Folders changed on another device while this one was in a pocket.
+        await folders.load()
     }
 
     /// Everything this session handed out that is still listening to the SDK.

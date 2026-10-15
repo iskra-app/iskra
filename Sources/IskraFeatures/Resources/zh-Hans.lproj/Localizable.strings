@@ -1331,3 +1331,37 @@
 "message.selection.deleteTitle" = "删除所选消息？";
 "message.selection.deleteMessage" = "它们会对聊天中的所有人消失，且无法恢复。";
 "message.selection.copied" = "已复制";
+
+/* Chat folders (stage 9) */
+"folders.all" = "全部";
+"folders.title" = "文件夹";
+"folders.explanation" = "文件夹按规则归类聊天——私聊、群组、未读——并以标签的形式显示在列表上方。在您的所有设备上都一样。";
+"folders.new" = "新建文件夹";
+"folders.suggested" = "可以从这些开始";
+"folders.add" = "添加";
+"folders.edit" = "文件夹";
+"folders.namePlaceholder" = "名称";
+"folders.kindsHeader" = "哪些聊天";
+"folders.kind.direct" = "私聊";
+"folders.kind.groups" = "群组";
+"folders.kind.spaces" = "空间";
+"folders.kind.invitations" = "邀请";
+"folders.suggestion.unread" = "未读";
+"folders.conditionsHeader" = "条件";
+"folders.onlyUnread" = "仅未读";
+"folders.excludesMuted" = "不含已静音";
+"folders.includesArchived" = "包括归档";
+"folders.includedHeader" = "始终显示";
+"folders.excludedHeader" = "从不显示";
+"folders.addChats" = "添加聊天";
+"folders.chooseChats" = "选择聊天";
+"folders.done" = "完成";
+"folders.cancel" = "取消";
+"folders.delete" = "删除文件夹";
+"folders.deleteQuestion" = "删除文件夹“%@”？";
+"folders.deleteHelp" = "聊天会保留，只有标签会消失。";
+"folders.addToFolder" = "加入文件夹";
+"folders.membershipTitle" = "文件夹";
+"folders.membershipFooter" = "勾选后，即使不符合规则，聊天也会在文件夹中；取消勾选则永远不会。";
+"folders.emptyTitle" = "文件夹里还没有内容";
+"folders.emptyMessage" = "符合规则的聊天会出现在这里。";

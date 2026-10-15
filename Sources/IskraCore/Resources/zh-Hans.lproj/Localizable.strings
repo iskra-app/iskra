@@ -203,3 +203,6 @@
 "roomAction.addressFailed" = "没能更改地址。请再试一次。";
 "roomAction.addressTaken" = "这个地址已被占用。请换一个。";
 "roomAction.directoryFailed" = "没能更改房间是否显示在服务器目录中。";
+
+/* Chat folders (stage 9) */
+"folders.saveFailed" = "没能保存文件夹。请再试一次。";

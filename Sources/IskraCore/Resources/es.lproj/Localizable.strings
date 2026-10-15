@@ -203,3 +203,6 @@
 "roomAction.addressFailed" = "No se ha podido cambiar la dirección. Inténtelo de nuevo.";
 "roomAction.addressTaken" = "Esa dirección ya está ocupada. Pruebe con otra.";
 "roomAction.directoryFailed" = "No se ha podido cambiar si la sala aparece en el directorio del servidor.";
+
+/* Chat folders (stage 9) */
+"folders.saveFailed" = "No se han podido guardar las carpetas. Inténtelo de nuevo.";

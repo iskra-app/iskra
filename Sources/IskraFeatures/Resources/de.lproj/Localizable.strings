@@ -1331,3 +1331,37 @@
 "message.selection.deleteTitle" = "Ausgewählte Nachrichten löschen?";
 "message.selection.deleteMessage" = "Sie verschwinden für alle im Chat. Wiederherstellen lassen sie sich nicht.";
 "message.selection.copied" = "Kopiert";
+
+/* Chat folders (stage 9) */
+"folders.all" = "Alle";
+"folders.title" = "Ordner";
+"folders.explanation" = "Ordner sammeln Chats nach Regeln – privat, Gruppen, ungelesen – und stehen als Tabs über der Liste. Sie sind auf allen Ihren Geräten gleich.";
+"folders.new" = "Neuer Ordner";
+"folders.suggested" = "Damit könnten Sie anfangen";
+"folders.add" = "Hinzufügen";
+"folders.edit" = "Ordner";
+"folders.namePlaceholder" = "Name";
+"folders.kindsHeader" = "Welche Chats";
+"folders.kind.direct" = "Privat";
+"folders.kind.groups" = "Gruppen";
+"folders.kind.spaces" = "Spaces";
+"folders.kind.invitations" = "Einladungen";
+"folders.suggestion.unread" = "Ungelesen";
+"folders.conditionsHeader" = "Bedingungen";
+"folders.onlyUnread" = "Nur ungelesene";
+"folders.excludesMuted" = "Stummgeschaltete ausblenden";
+"folders.includesArchived" = "Mit dem Archiv";
+"folders.includedHeader" = "Immer zeigen";
+"folders.excludedHeader" = "Nie zeigen";
+"folders.addChats" = "Chats hinzufügen";
+"folders.chooseChats" = "Chats auswählen";
+"folders.done" = "Fertig";
+"folders.cancel" = "Abbrechen";
+"folders.delete" = "Ordner löschen";
+"folders.deleteQuestion" = "Ordner „%@“ löschen?";
+"folders.deleteHelp" = "Die Chats bleiben, wo sie sind – nur der Tab verschwindet.";
+"folders.addToFolder" = "In Ordner";
+"folders.membershipTitle" = "Ordner";
+"folders.membershipFooter" = "Mit Häkchen ist der Chat im Ordner, auch wenn er nicht zu den Regeln passt. Ohne Häkchen nie.";
+"folders.emptyTitle" = "Dieser Ordner ist noch leer";
+"folders.emptyMessage" = "Hier erscheinen Chats, die zu seinen Regeln passen.";

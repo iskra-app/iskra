@@ -203,3 +203,6 @@
 "roomAction.addressFailed" = "アドレスを変更できませんでした。もう一度お試しください。";
 "roomAction.addressTaken" = "このアドレスはすでに使われています。別のものをお試しください。";
 "roomAction.directoryFailed" = "サーバーのディレクトリへの掲載を変更できませんでした。";
+
+/* Chat folders (stage 9) */
+"folders.saveFailed" = "フォルダを保存できませんでした。もう一度お試しください。";
