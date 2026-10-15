@@ -277,6 +277,9 @@ targets:
         # to say where they are to do it. A pin is one coordinate, once, to point a map at; a live
         # share is the person's position for as long as they chose, and stops by itself.
         NSLocationWhenInUseUsageDescription: Iskra uses your location only when you ask it to — to put a map on the place you are, or to share where you are with a chat for as long as you choose.
+        # "Transcribe" on a voice message. Recognition is on the device only
+        # (`requiresOnDeviceRecognition`, see `VoiceTranscriber`) — the recording never goes to Apple.
+        NSSpeechRecognitionUsageDescription: Iskra turns a voice message into text when you ask it to, on this device — the recording is never sent anywhere.
         # Face ID, for the app lock. Load-bearing: LocalAuthentication traps the moment it evaluates a
         # Face ID policy without this key present, so the crash lands on the first unlock rather than
         # anywhere near the setting that turned the lock on. Touch ID and the passcode do not need it;
@@ -480,6 +483,9 @@ targets:
         NSCameraUsageDescription: Iskra uses the camera so you can record video messages and scan QR codes.
         NSMicrophoneUsageDescription: Iskra uses the microphone so you can record voice messages.
         NSLocationWhenInUseUsageDescription: Iskra uses your location only when you ask it to — to put a map on the place you are, or to share where you are with a chat for as long as you choose.
+        # "Transcribe" on a voice message. Recognition is on the device only
+        # (`requiresOnDeviceRecognition`, see `VoiceTranscriber`) — the recording never goes to Apple.
+        NSSpeechRecognitionUsageDescription: Iskra turns a voice message into text when you ask it to, on this device — the recording is never sent anywhere.
         CFBundleURLTypes:
           # Reverse-DNS of the client's domain (iskra.swag.moscow), which is the only scheme a
           # homeserver running the authentication service will accept — and the same string as

@@ -1397,3 +1397,11 @@
 
 "location.liveForMinutes" = "%lld минут";
 "location.liveForHours" = "%lld часов";
+
+/* Voice transcription */
+"message.transcript.show" = "Расшифровать";
+"message.transcript.hide" = "Скрыть текст";
+"message.transcript.notAllowed" = "Нет доступа к распознаванию речи. Его можно дать в Настройках.";
+"message.transcript.unavailable" = "Для вашего языка на этом устройстве нет распознавания без интернета — а отправлять голос на сервер Искра не станет.";
+"message.transcript.nothingHeard" = "Слов не разобрать.";
+"message.transcript.failed" = "Не получилось расшифровать. Попробуйте ещё раз.";

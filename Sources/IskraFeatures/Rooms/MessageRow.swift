@@ -896,6 +896,16 @@ struct VoiceMessageView: View {
 
     @State private var playback = AudioPlayback()
 
+    /// The words, once asked for — see `VoiceTranscriber`, which keeps them in memory only.
+    @State private var transcript: Transcript = .hidden
+
+    private enum Transcript: Equatable {
+        case hidden
+        case working
+        case shown(String)
+        case failed(VoiceTranscriber.Failure)
+    }
+
     /// Forty bars, whatever the sender sent. A voice message is a bubble in a conversation, and
     /// a hundred-and-twenty two-point bars in one is a barcode.
     private var bars: [Float] {
@@ -903,6 +913,88 @@ struct VoiceMessageView: View {
     }
 
     var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.close) {
+            player
+            transcriptText
+        }
+        .animation(.smooth(duration: Theme.Timing.chrome), value: transcript)
+        // The bytes are plaintext on disk while this is playing. Scroll it away and they go.
+        .onDisappear { playback.stop() }
+    }
+
+    @ViewBuilder
+    private var transcriptText: some View {
+        switch transcript {
+        case .hidden, .working:
+            EmptyView()
+        case let .shown(text):
+            Text(verbatim: text)
+                .font(.body)
+                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+        case let .failed(failure):
+            Text(Self.explanation(of: failure))
+                .font(.footnote)
+                .opacity(0.7)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private static func explanation(of failure: VoiceTranscriber.Failure) -> LocalizedStringResource {
+        switch failure {
+        case .notAllowed: Strings.Message.Transcript.notAllowed
+        case .unavailable: Strings.Message.Transcript.unavailable
+        case .nothingHeard: Strings.Message.Transcript.nothingHeard
+        case .failed: Strings.Message.Transcript.failed
+        }
+    }
+
+    /// Words, or not: pressed once it transcribes (or shows what it already did), pressed again it
+    /// folds them away.
+    private var transcribeButton: some View {
+        Button {
+            switch transcript {
+            case .shown, .failed:
+                transcript = .hidden
+            case .working:
+                break
+            case .hidden:
+                if let known = VoiceTranscriber.shared.cached(attachment) {
+                    transcript = .shown(known)
+                    return
+                }
+                guard let loader else { return }
+                transcript = .working
+                Task {
+                    do {
+                        transcript = .shown(try await VoiceTranscriber.shared.transcribe(attachment, using: loader))
+                    } catch {
+                        transcript = .failed(error as? VoiceTranscriber.Failure ?? .failed)
+                    }
+                }
+            }
+        } label: {
+            Group {
+                if transcript == .working {
+                    ProgressView().controlSize(.mini)
+                } else {
+                    Image(systemName: isShowingWords ? "text.bubble.fill" : "text.bubble")
+                        .font(.footnote.weight(.semibold))
+                }
+            }
+            .frame(width: Theme.Size.voiceButton, height: Theme.Size.voiceButton)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(isShowingWords ? Strings.Message.Transcript.hide : Strings.Message.Transcript.show))
+    }
+
+    private var isShowingWords: Bool {
+        if case .shown = transcript { return true }
+        return false
+    }
+
+    private var player: some View {
         HStack(spacing: Theme.Spacing.close) {
             Button {
                 Task { await playback.toggle(attachment, using: loader) }
@@ -950,9 +1042,9 @@ struct VoiceMessageView: View {
                 Text(Duration.seconds(duration), format: .time(pattern: .minuteSecond))
                     .font(.caption.monospacedDigit())
             }
+
+            transcribeButton
         }
-        // The bytes are plaintext on disk while this is playing. Scroll it away and they go.
-        .onDisappear { playback.stop() }
     }
 
     private func hasPlayed(_ index: Int) -> Bool {

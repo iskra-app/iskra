@@ -942,6 +942,16 @@ public enum Strings {
         /// The long press (right-click, on a Mac) on a message.
         /// Several messages chosen at once — the bar that takes the composer's place. See
         /// `MessageSelection`.
+        /// A voice message as words — see `VoiceTranscriber`.
+        public enum Transcript {
+            public static let show = LocalizedStringResource("message.transcript.show", bundle: bundle)
+            public static let hide = LocalizedStringResource("message.transcript.hide", bundle: bundle)
+            public static let notAllowed = LocalizedStringResource("message.transcript.notAllowed", bundle: bundle)
+            public static let unavailable = LocalizedStringResource("message.transcript.unavailable", bundle: bundle)
+            public static let nothingHeard = LocalizedStringResource("message.transcript.nothingHeard", bundle: bundle)
+            public static let failed = LocalizedStringResource("message.transcript.failed", bundle: bundle)
+        }
+
         public enum Selection {
             public static func count(_ count: Int) -> LocalizedStringResource {
                 LocalizedStringResource("message.selection.count", defaultValue: "\(count)", bundle: bundle)
