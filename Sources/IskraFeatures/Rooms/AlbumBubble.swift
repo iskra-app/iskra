@@ -5,8 +5,8 @@ import IskraDesign
 /// Photos and videos sent together, in one bubble — see `Album` for which ones, and `AlbumMosaic`
 /// for where each goes.
 ///
-/// One bubble, as a single picture is (`PictureBubble`): the set on the blur of its first photo,
-/// with the caption under it. Each tile opens the viewer on itself, with the rest of the room's
+/// One bubble, in the fill a text message from the same person has — the set framed in it, the
+/// caption under it in the bubble's own ink, padded as a text message's words are. Each tile opens the viewer on itself, with the rest of the room's
 /// pictures either side, so swiping on from the third photo of an album goes to the fourth.
 struct AlbumBubble: View {
     let items: [Message]
@@ -20,10 +20,6 @@ struct AlbumBubble: View {
     @Environment(\.timelineHeight) private var timelineHeight
     @Environment(\.roomMedia) private var roomMedia
     @Environment(\.coversRoom) private var coversRoom
-
-    /// The first photo, once it has arrived — what the bubble's blur is made of. See
-    /// `PictureBubble.backdrop`, where one fetch doing for both is argued.
-    @State private var cover: Image?
 
     @State private var opened: OpenedAlbum?
 
@@ -53,14 +49,12 @@ struct AlbumBubble: View {
             if let caption {
                 caption
                     .font(.body)
-                    // White on the darkened blur, as under a single photo — see `PictureBubble`.
-                    .foregroundStyle(.white)
-                    .padding(.top, Theme.Spacing.close)
-                    .padding(.horizontal, Theme.Spacing.tight)
+                    .padding(.horizontal, Theme.Spacing.captionHorizontal)
+                    .padding(.vertical, Theme.Spacing.captionVertical)
             }
         }
         .padding(Theme.Spacing.tight)
-        .background { backdrop }
+        .bubbleFill(style)
         .clipShape(BubbleShape())
         .pictureBorder(style)
         .contentShape(BubbleShape())
@@ -97,7 +91,6 @@ struct AlbumBubble: View {
         if let attachment = message.captioned {
             let isVideo = { if case .video = message.kind { true } else { false } }()
             MediaThumbnail(attachment: attachment,
-                           onLoad: { if index == 0 { cover = $0 } },
                            obeysAutoDownload: true)
                 .overlay {
                     if isVideo {
@@ -138,18 +131,5 @@ struct AlbumBubble: View {
         }
         let own = MediaItem.items(from: items)
         opened = OpenedAlbum(items: own, index: own.firstIndex { $0.id == id } ?? 0)
-    }
-
-    @ViewBuilder
-    private var backdrop: some View {
-        if let cover {
-            cover
-                .resizable()
-                .scaledToFill()
-                .blur(radius: Theme.Backdrop.blur)
-                .scaleEffect(Theme.Backdrop.overdraw)
-                .overlay(Color.black.opacity(Theme.Backdrop.dim))
-                .allowsHitTesting(false)
-        }
     }
 }

@@ -124,6 +124,33 @@ struct MessageBubble: ViewModifier {
     }
 }
 
+/// A message's fill and ink without its padding — for a bubble that lays out its own insides, as an
+/// album does (`AlbumBubble`): the pictures go to within a hairline of the edge, and the caption
+/// under them is padded by hand to sit where a text message's words would.
+struct BubbleFill: ViewModifier {
+    let style: BubbleStyle
+
+    @Environment(\.accent) private var accent
+    @Environment(\.hasWallpaper) private var hasWallpaper
+    @Environment(\.bubbleIsLifted) private var isLifted
+
+    private var fill: AnyShapeStyle {
+        switch style {
+        case .own: accent.bubble(onWallpaper: hasWallpaper)
+        case .incoming: AnyShapeStyle(hasWallpaper ? Color.incomingBubbleOnWallpaper : Color.incomingBubble)
+        case .plain: AnyShapeStyle(.clear)
+        }
+    }
+
+    func body(content: Content) -> some View {
+        let shape = BubbleShape()
+        return content
+            .foregroundStyle(style == .own ? accent.onBubble : AnyShapeStyle(.primary))
+            .background(fill, in: shape)
+            .background(isLifted && style != .plain ? Color.page : Color.clear, in: shape)
+    }
+}
+
 /// The outline around a picture, in the colour that message's bubble would have been.
 ///
 /// A photo has no bubble — it *is* the bubble — so a picture whose edges happen to match
@@ -161,6 +188,11 @@ struct PictureBorder: ViewModifier {
 }
 
 public extension View {
+    /// The bubble's colours and nothing else — see `BubbleFill`.
+    func bubbleFill(_ style: BubbleStyle) -> some View {
+        modifier(BubbleFill(style: style))
+    }
+
     /// Draws the edge of the bubble a picture stands in for. See `PictureBorder`.
     func pictureBorder(_ style: BubbleStyle) -> some View {
         modifier(PictureBorder(style: style))

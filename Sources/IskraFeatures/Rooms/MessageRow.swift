@@ -1098,8 +1098,8 @@ struct PictureBubble: View {
                     // black text on somebody's night sky in the light appearance, and it
                     // would be unreadable exactly half the time — which is worse than always.
                     .foregroundStyle(.white)
-                    .padding(.top, Theme.Spacing.close)
-                    .padding(.horizontal, Theme.Spacing.tight)
+                    .padding(.horizontal, Theme.Spacing.captionHorizontal)
+                    .padding(.vertical, Theme.Spacing.captionVertical)
             }
         }
         .padding(Theme.Spacing.tight)

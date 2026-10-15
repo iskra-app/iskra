@@ -2389,8 +2389,7 @@ public struct RoomView: View {
     /// whole point: an edit that started from an empty field would be a rewrite, and the user
     /// pressed "Edit" because they want to change a word.
     private func startEditing(_ message: Message) {
-        // An album's caption is its last picture's — see `Album`.
-        let message = message.album?.last ?? message
+        // An album is its first picture, and so is its caption — see `Album`.
         guard let text = message.editingText else { return }
         composerContext = .editing(message)
         let (words, mentions) = ComposerMentions.unlinked(text)
@@ -2466,19 +2465,18 @@ public struct RoomView: View {
         if !images.isEmpty { attachments = [] }
 
         Task {
-            // The words go *with* the pictures, as their caption, on the last of them: that is where
-            // an album shows it (`Album`), and where every other client will too — under the last
-            // photo of the set. An answer threads onto the first, which is the thing the reader will
-            // see beside the quote. A sticker takes no caption, so after one the words go on their
-            // own, as they always used to.
+            // The words go *with* the pictures, as their caption, on the first of them — Telegram's
+            // place for it, and the message an album is (`Album`). The answer threads onto the same
+            // one. A sticker takes no caption, so after one the words go on their own, as they
+            // always used to.
             var replyingTo: String?
             if case let .replying(message) = context { replyingTo = message.id }
             let caption = hasText ? MediaCaption(text: text, mentions: mentions) : nil
             var captioned = false
             for (index, item) in images.enumerated() {
-                let isLast = index == images.count - 1
-                let went = await send(item, caption: isLast ? caption : nil, replyingTo: replyingTo)
-                if isLast, caption != nil { captioned = went }
+                let isFirst = index == 0
+                let went = await send(item, caption: isFirst ? caption : nil, replyingTo: replyingTo)
+                if isFirst, caption != nil { captioned = went }
                 replyingTo = nil
             }
             guard (hasText && !captioned) || context?.isEditing == true else {

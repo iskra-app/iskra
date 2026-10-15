@@ -19,9 +19,10 @@ import Foundation
 /// a row whose ID moved with every upload would be torn down and drawn afresh each time.
 ///
 /// What would break the album breaks it: anything said in between, a date, the unread bar, a
-/// sticker or a circle (each of which is a message of its own, not a picture in a set), a reply
-/// anywhere but on the first, and a caption anywhere but on the last — that is where this app puts
-/// one (`RoomView.send`), and where every client will show it.
+/// sticker or a circle (each of which is a message of its own, not a picture in a set), and a reply
+/// or a caption anywhere but on the first. The first is where this app puts the caption
+/// (`RoomView.send`), as Telegram does: it is the message the album is, and in another client it is
+/// the words at the head of the set.
 public enum Album {
     /// The longest pause between two pictures of the same album.
     public static let gap: TimeInterval = 15
@@ -51,8 +52,6 @@ public enum Album {
                 flush()
             }
             run.append(message)
-            // A caption closes the album it is under: nothing that comes after it can join.
-            if captionOf(message) != nil { flush() }
         }
         flush()
         return result
@@ -72,6 +71,8 @@ public enum Album {
         run.count < limit
             && message.senderID == last.senderID
             && message.replyTo == nil
+            // A caption opens an album; one further in is the start of the next.
+            && captionOf(message) == nil
             && message.forwardedFrom == nil
             && abs(message.timestamp.timeIntervalSince(last.timestamp)) <= gap
     }
@@ -80,7 +81,7 @@ public enum Album {
         message.captioned?.caption
     }
 
-    /// The first message, wearing the whole album: the last one's caption and its HTML, a delivery
+    /// The first message, wearing the whole album — its own caption is the album's — with a delivery
     /// that is only as far along as the least delivered picture, and the read mark if any of them
     /// had it.
     private static func folded(_ run: [Message]) -> Message {
@@ -107,9 +108,9 @@ public enum Album {
 }
 
 public extension Message {
-    /// The album's caption: the last picture's, which is the only one that may have one.
+    /// The album's caption: the first picture's, which is the only one that may have one.
     var albumCaption: String? {
-        album?.last?.captioned?.caption
+        album?.first?.captioned?.caption
     }
 
     /// Every message this row stands for — the album's, or just itself.
