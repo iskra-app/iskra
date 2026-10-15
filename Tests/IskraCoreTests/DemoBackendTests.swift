@@ -281,6 +281,43 @@ struct DemoBackendTests {
         #expect(unrecognized.isEmpty, "\(unrecognized)")
     }
 
+    @Test("a live location share starts as a message that says so, and stops")
+    func liveLocation() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(component: "iskra-live-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let client = try await DemoBackend.makeClient(data: root.appending(component: "data"),
+                                                      cache: root.appending(component: "cache"),
+                                                      search: root.appending(component: "search"))
+        let session = UserSession(client: client, authentication: AuthenticationService(), sessionID: "demo", isDemo: true)
+        try await session.start()
+        defer { Task { await session.close() } }
+        let anyaID = "!anya:iskra.demo"
+        _ = await eventually { session.roomList.rooms.contains { $0.id == anyaID } }
+
+        let timeline = try #require(session.timeline(forRoomID: anyaID))
+        try await timeline.start()
+        defer { timeline.stop() }
+
+        session.liveLocation.authorize = { true }
+        await session.liveLocation.start(in: anyaID, for: 15 * 60)
+        #expect(session.liveLocation.failure == nil)
+        #expect(session.liveLocation.isSharing(in: anyaID))
+
+        func live() -> Location.LiveSpan? {
+            for message in timeline.rows.compactMap(\.message).reversed() {
+                if case let .location(location) = message.kind, let live = location.live { return live }
+            }
+            return nil
+        }
+        #expect(await eventually { live()?.isActive() == true }, "live: \(String(describing: live()))")
+
+        await session.liveLocation.stop(in: anyaID)
+        #expect(!session.liveLocation.isSharing(in: anyaID))
+        #expect(await eventually { live()?.isActive() == false }, "live: \(String(describing: live()))")
+        let unrecognized = await MockHomeserver.shared.unrecognized
+        #expect(unrecognized.isEmpty, "\(unrecognized)")
+    }
+
     @Test("a poll is drawn with its tally, takes a vote, and closes")
     func polls() async throws {
         let root = FileManager.default.temporaryDirectory.appending(component: "iskra-poll-\(UUID().uuidString)")

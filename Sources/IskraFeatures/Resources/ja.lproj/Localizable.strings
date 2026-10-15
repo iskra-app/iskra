@@ -1389,3 +1389,15 @@
 "thread.title" = "スレッド";
 "thread.replyInThread" = "スレッドで返信";
 "thread.replies" = "返信 %lld 件";
+
+/* Live location */
+"location.shareLive" = "リアルタイムで共有";
+"location.shareLiveFor" = "位置情報をどのくらい共有しますか？";
+"location.liveUntil" = "リアルタイム · %@まで";
+"location.liveEnded" = "リアルタイム共有は終了しました";
+"location.liveWaiting" = "最初の位置を待っています…";
+"location.youAreSharing" = "%@まで位置情報を共有しています";
+"location.stop" = "停止";
+
+"location.liveForMinutes" = "%lld分間";
+"location.liveForHours" = "%lld時間";

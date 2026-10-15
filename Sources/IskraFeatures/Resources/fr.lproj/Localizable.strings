@@ -1389,3 +1389,15 @@
 "thread.title" = "Fil";
 "thread.replyInThread" = "Répondre dans le fil";
 "thread.replies" = "%lld réponses";
+
+/* Live location */
+"location.shareLive" = "Partager en direct";
+"location.shareLiveFor" = "Partager votre position pendant combien de temps ?";
+"location.liveUntil" = "En direct · jusqu’à %@";
+"location.liveEnded" = "Partage en direct terminé";
+"location.liveWaiting" = "En attente du premier point…";
+"location.youAreSharing" = "Vous partagez votre position jusqu’à %@";
+"location.stop" = "Arrêter";
+
+"location.liveForMinutes" = "%lld minutes";
+"location.liveForHours" = "%lld heures";

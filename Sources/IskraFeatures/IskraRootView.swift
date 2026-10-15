@@ -213,6 +213,7 @@ public struct IskraRootView: View {
                     .onChange(of: session.displayName) { reloadAccounts(session) }
                     .onChange(of: session.avatarURL) { reloadAccounts(session) }
                     .environment(\.forwarding, Forwarding(session: session))
+                    .environment(\.liveLocation, session.liveLocation)
                     // Writing to somebody whose name was pressed in a room's member list, and the
                     // one wire that lets a screen several pushes deep in the conversation column
                     // change which conversation that column is showing. See `PersonalChats`.

@@ -80,6 +80,7 @@ public struct RoomView: View {
     @State private var isForwardingSelection = false
     @State private var isConfirmingSelectionDelete = false
     @Environment(\.forwarding) private var forwarding
+    @Environment(\.liveLocation) private var liveLocation
 
     /// The pinned messages, opened when the room has any. Built once and kept, for the same
     /// reason `details` is: `navigationDestination` re-evaluates on every redraw, and a fresh
@@ -1230,6 +1231,16 @@ public struct RoomView: View {
             }
             .animation(.smooth, value: identityChanges?.changes.first?.id)
         }
+        // While this account is sharing where it is with this chat: said, with the way to stop it,
+        // above everything else in the room — see `LiveLocationSharer`.
+        .safeAreaInset(edge: .top) {
+            if let liveLocation, let until = liveLocation.shares[timeline.roomID], until > .now {
+                LiveLocationStrip(until: until) {
+                    Task { await liveLocation.stop(in: timeline.roomID) }
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
         .safeAreaInset(edge: .top) {
             Group {
                 if !isThread, !timeline.pinnedEventIDs.isEmpty, let pinned {
@@ -1400,11 +1411,14 @@ public struct RoomView: View {
                 await timeline.send(poll: draft)
             }
         }
+        .failureAlert(Binding(get: { liveLocation?.failure }, set: { liveLocation?.failure = $0 }))
         .sheet(isPresented: $isChoosingLocation) {
-            LocationPicker { location in
+            LocationPicker(onPick: { location in
                 await timeline.send(location: location, replyingTo: replyID)
                 cancelContext()
-            }
+            }, onShareLive: liveLocation == nil || isThread ? nil : { duration in
+                await liveLocation?.start(in: timeline.roomID, for: duration)
+            })
         }
         // Writing. `typed()` is cheap to call on every keystroke on purpose — it tells the server
         // once and then only pushes back the moment it takes it back — so this can be exactly what

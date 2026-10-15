@@ -19,6 +19,34 @@ public struct Location: Sendable, Equatable {
     /// putting words in their mouth.
     public let name: String?
 
+    /// Set when this is somebody's location *as it moves* — a live share (MSC3489), the last point
+    /// of it. Nil for a pin dropped once.
+    public var live: LiveSpan?
+
+    /// What a live share says about itself besides where it last was.
+    public struct LiveSpan: Sendable, Equatable {
+        /// Whether the sharer still says it is on — they can stop it before its time.
+        public let isLive: Bool
+        /// When it stops by itself.
+        public let until: Date
+        /// When the last point arrived; nil while none has.
+        public let updatedAt: Date?
+
+        public init(isLive: Bool, until: Date, updatedAt: Date?) {
+            self.isLive = isLive
+            self.until = until
+            self.updatedAt = updatedAt
+        }
+
+        /// Still moving on the map: switched on, and not past its time.
+        public func isActive(now: Date = .now) -> Bool {
+            isLive && until > now
+        }
+
+        /// Whether there is a point to show at all — a share just started has none yet.
+        public var hasPosition: Bool { updatedAt != nil }
+    }
+
     public init(latitude: Double, longitude: Double, name: String? = nil) {
         self.latitude = latitude
         self.longitude = longitude

@@ -1385,3 +1385,15 @@
 "thread.title" = "Тред";
 "thread.replyInThread" = "Ответить в треде";
 "thread.replies" = "%lld ответа";
+
+/* Live location */
+"location.shareLive" = "Делиться в реальном времени";
+"location.shareLiveFor" = "На сколько делиться геопозицией?";
+"location.liveUntil" = "В реальном времени · до %@";
+"location.liveEnded" = "Трансляция окончена";
+"location.liveWaiting" = "Ждём первую точку…";
+"location.youAreSharing" = "Вы делитесь геопозицией до %@";
+"location.stop" = "Остановить";
+
+"location.liveForMinutes" = "%lld минут";
+"location.liveForHours" = "%lld часов";

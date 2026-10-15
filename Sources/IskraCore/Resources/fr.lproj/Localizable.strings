@@ -206,3 +206,7 @@
 
 /* Chat folders (stage 9) */
 "folders.saveFailed" = "Impossible d’enregistrer les dossiers. Réessayez.";
+
+/* Live location */
+"liveLocation.startFailed" = "Impossible de démarrer le partage de position en direct. Réessayez.";
+"liveLocation.denied" = "Iskra n’a pas accès à votre position. Vous pouvez l’autoriser dans Réglages.";

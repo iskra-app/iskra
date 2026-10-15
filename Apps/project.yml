@@ -274,9 +274,9 @@ targets:
         NSPhotoLibraryAddUsageDescription: Iskra needs permission to save a photo or a video from a chat to your library.
         # Only ever asked when the "my location" button on the map is pressed — never on opening
         # the picker. Somebody sending a pin from a map of a city they are not in should not have
-        # to say where they are to do it. Nothing here tracks anybody: one coordinate, once, to
-        # point a map at.
-        NSLocationWhenInUseUsageDescription: Iskra uses your location only when you ask it to, to put a map on the place you are.
+        # to say where they are to do it. A pin is one coordinate, once, to point a map at; a live
+        # share is the person's position for as long as they chose, and stops by itself.
+        NSLocationWhenInUseUsageDescription: Iskra uses your location only when you ask it to — to put a map on the place you are, or to share where you are with a chat for as long as you choose.
         # Face ID, for the app lock. Load-bearing: LocalAuthentication traps the moment it evaluates a
         # Face ID policy without this key present, so the crash lands on the first unlock rather than
         # anywhere near the setting that turned the lock on. Touch ID and the passcode do not need it;
@@ -304,7 +304,11 @@ targets:
           # matrix.to is not ours. See `MatrixLink`.
           - CFBundleURLName: moscow.swag.iskra.matrix
             CFBundleURLSchemes: [matrix]
-        UIBackgroundModes: [remote-notification]
+        # `location`: a live location share goes on while the phone is in a pocket, which is the
+        # whole of what it is for — see `LiveLocationSharer`. The system shows the blue pill for as
+        # long as it runs, so nobody's position leaves the phone without their seeing it. Only ever
+        # used while a share is on; nothing else in the app asks for location in the background.
+        UIBackgroundModes: [remote-notification, location]
 
   # The process that decrypts a push. iOS wakes it when one arrives, gives it ~30 seconds,
   # and shows whatever it puts on screen — see Apps/NotificationService/NotificationService.swift.
@@ -475,7 +479,7 @@ targets:
         LSMinimumSystemVersion: "15.0"
         NSCameraUsageDescription: Iskra uses the camera so you can record video messages and scan QR codes.
         NSMicrophoneUsageDescription: Iskra uses the microphone so you can record voice messages.
-        NSLocationWhenInUseUsageDescription: Iskra uses your location only when you ask it to, to put a map on the place you are.
+        NSLocationWhenInUseUsageDescription: Iskra uses your location only when you ask it to — to put a map on the place you are, or to share where you are with a chat for as long as you choose.
         CFBundleURLTypes:
           # Reverse-DNS of the client's domain (iskra.swag.moscow), which is the only scheme a
           # homeserver running the authentication service will accept — and the same string as

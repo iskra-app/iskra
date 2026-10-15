@@ -34,4 +34,6 @@ public final class Forwarding {
 public extension EnvironmentValues {
     /// The forward capability. Nil until a session is up.
     @Entry var forwarding: Forwarding?
+    /// Live location sharing for the open account — see `LiveLocationSharer`. Nil until a session is up.
+    @Entry var liveLocation: LiveLocationSharer?
 }
