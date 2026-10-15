@@ -455,6 +455,14 @@ struct MessageActions<Content: View>: View {
                                              perform: handlers.onTogglePin))
         }
 
+        // Several at once: forward them together, copy them as one piece of text, delete a run of
+        // mistakes. Telegram's "Select", with this message already ticked.
+        if let onSelect = handlers.onSelect, message.delivery?.hasFailed != true {
+            actions.append(MessageMenuAction(title: Strings.Message.Menu.select,
+                                             systemImage: "checkmark.circle",
+                                             perform: onSelect))
+        }
+
         // Only the sender may close a poll — the room ignores an end from anybody else — and only
         // one the server has.
         if message.canEndPoll && !isOffline {

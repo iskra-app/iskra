@@ -1323,3 +1323,11 @@
 "room.access.unban" = "ブロック解除";
 "room.access.unbanQuestion" = "%@ のブロックを解除しますか？";
 "room.access.unbanHelp" = "また参加できるようになります。自動では戻らないので、招待するかリンクを送ってください。";
+
+/* Choosing several messages (stage 9) */
+"message.menu.select" = "選択";
+"message.selection.count" = "%lld 件選択";
+"message.selection.cancel" = "キャンセル";
+"message.selection.deleteTitle" = "選択したメッセージを削除しますか？";
+"message.selection.deleteMessage" = "チャットの全員から消え、元に戻すことはできません。";
+"message.selection.copied" = "コピーしました";

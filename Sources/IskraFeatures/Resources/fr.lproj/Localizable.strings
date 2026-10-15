@@ -1323,3 +1323,11 @@
 "room.access.unban" = "Débloquer";
 "room.access.unbanQuestion" = "Débloquer %@ ?";
 "room.access.unbanHelp" = "Cette personne pourra de nouveau entrer. Elle n’apparaîtra pas d’elle-même : invitez-la ou envoyez-lui un lien.";
+
+/* Choosing several messages (stage 9) */
+"message.menu.select" = "Sélectionner";
+"message.selection.count" = "Sélectionnés : %lld";
+"message.selection.cancel" = "Annuler";
+"message.selection.deleteTitle" = "Supprimer les messages sélectionnés ?";
+"message.selection.deleteMessage" = "Ils disparaîtront pour tous les membres de la discussion. Impossible de les récupérer.";
+"message.selection.copied" = "Copié";

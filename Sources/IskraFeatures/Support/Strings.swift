@@ -883,6 +883,18 @@ public enum Strings {
         public static let edited = LocalizedStringResource("message.edited", bundle: bundle)
 
         /// The long press (right-click, on a Mac) on a message.
+        /// Several messages chosen at once — the bar that takes the composer's place. See
+        /// `MessageSelection`.
+        public enum Selection {
+            public static func count(_ count: Int) -> LocalizedStringResource {
+                LocalizedStringResource("message.selection.count", defaultValue: "\(count)", bundle: bundle)
+            }
+            public static let cancel = LocalizedStringResource("message.selection.cancel", bundle: bundle)
+            public static let deleteTitle = LocalizedStringResource("message.selection.deleteTitle", bundle: bundle)
+            public static let deleteMessage = LocalizedStringResource("message.selection.deleteMessage", bundle: bundle)
+            public static let copied = LocalizedStringResource("message.selection.copied", bundle: bundle)
+        }
+
         public enum Menu {
             /// "5 reactions" — the line that opens who reacted, and the title of that list.
             public static func reactors(_ count: Int) -> LocalizedStringResource {
@@ -923,6 +935,7 @@ public enum Strings {
 
             /// Sending this message on into another room.
             public static let forward = LocalizedStringResource("message.menu.forward", bundle: bundle)
+            public static let select = LocalizedStringResource("message.menu.select", bundle: bundle)
 
             /// Blocking the person who sent it — Matrix's ignore. Reversible from settings, so it
             /// asks once by name rather than twice.

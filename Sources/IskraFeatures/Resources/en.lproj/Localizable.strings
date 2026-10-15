@@ -1323,3 +1323,11 @@
 "room.access.unban" = "Unblock";
 "room.access.unbanQuestion" = "Unblock %@?";
 "room.access.unbanHelp" = "They’ll be able to come in again. They won’t appear in the chat by themselves — invite them or send a link.";
+
+/* Choosing several messages (stage 9) */
+"message.menu.select" = "Select";
+"message.selection.count" = "Selected: %lld";
+"message.selection.cancel" = "Cancel";
+"message.selection.deleteTitle" = "Delete the selected messages?";
+"message.selection.deleteMessage" = "They’ll disappear for everyone in the chat. You won’t be able to bring them back.";
+"message.selection.copied" = "Copied";
