@@ -421,7 +421,9 @@ button with nothing written on it. Tinting each site by hand is not the fix eith
 mono accent the tint *is* `.primary` and the slab comes straight back. The two styles here draw the
 fill and the words from `AccentTheme.color` and `AccentTheme.foreground(in:)`, which is the pair
 "the accent, and what stays readable on top of it". Use `.glassAction` on the navigation layer
-(sign-in, recovery) and `.primaryAction` in content.
+(sign-in, recovery) and `.primaryAction` in content. The second button beside a `.glassAction` is
+`.glassSecondary` — same capsule, same height — not the system's `.glass`, which is a few points
+shorter and made the two stacked buttons look like two different kinds of thing.
 
 **`@Environment(\.dismiss)` is not allowed in a screen pushed onto the sidebar column.** On
 macOS 26 a view that sits in the sidebar's stack, reads `dismiss`, *and* pushes a screen of its

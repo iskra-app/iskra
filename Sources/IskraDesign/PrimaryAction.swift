@@ -76,6 +76,31 @@ public struct GlassActionStyle: ButtonStyle {
     }
 }
 
+/// The second button beside a `.glassAction` — "Choose a server" under "Next", "Create account"
+/// under "Sign in". The system's `.glass` button is its own size, a few points shorter than this
+/// app's main one, and two buttons stacked one under the other at two different heights read as
+/// two different kinds of thing. This is the main one's shape and height, in untinted glass.
+public struct GlassSecondaryStyle: ButtonStyle {
+    public func makeBody(configuration: Configuration) -> some View {
+        Face(configuration: configuration)
+    }
+
+    private struct Face: View {
+        let configuration: Configuration
+        @ScaledSize(Theme.Size.minimumTapTarget) private var height
+
+        var body: some View {
+            configuration.label
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.primary)
+                .padding(.horizontal, Theme.Spacing.roomy)
+                .padding(.vertical, Theme.Spacing.close)
+                .frame(minHeight: height)
+                .secondaryActionGlass()
+        }
+    }
+}
+
 /// The two answers to a question the app is asking: yes in green, no in red.
 ///
 /// The one place in this app where a button's colour is *not* the accent, and it is allowed to
@@ -170,4 +195,5 @@ public extension ButtonStyle where Self == PrimaryActionStyle {
 public extension ButtonStyle where Self == GlassActionStyle {
     /// The primary action on the navigation layer — sign-in, recovery — where the app is glass.
     static var glassAction: GlassActionStyle { GlassActionStyle() }
+    static var glassSecondary: GlassSecondaryStyle { GlassSecondaryStyle() }
 }

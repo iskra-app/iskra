@@ -19,11 +19,27 @@ public extension View {
     /// the fill has to be strong enough to read as somewhere to type without becoming a slab that
     /// competes with the words above it. `.quaternary` is that, in both appearances, without this
     /// file naming a single colour.
+    ///
+    /// As tall as the buttons beside it (`.glassAction`, `.glassSecondary`) and rounded by half that
+    /// height — so one line is the same capsule they are, and the field and the two buttons under it
+    /// read as one column. It used to have the corner of a control, a softer square, standing over
+    /// two capsules of a different height. A field of two lines (name and password together) keeps
+    /// the same corner and becomes a rounded block.
     func entryField() -> some View {
-        textFieldStyle(.plain)
-            .padding(Theme.Spacing.normal)
-            .frame(minHeight: Theme.Size.minimumTapTarget)
+        modifier(EntryFieldShape())
+    }
+}
+
+private struct EntryFieldShape: ViewModifier {
+    @ScaledSize(Theme.Size.minimumTapTarget) private var height
+
+    func body(content: Content) -> some View {
+        content
+            .textFieldStyle(.plain)
+            .padding(.horizontal, Theme.Spacing.roomy)
+            .padding(.vertical, Theme.Spacing.close)
+            .frame(minHeight: height)
             .background(.quaternary,
-                        in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
+                        in: RoundedRectangle(cornerRadius: height / 2, style: .continuous))
     }
 }
