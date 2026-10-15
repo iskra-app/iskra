@@ -967,7 +967,15 @@ public final class RoomDetailsStore {
         do {
             try await room.updatePowerLevelsForUsers(updates: [UserPowerLevelUpdate(userId: member.id,
                                                                                     powerLevel: level)])
-            await refreshMembers()
+            // On the screen at once, and then read back once the room has heard of it — the same
+            // reason as for a ban (`settle`): read straight away, the list still had the old role,
+            // and a moderator just appointed was nowhere among the staff until the screen reopened.
+            if let index = members.firstIndex(where: { $0.id == member.id }) {
+                members[index] = RoomMemberSummary(id: member.id, name: member.name, avatarURL: member.avatarURL,
+                                                   role: role, authority: .level(Int(level)),
+                                                   isNameAmbiguous: member.isNameAmbiguous)
+            }
+            await settle(until: { loaded in loaded.joined.first { $0.id == member.id }?.role == role })
         } catch {
             Log.rooms.error("role change refused: \(Log.describe(error), privacy: .public)")
             failure = .role
@@ -993,12 +1001,17 @@ public final class RoomDetailsStore {
     /// that had just taken them off. So the list is read a few times, briefly, and the first answer
     /// that has caught up is the one kept. One that never does leaves the screen as it was put.
     private func settle(_ userID: String, isBanned: Bool) async {
+        await settle { loaded in loaded.banned.contains(where: { $0.id == userID }) == isBanned }
+    }
+
+    /// The same for any change to who is here and as what: the first reading that `caughtUp` accepts.
+    private func settle(until caughtUp: (_ loaded: (joined: [RoomMemberSummary], banned: [RoomMemberSummary])) -> Bool) async {
         let generation = self.generation
         for _ in 0..<Self.settleAttempts {
             guard let fresh = try? await room.members() else { return }
             let loaded = Self.partition(fresh)
             guard generation == self.generation else { return }
-            if loaded.banned.contains(where: { $0.id == userID }) == isBanned {
+            if caughtUp(loaded) {
                 apply(loaded)
                 return
             }
