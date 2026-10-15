@@ -66,6 +66,7 @@
 "room.attach" = "写真やファイルを追加";
 
 "room.composerPlaceholder" = "メッセージ";
+"room.captionPlaceholder" = "キャプション";
 "room.mentionSuggestions" = "メンションする相手";
 
 /* The banner shown in place of the composer when posting is not allowed. */

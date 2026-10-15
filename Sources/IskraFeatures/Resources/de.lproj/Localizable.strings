@@ -66,6 +66,7 @@
 "room.attach" = "Foto oder Datei hinzufügen";
 
 "room.composerPlaceholder" = "Nachricht";
+"room.captionPlaceholder" = "Beschriftung";
 "room.mentionSuggestions" = "Wen erwähnen";
 
 /* The banner shown in place of the composer when posting is not allowed. */

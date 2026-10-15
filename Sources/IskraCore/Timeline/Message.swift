@@ -357,6 +357,10 @@ public struct Message: Sendable, Identifiable, Equatable {
     /// the difference.
     public var uploadProgress: Double?
 
+    /// The pictures this row stands for, when it is an album — the first of them is this message.
+    /// Nil for every ordinary message. See `Album`.
+    public var album: [Message]?
+
     public init(id: String,
                 kind: MessageKind,
                 senderID: String,
@@ -454,18 +458,39 @@ public struct Message: Sendable, Identifiable, Equatable {
 
     /// Whether the user may go back and change what they wrote.
     ///
-    /// Only their own words, and only *words*. Matrix can edit a caption on a photo, and this
-    /// app does not put captions on photos — so an "Edit" on a picture would open the composer
-    /// on an empty string and, on being sent, replace a caption that was never there. What
-    /// remains is text, notices and emotes, which is where the typo the user is trying to fix
-    /// actually lives.
+    /// Only their own words: text, notices and emotes — and the caption under their own photo,
+    /// video or file, which is words too, and which can be added to one sent without any
+    /// (`hasCaption`). A sticker, a circle and a voice message have nothing to write under them.
     ///
     /// And only a message the server has: an edit is an event pointing at an event, and one
     /// still in the send queue has no event to point at. A message that has not gone yet is
     /// fixed by discarding it and writing it again, which is what the red badge already offers.
     public var canEdit: Bool {
-        guard isOwn, !isDeleted, editableText != nil else { return false }
+        guard isOwn, !isDeleted, editingText != nil else { return false }
         return delivery == .sent || delivery == .read
+    }
+
+    /// Whether what this message is can carry a caption: a photo, a video, a piece of music or a
+    /// file. Not a sticker, a circle or a voice message, which are the whole of what they say.
+    public var hasCaption: Bool {
+        captioned != nil
+    }
+
+    /// The attachment under which a caption goes, for the kinds that take one.
+    public var captioned: Attachment? {
+        switch kind {
+        case let .image(attachment), let .video(attachment), let .audio(attachment), let .file(attachment):
+            attachment
+        default:
+            nil
+        }
+    }
+
+    /// What the composer is filled with when an edit begins: the words of a message, or the
+    /// caption of an attachment — empty when it has none yet, so that "Edit" on a photo is how a
+    /// caption is added afterwards.
+    public var editingText: String? {
+        editableText ?? captioned.map { $0.caption ?? "" }
     }
 
     /// What the composer is filled with when an edit begins — the message as it now stands.

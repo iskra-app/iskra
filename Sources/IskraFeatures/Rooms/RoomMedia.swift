@@ -39,7 +39,8 @@ struct MediaItem: Identifiable, Equatable {
     /// locations, stickers and the rest are not attachments anybody goes looking for later, so they
     /// fall away.
     static func items(from messages: [Message]) -> [MediaItem] {
-        messages.compactMap { message in
+        // An album is several pictures in one row, and the viewer swipes through each — see `Album`.
+        messages.flatMap(\.members).compactMap { message in
             switch message.kind {
             case let .image(attachment):
                 item(message, attachment, kind: .photo)

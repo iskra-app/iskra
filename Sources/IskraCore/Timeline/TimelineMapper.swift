@@ -571,7 +571,8 @@ enum TimelineMapper {
         }
     }
 
-    /// The HTML a text, emote or notice carries beside its plain body, when it carries HTML.
+    /// The HTML a text, emote or notice carries beside its plain body — or a caption beside its
+    /// plain one — when it carries HTML.
     private static func formattedBody(from content: TimelineItemContent) -> String? {
         guard case let .msgLike(msgLike) = content, case let .message(message) = msgLike.kind else { return nil }
         let formatted: FormattedBody?
@@ -579,6 +580,11 @@ enum TimelineMapper {
         case let .text(content): formatted = content.formatted
         case let .emote(content): formatted = content.formatted
         case let .notice(content): formatted = content.formatted
+        // A caption's HTML, which is drawn under the picture the same way — see `MediaCaption`.
+        case let .image(content): formatted = content.formattedCaption
+        case let .video(content): formatted = content.formattedCaption
+        case let .audio(content): formatted = content.formattedCaption
+        case let .file(content): formatted = content.formattedCaption
         default: formatted = nil
         }
         guard let formatted, case .html = formatted.format else { return nil }

@@ -88,6 +88,23 @@ struct MessageContent: View {
 
     @ViewBuilder
     private var content: some View {
+        if let album = message.album, album.count > 1 {
+            quoted {
+                AlbumBubble(items: album, style: style,
+                            caption: message.albumCaption.map { AnyView(messageText($0, from: album[album.count - 1])) })
+            }
+        } else {
+            single
+        }
+    }
+
+    /// The caption under a photo, a video or a file, painted like a message — see `MediaCaption`.
+    private func caption(of attachment: Attachment) -> AnyView? {
+        attachment.caption.map { AnyView(messageText($0)) }
+    }
+
+    @ViewBuilder
+    private var single: some View {
         switch message.kind {
         case let .text(body):
             bubble { messageText(body) }
@@ -116,7 +133,8 @@ struct MessageContent: View {
             quoted {
                 PictureBubble(attachment: attachment, messageID: message.id,
                               style: style, isPlayable: false,
-                              sender: message.spokenSender, timestamp: message.timestamp)
+                              sender: message.spokenSender, timestamp: message.timestamp,
+                              caption: caption(of: attachment))
             }
 
         case let .sticker(attachment):
@@ -131,7 +149,8 @@ struct MessageContent: View {
             quoted {
                 PictureBubble(attachment: attachment, messageID: message.id,
                               style: style, isPlayable: true,
-                              sender: message.spokenSender, timestamp: message.timestamp)
+                              sender: message.spokenSender, timestamp: message.timestamp,
+                              caption: caption(of: attachment))
             }
 
         // `quoted`, like every other kind that draws its own bubble rather than sitting in
@@ -139,11 +158,19 @@ struct MessageContent: View {
         // music was silently dropped.
         case let .audio(attachment):
             // Played in place, like a voice message — not handed to the system as a file.
-            bubble { AudioFileView(attachment: attachment) }
+            bubble {
+                AudioFileView(attachment: attachment)
+                if let caption = attachment.caption { messageText(caption) }
+            }
 
         case let .file(attachment):
             quoted {
                 FileBubble(attachment: attachment, systemImage: "doc", style: style)
+                if let caption = attachment.caption {
+                    messageText(caption)
+                        .font(.body)
+                        .messageBubble(style)
+                }
             }
 
         case let .location(location):
@@ -252,8 +279,8 @@ struct MessageContent: View {
     /// colour is a thing the design layer owns and the model layer cannot see. A mention of you is
     /// drawn louder than a mention of someone else — it is the one that means *you* were called.
     /// Overriding `openURL` is what turns a tapped link into a question instead of a jump.
-    private func messageText(_ body: String) -> some View {
-        Text(paintedBody(body))
+    private func messageText(_ body: String, from source: Message? = nil) -> some View {
+        Text(paintedBody(body, from: source ?? message))
             .tint(accent.color)
             .environment(\.openURL, OpenURLAction { url in
                 // The finger coming off a hold that opened the menu is not a tap on the link it
@@ -277,10 +304,12 @@ struct MessageContent: View {
             })
     }
 
-    private func paintedBody(_ body: String) -> AttributedString {
+    /// `source` is the message the words belong to — this one, or the picture of an album that
+    /// carries its caption, whose HTML and mentions are its own.
+    private func paintedBody(_ body: String, from source: Message) -> AttributedString {
         var attributed = RichText.attributed(body: body,
-                                             formattedBody: message.formattedBody,
-                                             mentionedUserIDs: Set(message.mentionedUserIDs),
+                                             formattedBody: source.formattedBody,
+                                             mentionedUserIDs: Set(source.mentionedUserIDs),
                                              displayNames: currentUserID.isEmpty ? [:] : [currentUserID: currentUserName],
                                              ownUserID: currentUserID.isEmpty ? nil : currentUserID)
 

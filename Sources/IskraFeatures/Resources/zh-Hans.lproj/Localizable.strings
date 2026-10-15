@@ -66,6 +66,7 @@
 "room.attach" = "添加照片或文件";
 
 "room.composerPlaceholder" = "消息";
+"room.captionPlaceholder" = "添加说明";
 "room.mentionSuggestions" = "要提及的人";
 
 /* The banner shown in place of the composer when posting is not allowed. */

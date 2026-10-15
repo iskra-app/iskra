@@ -25,11 +25,17 @@ public extension TimelineStore {
     /// Except a WebP, which is a sticker and goes as one — see `StickerPicture`. Here, because
     /// every way a picture leaves (picker, paste, drop, the Share outbox, forward) comes through
     /// this one call.
-    func send(photo original: Data, filename originalName: String, replyingTo replyID: String? = nil) async {
+    ///
+    /// `caption` goes under the picture, in the same event — see `MediaCaption`. A sticker has no
+    /// caption, so for a WebP it is not used, and the result says so: `false` means the words are
+    /// still the caller's to send.
+    @discardableResult
+    func send(photo original: Data, filename originalName: String, caption: MediaCaption? = nil,
+              replyingTo replyID: String? = nil) async -> Bool {
         guard let timeline = liveTimeline else {
             Log.media.error("photo dropped: the room has no live timeline")
             failure = .send
-            return
+            return false
         }
 
         let sticker = await Task.detached(priority: .userInitiated) { StickerPicture.prepare(original) }.value
@@ -39,10 +45,10 @@ public extension TimelineStore {
         case .refused:
             Log.media.error("sticker refused: its metadata could not be removed")
             failure = .sticker
-            return
+            return false
         case let .ready(picture):
             await send(stickerPicture: picture, through: timeline, replyingTo: replyID)
-            return
+            return false
         }
 
         // Off the main thread: a twelve-megapixel HEIC drawn again is a few hundred milliseconds,
@@ -54,17 +60,13 @@ public extension TimelineStore {
         guard let prepared else {
             Log.media.error("photo refused: its metadata could not be removed")
             failure = .send
-            return
+            return false
         }
         let data = prepared.data
         let filename = prepared.filename
 
         let info = MediaMetadata.image(data: data, filename: filename)
-        let parameters = UploadParameters(source: .data(bytes: data, filename: filename),
-                                          caption: nil,
-                                          formattedCaption: nil,
-                                          mentions: nil,
-                                          inReplyTo: replyID.flatMap { eventID(for: $0) })
+        let parameters = parameters(source: .data(bytes: data, filename: filename), caption: caption, replyingTo: replyID)
 
         // `blurhash` is not decoration. The SDK refuses an image without one and says
         // `InvalidAttachmentData` — see `Blurhash`.
@@ -77,7 +79,7 @@ public extension TimelineStore {
                                   blurhash: info.blurhash,
                                   isAnimated: false)
 
-        upload {
+        return upload {
             try timeline.sendImage(params: parameters, thumbnailSource: nil, imageInfo: imageInfo)
         }
     }
@@ -92,7 +94,8 @@ public extension TimelineStore {
     /// Any copy made here is plaintext on disk and lives exactly as long as this call — which is
     /// safe only because the SDK is handed the *bytes*, not the path (see `owned`): it reads a
     /// path later, from its queue, by which time the copy is gone.
-    func send(video original: URL, asVideoNote: Bool = false, replyingTo replyID: String? = nil) async {
+    func send(video original: URL, asVideoNote: Bool = false, caption: MediaCaption? = nil,
+              replyingTo replyID: String? = nil) async {
         guard let timeline = liveTimeline else {
             // Not a silent return. The user pressed send; if nothing is going to happen, they are
             // entitled to be told — a bare `return` here is the app appearing to swallow a message,
@@ -130,11 +133,7 @@ public extension TimelineStore {
             failure = .send
             return
         }
-        let parameters = UploadParameters(source: source,
-                                          caption: nil,
-                                          formattedCaption: nil,
-                                          mentions: nil,
-                                          inReplyTo: replyID.flatMap { eventID(for: $0) })
+        let parameters = parameters(source: source, caption: caption, replyingTo: replyID)
 
         // The thumbnail rides along as its own upload so a receiver has something to
         // show before the video itself arrives — and it only rides along if it is described
@@ -169,7 +168,7 @@ public extension TimelineStore {
     }
 
     /// Sends any other file.
-    func send(file url: URL, replyingTo replyID: String? = nil) async {
+    func send(file url: URL, caption: MediaCaption? = nil, replyingTo replyID: String? = nil) async {
         guard let timeline = liveTimeline else {
             // Not a silent return. The user pressed send; if nothing is going to happen, they are
             // entitled to be told — a bare `return` here is the app appearing to swallow a message,
@@ -185,11 +184,7 @@ public extension TimelineStore {
             failure = .send
             return
         }
-        let parameters = UploadParameters(source: source,
-                                          caption: nil,
-                                          formattedCaption: nil,
-                                          mentions: nil,
-                                          inReplyTo: replyID.flatMap { eventID(for: $0) })
+        let parameters = parameters(source: source, caption: caption, replyingTo: replyID)
 
         upload {
             try timeline.sendFile(params: parameters, fileInfo: MediaMetadata.file(at: url))
@@ -294,6 +289,14 @@ public extension TimelineStore {
     ///
     /// Mapped rather than read where the system allows, so a large file is not copied once more
     /// on its way into the SDK than it has to be.
+    private func parameters(source: UploadSource, caption: MediaCaption?, replyingTo replyID: String?) -> UploadParameters {
+        UploadParameters(source: source,
+                         caption: caption?.body,
+                         formattedCaption: caption?.formattedBody,
+                         mentions: caption?.mentions,
+                         inReplyTo: replyID.flatMap { eventID(for: $0) })
+    }
+
     private static func owned(_ url: URL) throws -> UploadSource {
         .data(bytes: try Data(contentsOf: url, options: .mappedIfSafe), filename: url.lastPathComponent)
     }
@@ -395,12 +398,15 @@ public extension TimelineStore {
     /// is several relay round trips.
     private static var stickerUploadTimeout: Duration { .seconds(60) }
 
-    private func upload(_ start: () throws -> SendAttachmentJoinHandle) {
+    @discardableResult
+    private func upload(_ start: () throws -> SendAttachmentJoinHandle) -> Bool {
         do {
             _ = try start()
+            return true
         } catch {
             Log.media.error("attachment refused: \(Log.describe(error), privacy: .public)")
             failure = .send
+            return false
         }
     }
 }

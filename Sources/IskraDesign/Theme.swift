@@ -78,6 +78,9 @@ public enum Theme {
         public static let betweenSenders: CGFloat = 12
         /// Between two messages from the same person.
         public static let withinRun: CGFloat = 2
+        /// Between the pictures of an album — a hairline of the bubble showing through, as in
+        /// Telegram, so the set reads as one thing made of several. See `AlbumMosaic`.
+        public static let albumGap: CGFloat = 2
 
         /// How far the emoji under a message climb back onto it.
         ///
@@ -693,6 +696,9 @@ public enum Theme {
         /// It is a fraction rather than a number because a Mac window and an iPhone are
         /// not the same height, and half of each is the point.
         public static let pictureHeightFraction: CGFloat = 0.5
+        /// The same for an album, which is allowed a little more: it is several pictures, and
+        /// squeezed into half the screen each of them would be cropped down to a strip.
+        public static let albumHeightFraction: CGFloat = 0.6
 
         /// The smallest an opened video is allowed to be. It matters on the Mac, where the
         /// viewer is a sheet rather than the whole screen and would otherwise shrink to the
