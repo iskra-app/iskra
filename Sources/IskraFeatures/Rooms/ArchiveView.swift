@@ -95,6 +95,7 @@ private struct ArchivedRoom: View {
             RoomView(timeline: timeline,
                      identityChanges: session.identityChanges(forRoomID: roomID),
                      makeDetails: { session.details(forRoomID: roomID) },
+                     makeThread: { session.threadTimeline(forRoomID: roomID, rootEventID: $0) },
                      openAt: $openAt,
                      onLeave: close,
                      onClose: close)

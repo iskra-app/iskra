@@ -868,6 +868,7 @@ public struct IskraRootView: View {
                     RoomView(timeline: timeline,
                              identityChanges: session.identityChanges(forRoomID: roomID),
                              makeDetails: { session.details(forRoomID: roomID) },
+                             makeThread: { session.threadTimeline(forRoomID: roomID, rootEventID: $0) },
                              openAt: $selectedEventID,
                              onLeave: { selectedRoomID = nil },
                              onClose: { selectedRoomID = nil })

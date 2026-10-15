@@ -571,6 +571,15 @@ public enum Strings {
         }
     }
 
+    /// Threads — answers kept under the message they answer. See `TimelineStore.threadRootID`.
+    public enum Thread {
+        public static let title = LocalizedStringResource("thread.title", bundle: bundle)
+        public static let replyInThread = LocalizedStringResource("thread.replyInThread", bundle: bundle)
+        public static func replies(_ count: Int) -> LocalizedStringResource {
+            LocalizedStringResource("thread.replies", defaultValue: "\(count) replies", bundle: bundle)
+        }
+    }
+
     public enum Room {
         /// Somebody in the room has new keys — see `IdentityChangeBanner`. Written so that no name
         /// has to be declined and nobody's gender guessed: the name stands alone before a colon.

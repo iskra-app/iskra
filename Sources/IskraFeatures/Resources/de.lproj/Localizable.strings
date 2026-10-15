@@ -1384,3 +1384,8 @@
 "beta.demoSignInHelp" = "Der Anmeldebildschirm gegen einen Server in der App: alice / password. Ihr Konto bleibt unberührt, wer sich anmeldet, wird sofort wieder abgemeldet.";
 "beta.demoSignedIn" = "Angemeldet: %@";
 "beta.close" = "Schließen";
+
+/* Threads */
+"thread.title" = "Thread";
+"thread.replyInThread" = "Im Thread antworten";
+"thread.replies" = "%lld Antworten";

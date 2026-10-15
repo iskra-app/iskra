@@ -114,5 +114,19 @@
 				<string>%lld 票</string>
 		</dict>
 	</dict>
+	<key>thread.replies</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+				<key>other</key>
+				<string>%lld 条回复</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

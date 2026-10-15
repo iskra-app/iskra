@@ -234,6 +234,11 @@ struct MessageRow: View {
                 } else {
                     actionableContent
                 }
+
+                // The answers kept under it, a press away — see `ThreadLine`.
+                if let thread = message.thread, let open = handlers.onOpenThread {
+                    ThreadLine(thread: thread, onOpen: open)
+                }
             }
 
             if !message.isOwn {

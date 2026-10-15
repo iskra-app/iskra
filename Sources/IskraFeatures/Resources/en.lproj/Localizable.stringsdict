@@ -130,5 +130,21 @@
 				<string>%lld votes</string>
 		</dict>
 	</dict>
+	<key>thread.replies</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+				<key>one</key>
+				<string>%lld reply</string>
+				<key>other</key>
+				<string>%lld replies</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

@@ -208,10 +208,17 @@ public final class TimelineStore {
     /// which during a refill is deliberately the conversation from a moment ago.
     private var latestRows: [TimelineRow] = []
 
-    init(room: Room, ownUserID: String) {
+    /// The thread this store is, when it is one: the root message's event ID. Nil for the room's
+    /// own timeline, which leaves thread answers out and shows them as a line under their root
+    /// (`Message.thread`). A thread's timeline starts with its root and holds only its answers, and
+    /// whatever is sent from it — words, pictures, a reply — goes into the thread.
+    public let threadRootID: String?
+
+    init(room: Room, ownUserID: String, threadRootID: String? = nil) {
         self.room = room
         self.ownUserID = ownUserID
         self.roomID = room.id()
+        self.threadRootID = threadRootID
 
         // A nickname is set on this device and travels nowhere, so no sync will ever arrive to
         // tell the header about it. This is how the name above the conversation changes the moment
@@ -364,7 +371,18 @@ public final class TimelineStore {
         // can stall. Unbounded, that stall is the whole of `open()` stuck before the first page,
         // `hasLoaded` never set, and a spinner with no way out. A timeout is thrown instead, and
         // `start()` turns it into the "this chat didn't open — try again" screen.
-        let timeline = try await withTimeout(Self.sdkTimeout) { [room] in try await room.timeline() }
+        let configuration = TimelineConfiguration(
+            // The room's own leaves thread answers out — they are a line under their root, as in
+            // Element and Telegram's comments, and a thread is opened to read them.
+            focus: threadRootID.map { .thread(rootEventId: $0) } ?? .live(hideThreadedEvents: true),
+            filter: .all,
+            internalIdPrefix: threadRootID.map { "thread-\($0)-" },
+            dateDividerMode: .daily,
+            trackReadReceipts: .allEvents,
+            reportUtds: false)
+        let timeline = try await withTimeout(Self.sdkTimeout) { [room] in
+            try await room.timelineWithConfiguration(configuration: configuration)
+        }
 
         // Left while the timeline was being built. The subscription just registered above is not
         // ours to keep — `stop()` has already run and found nothing to cancel — so it is taken
@@ -1595,6 +1613,12 @@ public final class TimelineStore {
     /// outlives being read — so a room marked unread on purpose, then opened and read to the
     /// bottom, went on wearing its badge with nothing in it left to read.
     public func markAsRead() async {
+        // A thread is read on its own timeline: its receipts are threaded, and reading one thread
+        // says nothing about the rest of the room.
+        if threadRootID != nil {
+            try? await timeline?.markAsRead(receiptType: .read)
+            return
+        }
         hasReadToEnd = true
         try? await room.markAsRead(receiptType: .read)
         try? await room.setUnreadFlag(newValue: false)
@@ -1630,12 +1654,12 @@ public final class TimelineStore {
     /// conversation it belongs to, which is where a message belongs. Nothing in this app writes
     /// message content anywhere else, and a draft is not an exception to that rule.
     ///
-    /// `threadRoot: nil` throughout: this app has no threads, and a draft in the room is a draft in
-    /// the room.
+    /// A thread has a draft of its own (`threadRoot`), so half an answer in a thread does not turn
+    /// up in the room's composer.
     public func draft() async -> String? {
         // Two ways to have no draft, and they flatten to the same answer: the call threw, or the
         // room simply has none.
-        guard let draft = (try? await room.loadComposerDraft(threadRoot: nil)) else {
+        guard let draft = (try? await room.loadComposerDraft(threadRoot: threadRootID)) else {
             return nil
         }
         return draft.plainText
@@ -1648,7 +1672,7 @@ public final class TimelineStore {
         // rather than clearing it would leave every room the user has ever glanced into holding a
         // draft of nothing, which is the sort of thing that quietly makes a store grow forever.
         guard !trimmed.isEmpty else {
-            try? await room.clearComposerDraft(threadRoot: nil)
+            try? await room.clearComposerDraft(threadRoot: threadRootID)
             onDraftChanged?(nil)
             return
         }
@@ -1657,13 +1681,13 @@ public final class TimelineStore {
                                   htmlText: nil,
                                   draftType: .newMessage,
                                   attachments: [])
-        try? await room.saveComposerDraft(draft: draft, threadRoot: nil)
+        try? await room.saveComposerDraft(draft: draft, threadRoot: threadRootID)
         onDraftChanged?(trimmed)
     }
 
     /// The message went. There is nothing left to come back to.
     public func clearDraft() async {
-        try? await room.clearComposerDraft(threadRoot: nil)
+        try? await room.clearComposerDraft(threadRoot: threadRootID)
         onDraftChanged?(nil)
     }
 

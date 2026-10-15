@@ -357,6 +357,14 @@ public struct Message: Sendable, Identifiable, Equatable {
     /// the difference.
     public var uploadProgress: Double?
 
+    /// The thread under this message, when one has been started on it — how many answers, and the
+    /// last of them. See `ThreadSummary` and `TimelineStore.threadRootID`.
+    public var thread: ThreadSummaryPreview?
+
+    /// The message this one answers *in a thread*, when it is in one — the root's event ID. Shown
+    /// only in the thread's own timeline; the room's hides these (`hideThreadedEvents`).
+    public var threadRootID: String?
+
     /// The pictures this row stands for, when it is an album — the first of them is this message.
     /// Nil for every ordinary message. See `Album`.
     public var album: [Message]?
@@ -666,6 +674,13 @@ public enum RoomEventKind: Sendable, Equatable {
         default: return nil
         }
     }
+}
+
+/// The line under a message somebody has answered in a thread: "3 answers", and the newest of them.
+public struct ThreadSummaryPreview: Sendable, Equatable {
+    public let replies: Int
+    public let latestSender: String?
+    public let latestText: String?
 }
 
 /// A day separator between messages.

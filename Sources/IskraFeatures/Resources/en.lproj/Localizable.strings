@@ -1384,3 +1384,8 @@
 "beta.demoSignInHelp" = "The sign-in screen against a server inside the app: alice / password. Your account is untouched, and whoever signs in is signed out at once.";
 "beta.demoSignedIn" = "Signed in: %@";
 "beta.close" = "Close";
+
+/* Threads */
+"thread.title" = "Thread";
+"thread.replyInThread" = "Reply in thread";
+"thread.replies" = "%lld replies";
