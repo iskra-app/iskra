@@ -2125,6 +2125,7 @@ public struct RoomView: View {
             onReport: { reason in Task { await timeline.report(messageID: message.id, reason: reason) } },
             onVote: { answers in Task { await timeline.vote(inPoll: message.id, answerIDs: answers) } },
             onEndPoll: { Task { await timeline.endPoll(message.id) } },
+            canDeleteOthers: timeline.canDeleteOthers,
             loadReactors: timeline.isOneToOne ? nil : { await timeline.reactors(of: message.id) }
         )
     }

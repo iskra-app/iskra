@@ -62,9 +62,8 @@ struct RoomInfoView: View {
     @State private var openedMedia: OpenedIndex?
     @State private var invitee = ""
 
-    /// The person a block has been asked for and not yet confirmed. Blocking is the one
-    /// act on this screen with no way back through it.
-    @State private var blocking: RoomMemberSummary?
+    /// The person whose page is open, pushed from their row — see `MemberRow`.
+    @State private var openedMember: String?
     @State private var isConfirmingLeave = false
 
     /// The open conversation, for the shared-media screen — its media lives in the loaded timeline.
@@ -165,6 +164,7 @@ struct RoomInfoView: View {
         .navigationDestination(isPresented: $isEditing) {
             RoomEditView(details: details)
         }
+        .memberProfiles($openedMember, details: details)
         // The subscription this screen took out on the room goes with the screen. It follows the
         // room as it is renamed from other devices — see `RoomDetailsStore.load()` — and a
         // listener nobody cancels is a listener that runs until the account is signed out.
@@ -192,20 +192,6 @@ struct RoomInfoView: View {
             }
         } message: {
             Text(Strings.Room.Manage.inviteHelp)
-        }
-        .confirmationDialog(Text(blocking.map { Strings.Room.Manage.blockQuestion($0.name) }
-                                 ?? Strings.Room.Manage.block),
-                            isPresented: Binding(get: { blocking != nil },
-                                                 set: { if !$0 { blocking = nil } }),
-                            titleVisibility: .visible) {
-            Button(String(app: Strings.Room.Manage.block), role: .destructive) {
-                guard let member = blocking else { return }
-                blocking = nil
-                Task { await details.ban(member) }
-            }
-            Button(String(app: Strings.Room.Manage.cancel), role: .cancel) { blocking = nil }
-        } message: {
-            Text(Strings.Room.Manage.blockHelp)
         }
         // Two questions, because there are two acts. Leaving a room is leaving a group of people,
         // and it is reversible by anybody who invites you back. Deleting a personal chat is not
@@ -401,6 +387,7 @@ struct RoomInfoView: View {
             || details.permissions.canChangeTopic
             || details.permissions.canChangePicture
             || details.permissions.canChangeVisibility
+            || details.permissions.canChangeRoles
     }
 
     /// Whether the pencil needs the network to be worth pressing.
@@ -579,133 +566,8 @@ struct RoomInfoView: View {
                 .frame(maxWidth: .infinity)
         } else {
             ForEach(details.members) { member in
-                MemberRow(member: member,
-                          roles: details.assignableRoles(for: member),
-                          canRemove: details.permissions.canRemove && details.canManage(member),
-                          canBlock: details.permissions.canBan && details.canManage(member),
-                          setRole: { role in Task { await details.setRole(role, for: member) } },
-                          remove: { Task { await details.remove(member) } },
-                          block: { blocking = member })
+                MemberRow(member: member, details: details) { openedMember = member.id }
             }
-        }
-    }
-}
-
-/// One person in the room: their face, their name, and what they can do here.
-///
-/// The row leads to `MemberProfileView`, and the two acts a room allows against somebody — moving
-/// them to another rung, taking them out of it — are on a sideways swipe as well. Both, rather than
-/// one: a swipe is fast for whoever already knows it is there, and invisible to everybody else, so
-/// it is a shortcut to what the profile screen spells out rather than the only way to reach it.
-///
-/// Nothing is ever shown disabled. What the room refuses simply is not drawn: a greyed-out
-/// "Remove" is a promise the homeserver has already broken.
-private struct MemberRow: View {
-    let member: RoomMemberSummary
-    let roles: [RoomRole]
-    let canRemove: Bool
-    let canBlock: Bool
-    let setRole: (RoomRole) -> Void
-    let remove: () -> Void
-    let block: () -> Void
-
-    @Environment(\.isOffline) private var isOffline
-
-    /// The role picker, asked for by the swipe. A dialog rather than a submenu, because a swipe
-    /// action that opened a menu would be a gesture inside a gesture.
-    @State private var isChangingRole = false
-
-    /// Every act here is a request to the server with no queue behind it, so offline the row is a
-    /// row and nothing else — the swipe is withheld rather than offered and then refused.
-    private var canAct: Bool {
-        !isOffline && (!roles.isEmpty || canRemove || canBlock)
-    }
-
-    var body: some View {
-        NavigationLink {
-            MemberProfileView(member: member,
-                              roles: roles,
-                              canRemove: canRemove,
-                              canBlock: canBlock,
-                              setRole: setRole,
-                              remove: remove,
-                              block: block)
-        } label: {
-            HStack(spacing: Theme.Spacing.normal) {
-                Avatar(name: member.name, url: member.avatarURL, size: Theme.Size.avatar,
-                       seed: member.id)
-
-                VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-                    Text(member.name)
-                        .font(.body)
-                        .lineLimit(1)
-
-                    // Shown only when it settles something. Matrix display names are neither
-                    // unique nor verified, so two people in a room can both call themselves
-                    // "Boris" — the SDK notices, and the ID underneath is the part that
-                    // cannot be copied.
-                    if member.isNameAmbiguous, member.name != member.id {
-                        Text(member.id)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                }
-
-                Spacer(minLength: 0)
-
-                if let role = roleName {
-                    Text(role)
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .padding(.vertical, Theme.Spacing.tight)
-        }
-        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            if canAct {
-                if canRemove {
-                    Button(role: .destructive, action: remove) {
-                        Label(String(app: Strings.Room.Manage.remove), systemImage: "person.badge.minus")
-                    }
-                }
-
-                if !roles.isEmpty {
-                    Button {
-                        isChangingRole = true
-                    } label: {
-                        Label(String(app: Strings.Room.Manage.role), systemImage: "person.badge.key")
-                    }
-                    .tint(.indigo)
-                }
-            }
-        }
-        .confirmationDialog(Text(Strings.Room.Manage.roleQuestion(member.name)),
-                            isPresented: $isChangingRole,
-                            titleVisibility: .visible) {
-            ForEach(roles, id: \.self) { role in
-                Button(String(localized: name(of: role))) { setRole(role) }
-            }
-            Button(String(app: Strings.Room.Manage.cancel), role: .cancel) {}
-        }
-    }
-
-    /// Only the people who run the room are labelled. Everyone else is just here, and a
-    /// badge on every single row would say nothing at all.
-    private var roleName: LocalizedStringResource? {
-        switch member.role {
-        case .administrator: Strings.Room.administrator
-        case .moderator: Strings.Room.moderator
-        case .member: nil
-        }
-    }
-
-    /// The same three rungs, but named in full — including the one the list leaves blank.
-    private func name(of role: RoomRole) -> LocalizedStringResource {
-        switch role {
-        case .administrator: Strings.Room.administrator
-        case .moderator: Strings.Room.moderator
-        case .member: Strings.Room.Manage.member
         }
     }
 }

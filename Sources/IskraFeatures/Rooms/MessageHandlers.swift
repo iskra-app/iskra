@@ -64,6 +64,11 @@ struct MessageHandlers {
     var onVote: ([String]) -> Void = { _ in }
     var onEndPoll: () -> Void = {}
 
+    /// Whether the room lets this account delete other people's messages — see
+    /// `TimelineStore.canDeleteOthers`. A fact rather than a closure, but it travels with the acts
+    /// it unlocks, to both rows and the menu alike.
+    var canDeleteOthers = false
+
     /// Who reacted, named — for the "N reactions" line in a group's menu. Nil in a personal chat,
     /// and nil means the line is not offered. See `ReactorsSheet`.
     var loadReactors: (() async -> [Reactor])?

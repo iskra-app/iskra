@@ -732,6 +732,23 @@
 /* Why everything on the room-settings screen is greyed out. Shown only while offline. Must say
    what still works — reading and writing — rather than only what does not. */
 "room.manage.offline" = "オフラインでもチャットを読んだり書いたりはできますが、設定は変更できません。";
+"room.rules.title" = "役割と権限";
+"room.rules.entryHelp" = "誰がチャットを管理し、ほかの人に何ができるか。";
+"room.rules.staffHeader" = "チャットの管理者";
+"room.rules.staffFooter" = "役割を変えるには、その人を左にスワイプするか、ページを開いてください。";
+"room.rules.rulesHeader" = "できる人";
+"room.rules.rulesFooter" = "「モデレーター」はモデレーターと管理者のことです。自分の役割より上に権限を上げることや、すでに上にある権限を変えることはできません。";
+"room.rules.sendMessages" = "メッセージを送る";
+"room.rules.invite" = "人を招待する";
+"room.rules.remove" = "メンバーを外す";
+"room.rules.ban" = "ブロックする";
+"room.rules.deleteOthers" = "他人のメッセージを削除する";
+"room.rules.rename" = "名前を変える";
+"room.rules.changeTopic" = "説明を変える";
+"room.rules.changePicture" = "写真を変える";
+"room.rules.everyone" = "全員";
+"room.rules.moderators" = "モデレーター";
+"room.rules.administrators" = "管理者";
 "room.manage.cancel" = "キャンセル";
 "problem.title" = "うまくいきませんでした";
 

@@ -732,6 +732,23 @@
 /* Why everything on the room-settings screen is greyed out. Shown only while offline. Must say
    what still works — reading and writing — rather than only what does not. */
 "room.manage.offline" = "Ohne Netz können Sie diesen Chat lesen und darin schreiben, ihn aber nicht ändern.";
+"room.rules.title" = "Rollen und Berechtigungen";
+"room.rules.entryHelp" = "Wer den Chat verwaltet und was die anderen dürfen.";
+"room.rules.staffHeader" = "Verwalten den Chat";
+"room.rules.staffFooter" = "Um eine Rolle zu ändern, wischen Sie über die Person nach links oder öffnen Sie ihre Seite.";
+"room.rules.rulesHeader" = "Wer darf";
+"room.rules.rulesFooter" = "„Moderatoren“ heißt Moderatoren und Administratoren. Eine Berechtigung lässt sich nicht über die eigene Rolle anheben und nicht ändern, wenn sie schon darüber liegt.";
+"room.rules.sendMessages" = "Nachrichten schreiben";
+"room.rules.invite" = "Personen einladen";
+"room.rules.remove" = "Mitglieder entfernen";
+"room.rules.ban" = "Personen sperren";
+"room.rules.deleteOthers" = "Fremde Nachrichten löschen";
+"room.rules.rename" = "Namen ändern";
+"room.rules.changeTopic" = "Beschreibung ändern";
+"room.rules.changePicture" = "Bild ändern";
+"room.rules.everyone" = "Alle";
+"room.rules.moderators" = "Moderatoren";
+"room.rules.administrators" = "Administratoren";
 "room.manage.cancel" = "Abbrechen";
 "problem.title" = "Hat nicht geklappt";
 

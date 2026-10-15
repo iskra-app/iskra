@@ -119,6 +119,10 @@ public final class TimelineStore {
     /// screen. It flips only when the room definitively says no.
     public private(set) var canPost: Bool = true
 
+    /// Whether this account may take back *other people's* messages here — a moderator's power,
+    /// granted by the room's rules ("delete others' messages"). False until the room says so.
+    public private(set) var canDeleteOthers = false
+
     /// Who is typing, by the name they are known by in this room. Never includes you.
     ///
     /// Names rather than Matrix IDs, resolved here rather than in the view, because the view is
@@ -537,6 +541,7 @@ public final class TimelineStore {
         // opening.
         if let levels = info.powerLevels {
             canPost = levels.canOwnUserSendMessage(message: .roomMessage)
+            canDeleteOthers = levels.canOwnUserRedactOther()
         }
     }
 

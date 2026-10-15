@@ -729,6 +729,23 @@
 /* Why everything on the room-settings screen is greyed out. Shown only while offline. Must say
    what still works — reading and writing — rather than only what does not. */
 "room.manage.offline" = "Без сети чат можно читать и писать в него, но не менять.";
+"room.rules.title" = "Роли и разрешения";
+"room.rules.entryHelp" = "Кто управляет чатом и что можно остальным.";
+"room.rules.staffHeader" = "Управляют чатом";
+"room.rules.staffFooter" = "Чтобы сменить роль, проведите по человеку влево или откройте его страницу.";
+"room.rules.rulesHeader" = "Кто может";
+"room.rules.rulesFooter" = "«Модераторы» — это модераторы и администраторы. Разрешение нельзя поднять выше своей роли или поменять, если оно уже выше неё.";
+"room.rules.sendMessages" = "Писать сообщения";
+"room.rules.invite" = "Приглашать людей";
+"room.rules.remove" = "Удалять участников";
+"room.rules.ban" = "Блокировать";
+"room.rules.deleteOthers" = "Удалять чужие сообщения";
+"room.rules.rename" = "Менять название";
+"room.rules.changeTopic" = "Менять описание";
+"room.rules.changePicture" = "Менять фото";
+"room.rules.everyone" = "Все";
+"room.rules.moderators" = "Модераторы";
+"room.rules.administrators" = "Администраторы";
 "room.manage.cancel" = "Отмена";
 "problem.title" = "Не получилось";
 

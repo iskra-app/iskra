@@ -732,6 +732,23 @@
 /* Why everything on the room-settings screen is greyed out. Shown only while offline. Must say
    what still works — reading and writing — rather than only what does not. */
 "room.manage.offline" = "Sans réseau, vous pouvez lire cette discussion et y écrire, mais pas la modifier.";
+"room.rules.title" = "Rôles et autorisations";
+"room.rules.entryHelp" = "Qui gère la discussion, et ce que les autres peuvent faire.";
+"room.rules.staffHeader" = "Gèrent la discussion";
+"room.rules.staffFooter" = "Pour changer un rôle, balayez la personne vers la gauche ou ouvrez sa page.";
+"room.rules.rulesHeader" = "Qui peut";
+"room.rules.rulesFooter" = "« Modérateurs » veut dire modérateurs et administrateurs. Vous ne pouvez pas élever une autorisation au-dessus de votre rôle, ni changer une autorisation qui le dépasse déjà.";
+"room.rules.sendMessages" = "Écrire des messages";
+"room.rules.invite" = "Inviter des personnes";
+"room.rules.remove" = "Retirer des membres";
+"room.rules.ban" = "Bloquer des personnes";
+"room.rules.deleteOthers" = "Supprimer les messages des autres";
+"room.rules.rename" = "Changer le nom";
+"room.rules.changeTopic" = "Changer la description";
+"room.rules.changePicture" = "Changer la photo";
+"room.rules.everyone" = "Tout le monde";
+"room.rules.moderators" = "Modérateurs";
+"room.rules.administrators" = "Administrateurs";
 "room.manage.cancel" = "Annuler";
 "problem.title" = "Ça n’a pas marché";
 

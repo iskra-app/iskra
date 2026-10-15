@@ -732,6 +732,23 @@
 /* Why everything on the room-settings screen is greyed out. Shown only while offline. Must say
    what still works — reading and writing — rather than only what does not. */
 "room.manage.offline" = "With no network you can read this chat and write to it, but not change it.";
+"room.rules.title" = "Roles and permissions";
+"room.rules.entryHelp" = "Who runs the chat, and what everyone else may do.";
+"room.rules.staffHeader" = "Running the chat";
+"room.rules.staffFooter" = "To change someone’s role, swipe left on them or open their page.";
+"room.rules.rulesHeader" = "Who can";
+"room.rules.rulesFooter" = "“Moderators” means moderators and administrators. You can’t raise a permission above your own role, or change one that is already above it.";
+"room.rules.sendMessages" = "Send messages";
+"room.rules.invite" = "Invite people";
+"room.rules.remove" = "Remove people";
+"room.rules.ban" = "Block people";
+"room.rules.deleteOthers" = "Delete others’ messages";
+"room.rules.rename" = "Change the name";
+"room.rules.changeTopic" = "Change the description";
+"room.rules.changePicture" = "Change the picture";
+"room.rules.everyone" = "Everyone";
+"room.rules.moderators" = "Moderators";
+"room.rules.administrators" = "Administrators";
 "room.manage.cancel" = "Cancel";
 "problem.title" = "It didn’t work";
 
