@@ -998,7 +998,24 @@ public final class TimelineStore {
     /// wants `delete`.
     public func edit(messageID: String, text: String, mentions: [ComposerMention] = []) async {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, let timeline, let id = eventOrTransactionID(for: messageID) else { return }
+        guard let timeline, let id = eventOrTransactionID(for: messageID) else { return }
+
+        // A caption is edited as a caption — the attachment stays, only the words under it change —
+        // and, unlike a message, it may be emptied: that takes the caption off.
+        if rows.message(withID: messageID)?.hasCaption == true {
+            let caption = MediaCaption(text: trimmed, mentions: mentions)
+            do {
+                try await timeline.edit(eventOrTransactionId: id,
+                                        newContent: createCaptionEdit(caption: caption?.body,
+                                                                      formattedCaption: caption?.formattedBody,
+                                                                      mentions: caption?.mentions))
+            } catch {
+                failure = .edit
+            }
+            return
+        }
+
+        guard !trimmed.isEmpty else { return }
 
         do {
             let content = Self.content(of: trimmed, mentions: mentions)
@@ -1140,7 +1157,7 @@ public final class TimelineStore {
     /// Asked for when the list is opened, not kept on every message: a name costs a lookup in the
     /// room's member list, and a pill only ever needs a count.
     public func reactors(of messageID: String) async -> [Reactor] {
-        let message = rows.lazy.compactMap(\.message).first { $0.id == messageID }
+        let message = rows.message(withID: messageID)
         guard let message else { return [] }
 
         var names: [String: (String, String?)] = [:]
@@ -1417,6 +1434,15 @@ public final class TimelineStore {
     /// note, a video note, a location or a sticker is not forwarded — each would need re-deriving its
     /// own metadata, and forwarding one is not a thing anyone asks for. Those return without sending.
     public func forward(_ message: Message, loader: MediaLoader) async {
+        // An album goes as what it is, every picture of it, in order. See `Album`.
+        if let album = message.album {
+            for member in album { await forward(member, loader: loader) }
+            return
+        }
+        // The caption travels with the picture, in its own words — not its HTML, which may name
+        // people in a room they are not in.
+        let caption = message.captioned?.caption.flatMap { MediaCaption(text: $0, mentions: []) }
+
         switch message.kind {
         case let .text(body), let .notice(body), let .emote(body):
             // Marked as a forward where it can be — see `sendMarkedForward`.
@@ -1428,18 +1454,18 @@ public final class TimelineStore {
 
         case let .image(attachment):
             guard let data = try? await loader.data(for: attachment) else { failure = .send; return }
-            await send(photo: data, filename: attachment.filename)
+            await send(photo: data, filename: attachment.filename, caption: caption)
 
         case let .video(attachment):
             // The `MediaFile` is held across the send: let go of it and the SDK deletes the decrypted
             // bytes from disk, which the upload is still reading.
             guard let file = try? await loader.file(for: attachment) else { failure = .send; return }
-            await send(video: file.url)
+            await send(video: file.url, caption: caption)
             withExtendedLifetime(file) {}
 
         case let .file(attachment):
             guard let file = try? await loader.file(for: attachment) else { failure = .send; return }
-            await send(file: file.url)
+            await send(file: file.url, caption: caption)
             withExtendedLifetime(file) {}
 
         default:
@@ -1534,11 +1560,7 @@ public final class TimelineStore {
     /// `rows`, still answering yes. The reaction goes to the server and hangs under the words
     /// "message deleted", for the whole room to see.
     private func message(_ id: String) -> Message? {
-        for row in latestRows {
-            guard case let .message(message) = row, message.id == id else { continue }
-            return message
-        }
-        return nil
+        latestRows.message(withID: id)
     }
 
     /// Tells the server the user has seen the conversation, which is what clears the
@@ -1981,8 +2003,10 @@ public final class TimelineStore {
     }
 
     private func rebuildRows() {
-        var built = TimelineMapper.rows(from: items, ownUserID: ownUserID, unsent: unsentReactions,
-                                        hiding: ServiceEventSettings.current())
+        // Photos sent together become one row — see `Album`. Here and not in the mapper: the
+        // mapper also builds the pinned list and the chat list's peek, where an album is not a thing.
+        var built = Album.grouping(TimelineMapper.rows(from: items, ownUserID: ownUserID, unsent: unsentReactions,
+                                                       hiding: ServiceEventSettings.current()))
 
         // The messages we have sent and not yet been shown, added to the end of the conversation —
         // and dropped again the moment the SDK's own echo of one turns up among the rows above.
@@ -2109,7 +2133,7 @@ public final class TimelineStore {
     /// deal better than a strip that says "Message unavailable" about a message that is plainly
     /// there: the echo arrives with the SDK's own resolved quote a moment later either way.
     private func quote(of messageID: String, in rows: [TimelineRow]) -> ReplyPreview? {
-        guard let original = rows.lazy.compactMap(\.message).first(where: { $0.id == messageID }),
+        guard let original = rows.message(withID: messageID),
               let eventID = eventID(for: messageID) else { return nil }
 
         return ReplyPreview(eventID: eventID,

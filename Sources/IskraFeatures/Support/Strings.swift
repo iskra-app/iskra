@@ -571,6 +571,9 @@ public enum Strings {
         }
 
         public static let composerPlaceholder = LocalizedStringResource("room.composerPlaceholder", bundle: bundle)
+        /// The same field with photos waiting in it, or while a caption is being edited: the words
+        /// will go under the pictures, and the field says so — see `MediaCaption`.
+        public static let captionPlaceholder = LocalizedStringResource("room.captionPlaceholder", bundle: bundle)
         /// The "@" list over the composer, as VoiceOver names it.
         public static let mentionSuggestions = LocalizedStringResource("room.mentionSuggestions", bundle: bundle)
         public static let send = LocalizedStringResource("room.send", bundle: bundle)

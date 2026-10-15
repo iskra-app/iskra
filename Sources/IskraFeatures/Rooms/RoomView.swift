@@ -1814,10 +1814,12 @@ public struct RoomView: View {
     /// long as the send does — gone the moment it returns, which is safe although the send does not
     /// wait for the upload: the queue copies the file into its own encrypted store as it takes it.
     /// See `sendVoice`, where the same reasoning is set out at length.
-    private func send(_ item: PendingAttachment, replyingTo replyID: String?) async {
+    ///
+    /// Answers whether `caption` went with it. A WebP is a sticker and takes none, and a photo that
+    /// could not be sent took nothing anywhere — the words are then still the caller's to send.
+    private func send(_ item: PendingAttachment, caption: MediaCaption? = nil, replyingTo replyID: String?) async -> Bool {
         guard item.isVideo else {
-            await timeline.send(photo: item.data, filename: item.filename, replyingTo: replyID)
-            return
+            return await timeline.send(photo: item.data, filename: item.filename, caption: caption, replyingTo: replyID)
         }
 
         let url = URL.temporaryDirectory.appending(component: item.filename)
@@ -1826,10 +1828,11 @@ public struct RoomView: View {
         } catch {
             Log.media.error("the video could not be staged for upload: \(Log.describe(error), privacy: .public)")
             problem = .unreadableAttachment
-            return
+            return false
         }
         defer { try? FileManager.default.removeItem(at: url) }
-        await timeline.send(video: url, replyingTo: replyID)
+        await timeline.send(video: url, caption: caption, replyingTo: replyID)
+        return true
     }
 
     private var readOnlyBanner: some View {
@@ -2095,8 +2098,11 @@ public struct RoomView: View {
     /// Built in a function of its own, and the comment above `view(for:followsEvent:in:)` says
     /// why: written inline, these closures are what the type checker gives up on.
     private func handlers(for message: Message, in scroll: ScrollViewProxy) -> MessageHandlers {
-        MessageHandlers(
-            onRetry: { Task { await timeline.retrySending(messageID: message.id) } },
+        // An album is several messages in one row, and what is done to the row is done to all of
+        // them: deleting the bubble deletes every picture in it. See `Album`.
+        let members = message.members.map(\.id)
+        return MessageHandlers(
+            onRetry: { Task { for id in members { await timeline.retrySending(messageID: id) } } },
             onSendAnyway: {
                 Task {
                     do { try await timeline.sendAnyway(messageID: message.id) } catch { problem = .sendAnywayFailed }
@@ -2105,8 +2111,8 @@ public struct RoomView: View {
             onToggleReaction: { emoji in
                 Task { await timeline.toggleReaction(messageID: message.id, key: emoji) }
             },
-            onDelete: { Task { await timeline.delete(messageID: message.id) } },
-            onDiscard: { Task { await timeline.discard(messageID: message.id) } },
+            onDelete: { Task { for id in members { await timeline.delete(messageID: id) } } },
+            onDiscard: { Task { for id in members { await timeline.discard(messageID: id) } } },
             onReply: { startReplying(to: message) },
             onEdit: { startEditing(message) },
             onTogglePin: { Task { await togglePin(message) } },
@@ -2302,7 +2308,9 @@ public struct RoomView: View {
     /// whole point: an edit that started from an empty field would be a rewrite, and the user
     /// pressed "Edit" because they want to change a word.
     private func startEditing(_ message: Message) {
-        guard let text = message.editableText else { return }
+        // An album's caption is its last picture's — see `Album`.
+        let message = message.album?.last ?? message
+        guard let text = message.editingText else { return }
         composerContext = .editing(message)
         let (words, mentions) = ComposerMentions.unlinked(text)
         draft = words
@@ -2358,7 +2366,9 @@ public struct RoomView: View {
         // blank edit is not an edit and the core drops it anyway. A keyboard Return reaches here
         // past that disabled button (on macOS, where Return submits), so it is refused in the same
         // breath: the composer is left exactly as it was, still holding the edit.
-        if case .editing = context, text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return }
+        // A caption is the exception: emptied, it is taken off the photo, which is an edit.
+        if case let .editing(message) = context, !message.hasCaption,
+           text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return }
 
         // Photos and videos go with anything but an edit, which cannot add one to a message already
         // sent. They stay waiting through the edit and leave with the next ordinary send.
@@ -2375,17 +2385,22 @@ public struct RoomView: View {
         if !images.isEmpty { attachments = [] }
 
         Task {
-            // Pictures first, then the words: the words are nearly always *about* the pictures, and
-            // read as a caption only if they arrive under them. Not as a Matrix caption — this app
-            // does not put captions on photos (see `Message.editableText`). An answer threads onto
-            // whichever goes first, which is the thing the reader will see beside the quote.
+            // The words go *with* the pictures, as their caption, on the last of them: that is where
+            // an album shows it (`Album`), and where every other client will too — under the last
+            // photo of the set. An answer threads onto the first, which is the thing the reader will
+            // see beside the quote. A sticker takes no caption, so after one the words go on their
+            // own, as they always used to.
             var replyingTo: String?
             if case let .replying(message) = context { replyingTo = message.id }
-            for item in images {
-                await send(item, replyingTo: replyingTo)
+            let caption = hasText ? MediaCaption(text: text, mentions: mentions) : nil
+            var captioned = false
+            for (index, item) in images.enumerated() {
+                let isLast = index == images.count - 1
+                let went = await send(item, caption: isLast ? caption : nil, replyingTo: replyingTo)
+                if isLast, caption != nil { captioned = went }
                 replyingTo = nil
             }
-            guard hasText || context?.isEditing == true else {
+            guard (hasText && !captioned) || context?.isEditing == true else {
                 await timeline.clearDraft()
                 return
             }

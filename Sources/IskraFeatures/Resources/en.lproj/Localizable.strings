@@ -66,6 +66,7 @@
 "room.attach" = "Add a photo or file";
 
 "room.composerPlaceholder" = "Message";
+"room.captionPlaceholder" = "Caption";
 "room.mentionSuggestions" = "People to mention";
 
 /* The banner shown in place of the composer when posting is not allowed. */

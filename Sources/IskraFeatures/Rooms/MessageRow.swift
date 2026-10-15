@@ -1050,6 +1050,10 @@ struct PictureBubble: View {
     let sender: String
     let timestamp: Date
 
+    /// The caption, painted by `MessageContent` with its links and mentions live. Nil draws the
+    /// attachment's plain caption, for the places that have no painter to hand.
+    var caption: AnyView?
+
     /// The photograph, once it has arrived, kept so the bubble can be made out of it. See
     /// `backdrop`.
     @State private var loaded: Image?
@@ -1084,8 +1088,10 @@ struct PictureBubble: View {
         VStack(alignment: .leading, spacing: 0) {
             picture
 
-            if let caption = attachment.caption {
-                Text(caption)
+            if let plain = attachment.caption {
+                Group {
+                    if let caption { caption } else { Text(plain) }
+                }
                     .font(.body)
                     // White, because what is behind it is a darkened photograph and not the
                     // bubble fill the rest of the app writes on. `.primary` here would be

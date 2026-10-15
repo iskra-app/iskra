@@ -66,6 +66,7 @@
 "room.attach" = "Добавить фото или файл";
 
 "room.composerPlaceholder" = "Сообщение";
+"room.captionPlaceholder" = "Подпись";
 "room.mentionSuggestions" = "Кого упомянуть";
 
 /* Плашка вместо поля ввода, когда в чат нельзя писать. */

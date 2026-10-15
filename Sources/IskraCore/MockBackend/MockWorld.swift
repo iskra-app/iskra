@@ -151,8 +151,10 @@ struct MockWorld {
         let pinned = text(room, mama, "Код от калитки на даче: 2580. Не теряйте!")
         text(room, papa, "Принято")
         at(room, 60 * 24 * 6)
+        // An album — three photos a second apart, the caption on the last, as this app sends one.
+        image(room, papa, "грядка.png", hue: 0.24, width: 800, height: 1200)
         image(room, papa, "урожай.png", hue: 0.28)
-        text(room, papa, "Первые кабачки в этом году")
+        image(room, papa, "кабачки.png", hue: 0.32, caption: "Первые кабачки в этом году")
         react(room, pinned, papa, "👌")
         at(room, 60 * 2)
         text(room, mama, "Саша, ты в воскресенье приедешь?")
@@ -385,12 +387,17 @@ struct MockWorld {
         event(room, sender, "m.room.redaction", ["redacts": target], extra: ["redacts": target])
     }
 
-    private mutating func image(_ room: String, _ sender: String, _ name: String, hue: Double) {
-        let data = MockMedia.photo(hue: hue)
-        event(room, sender, "m.room.message", [
-            "msgtype": "m.image", "body": name, "url": store(data, mime: "image/png"),
-            "info": ["mimetype": "image/png", "w": 1200, "h": 800, "size": data.count],
-        ])
+    private mutating func image(_ room: String, _ sender: String, _ name: String, hue: Double,
+                                width: Int = 1200, height: Int = 800, caption: String? = nil) {
+        let data = MockMedia.photo(hue: hue, width: width, height: height)
+        // A caption is the body, with the file's name moved to `filename` — the way Matrix tells a
+        // caption from a name.
+        var content: JSON = [
+            "msgtype": "m.image", "body": caption ?? name, "url": store(data, mime: "image/png"),
+            "info": ["mimetype": "image/png", "w": width, "h": height, "size": data.count],
+        ]
+        if caption != nil { content["filename"] = name }
+        event(room, sender, "m.room.message", content)
     }
 
     private mutating func voice(_ room: String, _ sender: String) {

@@ -258,6 +258,12 @@ struct MessageComposer: View {
     /// What is waiting, as far as this press of send is concerned. None while editing: an edit
     /// changes the words of a message already sent and cannot add a photograph to it, so the
     /// attachments step aside — kept, and back the moment the edit is done or abandoned.
+    /// Whether what is typed will go under pictures rather than as a message of its own.
+    private var isCaption: Bool {
+        if let context, context.isEditing { return context.message.hasCaption }
+        return !pendingAttachments.isEmpty
+    }
+
     private var pendingAttachments: [PendingAttachment] {
         context?.isEditing == true ? [] : attachments
     }
@@ -348,7 +354,8 @@ struct MessageComposer: View {
                         // sent on a few. Centred on the field, at any number of lines: it belongs
                         // to the field, not to the last line of what is being typed.
                         HStack(alignment: .center, spacing: 0) {
-                            TextField(String(app: Strings.Room.composerPlaceholder), text: $draft,
+                            TextField(String(app: isCaption ? Strings.Room.captionPlaceholder : Strings.Room.composerPlaceholder),
+                                      text: $draft,
                                       selection: $selection, axis: .vertical)
                                 .textFieldStyle(.plain)
                                 // Where the words start on the screen — the point a sent message
@@ -390,7 +397,8 @@ struct MessageComposer: View {
                                label: Strings.Room.send,
                                isPrimary: true,
                                action: onSend)
-                            .disabled(isEmpty)
+                            // A caption may be emptied — that takes it off the photo.
+                            .disabled(isEmpty && !context.message.hasCaption)
                     } else if !hasSomethingToSend {
                         recordButton
                     } else {
