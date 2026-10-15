@@ -1384,3 +1384,8 @@
 "beta.demoSignInHelp" = "La pantalla de inicio de sesión contra un servidor dentro de la app: alice / password. Su cuenta no se toca y quien entra sale al momento.";
 "beta.demoSignedIn" = "Sesión iniciada: %@";
 "beta.close" = "Cerrar";
+
+/* Threads */
+"thread.title" = "Hilo";
+"thread.replyInThread" = "Responder en el hilo";
+"thread.replies" = "%lld respuestas";

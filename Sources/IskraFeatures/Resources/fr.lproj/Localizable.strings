@@ -1384,3 +1384,8 @@
 "beta.demoSignInHelp" = "L’écran de connexion face à un serveur intégré à l’app : alice / password. Votre compte n’est pas touché, et la session ouverte est aussitôt fermée.";
 "beta.demoSignedIn" = "Connecté : %@";
 "beta.close" = "Fermer";
+
+/* Threads */
+"thread.title" = "Fil";
+"thread.replyInThread" = "Répondre dans le fil";
+"thread.replies" = "%lld réponses";

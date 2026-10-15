@@ -1384,3 +1384,8 @@
 "beta.demoSignInHelp" = "アプリ内のサーバーに対するサインイン画面です：alice / password。あなたのアカウントには影響せず、サインインしたらすぐにサインアウトします。";
 "beta.demoSignedIn" = "サインインしました：%@";
 "beta.close" = "閉じる";
+
+/* Threads */
+"thread.title" = "スレッド";
+"thread.replyInThread" = "スレッドで返信";
+"thread.replies" = "返信 %lld 件";

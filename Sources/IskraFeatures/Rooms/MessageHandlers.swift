@@ -64,6 +64,10 @@ struct MessageHandlers {
     var onVote: ([String]) -> Void = { _ in }
     var onEndPoll: () -> Void = {}
 
+    /// Opens the thread under this message — its answers, and a composer that answers into it.
+    /// Nil inside a thread, where there is no thread under a thread, and wherever no room can open one.
+    var onOpenThread: (() -> Void)?
+
     /// Starts choosing several messages, with this one already chosen — see `MessageSelection`.
     /// Nil where there is nothing to do with a choice: a pinned list, a search result, a peek.
     var onSelect: (() -> Void)?

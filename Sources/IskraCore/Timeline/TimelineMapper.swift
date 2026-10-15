@@ -306,7 +306,7 @@ enum TimelineMapper {
         let (name, avatar) = profile(from: event.senderProfile, fallback: event.sender)
         let id = identifier(for: event.eventOrTransactionId)
 
-        return Message(id: id,
+        var message = Message(id: id,
                        kind: kind,
                        senderID: event.sender,
                        senderName: name,
@@ -324,6 +324,22 @@ enum TimelineMapper {
                        formattedBody: formattedBody(from: event.content),
                        forwardedFrom: forwardOrigin(of: event, kind: kind),
                        uploadProgress: event.isOwn ? uploadProgress(of: event.localSendState) : nil)
+        if case let .msgLike(msgLike) = event.content {
+            message.threadRootID = msgLike.threadRoot
+            message.thread = msgLike.threadSummary.map(threadPreview)
+        }
+        return message
+    }
+
+    /// "3 answers", and the newest — what is drawn under a message answered in a thread.
+    private static func threadPreview(_ summary: ThreadSummary) -> ThreadSummaryPreview {
+        var sender: String?
+        var text: String?
+        if case let .ready(content, senderID, senderProfile, _, _) = summary.latestEvent() {
+            sender = profile(from: senderProfile, fallback: senderID).0
+            text = MessagePreview.text(for: content)
+        }
+        return ThreadSummaryPreview(replies: Int(summary.numReplies()), latestSender: sender, latestText: text)
     }
 
     /// The `m.forwarded` the event carries, if it is a forward — see `ForwardOrigin`. Read off the

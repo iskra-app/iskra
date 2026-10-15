@@ -1384,3 +1384,8 @@
 "beta.demoSignInHelp" = "针对应用内服务器的登录界面：alice / password。不会影响您的账号，登录后会立即退出。";
 "beta.demoSignedIn" = "已登录：%@";
 "beta.close" = "关闭";
+
+/* Threads */
+"thread.title" = "话题";
+"thread.replyInThread" = "在话题中回复";
+"thread.replies" = "%lld 条回复";

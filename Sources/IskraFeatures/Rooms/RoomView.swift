@@ -47,6 +47,25 @@ public struct RoomView: View {
     /// message — and only the screen can see both ends.
     @State private var composerContext: ComposerContext?
 
+    /// Builds a thread's timeline from its root's event ID — see `UserSession.threadTimeline`. Nil
+    /// inside a thread, which is the same screen on a different timeline.
+    private let makeThread: ((String) -> TimelineStore?)?
+    /// The thread open over this room, pushed onto the same stack.
+    @State private var openedThread: OpenedThread?
+
+    /// The store is made once, when the thread is opened, and held here: a destination closure is
+    /// run on every redraw, and a timeline built in one would be a fresh thread on every keystroke.
+    private struct OpenedThread: Identifiable, Hashable {
+        let rootID: String
+        let store: TimelineStore
+        var id: String { rootID }
+        static func == (lhs: Self, rhs: Self) -> Bool { lhs.rootID == rhs.rootID }
+        func hash(into hasher: inout Hasher) { hasher.combine(rootID) }
+    }
+
+    /// This screen is a thread, not the room — see `TimelineStore.threadRootID`.
+    private var isThread: Bool { timeline.threadRootID != nil }
+
     /// The three sources of the sticker sheet — with all of them off there is no sheet worth a
     /// button. See `StickerSettings.showsAnything`.
     @AppStorage(StickerSettings.showsBuiltInKey) private var showsBuiltInStickers = true
@@ -437,12 +456,14 @@ public struct RoomView: View {
     public init(timeline: TimelineStore,
                 identityChanges: IdentityChangesStore? = nil,
                 makeDetails: @escaping () -> RoomDetailsStore?,
+                makeThread: ((String) -> TimelineStore?)? = nil,
                 openAt: Binding<String?> = .constant(nil),
                 onLeave: @escaping () -> Void,
                 onClose: @escaping () -> Void = {}) {
         _timeline = State(initialValue: timeline)
         _identityChanges = State(initialValue: identityChanges)
         self.makeDetails = makeDetails
+        self.makeThread = makeThread
         _openAt = openAt
         self.onLeave = onLeave
         self.onClose = onClose
@@ -1211,7 +1232,7 @@ public struct RoomView: View {
         }
         .safeAreaInset(edge: .top) {
             Group {
-                if !timeline.pinnedEventIDs.isEmpty, let pinned {
+                if !isThread, !timeline.pinnedEventIDs.isEmpty, let pinned {
                     PinnedStrip(pinned: pinned,
                                 onGoTo: { message in jumpTarget = message.id },
                                 onOpenList: { isShowingPinned = true })
@@ -1260,7 +1281,7 @@ public struct RoomView: View {
                 // picture goes to the trailing edge, near the thumb. Two controls, one
                 // destination: both open the room.
                 ToolbarItem(placement: .principal) {
-                    RoomTitle(name: timeline.roomName,
+                    RoomTitle(name: headerName,
                               privacy: timeline.privacy,
                               subtitle: headerSubtitle,
                               onOpenDetails: openDetails)
@@ -1288,7 +1309,7 @@ public struct RoomView: View {
                 // leading edge — lined up with the conversation below rather than floating
                 // in the centre of a bar that is mostly empty.
                 ToolbarItem(placement: .navigation) {
-                    RoomHeader(name: timeline.roomName,
+                    RoomHeader(name: headerName,
                                avatarURL: timeline.roomAvatarURL,
                                avatarSeed: timeline.roomAvatarSeed,
                                faces: timeline.roomFaces,
@@ -1324,6 +1345,12 @@ public struct RoomView: View {
                     openRoomSearch()
                 })
             }
+        }
+        .navigationDestination(item: $openedThread) { thread in
+            RoomView(timeline: thread.store,
+                     makeDetails: makeDetails,
+                     onLeave: { openedThread = nil; onLeave() },
+                     onClose: { openedThread = nil })
         }
         .navigationDestination(isPresented: $isShowingPinned) {
             if let pinned {
@@ -1674,10 +1701,16 @@ public struct RoomView: View {
     /// nothing else (`PresenceLabel`) — or, when the server will not say, their Matrix ID. In a
     /// room, how many people are in it. Nil until the room has synced enough to say: a header that
     /// reads "0 participants" for a moment is worse than one that is briefly just a name.
+    /// "Thread" over a thread, with the room it is in under it; the room's own name otherwise.
+    private var headerName: String {
+        isThread ? String(app: Strings.Thread.title) : timeline.roomName
+    }
+
     private var headerSubtitle: String? {
         if let status = RoomListStatus(isOffline: isOffline, isUpdating: isUpdating) {
             return String(app: status.title)
         }
+        if isThread { return timeline.roomName }
         if let typing = typingSubtitle {
             return typing
         }
@@ -2216,6 +2249,11 @@ public struct RoomView: View {
             onReport: { reason in Task { await timeline.report(messageID: message.id, reason: reason) } },
             onVote: { answers in Task { await timeline.vote(inPoll: message.id, answerIDs: answers) } },
             onEndPoll: { Task { await timeline.endPoll(message.id) } },
+            onOpenThread: makeThread == nil || isThread ? nil : {
+                guard let store = makeThread?(message.id) else { return }
+                Keyboard.dismiss()
+                openedThread = OpenedThread(rootID: message.id, store: store)
+            },
             onSelect: {
                 Keyboard.dismiss()
                 withAnimation(.smooth(duration: Theme.Timing.chrome)) { selection = MessageSelection(message.id) }

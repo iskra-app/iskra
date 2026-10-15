@@ -159,6 +159,15 @@ struct CompactMessageRow: View {
     /// The marks are pushed to the far edge rather than left beside the words, so the times make
     /// a quiet column down the side instead of a ragged edge that moves with every sentence.
     private var line: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+            lineContent
+            if let thread = message.thread, let open = handlers.onOpenThread {
+                ThreadLine(thread: thread, onOpen: open)
+            }
+        }
+    }
+
+    private var lineContent: some View {
         HStack(alignment: .top, spacing: Theme.Spacing.close) {
             MessageContent(message: message,
                            style: .plain,

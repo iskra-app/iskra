@@ -393,6 +393,24 @@ public final class UserSession {
         return store
     }
 
+    /// A thread of a room, as a timeline of its own — see `TimelineStore.threadRootID`. A fresh
+    /// store every time it is opened, and never kept: a thread is a visit inside a visit, and the
+    /// room it belongs to is the one kept open. It reports no draft and no read state to the chat
+    /// list, which is about the room.
+    public func threadTimeline(forRoomID roomID: String, rootEventID: String) -> TimelineStore? {
+        guard let room = roomList.room(withID: roomID) ?? (try? client.getRoom(roomId: roomID)) else {
+            return nil
+        }
+        let store = TimelineStore(room: room, ownUserID: userID, threadRootID: rootEventID)
+        store.uploadMedia = { [client] mimeType, data in
+            try await client.uploadMedia(mimeType: mimeType, data: data, progressWatcher: nil)
+        }
+        store.downloadMedia = { [client] url in
+            try await client.getMediaContent(mediaSource: MediaSource.fromUrl(url: url))
+        }
+        return store
+    }
+
     /// Who in this room has keys this device does not recognise — see `IdentityChangesStore`.
     ///
     /// The one already open, if the room is on screen twice (an iPad's list and detail): two

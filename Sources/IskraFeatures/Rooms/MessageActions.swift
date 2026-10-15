@@ -411,6 +411,14 @@ struct MessageActions<Content: View>: View {
                                              perform: handlers.onReply))
         }
 
+        // Answering in a thread rather than in the room: the same thread the line under the message
+        // opens, started here when there is none yet. Only on something the server has.
+        if message.canReply, message.threadRootID == nil, let onOpenThread = handlers.onOpenThread {
+            actions.append(MessageMenuAction(title: Strings.Thread.replyInThread,
+                                             systemImage: "bubble.left.and.text.bubble.right",
+                                             perform: onOpenThread))
+        }
+
         if message.canEdit && !isOffline {
             actions.append(MessageMenuAction(title: Strings.Message.Menu.edit,
                                              systemImage: "pencil",

@@ -210,6 +210,11 @@ struct MockWorld {
         react(room, code, lena, "🚀")
         react(room, code, me, "🚀")
         react(room, code, kostya, "👀")
+        // A thread: the question in the room, the answers under it — see `TimelineStore.threadRootID`.
+        let release = text(room, misha, "Что делаем с пушами на macOS — откладываем до следующего релиза?")
+        inThread(room, dima, under: release, "Я бы отложил, там ещё entitlements разбирать")
+        inThread(room, lena, under: release, "Согласна, iOS важнее")
+        inThread(room, misha, under: release, "Ок, тогда переношу задачу")
         let call = poll(room, lena, "Когда созвонимся на неделе?", ["Во вторник", "В среду", "В четверг"])
         vote(room, dima, in: call, ["a1"])
         vote(room, kostya, in: call, ["a0"])
@@ -370,6 +375,31 @@ struct MockWorld {
     private mutating func reply(_ room: String, _ sender: String, to target: String, _ body: String) -> String {
         event(room, sender, "m.room.message", ["msgtype": "m.text", "body": body,
                                                "m.relates_to": ["m.in_reply_to": ["event_id": target]]])
+    }
+
+    /// An answer in the thread under `root` — with the reply fallback older clients read.
+    @discardableResult
+    private mutating func inThread(_ room: String, _ sender: String, under root: String, _ body: String) -> String {
+        let id = event(room, sender, "m.room.message", ["msgtype": "m.text", "body": body,
+                                                        "m.relates_to": ["rel_type": "m.thread", "event_id": root,
+                                                                         "is_falling_back": true,
+                                                                         "m.in_reply_to": ["event_id": root]]])
+        // What a real server bundles onto the root (`unsigned.m.relations.m.thread`): how many answers,
+        // the newest, and whether the reader is among those who answered. The room's timeline reads
+        // its "3 answers" from this.
+        if let events = rooms[room]?.events,
+           let rootIndex = events.firstIndex(where: { $0["event_id"] as? String == root }),
+           let latest = events.last(where: { $0["event_id"] as? String == id }) {
+            var unsigned = events[rootIndex]["unsigned"] as? JSON ?? [:]
+            var relations = unsigned["m.relations"] as? JSON ?? [:]
+            let previous = relations["m.thread"] as? JSON
+            let count = (previous?["count"] as? Int ?? 0) + 1
+            let participated = (previous?["current_user_participated"] as? Bool ?? false) || sender == me
+            relations["m.thread"] = ["latest_event": latest, "count": count, "current_user_participated": participated]
+            unsigned["m.relations"] = relations
+            rooms[room]?.events[rootIndex]["unsigned"] = unsigned
+        }
+        return id
     }
 
     private mutating func edit(_ room: String, _ sender: String, _ target: String, _ body: String) {

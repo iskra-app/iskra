@@ -15,6 +15,10 @@ extension ClientBuilder {
     func tuned(forPush: Bool) -> ClientBuilder {
         let retrying = requestConfig(config: RequestConfig(retryLimit: forPush ? 1 : 3, timeout: nil,
                                                            maxConcurrentRequests: nil, maxRetryTime: nil))
-        return forPush ? retrying.systemIsMemoryConstrained() : retrying
+        // Threads, client-side: the room's timeline can leave thread answers out and summarise them
+        // under their root, and a thread can be opened as a timeline of its own. See
+        // `TimelineStore.threadRootID`. Subscriptions (MSC4306) are left off — no server speaks it.
+        let threaded = retrying.threadsEnabled(enabled: true, threadSubscriptions: false)
+        return forPush ? threaded.systemIsMemoryConstrained() : threaded
     }
 }

@@ -224,6 +224,63 @@ struct DemoBackendTests {
 
     /// Stickers through the real SDK: the account's pack from account data, the room's from its
     /// state over the app's own request, a sent one arriving as a sticker, and a received one added.
+    @Test("an answer in a thread stays in the thread, and the room shows it under its root")
+    func threads() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(component: "iskra-thread-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let client = try await DemoBackend.makeClient(data: root.appending(component: "data"),
+                                                      cache: root.appending(component: "cache"),
+                                                      search: root.appending(component: "search"))
+        let session = UserSession(client: client, authentication: AuthenticationService(), sessionID: "demo", isDemo: true)
+        try await session.start()
+        defer { Task { await session.close() } }
+        let devID = "!iskra-dev:iskra.demo"
+        _ = await eventually { session.roomList.rooms.contains { $0.id == devID } }
+
+        let timeline = try #require(session.timeline(forRoomID: devID))
+        try await timeline.start()
+        defer { timeline.stop() }
+        func isRootCandidate(_ message: Message) -> Bool {
+            if case .text = message.kind { return message.id.hasPrefix("$") }
+            return false
+        }
+        _ = await eventually { timeline.rows.compactMap(\.message).contains(where: isRootCandidate) }
+        let rootMessage = try #require(timeline.rows.compactMap(\.message).last(where: isRootCandidate))
+
+        // The demo's own thread, from sync: three answers under the question, none of them in the room.
+        func seeded() -> Message? {
+            timeline.rows.compactMap(\.message).first {
+                if case let .text(body) = $0.kind { return body.hasPrefix("Что делаем с пушами") }
+                return false
+            }
+        }
+        for _ in 0..<5 where seeded() == nil { await timeline.loadMore() }
+        let seededShown = await eventually { seeded()?.thread?.replies == 3 }
+        #expect(seededShown, "seeded: \(String(describing: seeded()?.thread))")
+        #expect(!timeline.rows.compactMap(\.message).contains { $0.kind == .text("Согласна, iOS важнее") })
+
+        let thread = try #require(session.threadTimeline(forRoomID: devID, rootEventID: rootMessage.id))
+        try await thread.start()
+        defer { thread.stop() }
+        #expect(thread.threadRootID == rootMessage.id)
+
+        await thread.send(text: "это в тред")
+        #expect(thread.failure == nil)
+        let inThread = await eventually {
+            thread.rows.compactMap(\.message).contains { $0.kind == .text("это в тред") && $0.threadRootID == rootMessage.id }
+        }
+        #expect(inThread, "thread rows: \(thread.rows.compactMap(\.message).map(\.kind))")
+
+        // In the room: not as a message of its own, but as a line under the root.
+        let summarised = await eventually {
+            timeline.rows.message(withID: rootMessage.id)?.thread?.replies ?? 0 >= 1
+        }
+        #expect(summarised, "root: \(String(describing: timeline.rows.message(withID: rootMessage.id)?.thread))")
+        #expect(!timeline.rows.compactMap(\.message).contains { $0.kind == .text("это в тред") })
+        let unrecognized = await MockHomeserver.shared.unrecognized
+        #expect(unrecognized.isEmpty, "\(unrecognized)")
+    }
+
     @Test("a poll is drawn with its tally, takes a vote, and closes")
     func polls() async throws {
         let root = FileManager.default.temporaryDirectory.appending(component: "iskra-poll-\(UUID().uuidString)")

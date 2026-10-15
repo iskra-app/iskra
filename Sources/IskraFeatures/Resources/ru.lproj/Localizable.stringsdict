@@ -162,5 +162,25 @@
 				<string>%lld голоса</string>
 		</dict>
 	</dict>
+	<key>thread.replies</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+				<key>one</key>
+				<string>%lld ответ</string>
+				<key>few</key>
+				<string>%lld ответа</string>
+				<key>many</key>
+				<string>%lld ответов</string>
+				<key>other</key>
+				<string>%lld ответа</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

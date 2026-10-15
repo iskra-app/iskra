@@ -1380,3 +1380,8 @@
 "beta.demoSignInHelp" = "Экран входа на сервере внутри приложения: alice / password. Ваш аккаунт он не трогает, а вошедший сразу выходит.";
 "beta.demoSignedIn" = "Вход прошёл: %@";
 "beta.close" = "Закрыть";
+
+/* Threads */
+"thread.title" = "Тред";
+"thread.replyInThread" = "Ответить в треде";
+"thread.replies" = "%lld ответа";
