@@ -1373,3 +1373,14 @@
 "poll.retract" = "Stimme zurückziehen";
 
 "stickers.settings.mine" = "Meine Sticker";
+
+/* Beta: for developers */
+"beta.developers" = "Für Entwickler";
+"beta.showsSource" = "Nachrichten-JSON im Menü";
+"beta.showsSourceHelp" = "Im Menü einer Nachricht erscheint „JSON ansehen“ – das Ereignis, wie der Server es geschickt hat. Hilfreich, wenn eine Nachricht falsch angezeigt wird.";
+"beta.viewSource" = "JSON ansehen";
+"beta.noSource" = "Diese Nachricht hat noch kein Ereignis auf dem Server.";
+"beta.demoSignIn" = "Demo-Anmeldung";
+"beta.demoSignInHelp" = "Der Anmeldebildschirm gegen einen Server in der App: alice / password. Ihr Konto bleibt unberührt, wer sich anmeldet, wird sofort wieder abgemeldet.";
+"beta.demoSignedIn" = "Angemeldet: %@";
+"beta.close" = "Schließen";

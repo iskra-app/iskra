@@ -1616,6 +1616,18 @@ public enum Strings {
 
     /// The screen where the unfinished things are switched on — see `BetaView`.
     public enum Beta {
+        /// The developers' corner of the Beta screen.
+        public static let developers = LocalizedStringResource("beta.developers", bundle: bundle)
+        public static let showsSource = LocalizedStringResource("beta.showsSource", bundle: bundle)
+        public static let showsSourceHelp = LocalizedStringResource("beta.showsSourceHelp", bundle: bundle)
+        public static let viewSource = LocalizedStringResource("beta.viewSource", bundle: bundle)
+        public static let noSource = LocalizedStringResource("beta.noSource", bundle: bundle)
+        public static let demoSignIn = LocalizedStringResource("beta.demoSignIn", bundle: bundle)
+        public static let demoSignInHelp = LocalizedStringResource("beta.demoSignInHelp", bundle: bundle)
+        public static func demoSignedIn(_ who: String) -> LocalizedStringResource {
+            LocalizedStringResource("beta.demoSignedIn", defaultValue: "\(who)", bundle: bundle)
+        }
+        public static let close = LocalizedStringResource("beta.close", bundle: bundle)
         public static let title = LocalizedStringResource("beta.title", bundle: bundle)
 
         /// The sentence over the switches, which is the whole reason the screen is worth having:

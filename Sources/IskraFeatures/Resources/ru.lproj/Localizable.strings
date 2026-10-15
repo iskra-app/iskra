@@ -1369,3 +1369,14 @@
 "poll.retract" = "Отменить голос";
 
 "stickers.settings.mine" = "Мои стикеры";
+
+/* Beta: for developers */
+"beta.developers" = "Для разработчиков";
+"beta.showsSource" = "JSON сообщения в меню";
+"beta.showsSourceHelp" = "В меню сообщения появится «Просмотреть JSON» — событие так, как его прислал сервер. Пригодится, если сообщение показывается не так.";
+"beta.viewSource" = "Просмотреть JSON";
+"beta.noSource" = "У этого сообщения пока нет события на сервере.";
+"beta.demoSignIn" = "Демо-вход";
+"beta.demoSignInHelp" = "Экран входа на сервере внутри приложения: alice / password. Ваш аккаунт он не трогает, а вошедший сразу выходит.";
+"beta.demoSignedIn" = "Вход прошёл: %@";
+"beta.close" = "Закрыть";
