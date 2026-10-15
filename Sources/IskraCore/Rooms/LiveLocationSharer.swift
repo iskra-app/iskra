@@ -33,11 +33,14 @@ public final class LiveLocationSharer: NSObject {
     public enum Failure: String, CaseIterable, ActionFailure {
         case start
         case denied
+        /// The room was not told the share ended — the others may see it as live until it runs out.
+        case stop
         public var id: String { rawValue }
         public var explanation: LocalizedStringResource {
             switch self {
             case .start: CoreStrings.LiveLocation.startFailed
             case .denied: CoreStrings.LiveLocation.denied
+            case .stop: CoreStrings.LiveLocation.stopFailed
             }
         }
     }
@@ -101,24 +104,41 @@ public final class LiveLocationSharer: NSObject {
     }
 
     /// Stops sharing to a room — the person pressed stop, or the time ran out.
-    public func stop(in roomID: String) async {
+    ///
+    /// Two halves, and they fail differently. No more points go the moment this is called — the
+    /// share is off the list before anything is awaited, so a stop the server is slow to hear never
+    /// means one more position leaving the phone. Telling the *room* it stopped is the half that can
+    /// fail, and it used to fail silently: the share was gone from here, the person saw it end, and
+    /// everybody else's map went on saying "live" until the timeout. So it is tried again, and a stop
+    /// that still did not go through is said out loud (`Failure.stop`).
+    public func stop(in roomID: String, retries: Int = 2) async {
         guard shares.removeValue(forKey: roomID) != nil else { return }
         lastSent[roomID] = nil
-        if let room = roomFor(roomID) {
-            do {
-                try await room.stopLiveLocationShare()
-            } catch {
-                Log.rooms.error("live location stop refused: \(Log.describe(error), privacy: .public)")
-            }
-        }
         if shares.isEmpty { manager?.stopUpdatingLocation() }
         scheduleExpiry()
+
+        var delay: Duration = .seconds(1)
+        for attempt in 0...retries {
+            if attempt > 0 {
+                try? await Task.sleep(for: delay)
+                delay *= 3
+            }
+            guard let room = roomFor(roomID) else { break }
+            do {
+                try await room.stopLiveLocationShare()
+                return
+            } catch {
+                Log.rooms.error("live location stop refused (attempt \(attempt + 1, privacy: .public)): \(Log.describe(error), privacy: .public)")
+            }
+        }
+        failure = .stop
     }
 
     /// Every share, for a session being closed: nothing should go on sending through a client
     /// that is going away.
     public func stopAll() async {
-        for roomID in Array(shares.keys) { await stop(in: roomID) }
+        // Once each: the session is closing and will not wait out a retry.
+        for roomID in Array(shares.keys) { await stop(in: roomID, retries: 0) }
         expiry?.cancel()
         expiry = nil
     }

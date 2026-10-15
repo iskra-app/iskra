@@ -210,3 +210,5 @@
 /* Live location */
 "liveLocation.startFailed" = "No se ha podido empezar a compartir la ubicación en tiempo real. Inténtelo de nuevo.";
 "liveLocation.denied" = "Iskra no tiene acceso a su ubicación. Puede permitirlo en Ajustes.";
+
+"liveLocation.stopFailed" = "Ya no se envían puntos, pero el servidor no recibió la parada: los demás pueden verla en directo hasta que termine.";
