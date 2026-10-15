@@ -37,15 +37,18 @@ public struct PrimaryActionStyle: ButtonStyle {
         @Environment(\.colorScheme) private var scheme
         let configuration: Configuration
         @ScaledSize(Theme.Size.minimumTapTarget) private var height
+        /// A disabled main button has to *look* it: the accent is the colour of "press me", and a
+        /// button that cannot be pressed wearing it is a button people press and wonder about.
+        @Environment(\.isEnabled) private var isEnabled
 
         var body: some View {
             configuration.label
                 .font(.body.weight(.semibold))
-                .foregroundStyle(accent.foreground(in: scheme))
+                .foregroundStyle(isEnabled ? accent.foreground(in: scheme) : AnyShapeStyle(.secondary))
                 .padding(.horizontal, Theme.Spacing.roomy)
                 .padding(.vertical, Theme.Spacing.close)
                 .frame(minHeight: height)
-                .background(accent.color, in: .capsule)
+                .background(isEnabled ? AnyShapeStyle(accent.color) : AnyShapeStyle(.quaternary), in: .capsule)
                 .pressed(configuration.isPressed)
         }
     }
@@ -61,17 +64,23 @@ public struct GlassActionStyle: ButtonStyle {
         @Environment(\.colorScheme) private var scheme
         let configuration: Configuration
         @ScaledSize(Theme.Size.minimumTapTarget) private var height
+        /// See `PrimaryActionStyle`: disabled, it is untinted glass and grey words.
+        @Environment(\.isEnabled) private var isEnabled
 
         var body: some View {
-            configuration.label
+            let face = configuration.label
                 .font(.body.weight(.semibold))
-                .foregroundStyle(accent.foreground(in: scheme))
+                .foregroundStyle(isEnabled ? accent.foreground(in: scheme) : AnyShapeStyle(.secondary))
                 .padding(.horizontal, Theme.Spacing.roomy)
                 .padding(.vertical, Theme.Spacing.close)
                 .frame(minHeight: height)
-                // The glass is already interactive — it responds to a touch by itself — so this one
-                // does not take the press scale on top of that.
-                .primaryActionGlass(tint: accent.color)
+            // The glass is already interactive — it responds to a touch by itself — so this one
+            // does not take the press scale on top of that.
+            if isEnabled {
+                face.primaryActionGlass(tint: accent.color)
+            } else {
+                face.secondaryActionGlass()
+            }
         }
     }
 }
@@ -88,11 +97,12 @@ public struct GlassSecondaryStyle: ButtonStyle {
     private struct Face: View {
         let configuration: Configuration
         @ScaledSize(Theme.Size.minimumTapTarget) private var height
+        @Environment(\.isEnabled) private var isEnabled
 
         var body: some View {
             configuration.label
                 .font(.body.weight(.semibold))
-                .foregroundStyle(.primary)
+                .foregroundStyle(isEnabled ? AnyShapeStyle(.primary) : AnyShapeStyle(.tertiary))
                 .padding(.horizontal, Theme.Spacing.roomy)
                 .padding(.vertical, Theme.Spacing.close)
                 .frame(minHeight: height)
