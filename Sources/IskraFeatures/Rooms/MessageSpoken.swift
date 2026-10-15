@@ -42,6 +42,7 @@ extension Message {
         case .audio: String(app: Strings.Message.Spoken.sentAudio)
         case .file: String(app: Strings.Message.Spoken.sentFile)
         case .location: String(app: Strings.Message.Spoken.sentLocation)
+        case let .poll(poll): String(app: Strings.Message.Spoken.sentPoll(poll.question))
         case .unreadable: String(app: Strings.Message.Spoken.sentUnreadable)
         case .deleted: String(app: Strings.Message.Spoken.deletedMessage)
         case .unsupported: String(app: Strings.Message.Spoken.sentUnsupported)

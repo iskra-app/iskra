@@ -60,6 +60,10 @@ struct MessageHandlers {
     /// holds the store that can send it, so the reason is handed upward.
     var onReport: (String) -> Void = { _ in }
 
+    /// Answers a poll with the whole new choice, or closes one this account started.
+    var onVote: ([String]) -> Void = { _ in }
+    var onEndPoll: () -> Void = {}
+
     /// Who reacted, named — for the "N reactions" line in a group's menu. Nil in a personal chat,
     /// and nil means the line is not offered. See `ReactorsSheet`.
     var loadReactors: (() async -> [Reactor])?

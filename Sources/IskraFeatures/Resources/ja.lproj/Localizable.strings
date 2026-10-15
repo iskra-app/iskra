@@ -680,6 +680,31 @@
 "location.myLocation" = "現在地";
 "location.attach" = "位置情報";
 "message.spoken.sentLocation" = "位置情報";
+"poll.kind" = "投票";
+"poll.kindAnonymous" = "匿名投票";
+"poll.ended" = "投票は終了しました";
+"poll.multiple" = "複数選択可";
+"poll.noVotes" = "まだ誰も投票していません";
+"poll.hiddenUntilEnd" = "結果は終了後に表示";
+"poll.end" = "投票を終了";
+"poll.endConfirmTitle" = "投票を終了しますか？";
+"poll.endConfirmMessage" = "これ以上投票できなくなり、全員に結果が表示されます。";
+"poll.attach" = "投票";
+"poll.newTitle" = "新しい投票";
+"poll.question" = "質問";
+"poll.questionPlaceholder" = "何を聞きますか？";
+"poll.answers" = "選択肢";
+"poll.answerPlaceholder" = "選択肢";
+"poll.addAnswer" = "選択肢を追加";
+"poll.removeAnswer" = "選択肢を削除";
+"poll.settings" = "設定";
+"poll.allowMultiple" = "複数回答";
+"poll.anonymous" = "結果は終了後のみ";
+"poll.anonymousFooter" = "投票中は、ほかの人の投票内容は誰にも見えません。終了できるのはあなただけです。";
+"poll.send" = "送信";
+"poll.cancel" = "キャンセル";
+"poll.chosen" = "あなたの回答";
+"message.spoken.sentPoll" = "投票「%@」";
 
 /* Running a room. Shown only to whoever the room allows to do it. */
 "room.manage.namePlaceholder" = "チャット名";

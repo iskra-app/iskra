@@ -680,6 +680,31 @@
 "location.myLocation" = "Mein Standort";
 "location.attach" = "Standort";
 "message.spoken.sentLocation" = "einen Standort";
+"poll.kind" = "Umfrage";
+"poll.kindAnonymous" = "Anonyme Umfrage";
+"poll.ended" = "Umfrage beendet";
+"poll.multiple" = "mehrere möglich";
+"poll.noVotes" = "Noch keine Stimmen";
+"poll.hiddenUntilEnd" = "Ergebnis nach dem Ende";
+"poll.end" = "Umfrage beenden";
+"poll.endConfirmTitle" = "Umfrage beenden?";
+"poll.endConfirmMessage" = "Danach kann niemand mehr abstimmen, und alle sehen das Ergebnis.";
+"poll.attach" = "Umfrage";
+"poll.newTitle" = "Neue Umfrage";
+"poll.question" = "Frage";
+"poll.questionPlaceholder" = "Was möchten Sie fragen?";
+"poll.answers" = "Antworten";
+"poll.answerPlaceholder" = "Antwort";
+"poll.addAnswer" = "Antwort hinzufügen";
+"poll.removeAnswer" = "Antwort entfernen";
+"poll.settings" = "Einstellungen";
+"poll.allowMultiple" = "Mehrere Antworten";
+"poll.anonymous" = "Ergebnis erst nach dem Ende";
+"poll.anonymousFooter" = "Solange die Umfrage läuft, sieht niemand, wie die anderen abgestimmt haben. Beenden können nur Sie sie.";
+"poll.send" = "Senden";
+"poll.cancel" = "Abbrechen";
+"poll.chosen" = "Ihre Antwort";
+"message.spoken.sentPoll" = "eine Umfrage: %@";
 
 /* Running a room. Shown only to whoever the room allows to do it. */
 "room.manage.namePlaceholder" = "Chatname";

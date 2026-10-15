@@ -64,6 +64,7 @@ public struct RoomView: View {
     @State private var isChoosingPhoto = false
     @State private var isChoosingFile = false
     @State private var isChoosingLocation = false
+    @State private var isCreatingPoll = false
     @State private var isChoosingSticker = false
     @State private var pickedItems: [PhotosPickerItem] = []
 
@@ -1350,6 +1351,11 @@ public struct RoomView: View {
             // shown, and adding a sticker from the sheet is one of the two ways to need it.
             .failureAlert(stickerFailure)
         }
+        .sheet(isPresented: $isCreatingPoll) {
+            PollComposer { draft in
+                await timeline.send(poll: draft)
+            }
+        }
         .sheet(isPresented: $isChoosingLocation) {
             LocationPicker { location in
                 await timeline.send(location: location, replyingTo: replyID)
@@ -1724,6 +1730,7 @@ public struct RoomView: View {
                         onChoosePhoto: { isChoosingPhoto = true },
                         onChooseFile: { isChoosingFile = true },
                         onChooseLocation: { isChoosingLocation = true },
+                        onCreatePoll: { isCreatingPoll = true },
                         onChooseSticker: stickers == nil ? nil : { isChoosingSticker = true },
                         attachments: attachments,
                         onRemoveAttachment: { image in attachments.removeAll { $0.id == image.id } },
@@ -2116,6 +2123,8 @@ public struct RoomView: View {
                 jumpTarget = eventID
             },
             onReport: { reason in Task { await timeline.report(messageID: message.id, reason: reason) } },
+            onVote: { answers in Task { await timeline.vote(inPoll: message.id, answerIDs: answers) } },
+            onEndPoll: { Task { await timeline.endPoll(message.id) } },
             loadReactors: timeline.isOneToOne ? nil : { await timeline.reactors(of: message.id) }
         )
     }

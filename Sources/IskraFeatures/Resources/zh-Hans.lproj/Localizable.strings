@@ -680,6 +680,31 @@
 "location.myLocation" = "我的位置";
 "location.attach" = "位置";
 "message.spoken.sentLocation" = "一个位置";
+"poll.kind" = "投票";
+"poll.kindAnonymous" = "匿名投票";
+"poll.ended" = "投票已结束";
+"poll.multiple" = "可多选";
+"poll.noVotes" = "还没有人投票";
+"poll.hiddenUntilEnd" = "结束后公布结果";
+"poll.end" = "结束投票";
+"poll.endConfirmTitle" = "结束投票？";
+"poll.endConfirmMessage" = "之后就不能再投票了，所有人都会看到结果。";
+"poll.attach" = "投票";
+"poll.newTitle" = "新投票";
+"poll.question" = "问题";
+"poll.questionPlaceholder" = "您想问什么？";
+"poll.answers" = "选项";
+"poll.answerPlaceholder" = "选项";
+"poll.addAnswer" = "添加选项";
+"poll.removeAnswer" = "删除选项";
+"poll.settings" = "设置";
+"poll.allowMultiple" = "多个答案";
+"poll.anonymous" = "结束后才公布结果";
+"poll.anonymousFooter" = "投票进行期间，谁都看不到别人投了什么。只有您可以结束它。";
+"poll.send" = "发送";
+"poll.cancel" = "取消";
+"poll.chosen" = "您的选择";
+"message.spoken.sentPoll" = "投票“%@”";
 
 /* Running a room. Shown only to whoever the room allows to do it. */
 "room.manage.namePlaceholder" = "聊天名称";

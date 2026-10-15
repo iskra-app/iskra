@@ -282,7 +282,7 @@ enum TimelineMapper {
     private static func message(from event: EventTimelineItem,
                                 ownUserID: String,
                                 unsent: UnsentReactions) -> Message? {
-        guard let kind = kind(from: event.content) else { return nil }
+        guard let kind = kind(from: event.content, ownUserID: ownUserID) else { return nil }
 
         let (name, avatar) = profile(from: event.senderProfile, fallback: event.sender)
         let id = identifier(for: event.eventOrTransactionId)
@@ -512,7 +512,7 @@ enum TimelineMapper {
 
     // MARK: - Content
 
-    private static func kind(from content: TimelineItemContent) -> MessageKind? {
+    private static func kind(from content: TimelineItemContent, ownUserID: String) -> MessageKind? {
         guard case let .msgLike(msgLike) = content else { return nil }
 
         switch msgLike.kind {
@@ -535,6 +535,14 @@ enum TimelineMapper {
                                        duration: nil,
                                        mimeType: info.mimetype,
                                        blurhash: info.blurhash))
+        case let .poll(question, kind, maxSelections, answers, votes, endTime, _):
+            return .poll(Poll(question: question,
+                              kind: kind,
+                              maxSelections: maxSelections,
+                              answers: answers,
+                              votes: votes,
+                              isEnded: endTime != nil,
+                              ownUserID: ownUserID))
         case .redacted:
             return .deleted
         case .unableToDecrypt:

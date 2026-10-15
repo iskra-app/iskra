@@ -99,6 +99,8 @@
 /* Shown when pinning or unpinning was refused. */
 "timeline.pinFailed" = "Impossible de modifier les messages épinglés. Vous n’en avez peut-être pas le droit.";
 "timeline.reportFailed" = "Le signalement n’est pas parti. Réessayez.";
+"timeline.pollFailed" = "Ça n’a pas marché — le sondage n’a pas changé. Réessayez.";
+"timeline.pollEndedBody" = "Le sondage est terminé";
 
 /* The grey lines across a conversation: people coming and going, the room changing. */
 "roomEvent.joined" = "%@ a rejoint la discussion";

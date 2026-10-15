@@ -224,6 +224,81 @@ struct DemoBackendTests {
 
     /// Stickers through the real SDK: the account's pack from account data, the room's from its
     /// state over the app's own request, a sent one arriving as a sticker, and a received one added.
+    @Test("a poll is drawn with its tally, takes a vote, and closes")
+    func polls() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(component: "iskra-poll-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let client = try await DemoBackend.makeClient(data: root.appending(component: "data"),
+                                                      cache: root.appending(component: "cache"),
+                                                      search: root.appending(component: "search"))
+        let session = UserSession(client: client, authentication: AuthenticationService(), sessionID: "demo", isDemo: true)
+        try await session.start()
+        defer { Task { await session.close() } }
+        let devID = "!iskra-dev:iskra.demo"
+        _ = await eventually { session.roomList.rooms.contains { $0.id == devID } }
+
+        let timeline = try #require(session.timeline(forRoomID: devID))
+        try await timeline.start()
+        defer { timeline.stop() }
+
+        func poll() -> (id: String, poll: Poll)? {
+            for row in timeline.rows {
+                if case let .message(message) = row, case let .poll(poll) = message.kind { return (message.id, poll) }
+            }
+            return nil
+        }
+        let found = await eventually(async: {
+            if poll() == nil { await timeline.loadMore() }
+            return poll()?.poll.voters == 2
+        })
+        #expect(found, "poll: \(String(describing: poll()?.poll))")
+        let (id, before) = try #require(poll())
+        #expect(before.question == "Когда созвонимся на неделе?")
+        #expect(before.answers.map(\.text) == ["Во вторник", "В среду", "В четверг"])
+        #expect(!before.hasVoted && !before.showsResults)
+
+        await timeline.vote(inPoll: id, answerIDs: ["a1"])
+        #expect(timeline.failure == nil)
+        let voted = await eventually {
+            guard let poll = poll()?.poll else { return false }
+            return poll.voters == 3 && poll.answers[1].isChosen && poll.answers[1].votes == 2
+        }
+        #expect(voted, "poll: \(String(describing: poll()?.poll))")
+        #expect(poll()?.poll.showsResults == true)
+
+        // Not ours to close — Лена started it. One of our own is.
+        await timeline.send(poll: {
+            var draft = PollDraft()
+            draft.question = "Пицца или суши?"
+            draft.answers = ["Пицца", "Суши", ""]
+            return draft
+        }())
+        let ownID = await eventually {
+            timeline.rows.contains { row in
+                if case let .message(message) = row, message.canEndPoll,
+                   case let .poll(poll) = message.kind { return poll.question == "Пицца или суши?" }
+                return false
+            }
+        }
+        #expect(ownID)
+        let own = try #require(timeline.rows.compactMap { row -> Message? in
+            if case let .message(message) = row, message.canEndPoll { return message }
+            return nil
+        }.first)
+        await timeline.endPoll(own.id)
+        let ended = await eventually {
+            timeline.rows.contains { row in
+                if case let .message(message) = row, message.id == own.id, case let .poll(poll) = message.kind {
+                    return poll.isEnded
+                }
+                return false
+            }
+        }
+        #expect(ended)
+        #expect(await MockHomeserver.shared.unrecognized.isEmpty)
+    }
+
     @Test("stickers: packs are read, one is sent, and one somebody sent is added")
     func stickers() async throws {
         let root = FileManager.default.temporaryDirectory.appending(component: "iskra-stickers-\(UUID().uuidString)")

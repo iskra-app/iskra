@@ -107,6 +107,8 @@ public enum MessageKind: Sendable, Equatable {
     case audio(Attachment)
     case file(Attachment)
     case location(Location)
+    /// A question with answers to choose from, and the room's tally so far. See `Poll`.
+    case poll(Poll)
     /// The message is there, but this device was never given the key to read it.
     case unreadable
     case deleted
@@ -427,6 +429,12 @@ public struct Message: Sendable, Identifiable, Equatable {
     /// the red badge beside it, not by a menu item that would quietly do nothing.
     public var canDelete: Bool {
         guard isOwn, !isDeleted else { return false }
+        return delivery == .sent || delivery == .read
+    }
+
+    /// Whether the user may close this poll: their own, still open, and on the server.
+    public var canEndPoll: Bool {
+        guard case let .poll(poll) = kind, isOwn, !poll.isEnded else { return false }
         return delivery == .sent || delivery == .read
     }
 

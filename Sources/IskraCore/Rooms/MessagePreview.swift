@@ -156,6 +156,8 @@ enum MessagePreview {
             return String(core: CoreStrings.Preview.file)
         case .location:
             return String(core: CoreStrings.Preview.location)
+        case let .poll(poll):
+            return poll.question
         case .deleted:
             return String(core: CoreStrings.Preview.deleted)
         case .unreadable:

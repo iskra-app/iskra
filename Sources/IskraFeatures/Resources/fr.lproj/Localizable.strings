@@ -680,6 +680,31 @@
 "location.myLocation" = "Ma position";
 "location.attach" = "Position";
 "message.spoken.sentLocation" = "une position";
+"poll.kind" = "Sondage";
+"poll.kindAnonymous" = "Sondage anonyme";
+"poll.ended" = "Sondage terminé";
+"poll.multiple" = "plusieurs choix possibles";
+"poll.noVotes" = "Personne n’a encore voté";
+"poll.hiddenUntilEnd" = "résultats à la fin";
+"poll.end" = "Clore le sondage";
+"poll.endConfirmTitle" = "Clore le sondage ?";
+"poll.endConfirmMessage" = "Plus personne ne pourra voter, et tout le monde verra les résultats.";
+"poll.attach" = "Sondage";
+"poll.newTitle" = "Nouveau sondage";
+"poll.question" = "Question";
+"poll.questionPlaceholder" = "Que voulez-vous demander ?";
+"poll.answers" = "Réponses";
+"poll.answerPlaceholder" = "Réponse";
+"poll.addAnswer" = "Ajouter une réponse";
+"poll.removeAnswer" = "Retirer la réponse";
+"poll.settings" = "Réglages";
+"poll.allowMultiple" = "Plusieurs réponses";
+"poll.anonymous" = "Résultats seulement à la fin";
+"poll.anonymousFooter" = "Tant que le sondage est ouvert, personne ne voit ce que les autres ont voté. Vous seul pouvez le clore.";
+"poll.send" = "Envoyer";
+"poll.cancel" = "Annuler";
+"poll.chosen" = "votre réponse";
+"message.spoken.sentPoll" = "un sondage : %@";
 
 /* Running a room. Shown only to whoever the room allows to do it. */
 "room.manage.namePlaceholder" = "Nom de la discussion";

@@ -201,7 +201,9 @@ struct MockWorld {
         react(room, code, lena, "🚀")
         react(room, code, me, "🚀")
         react(room, code, kostya, "👀")
-        poll(room, lena, "Когда созвонимся на неделе?", ["Во вторник", "В среду", "В четверг"])
+        let call = poll(room, lena, "Когда созвонимся на неделе?", ["Во вторник", "В среду", "В четверг"])
+        vote(room, dima, in: call, ["a1"])
+        vote(room, kostya, in: call, ["a0"])
         at(room, 60 * 3)
         formatted(room, kostya, "Список на релиз:\n1. Иконки\n2. Демо-режим\n3. Перевод",
                   "<p>Список на релиз:</p><ol><li>Иконки</li><li>Демо-режим</li><li>Перевод</li></ol>")
@@ -416,9 +418,10 @@ struct MockWorld {
                                                "org.matrix.msc3488.location": ["uri": uri]])
     }
 
-    private mutating func poll(_ room: String, _ sender: String, _ question: String, _ answers: [String]) {
+    @discardableResult
+    private mutating func poll(_ room: String, _ sender: String, _ question: String, _ answers: [String]) -> String {
         let options = answers.enumerated().map { ["id": "a\($0.offset)", "org.matrix.msc1767.text": $0.element] }
-        event(room, sender, "org.matrix.msc3381.poll.start", [
+        return event(room, sender, "org.matrix.msc3381.poll.start", [
             "org.matrix.msc3381.poll.start": [
                 "question": ["org.matrix.msc1767.text": question],
                 "kind": "org.matrix.msc3381.poll.disclosed",
@@ -426,6 +429,13 @@ struct MockWorld {
                 "answers": options,
             ],
             "org.matrix.msc1767.text": question,
+        ])
+    }
+
+    private mutating func vote(_ room: String, _ sender: String, in poll: String, _ answers: [String]) {
+        event(room, sender, "org.matrix.msc3381.poll.response", [
+            "m.relates_to": ["rel_type": "m.reference", "event_id": poll],
+            "org.matrix.msc3381.poll.response": ["answers": answers],
         ])
     }
 

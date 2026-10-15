@@ -1002,6 +1002,9 @@ public enum Strings {
             public static let sentAudio = LocalizedStringResource("message.spoken.sentAudio", bundle: bundle)
             public static let sentFile = LocalizedStringResource("message.spoken.sentFile", bundle: bundle)
             public static let sentLocation = LocalizedStringResource("message.spoken.sentLocation", bundle: bundle)
+            public static func sentPoll(_ question: String) -> LocalizedStringResource {
+                LocalizedStringResource("message.spoken.sentPoll", defaultValue: "a poll, \(question)", bundle: bundle)
+            }
             public static let sentUnreadable = LocalizedStringResource("message.spoken.sentUnreadable", bundle: bundle)
             public static let deletedMessage = LocalizedStringResource("message.spoken.deletedMessage", bundle: bundle)
             public static let sentUnsupported = LocalizedStringResource("message.spoken.sentUnsupported", bundle: bundle)
@@ -1052,6 +1055,44 @@ public enum Strings {
         public static let myLocation = LocalizedStringResource("location.myLocation", bundle: bundle)
         /// The third thing the "+" can attach.
         public static let attach = LocalizedStringResource("location.attach", bundle: bundle)
+    }
+
+    /// A poll in the conversation, and the sheet that writes one.
+    public enum Poll {
+        /// The small line above the question: what sort of poll it is, or that it is over.
+        public static let kind = LocalizedStringResource("poll.kind", bundle: bundle)
+        public static let kindAnonymous = LocalizedStringResource("poll.kindAnonymous", bundle: bundle)
+        public static let ended = LocalizedStringResource("poll.ended", bundle: bundle)
+        public static let multiple = LocalizedStringResource("poll.multiple", bundle: bundle)
+        /// "5 votes" — counted by person, see `Poll.voters`.
+        public static func voters(_ count: Int) -> LocalizedStringResource {
+            LocalizedStringResource("poll.voters", defaultValue: "\(count) votes", bundle: bundle)
+        }
+        public static let noVotes = LocalizedStringResource("poll.noVotes", bundle: bundle)
+        public static let hiddenUntilEnd = LocalizedStringResource("poll.hiddenUntilEnd", bundle: bundle)
+        /// VoiceOver's word for an answer this account picked.
+        public static let chosen = LocalizedStringResource("poll.chosen", bundle: bundle)
+
+        /// Closing it — the sender's item in the message menu, and the question it asks.
+        public static let end = LocalizedStringResource("poll.end", bundle: bundle)
+        public static let endConfirmTitle = LocalizedStringResource("poll.endConfirmTitle", bundle: bundle)
+        public static let endConfirmMessage = LocalizedStringResource("poll.endConfirmMessage", bundle: bundle)
+
+        /// The "+" item, and the sheet it opens.
+        public static let attach = LocalizedStringResource("poll.attach", bundle: bundle)
+        public static let newTitle = LocalizedStringResource("poll.newTitle", bundle: bundle)
+        public static let question = LocalizedStringResource("poll.question", bundle: bundle)
+        public static let questionPlaceholder = LocalizedStringResource("poll.questionPlaceholder", bundle: bundle)
+        public static let answers = LocalizedStringResource("poll.answers", bundle: bundle)
+        public static let answerPlaceholder = LocalizedStringResource("poll.answerPlaceholder", bundle: bundle)
+        public static let addAnswer = LocalizedStringResource("poll.addAnswer", bundle: bundle)
+        public static let removeAnswer = LocalizedStringResource("poll.removeAnswer", bundle: bundle)
+        public static let settings = LocalizedStringResource("poll.settings", bundle: bundle)
+        public static let allowMultiple = LocalizedStringResource("poll.allowMultiple", bundle: bundle)
+        public static let anonymous = LocalizedStringResource("poll.anonymous", bundle: bundle)
+        public static let anonymousFooter = LocalizedStringResource("poll.anonymousFooter", bundle: bundle)
+        public static let send = LocalizedStringResource("poll.send", bundle: bundle)
+        public static let cancel = LocalizedStringResource("poll.cancel", bundle: bundle)
     }
 
     /// The sticker sheet, the button that opens it, and adding a sticker from a conversation.

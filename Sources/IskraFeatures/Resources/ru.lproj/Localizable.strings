@@ -677,6 +677,31 @@
 "location.myLocation" = "Я здесь";
 "location.attach" = "Геопозиция";
 "message.spoken.sentLocation" = "геопозиция";
+"poll.kind" = "Опрос";
+"poll.kindAnonymous" = "Анонимный опрос";
+"poll.ended" = "Опрос завершён";
+"poll.multiple" = "можно выбрать несколько";
+"poll.noVotes" = "Пока никто не голосовал";
+"poll.hiddenUntilEnd" = "результаты — после завершения";
+"poll.end" = "Завершить опрос";
+"poll.endConfirmTitle" = "Завершить опрос?";
+"poll.endConfirmMessage" = "Голосовать больше будет нельзя, а результаты увидят все.";
+"poll.attach" = "Опрос";
+"poll.newTitle" = "Новый опрос";
+"poll.question" = "Вопрос";
+"poll.questionPlaceholder" = "О чём спросить?";
+"poll.answers" = "Варианты ответа";
+"poll.answerPlaceholder" = "Вариант";
+"poll.addAnswer" = "Добавить вариант";
+"poll.removeAnswer" = "Убрать вариант";
+"poll.settings" = "Настройки";
+"poll.allowMultiple" = "Несколько ответов";
+"poll.anonymous" = "Результаты после завершения";
+"poll.anonymousFooter" = "Пока опрос идёт, никто не видит, как голосуют другие. Завершить его можете только вы.";
+"poll.send" = "Отправить";
+"poll.cancel" = "Отмена";
+"poll.chosen" = "ваш ответ";
+"message.spoken.sentPoll" = "опрос «%@»";
 
 /* Управление комнатой. Показывается только тем, кому комната это разрешает. */
 "room.manage.namePlaceholder" = "Название чата";
