@@ -1331,3 +1331,37 @@
 "message.selection.deleteTitle" = "Delete the selected messages?";
 "message.selection.deleteMessage" = "They’ll disappear for everyone in the chat. You won’t be able to bring them back.";
 "message.selection.copied" = "Copied";
+
+/* Chat folders (stage 9) */
+"folders.all" = "All";
+"folders.title" = "Folders";
+"folders.explanation" = "Folders gather chats by rules — personal, groups, unread — and sit as tabs above the list. They’re the same on all your devices.";
+"folders.new" = "New folder";
+"folders.suggested" = "You could start with these";
+"folders.add" = "Add";
+"folders.edit" = "Folder";
+"folders.namePlaceholder" = "Name";
+"folders.kindsHeader" = "Which chats";
+"folders.kind.direct" = "Personal";
+"folders.kind.groups" = "Groups";
+"folders.kind.spaces" = "Spaces";
+"folders.kind.invitations" = "Invitations";
+"folders.suggestion.unread" = "Unread";
+"folders.conditionsHeader" = "Conditions";
+"folders.onlyUnread" = "Only unread";
+"folders.excludesMuted" = "Leave out muted";
+"folders.includesArchived" = "Include the archive";
+"folders.includedHeader" = "Always show";
+"folders.excludedHeader" = "Never show";
+"folders.addChats" = "Add chats";
+"folders.chooseChats" = "Choose chats";
+"folders.done" = "Done";
+"folders.cancel" = "Cancel";
+"folders.delete" = "Delete folder";
+"folders.deleteQuestion" = "Delete the folder “%@”?";
+"folders.deleteHelp" = "The chats stay where they are — only the tab goes.";
+"folders.addToFolder" = "Add to folder";
+"folders.membershipTitle" = "Folders";
+"folders.membershipFooter" = "Ticked, the chat is in the folder even if it doesn’t fit the rules. Unticked, it never is.";
+"folders.emptyTitle" = "Nothing in this folder yet";
+"folders.emptyMessage" = "Chats that fit its rules will appear here.";

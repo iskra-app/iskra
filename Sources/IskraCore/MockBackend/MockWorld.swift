@@ -67,6 +67,13 @@ struct MockWorld {
         // Four of the eight are the account's own; the other four are the development room's,
         // so that a sticker *not* yet yours turns up in a chat and can be added.
         accountData["im.ponies.user_emotes"] = ["images": pack([.hello, .love, .joy, .sleepy])]
+        // Two folders, so the tabs over the list have something to show — see `ChatFolder`.
+        accountData[ChatFolders.type] = ["folders": [
+            ["id": "demo-personal", "name": "Личные", "kinds": ["direct"], "onlyUnread": false,
+             "excludesMuted": false, "includesArchived": false, "included": [], "excluded": []],
+            ["id": "demo-unread", "name": "Непрочитанные", "kinds": ["direct", "groups"], "onlyUnread": true,
+             "excludesMuted": true, "includesArchived": false, "included": [], "excluded": []],
+        ]]
     }
 
     // MARK: - Conversations

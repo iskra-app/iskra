@@ -203,3 +203,6 @@
 "roomAction.addressFailed" = "The address couldn’t be changed. Try again.";
 "roomAction.addressTaken" = "That address is already taken. Try another.";
 "roomAction.directoryFailed" = "Whether the room is listed in the server’s directory didn’t change.";
+
+/* Chat folders (stage 9) */
+"folders.saveFailed" = "The folders couldn’t be saved. Try again.";

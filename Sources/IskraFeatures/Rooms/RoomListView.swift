@@ -86,6 +86,22 @@ public struct RoomListView: View {
     /// Which of the two things the "+" was pressed for, and nil when it was not.
     @State private var isStartingChat = false
 
+    /// The folder whose tab is open — "" for "All". Per device, as Telegram's is: which tab you
+    /// were looking at is not a fact about the account.
+    @AppStorage("roomList.folder") private var folderID = ""
+    @State private var isEditingFolders = false
+
+    /// The open folder, while it still exists — one deleted on another device falls back to "All".
+    private var activeFolder: ChatFolder? {
+        folderID.isEmpty ? nil : session.folders.folders.first { $0.id == folderID }
+    }
+
+    /// The list as the open tab sees it — every chat, or the folder's, in the list's own order.
+    private var listedRooms: [RoomSummary] {
+        guard let activeFolder else { return session.roomList.rooms }
+        return activeFolder.rooms(from: session.roomList.rooms, archived: session.roomList.archivedRooms)
+    }
+
     public init(session: UserSession,
                 selectedRoomID: Binding<String?>,
                 selectedEventID: Binding<String?> = .constant(nil),
@@ -109,11 +125,32 @@ public struct RoomListView: View {
                 // a Mac is — see `sectionedRooms` and `isNativeSidebar`.
                 sectionedRooms
             } else {
-                archiveEntry
+                if activeFolder == nil { archiveEntry }
                 rooms
             }
         }
         .roomListStyle(nativeSidebar: isNativeSidebar)
+        // The folders, right over the list — under the banners, which are about the account and
+        // not about which chats are showing.
+        .safeAreaInset(edge: .top) {
+            if !session.folders.folders.isEmpty, !isSearching {
+                FolderTabs(folders: session.folders.folders,
+                           rooms: session.roomList.rooms,
+                           archived: session.roomList.archivedRooms,
+                           selection: $folderID,
+                           onEdit: { isEditingFolders = true })
+            }
+        }
+        .sheet(isPresented: $isEditingFolders) {
+            NavigationStack {
+                FoldersView(folders: session.folders, roomList: session.roomList)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button(String(app: Strings.Folders.done)) { isEditingFolders = false }
+                        }
+                    }
+            }
+        }
         // A chat that has just been written in rises to the top the way Telegram's does — it slides
         // up past the ones it overtakes, rather than vanishing from its row and reappearing at the
         // top while every row in between jumps down one. Scoped to the *order* of the list, so a
@@ -377,7 +414,7 @@ public struct RoomListView: View {
 
     @ViewBuilder
     private var rooms: some View {
-        let rooms = session.roomList.rooms
+        let rooms = listedRooms
         ForEach(Array(rooms.enumerated()), id: \.element.id) { index, room in
             row(for: room)
                 .separatorsBetweenRowsOnly(isFirst: index == 0, isLast: index == rooms.count - 1)
@@ -447,7 +484,7 @@ public struct RoomListView: View {
     /// never a re-sort: the busiest conversation is still at the top of the one it belongs to.
     @ViewBuilder
     private var sectionedRooms: some View {
-        let all = session.roomList.rooms
+        let all = listedRooms
         let invitations = all.filter(\.isInvitation)
         let spaces = all.filter { $0.isSpace && !$0.isInvitation }
         let chats = all.filter { !$0.isSpace && !$0.isInvitation }
@@ -458,7 +495,7 @@ public struct RoomListView: View {
         // bottom here, on the theory that a Mac sidebar files the shelf you rarely open under
         // everything you do — and under a few hundred chats that put it where nobody would ever
         // scroll to find it.
-        if !session.roomList.archivedRooms.isEmpty {
+        if !session.roomList.archivedRooms.isEmpty, activeFolder == nil {
             Section { archiveEntry.sidebarRowInsets() }
         }
 
@@ -564,6 +601,10 @@ public struct RoomListView: View {
     private var emptyState: some View {
         if isSearching, session.search.foundNothing, !session.search.isSearching {
             ContentUnavailableView.search(text: searchText)
+        } else if !isSearching, activeFolder != nil, listedRooms.isEmpty, !session.roomList.rooms.isEmpty {
+            ContentUnavailableView(String(app: Strings.Folders.emptyTitle),
+                                   systemImage: "folder",
+                                   description: Text(Strings.Folders.emptyMessage))
         } else if !isSearching, session.roomList.rooms.isEmpty {
             if session.roomList.isLoadingInitialRooms {
                 RoomListSkeleton()

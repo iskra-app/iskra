@@ -1327,3 +1327,37 @@
 "message.selection.deleteTitle" = "Удалить выбранные сообщения?";
 "message.selection.deleteMessage" = "Они исчезнут у всех участников чата. Вернуть их будет нельзя.";
 "message.selection.copied" = "Скопировано";
+
+/* Chat folders (stage 9) */
+"folders.all" = "Все";
+"folders.title" = "Папки";
+"folders.explanation" = "Папки собирают чаты по правилам — личные, группы, непрочитанные — и стоят вкладками над списком. Они общие для всех ваших устройств.";
+"folders.new" = "Новая папка";
+"folders.suggested" = "Можно начать с этих";
+"folders.add" = "Добавить";
+"folders.edit" = "Папка";
+"folders.namePlaceholder" = "Название";
+"folders.kindsHeader" = "Какие чаты";
+"folders.kind.direct" = "Личные";
+"folders.kind.groups" = "Группы";
+"folders.kind.spaces" = "Пространства";
+"folders.kind.invitations" = "Приглашения";
+"folders.suggestion.unread" = "Непрочитанные";
+"folders.conditionsHeader" = "Условия";
+"folders.onlyUnread" = "Только непрочитанные";
+"folders.excludesMuted" = "Без беззвучных";
+"folders.includesArchived" = "Вместе с архивом";
+"folders.includedHeader" = "Всегда показывать";
+"folders.excludedHeader" = "Никогда не показывать";
+"folders.addChats" = "Добавить чаты";
+"folders.chooseChats" = "Выберите чаты";
+"folders.done" = "Готово";
+"folders.cancel" = "Отмена";
+"folders.delete" = "Удалить папку";
+"folders.deleteQuestion" = "Удалить папку «%@»?";
+"folders.deleteHelp" = "Чаты останутся на месте — пропадёт только вкладка.";
+"folders.addToFolder" = "В папку";
+"folders.membershipTitle" = "Папки";
+"folders.membershipFooter" = "С галочкой чат будет в папке, даже если не подходит под её правила. Без галочки — не попадёт в неё никогда.";
+"folders.emptyTitle" = "В папке пока пусто";
+"folders.emptyMessage" = "Сюда попадут чаты, которые подходят под её правила.";

@@ -222,6 +222,13 @@ struct SettingsView: View {
                     Label(Strings.Settings.chats, systemImage: "bubble.left.and.bubble.right")
                 }
 
+                // Folders of chats, as tabs over the list — see `FoldersView`.
+                NavigationLink {
+                    FoldersView(folders: session.folders, roomList: session.roomList)
+                } label: {
+                    Label(Strings.Folders.title, systemImage: "folder")
+                }
+
                 NavigationLink(value: Destination.notifications) {
                     Label(Strings.Settings.notifications, systemImage: "bell")
                 }
