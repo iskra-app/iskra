@@ -206,3 +206,7 @@
 
 /* Chat folders (stage 9) */
 "folders.saveFailed" = "The folders couldn’t be saved. Try again.";
+
+/* Live location */
+"liveLocation.startFailed" = "Live location couldn’t be started. Try again.";
+"liveLocation.denied" = "Iskra isn’t allowed to use your location. You can allow it in Settings.";

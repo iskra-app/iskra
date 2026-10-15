@@ -578,6 +578,18 @@ enum TimelineMapper {
                               votes: votes,
                               isEnded: endTime != nil,
                               ownUserID: ownUserID))
+        case let .liveLocation(content):
+            // A live share: the SDK has gathered its points under the event that started it, and the
+            // last of them is where the person is. Before the first point the map has nothing to
+            // stand on, and says so — see `Location.LiveSpan.hasPosition`.
+            let last = content.locations.last
+            var location = last.flatMap { Location(geoURI: $0.geoUri, name: content.description) }
+                ?? Location(latitude: 0, longitude: 0, name: content.description)
+            let started = MessagePreview.date(from: content.ts)
+            location.live = Location.LiveSpan(isLive: content.isLive,
+                                              until: started.addingTimeInterval(TimeInterval(content.timeoutMs) / 1000),
+                                              updatedAt: last.map { MessagePreview.date(from: $0.ts) })
+            return .location(location)
         case .redacted:
             return .deleted
         case .unableToDecrypt:

@@ -206,3 +206,7 @@
 
 /* Chat folders (stage 9) */
 "folders.saveFailed" = "没能保存文件夹。请再试一次。";
+
+/* Live location */
+"liveLocation.startFailed" = "没能开始实时共享位置。请再试一次。";
+"liveLocation.denied" = "Iskra 无权使用您的位置。可以在“设置”中允许。";

@@ -1389,3 +1389,15 @@
 "thread.title" = "话题";
 "thread.replyInThread" = "在话题中回复";
 "thread.replies" = "%lld 条回复";
+
+/* Live location */
+"location.shareLive" = "实时共享位置";
+"location.shareLiveFor" = "共享位置多长时间？";
+"location.liveUntil" = "实时 · 至 %@";
+"location.liveEnded" = "实时位置已结束";
+"location.liveWaiting" = "正在等待第一个位置…";
+"location.youAreSharing" = "您正在共享位置，直到 %@";
+"location.stop" = "停止";
+
+"location.liveForMinutes" = "%lld 分钟";
+"location.liveForHours" = "%lld 小时";

@@ -1202,6 +1202,25 @@ public enum Strings {
         public static let myLocation = LocalizedStringResource("location.myLocation", bundle: bundle)
         /// The third thing the "+" can attach.
         public static let attach = LocalizedStringResource("location.attach", bundle: bundle)
+
+        /// Sharing where you are as you move — see `LiveLocationSharer`.
+        public static let shareLive = LocalizedStringResource("location.shareLive", bundle: bundle)
+        public static let shareLiveFor = LocalizedStringResource("location.shareLiveFor", bundle: bundle)
+        public static func liveFor(minutes: Int) -> LocalizedStringResource {
+            LocalizedStringResource("location.liveForMinutes", defaultValue: "\(minutes)", bundle: bundle)
+        }
+        public static func liveFor(hours: Int) -> LocalizedStringResource {
+            LocalizedStringResource("location.liveForHours", defaultValue: "\(hours)", bundle: bundle)
+        }
+        public static func liveUntil(_ time: String) -> LocalizedStringResource {
+            LocalizedStringResource("location.liveUntil", defaultValue: "\(time)", bundle: bundle)
+        }
+        public static let liveEnded = LocalizedStringResource("location.liveEnded", bundle: bundle)
+        public static let liveWaiting = LocalizedStringResource("location.liveWaiting", bundle: bundle)
+        public static func youAreSharing(_ time: String) -> LocalizedStringResource {
+            LocalizedStringResource("location.youAreSharing", defaultValue: "\(time)", bundle: bundle)
+        }
+        public static let stop = LocalizedStringResource("location.stop", bundle: bundle)
     }
 
     /// A poll in the conversation, and the sheet that writes one.

@@ -26,13 +26,7 @@ struct LocationBubble: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Map(initialPosition: .region(MKCoordinateRegion(center: coordinate,
-                                                            latitudinalMeters: Self.span,
-                                                            longitudinalMeters: Self.span)),
-                interactionModes: []) {
-                Marker("", coordinate: coordinate)
-                    .tint(.red)
-            }
+            map
             .frame(width: Theme.Size.picture, height: Theme.Size.map)
             .clipShape(BubbleShape())
             .pictureBorder(style)
@@ -49,6 +43,53 @@ struct LocationBubble: View {
                     .font(.body)
                     .padding(.top, Theme.Spacing.close)
                     .padding(.horizontal, Theme.Spacing.tight)
+            }
+
+            if let live = location.live {
+                liveLine(live)
+                    .padding(.top, Theme.Spacing.close)
+                    .padding(.horizontal, Theme.Spacing.tight)
+            }
+        }
+    }
+
+    /// The map — or, for a live share that has not sent its first point, a frame that says it is
+    /// waiting rather than a map of the Gulf of Guinea. Rebuilt for every new point (`id`), so a
+    /// share's map follows the person rather than staying where it first opened.
+    @ViewBuilder
+    private var map: some View {
+        if let live = location.live, !live.hasPosition {
+            RoundedRectangle(cornerRadius: Theme.Radius.picture, style: .continuous)
+                .fill(.quaternary)
+                .overlay {
+                    Label(String(app: Strings.Location.liveWaiting), systemImage: "location.circle")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+        } else {
+            Map(initialPosition: .region(MKCoordinateRegion(center: coordinate,
+                                                            latitudinalMeters: Self.span,
+                                                            longitudinalMeters: Self.span)),
+                interactionModes: []) {
+                Marker("", coordinate: coordinate)
+                    .tint(location.live?.isActive() == true ? .blue : .red)
+            }
+            .id(location.geoURI)
+        }
+    }
+
+    /// "Live · until 18:30" while it runs, with the dot that says it is moving; "ended" after.
+    private func liveLine(_ live: Location.LiveSpan) -> some View {
+        TimelineView(.periodic(from: .now, by: 30)) { context in
+            let isActive = live.isActive(now: context.date)
+            HStack(spacing: Theme.Spacing.tight) {
+                Circle()
+                    .fill(isActive ? Color.blue : Color.secondary)
+                    .frame(width: Theme.Size.recordingDot, height: Theme.Size.recordingDot)
+                Text(isActive ? Strings.Location.liveUntil(live.until.formatted(date: .omitted, time: .shortened))
+                              : Strings.Location.liveEnded)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -83,6 +124,10 @@ struct LocationBubble: View {
 /// is under your thumb at the moment you commit to it, and you cannot see what you have chosen.
 struct LocationPicker: View {
     let onPick: (Location) async -> Void
+
+    /// Sharing where you are as you move, for how long — nil where the room cannot take it.
+    var onShareLive: ((TimeInterval) async -> Void)?
+    @State private var isChoosingLiveDuration = false
 
     @Environment(\.dismiss) private var dismiss
 
@@ -133,6 +178,25 @@ struct LocationPicker: View {
                 .padding(Theme.Spacing.roomy)
                 .accessibilityLabel(Text(Strings.Location.myLocation))
             }
+            .overlay(alignment: .bottomLeading) {
+                if onShareLive != nil {
+                    Button {
+                        isChoosingLiveDuration = true
+                    } label: {
+                        Label(String(app: Strings.Location.shareLive), systemImage: "location.north.circle.fill")
+                    }
+                    .buttonStyle(.glassSecondary)
+                    .padding(Theme.Spacing.roomy)
+                    .disabled(isSending)
+                }
+            }
+            .confirmationDialog(Text(Strings.Location.shareLiveFor),
+                                isPresented: $isChoosingLiveDuration,
+                                titleVisibility: .visible) {
+                Button(String(app: Strings.Location.liveFor(minutes: 15))) { shareLive(15 * 60) }
+                Button(String(app: Strings.Location.liveFor(hours: 1))) { shareLive(60 * 60) }
+                Button(String(app: Strings.Location.liveFor(hours: 8))) { shareLive(8 * 60 * 60) }
+            }
             .ignoresSafeArea(edges: .bottom)
             .navigationTitle(String(app: Strings.Location.title))
             #if !os(macOS)
@@ -150,6 +214,15 @@ struct LocationPicker: View {
                     .disabled(centre == nil || isSending)
                 }
             }
+        }
+    }
+
+    private func shareLive(_ duration: TimeInterval) {
+        guard let onShareLive, !isSending else { return }
+        isSending = true
+        Task {
+            await onShareLive(duration)
+            dismiss()
         }
     }
 
@@ -249,5 +322,34 @@ final class LocationAuthority: NSObject, CLLocationManagerDelegate {
     private func answer(_ coordinate: CLLocationCoordinate2D?) {
         waiting?.resume(returning: coordinate)
         waiting = nil
+    }
+}
+
+/// "You're sharing your location until 18:30 · Stop" — over a room this account is sharing its
+/// position with. On glass, on the navigation layer, like the pinned strip it sits above.
+struct LiveLocationStrip: View {
+    let until: Date
+    let onStop: () -> Void
+
+    @Environment(\.accent) private var accent
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.normal) {
+            Image(systemName: "location.north.circle.fill")
+                .foregroundStyle(.blue)
+                .accessibilityHidden(true)
+            Text(Strings.Location.youAreSharing(until.formatted(date: .omitted, time: .shortened)))
+                .font(.subheadline)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button(String(app: Strings.Location.stop), action: onStop)
+                .font(.subheadline.weight(.semibold))
+                .buttonStyle(.plain)
+                .foregroundStyle(.red)
+        }
+        .padding(.horizontal, Theme.Spacing.roomy)
+        .padding(.vertical, Theme.Spacing.close)
+        .navigationGlass(in: .capsule)
+        .padding(.horizontal, Theme.Spacing.normal)
+        .padding(.top, Theme.Spacing.tight)
     }
 }

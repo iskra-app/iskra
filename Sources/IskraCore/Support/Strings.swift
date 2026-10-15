@@ -72,6 +72,11 @@ public enum CoreStrings {
 
     /// A change to the room that the homeserver would not make. One sentence per act — see
     /// `RoomActionFailure` for why they are not all "something went wrong".
+    public enum LiveLocation {
+        public static let startFailed = LocalizedStringResource("liveLocation.startFailed", bundle: bundle)
+        public static let denied = LocalizedStringResource("liveLocation.denied", bundle: bundle)
+    }
+
     public enum Folders {
         public static let saveFailed = LocalizedStringResource("folders.saveFailed", bundle: bundle)
     }

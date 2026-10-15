@@ -23,6 +23,8 @@ public final class UserSession {
     public let stickers: StickerLibrary
     /// The account's folders of chats — see `ChatFolder`.
     public let folders: ChatFolders
+    /// Where this person is, being shared as they move — see `LiveLocationSharer`.
+    public let liveLocation: LiveLocationSharer
 
     /// Proving devices are yours, in both directions — see `VerificationStore`.
     ///
@@ -139,6 +141,10 @@ public final class UserSession {
         self.blocked = BlockStore(client: client)
         self.verification = VerificationStore(client: client, ownUserID: userID)
         self.recovery = RecoveryStore(encryption: client.encryption())
+        let roomList = self.roomList
+        self.liveLocation = LiveLocationSharer { [client, roomList] roomID in
+            roomList.room(withID: roomID) ?? (try? client.getRoom(roomId: roomID))
+        }
         self.folders = ChatFolders(
             readAccountData: { [client] type in try await client.accountData(eventType: type) },
             writeAccountData: { [client] type, content in try await client.setAccountData(eventType: type, content: content) })
@@ -885,6 +891,9 @@ public final class UserSession {
 
     private func stopEverything() async {
         closed = true
+        // Before the client goes: a share left running would go on asking for points to send
+        // through a client nobody will ever sync again.
+        await liveLocation.stopAll()
         if !isDemo { await authentication.sessionClosed(sessionID) }
         verification.stop()
         recovery.stop()

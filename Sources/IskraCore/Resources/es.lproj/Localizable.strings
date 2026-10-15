@@ -206,3 +206,7 @@
 
 /* Chat folders (stage 9) */
 "folders.saveFailed" = "No se han podido guardar las carpetas. Inténtelo de nuevo.";
+
+/* Live location */
+"liveLocation.startFailed" = "No se ha podido empezar a compartir la ubicación en tiempo real. Inténtelo de nuevo.";
+"liveLocation.denied" = "Iskra no tiene acceso a su ubicación. Puede permitirlo en Ajustes.";
