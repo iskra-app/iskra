@@ -687,7 +687,6 @@ public enum Strings {
         /// which rung may do what.
         public enum Rules {
             public static let title = LocalizedStringResource("room.rules.title", bundle: bundle)
-            public static let entryHelp = LocalizedStringResource("room.rules.entryHelp", bundle: bundle)
             public static let staffHeader = LocalizedStringResource("room.rules.staffHeader", bundle: bundle)
             public static let staffFooter = LocalizedStringResource("room.rules.staffFooter", bundle: bundle)
             public static let rulesHeader = LocalizedStringResource("room.rules.rulesHeader", bundle: bundle)
@@ -705,6 +704,13 @@ public enum Strings {
             public static let everyone = LocalizedStringResource("room.rules.everyone", bundle: bundle)
             public static let moderators = LocalizedStringResource("room.rules.moderators", bundle: bundle)
             public static let administrators = LocalizedStringResource("room.rules.administrators", bundle: bundle)
+            /// Making somebody a moderator or an administrator from this screen, and the sheet that
+            /// picks them.
+            public static let addStaff = LocalizedStringResource("room.rules.addStaff", bundle: bundle)
+            public static let appointTitle = LocalizedStringResource("room.rules.appointTitle", bundle: bundle)
+            public static let nobodyToAppoint = LocalizedStringResource("room.rules.nobodyToAppoint", bundle: bundle)
+            /// Taking the role away — back to an ordinary member, still in the room.
+            public static let demote = LocalizedStringResource("room.rules.demote", bundle: bundle)
         }
 
         public enum Manage {
@@ -747,13 +753,11 @@ public enum Strings {
 
             public static let role = LocalizedStringResource("room.manage.role", bundle: bundle)
 
-            /// Over the rungs on somebody's own screen, and over the same list when a swipe asks
-            /// for it. The question names the person, because a swipe can land on the wrong row
-            /// and a dialog that says only "Role" gives no way to notice.
+            /// Over the rungs on somebody's own screen.
             public static let roleHeader = LocalizedStringResource("room.manage.roleHeader", bundle: bundle)
-            public static func roleQuestion(_ name: String) -> LocalizedStringResource {
-                LocalizedStringResource("room.manage.roleQuestion", defaultValue: "\(name): what can they do?", bundle: bundle)
-            }
+            /// The title of the dialog a swipe opens. The person's name goes under it as the message,
+            /// because a swipe can land on the wrong row and the dialog is where that is noticed.
+            public static let chooseRole = LocalizedStringResource("room.manage.chooseRole", bundle: bundle)
             /// The third rung has no badge in the list — everybody is a member — but it very
             /// much needs a word in the menu that *demotes* somebody back to being one.
             public static let member = LocalizedStringResource("room.manage.member", bundle: bundle)

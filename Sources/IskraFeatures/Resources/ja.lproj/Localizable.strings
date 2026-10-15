@@ -717,7 +717,6 @@
 "room.manage.invitePlaceholder" = "@名前:サーバー";
 "room.manage.role" = "役割";
 "room.manage.roleHeader" = "できること";
-"room.manage.roleQuestion" = "%@ にできること";
 "room.manage.member" = "メンバー";
 "room.manage.write" = "メッセージを送る";
 "room.manage.goToChat" = "チャットへ移動";
@@ -733,11 +732,10 @@
    what still works — reading and writing — rather than only what does not. */
 "room.manage.offline" = "オフラインでもチャットを読んだり書いたりはできますが、設定は変更できません。";
 "room.rules.title" = "役割と権限";
-"room.rules.entryHelp" = "誰がチャットを管理し、ほかの人に何ができるか。";
 "room.rules.staffHeader" = "チャットの管理者";
 "room.rules.staffFooter" = "役割を変えるには、その人を左にスワイプするか、ページを開いてください。";
 "room.rules.rulesHeader" = "できる人";
-"room.rules.rulesFooter" = "「モデレーター」はモデレーターと管理者のことです。自分の役割より上に権限を上げることや、すでに上にある権限を変えることはできません。";
+"room.rules.rulesFooter" = "「モデレーター」はモデレーターと管理者のことです。";
 "room.rules.sendMessages" = "メッセージを送る";
 "room.rules.invite" = "人を招待する";
 "room.rules.remove" = "メンバーを外す";
@@ -749,6 +747,11 @@
 "room.rules.everyone" = "全員";
 "room.rules.moderators" = "モデレーター";
 "room.rules.administrators" = "管理者";
+"room.manage.chooseRole" = "役割を選んでください";
+"room.rules.addStaff" = "追加";
+"room.rules.appointTitle" = "任命";
+"room.rules.nobodyToAppoint" = "ほかに任命できる人はいません。";
+"room.rules.demote" = "役割を外す";
 "room.manage.cancel" = "キャンセル";
 "problem.title" = "うまくいきませんでした";
 

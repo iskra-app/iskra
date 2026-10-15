@@ -714,7 +714,6 @@
 "room.manage.invitePlaceholder" = "@имя:сервер";
 "room.manage.role" = "Роль";
 "room.manage.roleHeader" = "Что может в чате";
-"room.manage.roleQuestion" = "Что может %@?";
 "room.manage.member" = "Участник";
 "room.manage.write" = "Написать";
 "room.manage.goToChat" = "Перейти в чат";
@@ -730,11 +729,10 @@
    what still works — reading and writing — rather than only what does not. */
 "room.manage.offline" = "Без сети чат можно читать и писать в него, но не менять.";
 "room.rules.title" = "Роли и разрешения";
-"room.rules.entryHelp" = "Кто управляет чатом и что можно остальным.";
 "room.rules.staffHeader" = "Управляют чатом";
 "room.rules.staffFooter" = "Чтобы сменить роль, проведите по человеку влево или откройте его страницу.";
 "room.rules.rulesHeader" = "Кто может";
-"room.rules.rulesFooter" = "«Модераторы» — это модераторы и администраторы. Разрешение нельзя поднять выше своей роли или поменять, если оно уже выше неё.";
+"room.rules.rulesFooter" = "«Модераторы» — это модераторы и администраторы.";
 "room.rules.sendMessages" = "Писать сообщения";
 "room.rules.invite" = "Приглашать людей";
 "room.rules.remove" = "Удалять участников";
@@ -746,6 +744,11 @@
 "room.rules.everyone" = "Все";
 "room.rules.moderators" = "Модераторы";
 "room.rules.administrators" = "Администраторы";
+"room.manage.chooseRole" = "Выберите роль";
+"room.rules.addStaff" = "Добавить";
+"room.rules.appointTitle" = "Назначить";
+"room.rules.nobodyToAppoint" = "Больше назначить некого.";
+"room.rules.demote" = "Снять роль";
 "room.manage.cancel" = "Отмена";
 "problem.title" = "Не получилось";
 
