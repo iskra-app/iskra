@@ -277,6 +277,15 @@ struct DemoBackendTests {
         }
         #expect(summarised, "root: \(String(describing: timeline.rows.message(withID: rootMessage.id)?.thread))")
         #expect(!timeline.rows.compactMap(\.message).contains { $0.kind == .text("это в тред") })
+        // An album can be a thread's root too: one row, three pictures, and the line under it.
+        let familyID = "!family:iskra.demo"
+        let family = try #require(session.timeline(forRoomID: familyID))
+        try await family.start()
+        defer { family.stop() }
+        func album() -> Message? { family.rows.compactMap(\.message).first { $0.album?.count == 3 } }
+        for _ in 0..<5 where album() == nil { await family.loadMore() }
+        #expect(await eventually { album()?.thread?.replies == 2 }, "album: \(String(describing: album()?.thread))")
+
         let unrecognized = await MockHomeserver.shared.unrecognized
         #expect(unrecognized.isEmpty, "\(unrecognized)")
     }

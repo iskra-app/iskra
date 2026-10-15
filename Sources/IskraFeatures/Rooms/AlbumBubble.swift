@@ -50,13 +50,14 @@ struct AlbumBubble: View {
                 caption
                     .font(.body)
                     .padding(.horizontal, Theme.Spacing.captionHorizontal)
-                    .padding(.vertical, Theme.Spacing.captionVertical)
+                    .padding(.top, Theme.Spacing.albumCaptionTop)
+                    .padding(.bottom, Theme.Spacing.captionVertical)
             }
         }
         .padding(Theme.Spacing.tight)
         .bubbleFill(style)
+        // No outline: the bubble's own fill is the edge, as it is for words.
         .clipShape(BubbleShape())
-        .pictureBorder(style)
         .contentShape(BubbleShape())
         #if os(iOS)
         .fullScreenCover(item: $opened) { opened in
@@ -83,7 +84,12 @@ struct AlbumBubble: View {
             }
         }
         .frame(width: width, height: height, alignment: .topLeading)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.picture, style: .continuous))
+        .clipShape(UnevenRoundedRectangle(
+            topLeadingRadius: Theme.Radius.picture,
+            bottomLeadingRadius: caption == nil ? Theme.Radius.picture : Theme.Radius.pictureAboveCaption,
+            bottomTrailingRadius: caption == nil ? Theme.Radius.picture : Theme.Radius.pictureAboveCaption,
+            topTrailingRadius: Theme.Radius.picture,
+            style: .continuous))
     }
 
     @ViewBuilder

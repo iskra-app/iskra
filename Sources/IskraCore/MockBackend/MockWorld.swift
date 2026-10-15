@@ -159,10 +159,19 @@ struct MockWorld {
         text(room, papa, "Принято")
         at(room, 60 * 24 * 6)
         // An album — three photos a second apart, the caption on the first, as this app sends one.
-        image(room, papa, "грядка.png", hue: 0.24, width: 800, height: 1200, caption: "Первые кабачки в этом году")
+        let harvest = image(room, papa, "грядка.png", hue: 0.24, width: 800, height: 1200, caption: "Первые кабачки в этом году")
         image(room, papa, "урожай.png", hue: 0.28)
         image(room, papa, "кабачки.png", hue: 0.32)
         react(room, pinned, papa, "👌")
+        // Threads: one under the album, and a fresh one near the bottom — the line "N answers"
+        // under a message, and a thread to open. See `TimelineStore.threadRootID`.
+        inThread(room, mama, under: harvest, "Какие красивые! Оставь мне пару штук")
+        inThread(room, papa, under: harvest, "Конечно, в воскресенье привезу")
+        at(room, 60 * 3)
+        let trip = text(room, mama, "Что везти на дачу в субботу? Пишите сюда, в тред")
+        inThread(room, papa, under: trip, "Удобрения и лейку, старая потекла")
+        inThread(room, mama, under: trip, "И семена укропа")
+        inThread(room, me, under: trip, "Я возьму мангал")
         at(room, 60 * 2)
         text(room, mama, "Саша, ты в воскресенье приедешь?")
         mention(room, mama, name: "Саша", "Саша, ответь маме 🙂")
@@ -424,8 +433,9 @@ struct MockWorld {
         event(room, sender, "m.room.redaction", ["redacts": target], extra: ["redacts": target])
     }
 
+    @discardableResult
     private mutating func image(_ room: String, _ sender: String, _ name: String, hue: Double,
-                                width: Int = 1200, height: Int = 800, caption: String? = nil) {
+                                width: Int = 1200, height: Int = 800, caption: String? = nil) -> String {
         let data = MockMedia.photo(hue: hue, width: width, height: height)
         // A caption is the body, with the file's name moved to `filename` — the way Matrix tells a
         // caption from a name.
@@ -434,7 +444,7 @@ struct MockWorld {
             "info": ["mimetype": "image/png", "w": width, "h": height, "size": data.count],
         ]
         if caption != nil { content["filename"] = name }
-        event(room, sender, "m.room.message", content)
+        return event(room, sender, "m.room.message", content)
     }
 
     private mutating func voice(_ room: String, _ sender: String) {
