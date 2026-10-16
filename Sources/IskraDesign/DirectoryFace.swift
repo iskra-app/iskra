@@ -34,9 +34,14 @@ public struct DirectoryFace: View {
     public var body: some View {
         Group {
             if let picture {
-                Image(decorative: picture, scale: 1)
-                    .resizable()
-                    .scaledToFill()
+                // Over a square rather than as one: a picture that is not square, filled, is laid
+                // out larger than its circle, and the overflow takes taps meant for its neighbours.
+                Color.clear
+                    .overlay {
+                        Image(decorative: picture, scale: 1)
+                            .resizable()
+                            .scaledToFill()
+                    }
             } else if generated {
                 BlobatarView(seed: seed, backdrop: .circle)
             } else {
@@ -44,6 +49,7 @@ public struct DirectoryFace: View {
             }
         }
         .clipShape(.circle)
+        .contentShape(.circle)
     }
 
     /// The picture in a file, decoded straight to the size it is drawn at — never the whole image

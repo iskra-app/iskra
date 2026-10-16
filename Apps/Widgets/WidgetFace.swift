@@ -34,10 +34,17 @@ struct WidgetFace: View {
                             .foregroundStyle(.secondary)
                     }
             } else if let picture = DirectoryFace.picture(at: file, pixelSize: pixels) {
-                Image(decorative: picture, scale: 1)
-                    .resizable()
-                    .widgetAccentedRenderingMode(.desaturated)
-                    .scaledToFill()
+                // Drawn *over* a square of the face's size, never as the square itself. A picture
+                // that is not square, filled, is laid out larger than its circle — the clip hides
+                // the overflow from the eye but not from WidgetKit, and every face with a photo
+                // on it stopped answering taps while the grey ones with initials worked.
+                Color.clear
+                    .overlay {
+                        Image(decorative: picture, scale: 1)
+                            .resizable()
+                            .widgetAccentedRenderingMode(.desaturated)
+                            .scaledToFill()
+                    }
             } else if !BetaFeatures.drawsGeneratedFace(hasPicture: false) {
                 InitialsFace(name: name)
             } else if let creature = BlobatarImage.cgImage(for: seed, size: pixels) {
@@ -51,6 +58,7 @@ struct WidgetFace: View {
         }
         .frame(width: size, height: size)
         .clipShape(.circle)
+        .contentShape(.circle)
     }
 
     private var pixels: Int { Int(size * 3) }
