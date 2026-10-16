@@ -1752,6 +1752,10 @@ public enum Strings {
         public static let namesAccount = LocalizedStringResource("chats.namesAccount", bundle: bundle)
         public static let threads = LocalizedStringResource("chats.threads", bundle: bundle)
         public static let threadsHelp = LocalizedStringResource("chats.threadsHelp", bundle: bundle)
+        public static let threadsAlways = LocalizedStringResource("chats.threadsAlways", bundle: bundle)
+        public static let threadsLargeRooms = LocalizedStringResource("chats.threadsLargeRooms", bundle: bundle)
+        public static let threadsNever = LocalizedStringResource("chats.threadsNever", bundle: bundle)
+        public static let threadsHideReplies = LocalizedStringResource("chats.threadsHideReplies", bundle: bundle)
         public static let namesAccountHelp = LocalizedStringResource("chats.namesAccountHelp", bundle: bundle)
     }
 

@@ -214,12 +214,11 @@ public final class TimelineStore {
     /// whatever is sent from it — words, pictures, a reply — goes into the thread.
     public let threadRootID: String?
 
-    /// Whether this room keeps answers in threads under their message: switched on in settings, and
-    /// not a personal chat — between two people a thread is a second conversation with the same
-    /// person, and the one room they already have reads better top to bottom. Decided from the room
-    /// info read just before the timeline opens (`kind`), and fixed for as long as it is open.
+    /// Whether this room has threads — a line under a message with its answers — as settings have
+    /// it for a room of this kind and size (`ThreadSettings`). Decided from the room info read just
+    /// before the timeline opens (`kind`, `memberCount`).
     public var usesThreads: Bool {
-        ThreadSettings.isEnabled() && kind != .direct
+        ThreadSettings.usesThreads(kind: kind, memberCount: memberCount)
     }
 
     init(room: Room, ownUserID: String, threadRootID: String? = nil) {
@@ -380,10 +379,11 @@ public final class TimelineStore {
         // `hasLoaded` never set, and a spinner with no way out. A timeout is thrown instead, and
         // `start()` turns it into the "this chat didn't open — try again" screen.
         let configuration = TimelineConfiguration(
-            // The room's own leaves thread answers out — they are a line under their root, as in
-            // Element and Telegram's comments, and a thread is opened to read them.
+            // The room's own keeps thread answers among everything else unless settings say to leave
+            // them out — then they are only a line under their root, as in Element and Telegram's
+            // comments, and a thread is opened to read them. Fixed for as long as it is open.
             focus: threadRootID.map { .thread(rootEventId: $0) }
-                ?? .live(hideThreadedEvents: usesThreads),
+                ?? .live(hideThreadedEvents: usesThreads && ThreadSettings.hidesReplies()),
             filter: .all,
             internalIdPrefix: threadRootID.map { "thread-\($0)-" },
             dateDividerMode: .daily,

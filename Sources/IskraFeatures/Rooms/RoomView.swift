@@ -72,9 +72,9 @@ public struct RoomView: View {
     @AppStorage(StickerSettings.showsRoomPackKey) private var showsRoomStickers = true
     @AppStorage(StickerSettings.showsMineKey) private var showsMyStickers = true
     @AppStorage(BetaFeatures.showsEventSourceKey) private var showsEventSource = false
-    /// Settings → Chats → Threads. Off, there is no line under a message and no "Reply in thread" —
-    /// the room shows answers among everything else (`ThreadSettings`).
-    @AppStorage(ThreadSettings.isEnabledKey) private var threadsAreOn = ThreadSettings.isEnabledByDefault
+    /// Settings → Chats → Threads. In a room without them there is no "Reply in thread" — see
+    /// `ThreadSettings` and `TimelineStore.usesThreads`.
+    @AppStorage(ThreadSettings.shownKey) private var threadsShown = ThreadSettings.shown()
     private var showsStickers: Bool { showsBuiltInStickers || showsRoomStickers || showsMyStickers }
 
     /// Messages being chosen together, while they are — see `MessageSelection`. Nil the rest of
@@ -2266,7 +2266,8 @@ public struct RoomView: View {
             onReport: { reason in Task { await timeline.report(messageID: message.id, reason: reason) } },
             onVote: { answers in Task { await timeline.vote(inPoll: message.id, answerIDs: answers) } },
             onEndPoll: { Task { await timeline.endPoll(message.id) } },
-            onOpenThread: makeThread == nil || isThread || !threadsAreOn || timeline.kind == .direct ? nil : {
+            onOpenThread: makeThread == nil || isThread
+                || !ThreadSettings.usesThreads(kind: timeline.kind, memberCount: timeline.memberCount, shown: threadsShown) ? nil : {
                 guard let store = makeThread?(message.id) else { return }
                 Keyboard.dismiss()
                 openedThread = OpenedThread(rootID: message.id, store: store)

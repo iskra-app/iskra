@@ -1288,19 +1288,19 @@
 "servers.title" = "Choisir un serveur";
 "servers.intro" = "Votre compte vit sur un serveur, mais vous pouvez écrire aux personnes de n’importe quel autre, comme avec l’e-mail. Sur tous les serveurs ci-dessous, vous pouvez créer un compte directement dans Iskra.";
 "servers.matrixOrg" = "Le plus grand serveur Matrix, géré par la fondation qui développe Matrix.";
-/* Country · languages the server is run in. */
-"servers.matrixOrgWhere" = "Royaume-Uni · anglais";
+/* Where the server is. */
+"servers.matrixOrgWhere" = "Royaume-Uni";
 /* A warning on matrix.org: it is blocked in Russia. */
 "servers.matrixOrgBlocked" = "Inaccessible depuis la Russie";
 "servers.tchncs" = "L’un des plus anciens serveurs communautaires. Son propriétaire héberge aussi d’autres services libres.";
-"servers.tchncsWhere" = "Allemagne · anglais, allemand";
+"servers.tchncsWhere" = "Allemagne";
 "servers.quassel" = "Un serveur ouvert pour les conversations de tous les jours, gratuit pour tous.";
-"servers.quasselWhere" = "Allemagne, serveur en Finlande · anglais";
+"servers.quasselWhere" = "Allemagne, serveur en Finlande";
 "servers.nopeChat" = "Tenu par l’équipe d’adminForge, qui héberge aussi d’autres services libres. Avec des passerelles vers d’autres messageries.";
-"servers.nopeChatWhere" = "Allemagne · allemand";
+"servers.nopeChatWhere" = "Allemagne";
 /* The last entry: running a server of your own. Opens a page about it in the browser. */
 "servers.ownTitle" = "Votre propre serveur";
-"servers.ownAbout" = "Vous pouvez installer votre propre serveur : vos conversations ne sont alors conservées que chez vous. Il vous faudra un nom de domaine et un peu de temps.";
+"servers.ownAbout" = "Vous pouvez installer votre propre serveur : vos conversations sont alors entièrement entre vos mains.";
 
 /* Under the "open to anyone" switch when making a room: what the room will be. Changes with the switch. */
 "roomList.new.willBeEncrypted" = "Le salon sera chiffré";
@@ -1410,5 +1410,9 @@
 "message.transcript.nothingHeard" = "Aucun mot n’est audible.";
 "message.transcript.failed" = "La transcription a échoué. Réessayez.";
 
-"chats.threads" = "Fils";
-"chats.threadsHelp" = "Les réponses en fil sont regroupées sous leur message (« 3 réponses »). Désactivé, elles apparaissent dans la discussion parmi les autres messages — dès que vous la rouvrez. Les discussions personnelles n’ont pas de fils : les réponses y sont toujours dans la discussion.";
+"chats.threads" = "Afficher les fils";
+"chats.threadsHelp" = "Les réponses en fil sont regroupées sous leur message (« 3 réponses »). Tant qu’elles ne sont pas masquées, elles apparaissent aussi dans la discussion, parmi les autres messages. Les changements s’appliquent dès que vous rouvrez la discussion. Les discussions personnelles n’ont pas de fils.";
+"chats.threadsAlways" = "Toujours";
+"chats.threadsLargeRooms" = "Dans les discussions de plus de 100 personnes";
+"chats.threadsNever" = "Jamais";
+"chats.threadsHideReplies" = "Masquer les réponses dans la discussion";

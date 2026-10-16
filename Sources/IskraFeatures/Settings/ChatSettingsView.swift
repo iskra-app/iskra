@@ -21,15 +21,35 @@ struct ChatSettingsView: View {
     /// The same, for the notification extension — see `ChatDirectory.namesAccountInNotifications`.
     @State private var namesAccount = ChatDirectory.namesAccountInNotifications()
 
-    @AppStorage(ThreadSettings.isEnabledKey) private var threadsAreOn = ThreadSettings.isEnabledByDefault
+    /// Seeded from `ThreadSettings.shown()` rather than the bare default, so that somebody who had
+    /// switched the old single toggle off sees "Never" here, which is what the rooms obey.
+    @AppStorage(ThreadSettings.shownKey) private var threadsShown = ThreadSettings.shown()
+    @AppStorage(ThreadSettings.hidesRepliesKey) private var hidesThreadReplies = ThreadSettings.hidesRepliesByDefault
 
     var body: some View {
         Form {
+            // The choices inline, each a row with a tick, rather than a menu: "In chats of over 100
+            // people" does not fit beside a label on a phone.
             Section {
-                Toggle(isOn: $threadsAreOn) {
-                    Label(Strings.Chats.threads, systemImage: "bubble.left.and.text.bubble.right")
+                Picker(selection: $threadsShown) {
+                    Text(Strings.Chats.threadsAlways).tag(ThreadSettings.Shown.always)
+                    Text(Strings.Chats.threadsLargeRooms).tag(ThreadSettings.Shown.inLargeRooms)
+                    Text(Strings.Chats.threadsNever).tag(ThreadSettings.Shown.never)
+                } label: {
+                    Text(Strings.Chats.threads)
+                }
+                .pickerStyle(.inline)
+                .labelsHidden()
+            } header: {
+                Text(Strings.Chats.threads)
+            }
+
+            Section {
+                Toggle(isOn: $hidesThreadReplies) {
+                    Label(Strings.Chats.threadsHideReplies, systemImage: "bubble.left.and.text.bubble.right")
                 }
                 .accentControl()
+                .disabled(threadsShown == .never)
             } footer: {
                 Text(Strings.Chats.threadsHelp)
             }

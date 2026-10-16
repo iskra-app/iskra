@@ -18,7 +18,7 @@ struct PublicServer: Identifiable {
     /// What goes into the address field.
     let address: String
     let about: LocalizedStringResource
-    /// Where it is, and in which languages its people are looked after.
+    /// Where it is.
     let whereabouts: LocalizedStringResource
     /// What somebody should know before choosing it — said in a colour of its own, not folded
     /// into the description where it reads as one more detail.
@@ -56,6 +56,14 @@ struct ServerPickerView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
 
+    /// When the list last moved. The cards are tall and the whole of each is a button, and with
+    /// touches delivered at once (`ScrollTouches`) the tap that stops a flick — or a thumb that
+    /// lands on a card as the list settles — picked a server nobody meant to pick. A tap within
+    /// `settle` of the list moving is taken as part of the scroll.
+    @State private var lastMoved: Date = .distantPast
+    @State private var isMoving = false
+    private static let settle: TimeInterval = 0.35
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -89,6 +97,12 @@ struct ServerPickerView: View {
                 .frame(maxWidth: Theme.Size.signInColumn)
                 .frame(maxWidth: .infinity)
             }
+            .onScrollPhaseChange { old, phase in
+                // `.tracking` is a finger that has come down and not moved — which is also what
+                // every deliberate tap looks like, so it is not movement.
+                isMoving = phase.isScrolling
+                if old.isScrolling || phase.isScrolling { lastMoved = .now }
+            }
             .navigationTitle(Text(Strings.Servers.title))
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
@@ -111,7 +125,10 @@ struct ServerPickerView: View {
                       warning: Text?,
                       symbol: String,
                       action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        Button {
+            guard !isMoving, Date.now.timeIntervalSince(lastMoved) > Self.settle else { return }
+            action()
+        } label: {
             HStack(alignment: .center, spacing: Theme.Spacing.normal) {
                 VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
                     title

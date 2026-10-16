@@ -1,18 +1,62 @@
 import Foundation
 
-/// Whether answers in threads are kept under their message (on), or shown in the room among
-/// everything else (off) — Settings → Chats. On by default.
+/// Where a room keeps answers in threads — Settings → Chats. Two questions, asked separately:
 ///
-/// Off is what a person who never uses threads, in rooms where other people do, may want: a
-/// conversation that reads top to bottom with nothing folded away. Answers are still answers — the
-/// SDK marks each with the message it is in reply to — and the room shows them as ordinary
-/// messages. Read when a room's timeline is opened: a timeline cannot change its focus while open.
+/// - **In which rooms** there are threads at all (`Shown`): always, never, or only in rooms of
+///   more than `largeRoom` people, which is the default. In a big room threads are what keeps one
+///   discussion from drowning the rest; among a dozen friends they mostly fold away a reply
+///   somebody would rather have seen.
+/// - **Whether the answers also leave the room's own timeline** (`hidesReplies`). Off by default:
+///   a thread is a line under its message that opens the discussion, and the answers are *also*
+///   where they were written, so nobody who never taps a thread misses one. On, they live only in
+///   the thread — Element's and Telegram's comments.
+///
+/// Personal chats never have threads, whichever is chosen: between two people a thread is a second
+/// conversation with the same person, and the one room they already have reads better top to
+/// bottom. Read when a room's timeline is opened: a timeline cannot change its focus while open.
 public enum ThreadSettings {
-    public static let isEnabledKey = "chats.threads"
-    public static let isEnabledByDefault = true
-    public static let keys = [isEnabledKey]
+    public enum Shown: String, CaseIterable, Sendable {
+        case always
+        case inLargeRooms
+        case never
+    }
 
-    public static func isEnabled(_ defaults: UserDefaults = .standard) -> Bool {
-        defaults.object(forKey: isEnabledKey) as? Bool ?? isEnabledByDefault
+    public static let shownKey = "chats.threads.shown"
+    public static let shownByDefault: Shown = .inLargeRooms
+    public static let hidesRepliesKey = "chats.threads.hidesReplies"
+    public static let hidesRepliesByDefault = false
+
+    /// "A big room": more people than this.
+    public static let largeRoom = 100
+
+    /// The single on/off switch this replaced. Read once, so that somebody who had switched
+    /// threads off does not find them back on.
+    static let legacyIsEnabledKey = "chats.threads"
+
+    public static let keys = [shownKey, hidesRepliesKey, legacyIsEnabledKey]
+
+    public static func shown(_ defaults: UserDefaults = .standard) -> Shown {
+        if let raw = defaults.string(forKey: shownKey), let shown = Shown(rawValue: raw) { return shown }
+        if defaults.object(forKey: legacyIsEnabledKey) as? Bool == false { return .never }
+        return shownByDefault
+    }
+
+    public static func hidesReplies(_ defaults: UserDefaults = .standard) -> Bool {
+        defaults.object(forKey: hidesRepliesKey) as? Bool ?? hidesRepliesByDefault
+    }
+
+    /// Whether a room of this kind and size has threads.
+    public static func usesThreads(kind: RoomKind, memberCount: Int,
+                                   _ defaults: UserDefaults = .standard) -> Bool {
+        usesThreads(kind: kind, memberCount: memberCount, shown: shown(defaults))
+    }
+
+    public static func usesThreads(kind: RoomKind, memberCount: Int, shown: Shown) -> Bool {
+        guard kind != .direct else { return false }
+        return switch shown {
+        case .always: true
+        case .inLargeRooms: memberCount > largeRoom
+        case .never: false
+        }
     }
 }

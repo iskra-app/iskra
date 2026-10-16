@@ -1288,19 +1288,19 @@
 "servers.title" = "Choose a server";
 "servers.intro" = "Your account lives on one server, and you can write to people on any other — just like email. On every server below you can create an account right in Iskra.";
 "servers.matrixOrg" = "The largest Matrix server, run by the foundation that develops Matrix itself.";
-/* Country · languages the server is run in. */
-"servers.matrixOrgWhere" = "United Kingdom · English";
+/* Where the server is. */
+"servers.matrixOrgWhere" = "United Kingdom";
 /* A warning on matrix.org: it is blocked in Russia. */
 "servers.matrixOrgBlocked" = "Not available from Russia";
 "servers.tchncs" = "One of the oldest community servers. Its owner runs other free services too.";
-"servers.tchncsWhere" = "Germany · English, German";
+"servers.tchncsWhere" = "Germany";
 "servers.quassel" = "An open server for everyday conversation, free for everyone.";
-"servers.quasselWhere" = "Germany, server in Finland · English";
+"servers.quasselWhere" = "Germany, server in Finland";
 "servers.nopeChat" = "Run by the adminForge team, who host other free services too. Has bridges to other messengers.";
-"servers.nopeChatWhere" = "Germany · German";
+"servers.nopeChatWhere" = "Germany";
 /* The last entry: running a server of your own. Opens a page about it in the browser. */
 "servers.ownTitle" = "Your own server";
-"servers.ownAbout" = "You can run a server of your own — then your conversations are kept only by you. You’ll need a domain and a little time.";
+"servers.ownAbout" = "You can run a server of your own — then your conversations are entirely in your hands.";
 
 /* Under the "open to anyone" switch when making a room: what the room will be. Changes with the switch. */
 "roomList.new.willBeEncrypted" = "The room will be encrypted";
@@ -1410,5 +1410,9 @@
 "message.transcript.nothingHeard" = "No words could be made out.";
 "message.transcript.failed" = "It couldn’t be transcribed. Try again.";
 
-"chats.threads" = "Threads";
-"chats.threadsHelp" = "Replies in threads are gathered under their message as “3 replies”. Turn this off and they appear in the chat among the other messages — once you open the chat again. Personal chats have no threads: replies there are always in the chat itself.";
+"chats.threads" = "Show threads";
+"chats.threadsHelp" = "Replies in threads are gathered under their message as “3 replies”. Unless replies are hidden, they also appear in the chat itself, among the other messages. Changes apply once you open the chat again. Personal chats have no threads.";
+"chats.threadsAlways" = "Always";
+"chats.threadsLargeRooms" = "In chats of over 100 people";
+"chats.threadsNever" = "Never";
+"chats.threadsHideReplies" = "Hide replies from the chat";

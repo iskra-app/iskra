@@ -32,7 +32,8 @@ struct AlbumBubble: View {
     private var width: CGFloat { Theme.Size.picture }
 
     private var maxHeight: CGFloat {
-        (timelineHeight > 0 ? timelineHeight : width * 2) * Theme.Size.albumHeightFraction
+        min((timelineHeight > 0 ? timelineHeight : width * 2) * Theme.Size.albumHeightFraction,
+            Theme.Size.pictureMaxHeight)
     }
 
     private var frames: [CGRect] {

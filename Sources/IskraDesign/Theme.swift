@@ -182,9 +182,11 @@ public enum Theme {
         /// thing and is not: SwiftUI's `duration` is the *response*, not the time to settle, so it
         /// was a spring more than half as slow again as Telegram's — and with less damping. The
         /// message drifted up into the menu where Telegram's snaps into it and lands.
-        /// The pill under the folder tabs sliding from one tab to the next — see `FolderTabs`.
-        public static let folderSwitches: Animation = .spring(duration: 0.35, bounce: 0.15)
         public static let menuOpens: Animation = .spring(response: 0.265, dampingFraction: 0.775)
+
+        /// The pill under the folder tabs sliding from one tab to the next, and the chats of the
+        /// new tab sliding in after it — see `FolderTabs` and `RoomListView.folderSelection`.
+        public static let folderSwitches: Animation = .spring(duration: 0.35, bounce: 0.15)
 
         /// And the menu going away: no spring at all. Telegram puts a message back on a plain
         /// 0.2 s ease-in-ease-out — a thing being put down is not thrown.
@@ -534,6 +536,10 @@ public enum Theme {
         /// there: it is the size the list has always drawn, moved here from a literal in the row
         /// rather than redesigned in passing.
         public static let unreadDot: CGFloat = 10
+
+        /// How far the chats of a newly opened folder travel in from the side of the tab they
+        /// came from. Short on purpose: it says which way you went, it is not a page being turned.
+        public static let folderSlide: CGFloat = 40
         public static let avatarSmall: CGFloat = 28
         /// A picture that *is* a button in the title bar: the chat's, at the end of a room's
         /// bar, and the user's own at the end of the room list's.
@@ -714,6 +720,13 @@ public enum Theme {
         /// The same for an album, which is allowed a little more: it is several pictures, and
         /// squeezed into half the screen each of them would be cropped down to a strip.
         public static let albumHeightFraction: CGFloat = 0.6
+
+        /// And a ceiling on both, in points, under the fractions: half of an iPad or of a tall Mac
+        /// window is still a portrait photo that fills the view, and the conversation it was sent
+        /// in is gone again. A bit taller than `picture` is wide, so a portrait photo still reads
+        /// as one — at most one and a seventh of its width, and the caption, which is not the
+        /// picture, comes under it and is not counted.
+        public static let pictureMaxHeight: CGFloat = 320
 
         /// The smallest an opened video is allowed to be. It matters on the Mac, where the
         /// viewer is a sheet rather than the whole screen and would otherwise shrink to the
