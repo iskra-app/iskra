@@ -18,6 +18,10 @@ options:
 packages:
   Iskra:
     path: ..
+  # IskraCore is its own package so that it can be a dynamic framework: the app and both
+  # extensions share one copy of the Rust SDK instead of carrying three (Core/Package.swift).
+  IskraCore:
+    path: ../Core
 
 settings:
   base:
@@ -334,7 +338,7 @@ targets:
       # it is memory-limited (24 MB), and dragging SwiftUI and every view in the app into a
       # process that exists to write two lines of text is how an extension gets killed
       # before it decrypts anything.
-      - package: Iskra
+      - package: IskraCore
         product: IskraCore
       # And IskraDesign, which is not the same concession. It has no dependencies at all — not
       # the Rust SDK, not IskraFeatures — and it is linked for exactly one symbol:
@@ -409,7 +413,7 @@ targets:
     sources:
       - path: ShareExtension
     dependencies:
-      - package: Iskra
+      - package: IskraCore
         product: IskraCore
       # For the share sheet's grid of faces (`ShareTargetGrid`, `BlobatarView`). Not a concession for
       # the same reason the notification extension's is not: the target has no dependencies at all.

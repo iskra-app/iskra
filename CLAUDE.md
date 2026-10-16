@@ -238,7 +238,17 @@ Three SwiftPM library targets, and the dependency rule between them is the whole
 | `IskraFeatures` | The screens | Both — the only place they meet. |
 
 Keeping Matrix out of the views and views out of Matrix is what lets one set of screens serve three
-platforms. `IskraCore` never leaks an SDK type upward: `UserSession` owns the `Client`, and nothing
+platforms.
+
+**`IskraCore` is a package of its own (`Core/`) and a *dynamic* framework**, and the first is what
+makes the second possible. It carries the Rust SDK, ~100 MB of machine code, and the app and both
+extensions link it. Linked statically, each of the three carried its own copy, and the app weighed
+half a gigabyte on a phone. Inside the root package it could not be shared: `IskraFeatures` depends
+on the `IskraCore` *target* there, which is always linked statically, and Xcode refuses outright to
+have one target linked both ways into one app. Across a package boundary `IskraFeatures` depends
+on the *product*, and so the SDK ships once, in `Frameworks/IskraCore.framework`, and the extensions
+load the app's copy (`@executable_path/../../Frameworks`). Putting `IskraCore` back next to
+`IskraFeatures` brings the three copies back; the build will not mention it. `IskraCore` never leaks an SDK type upward: `UserSession` owns the `Client`, and nothing
 above it touches the SDK directly.
 
 The app shells in `Apps/` are deliberately thin — they own the bundle, entitlements and (soon) the
