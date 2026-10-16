@@ -36,6 +36,7 @@ enum MessagePreview {
             }
         case .sticker: return .sticker
         case .poll: return .poll
+        case .liveLocation: return .location
         default: return nil
         }
     }
@@ -50,6 +51,11 @@ enum MessagePreview {
             return String(core: CoreStrings.Preview.sticker)
         case .poll:
             return String(core: CoreStrings.Preview.poll)
+        // Not a `.message` at all: the SDK folds a live share's `beacon_info` and its points into a
+        // kind of its own, and with no case here the chat list's line under the name came out empty
+        // whenever somebody's last message was a live location.
+        case .liveLocation:
+            return String(core: CoreStrings.Preview.liveLocation)
         case .redacted:
             return String(core: CoreStrings.Preview.deleted)
         case .unableToDecrypt:

@@ -337,6 +337,13 @@ struct DemoBackendTests {
         }
         #expect(await eventually { live()?.isActive() == true }, "live: \(String(describing: live()))")
 
+        // And the chat list says what it is — it used to say nothing at all.
+        let preview = String(localized: CoreStrings.Preview.liveLocation)
+        func row() -> RoomSummary? { session.roomList.rooms.first { $0.id == anyaID } }
+        #expect(await eventually { row()?.lastMessage == preview },
+                "last message: \(String(describing: row()?.lastMessage))")
+        #expect(row()?.lastMessageKind == .location)
+
         await session.liveLocation.stop(in: anyaID)
         #expect(!session.liveLocation.isSharing(in: anyaID))
         #expect(await eventually { live()?.isActive() == false }, "live: \(String(describing: live()))")

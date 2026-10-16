@@ -29,6 +29,8 @@ public enum CoreStrings {
         public static let audio = LocalizedStringResource("preview.audio", bundle: bundle)
         public static let file = LocalizedStringResource("preview.file", bundle: bundle)
         public static let location = LocalizedStringResource("preview.location", bundle: bundle)
+        /// A live location share — `beacon_info`, which the SDK hands over as its own kind of message.
+        public static let liveLocation = LocalizedStringResource("preview.liveLocation", bundle: bundle)
         public static let sticker = LocalizedStringResource("preview.sticker", bundle: bundle)
         public static let poll = LocalizedStringResource("preview.poll", bundle: bundle)
         public static let deleted = LocalizedStringResource("preview.deleted", bundle: bundle)

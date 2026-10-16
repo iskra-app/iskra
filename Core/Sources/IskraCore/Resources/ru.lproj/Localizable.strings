@@ -22,6 +22,7 @@
 
 /* Summary line for a shared location. */
 "preview.location" = "Геопозиция";
+"preview.liveLocation" = "Геопозиция в реальном времени";
 
 /* Summary line for a photo in the chat list. */
 "preview.photo" = "Фото";
