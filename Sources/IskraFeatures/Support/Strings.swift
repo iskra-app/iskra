@@ -2120,6 +2120,29 @@ public enum Strings {
         }
     }
 
+    /// The editor a waiting photo opens into from the pencil on its tile — see `PhotoEditor`.
+    public enum PhotoEditor {
+        /// The pencil on the tile, as VoiceOver names it.
+        public static let edit = LocalizedStringResource("photoEditor.edit", bundle: bundle)
+        public static let cancel = LocalizedStringResource("photoEditor.cancel", bundle: bundle)
+        public static let done = LocalizedStringResource("photoEditor.done", bundle: bundle)
+        public static let undo = LocalizedStringResource("photoEditor.undo", bundle: bundle)
+        public static let draw = LocalizedStringResource("photoEditor.draw", bundle: bundle)
+        public static let text = LocalizedStringResource("photoEditor.text", bundle: bundle)
+        public static let crop = LocalizedStringResource("photoEditor.crop", bundle: bundle)
+        public static let rotate = LocalizedStringResource("photoEditor.rotate", bundle: bundle)
+        public static let textPrompt = LocalizedStringResource("photoEditor.textPrompt", bundle: bundle)
+        public static let failed = LocalizedStringResource("photoEditor.failed", bundle: bundle)
+        public static let ok = LocalizedStringResource("photoEditor.ok", bundle: bundle)
+        /// The colours, as VoiceOver names them.
+        public static let white = LocalizedStringResource("photoEditor.white", bundle: bundle)
+        public static let black = LocalizedStringResource("photoEditor.black", bundle: bundle)
+        public static let red = LocalizedStringResource("photoEditor.red", bundle: bundle)
+        public static let yellow = LocalizedStringResource("photoEditor.yellow", bundle: bundle)
+        public static let green = LocalizedStringResource("photoEditor.green", bundle: bundle)
+        public static let blue = LocalizedStringResource("photoEditor.blue", bundle: bundle)
+    }
+
     /// QR codes: the one that says who you are (or what a room is), and the camera that reads
     /// somebody else's. What is in the code is a `matrix.to` link — see `MatrixLink`.
     public enum QR {

@@ -110,6 +110,9 @@ public struct RoomView: View {
     /// the composer because a drop lands on the whole room — see `PendingAttachment`.
     @State private var attachments: [PendingAttachment] = []
 
+    /// A waiting photo open in `PhotoEditor`, from the pencil on its tile.
+    @State private var editingPhoto: EditingPhoto?
+
     /// Whether a picture is being dragged over the room right now, which is when it says what
     /// letting go will do.
     @State private var isDropTargeted = false
@@ -1394,6 +1397,14 @@ public struct RoomView: View {
             guard case let .success(url) = result else { return }
             Task { await sendPickedFile(url) }
         }
+        // A cover on the phone and a sheet on the Mac, like the photo viewer — see `MessageRow`.
+        // And, like the viewer, the room under it is covered, not left.
+        #if os(iOS)
+        .fullScreenCover(item: $editingPhoto) { photoEditor($0) }
+        .onChange(of: editingPhoto != nil) { _, isOpen in isCoveredByMedia = isOpen }
+        #else
+        .sheet(item: $editingPhoto) { photoEditor($0) }
+        #endif
         .sheet(isPresented: $isChoosingSticker) {
             StickerPicker(roomID: timeline.roomID) { sticker in
                 // Read now, before `cancelContext` clears it: the sticker answers what was being
@@ -1803,6 +1814,7 @@ public struct RoomView: View {
                         onChooseSticker: stickers == nil || !showsStickers ? nil : { isChoosingSticker = true },
                         attachments: attachments,
                         onRemoveAttachment: { image in attachments.removeAll { $0.id == image.id } },
+                        onEditAttachment: editPhoto,
                         onPasteImage: { Task { await pasteImages() } },
                         mentions: $draftMentions,
                         loadMentionCandidates: timeline.isOneToOne ? nil : { await timeline.mentionCandidates() })
@@ -1865,6 +1877,29 @@ public struct RoomView: View {
             }
         }
         stage(items, unreadable: unreadable)
+    }
+
+    private func editPhoto(_ attachment: PendingAttachment) {
+        guard let photo = EditablePhoto(data: attachment.data) else {
+            problem = .unreadableAttachment
+            return
+        }
+        editingPhoto = EditingPhoto(attachmentID: attachment.id, photo: photo)
+    }
+
+    private func photoEditor(_ editing: EditingPhoto) -> some View {
+        PhotoEditor(photo: editing.photo) { data in
+            // Put back where it was in the row, not at the end: the order is the order they go in.
+            if let index = attachments.firstIndex(where: { $0.id == editing.attachmentID }),
+               let edited = PendingAttachment(data: data, type: nil) {
+                attachments[index] = edited
+            } else {
+                problem = .unreadableAttachment
+            }
+            editingPhoto = nil
+        } onCancel: {
+            editingPhoto = nil
+        }
     }
 
     private func stage(_ items: [PendingAttachment], unreadable: Int) {
