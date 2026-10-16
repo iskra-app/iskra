@@ -520,6 +520,12 @@ public enum Theme {
     public enum Size {
         public static let avatar: CGFloat = 40
 
+        /// A face in the favourites widget: four fit a small widget with their names under them,
+        /// eight a medium one.
+        public static let widgetFace: CGFloat = 48
+        /// The face on a Live Activity's lock-screen banner and in the expanded Dynamic Island.
+        public static let activityFace: CGFloat = 44
+
         /// The face beside a conversation in the chat list.
         ///
         /// Bigger than `avatar`, and it is a size of its own rather than a bump to that one

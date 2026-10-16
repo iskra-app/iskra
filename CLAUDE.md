@@ -357,6 +357,28 @@ empty: a switch only the app can see is a switch the lock screen silently disobe
 is an empty circle with nothing in any log. `BetaFeatures` itself moved to `IskraCore` for the same
 reason. Everything else in it stays in `.standard`, where a preference of the app's belongs.
 
+### The widgets and the Live Activities are a third extension
+
+`IskraWidgets` (`Apps/Widgets/`) draws the favourites widget and both Live Activities; the app
+starts and moves the activities (`LiveLocationActivity`, `MediaSendBackground` in
+`IskraFeatures/Support/`) and writes everything the widget reads. Linked like the share
+extension — `IskraCore` and `IskraDesign`, never `IskraFeatures`, the App Group and **not** the
+Keychain group. Four things about it fail far from their cause:
+
+- **`ChatEntity.swift` and `WidgetIntents.swift` are compiled into both bundles**, and their words
+  (`Apps/Shared/<lang>.lproj/Localizable.strings`) are copied into the widget too. A widget's
+  configuration and its buttons are intents matched across bundles by type; a look-alike copy is a
+  different type, and a chat somebody picked fails to resolve in the app, where `perform` runs.
+- **Pictures come from the app.** Neither the widget nor the share sheet holds a token, so the app
+  downloads chats' avatars into the App Group (`DirectoryFaces`, `ChatFaces`) and the directory
+  entry names the file only once it is there. Written `.completeUntilFirstUserAuthentication`:
+  a widget is drawn on a locked phone, and `.complete` would draw it with empty circles.
+- **The widget is reloaded only when what it draws changes** (`WidgetChats.fingerprint`,
+  `WidgetRefresh`). The directory is rewritten on every sync tick; WidgetKit's daily budget is not.
+- **The activities' types are in `IskraCore`** (`LiveActivityAttributes.swift`) because the app and
+  the extension must agree on their JSON. Nothing updates them by push — that would tell our
+  Sygnal who is sharing a location right now.
+
 ### More than one account
 
 Several accounts can be signed in on one device; one is on screen and syncing, the others are

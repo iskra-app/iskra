@@ -348,6 +348,9 @@ private struct SharePickerView: View {
     /// and a comment written, before anything goes.
     @State private var chosen: [ChatDirectoryEntry] = []
     @State private var comment = ""
+    /// Where the app keeps chats' pictures. Resolved once: the grid is redrawn on every keystroke
+    /// of the search.
+    private let faces = try? DirectoryFaces.folder()
 
     private var shownChats: [ChatDirectoryEntry] {
         let trimmed = query.trimmingCharacters(in: .whitespaces)
@@ -387,8 +390,10 @@ private struct SharePickerView: View {
                                         title: \.name,
                                         selection: Set(chosen.filter { $0.accountID == account }.map(\.id)),
                                         onToggle: toggle) { chat in
-                            BlobatarView(seed: chat.avatarSeed ?? chat.id, backdrop: .circle)
-                                .clipShape(.circle)
+                            // The chat's real picture when the app has fetched it, the creature
+                            // until then — see `DirectoryFaces`.
+                            DirectoryFace(file: DirectoryFaces.url(for: chat, in: faces),
+                                          seed: chat.avatarSeed ?? chat.id)
                         }
                     }
                 }

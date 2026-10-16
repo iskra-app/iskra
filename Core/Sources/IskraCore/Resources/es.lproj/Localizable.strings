@@ -212,3 +212,23 @@
 "liveLocation.denied" = "Iskra no tiene acceso a su ubicación. Puede permitirlo en Ajustes.";
 
 "liveLocation.stopFailed" = "Ya no se envían puntos, pero el servidor no recibió la parada: los demás pueden verla en directo hasta que termine.";
+
+/* Widget and Live Activities — see Apps/Widgets */
+"widget.favourites.name" = "Chats favoritos";
+"widget.favourites.description" = "Las personas a las que más escribe. Toque una cara para abrir el chat.";
+"widget.locked" = "Iskra está bloqueada";
+"widget.empty" = "Abra Iskra e inicie sesión; entonces aquí aparecerán sus chats.";
+
+"liveActivity.location.sharing" = "Está compartiendo su ubicación";
+"liveActivity.location.finding" = "Buscando dónde está…";
+"liveActivity.location.stop" = "Detener";
+"liveActivity.location.ended" = "Ha dejado de compartir";
+"liveActivity.location.stopFailed" = "El servidor no recibió la parada: los demás pueden verla en directo hasta que termine.";
+"liveActivity.media.sendingVideo" = "Enviando un vídeo";
+"liveActivity.media.sendingPhoto" = "Enviando una foto";
+"liveActivity.media.sendingAlbum" = "Enviando un álbum";
+"liveActivity.media.sendingFile" = "Enviando un archivo";
+"liveActivity.media.preparing" = "Preparando…";
+"liveActivity.media.sent" = "Enviado";
+"liveActivity.media.failed" = "No se envió: toque para abrir el chat";
+"liveActivity.media.waiting" = "Seguirá cuando abra Iskra";

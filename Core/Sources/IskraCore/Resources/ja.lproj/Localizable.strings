@@ -212,3 +212,23 @@
 "liveLocation.denied" = "Iskraは位置情報を使用できません。設定で許可できます。";
 
 "liveLocation.stopFailed" = "位置の送信は止まりましたが、停止がサーバーに届きませんでした。期限まで他の人には共有中と表示される場合があります。";
+
+/* Widget and Live Activities — see Apps/Widgets */
+"widget.favourites.name" = "お気に入りのチャット";
+"widget.favourites.description" = "よくメッセージを送る相手です。顔をタップするとチャットが開きます。";
+"widget.locked" = "Iskra はロックされています";
+"widget.empty" = "Iskra を開いてサインインしてください。ここにチャットが表示されます。";
+
+"liveActivity.location.sharing" = "位置情報を共有しています";
+"liveActivity.location.finding" = "現在地を探しています…";
+"liveActivity.location.stop" = "停止";
+"liveActivity.location.ended" = "共有を終了しました";
+"liveActivity.location.stopFailed" = "停止がサーバーに届きませんでした。期限まで他の人には共有中と表示される場合があります。";
+"liveActivity.media.sendingVideo" = "ビデオを送信しています";
+"liveActivity.media.sendingPhoto" = "写真を送信しています";
+"liveActivity.media.sendingAlbum" = "アルバムを送信しています";
+"liveActivity.media.sendingFile" = "ファイルを送信しています";
+"liveActivity.media.preparing" = "準備しています…";
+"liveActivity.media.sent" = "送信しました";
+"liveActivity.media.failed" = "送信できませんでした。タップするとチャットを開きます";
+"liveActivity.media.waiting" = "Iskra を開くと続きを送信します";

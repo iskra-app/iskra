@@ -5,3 +5,8 @@
 "Send Message" = "Envoyer un message";
 "Chat" = "Discussion";
 "Message" = "Message";
+
+/* The favourites widget and the live location activity — see Apps/Widgets. */
+"Choose Chats" = "Choisir des discussions";
+"Chats" = "Discussions";
+"Stop Sharing Location" = "Arrêter de partager la position";

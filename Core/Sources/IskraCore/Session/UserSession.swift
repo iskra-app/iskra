@@ -25,6 +25,11 @@ public final class UserSession {
     public let folders: ChatFolders
     /// Where this person is, being shared as they move — see `LiveLocationSharer`.
     public let liveLocation: LiveLocationSharer
+    /// Chats' pictures, fetched for the share sheet and the widget — see `DirectoryFaces`.
+    public let chatFaces: ChatFaces
+    /// Photos, videos and files on their way up, followed past the screen they were sent from —
+    /// see `MediaSendJobs`.
+    public let mediaJobs: MediaSendJobs
 
     /// Proving devices are yours, in both directions — see `VerificationStore`.
     ///
@@ -134,6 +139,10 @@ public final class UserSession {
         self.userID = userID
         self.deviceID = try? client.deviceId()
         self.displayName = Self.localPart(of: userID)
+        // Without this the send queue never says how far an upload has got: `notSentYet` arrives
+        // with no progress in it, the ring over a photo in the timeline is never drawn, and
+        // `MediaSendJobs` has nothing to put in a Live Activity. Off in the SDK by default.
+        client.enableSendQueueUploadProgress(enable: true)
         // This account's nicknames from now on, not whoever was open before it.
         LocalNames.use(account: sessionID)
         self.roomList = RoomListStore(client: client)
@@ -142,8 +151,20 @@ public final class UserSession {
         self.verification = VerificationStore(client: client, ownUserID: userID)
         self.recovery = RecoveryStore(encryption: client.encryption())
         let roomList = self.roomList
-        self.liveLocation = LiveLocationSharer { [client, roomList] roomID in
+        self.liveLocation = LiveLocationSharer(accountID: isDemo ? nil : sessionID) { [client, roomList] roomID in
             roomList.room(withID: roomID) ?? (try? client.getRoom(roomId: roomID))
+        }
+        self.chatFaces = ChatFaces { [client] url in
+            let source = try MediaSource.fromUrl(url: url)
+            let size = UInt64(DirectoryFaces.pixelSize)
+            return try await client.getMediaThumbnail(mediaSource: source, width: size, height: size)
+        }
+        self.mediaJobs = MediaSendJobs { [client, roomList] roomID in
+            roomList.room(withID: roomID) ?? (try? client.getRoom(roomId: roomID))
+        }
+        self.mediaJobs.look = { [roomList, chatFaces] roomID in
+            guard let room = roomList.rooms.first(where: { $0.id == roomID }) else { return nil }
+            return .init(name: room.name, avatarSeed: room.avatarSeed, faceFile: chatFaces.file(for: room.avatarURL))
         }
         self.folders = ChatFolders(
             readAccountData: { [client] type in try await client.accountData(eventType: type) },
@@ -301,6 +322,8 @@ public final class UserSession {
         Task { [weak self] in await self?.applyPresence() }
         // Not awaited either: the list is drawn whole first, and the folder tabs join it.
         Task { [weak self] in await self?.folders.load() }
+        // A live location share the system cut short by killing the app — see `resume`.
+        Task { [weak self] in await self?.liveLocation.resume() }
 
         try await roomList.start()
     }
@@ -382,6 +405,7 @@ public final class UserSession {
         store.downloadMedia = { [client] url in
             try await client.getMediaContent(mediaSource: MediaSource.fromUrl(url: url))
         }
+        store.mediaJobs = mediaJobs
         if !isDemo {
             store.askPresence = { [send = authorisedSender()] userID in
                 try await Self.presence(of: userID, send: send)
@@ -408,6 +432,7 @@ public final class UserSession {
             return nil
         }
         let store = TimelineStore(room: room, ownUserID: userID, threadRootID: rootEventID)
+        store.mediaJobs = mediaJobs
         store.uploadMedia = { [client] mimeType, data in
             try await client.uploadMedia(mimeType: mimeType, data: data, progressWatcher: nil)
         }
@@ -556,10 +581,15 @@ public final class UserSession {
             return nil
         }
 
+        // Followed as one job, as an album picked in the room would be — see `MediaSendJobs`. This
+        // is the path a share sheet's video takes, and it is sent the moment the app comes up, just
+        // before the person puts the phone back in a pocket.
+        let job = timeline(forRoomID: item.roomID)?.follow(outboxItems(item.attachments))
         var waiting: [ChatDirectory.OutboxAttachment] = []
         for attachment in item.attachments where await send(attachment, toRoomID: item.roomID) == .later {
             waiting.append(attachment)
         }
+        timeline(forRoomID: item.roomID)?.endFollowing(job)
 
         var text = item.text
         let hasWords = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -572,6 +602,15 @@ public final class UserSession {
         guard !waiting.isEmpty || !text.isEmpty else { return nil }
         return ChatDirectory.OutboxItem(roomID: item.roomID, text: text, attachments: waiting,
                                         accountID: item.accountID)
+    }
+
+    private func outboxItems(_ attachments: [ChatDirectory.OutboxAttachment]) -> [MediaSendJobs.Item] {
+        let folder = try? ChatDirectory.outboxFolder(environment: authentication.environment)
+        return attachments.map { attachment in
+            let url = folder.flatMap { attachment.location(in: $0)?.file }
+            let bytes = url.flatMap { try? $0.resourceValues(forKeys: [.fileSizeKey]).fileSize } ?? 0
+            return MediaSendJobs.Item(isVideo: attachment.kind == .video, isFile: attachment.kind == .file, bytes: bytes)
+        }
     }
 
     /// Sends something the Share extension left in the outbox — a picture, a video or a file.
@@ -894,6 +933,7 @@ public final class UserSession {
         // Before the client goes: a share left running would go on asking for points to send
         // through a client nobody will ever sync again.
         await liveLocation.stopAll()
+        mediaJobs.stop()
         if !isDemo { await authentication.sessionClosed(sessionID) }
         verification.stop()
         recovery.stop()

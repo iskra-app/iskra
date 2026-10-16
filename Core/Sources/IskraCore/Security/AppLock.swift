@@ -124,6 +124,13 @@ public final class AppLock {
         return now.timeIntervalSince(lastActive) >= timeout.interval
     }
 
+    /// Whether the lock is turned on at all, for a process that cannot ask whether it is closed right
+    /// now — the widget, which is drawn ahead of time and shown for hours. A widget cannot know who
+    /// will be looking at it, so with the lock on it shows nobody's face and nobody's name.
+    nonisolated public static func isEnabled(defaults: UserDefaults?) -> Bool {
+        defaults?.bool(forKey: Keys.enabled) ?? false
+    }
+
     /// Whether the app is locked *from another process's point of view* — the notification
     /// extension's. It has no `AppLock` instance and no runtime `isLocked`; all it has is the shared
     /// defaults, so it reads the same three facts the app wrote there and runs the same `shouldLock`

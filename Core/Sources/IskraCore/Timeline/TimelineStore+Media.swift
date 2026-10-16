@@ -402,9 +402,11 @@ public extension TimelineStore {
     private func upload(_ start: () throws -> SendAttachmentJoinHandle) -> Bool {
         do {
             _ = try start()
+            mediaJobs?.handed(followedJobs.last, accepted: true)
             return true
         } catch {
             Log.media.error("attachment refused: \(Log.describe(error), privacy: .public)")
+            mediaJobs?.handed(followedJobs.last, accepted: false)
             failure = .send
             return false
         }

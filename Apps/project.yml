@@ -157,6 +157,8 @@ targets:
       # And the share extension, embedded the same way: it is what puts Iskra in the system Share
       # sheet, and like any extension it ships inside its host.
       - target: IskraShareExtension
+      # And the widgets: the favourites on the home screen and the two Live Activities.
+      - target: IskraWidgets
     settings:
       base:
         PRODUCT_NAME: Iskra
@@ -316,6 +318,14 @@ targets:
         # long as it runs, so nobody's position leaves the phone without their seeing it. Only ever
         # used while a share is on; nothing else in the app asks for location in the background.
         UIBackgroundModes: [remote-notification, location]
+        # The live location share and a long upload, on the lock screen and in the Dynamic Island —
+        # see `LiveLocationActivity` and `MediaSendBackground`. Drawn by Apps/Widgets.
+        NSSupportsLiveActivities: true
+        # A video or an album that keeps going after the app is put away: iOS 26's
+        # `BGContinuedProcessingTask`, one identifier per upload under this prefix. Without the
+        # entry `register` answers no, and the upload falls back to half a minute of
+        # `beginBackgroundTask` — see `MediaSendBackground`.
+        BGTaskSchedulerPermittedIdentifiers: [moscow.swag.iskra.upload.*]
 
   # The process that decrypts a push. iOS wakes it when one arrives, gives it ~30 seconds,
   # and shows whatever it puts on screen — see Apps/NotificationService/NotificationService.swift.
@@ -455,6 +465,56 @@ targets:
         # No keychain-access-groups, on purpose. This process parses whatever another app hands
         # it and never reads a secret; it has no business holding the group with the tokens and
         # the store passphrases in it.
+
+  # The widgets: the favourites on the home screen, and how the two Live Activities look. The app
+  # starts and moves the activities; their look lives here because the system says it must.
+  #
+  # Linked like the share extension — IskraCore and IskraDesign, never IskraFeatures — and granted
+  # the App Group but not the Keychain group: it reads names and pictures the app left in the
+  # container, and nobody's tokens.
+  #
+  # `ChatEntity.swift` and `WidgetIntents.swift` are compiled into the app as well (it takes all of
+  # Shared). A widget's configuration and its buttons are intents, and the system matches them
+  # across the two bundles by type — a copy of its own here would be a different type, and every
+  # chat somebody picked would fail to resolve in the app, which is where `perform` runs.
+  IskraWidgets:
+    type: app-extension
+    platform: iOS
+    templates: [Stamped]
+    sources:
+      - path: Widgets
+      - path: Shared/ChatEntity.swift
+      - path: Shared/WidgetIntents.swift
+      # The intents' words — "Choose Chats", "Stop Sharing Location" — are looked up in the bundle
+      # the intent is drawn from, which for the widget's settings is this one.
+      - path: Shared
+        includes: ["*.lproj/Localizable.strings"]
+        buildPhase: resources
+    dependencies:
+      - package: IskraCore
+        product: IskraCore
+      - package: Iskra
+        product: IskraDesign
+    settings:
+      base:
+        PRODUCT_NAME: IskraWidgets
+        PRODUCT_BUNDLE_IDENTIFIER: moscow.swag.iskra.widgets
+    info:
+      path: Widgets/Info.plist
+      properties:
+        CFBundleDisplayName: Iskra
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [en, ru, de, es, fr, ja, zh-Hans]
+        AppIdentifierPrefix: $(AppIdentifierPrefix)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: Widgets/Iskra.entitlements
+      properties:
+        com.apple.security.application-groups: [group.moscow.swag.iskra]
+        # No keychain-access-groups, for the share extension's reason: it never reads a secret.
 
   Iskra (macOS):
     type: application

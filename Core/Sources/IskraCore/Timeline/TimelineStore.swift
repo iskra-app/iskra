@@ -152,6 +152,27 @@ public final class TimelineStore {
     /// that it can go into an encrypted room through the send queue — see `send(sticker:)`.
     @ObservationIgnored var downloadMedia: (@Sendable (_ url: String) async throws -> Data)?
 
+    /// The session's record of sends worth following, handed down so a video or an album sent from
+    /// here is still followed after this screen has gone — see `MediaSendJobs`.
+    @ObservationIgnored var mediaJobs: MediaSendJobs?
+    /// The jobs started here and still being handed over, newest last. Each attachment the queue
+    /// accepts counts towards the newest.
+    @ObservationIgnored var followedJobs: [UUID] = []
+
+    /// Starts following a send of these items, if it is worth it — call before the first is
+    /// prepared, and `endFollowing` after the last has been handed over.
+    public func follow(_ items: [MediaSendJobs.Item]) -> UUID? {
+        guard let id = mediaJobs?.begin(roomID: roomID, items: items) else { return nil }
+        followedJobs.append(id)
+        return id
+    }
+
+    public func endFollowing(_ id: UUID?) {
+        guard let id else { return }
+        followedJobs.removeAll { $0 == id }
+        mediaJobs?.doneHanding(id)
+    }
+
     /// Told when your newest read message changes — the chat list's read mark comes from here,
     /// since the room list holds no receipts. See `RoomListStore.noteRead`.
     @ObservationIgnored var onOwnMessagesRead: ((Date) -> Void)?
