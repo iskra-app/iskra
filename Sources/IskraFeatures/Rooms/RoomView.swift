@@ -1797,7 +1797,9 @@ public struct RoomView: View {
                         onChoosePhoto: { isChoosingPhoto = true },
                         onChooseFile: { isChoosingFile = true },
                         onChooseLocation: { isChoosingLocation = true },
-                        onCreatePoll: { isCreatingPoll = true },
+                        // A poll is a question to a group; in a personal chat it is one person
+                        // voting on the other's question.
+                        onCreatePoll: timeline.kind == .direct ? nil : { isCreatingPoll = true },
                         onChooseSticker: stickers == nil || !showsStickers ? nil : { isChoosingSticker = true },
                         attachments: attachments,
                         onRemoveAttachment: { image in attachments.removeAll { $0.id == image.id } },

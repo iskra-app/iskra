@@ -71,6 +71,9 @@ public struct SignInView: View {
         .sheet(isPresented: $isPickingServer) {
             ServerPickerView { model.address = $0 }
         }
+        .sheet(isPresented: $isReadingAboutMatrix) {
+            AboutMatrixView()
+        }
     }
 
     private static let foot = "sign-in-foot"
@@ -87,6 +90,9 @@ public struct SignInView: View {
 
     /// Whether the list of public servers is open.
     @State private var isPickingServer = false
+
+    /// Whether "What is Matrix?" is open.
+    @State private var isReadingAboutMatrix = false
 
     /// The opening screen: the app, a sentence, and under them first the address with "Next", then —
     /// in the same place, once the server has answered — the two buttons every messenger's first
@@ -112,7 +118,7 @@ public struct SignInView: View {
         }
     }
 
-    /// The field, and the two buttons under it.
+    /// The field, "Next", the way to the list of servers, and the link to what Matrix is.
     private var address: some View {
         VStack(spacing: Theme.Spacing.normal) {
             VStack(alignment: .leading, spacing: Theme.Spacing.close) {
@@ -145,6 +151,15 @@ public struct SignInView: View {
             }
 
             Button {
+                Task { await model.findServer() }
+            } label: {
+                busyLabel(Strings.SignIn.next)
+            }
+            .buttonStyle(.glassAction)
+            .frame(maxWidth: .infinity)
+            .disabled(!model.canContinue)
+
+            Button {
                 isPickingServer = true
             } label: {
                 Text(Strings.SignIn.chooseServer).frame(maxWidth: .infinity)
@@ -153,14 +168,14 @@ public struct SignInView: View {
             .frame(maxWidth: .infinity)
             .disabled(model.isBusy)
 
-            Button {
-                Task { await model.findServer() }
-            } label: {
-                busyLabel(Strings.SignIn.next)
+            Button(String(app: Strings.SignIn.whatIsMatrix)) {
+                isReadingAboutMatrix = true
             }
-            .buttonStyle(.glassAction)
+            .font(.footnote)
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity)
-            .disabled(!model.canContinue)
+            .padding(.top, Theme.Spacing.close)
         }
         .transition(.opacity.combined(with: .move(edge: .bottom)))
     }

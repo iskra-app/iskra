@@ -26,13 +26,14 @@ struct PublicServer: Identifiable {
 
     var id: String { address }
 
-    static let all: [PublicServer] = [
+    static var all: [PublicServer] { [
         PublicServer(address: "matrix.org",
                      about: Strings.Servers.matrixOrg,
                      whereabouts: Strings.Servers.matrixOrgWhere,
                      // Blocked in Russia: an account made there is one its owner cannot reach
-                     // from home without a VPN or a bridge.
-                     warning: Strings.Servers.matrixOrgBlocked),
+                     // from home without a VPN or a bridge. Said only on a phone that has
+                     // something Russian about it — to everybody else it is noise.
+                     warning: isRussianLocale ? Strings.Servers.matrixOrgBlocked : nil),
         PublicServer(address: "tchncs.de",
                      about: Strings.Servers.tchncs,
                      whereabouts: Strings.Servers.tchncsWhere),
@@ -42,7 +43,13 @@ struct PublicServer: Identifiable {
         PublicServer(address: "nope.chat",
                      about: Strings.Servers.nopeChat,
                      whereabouts: Strings.Servers.nopeChatWhere),
-    ]
+    ] }
+
+    /// Russian among the phone's languages, or Russia as its region.
+    static var isRussianLocale: Bool {
+        Locale.current.region == .russia
+            || Locale.preferredLanguages.contains { Locale(identifier: $0).language.languageCode == .russian }
+    }
 
     /// Where somebody who would rather run their own is sent to read about it.
     static let ownServerGuide = URL(string: "https://matrix.org/ecosystem/servers/")!
