@@ -321,6 +321,36 @@ public enum CoreStrings {
         public static let unlockReason = LocalizedStringResource("share.unlockReason", bundle: bundle)
     }
 
+    /// The favourites widget on the home screen — see `Apps/Widgets`.
+    public enum Widget {
+        public static let favouritesName = LocalizedStringResource("widget.favourites.name", bundle: bundle)
+        public static let favouritesDescription = LocalizedStringResource("widget.favourites.description", bundle: bundle)
+        /// The app lock is on: no faces and no names, on a screen anybody can look at.
+        public static let locked = LocalizedStringResource("widget.locked", bundle: bundle)
+        /// Nobody is signed in, or nothing has been written yet.
+        public static let empty = LocalizedStringResource("widget.empty", bundle: bundle)
+    }
+
+    /// The two Live Activities, and the title of the system's own upload indicator on iOS 26.
+    public enum LiveActivity {
+        public static let locationSharing = LocalizedStringResource("liveActivity.location.sharing", bundle: bundle)
+        /// Started, and no point has gone out yet.
+        public static let locationFinding = LocalizedStringResource("liveActivity.location.finding", bundle: bundle)
+        public static let locationStop = LocalizedStringResource("liveActivity.location.stop", bundle: bundle)
+        public static let locationEnded = LocalizedStringResource("liveActivity.location.ended", bundle: bundle)
+        public static let locationStopFailed = LocalizedStringResource("liveActivity.location.stopFailed", bundle: bundle)
+
+        public static let sendingVideo = LocalizedStringResource("liveActivity.media.sendingVideo", bundle: bundle)
+        public static let sendingPhoto = LocalizedStringResource("liveActivity.media.sendingPhoto", bundle: bundle)
+        public static let sendingAlbum = LocalizedStringResource("liveActivity.media.sendingAlbum", bundle: bundle)
+        public static let sendingFile = LocalizedStringResource("liveActivity.media.sendingFile", bundle: bundle)
+        public static let mediaPreparing = LocalizedStringResource("liveActivity.media.preparing", bundle: bundle)
+        public static let mediaSent = LocalizedStringResource("liveActivity.media.sent", bundle: bundle)
+        public static let mediaFailed = LocalizedStringResource("liveActivity.media.failed", bundle: bundle)
+        /// The background time ran out first; the upload waits in the queue for the app.
+        public static let mediaWaiting = LocalizedStringResource("liveActivity.media.waiting", bundle: bundle)
+    }
+
     /// Shown in the user's list of signed-in devices, so it is a name, not a model
     /// identifier.
     public enum Device {

@@ -2490,7 +2490,10 @@ public struct RoomView: View {
         let needsScope = url.startAccessingSecurityScopedResource()
         defer { if needsScope { url.stopAccessingSecurityScopedResource() } }
 
+        let bytes = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        let job = timeline.follow([MediaSendJobs.Item(isFile: true, bytes: bytes)])
         await timeline.send(file: url, replyingTo: replyID)
+        timeline.endFollowing(job)
         cancelContext()
     }
 
@@ -2538,12 +2541,16 @@ public struct RoomView: View {
             if case let .replying(message) = context { replyingTo = message.id }
             let caption = hasText ? MediaCaption(text: text, mentions: mentions) : nil
             var captioned = false
+            // A video or an album is followed past this screen — into a Live Activity, or the
+            // system's own indicator — so that it keeps going in a pocket. See `MediaSendJobs`.
+            let job = timeline.follow(images.map { MediaSendJobs.Item(isVideo: $0.isVideo, bytes: $0.data.count) })
             for (index, item) in images.enumerated() {
                 let isFirst = index == 0
                 let went = await send(item, caption: isFirst ? caption : nil, replyingTo: replyingTo)
                 if isFirst, caption != nil { captioned = went }
                 replyingTo = nil
             }
+            timeline.endFollowing(job)
             guard (hasText && !captioned) || context?.isEditing == true else {
                 await timeline.clearDraft()
                 return

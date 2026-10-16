@@ -212,3 +212,23 @@
 "liveLocation.denied" = "Iskra n’a pas accès à votre position. Vous pouvez l’autoriser dans Réglages.";
 
 "liveLocation.stopFailed" = "Plus aucun point n’est envoyé, mais le serveur n’a pas reçu l’arrêt — les autres peuvent la voir en direct jusqu’à son terme.";
+
+/* Widget and Live Activities — see Apps/Widgets */
+"widget.favourites.name" = "Discussions favorites";
+"widget.favourites.description" = "Les personnes à qui vous écrivez le plus. Touchez un visage pour ouvrir la discussion.";
+"widget.locked" = "Iskra est verrouillée";
+"widget.empty" = "Ouvrez Iskra et connectez-vous : vos discussions apparaîtront ici.";
+
+"liveActivity.location.sharing" = "Vous partagez votre position";
+"liveActivity.location.finding" = "Recherche de votre position…";
+"liveActivity.location.stop" = "Arrêter";
+"liveActivity.location.ended" = "Partage terminé";
+"liveActivity.location.stopFailed" = "Le serveur n’a pas reçu l’arrêt — les autres peuvent la voir en direct jusqu’à son terme.";
+"liveActivity.media.sendingVideo" = "Envoi d’une vidéo";
+"liveActivity.media.sendingPhoto" = "Envoi d’une photo";
+"liveActivity.media.sendingAlbum" = "Envoi d’un album";
+"liveActivity.media.sendingFile" = "Envoi d’un fichier";
+"liveActivity.media.preparing" = "Préparation…";
+"liveActivity.media.sent" = "Envoyé";
+"liveActivity.media.failed" = "Non envoyé — touchez pour ouvrir la discussion";
+"liveActivity.media.waiting" = "Reprendra quand vous ouvrirez Iskra";

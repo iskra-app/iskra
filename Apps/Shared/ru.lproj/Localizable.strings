@@ -5,3 +5,8 @@
 "Send Message" = "Отправить сообщение";
 "Chat" = "Чат";
 "Message" = "Сообщение";
+
+/* The favourites widget and the live location activity — see Apps/Widgets. */
+"Choose Chats" = "Выбрать чаты";
+"Chats" = "Чаты";
+"Stop Sharing Location" = "Остановить трансляцию геопозиции";

@@ -23,13 +23,37 @@ public struct ChatDirectoryEntry: Codable, Sendable, Equatable, Identifiable {
     /// session), but it can draw a face from a seed. Nil in a directory written before it was kept.
     public let avatarSeed: String?
 
+    /// The chat's real picture, as a file in `DirectoryFaces.folder()` — downloaded by the app,
+    /// which is the only process with a token to download it with. Nil when there is no picture,
+    /// when it has not been fetched yet, or when the user asked for creatures everywhere; the
+    /// creature from `avatarSeed` is drawn instead in all three. See `DirectoryFaces`.
+    public let faceFile: String?
+
+    /// Pinned in the chat list (`m.favourite`) — what the favourites widget shows when nobody chose.
+    public let isPinned: Bool?
+
+    /// Unread messages that would have notified, for the widget's dot. A number and not words: the
+    /// same thing the icon's badge already says on the home screen.
+    public let unreadCount: Int?
+
     public init(id: String, name: String, accountID: String? = nil, accountName: String? = nil,
-                avatarSeed: String? = nil) {
+                avatarSeed: String? = nil, faceFile: String? = nil, isPinned: Bool? = nil,
+                unreadCount: Int? = nil) {
         self.id = id
         self.name = name
         self.accountID = accountID
         self.accountName = accountName
         self.avatarSeed = avatarSeed
+        self.faceFile = faceFile
+        self.isPinned = isPinned
+        self.unreadCount = unreadCount
+    }
+
+    /// The chat and whose it is, as one string — `account|room`, or the bare room for an entry
+    /// from before there could be two accounts. The same ID `ChatEntity` gives Shortcuts and the
+    /// widget, so a chat chosen there is found here.
+    public var entityID: String {
+        accountID.map { "\($0)|\(id)" } ?? id
     }
 }
 
@@ -69,10 +93,19 @@ public enum ChatDirectory {
     }
 
     /// Takes a signed-out account's chats out of Siri's list and the share sheet.
-    public static func forget(account: String, in defaults: UserDefaults? = sharedDefaults) {
-        let kept = directory(from: defaults).filter { $0.accountID != account }
+    public static func forget(account: String, in defaults: UserDefaults? = sharedDefaults,
+                              faces: URL? = try? DirectoryFaces.folder()) {
+        let entries = directory(from: defaults)
+        let kept = entries.filter { $0.accountID != account }
         guard let data = try? JSONEncoder().encode(kept) else { return }
         defaults?.set(data, forKey: directoryKey)
+        // Its faces too, the same lesson as the outbox's copies below — except a picture another
+        // account on the device also has a chat with, which is still theirs to show.
+        if let faces {
+            let gone = Set(entries.filter { $0.accountID == account }.compactMap(\.faceFile))
+                .subtracting(kept.compactMap(\.faceFile))
+            DirectoryFaces.remove(gone, in: faces)
+        }
         let all = outbox(from: defaults)
         let outbox = all.filter { $0.accountID != account }
         if let data = try? JSONEncoder().encode(outbox) {
@@ -181,6 +214,11 @@ public enum ChatDirectory {
     /// business reading the Keychain's account index to find out who is open.
     public static func recordActiveAccount(_ sessionID: String, in defaults: UserDefaults? = sharedDefaults) {
         defaults?.set(sessionID, forKey: activeAccountKey)
+    }
+
+    /// The account on screen in the app, as last written — whose chats a widget shows by default.
+    public static func activeAccount(in defaults: UserDefaults? = sharedDefaults) -> String? {
+        defaults?.string(forKey: activeAccountKey)
     }
 
     /// The chats the share sheet lists, by the choice above.

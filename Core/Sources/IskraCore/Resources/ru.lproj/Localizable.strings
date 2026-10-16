@@ -215,3 +215,23 @@
 "liveLocation.denied" = "У Искры нет доступа к геопозиции. Его можно дать в Настройках.";
 
 "liveLocation.stopFailed" = "Точки больше не отправляются, но сервер не услышал об остановке — у собеседников трансляция может выглядеть живой до конца срока.";
+
+/* Widget and Live Activities — see Apps/Widgets */
+"widget.favourites.name" = "Избранные чаты";
+"widget.favourites.description" = "Лица тех, кому вы пишете чаще всего. Нажмите на лицо — откроется чат.";
+"widget.locked" = "Iskra заперта";
+"widget.empty" = "Откройте Iskra и войдите — тогда здесь появятся чаты.";
+
+"liveActivity.location.sharing" = "Вы делитесь геопозицией";
+"liveActivity.location.finding" = "Ищу, где вы…";
+"liveActivity.location.stop" = "Остановить";
+"liveActivity.location.ended" = "Трансляция окончена";
+"liveActivity.location.stopFailed" = "Сервер не услышал об остановке — у собеседников трансляция может выглядеть живой до конца срока.";
+"liveActivity.media.sendingVideo" = "Отправляю видео";
+"liveActivity.media.sendingPhoto" = "Отправляю фото";
+"liveActivity.media.sendingAlbum" = "Отправляю альбом";
+"liveActivity.media.sendingFile" = "Отправляю файл";
+"liveActivity.media.preparing" = "Готовлю…";
+"liveActivity.media.sent" = "Отправлено";
+"liveActivity.media.failed" = "Не отправилось — нажмите, чтобы открыть чат";
+"liveActivity.media.waiting" = "Продолжит, когда откроете Iskra";

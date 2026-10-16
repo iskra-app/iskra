@@ -5,3 +5,8 @@
 "Send Message" = "メッセージを送信";
 "Chat" = "チャット";
 "Message" = "メッセージ";
+
+/* The favourites widget and the live location activity — see Apps/Widgets. */
+"Choose Chats" = "チャットを選ぶ";
+"Chats" = "チャット";
+"Stop Sharing Location" = "位置情報の共有を停止";

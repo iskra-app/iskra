@@ -25,7 +25,18 @@ import MatrixRustSDK
 @Observable
 public final class LiveLocationSharer: NSObject {
     /// The rooms being shared to, and until when.
-    public private(set) var shares: [String: Date] = [:]
+    public private(set) var shares: [String: Date] = [:] {
+        didSet { persist() }
+    }
+
+    /// The rooms a point has actually gone to. Until it has, the others see a share with no map on
+    /// it, and the Live Activity says "finding you" rather than pretending.
+    public private(set) var roomsWithPoints: Set<String> = []
+
+    /// Called after anything the Live Activity draws has changed — set by the app, which owns the
+    /// activity. A callback and not observation, because the share goes on in a pocket, where no
+    /// view is there to observe it, and so does the button that stops it.
+    @ObservationIgnored public var onChange: (@MainActor () -> Void)?
 
     /// Set when a share could not be started or the system said no to location.
     public var failure: Failure?
@@ -50,6 +61,10 @@ public final class LiveLocationSharer: NSObject {
     }
 
     private let roomFor: (String) -> Room?
+    /// Whose shares these are — the session ID, which keys what is written down for a relaunch.
+    /// Nil for the demo, whose shares are made up and must not outlive it.
+    private let accountID: String?
+    @ObservationIgnored private let store: UserDefaults
     @ObservationIgnored private var manager: CLLocationManager?
     @ObservationIgnored private var lastSent: [String: (location: CLLocation, at: Date)] = [:]
     @ObservationIgnored private var latest: CLLocation?
@@ -59,8 +74,77 @@ public final class LiveLocationSharer: NSObject {
     /// not ask anybody anything.
     @ObservationIgnored var authorize: (() async -> Bool)?
 
-    init(roomFor: @escaping (String) -> Room?) {
+    init(accountID: String? = nil, store: UserDefaults = .standard, roomFor: @escaping (String) -> Room?) {
+        self.accountID = accountID
+        self.store = store
         self.roomFor = roomFor
+        super.init()
+        Self.everyone.append(WeakSharer(sharer: self))
+    }
+
+    // MARK: - Across launches
+
+    /// The shares, written down as they change: an app the system killed in a pocket used to stop
+    /// sending points without a word, and everybody else's map went on saying "live" until it ran
+    /// out. Now the next launch picks up whatever has not ended (`resume`).
+    private func persist() {
+        guard let accountID else { return }
+        let key = Self.storeKey(accountID)
+        if shares.isEmpty {
+            store.removeObject(forKey: key)
+        } else {
+            store.set(shares.mapValues(\.timeIntervalSinceReferenceDate), forKey: key)
+        }
+    }
+
+    nonisolated static func storeKey(_ accountID: String) -> String { "liveLocation.shares.\(accountID)" }
+
+    /// What the last run was sharing and has not ended, carried on: the shares that still have time
+    /// left go on sending points, and those that ran out while the app was dead are told to the room
+    /// as ended, which nobody got round to doing. Never asks for location — a share was only ever
+    /// started with it, and if it has since been taken away the shares end here instead.
+    public func resume(now: Date = .now) async {
+        guard let accountID, shares.isEmpty,
+              let stored = store.dictionary(forKey: Self.storeKey(accountID)) as? [String: Double],
+              !stored.isEmpty else { return }
+        let all = stored.mapValues { Date(timeIntervalSinceReferenceDate: $0) }
+        let live = all.filter { $0.value > now }
+        let allowed = await (authorize ?? { Self.isAllowed(CLLocationManager().authorizationStatus) })()
+
+        if allowed, !live.isEmpty {
+            shares = live
+            ensureManager().startUpdatingLocation()
+            scheduleExpiry()
+            changed()
+        } else {
+            store.removeObject(forKey: Self.storeKey(accountID))
+        }
+        // Ended while nobody was here to say so, or cannot go on: the room is told now.
+        for roomID in all.keys where !(allowed && live[roomID] != nil) {
+            try? await roomFor(roomID)?.stopLiveLocationShare()
+        }
+    }
+
+    // MARK: - Stopping from outside the app's screens
+
+    private struct WeakSharer {
+        weak var sharer: LiveLocationSharer?
+    }
+
+    private static var everyone: [WeakSharer] = []
+
+    /// Every share of every account, stopped — what the Live Activity's button does. The activity
+    /// is drawn in another process; its intent runs in this one, and this is how it finds the
+    /// session that is sharing without being handed one.
+    public static func stopEverywhere() async {
+        everyone.removeAll { $0.sharer == nil }
+        for sharer in everyone.compactMap(\.sharer) {
+            for roomID in Array(sharer.shares.keys) { await sharer.stop(in: roomID) }
+        }
+    }
+
+    private func changed() {
+        onChange?()
     }
 
     private func askForLocation() async -> Bool {
@@ -97,6 +181,8 @@ public final class LiveLocationSharer: NSObject {
         }
         shares[roomID] = Date.now.addingTimeInterval(duration)
         lastSent[roomID] = nil
+        roomsWithPoints.remove(roomID)
+        changed()
         manager.startUpdatingLocation()
         // Something to show at once, rather than a map waiting on the next movement.
         if let latest { await send(latest, to: roomID, force: true) }
@@ -114,8 +200,10 @@ public final class LiveLocationSharer: NSObject {
     public func stop(in roomID: String, retries: Int = 2) async {
         guard shares.removeValue(forKey: roomID) != nil else { return }
         lastSent[roomID] = nil
+        roomsWithPoints.remove(roomID)
         if shares.isEmpty { manager?.stopUpdatingLocation() }
         scheduleExpiry()
+        changed()
 
         var delay: Duration = .seconds(1)
         for attempt in 0...retries {
@@ -132,6 +220,7 @@ public final class LiveLocationSharer: NSObject {
             }
         }
         failure = .stop
+        changed()
     }
 
     /// Every share, for a session being closed: nothing should go on sending through a client
@@ -177,6 +266,7 @@ public final class LiveLocationSharer: NSObject {
         let point = Location(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude)
         do {
             try await room.sendLiveLocation(geoUri: point.geoURI)
+            if roomsWithPoints.insert(roomID).inserted { changed() }
         } catch {
             Log.rooms.error("a live location point was refused: \(Log.describe(error), privacy: .public)")
         }
@@ -219,7 +309,7 @@ public final class LiveLocationSharer: NSObject {
         return manager
     }
 
-    private static func isAllowed(_ status: CLAuthorizationStatus) -> Bool {
+    nonisolated private static func isAllowed(_ status: CLAuthorizationStatus) -> Bool {
         #if os(iOS)
         status == .authorizedWhenInUse || status == .authorizedAlways
         #else
