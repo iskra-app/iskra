@@ -22,6 +22,7 @@
 
 /* Summary line for a shared location. */
 "preview.location" = "Location";
+"preview.liveLocation" = "Live location";
 
 /* Summary line for a photo in the chat list. */
 "preview.photo" = "Photo";

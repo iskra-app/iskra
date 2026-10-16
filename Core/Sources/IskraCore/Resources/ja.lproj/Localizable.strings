@@ -22,6 +22,7 @@
 
 /* Summary line for a shared location. */
 "preview.location" = "位置情報";
+"preview.liveLocation" = "リアルタイムの位置情報";
 
 /* Summary line for a photo in the chat list. */
 "preview.photo" = "写真";
