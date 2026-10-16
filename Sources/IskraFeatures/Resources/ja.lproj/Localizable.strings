@@ -1186,6 +1186,8 @@
 "chats.shareActive" = "使用中";
 "chats.shareAll" = "すべて";
 "chats.shareHelp" = "ほかのアプリから共有するときに、どのアカウントのチャットを表示するか。「使用中」は今 Iskra で開いているアカウントです。";
+"chats.widgetSection" = "「お気に入りのチャット」ウィジェット";
+"chats.widgetHelp" = "ウィジェットでチャットを選んでいないときに、どのアカウントのチャットを表示するか。「使用中」は今 Iskra で開いているアカウントです。";
 
 /* Settings → Privacy. */
 "privacy.title" = "プライバシー";

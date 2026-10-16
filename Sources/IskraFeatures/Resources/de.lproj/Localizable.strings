@@ -1186,6 +1186,8 @@
 "chats.shareActive" = "Aktives";
 "chats.shareAll" = "Alle";
 "chats.shareHelp" = "Wessen Chats angeboten werden, wenn Sie etwas aus einer anderen App teilen. „Aktives“ ist das, das gerade in Iskra geöffnet ist.";
+"chats.widgetSection" = "Widget „Favorisierte Chats“";
+"chats.widgetHelp" = "Wessen Chats das Widget zeigt, wenn darin keine ausgewählt sind. „Aktives“ ist das, das gerade in Iskra geöffnet ist.";
 
 /* Settings → Privacy. */
 "privacy.title" = "Datenschutz";

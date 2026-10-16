@@ -13,12 +13,22 @@ import SwiftUI
 public struct DirectoryFace: View {
     private let picture: CGImage?
     private let seed: String
+    private let name: String
+    private let generated: Bool
 
-    /// - Parameter pixelSize: the largest side to decode to. The file is already small, but it was
-    ///   written by another process from bytes a server chose, and an extension has little memory.
-    public init(file: URL?, seed: String, pixelSize: Int = 192) {
+    /// - Parameters:
+    ///   - name: what the initials are taken from when there is no picture and no creature.
+    ///   - generated: whether a chat with no picture gets the creature its seed comes out as, or
+    ///     the grey circle with initials the app draws — the "faces" switch in Beta features,
+    ///     which the caller reads (`BetaFeatures.drawsGeneratedFace`), so that the share sheet and
+    ///     the lock screen say what the chat list says.
+    ///   - pixelSize: the largest side to decode to. The file is already small, but it was written
+    ///     by another process from bytes a server chose, and an extension has little memory.
+    public init(file: URL?, seed: String, name: String, generated: Bool, pixelSize: Int = 192) {
         self.picture = Self.picture(at: file, pixelSize: pixelSize)
         self.seed = seed
+        self.name = name
+        self.generated = generated
     }
 
     public var body: some View {
@@ -27,8 +37,10 @@ public struct DirectoryFace: View {
                 Image(decorative: picture, scale: 1)
                     .resizable()
                     .scaledToFill()
-            } else {
+            } else if generated {
                 BlobatarView(seed: seed, backdrop: .circle)
+            } else {
+                InitialsFace(name: name)
             }
         }
         .clipShape(.circle)
@@ -66,4 +78,50 @@ public struct DirectoryFace: View {
         cache.countLimit = 64
         return cache
     }()
+}
+
+/// The face a chat has with no picture and the creatures switched off: a grey circle with its
+/// initials, as `Avatar` draws it in the app.
+public struct InitialsFace: View {
+    let name: String
+
+    public init(name: String) {
+        self.name = name
+    }
+
+    public var body: some View {
+        GeometryReader { proxy in
+            let side = min(proxy.size.width, proxy.size.height)
+            Circle()
+                .fill(.quaternary)
+                .overlay {
+                    Text(verbatim: Initials.of(name))
+                        .font(.system(size: side * 0.4, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .minimumScaleFactor(0.5)
+                        .lineLimit(1)
+                }
+                .frame(width: side, height: side)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+/// What a face with no picture says: the first letters of the first two words of a name.
+public enum Initials {
+    public static func of(_ name: String) -> String {
+        // Only words that start with a letter or a number count. Punctuation never did any work
+        // here, and now it can turn up: a chat renamed on this device is whatever the user typed,
+        // so «Тарас (работа)» was coming out as "Т(" — a bracket drawn at forty points, which
+        // reads as a bug rather than as a name.
+        let words = name.split(separator: " ")
+            .filter { $0.first?.isLetter == true || $0.first?.isNumber == true }
+            .prefix(2)
+
+        let letters = words.compactMap(\.first).map(String.init).joined().uppercased()
+        // A name made entirely of punctuation or emoji still has to draw something, and the first
+        // character of it is the best guess there is.
+        return letters.isEmpty ? String(name.prefix(1)).uppercased() : letters
+    }
 }

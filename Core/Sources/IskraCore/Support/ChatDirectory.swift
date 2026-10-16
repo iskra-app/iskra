@@ -216,6 +216,31 @@ public enum ChatDirectory {
         defaults?.set(sessionID, forKey: activeAccountKey)
     }
 
+    private static let widgetAccountKey = "widget.account"
+
+    /// Which account the favourites widget draws from when nothing was chosen in it — Settings →
+    /// Chats, the same three answers as the share sheet's.
+    public static func widgetAccount(in defaults: UserDefaults? = sharedDefaults) -> ShareAccount {
+        ShareAccount(stored: defaults?.string(forKey: widgetAccountKey))
+    }
+
+    public static func setWidgetAccount(_ choice: ShareAccount, in defaults: UserDefaults? = sharedDefaults) {
+        defaults?.set(choice.stored, forKey: widgetAccountKey)
+    }
+
+    /// The account whose chats the widget shows, or nil for everybody's. A choice that no longer
+    /// points anywhere falls back the way the share sheet's does: a signed-out account to the active
+    /// one, an unknown active one to all.
+    public static func widgetAccountID(in defaults: UserDefaults? = sharedDefaults) -> String? {
+        let present = Set(directory(from: defaults).compactMap(\.accountID))
+        let active = activeAccount(in: defaults).flatMap { present.contains($0) ? $0 : nil }
+        switch widgetAccount(in: defaults) {
+        case .all: return nil
+        case .active: return active
+        case let .account(id): return present.contains(id) ? id : active
+        }
+    }
+
     /// The account on screen in the app, as last written — whose chats a widget shows by default.
     public static func activeAccount(in defaults: UserDefaults? = sharedDefaults) -> String? {
         defaults?.string(forKey: activeAccountKey)
@@ -254,6 +279,8 @@ public enum ChatDirectory {
         } else {
             defaults?.removeObject(forKey: pendingOpenAccountKey)
         }
+        // Written; now said, so the app looks for it even if it came to the front first.
+        OpenRequestSignal.post()
     }
 
     /// A chat somebody asked to open, and whose it is.

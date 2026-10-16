@@ -18,6 +18,7 @@ struct ChatSettingsView: View {
     /// In the App Group's defaults, not `.standard` — the share extension is the one that reads it,
     /// and an extension's `.standard` is its own and empty. So it is plain state, written through.
     @State private var shareAccount = ChatDirectory.shareAccount()
+    @State private var widgetAccount = ChatDirectory.widgetAccount()
     /// The same, for the notification extension — see `ChatDirectory.namesAccountInNotifications`.
     @State private var namesAccount = ChatDirectory.namesAccountInNotifications()
 
@@ -104,6 +105,27 @@ struct ChatSettingsView: View {
                 }
                 .onChange(of: shareAccount) { _, choice in
                     ChatDirectory.setShareAccount(choice)
+                }
+
+                Section {
+                    Picker(selection: $widgetAccount) {
+                        Text(Strings.Chats.shareActive).tag(ChatDirectory.ShareAccount.active)
+                        ForEach(switcher.accounts, id: \.sessionID) { account in
+                            Text(verbatim: AccountSwitcher.name(of: account))
+                                .tag(ChatDirectory.ShareAccount.account(account.sessionID))
+                        }
+                        Text(Strings.Chats.shareAll).tag(ChatDirectory.ShareAccount.all)
+                    } label: {
+                        Label(Strings.Chats.shareAccount, systemImage: "square.grid.2x2")
+                    }
+                } header: {
+                    Text(Strings.Chats.widgetSection)
+                } footer: {
+                    Text(Strings.Chats.widgetHelp)
+                }
+                .onChange(of: widgetAccount) { _, choice in
+                    ChatDirectory.setWidgetAccount(choice)
+                    WidgetRefresh.directoryChanged()
                 }
 
                 Section {

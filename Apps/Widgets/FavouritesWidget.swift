@@ -76,7 +76,7 @@ struct FavouritesProvider: AppIntentTimelineProvider {
         let chosen = WidgetChats.fill(entries,
                                       chosen: configuration.chats?.map(\.id) ?? [],
                                       count: family == .systemSmall ? 4 : WidgetChats.largest,
-                                      account: ChatDirectory.activeAccount(in: defaults))
+                                      account: ChatDirectory.widgetAccountID(in: defaults))
         let faces = chosen.map { entry in
             FavouritesEntry.Face(chat: ChatEntity(entry, showsAccount: showsAccount),
                                  name: entry.name,
@@ -127,28 +127,43 @@ struct FavouritesView: View {
         }
     }
 
-    /// One face and its name. A button running `OpenChatIntent`, which opens the app on that chat —
-    /// and switches account first if the chat is another account's.
+    /// One face and its name, opening its chat — and switching account first if the chat is another
+    /// account's.
+    ///
+    /// A plain link where the system allows one, because a link *is* the request: the app is opened
+    /// with the chat in the URL and nothing can race it. A small widget allows no links — it is one
+    /// tap target to WidgetKit — so there it is `OpenChatIntent`, whose request the app is told about
+    /// across processes (`OpenRequestSignal`).
+    @ViewBuilder
     private func cell(_ face: FavouritesEntry.Face) -> some View {
-        Button(intent: OpenChatIntent(chat: face.chat)) {
-            VStack(spacing: Theme.Spacing.tight) {
-                WidgetFace(file: face.file, seed: face.seed)
-                    .overlay(alignment: .topTrailing) {
-                        if face.hasUnread {
-                            Circle()
-                                .fill(.tint)
-                                .frame(width: Theme.Size.unreadDot, height: Theme.Size.unreadDot)
-                                .widgetAccentable()
-                        }
-                    }
-                Text(verbatim: face.name)
-                    .font(.caption2)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+        if family == .systemSmall {
+            Button(intent: OpenChatIntent(chat: face.chat)) { label(face) }
+                .buttonStyle(.plain)
+        } else {
+            Link(destination: AppEnvironment.openChatURL(roomID: face.chat.roomID,
+                                                         accountID: face.chat.accountID)) {
+                label(face)
             }
-            .frame(maxWidth: .infinity)
         }
-        .buttonStyle(.plain)
+    }
+
+    private func label(_ face: FavouritesEntry.Face) -> some View {
+        VStack(spacing: Theme.Spacing.tight) {
+            WidgetFace(file: face.file, seed: face.seed, name: face.name)
+                .overlay(alignment: .topTrailing) {
+                    if face.hasUnread {
+                        Circle()
+                            .fill(.tint)
+                            .frame(width: Theme.Size.unreadDot, height: Theme.Size.unreadDot)
+                            .widgetAccentable()
+                    }
+                }
+            Text(verbatim: face.name)
+                .font(.caption2)
+                .lineLimit(1)
+                .truncationMode(.tail)
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private func message(_ text: LocalizedStringResource, symbol: String) -> some View {

@@ -1186,6 +1186,8 @@
 "chats.shareActive" = "Actif";
 "chats.shareAll" = "Tous";
 "chats.shareHelp" = "Les discussions de quel compte proposer quand vous partagez depuis une autre app. « Actif » est celui ouvert en ce moment dans Iskra.";
+"chats.widgetSection" = "Widget « Discussions favorites »";
+"chats.widgetHelp" = "Les discussions de quel compte afficher dans le widget quand aucune n’y est choisie. « Actif » est celui ouvert en ce moment dans Iskra.";
 
 /* Settings → Privacy. */
 "privacy.title" = "Confidentialité";

@@ -1186,6 +1186,8 @@
 "chats.shareActive" = "当前";
 "chats.shareAll" = "全部";
 "chats.shareHelp" = "从其他应用分享时显示哪个账户的聊天。“当前”指现在在 Iskra 中打开的那个。";
+"chats.widgetSection" = "“收藏的聊天”小组件";
+"chats.widgetHelp" = "小组件中未选择聊天时显示哪个账户的聊天。“当前”指现在在 Iskra 中打开的那个。";
 
 /* Settings → Privacy. */
 "privacy.title" = "隐私";

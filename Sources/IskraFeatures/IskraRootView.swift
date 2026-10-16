@@ -365,6 +365,13 @@ public struct IskraRootView: View {
                     // messages it left in the outbox. Once on appear (a cold launch by an intent), and
                     // again whenever we come back to the front.
                     .task { await handleIntents(session) }
+                    // A widget's face or a shortcut asked for a chat — heard whether it was asked
+                    // before or after the app came to the front. See `OpenRequestSignal`.
+                    .task {
+                        for await _ in OpenRequestSignal.announcements() {
+                            await handleIntents(session)
+                        }
+                    }
                     #if os(iOS)
                     // The live location activity and a long upload's background time follow this
                     // session from here on, pocket included — see `LiveLocationActivity` and
@@ -499,7 +506,7 @@ public struct IskraRootView: View {
         // The widget hides its faces behind the lock, so turning the lock on or off is something it
         // has to be told about at once — not with the next message.
         .onChange(of: appLock.isEnabled) {
-            WidgetRefresh.directoryChanged(activeAccount: currentSession?.sessionID)
+            WidgetRefresh.directoryChanged()
         }
         // The cover the app wears on its way out, so that the picture iOS keeps for the app switcher
         // is a padlock and not somebody's conversation — see `PrivacyCover` — and the shield,
@@ -556,7 +563,7 @@ public struct IskraRootView: View {
         // And whose list is live: the share sheet's "active account" is this one.
         ChatDirectory.recordActiveAccount(session.sessionID)
         // The widget, only when what it draws has changed — see `WidgetRefresh`.
-        WidgetRefresh.directoryChanged(activeAccount: session.sessionID)
+        WidgetRefresh.directoryChanged()
     }
 
     /// Acts on what a Shortcuts intent left behind: opens the chat it asked for, and sends the
