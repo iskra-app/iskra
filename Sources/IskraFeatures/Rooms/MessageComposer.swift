@@ -133,6 +133,8 @@ struct MessageComposer: View {
     /// because the drop lands on the whole room and not on this bar.
     var attachments: [PendingAttachment] = []
     var onRemoveAttachment: (PendingAttachment) -> Void = { _ in }
+    /// Opening a waiting photo in `PhotoEditor`. Nil leaves the pencil off the tiles.
+    var onEditAttachment: ((PendingAttachment) -> Void)?
 
     /// Reads the clipboard's photos and videos into `attachments`. Asking, not reading: the screen
     /// does the reading, for the same reason it presents the pickers.
@@ -202,6 +204,7 @@ struct MessageComposer: View {
          onChooseSticker: (() -> Void)? = nil,
          attachments: [PendingAttachment] = [],
          onRemoveAttachment: @escaping (PendingAttachment) -> Void = { _ in },
+         onEditAttachment: ((PendingAttachment) -> Void)? = nil,
          onPasteImage: @escaping () -> Void = {},
          mentions: Binding<[ComposerMention]> = .constant([]),
          loadMentionCandidates: (() async -> [RoomMemberSummary])? = nil,
@@ -230,6 +233,7 @@ struct MessageComposer: View {
         self.onChooseSticker = onChooseSticker
         self.attachments = attachments
         self.onRemoveAttachment = onRemoveAttachment
+        self.onEditAttachment = onEditAttachment
         self.onPasteImage = onPasteImage
         _mentions = mentions
         self.loadMentionCandidates = loadMentionCandidates
@@ -670,6 +674,23 @@ struct MessageComposer: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text(Strings.Room.removeAttachment))
+        }
+        // A photo can be marked up before it goes; a video cannot, so it gets no pencil.
+        .overlay(alignment: .bottomLeading) {
+            if !image.isVideo, let onEditAttachment {
+                Button {
+                    onEditAttachment(image)
+                } label: {
+                    Image(systemName: "pencil.circle.fill")
+                        .font(.body)
+                        .symbolRenderingMode(.palette)
+                        .foregroundStyle(.white, .black.opacity(0.6))
+                        .padding(Theme.Spacing.tight)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text(Strings.PhotoEditor.edit))
+            }
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text(image.isVideo ? Strings.Room.attachedVideo : Strings.Room.attachedPhoto))

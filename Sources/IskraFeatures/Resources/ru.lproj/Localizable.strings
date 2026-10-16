@@ -1418,3 +1418,22 @@
 "chats.threadsLargeRooms" = "В чатах больше 100 человек";
 "chats.threadsNever" = "Никогда";
 "chats.threadsHideReplies" = "Скрывать ответы из чата";
+
+/* The photo editor — PhotoEditor */
+"photoEditor.edit" = "Изменить фото";
+"photoEditor.cancel" = "Отмена";
+"photoEditor.done" = "Готово";
+"photoEditor.undo" = "Отменить";
+"photoEditor.draw" = "Рисовать";
+"photoEditor.text" = "Текст";
+"photoEditor.crop" = "Обрезать";
+"photoEditor.rotate" = "Повернуть";
+"photoEditor.textPrompt" = "Напишите что-нибудь";
+"photoEditor.failed" = "Не получилось сохранить изменения — фото осталось как было";
+"photoEditor.ok" = "Понятно";
+"photoEditor.white" = "Белый";
+"photoEditor.black" = "Чёрный";
+"photoEditor.red" = "Красный";
+"photoEditor.yellow" = "Жёлтый";
+"photoEditor.green" = "Зелёный";
+"photoEditor.blue" = "Синий";

@@ -1422,3 +1422,22 @@
 "chats.threadsLargeRooms" = "In Chats mit über 100 Personen";
 "chats.threadsNever" = "Nie";
 "chats.threadsHideReplies" = "Antworten im Chat ausblenden";
+
+/* The photo editor — PhotoEditor */
+"photoEditor.edit" = "Foto bearbeiten";
+"photoEditor.cancel" = "Abbrechen";
+"photoEditor.done" = "Fertig";
+"photoEditor.undo" = "Rückgängig";
+"photoEditor.draw" = "Zeichnen";
+"photoEditor.text" = "Text";
+"photoEditor.crop" = "Zuschneiden";
+"photoEditor.rotate" = "Drehen";
+"photoEditor.textPrompt" = "Schreiben Sie etwas";
+"photoEditor.failed" = "Die Änderungen ließen sich nicht speichern – das Foto ist unverändert";
+"photoEditor.ok" = "OK";
+"photoEditor.white" = "Weiß";
+"photoEditor.black" = "Schwarz";
+"photoEditor.red" = "Rot";
+"photoEditor.yellow" = "Gelb";
+"photoEditor.green" = "Grün";
+"photoEditor.blue" = "Blau";

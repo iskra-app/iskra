@@ -808,6 +808,12 @@ public enum Theme {
         /// from another at a glance, small enough that four of them are still one row.
         public static let attachmentTile: CGFloat = 64
 
+        /// A colour to draw or write in, in the photo editor. Drawn smaller than the tap target it
+        /// sits in, so that six of them fit a phone's width with room between.
+        public static let inkSwatch: CGFloat = 28
+        /// How far each arm of a corner of the crop frame reaches along its edges.
+        public static let cropCorner: CGFloat = 20
+
         /// The search field floating at the bottom of the room list. The same height as
         /// the composer, and for the same reason — it sits where the thumb already is.
         public static let searchField: CGFloat = 44

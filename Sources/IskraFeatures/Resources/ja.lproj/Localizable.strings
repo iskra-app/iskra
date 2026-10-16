@@ -1422,3 +1422,22 @@
 "chats.threadsLargeRooms" = "100 人を超えるチャットで";
 "chats.threadsNever" = "表示しない";
 "chats.threadsHideReplies" = "チャットで返信を隠す";
+
+/* The photo editor — PhotoEditor */
+"photoEditor.edit" = "写真を編集";
+"photoEditor.cancel" = "キャンセル";
+"photoEditor.done" = "完了";
+"photoEditor.undo" = "取り消す";
+"photoEditor.draw" = "描く";
+"photoEditor.text" = "テキスト";
+"photoEditor.crop" = "切り取る";
+"photoEditor.rotate" = "回転";
+"photoEditor.textPrompt" = "何か書いてください";
+"photoEditor.failed" = "変更を保存できませんでした。写真は元のままです";
+"photoEditor.ok" = "OK";
+"photoEditor.white" = "白";
+"photoEditor.black" = "黒";
+"photoEditor.red" = "赤";
+"photoEditor.yellow" = "黄";
+"photoEditor.green" = "緑";
+"photoEditor.blue" = "青";

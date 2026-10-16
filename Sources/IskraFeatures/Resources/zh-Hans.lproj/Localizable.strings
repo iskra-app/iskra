@@ -1422,3 +1422,22 @@
 "chats.threadsLargeRooms" = "在超过 100 人的聊天中";
 "chats.threadsNever" = "从不";
 "chats.threadsHideReplies" = "在聊天中隐藏回复";
+
+/* The photo editor — PhotoEditor */
+"photoEditor.edit" = "编辑照片";
+"photoEditor.cancel" = "取消";
+"photoEditor.done" = "完成";
+"photoEditor.undo" = "撤销";
+"photoEditor.draw" = "绘制";
+"photoEditor.text" = "文字";
+"photoEditor.crop" = "裁剪";
+"photoEditor.rotate" = "旋转";
+"photoEditor.textPrompt" = "请写点什么";
+"photoEditor.failed" = "无法保存更改，照片保持原样";
+"photoEditor.ok" = "好的";
+"photoEditor.white" = "白色";
+"photoEditor.black" = "黑色";
+"photoEditor.red" = "红色";
+"photoEditor.yellow" = "黄色";
+"photoEditor.green" = "绿色";
+"photoEditor.blue" = "蓝色";
