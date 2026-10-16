@@ -1285,6 +1285,10 @@
 "signIn.chooseServer" = "Vous ne savez pas quel serveur choisir ?";
 /* The main button under the address field. */
 "signIn.next" = "Suivant";
+/* A small grey link at the foot of the sign-in screen: opens a screen explaining Matrix. */
+"signIn.whatIsMatrix" = "Qu’est-ce que Matrix ?";
+/* The title of that screen. */
+"aboutMatrix.title" = "Qu’est-ce que Matrix";
 
 /* The list of public servers, opened from the sign-in screen. */
 "servers.title" = "Choisir un serveur";

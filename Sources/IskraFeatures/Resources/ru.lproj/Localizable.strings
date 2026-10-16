@@ -1281,6 +1281,10 @@
 "signIn.chooseServer" = "Не знаете, какой сервер выбрать?";
 /* The main button under the address field. */
 "signIn.next" = "Далее";
+/* A small grey link at the foot of the sign-in screen: opens a screen explaining Matrix. */
+"signIn.whatIsMatrix" = "Что такое Matrix?";
+/* The title of that screen. */
+"aboutMatrix.title" = "Что такое Matrix";
 
 /* The list of public servers, opened from the sign-in screen. */
 "servers.title" = "Выбор сервера";

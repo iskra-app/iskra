@@ -142,6 +142,8 @@ public enum Strings {
         /// Under the empty address field: the button for people who have no address to type.
         public static let chooseServer = LocalizedStringResource("signIn.chooseServer", bundle: bundle)
         public static let next = LocalizedStringResource("signIn.next", bundle: bundle)
+        /// The small grey link at the foot of the sign-in screen.
+        public static let whatIsMatrix = LocalizedStringResource("signIn.whatIsMatrix", bundle: bundle)
 
         public static let readyTitle = LocalizedStringResource("signIn.readyTitle", bundle: bundle)
         public static let readyHelp = LocalizedStringResource("signIn.readyHelp", bundle: bundle)
@@ -200,6 +202,10 @@ public enum Strings {
 
     /// "Not sure which server to choose?" — the public servers, and running your own.
     /// See `PublicServer` for why these four.
+    public enum AboutMatrix {
+        public static let title = LocalizedStringResource("aboutMatrix.title", bundle: bundle)
+    }
+
     public enum Servers {
         public static let title = LocalizedStringResource("servers.title", bundle: bundle)
         public static let intro = LocalizedStringResource("servers.intro", bundle: bundle)
