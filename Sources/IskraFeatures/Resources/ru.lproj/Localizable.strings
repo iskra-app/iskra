@@ -1296,7 +1296,7 @@
 "servers.nopeChatWhere" = "Германия";
 /* The last entry: running a server of your own. Opens a page about it in the browser. */
 "servers.ownTitle" = "Свой сервер";
-"servers.ownAbout" = "Можно поднять собственный сервер — тогда переписка будет полностью в ваших руках.";
+"servers.ownAbout" = "Можно поднять собственный сервер — тогда переписка будет полностью в ваших руках. Понадобятся свой домен и немного времени.";
 
 /* Under the "open to anyone" switch when making a room: what the room will be. Changes with the switch. */
 "roomList.new.willBeEncrypted" = "Комната будет с шифрованием";

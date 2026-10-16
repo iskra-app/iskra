@@ -1300,7 +1300,7 @@
 "servers.nopeChatWhere" = "德国";
 /* The last entry: running a server of your own. Opens a page about it in the browser. */
 "servers.ownTitle" = "自建服务器";
-"servers.ownAbout" = "您可以搭建自己的服务器——这样您的对话就完全掌握在您自己手中。";
+"servers.ownAbout" = "您可以搭建自己的服务器——这样您的对话就完全掌握在您自己手中。您需要一个域名和一点时间。";
 
 /* Under the "open to anyone" switch when making a room: what the room will be. Changes with the switch. */
 "roomList.new.willBeEncrypted" = "该房间将加密";
