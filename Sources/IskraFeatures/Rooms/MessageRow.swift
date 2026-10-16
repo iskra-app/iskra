@@ -1269,7 +1269,8 @@ struct PictureBubble: View {
                 // picture in it.
                 .containerRelativeFrame(.vertical) { height, _ in
                     min(Theme.Size.picture / aspectRatio,
-                        (timelineHeight > 0 ? timelineHeight : height) * Theme.Size.pictureHeightFraction)
+                        (timelineHeight > 0 ? timelineHeight : height) * Theme.Size.pictureHeightFraction,
+                        Theme.Size.pictureMaxHeight)
                 }
                 .overlay {
                     if isPlayable {

@@ -237,6 +237,16 @@ struct DemoBackendTests {
         let devID = "!iskra-dev:iskra.demo"
         _ = await eventually { session.roomList.rooms.contains { $0.id == devID } }
 
+        // Threads everywhere, answers only in them — what this test is about. The default (threads
+        // in big rooms only, answers left in the room too) would show none of it in the demo's
+        // small rooms. Set before the timeline opens: its focus is fixed from then on.
+        UserDefaults.standard.set(ThreadSettings.Shown.always.rawValue, forKey: ThreadSettings.shownKey)
+        UserDefaults.standard.set(true, forKey: ThreadSettings.hidesRepliesKey)
+        defer {
+            UserDefaults.standard.removeObject(forKey: ThreadSettings.shownKey)
+            UserDefaults.standard.removeObject(forKey: ThreadSettings.hidesRepliesKey)
+        }
+
         let timeline = try #require(session.timeline(forRoomID: devID))
         try await timeline.start()
         defer { timeline.stop() }

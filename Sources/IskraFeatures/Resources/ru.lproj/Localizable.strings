@@ -1284,19 +1284,19 @@
 "servers.title" = "Выбор сервера";
 "servers.intro" = "Аккаунт живёт на одном сервере, а писать можно людям с любого другого — как с почтой. На всех серверах ниже аккаунт можно создать прямо в Iskra.";
 "servers.matrixOrg" = "Самый большой сервер Matrix. Его держит фонд, который развивает сам Matrix.";
-/* Country · languages the server is run in. */
-"servers.matrixOrgWhere" = "Великобритания · английский";
+/* Where the server is. */
+"servers.matrixOrgWhere" = "Великобритания";
 /* A warning on matrix.org: it is blocked in Russia. */
 "servers.matrixOrgBlocked" = "Недоступен из России";
 "servers.tchncs" = "Один из старейших общественных серверов. Владелец держит и другие свободные сервисы.";
-"servers.tchncsWhere" = "Германия · английский, немецкий";
+"servers.tchncsWhere" = "Германия";
 "servers.quassel" = "Открытый сервер для повседневного общения, бесплатный для всех.";
-"servers.quasselWhere" = "Германия, сервер в Финляндии · английский";
+"servers.quasselWhere" = "Германия, сервер в Финляндии";
 "servers.nopeChat" = "Сервер команды adminForge, которая держит и другие свободные сервисы. Есть мосты в другие мессенджеры.";
-"servers.nopeChatWhere" = "Германия · немецкий";
+"servers.nopeChatWhere" = "Германия";
 /* The last entry: running a server of your own. Opens a page about it in the browser. */
 "servers.ownTitle" = "Свой сервер";
-"servers.ownAbout" = "Можно поднять собственный сервер — тогда переписка хранится только у вас. Понадобятся свой домен и немного времени.";
+"servers.ownAbout" = "Можно поднять собственный сервер — тогда переписка будет полностью в ваших руках.";
 
 /* Under the "open to anyone" switch when making a room: what the room will be. Changes with the switch. */
 "roomList.new.willBeEncrypted" = "Комната будет с шифрованием";
@@ -1406,5 +1406,9 @@
 "message.transcript.nothingHeard" = "Слов не разобрать.";
 "message.transcript.failed" = "Не получилось расшифровать. Попробуйте ещё раз.";
 
-"chats.threads" = "Треды";
-"chats.threadsHelp" = "Ответы в тредах собираются под сообщением строкой «3 ответа». Если выключить, они встанут в чат среди остальных сообщений — с того момента, как вы откроете чат заново. В личных чатах тредов нет: там ответы всегда в общей ленте.";
+"chats.threads" = "Показывать треды";
+"chats.threadsHelp" = "Ответы в тредах собираются под сообщением строкой «3 ответа». Пока ответы не скрыты, они видны и в самом чате, среди остальных сообщений. Изменения действуют с того момента, как вы откроете чат заново. В личных чатах тредов нет.";
+"chats.threadsAlways" = "Всегда";
+"chats.threadsLargeRooms" = "В чатах больше 100 человек";
+"chats.threadsNever" = "Никогда";
+"chats.threadsHideReplies" = "Скрывать ответы из чата";

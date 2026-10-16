@@ -82,10 +82,12 @@ struct MessageSelectionBar: View {
                 action("trash", Strings.Message.Menu.delete, enabled: canDelete, tint: .red, perform: onDelete)
             }
         }
-        .padding(.horizontal, Theme.Spacing.roomy)
-        .padding(.vertical, Theme.Spacing.normal)
+        // A capsule, as the composer it stands in for is: a bar with corners of its own read as a
+        // panel dropped over the conversation rather than the composer changing what it offers.
+        .padding(.horizontal, Theme.Spacing.generous)
+        .padding(.vertical, Theme.Spacing.tight)
         .frame(minHeight: Theme.Size.composerControl)
-        .navigationGlass(in: .rect(cornerRadius: Theme.Radius.bubble, style: .continuous))
+        .navigationGlass(in: .capsule)
         .padding(.horizontal, Theme.Spacing.normal)
         .padding(.vertical, Theme.Spacing.close)
     }

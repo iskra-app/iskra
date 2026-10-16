@@ -1288,19 +1288,19 @@
 "servers.title" = "サーバーを選ぶ";
 "servers.intro" = "アカウントは1つのサーバーにありますが、ほかのどのサーバーの人ともやり取りできます。メールと同じです。以下のサーバーなら、Iskraからそのままアカウントを作れます。";
 "servers.matrixOrg" = "最大のMatrixサーバーです。Matrix自体を開発している財団が運営しています。";
-/* Country · languages the server is run in. */
-"servers.matrixOrgWhere" = "イギリス · 英語";
+/* Where the server is. */
+"servers.matrixOrgWhere" = "イギリス";
 /* A warning on matrix.org: it is blocked in Russia. */
 "servers.matrixOrgBlocked" = "ロシアからは利用できません";
 "servers.tchncs" = "最も古いコミュニティサーバーの1つです。運営者はほかの自由なサービスも提供しています。";
-"servers.tchncsWhere" = "ドイツ · 英語、ドイツ語";
+"servers.tchncsWhere" = "ドイツ";
 "servers.quassel" = "日常の会話のための開かれたサーバーです。誰でも無料で使えます。";
-"servers.quasselWhere" = "ドイツ、サーバーはフィンランド · 英語";
+"servers.quasselWhere" = "ドイツ、サーバーはフィンランド";
 "servers.nopeChat" = "ほかの自由なサービスも提供しているadminForgeのチームが運営しています。ほかのメッセンジャーへのブリッジがあります。";
-"servers.nopeChatWhere" = "ドイツ · ドイツ語";
+"servers.nopeChatWhere" = "ドイツ";
 /* The last entry: running a server of your own. Opens a page about it in the browser. */
 "servers.ownTitle" = "自分のサーバー";
-"servers.ownAbout" = "自分でサーバーを立てることもできます。そうすれば、会話はあなたの手元だけに保存されます。ドメインと少しの時間が必要です。";
+"servers.ownAbout" = "自分でサーバーを立てることもできます。そうすれば、会話は完全にあなたの手の中にあります。";
 
 /* Under the "open to anyone" switch when making a room: what the room will be. Changes with the switch. */
 "roomList.new.willBeEncrypted" = "このルームは暗号化されます";
@@ -1410,5 +1410,9 @@
 "message.transcript.nothingHeard" = "言葉を聞き取れませんでした。";
 "message.transcript.failed" = "文字起こしできませんでした。もう一度お試しください。";
 
-"chats.threads" = "スレッド";
-"chats.threadsHelp" = "スレッドの返信は元のメッセージの下に「返信 3 件」としてまとめられます。オフにすると、チャットを開き直したときから他のメッセージと並んで表示されます。 個人チャットにはスレッドがありません。返信は常にチャット内に表示されます。";
+"chats.threads" = "スレッドを表示";
+"chats.threadsHelp" = "スレッドの返信は元のメッセージの下に「返信 3 件」としてまとめられます。返信を隠さない限り、チャット内にも他のメッセージと並んで表示されます。変更はチャットを開き直したときから反映されます。個人チャットにはスレッドがありません。";
+"chats.threadsAlways" = "常に";
+"chats.threadsLargeRooms" = "100 人を超えるチャットで";
+"chats.threadsNever" = "表示しない";
+"chats.threadsHideReplies" = "チャットで返信を隠す";

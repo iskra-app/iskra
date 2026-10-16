@@ -1288,19 +1288,19 @@
 "servers.title" = "Elegir servidor";
 "servers.intro" = "Su cuenta vive en un servidor, pero puede escribir a personas de cualquier otro, como con el correo. En todos los servidores de abajo puede crear una cuenta directamente en Iskra.";
 "servers.matrixOrg" = "El mayor servidor de Matrix, gestionado por la fundación que desarrolla Matrix.";
-/* Country · languages the server is run in. */
-"servers.matrixOrgWhere" = "Reino Unido · inglés";
+/* Where the server is. */
+"servers.matrixOrgWhere" = "Reino Unido";
 /* A warning on matrix.org: it is blocked in Russia. */
 "servers.matrixOrgBlocked" = "No disponible desde Rusia";
 "servers.tchncs" = "Uno de los servidores comunitarios más antiguos. Su dueño mantiene también otros servicios libres.";
-"servers.tchncsWhere" = "Alemania · inglés, alemán";
+"servers.tchncsWhere" = "Alemania";
 "servers.quassel" = "Un servidor abierto para conversar a diario, gratis para todos.";
-"servers.quasselWhere" = "Alemania, servidor en Finlandia · inglés";
+"servers.quasselWhere" = "Alemania, servidor en Finlandia";
 "servers.nopeChat" = "Lo mantiene el equipo de adminForge, que ofrece también otros servicios libres. Tiene puentes a otras aplicaciones de mensajería.";
-"servers.nopeChatWhere" = "Alemania · alemán";
+"servers.nopeChatWhere" = "Alemania";
 /* The last entry: running a server of your own. Opens a page about it in the browser. */
 "servers.ownTitle" = "Su propio servidor";
-"servers.ownAbout" = "Puede montar su propio servidor; así sus conversaciones quedan solo con usted. Necesitará un dominio y algo de tiempo.";
+"servers.ownAbout" = "Puede montar su propio servidor; así sus conversaciones quedan por completo en sus manos.";
 
 /* Under the "open to anyone" switch when making a room: what the room will be. Changes with the switch. */
 "roomList.new.willBeEncrypted" = "La sala estará cifrada";
@@ -1410,5 +1410,9 @@
 "message.transcript.nothingHeard" = "No se distinguen palabras.";
 "message.transcript.failed" = "No se ha podido transcribir. Inténtelo de nuevo.";
 
-"chats.threads" = "Hilos";
-"chats.threadsHelp" = "Las respuestas en hilos se agrupan bajo su mensaje como «3 respuestas». Si lo desactiva, aparecerán en el chat entre los demás mensajes, al volver a abrir el chat. Los chats personales no tienen hilos: allí las respuestas siempre están en el propio chat.";
+"chats.threads" = "Mostrar hilos";
+"chats.threadsHelp" = "Las respuestas en hilos se agrupan bajo su mensaje como «3 respuestas». Mientras no las oculte, también aparecen en el propio chat, entre los demás mensajes. Los cambios se aplican al volver a abrir el chat. Los chats personales no tienen hilos.";
+"chats.threadsAlways" = "Siempre";
+"chats.threadsLargeRooms" = "En chats de más de 100 personas";
+"chats.threadsNever" = "Nunca";
+"chats.threadsHideReplies" = "Ocultar respuestas del chat";

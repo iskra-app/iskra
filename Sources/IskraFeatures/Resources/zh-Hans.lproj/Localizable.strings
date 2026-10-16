@@ -1288,19 +1288,19 @@
 "servers.title" = "选择服务器";
 "servers.intro" = "您的账户位于一个服务器上，但可以和任何其他服务器上的人交流——就像电子邮件一样。下面的服务器都可以直接在 Iskra 中创建账户。";
 "servers.matrixOrg" = "最大的 Matrix 服务器，由开发 Matrix 本身的基金会运营。";
-/* Country · languages the server is run in. */
-"servers.matrixOrgWhere" = "英国 · 英语";
+/* Where the server is. */
+"servers.matrixOrgWhere" = "英国";
 /* A warning on matrix.org: it is blocked in Russia. */
 "servers.matrixOrgBlocked" = "在俄罗斯无法访问";
 "servers.tchncs" = "最早的社区服务器之一。运营者还提供其他自由服务。";
-"servers.tchncsWhere" = "德国 · 英语、德语";
+"servers.tchncsWhere" = "德国";
 "servers.quassel" = "面向日常交流的开放服务器，对所有人免费。";
-"servers.quasselWhere" = "德国，服务器位于芬兰 · 英语";
+"servers.quasselWhere" = "德国，服务器位于芬兰";
 "servers.nopeChat" = "由 adminForge 团队运营，他们也提供其他自由服务。支持与其他通讯软件的桥接。";
-"servers.nopeChatWhere" = "德国 · 德语";
+"servers.nopeChatWhere" = "德国";
 /* The last entry: running a server of your own. Opens a page about it in the browser. */
 "servers.ownTitle" = "自建服务器";
-"servers.ownAbout" = "您可以搭建自己的服务器——这样您的对话只保存在您自己那里。您需要一个域名和一点时间。";
+"servers.ownAbout" = "您可以搭建自己的服务器——这样您的对话就完全掌握在您自己手中。";
 
 /* Under the "open to anyone" switch when making a room: what the room will be. Changes with the switch. */
 "roomList.new.willBeEncrypted" = "该房间将加密";
@@ -1410,5 +1410,9 @@
 "message.transcript.nothingHeard" = "听不出任何字词。";
 "message.transcript.failed" = "没能转写。请再试一次。";
 
-"chats.threads" = "话题";
-"chats.threadsHelp" = "话题中的回复会以“3 条回复”的形式收在原消息下面。关闭后，重新打开聊天时，它们会和其他消息一起显示在聊天中。 私聊没有话题：回复始终显示在聊天里。";
+"chats.threads" = "显示话题";
+"chats.threadsHelp" = "话题中的回复会以“3 条回复”的形式收在原消息下面。只要不隐藏回复，它们也会和其他消息一起显示在聊天中。更改会在重新打开聊天时生效。私聊没有话题。";
+"chats.threadsAlways" = "始终";
+"chats.threadsLargeRooms" = "在超过 100 人的聊天中";
+"chats.threadsNever" = "从不";
+"chats.threadsHideReplies" = "在聊天中隐藏回复";

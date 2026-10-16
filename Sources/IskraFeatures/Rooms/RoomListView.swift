@@ -91,6 +91,37 @@ public struct RoomListView: View {
     @AppStorage("roomList.folder") private var folderID = ""
     @State private var isEditingFolders = false
 
+    /// Where the rows stand in their arrival from another folder: 0 is home, ±1 is a whole
+    /// `Theme.Size.folderSlide` to the side the new tab is on, and faded out.
+    ///
+    /// The rows move, not the list: offset the `List` itself and its background goes with it,
+    /// leaving a strip of window down one side. And they are not swapped by a transition, which
+    /// would hold two lists of rows on screen at once — the rebuild is the expensive part of a
+    /// switch (see `FolderTabs.shown`), and this costs nothing on top of it: the new rows are put
+    /// to the side in the same update that builds them, and slid home on the next frame.
+    @State private var folderArrival: CGFloat = 0
+
+    /// The tab strip's selection, set the way a tap sets it — with the rows sent off to the side
+    /// they will come back from.
+    private var folderSelection: Binding<String> {
+        Binding(get: { folderID }, set: { id in
+            guard id != folderID else { return }
+            let order = [""] + session.folders.folders.map(\.id)
+            let from = order.firstIndex(of: folderID) ?? 0
+            let to = order.firstIndex(of: id) ?? 0
+            var instant = Transaction()
+            instant.disablesAnimations = true
+            withTransaction(instant) {
+                folderArrival = to > from ? 1 : -1
+                folderID = id
+            }
+            Task { @MainActor in
+                await Task.yield()
+                withAnimation(Theme.Timing.folderSwitches) { folderArrival = 0 }
+            }
+        })
+    }
+
     /// The open folder, while it still exists — one deleted on another device falls back to "All".
     private var activeFolder: ChatFolder? {
         folderID.isEmpty ? nil : session.folders.folders.first { $0.id == folderID }
@@ -125,7 +156,7 @@ public struct RoomListView: View {
                 // a Mac is — see `sectionedRooms` and `isNativeSidebar`.
                 sectionedRooms
             } else {
-                if activeFolder == nil { archiveEntry }
+                if activeFolder == nil { archiveEntry.arrivingFromFolder(folderArrival) }
                 rooms
             }
         }
@@ -137,7 +168,7 @@ public struct RoomListView: View {
                 FolderTabs(folders: session.folders.folders,
                            rooms: session.roomList.rooms,
                            archived: session.roomList.archivedRooms,
-                           selection: $folderID,
+                           selection: folderSelection,
                            onEdit: { isEditingFolders = true })
             }
         }
@@ -229,7 +260,7 @@ public struct RoomListView: View {
         // the title's "Waiting for network…" is a word in the bar, and the strip is the thing that
         // cannot be missed.
         .offlineBanner()
-        .overlay { emptyState }
+        .overlay { emptyState.arrivingFromFolder(folderArrival) }
         // A real destination on this column's stack, not a view swapped in behind a
         // hand-rolled transition. That is what buys the stock push, the back button and
         // the swipe back — none of which is worth reimplementing, and all of which is
@@ -417,6 +448,7 @@ public struct RoomListView: View {
         let rooms = listedRooms
         ForEach(Array(rooms.enumerated()), id: \.element.id) { index, room in
             row(for: room)
+                .arrivingFromFolder(folderArrival)
                 .separatorsBetweenRowsOnly(isFirst: index == 0, isLast: index == rooms.count - 1)
         }
     }
@@ -1114,5 +1146,13 @@ extension View {
     func separatorsBetweenRowsOnly(isFirst: Bool, isLast: Bool) -> some View {
         listRowSeparator(isFirst ? .hidden : .automatic, edges: .top)
             .listRowSeparator(isLast ? .hidden : .automatic, edges: .bottom)
+    }
+}
+
+private extension View {
+    /// A row of the chat list part of the way in from another folder — see `folderArrival`.
+    func arrivingFromFolder(_ arrival: CGFloat) -> some View {
+        offset(x: arrival * Theme.Size.folderSlide)
+            .opacity(1 - abs(arrival))
     }
 }

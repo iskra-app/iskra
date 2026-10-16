@@ -1288,19 +1288,19 @@
 "servers.title" = "Server wählen";
 "servers.intro" = "Ihr Konto liegt auf einem Server, schreiben können Sie aber Menschen auf jedem anderen – wie bei E-Mail. Auf allen Servern unten können Sie direkt in Iskra ein Konto anlegen.";
 "servers.matrixOrg" = "Der größte Matrix-Server, betrieben von der Stiftung, die Matrix selbst entwickelt.";
-/* Country · languages the server is run in. */
-"servers.matrixOrgWhere" = "Vereinigtes Königreich · Englisch";
+/* Where the server is. */
+"servers.matrixOrgWhere" = "Vereinigtes Königreich";
 /* A warning on matrix.org: it is blocked in Russia. */
 "servers.matrixOrgBlocked" = "Aus Russland nicht erreichbar";
 "servers.tchncs" = "Einer der ältesten Community-Server. Der Betreiber stellt auch andere freie Dienste bereit.";
-"servers.tchncsWhere" = "Deutschland · Englisch, Deutsch";
+"servers.tchncsWhere" = "Deutschland";
 "servers.quassel" = "Ein offener Server für den Alltag, kostenlos für alle.";
-"servers.quasselWhere" = "Deutschland, Server in Finnland · Englisch";
+"servers.quasselWhere" = "Deutschland, Server in Finnland";
 "servers.nopeChat" = "Betrieben vom Team von adminForge, das auch andere freie Dienste anbietet. Mit Brücken zu anderen Messengern.";
-"servers.nopeChatWhere" = "Deutschland · Deutsch";
+"servers.nopeChatWhere" = "Deutschland";
 /* The last entry: running a server of your own. Opens a page about it in the browser. */
 "servers.ownTitle" = "Eigener Server";
-"servers.ownAbout" = "Sie können einen eigenen Server betreiben – dann liegen Ihre Unterhaltungen nur bei Ihnen. Sie brauchen dafür eine Domain und etwas Zeit.";
+"servers.ownAbout" = "Sie können einen eigenen Server betreiben – dann liegen Ihre Unterhaltungen ganz in Ihren Händen.";
 
 /* Under the "open to anyone" switch when making a room: what the room will be. Changes with the switch. */
 "roomList.new.willBeEncrypted" = "Der Raum wird verschlüsselt";
@@ -1410,5 +1410,9 @@
 "message.transcript.nothingHeard" = "Keine Worte zu verstehen.";
 "message.transcript.failed" = "Das Transkribieren hat nicht geklappt. Versuchen Sie es noch einmal.";
 
-"chats.threads" = "Threads";
-"chats.threadsHelp" = "Antworten in Threads werden unter ihrer Nachricht als „3 Antworten“ gesammelt. Ausgeschaltet erscheinen sie zwischen den anderen Nachrichten im Chat – sobald Sie den Chat erneut öffnen. Private Chats haben keine Threads: Antworten stehen dort immer im Chat selbst.";
+"chats.threads" = "Threads anzeigen";
+"chats.threadsHelp" = "Antworten in Threads werden unter ihrer Nachricht als „3 Antworten“ gesammelt. Solange Antworten nicht ausgeblendet sind, erscheinen sie auch im Chat selbst, zwischen den anderen Nachrichten. Änderungen gelten, sobald Sie den Chat erneut öffnen. Private Chats haben keine Threads.";
+"chats.threadsAlways" = "Immer";
+"chats.threadsLargeRooms" = "In Chats mit über 100 Personen";
+"chats.threadsNever" = "Nie";
+"chats.threadsHideReplies" = "Antworten im Chat ausblenden";
