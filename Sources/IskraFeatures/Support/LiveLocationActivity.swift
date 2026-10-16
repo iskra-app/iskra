@@ -70,6 +70,13 @@ enum LiveLocationActivity {
         let order = shares.sorted { $0.value > $1.value }.map(\.key)
         let rooms = order.compactMap { id in session.roomList.rooms.first { $0.id == id } }
         let first = rooms.first
+        // The lock screen is for anybody holding the phone. With the app lock on, the widget shows
+        // nobody's name or face, and neither does this: it says a share is running and when it
+        // ends, which the blue pill says anyway.
+        if AppLock.isEnabled(defaults: ChatDirectory.sharedDefaults) {
+            return .init(chats: [], faceFile: nil, avatarSeed: "", until: until,
+                         hasSentPoint: !session.liveLocation.roomsWithPoints.isDisjoint(with: order))
+        }
         return .init(chats: rooms.map(\.name),
                      faceFile: session.chatFaces.file(for: first?.avatarURL),
                      avatarSeed: first?.avatarSeed ?? order.first ?? "",

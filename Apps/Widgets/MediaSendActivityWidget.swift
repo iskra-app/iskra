@@ -21,6 +21,7 @@ struct MediaSendActivityWidget: Widget {
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     WidgetFace(file: WidgetFace.file(named: attributes.faceFile), seed: attributes.avatarSeed,
+                               name: attributes.roomName,
                                size: Theme.Size.activityFace)
                 }
                 DynamicIslandExpandedRegion(.center) {
@@ -69,6 +70,7 @@ private struct MediaSendBanner: View {
     var body: some View {
         HStack(spacing: Theme.Spacing.normal) {
             WidgetFace(file: WidgetFace.file(named: attributes.faceFile), seed: attributes.avatarSeed,
+                       name: attributes.roomName,
                        size: Theme.Size.activityFace)
             VStack(alignment: .leading, spacing: Theme.Spacing.close) {
                 MediaSendTitle(attributes: attributes, state: state)
@@ -87,10 +89,12 @@ private struct MediaSendTitle: View {
             Text(MediaSendStyle.title(for: attributes.what))
                 .font(.headline)
                 .lineLimit(1)
-            Text(verbatim: attributes.roomName)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
+            if !attributes.roomName.isEmpty {
+                Text(verbatim: attributes.roomName)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

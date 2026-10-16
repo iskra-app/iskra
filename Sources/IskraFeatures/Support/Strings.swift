@@ -1749,6 +1749,9 @@ public enum Strings {
         public static let shareActive = LocalizedStringResource("chats.shareActive", bundle: bundle)
         public static let shareAll = LocalizedStringResource("chats.shareAll", bundle: bundle)
         public static let shareHelp = LocalizedStringResource("chats.shareHelp", bundle: bundle)
+        /// Whose chats the favourites widget shows when nothing was chosen in it.
+        public static let widgetSection = LocalizedStringResource("chats.widgetSection", bundle: bundle)
+        public static let widgetHelp = LocalizedStringResource("chats.widgetHelp", bundle: bundle)
         public static let namesAccount = LocalizedStringResource("chats.namesAccount", bundle: bundle)
         public static let threads = LocalizedStringResource("chats.threads", bundle: bundle)
         public static let threadsHelp = LocalizedStringResource("chats.threadsHelp", bundle: bundle)

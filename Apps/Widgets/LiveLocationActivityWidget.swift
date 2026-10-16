@@ -21,6 +21,7 @@ struct LiveLocationActivityWidget: Widget {
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     WidgetFace(file: WidgetFace.file(named: state.faceFile), seed: state.avatarSeed,
+                               name: state.chats.first ?? "",
                                size: Theme.Size.activityFace)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
@@ -60,6 +61,7 @@ private struct LiveLocationBanner: View {
     var body: some View {
         HStack(spacing: Theme.Spacing.normal) {
             WidgetFace(file: WidgetFace.file(named: state.faceFile), seed: state.avatarSeed,
+                       name: state.chats.first ?? "",
                        size: Theme.Size.activityFace)
             LiveLocationTitle(state: state)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -91,7 +93,7 @@ private struct LiveLocationTitle: View {
                 Text(CoreStrings.LiveActivity.locationFinding)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-            } else {
+            } else if !state.chats.isEmpty {
                 Text(verbatim: state.chats.joined(separator: ", "))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)

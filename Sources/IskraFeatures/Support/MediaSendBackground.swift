@@ -113,7 +113,7 @@ final class MediaSendBackground {
 
         let request = BGContinuedProcessingTaskRequest(identifier: identifier,
                                                        title: Self.title(of: first.what),
-                                                       subtitle: first.roomName)
+                                                       subtitle: Self.subtitle(of: first))
         // Run now or not at all: a task queued behind others would start after the person has
         // already watched the upload stall.
         request.strategy = .fail
@@ -158,7 +158,7 @@ final class MediaSendBackground {
         let progress = active.map(\.progress).reduce(0, +) / Double(active.count)
         task.progress.completedUnitCount = Int64(progress * Double(Self.units))
         if let first = active.first {
-            task.updateTitle(Self.title(of: first.what), subtitle: first.roomName)
+            task.updateTitle(Self.title(of: first.what), subtitle: Self.subtitle(of: first))
         }
     }
 
@@ -196,9 +196,14 @@ final class MediaSendBackground {
                     Task { await activity.update(ActivityContent(state: state, staleDate: nil)) }
                 }
             } else if !job.isFinished, ActivityAuthorizationInfo().areActivitiesEnabled {
+                // With the app lock on, no name and no face on a screen anybody can see — the
+                // widget's rule. What is going up, and how far, is still said.
+                let hidden = Self.isLocked
                 let attributes = MediaSendAttributes(roomID: job.roomID, accountID: account,
-                                                     roomName: job.roomName, faceFile: job.faceFile,
-                                                     avatarSeed: job.avatarSeed, what: job.what)
+                                                     roomName: hidden ? "" : job.roomName,
+                                                     faceFile: hidden ? nil : job.faceFile,
+                                                     avatarSeed: hidden ? "" : job.avatarSeed,
+                                                     what: job.what)
                 do {
                     activities[job.id] = try Activity.request(attributes: attributes,
                                                               content: ActivityContent(state: state, staleDate: nil),
@@ -247,6 +252,14 @@ final class MediaSendBackground {
                                dismissalPolicy: .after(.now.addingTimeInterval(linger)))
         }
     }
+
+    /// The chat's name under the title — unless the app lock is on, and then nothing: the system's
+    /// indicator is on the lock screen too.
+    static func subtitle(of job: MediaSendJobs.Job) -> String {
+        isLocked ? "" : job.roomName
+    }
+
+    private static var isLocked: Bool { AppLock.isEnabled(defaults: ChatDirectory.sharedDefaults) }
 
     static func title(of what: MediaSendJobs.What) -> String {
         switch what {

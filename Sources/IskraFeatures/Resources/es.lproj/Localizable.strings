@@ -1186,6 +1186,8 @@
 "chats.shareActive" = "Activa";
 "chats.shareAll" = "Todas";
 "chats.shareHelp" = "De qué cuenta mostrar los chats cuando comparte algo desde otra app. «Activa» es la que está abierta ahora en Iskra.";
+"chats.widgetSection" = "Widget «Chats favoritos»";
+"chats.widgetHelp" = "De qué cuenta mostrar los chats en el widget cuando no se ha elegido ninguno en él. «Activa» es la que está abierta ahora en Iskra.";
 
 /* Settings → Privacy. */
 "privacy.title" = "Privacidad";

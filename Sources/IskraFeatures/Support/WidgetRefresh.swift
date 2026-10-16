@@ -13,11 +13,11 @@ import IskraCore
 enum WidgetRefresh {
     private static var last: String?
 
-    static func directoryChanged(activeAccount: String?) {
+    static func directoryChanged() {
         let defaults = ChatDirectory.sharedDefaults
         let fingerprint = WidgetChats.fingerprint(ChatDirectory.directory(from: defaults),
                                                   chosen: Array(WidgetChats.chosen(in: defaults)),
-                                                  account: activeAccount,
+                                                  account: ChatDirectory.widgetAccountID(in: defaults),
                                                   locked: AppLock.isEnabled(defaults: defaults))
         guard fingerprint != last else { return }
         last = fingerprint

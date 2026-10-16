@@ -198,4 +198,34 @@ struct DirectoryFacesTests {
         #expect(request.accountID == "one")
         #expect(ChatDirectory.OpenRequest(url: AppEnvironment.shareHandoffURL) == nil)
     }
+
+    @Test("the widget's account: the active one, a chosen one, or everybody — and falling back")
+    func widgetAccount() throws {
+        let defaults = try freshDefaults("widgetAccount")
+        ChatDirectory.writeDirectory(entries, to: defaults)
+        ChatDirectory.recordActiveAccount("one", in: defaults)
+
+        #expect(ChatDirectory.widgetAccountID(in: defaults) == "one")
+        ChatDirectory.setWidgetAccount(.account("two"), in: defaults)
+        #expect(ChatDirectory.widgetAccountID(in: defaults) == "two")
+        ChatDirectory.setWidgetAccount(.all, in: defaults)
+        #expect(ChatDirectory.widgetAccountID(in: defaults) == nil)
+        // An account that has since signed out: the active one instead of an empty widget.
+        ChatDirectory.setWidgetAccount(.account("gone"), in: defaults)
+        #expect(ChatDirectory.widgetAccountID(in: defaults) == "one")
+    }
+
+    @Test("asking for a chat is announced, so the app looks even if it came to the front first")
+    func openIsAnnounced() async throws {
+        let defaults = try freshDefaults("announce")
+        let heard = Task {
+            for await _ in OpenRequestSignal.announcements() { return true }
+            return false
+        }
+        // The observer is registered as the stream starts; give it a moment, then ask.
+        try await Task.sleep(for: .milliseconds(100))
+        ChatDirectory.requestOpen(roomID: "!room", in: defaults)
+        let result = try await withTimeout(.seconds(2)) { await heard.value }
+        #expect(result)
+    }
 }
