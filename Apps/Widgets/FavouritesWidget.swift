@@ -164,6 +164,8 @@ struct FavouritesView: View {
                 .truncationMode(.tail)
         }
         .frame(maxWidth: .infinity)
+        // The whole cell is the target — face, name and the space between — whatever is drawn in it.
+        .contentShape(.rect)
     }
 
     private func message(_ text: LocalizedStringResource, symbol: String) -> some View {
