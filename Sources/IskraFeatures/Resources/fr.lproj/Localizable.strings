@@ -212,7 +212,6 @@
 
 "connection.status" = "État";
 "connection.statusDirect" = "Directe";
-"connection.statusLocal" = "Via la couche locale";
 "connection.statusBridged" = "Via le pont, relais : %lld";
 "connection.statusFailed" = "Impossible d’activer";
 "connection.pending" = "Les nouveaux réglages s’appliquent dès que vous quittez cet écran : l’app se reconnecte d’elle-même.";

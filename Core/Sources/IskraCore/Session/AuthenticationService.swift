@@ -86,29 +86,43 @@ public actor AuthenticationService {
     let environment: AppEnvironment
     private let sessionStore: SessionStore
 
-    /// The local listener the SDK is pointed at while the bridge switch is on. Owned here because
-    /// it has to outlive `build()` by the whole life of the session: it *is* the connection.
+    /// The bridge, while the switch is on and an address is filled in: the `CONNECT` listener the
+    /// SDK is given as its proxy, and the nostr streams behind it. Owned here because it has to
+    /// outlive `build()` by the whole life of the session: it *is* the connection.
     ///
-    /// One per homeserver, and not one for the app. Adding an account signs in while another is
-    /// open, and a single listener meant the new sign-in stopped the proxy the open account was
-    /// talking through.
-    private var tunnels: [String: Tunnel] = [:]
+    /// One for the app, not one per account. A proxy carries a connection to whichever host it is
+    /// asked for, so every account — on whichever homeserver — goes through the same one, and
+    /// adding an account while another is open reuses it rather than pulling it out from under the
+    /// first.
+    private var tunnel: Tunnel?
 
-    /// One listener, what stands behind it, and the settings it was raised with — so that a
-    /// listener raised before the bridge's address changed is replaced rather than reused.
+    /// The bridge, and the settings it was raised with — so that a bridge raised before its address
+    /// changed is replaced rather than reused.
     private struct Tunnel {
-        let proxy: LocalHTTPProxy
-        /// The nostr side, when there is one. Held beside the listener because the listener owns
-        /// it as an `HTTPUpstream` and cannot be asked the things only this knows — how many relays
-        /// are up, and what this device's key is.
-        let bridge: NostrTunnelUpstream?
-        let bridgeKey: Data?
+        let connect: LocalConnectProxy
+        let streams: NostrStreamTunnel
+        let bridgeKey: Data
         let relays: [URL]
     }
 
-    /// The bridge of the tunnel raised or reused last — the one the account on screen is using,
-    /// and so the one the settings screen reports on.
-    private var bridgeUpstream: NostrTunnelUpstream?
+    /// Where a client is pointed: the address to give `ClientBuilder`, and the proxy to send it
+    /// through, when there is one.
+    struct ClientRoute: Sendable {
+        var homeserver: String
+        /// `http://iskra:<secret>@127.0.0.1:<port>` — `LocalConnectProxy`.
+        var proxy: String?
+    }
+
+    /// For tests: every client built here goes through this proxy and trusts these roots, whatever
+    /// the bridge settings say. How `BlindRouteTests` proves that the SDK sends *everything* through
+    /// a `CONNECT` proxy — sign-in, sliding sync, media, the notification extension's client —
+    /// against a homeserver with a certificate no system trusts.
+    struct FixedRoute: Sendable {
+        var proxy: String
+        var rootCertificates: [Data]
+    }
+
+    private let fixedRoute: FixedRoute?
     private var tunnelState: TunnelStatus = .off
 
     /// The client we are mid-sign-in with. Discarded if the flow is abandoned.
@@ -119,10 +133,15 @@ public actor AuthenticationService {
 
     public init(environment: AppEnvironment = .default,
                 sessionStore: SessionStore? = nil) {
+        self.init(environment: environment, sessionStore: sessionStore, fixedRoute: nil)
+    }
+
+    init(environment: AppEnvironment = .default, sessionStore: SessionStore? = nil, fixedRoute: FixedRoute?) {
         let store = sessionStore ?? SessionStore(environment: environment)
 
         self.environment = environment
         self.sessionStore = store
+        self.fixedRoute = fixedRoute
     }
 
     // MARK: - Restoring
@@ -219,14 +238,15 @@ public actor AuthenticationService {
         // network while pointing at itself. The user ID still carries the server name, so the
         // record is recoverable; it is recovered by looking the server up again, exactly as
         // signing in does, and then written back correctly so this happens once.
-        let poisoned = TunnelSettings.isLoopback(stored.homeserverURL)
+        let poisoned = TunnelSettings.isOurListener(stored.homeserverURL)
         if poisoned {
             Log.session.error("the stored homeserver is a dead local port; looking the server up again")
         }
         guard let entry = poisoned ? stored.serverName : stored.homeserverURL else {
             throw AuthenticationError.homeserverNotFound
         }
-        let homeserver = try await route(to: entry)
+        let route = try await route(to: entry)
+        let homeserver = route.homeserver
 
         let client: Client
         do {
@@ -237,9 +257,10 @@ public actor AuthenticationService {
                 // rooms out of the local store. The bound stays anyway — a call that *should* not
                 // reach the network is not a call that may hold the launch screen forever if it
                 // does. The repair above is the one case that deliberately does look one up.
+                let routed = self.through(route, builder)
                 let configured = poisoned
-                    ? builder.serverNameOrHomeserverUrl(serverNameOrUrl: homeserver)
-                    : builder.homeserverUrl(url: homeserver)
+                    ? routed.serverNameOrHomeserverUrl(serverNameOrUrl: homeserver)
+                    : routed.homeserverUrl(url: homeserver)
                 let client = try await configured.build()
 
                 // Whatever the builder settled on, tokens and all. Handing `restoreSession` the
@@ -362,12 +383,14 @@ public actor AuthenticationService {
         // that accepts the connection and then says nothing — otherwise leaves the
         // "Continue" button spinning with no way out and nothing on screen to explain
         // it. A wrong answer the user can act on beats a spinner that never stops.
-        let entryPoint = try await route(to: address)
+        let route = try await route(to: address)
+        let entryPoint = route.homeserver
+        let routed = through(route, builder)
 
         let client: Client
         do {
             client = try await withTimeout(Self.lookupTimeout) {
-                try await builder
+                try await routed
                     .serverNameOrHomeserverUrl(serverNameOrUrl: entryPoint)
                     .build()
             }
@@ -681,8 +704,23 @@ public actor AuthenticationService {
     /// The relay count is asked for rather than remembered: relays come and go on their own, and a
     /// number written down when the tunnel was raised would be a number from another hour.
     public func tunnelStatus() async -> TunnelStatus {
-        guard case .bridged = tunnelState, let bridge = bridgeUpstream else { return tunnelState }
-        return .bridged(relays: await bridge.connectedRelays())
+        guard case .bridged = tunnelState, let tunnel else { return tunnelState }
+        return .bridged(relays: await tunnel.streams.connectedRelays())
+    }
+
+    /// The builder, sent through the route's proxy if it has one.
+    ///
+    /// The proxy is the *only* difference the bridge makes to a client: the address stays the
+    /// homeserver's, TLS stays the SDK's, and the certificate is checked against the real one.
+    /// No `disableSslVerification`, no roots of our own — except the tests', which have a
+    /// homeserver nobody else trusts.
+    private nonisolated func through(_ route: ClientRoute, _ builder: ClientBuilder) -> ClientBuilder {
+        var builder = builder
+        if let proxy = route.proxy { builder = builder.proxy(url: proxy) }
+        if let roots = fixedRoute?.rootCertificates, !roots.isEmpty {
+            builder = builder.addRootCertificates(certificates: roots)
+        }
+        return builder
     }
 
     /// This device's nostr public key, for the settings screen to show: it is what somebody
@@ -691,89 +729,60 @@ public actor AuthenticationService {
         try? TunnelIdentity(environment: environment).keypair().npub
     }
 
-    /// The address to hand the SDK, given the bridge switch.
+    /// Where to point the SDK, given the bridge switch.
     ///
-    /// With the switch off this is the homeserver, unchanged. With it on, the local listener is
-    /// raised and its loopback address is returned instead, so every call the SDK makes arrives
-    /// there first; the homeserver the user actually wants becomes the listener's upstream.
+    /// The address is always the homeserver's own. What changes is whether a proxy stands beside
+    /// it, and that depends on one thing — whether a bridge address has been filled in:
     ///
-    /// What is on the far side of that listener depends on one thing — whether a bridge address
-    /// has been filled in:
-    ///
-    /// - **With one**, the far side is the nostr tunnel, and a failure here **throws**. There is
-    ///   no falling back to a direct connection: the switch is now a decision about who may see
-    ///   this traffic, and quietly going direct would answer that question behind the user's back.
-    /// - **Without one**, there is nothing to fall back *from*. The listener comes up and forwards
-    ///   straight to the homeserver, exactly as a direct connection would, and the status says so
-    ///   in those words.
-    private func route(to address: String) async throws -> String {
+    /// - **With one**, the bridge is raised and its `CONNECT` listener is the proxy, and a failure
+    ///   here **throws**. There is no falling back to a direct connection: the switch is a decision
+    ///   about who may see this traffic, and quietly going direct would answer that question behind
+    ///   the user's back. Nor is there anything older to fall back *to*: the bridge's first
+    ///   protocol, which read requests in order to repeat them, is gone from both sides.
+    /// - **Without one**, there is nothing in the way. No proxy, and the status says `.off`.
+    func route(to address: String) async throws -> ClientRoute {
+        if let fixedRoute { return ClientRoute(homeserver: address, proxy: fixedRoute.proxy) }
         guard TunnelSettings.isEnabled() else {
-            await stopTunnels()
-            return address
+            await stopTunnel()
+            return ClientRoute(homeserver: address)
         }
         // Something is written in the bridge field and it is not a key — a mistyped `npub`, a
         // pasted `nsec`. That is a bridge the user meant to use and cannot, and it has to be a
-        // refusal: read as "no address", it went straight to the homeserver with the switch on.
-        let bridgeKey = TunnelSettings.bridgeKey()
-        if bridgeKey == nil, TunnelSettings.hasAddress() {
-            tunnelState = .failed("bad bridge address")
-            throw AuthenticationError.bridgeUnavailable(NostrTunnelUpstream.Failure.bridgeAddressUnusable)
-        }
-        guard let upstreamURL = TunnelSettings.upstreamURL(from: address) else {
-            tunnelState = .failed("bad address")
-            if bridgeKey != nil {
-                throw AuthenticationError.bridgeUnavailable(NostrTunnelUpstream.Failure.bridgeAddressUnusable)
+        // refusal: read as "no address", it would go straight to the homeserver with the switch on.
+        guard let bridgeKey = TunnelSettings.bridgeKey() else {
+            await stopTunnel()
+            if TunnelSettings.hasAddress() {
+                tunnelState = .failed("bad bridge address")
+                throw AuthenticationError.bridgeUnavailable(NostrStreamTunnel.Failure.bridgeAddressUnusable)
             }
-            return address
+            return ClientRoute(homeserver: address)
         }
 
-        // The listener this homeserver already has, if one is up and was raised with the settings
-        // in force now: another account on the same server is talking through it, and a new one
-        // would pull it out from under them.
-        let key = upstreamURL.absoluteString
         let relays = TunnelSettings.relays()
-        if let existing = tunnels[key] {
-            if existing.bridgeKey == bridgeKey, existing.relays == relays, let port = await existing.proxy.port {
-                bridgeUpstream = existing.bridge
-                if let bridge = existing.bridge {
-                    tunnelState = .bridged(relays: await bridge.connectedRelays())
-                } else {
-                    tunnelState = .routingLocally(port: port)
-                }
-                return "http://127.0.0.1:\(port)"
-            }
-            await stopTunnel(key)
+        if let tunnel, tunnel.bridgeKey == bridgeKey, tunnel.relays == relays,
+           let proxy = await tunnel.connect.proxyURL {
+            tunnelState = .bridged(relays: await tunnel.streams.connectedRelays())
+            return ClientRoute(homeserver: address, proxy: proxy)
         }
+        await stopTunnel()
 
-        guard let bridgeKey else {
-            return await routeLocally(to: upstreamURL, key: key, relays: relays, fallingBackTo: address)
-        }
-
-        var raised: NostrTunnelUpstream?
+        var raised: NostrStreamTunnel?
         do {
-            let bridge = try NostrTunnelUpstream(
-                bridgeKey: bridgeKey,
-                relays: relays,
-                keys: try TunnelIdentity(environment: environment).keypair(),
-                homeserver: upstreamURL)
-            raised = bridge
+            let streams = try NostrStreamTunnel(bridgeKey: bridgeKey, relays: relays,
+                                                keys: try TunnelIdentity(environment: environment).keypair())
+            raised = streams
             // Before the listener, so that the websockets are already opening while the SDK is
-            // still being built: the first request through a cold tunnel is otherwise the one that
-            // waits for three TLS handshakes.
-            await bridge.start()
+            // still being built: the first connection through a cold tunnel is otherwise the one
+            // that waits for three TLS handshakes to relays.
+            await streams.start()
+            let connect = LocalConnectProxy(upstream: streams)
+            try await connect.start()
+            guard let proxy = await connect.proxyURL else { throw LocalHTTPProxy.ProxyError.notStarted }
 
-            let cell = PortCell()
-            let proxy = LocalHTTPProxy(upstream: bridge,
-                                       onDiscovery: { TunnelSettings.listenerStandsIn(for: $0, port: cell.port) })
-            let port = try await proxy.start()
-            cell.port = port
-
-            tunnels[key] = Tunnel(proxy: proxy, bridge: bridge, bridgeKey: bridgeKey, relays: relays)
-            bridgeUpstream = bridge
-            tunnelState = .bridged(relays: await bridge.connectedRelays())
-            TunnelSettings.listenerStandsIn(for: upstreamURL, port: port)
+            tunnel = Tunnel(connect: connect, streams: streams, bridgeKey: bridgeKey, relays: relays)
+            tunnelState = .bridged(relays: await streams.connectedRelays())
             Log.session.info("traffic is going through the bridge")
-            return "http://127.0.0.1:\(port)"
+            return ClientRoute(homeserver: address, proxy: proxy)
         } catch {
             await raised?.stop()
             tunnelState = .failed(String(describing: error))
@@ -781,70 +790,43 @@ public actor AuthenticationService {
         }
     }
 
-    /// The listener with nothing but a direct connection behind it.
-    ///
-    /// Not a tunnel and never described as one. It is what the switch did before there was a
-    /// client side to it, and it stays because it is the honest answer to "switch on, no address":
-    /// it also proves the listener itself is working, which is worth something when the next step
-    /// is to point it at a bridge.
-    private func routeLocally(to upstream: URL, key: String, relays: [URL],
-                              fallingBackTo address: String) async -> String {
-        do {
-            let cell = PortCell()
-            let proxy = LocalHTTPProxy(upstream: DirectUpstream(homeserver: upstream),
-                                       onDiscovery: { TunnelSettings.listenerStandsIn(for: $0, port: cell.port) })
-            let port = try await proxy.start()
-            cell.port = port
-            tunnels[key] = Tunnel(proxy: proxy, bridge: nil, bridgeKey: nil, relays: relays)
-            bridgeUpstream = nil
-            tunnelState = .routingLocally(port: port)
-            // Said before a single request goes through, and said again by `onDiscovery` once
-            // `.well-known` names the real host. Nothing may write a loopback address into the
-            // Keychain, and this is what it gets written down as instead.
-            TunnelSettings.listenerStandsIn(for: upstream, port: port)
-            return "http://127.0.0.1:\(port)"
-        } catch {
-            tunnelState = .failed(String(describing: error))
-            return address
-        }
-    }
-
-    /// Back from the background: every listener raised again if iOS took it, and every bridge's
-    /// relays checked, before the SDK is allowed to find out the hard way.
+    /// Back from the background: the listener raised again if iOS took it, and the relays checked,
+    /// before the SDK is allowed to find out the hard way.
     ///
     /// Both halves were broken by a trip into a pocket, and both looked the same — "no network" —
     /// while the bridge on the far side answered perfectly well. The listener's socket is reclaimed
-    /// by the system while the app is suspended (see `LocalHTTPProxy.ensureListening`); the relays'
-    /// websockets die with nobody told (see `NostrRelayPool.wake`).
+    /// by the system while the app is suspended (see `LoopbackListener`); the relays' websockets
+    /// die with nobody told (see `NostrRelayPool.wake`).
     public func wakeTunnels() async {
-        for tunnel in tunnels.values {
-            await tunnel.proxy.ensureListening()
-            await tunnel.bridge?.wake()
-        }
+        await tunnel?.connect.ensureListening()
+        await tunnel?.streams.wake()
     }
 
-    /// Sends one request of the app's own to the homeserver *the way the SDK reaches it* — see
-    /// `LocalHTTPProxy.forward`, and `AccountDevices`, which is what needs it.
+    /// Sends one request of the app's own to the homeserver *the way the SDK reaches it* — for
+    /// `AccountDevices`, which needs a call the SDK does not export.
     ///
-    /// `homeserver` is the address the client was built with. A loopback address is one of our
-    /// listeners, and the request goes to whatever stands behind it — the bridge, or a direct
-    /// connection when the switch is on with no address. An address with no listener of ours behind
-    /// it is **refused**, never tried directly: that would be the "quiet direct connection" this
-    /// file is careful never to make (see the rule on `bridgeUnavailable`). Anything else is the
-    /// homeserver itself, which is where the SDK is going too.
+    /// `homeserver` is the address the client was built with. A loopback address is one of the
+    /// in-app servers (the demo, the sign-in server), and the request goes to it in process. With
+    /// the bridge up, anything else goes through the bridge's `CONNECT` listener — `DirectUpstream`
+    /// alone would be the very direct connection the bridge is there to avoid.
     public func send(_ request: ProxiedRequest, toHomeserver homeserver: String) async throws -> ProxiedResponse {
         guard let url = URL(string: homeserver) else { throw UpstreamError.badTarget(homeserver) }
 
-        if url.host() == "127.0.0.1" || url.host() == "localhost" {
-            for tunnel in tunnels.values where await tunnel.proxy.port == url.port.map(UInt16.init) {
-                return try await tunnel.proxy.forward(request)
-            }
+        if TunnelSettings.isLoopback(homeserver) {
             if let proxy = Self.standaloneListeners.withLock({ $0[url.port ?? 0] }) {
                 return try await proxy.forward(request)
             }
             throw UpstreamError.badTarget(homeserver)
         }
-
+        if let tunnel {
+            return try await DirectUpstream(homeserver: url, session: await tunnel.connect.urlSession())
+                .send(request)
+        }
+        if TunnelSettings.isEnabled(), TunnelSettings.hasAddress() {
+            // The switch is on and there is no bridge to send it through: refused, as the SDK's
+            // own requests are, rather than sent around it.
+            throw AuthenticationError.bridgeUnavailable(NostrStreamTunnel.Failure.bridgeAddressUnusable)
+        }
         return try await DirectUpstream(homeserver: url).send(request)
     }
 
@@ -858,28 +840,13 @@ public actor AuthenticationService {
 
     private static let standaloneListeners = Mutex<[Int: LocalHTTPProxy]>([:])
 
-    /// One homeserver's listener, and its bridge with it.
-    private func stopTunnel(_ key: String) async {
-        guard let tunnel = tunnels.removeValue(forKey: key) else { return }
-        // Read before `stop()`, which forgets it: afterwards this was always nil, and the entry
-        // saying which homeserver that port stood in for was never taken down.
-        let port = await tunnel.proxy.port
-        await tunnel.proxy.stop()
-        await tunnel.bridge?.stop()
-        if let port {
-            TunnelSettings.listenerStoppedStandingIn(port: port)
+    private func stopTunnel() async {
+        if let tunnel {
+            await tunnel.connect.stop()
+            await tunnel.streams.stop()
         }
-    }
-
-    private func stopTunnels() async {
-        for tunnel in tunnels.values {
-            await tunnel.proxy.stop()
-            await tunnel.bridge?.stop()
-        }
-        tunnels = [:]
-        bridgeUpstream = nil
+        tunnel = nil
         tunnelState = .off
-        TunnelSettings.listenerStoppedStandingIn()
     }
 
     /// The one place a `ClientBuilder` is configured, so the security-relevant
@@ -1002,15 +969,5 @@ public actor AuthenticationService {
         #else
         String(core: CoreStrings.Device.generic)
         #endif
-    }
-}
-
-/// The port a listener was given, for the discovery callback that is written before it is known.
-private final class PortCell: Sendable {
-    private let value = Mutex<UInt16?>(nil)
-
-    var port: UInt16? {
-        get { value.withLock { $0 } }
-        set { value.withLock { $0 = newValue } }
     }
 }

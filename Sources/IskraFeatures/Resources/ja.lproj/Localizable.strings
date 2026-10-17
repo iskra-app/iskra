@@ -212,7 +212,6 @@
 
 "connection.status" = "状態";
 "connection.statusDirect" = "直接";
-"connection.statusLocal" = "ローカル層経由";
 "connection.statusBridged" = "ブリッジ経由、リレー: %lld";
 "connection.statusFailed" = "オンにできませんでした";
 "connection.pending" = "この画面を離れると新しい設定が有効になります。アプリが自動で再接続します。";

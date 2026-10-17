@@ -210,7 +210,6 @@
 
 "connection.status" = "Состояние";
 "connection.statusDirect" = "Напрямую";
-"connection.statusLocal" = "Через локальный слой";
 "connection.statusBridged" = "Через мост, relay: %lld";
 "connection.statusFailed" = "Не удалось включить";
 "connection.pending" = "Новые настройки заработают, как только вы уйдёте с этого экрана: приложение переподключится само.";

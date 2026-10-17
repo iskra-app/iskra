@@ -212,7 +212,6 @@
 
 "connection.status" = "Status";
 "connection.statusDirect" = "Direct";
-"connection.statusLocal" = "Through the local layer";
 "connection.statusBridged" = "Through the bridge, relays: %lld";
 "connection.statusFailed" = "Could not be turned on";
 "connection.pending" = "The new settings take effect as soon as you leave this screen: the app reconnects by itself.";

@@ -5,15 +5,18 @@ import Testing
 
 /// The one test that needs a bridge, a relay and the internet — so it is off unless asked for.
 ///
-/// Everything else about the tunnel is pinned without a network: the encryption against the NIP-44
-/// vector file, the envelope against the spelling serde expects, the event against its own hash.
-/// What none of that can prove is that the two implementations meet. This does, against a bridge
-/// running on this machine:
+/// Everything else about the bridge is pinned without a network: the encryption against the NIP-44
+/// vector file, the frames against the text serde writes, the window against the questions
+/// `stream.rs` is asked, the SDK against a stand-in bridge in process. What none of that can prove
+/// is that the two implementations meet. This does, against a bridge running on this machine:
 ///
 /// ```sh
 /// cd Bridge && ./run-local.sh            # prints `bridge is listening pubkey=…`
 /// ISKRA_BRIDGE_PUBKEY=<that key> swift test --filter LiveBridgeTests
 /// ```
+///
+/// The bridge has to let this device through to matrix.org: `ALLOWED_UPSTREAMS` covering
+/// `https://matrix.org` and `https://matrix-client.matrix.org`, or `*`.
 ///
 /// Same bargain as the Rust side's `#[ignore]`d stress suite: `swift test` stays offline and fast,
 /// and the live check is one command away when it is wanted.
@@ -33,47 +36,56 @@ struct LiveBridgeTests {
         return parsed.isEmpty ? TunnelSettings.defaultRelays.compactMap(URL.init(string:)) : parsed
     }
 
-    /// A tunnel of its own per test, with a key of its own: the Keychain is not open to an
-    /// unsigned test binary, and a shared key would make the rate limit a shared budget.
-    private func tunnel(limit: Duration = .seconds(30)) throws -> NostrTunnelUpstream {
-        try NostrTunnelUpstream(bridgeKey: Self.bridgeKey,
-                                relays: Self.relays,
-                                keys: try TunnelIdentity(secrets: InMemorySecrets()).keypair(),
-                                homeserver: URL(string: "https://matrix-client.matrix.org")!,
-                                limit: limit)
+    static let api = URL(string: "https://matrix-client.matrix.org")!
+
+    /// A bridge of its own per test, with a key of its own: the Keychain is not open to an unsigned
+    /// test binary, and a shared key would make the bridge's per-key ceilings a shared budget.
+    private struct Rig {
+        let streams: NostrStreamTunnel
+        let connect: LocalConnectProxy
+
+        func stop() async {
+            await connect.stop()
+            await streams.stop()
+        }
+
+        func get(_ path: String, timeout: Double = 30) async throws -> (Int, Data) {
+            var request = URLRequest(url: URL(string: path, relativeTo: LiveBridgeTests.api)!.absoluteURL)
+            request.timeoutInterval = timeout
+            let (data, response) = try await connect.urlSession().data(for: request)
+            return ((response as? HTTPURLResponse)?.statusCode ?? 0, data)
+        }
     }
 
-    /// The whole journey: request → NIP-44 → relay → bridge → matrix.org → back.
-    @Test func aRequestGoesOutThroughNostrAndComesBackWithMatrixInIt() async throws {
-        let bridge = try tunnel()
-
-        await bridge.start()
-        defer { Task { await bridge.stop() } }
-
-        let response = try await bridge.send(ProxiedRequest(method: "GET",
-                                                            target: "/_matrix/client/versions"))
-        #expect(response.status == 200)
-        #expect(String(bytes: response.body, encoding: .utf8)?.contains("\"versions\"") == true)
+    private func rig() async throws -> Rig {
+        let streams = try NostrStreamTunnel(bridgeKey: Self.bridgeKey, relays: Self.relays,
+                                            keys: try TunnelIdentity(secrets: InMemorySecrets()).keypair())
+        await streams.start()
+        let connect = LocalConnectProxy(upstream: streams)
+        try await connect.start()
+        return Rig(streams: streams, connect: connect)
     }
 
-    /// Two at once, which is where a transport with one reader per request comes apart: each
-    /// answer has to reach the one caller waiting for it and nobody else.
+    /// The whole journey: TLS → stream frames → NIP-44 → relay → bridge → matrix.org → back.
+    @Test func aConnectionGoesOutThroughNostrAndComesBackWithMatrixInIt() async throws {
+        let rig = try await rig()
+        defer { Task { await rig.stop() } }
+
+        let (status, body) = try await rig.get("/_matrix/client/versions")
+        #expect(status == 200)
+        #expect(String(bytes: body, encoding: .utf8)?.contains("\"versions\"") == true)
+    }
+
+    /// Several at once, which is where a transport with one reader per stream comes apart: each
+    /// stream's frames have to reach that stream and no other.
     @Test func severalRequestsInFlightEachGetTheirOwnAnswer() async throws {
-        let bridge = try tunnel()
+        let rig = try await rig()
+        defer { Task { await rig.stop() } }
 
-        await bridge.start()
-        defer { Task { await bridge.stop() } }
-
-        let paths = ["/_matrix/client/versions",
-                     "/_matrix/client/v3/login",
-                     "/_matrix/client/versions"]
-
+        let paths = ["/_matrix/client/versions", "/_matrix/client/v3/login", "/_matrix/client/versions"]
         try await withThrowingTaskGroup(of: (String, Int).self) { group in
             for path in paths {
-                group.addTask {
-                    let response = try await bridge.send(ProxiedRequest(method: "GET", target: path))
-                    return (path, response.status)
-                }
+                group.addTask { (path, try await rig.get(path).0) }
             }
             for try await (path, status) in group {
                 #expect(status == 200, "\(path) answered \(status)")
@@ -85,7 +97,7 @@ struct LiveBridgeTests {
     @Test func theCheckSaysItIsReachable() async throws {
         let outcome = await BridgeCheck.run(bridgeKey: Self.bridgeKey,
                                             relays: Self.relays,
-                                            homeserver: URL(string: "https://matrix-client.matrix.org")!,
+                                            homeserver: Self.api,
                                             identity: TunnelIdentity(secrets: InMemorySecrets()))
         guard case .reachable(let milliseconds) = outcome else {
             Issue.record("the bridge was not reachable: \(outcome)")
@@ -94,66 +106,28 @@ struct LiveBridgeTests {
         #expect(milliseconds > 0)
     }
 
-    /// An answer far too big for one event, which is where the tunnel used to stop.
-    ///
-    /// `publicRooms` is the largest thing matrix.org hands a stranger: about 48 KB however high the
-    /// limit is asked for, which is two chunks. Two is enough to prove the pair — the bridge's
-    /// chunker against this side's reassembler, across two languages and a relay that reorders —
-    /// and the sizes where that gets interesting (4 MB, 171 chunks) are the Rust stress suite's
-    /// job, against a homeserver that will answer with as much as it is asked for.
+    /// An answer far bigger than one event: several segments, a window, acknowledgements, across
+    /// two languages and relays that reorder. `publicRooms` is the largest thing matrix.org hands a
+    /// stranger, about 48 KB.
     @Test func ananswerTooBigForOneEventComesBackWhole() async throws {
-        let bridge = try tunnel(limit: .seconds(60))
-        await bridge.start()
-        defer { Task { await bridge.stop() } }
+        let rig = try await rig()
+        defer { Task { await rig.stop() } }
 
-        let response = try await bridge.send(ProxiedRequest(
-            method: "GET", target: "/_matrix/client/v3/publicRooms?limit=200"))
-
-        #expect(response.status == 200)
-        #expect(response.body.count > TunnelChunker.defaultMaxBodyChunk,
-                "\(response.body.count) bytes is one chunk; this test proves nothing at that size")
-        // Whole, not merely long: the JSON has to parse, which it will not if two chunks changed
+        let (status, body) = try await rig.get("/_matrix/client/v3/publicRooms?limit=200", timeout: 60)
+        #expect(status == 200)
+        #expect(body.count > StreamFrame.defaultSegment,
+                "\(body.count) bytes is one segment; this test proves nothing at that size")
+        // Whole, not merely long: the JSON has to parse, which it will not if two segments changed
         // places or one went missing in the middle.
-        let parsed = try JSONSerialization.jsonObject(with: response.body) as? [String: Any]
+        let parsed = try JSONSerialization.jsonObject(with: body) as? [String: Any]
         #expect(parsed?["chunk"] != nil)
     }
 
-    /// And the other direction: a request body the client cannot fit in one event.
-    ///
-    /// This is what sending a photo looks like from here. matrix.org answers a login it cannot make
-    /// sense of with a 400, and that is the whole point — a 400 means the bridge reassembled the
-    /// chunks and a homeserver read them. Silence would mean it did not.
-    @Test func arequestTooBigForOneEventReachesTheHomeserver() async throws {
-        let bridge = try tunnel(limit: .seconds(60))
-        await bridge.start()
-        defer { Task { await bridge.stop() } }
-
-        // 100 KB of JSON: five chunks, and valid JSON so that nothing between here and there can
-        // blame the shape of it.
-        let padding = String(repeating: "a", count: 100_000)
-        let body = Data(#"{"type":"m.login.password","identifier":"\#(padding)"}"#.utf8)
-
-        let response = try await bridge.send(ProxiedRequest(
-            method: "POST",
-            target: "/_matrix/client/v3/login",
-            headers: ["content-type": "application/json"],
-            body: body))
-
-        // 400 or 401 — a homeserver's opinion of the login, which it can only have if it read the
-        // body. **Not** 403: that is the bridge's own refusal, and accepting it here would make
-        // this a test that passes when the chunks never left the machine.
-        #expect(response.status == 400 || response.status == 401,
-                "matrix.org said \(response.status)")
-    }
-
-    /// The thing all of it is for: the **Matrix SDK itself** talking through the tunnel.
-    ///
-    /// Everything above proves the transport carries a request. This proves the SDK will use it —
-    /// built against the loopback listener exactly as `AuthenticationService.route` builds it, and
-    /// then asked the question the "Continue" button asks. What comes back is matrix.org's own
-    /// answer about how it lets people in, and it came back through nostr.
-    @Test func theSDKSignsInThroughTheTunnel() async throws {
-        let root = FileManager.default.temporaryDirectory.appending(component: "iskra-tunnel-\(UUID().uuidString)")
+    /// The thing all of it is for: the **Matrix SDK itself**, built the way `AuthenticationService`
+    /// builds it — the real homeserver's address and the bridge as its proxy — asked the question
+    /// the "Continue" button asks.
+    @Test func theSDKFindsTheServerThroughTheBridge() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(component: "iskra-bridge-\(UUID().uuidString)")
         let data = root.appending(component: "data")
         let cache = root.appending(component: "cache")
         let search = root.appending(component: "search")
@@ -162,63 +136,48 @@ struct LiveBridgeTests {
         }
         defer { try? FileManager.default.removeItem(at: root) }
 
-        let homeserver = URL(string: "https://matrix.org")!
-        let bridge = try NostrTunnelUpstream(bridgeKey: Self.bridgeKey,
-                                             relays: Self.relays,
-                                             keys: try TunnelIdentity(secrets: InMemorySecrets()).keypair(),
-                                             homeserver: homeserver)
-        await bridge.start()
-        defer { Task { await bridge.stop() } }
-
-        // The same wiring the app uses, including the hand-off when `.well-known` says the API
-        // lives somewhere other than the name that was typed.
-        let proxy = LocalHTTPProxy(upstream: bridge)
-        let port = try await proxy.start()
-        defer { Task { await proxy.stop() } }
+        let rig = try await rig()
+        defer { Task { await rig.stop() } }
+        let proxy = try #require(await rig.connect.proxyURL)
 
         let store = SqliteStoreBuilder(dataPath: data.path(percentEncoded: false),
                                        cachePath: cache.path(percentEncoded: false))
             .passphrase(passphrase: UUID().uuidString)
-
         let client = try await ClientBuilder()
             .sqliteStore(config: store)
             .withSearchIndexStore(path: search.path(percentEncoded: false), password: UUID().uuidString)
-            .homeserverUrl(url: "http://127.0.0.1:\(port)")
-            .slidingSyncVersionBuilder(versionBuilder: .native)
+            .serverNameOrHomeserverUrl(serverNameOrUrl: "matrix.org")
+            .proxy(url: proxy)
+            .slidingSyncVersionBuilder(versionBuilder: .discoverNative)
             .build()
 
         let details = await client.homeserverLoginDetails()
         #expect(details.supportsOauthLogin() || details.supportsPasswordLogin())
-
-        // And the listener really is what the SDK went through, rather than the SDK having found
-        // its own way to matrix.org.
-        let seen = await proxy.requestLog
-        #expect(seen.contains { $0.target.hasPrefix("/_matrix/client/versions") })
+        // And the listener really is what the SDK went through.
+        #expect(await rig.connect.carried > 0)
     }
 
-    /// Back from the background with every relay connection gone, the tunnel answers again at once.
+    /// Back from the background with every relay connection gone, the bridge answers again at once.
     ///
-    /// What a pocket does to a phone: the sockets die with nobody told, and the reconnect loops
-    /// are asleep in a backoff that can have climbed to thirty seconds. `wake()` is what the
-    /// session calls on the way back to the front, and after it the first request has to go
-    /// through within seconds — not after a backoff, and not after its own ninety-second limit.
-    @Test func afterEveryConnectionIsLostWakeBringsTheTunnelBack() async throws {
-        let bridge = try tunnel()
-        await bridge.start()
-        defer { Task { await bridge.stop() } }
+    /// What a pocket does to a phone: the sockets die with nobody told, and the reconnect loops are
+    /// asleep in a backoff that can have climbed to thirty seconds. `wake()` is what the session
+    /// calls on the way back to the front, and after it the first request has to go through within
+    /// seconds.
+    @Test func afterEveryConnectionIsLostWakeBringsTheBridgeBack() async throws {
+        let rig = try await rig()
+        defer { Task { await rig.stop() } }
 
-        let first = try await bridge.send(ProxiedRequest(method: "GET", target: "/_matrix/client/versions"))
-        #expect(first.status == 200)
+        #expect(try await rig.get("/_matrix/client/versions").0 == 200)
 
-        await bridge.severConnections()
+        await rig.streams.severConnections()
         // Long enough for the reconnect loops to have gone to sleep in their backoff.
         try await Task.sleep(for: .milliseconds(500))
-        await bridge.wake()
+        await rig.streams.wake()
 
         let started = ContinuousClock.now
-        let again = try await bridge.send(ProxiedRequest(method: "GET", target: "/_matrix/client/versions"))
+        let again = try await rig.get("/_matrix/client/versions")
         let took = started.duration(to: .now)
-        #expect(again.status == 200)
+        #expect(again.0 == 200)
         #expect(took < .seconds(8), "the first request after waking took \(took)")
     }
 
@@ -227,7 +186,7 @@ struct LiveBridgeTests {
         let stranger = try NostrKeypair.generate()
         let outcome = await BridgeCheck.run(bridgeKey: stranger.publicKey,
                                             relays: Self.relays,
-                                            homeserver: URL(string: "https://matrix-client.matrix.org")!,
+                                            homeserver: Self.api,
                                             identity: TunnelIdentity(secrets: InMemorySecrets()),
                                             limit: .seconds(10))
         #expect(outcome == .silent)

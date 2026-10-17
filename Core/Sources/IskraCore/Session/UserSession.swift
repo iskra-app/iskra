@@ -100,7 +100,7 @@ public final class UserSession {
     /// demo, whose store the Keychain has never heard of.
     private let storageLocations: [StorageKind: URL]?
 
-    /// What the connection is doing right now: direct, or through the local listener.
+    /// What the connection is doing right now: direct, or through the bridge.
     ///
     /// Forwarded rather than exposing the service itself — the settings screen needs this one
     /// answer, not the ability to sign anybody in.
@@ -114,14 +114,10 @@ public final class UserSession {
         await authentication.tunnelPublicKey()
     }
 
-    /// The homeserver, as the homeserver — never this app's own listener.
-    ///
-    /// With the bridge on, the SDK believes it is talking to `http://127.0.0.1:<port>`, because it
-    /// is. Anything that wants the *real* address, like the bridge check, has to be given the
-    /// server the listener stands in for instead.
+    /// The homeserver — what the bridge check asks about. The client's own idea of it, which is the
+    /// real one whether or not the bridge is on: the bridge is a proxy, not a stand-in address.
     public var homeserverURL: URL {
-        let known = TunnelSettings.persistableHomeserver(client.homeserver())
-        return URL(string: known) ?? URL(string: "https://matrix.org")!
+        URL(string: client.homeserver()) ?? URL(string: "https://matrix.org")!
     }
 
     /// Which of the accounts on this device this is — the random ID that names its record in the

@@ -917,15 +917,19 @@ TLS насквозь до хоумсервера, мост перекладыв�
       потоки и байты. Сквозные тесты с настоящим TLS и тест, что в логах нет токена, пароля и тела.
 - [x] v1 (HTTP через мост, kind 20001/20002) удалён из моста: чанкер, реассемблер, `forwarder`,
       `HOMESERVER_URL`, `RATE_LIMIT_PER_MIN`, `BLIND_ONLY`. Мост всегда слепой.
-- [ ] v1 удалён из приложения: `NostrTunnelUpstream`, `TunnelEnvelope`, `TunnelChunker`,
-      `TunnelReassembler` — вместе с клиентом ниже.
+- [x] v1 удалён из приложения: `NostrTunnelUpstream`, `TunnelEnvelope`, `TunnelChunker`,
+      `TunnelReassembler` и их тесты. Мост в приложении — только прокси: с адресом моста клиент
+      строится с `.proxy`, без адреса — напрямую, статус `.off`; `.routingLocally` и подмена адреса
+      (`listenerStandsIn`, `persistableHomeserver`) ушли. `LocalHTTPProxy` остался для демо- и
+      sign-in-серверов.
 - [x] Клиент: `LocalConnectProxy`, `NostrStreamTunnel`, `.proxy` в `ClientBuilder`, `DirectPipe`.
       `StreamFrame` и окно — зеркало `stream.rs` с теми же тестами-вопросами; через прокси ходит всё
       (`BlindRouteTests`: вход, sliding sync, медиа, клиент расширения — к хоумсерверу с настоящим
       TLS), и SDK входит и синхронизируется по потокам, которые перемешивает и дублирует мост-заглушка.
-      Включается только `TunnelSettings.blindKey`, переключателя на экране нет.
-- [ ] `BridgeCheck`, `--probe-bridge`, `.bridgedBlind`; отказы словами — «мост старый», «не пускает
-      к этому серверу», «перегружен».
+      `BridgeCheck` и `--probe-bridge` ходят тем же путём — `URLSession` через `CONNECT`-слушатель;
+      отказ моста (`not allowed`, `not matrix`, `bad port`, `not public`) — «не пускает».
+- [ ] `.bridgedBlind` и отказы словами на экране — «не пускает к этому серверу», «перегружен»,
+      «не Matrix»; сейчас всё, кроме «не пускает», показывается словом моста как есть.
 - [ ] PoW на `open` и сложность в `KIND_CONFIG`. Обязателен до моста по умолчанию: без него общий
       бюджет проверок «это Matrix» выжимается бесплатными ключами.
 - [ ] Мост по умолчанию: `*`, его `npub` и relay в `TunnelSettings`; потом — фраза

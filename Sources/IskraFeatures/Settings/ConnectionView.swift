@@ -188,7 +188,6 @@ struct ConnectionView: View {
     private func describe(_ status: TunnelStatus) -> LocalizedStringResource {
         switch status {
         case .off: Strings.Connection.statusDirect
-        case .routingLocally: Strings.Connection.statusLocal
         case .bridged(let relays): Strings.Connection.statusBridged(relays)
         case .failed: Strings.Connection.statusFailed
         }

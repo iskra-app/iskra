@@ -30,26 +30,14 @@ public struct ProxiedResponse: Sendable, Equatable {
     }
 }
 
-/// Where the local listener sends what it receives.
+/// Where the local listener sends what it receives: a homeserver that lives inside the app — the
+/// demo server and the sign-in server.
 ///
-/// The seam exists so the listener can be built and proven before the tunnel is: `DirectUpstream`
-/// forwards straight to the homeserver over TLS, which answers the question the listener is really
-/// being written to answer — whether the SDK will talk plain HTTP to `127.0.0.1` at all. Swapping
-/// in the nostr transport later changes this one conformance and nothing else.
+/// It used to have a third, the nostr tunnel's first protocol, which handed the bridge each request
+/// in the clear. That is gone; the bridge now carries the SDK's own TLS, through
+/// `LocalConnectProxy`, and never sees a request at all.
 public protocol HTTPUpstream: Sendable {
     func send(_ request: ProxiedRequest) async throws -> ProxiedResponse
-
-    /// Told when `.well-known` discovery has revealed where the homeserver really lives.
-    ///
-    /// Not decoration: discovery is asked of the *delegation* host (`matrix.org`) and answers with
-    /// a different one (`matrix-client.matrix.org`), and every request after it belongs to the
-    /// second. A transport pinned to the address the user typed would send the whole API to a host
-    /// that only ever served one file.
-    func discovered(homeserver: URL) async
-}
-
-public extension HTTPUpstream {
-    func discovered(homeserver: URL) async {}
 }
 
 public enum UpstreamError: Error, Sendable {
@@ -57,13 +45,16 @@ public enum UpstreamError: Error, Sendable {
     case notHTTP
 }
 
-/// Straight to the real homeserver over TLS. No tunnel, no nostr.
+/// One request of the app's own to the real homeserver over TLS — for the few calls the SDK does
+/// not export (`AccountDevices`). Straight there, or through the bridge's `CONNECT` listener when
+/// it is given that listener's session (`AuthenticationService.send(_:toHomeserver:)`).
 public final class DirectUpstream: HTTPUpstream {
-    private let base: Mutex<URL>
+    /// Where requests go.
+    public let homeserver: URL
     private let session: URLSession
 
     public init(homeserver: URL, session: URLSession = DirectUpstream.privateSession) {
-        self.base = Mutex(homeserver)
+        self.homeserver = homeserver
         self.session = session
     }
 
@@ -79,13 +70,6 @@ public final class DirectUpstream: HTTPUpstream {
         configuration.httpShouldSetCookies = false
         return URLSession(configuration: configuration)
     }()
-
-    /// Where requests are going right now.
-    public var homeserver: URL { base.withLock { $0 } }
-
-    public func discovered(homeserver: URL) async {
-        base.withLock { $0 = homeserver }
-    }
 
     public func send(_ request: ProxiedRequest) async throws -> ProxiedResponse {
         // A path, and only a path. `URL(string:relativeTo:)` resolves `//elsewhere/x` and
