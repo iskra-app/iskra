@@ -57,6 +57,18 @@ struct BridgeRefusalTests {
         #expect(BridgeRefusal(reason: "pow 20") == .busy)
     }
 
+    /// A broken or hostile bridge cannot set the phone mining until the battery is gone.
+    @Test("a difficulty past the ceiling is ignored, and mining it is refused")
+    func powCeiling() throws {
+        #expect(StreamReason.powRequired("pow 24") == 24)
+        #expect(StreamReason.powRequired("pow 25") == nil)
+        #expect(StreamReason.powRequired("pow 255") == nil)
+        let keys = try NostrKeypair.generate()
+        #expect(throws: NostrEvent.MiningError.tooHard(40)) {
+            try NostrEvent.mined(kind: TunnelKind.streamClient, content: "x", tags: [], bits: 40, keys: keys)
+        }
+    }
+
     /// NIP-13 as the bridge checks it: the id starts with that many zero bits, the `nonce` tag
     /// commits to the same target, and the event is still a correctly signed event.
     @Test("an open is mined to its difficulty and still verifies")

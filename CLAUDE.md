@@ -240,8 +240,10 @@ Two rules about it:
   segments inside a stream carry none). A nostr key costs nothing, so every ceiling "per key" is a
   ceiling on nobody; work is the one that holds. The difficulty is not announced anywhere — a
   bridge that wants more answers `rst` `pow <bits>`, and `NostrStreamTunnel` mines the next `open`
-  to it. Mining hashes only the nonce and the tail of the serialization (`NostrEvent.minedParts`);
-  rebuilding the whole string per try made sixteen bits cost a second.
+  to it — up to `maxPowBits` (24) and no further: a broken or hostile bridge must not be able to set
+  a phone mining until the battery is gone, so a higher ask is ignored and mining is bounded and
+  cancellable. Mining hashes only the nonce and the tail of the serialization
+  (`NostrEvent.minedParts`); rebuilding the whole string per try made sixteen bits cost a second.
 - **The host from `open` must equal the ClientHello's SNI, and the connection goes to the addresses
   that were checked** (`blind.rs`) — on an open bridge, only those that *themselves* answered as
   Matrix, remembered per `(name, address)` — never to a second lookup of the name. Either shortcut

@@ -19,7 +19,7 @@ pub mod stream;
 pub use crypto::{open_frame, seal_frame};
 pub use stream::{
     new_stream_id, pow_reason, pow_required, reason, Inbound, Outbound, StreamFrame, StreamOp,
-    Violation, DEFAULT_POW_BITS, STREAM_PROTOCOL_VERSION,
+    Violation, DEFAULT_POW_BITS, MAX_POW_BITS, STREAM_PROTOCOL_VERSION,
 };
 
 use thiserror::Error;

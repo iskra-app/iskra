@@ -7,6 +7,13 @@ import secp256k1
 /// The id is a hash of the event's own fields, so it cannot be chosen, and the signature is over
 /// that hash. Both are computed here rather than trusted from the wire.
 struct NostrEvent: Sendable, Equatable {
+    enum MiningError: Error, Equatable {
+        /// More bits than `maxPowBits`: refused rather than attempted.
+        case tooHard(UInt8)
+        /// The try budget ran out — which at these odds means a bug, not bad luck.
+        case exhausted
+    }
+
 
     var id: String
     var pubkey: String
@@ -52,6 +59,7 @@ struct NostrEvent: Sendable, Equatable {
         guard bits > 0 else {
             return try signed(kind: kind, content: content, tags: tags, createdAt: createdAt, keys: keys)
         }
+        guard bits <= maxPowBits else { throw MiningError.tooHard(bits) }
         let pubkey = Hex.string(keys.publicKey)
         // The serialization is the same on every try but for the nonce's digits, so it is built
         // once around them: the hash state after the prefix is copied (CryptoKit's hasher is a
@@ -63,8 +71,12 @@ struct NostrEvent: Sendable, Equatable {
         head.update(data: Data(prefix.utf8))
         let tail = Data(suffix.utf8)
 
+        // Expected tries are 2^bits; 2^(bits+6) without a hit is a chance below one in 10^27 — a
+        // budget that only a bug can exhaust, so it ends in an error instead of a spin.
+        let budget: UInt64 = 1 << (UInt64(bits) + 6)
         var nonce: UInt64 = 0
-        while true {
+        while nonce < budget {
+            if nonce & 0xFFF == 0, Task.isCancelled { throw CancellationError() }
             var hasher = head
             hasher.update(data: Data(String(nonce).utf8))
             hasher.update(data: tail)
@@ -77,6 +89,7 @@ struct NostrEvent: Sendable, Equatable {
             }
             nonce &+= 1
         }
+        throw MiningError.exhausted
     }
 
     /// The serialization of an event whose last tag is `["nonce", <n>, "<bits>"]`, in the two

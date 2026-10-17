@@ -115,6 +115,11 @@ pub mod reason {
 /// ceiling "per key" can be dodged with a new one, and this is the one that cannot.
 pub const DEFAULT_POW_BITS: u8 = 16;
 
+/// The most either side accepts. Each bit doubles the client's work, and 24 is already seconds on
+/// a phone per connection: a bridge asking for more is broken or hostile, and the client ignores
+/// it rather than mining until the battery is gone.
+pub const MAX_POW_BITS: u8 = 24;
+
 /// The `rst` reason for an `open` mined to too few bits: `pow 20`.
 ///
 /// The difficulty travels in the refusal rather than in an announcement of its own, so a bridge
@@ -124,13 +129,14 @@ pub fn pow_reason(bits: u8) -> String {
     format!("{} {bits}", reason::POW)
 }
 
-/// The difficulty a `pow <bits>` refusal asks for, or `None` for any other reason.
+/// The difficulty a `pow <bits>` refusal asks for, or `None` for any other reason — and for a
+/// difficulty past [`MAX_POW_BITS`].
 pub fn pow_required(reason: &str) -> Option<u8> {
     let (word, bits) = reason.split_once(' ')?;
     if word != reason::POW {
         return None;
     }
-    bits.parse().ok()
+    bits.parse().ok().filter(|&bits| bits <= MAX_POW_BITS)
 }
 
 /// What a frame does.
@@ -567,7 +573,9 @@ mod tests {
         assert_eq!(pow_required("pow"), None);
         assert_eq!(pow_required("powder 3"), None);
         assert_eq!(pow_required("not matrix"), None);
-        StreamFrame::rst(SID, &pow_reason(255)).validate().unwrap();
+        assert_eq!(pow_required("pow 24"), Some(24));
+        assert_eq!(pow_required("pow 25"), None, "past the ceiling is as good as nothing");
+        StreamFrame::rst(SID, &pow_reason(MAX_POW_BITS)).validate().unwrap();
     }
 
     #[test]
