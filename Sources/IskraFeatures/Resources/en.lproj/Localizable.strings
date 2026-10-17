@@ -66,6 +66,8 @@
 "room.attach" = "Add a photo or file";
 
 "room.composerPlaceholder" = "Message";
+"room.captionPlaceholder" = "Caption";
+"room.mentionSuggestions" = "People to mention";
 
 /* The banner shown in place of the composer when posting is not allowed. */
 "room.readOnly" = "You can’t send messages in this chat";
@@ -94,6 +96,7 @@
 
 /* Accessibility label for the pin icon on a pinned chat. */
 "roomList.pinned" = "Pinned chat";
+"roomList.draft" = "Draft: %@";
 "roomList.hasUnread" = "Unread";
 
 "roomList.searchPrompt" = "Search messages";
@@ -206,11 +209,27 @@
 "connection.title" = "Connection";
 "connection.bridge" = "Through a bridge";
 "connection.bridgeFooter" = "Traffic reaches the server through a bridge instead of going there directly. This is for places where the server cannot be reached.";
+"connection.publicSection" = "Public bridges";
+"connection.publicFooter" = "Checked bridges from the list at github.com/iskra-app/public-bridges. What a bridge sees is below. The app downloads the list once a day straight from GitHub, so GitHub and your network can see that it did; if GitHub can’t be reached, the saved copy is used.";
+"connection.publicEmpty" = "There are no bridges on the list yet. Add your own below.";
+"connection.publicAnyServer" = "any Matrix server";
+"connection.publicServers" = "only %@";
+"connection.publicOperator" = "run by %@";
+"connection.notListed" = "no longer on the list";
+"connection.ownSection" = "Your bridges";
+"connection.ownFooter" = "A bridge you run yourself, or got from whoever runs it. You can keep several — the one with the tick is used.";
+"connection.addBridge" = "Add bridge";
+"connection.editBridge" = "Edit bridge";
+"connection.deleteBridge" = "Delete";
+"connection.saveBridge" = "Save";
+"connection.cancelEditing" = "Cancel";
+"connection.bridgeName" = "Name";
+"connection.bridgeNamePrompt" = "For example, “Home”";
 
 "connection.status" = "Status";
 "connection.statusDirect" = "Direct";
-"connection.statusLocal" = "Through the local layer";
-"connection.statusBridged" = "Through the bridge, relays: %lld";
+"connection.statusConnecting" = "Through the bridge, relays: %lld. The bridge hasn’t answered yet";
+"connection.statusBlind" = "Through the bridge, relays: %lld. The bridge can’t see your messages";
 "connection.statusFailed" = "Could not be turned on";
 "connection.pending" = "The new settings take effect as soon as you leave this screen: the app reconnects by itself.";
 "connection.applyNow" = "Reconnect now";
@@ -219,12 +238,12 @@
    said here rather than only in the status: this is what somebody is looking at. */
 "connection.address" = "Bridge address";
 "connection.addressPrompt" = "npub1… or 64 hex characters";
-"connection.addressFooter" = "A bridge prints its address at startup — the line that reads “bridge address for Iskra: npub1…”. While this is empty the switch gets you nothing: traffic goes straight to the server.";
+"connection.addressFooter" = "The bridge prints its address when it starts — the line “bridge address for Iskra: npub1…”.";
 "connection.addressBad" = "That does not look like a bridge key";
 "connection.addressSecret" = "That is a secret key. The public one is wanted here — the one that starts with npub.";
 
 "connection.relays" = "Relays";
-"connection.relaysPrompt" = "wss://nos.lol, wss://relay.primal.net";
+"connection.relaysPrompt" = "wss://relay.snort.social, wss://nostr.wine";
 "connection.relaysFooter" = "This is where the app and the bridge find each other. Several is not a spare tyre: a request goes out to all of them at once and the answer comes back from whichever was quickest. Leave it empty for the default three.";
 
 "connection.myKey" = "This device's key";
@@ -237,8 +256,16 @@
 "connection.checkOK" = "The bridge answered, the server is there — %lld ms";
 "connection.checkNoRelay" = "No relay is answering";
 "connection.checkSilent" = "The bridge is silent. Is it running, and is that the right key?";
-"connection.checkRefused" = "The bridge said no: it does not serve this server";
 "connection.checkFailed" = "No luck: %@";
+"bridge.refusal.notAllowed" = "The bridge won’t take you to this server — it isn’t on the bridge’s list";
+"bridge.refusal.notMatrix" = "The bridge doesn’t recognise this server as a Matrix server";
+"bridge.refusal.badPort" = "The bridge only goes to port 443, and this server is on another";
+"bridge.refusal.notPublic" = "The server is on a private network, and an open bridge doesn’t go there";
+"bridge.refusal.noSuchHost" = "The bridge couldn’t find this server";
+"bridge.refusal.unreachable" = "The bridge couldn’t connect to the server";
+"bridge.refusal.busy" = "The bridge is overloaded. Try again in a minute";
+"bridge.refusal.disagreement" = "The app and the bridge didn’t understand each other. Update the app or the bridge";
+"bridge.refusal.broke" = "The bridge dropped the connection: %@";
 
 /* Not "what is unfinished" but what to expect: the numbers come from measuring a whole session
    through the bridge (Bridge/README.md), and whoever turns the bridge on should know them first. */
@@ -246,7 +273,7 @@
 "connection.unfinishedBody" = "Every request goes the long way round through a relay and costs 200–350 ms, so signing in and opening chats for the first time are noticeably slower than a direct connection — a second where it used to be instant. New messages, though, arrive almost as fast as they do directly. Large attachments will get through too, but they are better kept off public relays: for media, give the bridge a relay of its own.";
 
 "connection.sees" = "What the bridge sees";
-"connection.seesBody" = "A bridge unpacks your requests to the server, so it sees your token, which rooms you are in, and the text of messages in unencrypted chats. It cannot read encrypted conversations. This is why the bridge should be your own rather than somebody else's.";
+"connection.seesBody" = "Only which server you connect to, when, and how many bytes. The app encrypts the connection to the server itself, so your token, your rooms and your messages — even in unencrypted chats — are hidden from the bridge. Your IP address is seen by the relays, not the bridge.";
 
 /* App lock by Face ID / device passcode. */
 "settings.lock" = "App Lock";
@@ -357,6 +384,7 @@
 "signIn.problem.storageUnavailable" = "Iskra couldn’t set up secure storage on this device, so it can’t sign you in safely.";
 
 "signIn.problem.unreachable" = "Something went wrong reaching that address. Check your connection and try again.";
+"signIn.problem.bridgeUnavailable" = "The bridge didn’t come up, and Iskra won’t go direct while the bridge is on. Check the bridge address and relays in Connection settings.";
 
 "signIn.problem.unsupportedMethod" = "That service uses a way of signing in that Iskra doesn’t support yet.";
 
@@ -394,7 +422,7 @@
 /* The question that replaces asking for a 'homeserver URL'. */
 "signIn.whereIsAccount" = "Where’s your account?";
 
-"signIn.whereIsAccountHelp" = "If you were given a server address, type it in. If not, keep matrix.org — that's where most accounts are.";
+"signIn.whereIsAccountHelp" = "Type the address of the server where your account is, or where you’d like to create one.";
 
 "room.attachPhoto" = "Photo or video";
 
@@ -678,6 +706,31 @@
 "location.myLocation" = "My location";
 "location.attach" = "Location";
 "message.spoken.sentLocation" = "a location";
+"poll.kind" = "Poll";
+"poll.kindAnonymous" = "Anonymous poll";
+"poll.ended" = "Poll ended";
+"poll.multiple" = "choose several";
+"poll.noVotes" = "No votes yet";
+"poll.hiddenUntilEnd" = "results when it ends";
+"poll.end" = "End poll";
+"poll.endConfirmTitle" = "End the poll?";
+"poll.endConfirmMessage" = "Nobody will be able to vote any more, and everyone will see the results.";
+"poll.attach" = "Poll";
+"poll.newTitle" = "New poll";
+"poll.question" = "Question";
+"poll.questionPlaceholder" = "What do you want to ask?";
+"poll.answers" = "Answers";
+"poll.answerPlaceholder" = "Answer";
+"poll.addAnswer" = "Add an answer";
+"poll.removeAnswer" = "Remove answer";
+"poll.settings" = "Settings";
+"poll.allowMultiple" = "Several answers";
+"poll.anonymous" = "Results only when it ends";
+"poll.anonymousFooter" = "While the poll is open, nobody sees how the others voted. Only you can end it.";
+"poll.send" = "Send";
+"poll.cancel" = "Cancel";
+"poll.chosen" = "your answer";
+"message.spoken.sentPoll" = "a poll, %@";
 
 /* Running a room. Shown only to whoever the room allows to do it. */
 "room.manage.namePlaceholder" = "Chat name";
@@ -685,12 +738,12 @@
 "room.manage.openToAnyone" = "Open chat";
 "room.manage.openToAnyoneHelp" = "Anyone who finds this chat can join it. Otherwise, by invitation only.";
 "room.manage.invite" = "Invite";
-"room.manage.inviteTitle" = "Who should join?";
-"room.manage.inviteHelp" = "A Matrix address looks like @name:server.";
-"room.manage.invitePlaceholder" = "@name:server";
+"room.invite.inviteCount" = "Invite (%lld)";
+"room.invite.chosen" = "Chosen";
+"room.invite.alreadyHere" = "Already here";
+"room.invite.byAddress" = "Invite by this address";
 "room.manage.role" = "Role";
 "room.manage.roleHeader" = "What they can do";
-"room.manage.roleQuestion" = "What can %@ do?";
 "room.manage.member" = "Member";
 "room.manage.write" = "Write to them";
 "room.manage.goToChat" = "Go to the chat";
@@ -705,6 +758,27 @@
 /* Why everything on the room-settings screen is greyed out. Shown only while offline. Must say
    what still works — reading and writing — rather than only what does not. */
 "room.manage.offline" = "With no network you can read this chat and write to it, but not change it.";
+"room.rules.title" = "Roles and permissions";
+"room.rules.staffHeader" = "Running the chat";
+"room.rules.staffFooter" = "To change someone’s role, swipe left on them or open their page.";
+"room.rules.rulesHeader" = "Who can";
+"room.rules.rulesFooter" = "“Moderators” means moderators and administrators.";
+"room.rules.sendMessages" = "Send messages";
+"room.rules.invite" = "Invite people";
+"room.rules.remove" = "Remove people";
+"room.rules.ban" = "Block people";
+"room.rules.deleteOthers" = "Delete others’ messages";
+"room.rules.rename" = "Change the name";
+"room.rules.changeTopic" = "Change the description";
+"room.rules.changePicture" = "Change the picture";
+"room.rules.everyone" = "Everyone";
+"room.rules.moderators" = "Moderators";
+"room.rules.administrators" = "Administrators";
+"room.manage.chooseRole" = "Choose a role";
+"room.rules.addStaff" = "Add";
+"room.rules.appointTitle" = "Appoint";
+"room.rules.nobodyToAppoint" = "There’s no one else to appoint.";
+"room.rules.demote" = "Remove role";
 "room.manage.cancel" = "Cancel";
 "problem.title" = "It didn’t work";
 
@@ -752,7 +826,6 @@
 
 /* The archive: the shelf for set-aside chats and the way back to them. */
 "roomList.archive.title" = "Archive";
-"roomList.archive.entry" = "Archive (%lld)";
 "roomList.archive.emptyTitle" = "Nothing archived";
 "roomList.archive.emptyMessage" = "Swipe a chat left and archive it — it stays out of the main list without going anywhere.";
 
@@ -833,9 +906,8 @@
 "room.typingBy" = "%@ is typing…";
 
 "room.scrollToBottom" = "Go to the latest message";
-"room.loadEarlier" = "Show what came before";
 
-/* Stands where the "show earlier" button would be, when the older messages could not be fetched —
+/* Stands at the top of the conversation when the older messages could not be fetched —
    offline, this is where the cached history runs out. Explains; does not promise. */
 "room.earlierUnavailable" = "We’ll show what came before once you’re back online";
 "appearance.previewAsk" = "Which colour did you pick?";
@@ -1139,6 +1211,8 @@
 "chats.shareActive" = "Active";
 "chats.shareAll" = "All";
 "chats.shareHelp" = "Whose chats to offer when you share something from another app. “Active” is the one open in Iskra right now.";
+"chats.widgetSection" = "Favourite chats widget";
+"chats.widgetHelp" = "Whose chats the widget shows when none are chosen in it. “Active” is the one open in Iskra right now.";
 
 /* Settings → Privacy. */
 "privacy.title" = "Privacy";
@@ -1171,7 +1245,7 @@
 "devices.newSignInNo" = "It wasn’t me";
 
 /* Who reacted: the "everybody" tab. */
-"message.menu.reactorsAll" = "All %lld";
+"message.menu.reactorsAll" = "All · %lld";
 
 /* Media viewer: the counter and video skipping. */
 "message.media.counter" = "%lld of %lld";
@@ -1197,7 +1271,7 @@
 "accounts.signOutTitle" = "Sign out of %@?";
 "accounts.signOutMessage" = "This account’s chats will be removed from this device. To read encrypted messages again, you’ll need your recovery key or another of your devices.";
 "stickers.subscribe" = "Add to mine";
-"stickers.settings.sheetSection" = "What to show";
+"stickers.settings.sheetSection" = "Sticker display";
 "stickers.settings.builtIn" = "Sparks";
 "stickers.settings.roomPacks" = "Chat packs";
 "stickers.settings.roomPacksHelp" = "If a chat has its own pack, you see it while you’re in that chat. Tap “Add to mine” above it to have it in every chat.";
@@ -1231,3 +1305,164 @@
 "qr.openRoom" = "Open";
 "qr.roomUnknown" = "The server didn’t say anything about this room, but you can still try to join.";
 "qr.inviteOnlyRoom" = "This room is invite only.";
+
+/* Under the empty address field on the sign-in screen: opens the list of public servers. */
+"signIn.chooseServer" = "Not sure which server to choose?";
+/* The main button under the address field. */
+"signIn.next" = "Next";
+/* A small grey link at the foot of the sign-in screen: opens a screen explaining Matrix. */
+"signIn.whatIsMatrix" = "What is Matrix?";
+/* The title of that screen. */
+"aboutMatrix.title" = "What is Matrix";
+
+/* The list of public servers, opened from the sign-in screen. */
+"servers.title" = "Choose a server";
+"servers.intro" = "Your account lives on one server, and you can write to people on any other — just like email. On every server below you can create an account right in Iskra.";
+"servers.matrixOrg" = "The largest Matrix server, run by the foundation that develops Matrix itself.";
+/* Where the server is. */
+"servers.matrixOrgWhere" = "United Kingdom";
+/* A warning on matrix.org: it is blocked in Russia. */
+"servers.matrixOrgBlocked" = "Not available from Russia";
+"servers.tchncs" = "One of the oldest community servers. Its owner runs other free services too.";
+"servers.tchncsWhere" = "Germany";
+"servers.quassel" = "An open server for everyday conversation, free for everyone.";
+"servers.quasselWhere" = "Germany, server in Finland";
+"servers.nopeChat" = "Run by the adminForge team, who host other free services too. Has bridges to other messengers.";
+"servers.nopeChatWhere" = "Germany";
+/* The last entry: running a server of your own. Opens a page about it in the browser. */
+"servers.ownTitle" = "Your own server";
+"servers.ownAbout" = "You can run a server of your own — then your conversations are entirely in your hands. You’ll need a domain and a little time.";
+
+/* Under the "open to anyone" switch when making a room: what the room will be. Changes with the switch. */
+"roomList.new.willBeEncrypted" = "The room will be encrypted";
+"roomList.new.willNotBeEncrypted" = "The room won’t be encrypted";
+
+/* Room access: history, address, blocked (stage 9) */
+"room.access.historyHeader" = "History for new members";
+"room.access.historyFooter" = "What someone who joins later will see of what was already said. In a protected chat older messages may not open for them: they don’t have the keys.";
+"room.access.history.shared" = "All of it";
+"room.access.history.invited" = "From when they were invited";
+"room.access.history.joined" = "From when they joined";
+"room.access.history.worldReadable" = "Anyone, even without joining";
+"room.access.addressHeader" = "Address";
+"room.access.addressPlaceholder" = "name";
+"room.access.addressFooter" = "The address is how the chat is found and opened from a link. Clear it and the chat has none.";
+"room.access.inDirectory" = "List in the server’s directory";
+"room.access.inDirectoryHelp" = "People will find the chat when they search public rooms on %@.";
+"room.access.banned" = "Blocked";
+"room.access.bannedFooter" = "They can’t come into the chat, even if invited.";
+"room.access.unban" = "Unblock";
+"room.access.unbanQuestion" = "Unblock %@?";
+"room.access.unbanHelp" = "They’ll be able to come in again. They won’t appear in the chat by themselves — invite them or send a link.";
+
+/* Choosing several messages (stage 9) */
+"message.menu.select" = "Select";
+"message.selection.count" = "Selected: %lld";
+"message.selection.cancel" = "Cancel";
+"message.selection.deleteTitle" = "Delete the selected messages?";
+"message.selection.deleteMessage" = "They’ll disappear for everyone in the chat. You won’t be able to bring them back.";
+"message.selection.copied" = "Copied";
+
+/* Chat folders (stage 9) */
+"folders.all" = "All";
+"folders.title" = "Folders";
+"folders.explanation" = "Folders gather chats by rules — personal, groups, unread — and sit as tabs above the list. They’re the same on all your devices.";
+"folders.new" = "New folder";
+"folders.suggested" = "You could start with these";
+"folders.add" = "Add";
+"folders.edit" = "Folder";
+"folders.namePlaceholder" = "Name";
+"folders.kindsHeader" = "Which chats";
+"folders.kind.direct" = "Personal";
+"folders.kind.groups" = "Groups";
+"folders.kind.spaces" = "Spaces";
+"folders.kind.invitations" = "Invitations";
+"folders.suggestion.unread" = "Unread";
+"folders.conditionsHeader" = "Conditions";
+"folders.onlyUnread" = "Only unread";
+"folders.excludesMuted" = "Leave out muted";
+"folders.includesArchived" = "Include the archive";
+"folders.includedHeader" = "Always show";
+"folders.excludedHeader" = "Never show";
+"folders.addChats" = "Add chats";
+"folders.chooseChats" = "Choose chats";
+"folders.done" = "Done";
+"folders.cancel" = "Cancel";
+"folders.delete" = "Delete folder";
+"folders.deleteQuestion" = "Delete the folder “%@”?";
+"folders.deleteHelp" = "The chats stay where they are — only the tab goes.";
+"folders.addToFolder" = "Add to folder";
+"folders.membershipTitle" = "Folders";
+"folders.membershipFooter" = "Ticked, the chat is in the folder even if it doesn’t fit the rules. Unticked, it never is.";
+"folders.emptyTitle" = "Nothing in this folder yet";
+"folders.emptyMessage" = "Chats that fit its rules will appear here.";
+
+/* Which account a notification came for */
+"chats.namesAccount" = "Account in notifications";
+"chats.namesAccountHelp" = "The notification’s title shows which of your accounts it came to.";
+
+"poll.retract" = "Retract vote";
+
+"stickers.settings.mine" = "My stickers";
+
+/* Beta: for developers */
+"beta.developers" = "For developers";
+"beta.showsSource" = "Message JSON in the menu";
+"beta.showsSourceHelp" = "A message’s menu gets “View JSON” — the event as the server sent it. Useful when a message shows up wrong.";
+"beta.viewSource" = "View JSON";
+"beta.noSource" = "This message has no event on the server yet.";
+"beta.demoSignIn" = "Demo sign-in";
+"beta.demoSignInHelp" = "The sign-in screen against a server inside the app: alice / password. Your account is untouched, and whoever signs in is signed out at once.";
+"beta.demoSignedIn" = "Signed in: %@";
+"beta.close" = "Close";
+
+/* Threads */
+"thread.title" = "Thread";
+"thread.replyInThread" = "Reply in thread";
+"thread.replies" = "%lld replies";
+
+/* Live location */
+"location.shareLive" = "Share live location";
+"location.shareLiveFor" = "Share your location for how long?";
+"location.liveUntil" = "Live · until %@";
+"location.liveEnded" = "Live location ended";
+"location.liveWaiting" = "Waiting for the first point…";
+"location.youAreSharing" = "You’re sharing your location until %@";
+"location.stop" = "Stop";
+
+"location.liveForMinutes" = "%lld minutes";
+"location.liveForHours" = "%lld hours";
+
+/* Voice transcription */
+"message.transcript.show" = "Transcribe";
+"message.transcript.hide" = "Hide text";
+"message.transcript.notAllowed" = "Speech recognition isn’t allowed. You can allow it in Settings.";
+"message.transcript.unavailable" = "This device can’t recognise your language offline — and Iskra won’t send the voice to a server.";
+"message.transcript.nothingHeard" = "No words could be made out.";
+"message.transcript.failed" = "It couldn’t be transcribed. Try again.";
+
+"chats.threads" = "Show threads";
+"chats.threadsHelp" = "Replies in threads are gathered under their message as “3 replies”. Unless replies are hidden, they also appear in the chat itself, among the other messages. Changes apply once you open the chat again. Personal chats have no threads.";
+"chats.threadsAlways" = "Always";
+"chats.threadsLargeRooms" = "In chats of over 100 people";
+"chats.threadsNever" = "Never";
+"chats.threadsHideReplies" = "Hide replies from the chat";
+
+/* The photo editor — PhotoEditor */
+"photoEditor.edit" = "Edit photo";
+"photoEditor.cancel" = "Cancel";
+"photoEditor.done" = "Done";
+"photoEditor.undo" = "Undo";
+"photoEditor.draw" = "Draw";
+"photoEditor.text" = "Text";
+"photoEditor.crop" = "Crop";
+"photoEditor.rotate" = "Rotate";
+"photoEditor.textPrompt" = "Write something";
+"photoEditor.failed" = "Couldn’t save the changes — the photo is as it was";
+"photoEditor.ok" = "OK";
+"photoEditor.white" = "White";
+"photoEditor.black" = "Black";
+"photoEditor.red" = "Red";
+"photoEditor.yellow" = "Yellow";
+"photoEditor.green" = "Green";
+"photoEditor.blue" = "Blue";

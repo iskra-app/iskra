@@ -56,6 +56,17 @@ public extension View {
         }
     }
 
+    /// Untinted glass behind a secondary action that has to stand beside a `.glassAction` — the
+    /// same capsule, as tall, with the glass and nothing in it. See `GlassSecondaryStyle`.
+    @ViewBuilder
+    func secondaryActionGlass(in shape: some Shape = .capsule) -> some View {
+        if #available(iOS 26, macOS 26, *) {
+            glassEffect(.regular.interactive(), in: shape)
+        } else {
+            background(.quaternary, in: shape)
+        }
+    }
+
     /// The system's untinted glass button, for the secondary actions on a screen that
     /// is itself navigation — "Create account" beside "Continue", a close button over a
     /// sheet. Before glass, a bordered capsule, which is what that button was.
@@ -138,12 +149,25 @@ public extension ToolbarContent {
     /// toolbar's items, for an item that is not a control (a title) or that carries
     /// glass of its own (a round avatar). Before glass there is no shared capsule to
     /// leave.
-    @ToolbarContentBuilder
     func outsideToolbarGlass() -> some ToolbarContent {
+        OutsideToolbarGlass(content: self)
+    }
+}
+
+/// The `if #available` lives in a type the other modules cannot see, and that is the point of it.
+/// Written inline in the public function above, a Release build's cross-module optimisation
+/// copied the body into `IskraFeatures`, where it named the opaque type of SwiftUI's
+/// `ToolbarContentBuilder.buildLimitedAvailability` — a symbol SwiftUI does not export, so the
+/// app failed to link in Release while Debug, which copies nothing, linked fine.
+struct OutsideToolbarGlass<Content: ToolbarContent>: ToolbarContent {
+    let content: Content
+
+    @ToolbarContentBuilder
+    var body: some ToolbarContent {
         if #available(iOS 26, macOS 26, *) {
-            sharedBackgroundVisibility(.hidden)
+            content.sharedBackgroundVisibility(.hidden)
         } else {
-            self
+            content
         }
     }
 }

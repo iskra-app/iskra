@@ -142,5 +142,85 @@
 				<string>%lld стикера</string>
 		</dict>
 	</dict>
+	<key>poll.voters</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+				<key>one</key>
+				<string>%lld голос</string>
+				<key>few</key>
+				<string>%lld голоса</string>
+				<key>many</key>
+				<string>%lld голосов</string>
+				<key>other</key>
+				<string>%lld голоса</string>
+		</dict>
+	</dict>
+	<key>thread.replies</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+				<key>one</key>
+				<string>%lld ответ</string>
+				<key>few</key>
+				<string>%lld ответа</string>
+				<key>many</key>
+				<string>%lld ответов</string>
+				<key>other</key>
+				<string>%lld ответа</string>
+		</dict>
+	</dict>
+	<key>location.liveForMinutes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+				<key>one</key>
+				<string>%lld минуту</string>
+				<key>few</key>
+				<string>%lld минуты</string>
+				<key>many</key>
+				<string>%lld минут</string>
+				<key>other</key>
+				<string>%lld минуты</string>
+		</dict>
+	</dict>
+	<key>location.liveForHours</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+				<key>one</key>
+				<string>%lld час</string>
+				<key>few</key>
+				<string>%lld часа</string>
+				<key>many</key>
+				<string>%lld часов</string>
+				<key>other</key>
+				<string>%lld часа</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

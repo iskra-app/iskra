@@ -208,7 +208,10 @@ struct NewChatView: View {
     /// falls back to the room's own ID when the SDK cannot say who the other person is; those rooms
     /// have nobody to list. Two chats with one person (it happens: a client that did not find the
     /// first) are listed once, as the more recent, because the list is in order of recency.
-    private var contacts: [Contact] {
+    private var contacts: [Contact] { Self.contacts(in: session) }
+
+    /// The same list for anybody else who needs it — "Invite", through `PersonalChats`.
+    static func contacts(in session: UserSession) -> [Contact] {
         var seen = Set<String>()
         return session.roomList.rooms.compactMap { room in
             guard room.isDirectMessage, !room.isInvitation, room.avatarSeed.hasPrefix("@"),

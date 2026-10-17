@@ -120,6 +120,8 @@ struct MessageComposer: View {
     var onChoosePhoto: () -> Void
     var onChooseFile: () -> Void
     var onChooseLocation: () -> Void = {}
+    /// Asking for the sheet that writes a poll. Nil leaves the item out.
+    var onCreatePoll: (() -> Void)?
 
     /// Asking for the sticker sheet — presented by the screen, like the pickers above. Nil leaves
     /// the button out: a room this account cannot post to has no use for it, and neither has a
@@ -131,10 +133,24 @@ struct MessageComposer: View {
     /// because the drop lands on the whole room and not on this bar.
     var attachments: [PendingAttachment] = []
     var onRemoveAttachment: (PendingAttachment) -> Void = { _ in }
+    /// Opening a waiting photo in `PhotoEditor`. Nil leaves the pencil off the tiles.
+    var onEditAttachment: ((PendingAttachment) -> Void)?
 
     /// Reads the clipboard's photos and videos into `attachments`. Asking, not reading: the screen
     /// does the reading, for the same reason it presents the pickers.
     var onPasteImage: () -> Void = {}
+
+    /// The people picked from the "@" list so far, kept beside the draft — the field holds plain
+    /// words, and this is what says which Kai `@Kai` was. The screen owns it, as it owns the draft,
+    /// because the screen is what sends. See `ComposerMention`.
+    @Binding var mentions: [ComposerMention]
+
+    /// Who can be mentioned, asked for the first time an "@" is typed. Nil leaves the list out — a
+    /// personal chat, where there is nobody to call but the one person already listening.
+    var loadMentionCandidates: (() async -> [RoomMemberSummary])?
+
+    /// The room's people, once asked for.
+    @State private var mentionCandidates: [RoomMemberSummary]?
 
     /// Whether the clipboard had a photo or video on it when the "+" was opened, which is when
     /// "Paste" is offered. Looked at then and not continuously: there is no notification
@@ -184,10 +200,14 @@ struct MessageComposer: View {
          onChoosePhoto: @escaping () -> Void,
          onChooseFile: @escaping () -> Void,
          onChooseLocation: @escaping () -> Void = {},
+         onCreatePoll: (() -> Void)? = nil,
          onChooseSticker: (() -> Void)? = nil,
          attachments: [PendingAttachment] = [],
          onRemoveAttachment: @escaping (PendingAttachment) -> Void = { _ in },
+         onEditAttachment: ((PendingAttachment) -> Void)? = nil,
          onPasteImage: @escaping () -> Void = {},
+         mentions: Binding<[ComposerMention]> = .constant([]),
+         loadMentionCandidates: (() async -> [RoomMemberSummary])? = nil,
          isAttaching: Bool = false,
          locking: LockGesture = LockGesture()) {
         _draft = draft
@@ -209,10 +229,14 @@ struct MessageComposer: View {
         self.onChoosePhoto = onChoosePhoto
         self.onChooseFile = onChooseFile
         self.onChooseLocation = onChooseLocation
+        self.onCreatePoll = onCreatePoll
         self.onChooseSticker = onChooseSticker
         self.attachments = attachments
         self.onRemoveAttachment = onRemoveAttachment
+        self.onEditAttachment = onEditAttachment
         self.onPasteImage = onPasteImage
+        _mentions = mentions
+        self.loadMentionCandidates = loadMentionCandidates
         _isAttaching = State(initialValue: isAttaching)
         _locking = State(initialValue: locking)
     }
@@ -238,6 +262,12 @@ struct MessageComposer: View {
     /// What is waiting, as far as this press of send is concerned. None while editing: an edit
     /// changes the words of a message already sent and cannot add a photograph to it, so the
     /// attachments step aside — kept, and back the moment the edit is done or abandoned.
+    /// Whether what is typed will go under pictures rather than as a message of its own.
+    private var isCaption: Bool {
+        if let context, context.isEditing { return context.message.hasCaption }
+        return !pendingAttachments.isEmpty
+    }
+
     private var pendingAttachments: [PendingAttachment] {
         context?.isEditing == true ? [] : attachments
     }
@@ -245,6 +275,35 @@ struct MessageComposer: View {
     /// Whether there is anything to send: words, or attachments, or both.
     private var hasSomethingToSend: Bool {
         !isEmpty || !pendingAttachments.isEmpty
+    }
+
+    /// The "@…" the cursor is at the end of, while the room has people to offer for it.
+    private var mentionQuery: MentionQuery? {
+        guard loadMentionCandidates != nil, voice == nil, !isAttaching else { return nil }
+        var cursor = draft.endIndex
+        if case let .selection(range)? = selection?.indices {
+            // An empty range is a cursor. A word *selected* is not being typed, and offering names
+            // over it would replace what the user meant to copy.
+            guard range.isEmpty else { return nil }
+            cursor = range.upperBound
+        }
+        guard cursor <= draft.endIndex else { return nil }
+        return ComposerMentions.query(in: draft, cursor: cursor)
+    }
+
+    /// Who the "@" being typed could mean — empty when nothing is being typed, or nobody matches.
+    private var mentionMatches: [RoomMemberSummary] {
+        guard let mentionQuery, let mentionCandidates else { return [] }
+        return ComposerMentions.matches(mentionQuery.text, in: mentionCandidates)
+    }
+
+    /// A name chosen from the list: into the draft in place of what was typed, the cursor after it.
+    private func pick(_ member: RoomMemberSummary) {
+        guard let mentionQuery else { return }
+        let (text, cursor, mention) = ComposerMentions.insert(member, replacing: mentionQuery, in: draft)
+        draft = text
+        mentions.append(mention)
+        selection = TextSelection(insertionPoint: draft.index(draft.startIndex, offsetBy: min(cursor, draft.count)))
     }
 
     var body: some View {
@@ -299,7 +358,8 @@ struct MessageComposer: View {
                         // sent on a few. Centred on the field, at any number of lines: it belongs
                         // to the field, not to the last line of what is being typed.
                         HStack(alignment: .center, spacing: 0) {
-                            TextField(String(app: Strings.Room.composerPlaceholder), text: $draft,
+                            TextField(String(app: isCaption ? Strings.Room.captionPlaceholder : Strings.Room.composerPlaceholder),
+                                      text: $draft,
                                       selection: $selection, axis: .vertical)
                                 .textFieldStyle(.plain)
                                 // Where the words start on the screen — the point a sent message
@@ -341,7 +401,8 @@ struct MessageComposer: View {
                                label: Strings.Room.send,
                                isPrimary: true,
                                action: onSend)
-                            .disabled(isEmpty)
+                            // A caption may be emptied — that takes it off the photo.
+                            .disabled(isEmpty && !context.message.hasCaption)
                     } else if !hasSomethingToSend {
                         recordButton
                     } else {
@@ -421,6 +482,24 @@ struct MessageComposer: View {
         // Lifted by the composer's own measured height, the same arithmetic the attach options
         // use, and centred over the button by taking exactly that button's width off the trailing
         // edge.
+        // Outside the glass container, like the pill below and for the same reason: it has nothing
+        // to morph into, and glass gathered into the container is drawn whether it is wanted or not.
+        // Lifted by the composer's measured height, the arithmetic the attach choices use.
+        .overlay(alignment: .bottom) {
+            let matches = mentionMatches
+            if !matches.isEmpty {
+                MentionPicker(members: matches, onPick: pick)
+                    .padding(.horizontal, Theme.Spacing.normal)
+                    .offset(y: -(height + Theme.Spacing.close))
+                    .transition(.scale(scale: 0.96, anchor: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.smooth(duration: Theme.Timing.chrome), value: mentionMatches.isEmpty)
+        // The room's people are asked for the first time an "@" is typed, and kept.
+        .task(id: mentionQuery != nil) {
+            guard mentionQuery != nil, mentionCandidates == nil, let loadMentionCandidates else { return }
+            mentionCandidates = await loadMentionCandidates()
+        }
         .overlay(alignment: .bottomTrailing) {
             if locking.isVisible {
                 RecordLock(gesture: locking)
@@ -595,6 +674,23 @@ struct MessageComposer: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text(Strings.Room.removeAttachment))
+        }
+        // A photo can be marked up before it goes; a video cannot, so it gets no pencil.
+        .overlay(alignment: .bottomLeading) {
+            if !image.isVideo, let onEditAttachment {
+                Button {
+                    onEditAttachment(image)
+                } label: {
+                    Image(systemName: "pencil.circle.fill")
+                        .font(.body)
+                        .symbolRenderingMode(.palette)
+                        .foregroundStyle(.white, .black.opacity(0.6))
+                        .padding(Theme.Spacing.tight)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text(Strings.PhotoEditor.edit))
+            }
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text(image.isVideo ? Strings.Room.attachedVideo : Strings.Room.attachedPhoto))
@@ -1055,6 +1151,13 @@ struct MessageComposer: View {
                          label: Strings.Location.attach,
                          id: "location",
                          action: onChooseLocation)
+
+            if let onCreatePoll {
+                attachOption(systemImage: "chart.bar",
+                             label: Strings.Poll.attach,
+                             id: "poll",
+                             action: onCreatePoll)
+            }
 
             if canPasteImage {
                 attachOption(systemImage: "doc.on.clipboard",

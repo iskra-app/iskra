@@ -27,6 +27,9 @@ struct MessageContent: View {
     /// actually scroll the conversation, so it is reported upward.
     let onOpenReply: (String) -> Void
 
+    /// Casts this account's answer to a poll — the whole new choice. See `PollBubble`.
+    var onVote: ([String]) -> Void = { _ in }
+
     @Environment(\.accent) private var accent
 
     /// The real opener, captured before the message text overrides `openURL` to intercept taps.
@@ -85,6 +88,23 @@ struct MessageContent: View {
 
     @ViewBuilder
     private var content: some View {
+        if let album = message.album, album.count > 1 {
+            quoted {
+                AlbumBubble(items: album, style: style,
+                            caption: message.albumCaption.map { AnyView(messageText($0)) })
+            }
+        } else {
+            single
+        }
+    }
+
+    /// The caption under a photo, a video or a file, painted like a message — see `MediaCaption`.
+    private func caption(of attachment: Attachment) -> AnyView? {
+        attachment.caption.map { AnyView(messageText($0)) }
+    }
+
+    @ViewBuilder
+    private var single: some View {
         switch message.kind {
         case let .text(body):
             bubble { messageText(body) }
@@ -109,11 +129,22 @@ struct MessageContent: View {
         case let .voice(attachment, waveform):
             bubble { VoiceMessageView(attachment: attachment, waveform: waveform) }
 
+        // A photo or a video with words under it is drawn as an album of one: the bubble's own
+        // fill, no outline, the caption where a text message's words would be — the same as an
+        // album with a caption, so the two do not look like two different things. Without words it
+        // stays the bare picture on the blur of itself.
+        case let .image(attachment) where attachment.caption != nil,
+             let .video(attachment) where attachment.caption != nil && !attachment.isVideoNote:
+            quoted {
+                AlbumBubble(items: [message], style: style, caption: caption(of: attachment))
+            }
+
         case let .image(attachment):
             quoted {
                 PictureBubble(attachment: attachment, messageID: message.id,
                               style: style, isPlayable: false,
-                              sender: message.spokenSender, timestamp: message.timestamp)
+                              sender: message.spokenSender, timestamp: message.timestamp,
+                              caption: caption(of: attachment))
             }
 
         case let .sticker(attachment):
@@ -128,7 +159,8 @@ struct MessageContent: View {
             quoted {
                 PictureBubble(attachment: attachment, messageID: message.id,
                               style: style, isPlayable: true,
-                              sender: message.spokenSender, timestamp: message.timestamp)
+                              sender: message.spokenSender, timestamp: message.timestamp,
+                              caption: caption(of: attachment))
             }
 
         // `quoted`, like every other kind that draws its own bubble rather than sitting in
@@ -136,17 +168,28 @@ struct MessageContent: View {
         // music was silently dropped.
         case let .audio(attachment):
             // Played in place, like a voice message — not handed to the system as a file.
-            bubble { AudioFileView(attachment: attachment) }
+            bubble {
+                AudioFileView(attachment: attachment)
+                if let caption = attachment.caption { messageText(caption) }
+            }
 
         case let .file(attachment):
             quoted {
                 FileBubble(attachment: attachment, systemImage: "doc", style: style)
+                if let caption = attachment.caption {
+                    messageText(caption)
+                        .font(.body)
+                        .messageBubble(style)
+                }
             }
 
         case let .location(location):
             quoted {
                 LocationBubble(location: location, style: style)
             }
+
+        case let .poll(poll):
+            bubble { PollBubble(poll: poll, style: style, onVote: onVote) }
 
         case .unreadable:
             // Not an error the user caused, and not one they can fix. Say what
@@ -246,8 +289,8 @@ struct MessageContent: View {
     /// colour is a thing the design layer owns and the model layer cannot see. A mention of you is
     /// drawn louder than a mention of someone else — it is the one that means *you* were called.
     /// Overriding `openURL` is what turns a tapped link into a question instead of a jump.
-    private func messageText(_ body: String) -> some View {
-        Text(paintedBody(body))
+    private func messageText(_ body: String, from source: Message? = nil) -> some View {
+        Text(paintedBody(body, from: source ?? message))
             .tint(accent.color)
             .environment(\.openURL, OpenURLAction { url in
                 // The finger coming off a hold that opened the menu is not a tap on the link it
@@ -271,10 +314,12 @@ struct MessageContent: View {
             })
     }
 
-    private func paintedBody(_ body: String) -> AttributedString {
+    /// `source` is the message the words belong to — this one, or the picture of an album that
+    /// carries its caption, whose HTML and mentions are its own.
+    private func paintedBody(_ body: String, from source: Message) -> AttributedString {
         var attributed = RichText.attributed(body: body,
-                                             formattedBody: message.formattedBody,
-                                             mentionedUserIDs: Set(message.mentionedUserIDs),
+                                             formattedBody: source.formattedBody,
+                                             mentionedUserIDs: Set(source.mentionedUserIDs),
                                              displayNames: currentUserID.isEmpty ? [:] : [currentUserID: currentUserName],
                                              ownUserID: currentUserID.isEmpty ? nil : currentUserID)
 

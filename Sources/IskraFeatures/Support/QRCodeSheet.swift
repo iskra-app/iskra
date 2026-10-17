@@ -19,6 +19,9 @@ struct QRCodeSheet: View {
 
     @Environment(\.dismiss) private var dismiss
 
+    /// The code and the name under it, drawn once into a picture for the share sheet.
+    @State private var card: Image?
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -38,11 +41,16 @@ struct QRCodeSheet: View {
                         .textSelection(.enabled)
                         .multilineTextAlignment(.center)
 
-                    ShareLink(item: link.url) {
-                        Label(String(app: Strings.Profile.share), systemImage: "square.and.arrow.up")
-                            .frame(maxWidth: Theme.Size.qrCode)
+                    // The code itself, as a picture — what somebody sharing a QR code means to send:
+                    // something to show on another screen or to print, that a camera can read. The
+                    // link is the subtitle above, selectable, for anybody who wants the words.
+                    if let card {
+                        ShareLink(item: card, preview: SharePreview(name, image: card)) {
+                            Label(String(app: Strings.Profile.share), systemImage: "square.and.arrow.up")
+                                .frame(maxWidth: Theme.Size.qrCode)
+                        }
+                        .buttonStyle(.primaryAction)
                     }
-                    .buttonStyle(.primaryAction)
                 }
                 .padding(Theme.Spacing.generous)
                 .frame(maxWidth: .infinity)
@@ -58,6 +66,7 @@ struct QRCodeSheet: View {
                 }
             }
         }
+        .task(id: link.url) { card = renderCard() }
         #if os(macOS)
         // A Mac sheet is as small as its content will let it be, and a scroll view will let it be
         // very small indeed.
@@ -72,6 +81,40 @@ struct QRCodeSheet: View {
 /// Never straight into a room. A QR code is somebody else's choice of where to send you, and
 /// joining is visible to everyone already there; so a room is shown first, with what the server
 /// will say about it, and entered with a press. A room this account is already in simply opens.
+extension QRCodeSheet {
+    /// White, the code, the name and the address under it — legible anywhere it is sent, in
+    /// either appearance, because a QR code on a dark background is one a camera may not read.
+    @MainActor
+    func renderCard() -> Image? {
+        Self.card(name: name, subtitle: subtitle, link: link).map { Image(decorative: $0, scale: 3) }
+    }
+
+    /// The picture itself — a `CGImage`, so a test can read the code back out of it.
+    @MainActor
+    static func card(name: String, subtitle: String, link: MatrixLink) -> CGImage? {
+        let content = VStack(spacing: Theme.Spacing.normal) {
+            QRCodeImage(text: link.url.absoluteString)
+                .frame(width: Theme.Size.qrCode)
+            Text(name)
+                .font(.title3.weight(.semibold))
+                .multilineTextAlignment(.center)
+            Text(verbatim: subtitle)
+                .font(.callout)
+                .multilineTextAlignment(.center)
+                .opacity(0.6)
+        }
+        .foregroundStyle(.black)
+        .padding(Theme.Spacing.generous)
+        .frame(width: Theme.Size.qrCode + Theme.Spacing.generous * 2)
+        .background(.white)
+        .environment(\.colorScheme, .light)
+
+        let renderer = ImageRenderer(content: content)
+        renderer.scale = 3
+        return renderer.cgImage
+    }
+}
+
 struct MatrixLinkView: View {
     let session: UserSession
     let link: MatrixLink

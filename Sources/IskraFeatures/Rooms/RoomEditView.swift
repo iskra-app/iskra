@@ -35,6 +35,9 @@ struct RoomEditView: View {
     /// different audiences, and one of them is never sent anywhere.
     @State private var draftLocalName = ""
 
+    /// The address being typed — just its name, between the `#` and the server.
+    @State private var draftAddress = ""
+
     @State private var isChoosingPicture = false
     @State private var pickedPicture: PhotosPickerItem?
 
@@ -44,6 +47,7 @@ struct RoomEditView: View {
         case name
         case topic
         case localName
+        case address
     }
 
     /// A room, as opposed to a conversation with one person. Asked of what the chat *is* rather
@@ -115,6 +119,51 @@ struct RoomEditView: View {
                 }
             }
 
+            if isRoom, details.permissions.canChangeHistory {
+                history
+            }
+
+            if isRoom, details.permissions.canChangeAddress {
+                address
+            }
+
+            // Who runs the room and what everybody else may do — for whoever may change the room's
+            // power levels, which in practice is its administrators. A screen of its own, because
+            // it is two lists, not a field.
+            if isRoom, details.permissions.canChangeRoles {
+                Section {
+                    NavigationLink {
+                        RoomRulesView(details: details)
+                    } label: {
+                        Label {
+                            Text(Strings.Room.Rules.title)
+                        } icon: {
+                            Image(systemName: "person.badge.key")
+                        }
+                    }
+                }
+            }
+
+            // The people the room has shut out — a list only somebody who could let them back needs,
+            // and only when there is somebody on it.
+            if isRoom, details.permissions.canBan, !details.banned.isEmpty {
+                Section {
+                    NavigationLink {
+                        BannedMembersView(details: details)
+                    } label: {
+                        LabeledContent {
+                            Text(details.banned.count, format: .number)
+                        } label: {
+                            Label {
+                                Text(Strings.Room.Access.banned)
+                            } icon: {
+                                Image(systemName: "nosign")
+                            }
+                        }
+                    }
+                }
+            }
+
             if isRoom, isOffline {
                 Section {
                 } footer: {
@@ -136,9 +185,16 @@ struct RoomEditView: View {
         .onChange(of: details.localName, initial: true) { _, local in
             if focus != .localName { draftLocalName = local ?? "" }
         }
+        .onChange(of: details.canonicalAlias, initial: true) { _, _ in
+            if focus != .address { draftAddress = details.addressName }
+        }
+        .task {
+            if details.permissions.canChangeAddress { await details.loadDirectory() }
+        }
         .onChange(of: focus) { previous, _ in
             switch previous {
             case .name: Task { await details.rename(to: draftName) }
+            case .address: Task { await commitAddress() }
             case .topic: Task { await details.setTopic(draftTopic) }
             // No `Task`, and no server: the nickname is written to this device and read back by
             // the room list and the header at once. See `LocalNames`.
@@ -157,6 +213,7 @@ struct RoomEditView: View {
             if focus == .name { Task { await details.rename(to: draftName) } }
             if focus == .topic { Task { await details.setTopic(draftTopic) } }
             if focus == .localName { details.renameLocally(to: draftLocalName) }
+            if focus == .address { Task { await commitAddress() } }
         }
         .photosPicker(isPresented: $isChoosingPicture, selection: $pickedPicture, matching: .images)
         .onChange(of: pickedPicture) { _, item in
@@ -203,6 +260,82 @@ struct RoomEditView: View {
         } footer: {
             Text(Strings.Room.LocalName.help)
         }
+    }
+
+    /// What is offered — and what the room already has, even where it would not be offered: a
+    /// room made open to the world and then shut keeps saying so until somebody changes it.
+    private var historyChoices: [HistoryAccess] {
+        let offered = HistoryAccess.choices(isPublic: details.isPublic)
+        return offered.contains(details.history) ? offered : offered + [details.history]
+    }
+
+    /// What somebody who comes later may read of what was said before them.
+    private var history: some View {
+        Section {
+            Picker(selection: Binding(get: { details.history },
+                                      set: { choice in Task { await details.setHistory(choice) } })) {
+                ForEach(historyChoices) { choice in
+                    Text(Strings.Room.Access.history(choice)).tag(choice)
+                }
+            } label: {
+                EmptyView()
+            }
+            .pickerStyle(.inline)
+            .labelsHidden()
+            .disabled(isOffline)
+        } header: {
+            Text(Strings.Room.Access.historyHeader)
+        } footer: {
+            Text(Strings.Room.Access.historyFooter)
+        }
+    }
+
+    /// `#name:server`, with only the name to type — the server is ours and not a choice — and, for
+    /// a room anybody may walk into, whether the server lists it.
+    private var address: some View {
+        Section {
+            HStack(spacing: 0) {
+                Text(verbatim: "#")
+                    .foregroundStyle(.secondary)
+                TextField(String(app: Strings.Room.Access.addressPlaceholder), text: $draftAddress)
+                    .focused($focus, equals: .address)
+                    .onSubmit { focus = nil }
+                    .autocorrectionDisabled()
+                    #if !os(macOS)
+                    .textInputAutocapitalization(.never)
+                    #endif
+                Text(verbatim: ":\(details.addressServer)")
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.head)
+            }
+            .disabled(isOffline)
+
+            if details.isPublic, let listed = details.isInDirectory {
+                Toggle(isOn: Binding(get: { listed },
+                                     set: { listed in Task { await details.setInDirectory(listed) } })) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                        Text(Strings.Room.Access.inDirectory)
+                        Text(Strings.Room.Access.inDirectoryHelp(details.addressServer))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .accentControl()
+                .disabled(isOffline)
+            }
+        } header: {
+            Text(Strings.Room.Access.addressHeader)
+        } footer: {
+            Text(Strings.Room.Access.addressFooter)
+        }
+    }
+
+    /// The address, sent — and the field put back to what the room really has, whether that is
+    /// the new address, the old one after a refusal, or the cleaned-up spelling of what was typed.
+    private func commitAddress() async {
+        await details.setAddress(draftAddress)
+        if focus != .address { draftAddress = details.addressName }
     }
 
     /// The picture, dimmed under a pencil — tapping it offers to change it or remove it.

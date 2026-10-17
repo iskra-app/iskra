@@ -15,7 +15,7 @@ struct MockSignInTests {
                               sessionStore: SessionStore(secrets: InMemorySecrets()))
     }
 
-    @Test("finding the server leads to the way in")
+    @Test("\"Next\" finds the server and offers the two buttons")
     func findsServer() async throws {
         let server = SignInMockServer()
         let (proxy, address) = try await server.start()
@@ -25,11 +25,56 @@ struct MockSignInTests {
         await model.findServer()
 
         #expect(model.problem == nil)
-        guard case let .ready(options) = model.step else {
-            Issue.record("expected the sign-in step, got \(model.step)")
+        guard case let .found(options) = model.step else {
+            Issue.record("expected the server to be found, got \(model.step)")
             return
         }
         #expect(options.supportsRegistration)
+    }
+
+    @Test("\"Sign in\" on a password-only server goes to the form, and back returns to the buttons")
+    func signInOpensFormAndBack() async throws {
+        let server = SignInMockServer(configuration: .init(offersOAuth: false, offersRegistration: false))
+        let (proxy, address) = try await server.start()
+        defer { Task { await proxy.stop() } }
+
+        let model = SignInModel(authentication: authentication(), address: address) { _ in }
+        await model.findServer()
+        await model.begin(.signIn)
+        guard case .ready = model.step else {
+            Issue.record("expected the form, got \(model.step)")
+            return
+        }
+
+        model.back()
+        guard case .found = model.step else {
+            Issue.record("expected the two buttons again, got \(model.step)")
+            return
+        }
+
+        // The attempt "Next" started is still the one in use: the form signs in without a second lookup.
+        await model.begin(.signIn)
+        model.username = "alice"
+        model.password = "password"
+        await model.signInWithPassword()
+        #expect(model.problem == nil)
+    }
+
+    @Test("\"Create account\" on a server that cannot make one says so and stays")
+    func noRegistrationStays() async throws {
+        let server = SignInMockServer(configuration: .init(offersRegistration: false))
+        let (proxy, address) = try await server.start()
+        defer { Task { await proxy.stop() } }
+
+        let model = SignInModel(authentication: authentication(), address: address) { _ in }
+        await model.findServer()
+        await model.begin(.createAccount)
+
+        #expect(model.problem == Strings.SignIn.Problem.noRegistration)
+        guard case .found = model.step else {
+            Issue.record("expected to stay on the two buttons, got \(model.step)")
+            return
+        }
     }
 
     @Test("a password signs in and hands the session up")

@@ -3,18 +3,13 @@ import Foundation
 import MatrixRustSDK
 @testable import IskraCore
 
-/// The rule these pin is worth stating plainly, because breaking it bricks the app one launch
-/// later and blames the network for it.
+/// What gets written down as a session's homeserver, and how an old mistake in it is repaired.
 ///
-/// With the bridge switch on, the SDK's homeserver is `http://127.0.0.1:<port>` — a listener this
-/// process raised, on a port the system hands out afresh every launch. Everything the SDK reports
-/// about itself carries that address, including the session it asks us to save. Written into the
-/// Keychain, it is read back next launch as the address of a port that closed when the app quit:
-/// the app dials itself, finds nothing, and says there is no network.
-///
-/// `.serialized` because the register is process-wide, which is the honest shape for a thing there
-/// is only ever one of — see `TunnelSettings.listenerStandsIn(for:)`.
-@Suite(.serialized)
+/// The bridge's first protocol stood a listener of this app's own in for the homeserver, at
+/// `http://127.0.0.1:<port>` on a port handed out afresh every launch — and before the app learnt
+/// never to write that down, some records were saved with it. Read back, they dial a port that
+/// closed when the app quit, and the app says there is no network. That protocol is gone; the
+/// bridge is now a proxy and the client always holds the real address. What stays is the repair.
 struct TunnelPersistenceTests {
     private func session(homeserver: String) -> Session {
         Session(accessToken: "token",
@@ -26,30 +21,30 @@ struct TunnelPersistenceTests {
                 slidingSyncVersion: .native)
     }
 
-    @Test func loopbackIsNeverWrittenDown() {
-        TunnelSettings.listenerStandsIn(for: URL(string: "https://matrix-client.matrix.org")!)
-        defer { TunnelSettings.listenerStoppedStandingIn() }
-
-        let stored = StoredSession(sessionID: "abc", session: session(homeserver: "http://127.0.0.1:61337"))
-        #expect(stored.homeserverURL == "https://matrix-client.matrix.org")
-    }
-
-    @Test func aRealAddressIsKeptExactly() {
-        TunnelSettings.listenerStandsIn(for: URL(string: "https://matrix-client.matrix.org")!)
-        defer { TunnelSettings.listenerStoppedStandingIn() }
-
+    /// The address is written down as the SDK has it: with the bridge a proxy, that is the real one.
+    @Test func theAddressIsKeptExactly() {
         let stored = StoredSession(sessionID: "abc", session: session(homeserver: "https://example.org"))
         #expect(stored.homeserverURL == "https://example.org")
     }
 
-    /// With the switch off there is nothing to substitute. The value goes through unchanged rather
-    /// than being invented — and the restore path recognises it and repairs it, which is the only
-    /// honest answer once the record is already poisoned.
-    @Test func withNoListenerTheAddressIsLeftAlone() {
-        TunnelSettings.listenerStoppedStandingIn()
+    /// A record from the listener's days is recognised as one, which is what makes `restoreClient`
+    /// look the server up again by name.
+    @Test func anOldListenerRecordIsRecognised() {
         let stored = StoredSession(sessionID: "abc", session: session(homeserver: "http://127.0.0.1:61337"))
-        #expect(stored.homeserverURL == "http://127.0.0.1:61337")
-        #expect(TunnelSettings.isLoopback(stored.homeserverURL))
+        #expect(TunnelSettings.isOurListener(stored.homeserverURL))
+    }
+
+    /// Our listeners only ever spoke `http`. A loopback `https` address is a real server behind
+    /// real TLS — the blind-route tests' homeserver — and must not be "repaired".
+    @Test(arguments: [
+        ("http://127.0.0.1:61337", true),
+        ("http://localhost:8080", true),
+        ("https://127.0.0.1:8443", false),
+        ("https://matrix.org", false),
+        ("", false)
+    ])
+    func ourListenerIsPlainHTTPOnLoopback(address: String, expected: Bool) {
+        #expect(TunnelSettings.isOurListener(address) == expected)
     }
 
     @Test(arguments: [

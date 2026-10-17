@@ -66,6 +66,8 @@
 "room.attach" = "写真やファイルを追加";
 
 "room.composerPlaceholder" = "メッセージ";
+"room.captionPlaceholder" = "キャプション";
+"room.mentionSuggestions" = "メンションする相手";
 
 /* The banner shown in place of the composer when posting is not allowed. */
 "room.readOnly" = "このチャットにはメッセージを送れません";
@@ -94,6 +96,7 @@
 
 /* Accessibility label for the pin icon on a pinned chat. */
 "roomList.pinned" = "ピン留めしたチャット";
+"roomList.draft" = "下書き：%@";
 "roomList.hasUnread" = "未読あり";
 
 "roomList.searchPrompt" = "メッセージを検索";
@@ -206,11 +209,27 @@
 "connection.title" = "接続";
 "connection.bridge" = "ブリッジ経由";
 "connection.bridgeFooter" = "通信は直接ではなく、ブリッジを経由してサーバーに届きます。サーバーにつながらない場所のための機能です。";
+"connection.publicSection" = "公開ブリッジ";
+"connection.publicFooter" = "github.com/iskra-app/public-bridges のリストにある、確認済みのブリッジです。ブリッジに何が見えるかは下に書いてあります。アプリはこのリストを 1 日に 1 回 GitHub から直接ダウンロードするため、GitHub とお使いのネットワークにはそのことがわかります。GitHub に接続できないときは保存済みのリストを使います。";
+"connection.publicEmpty" = "リストにはまだブリッジがありません。下で自分のブリッジを追加してください。";
+"connection.publicAnyServer" = "すべての Matrix サーバー";
+"connection.publicServers" = "%@ のみ";
+"connection.publicOperator" = "運営: %@";
+"connection.notListed" = "リストから外れました";
+"connection.ownSection" = "自分のブリッジ";
+"connection.ownFooter" = "自分で運営しているブリッジや、運営者から教わったブリッジです。複数登録でき、チェックの付いたものが使われます。";
+"connection.addBridge" = "ブリッジを追加";
+"connection.editBridge" = "ブリッジを編集";
+"connection.deleteBridge" = "削除";
+"connection.saveBridge" = "保存";
+"connection.cancelEditing" = "キャンセル";
+"connection.bridgeName" = "名前";
+"connection.bridgeNamePrompt" = "例: 自宅";
 
 "connection.status" = "状態";
 "connection.statusDirect" = "直接";
-"connection.statusLocal" = "ローカル層経由";
-"connection.statusBridged" = "ブリッジ経由、リレー: %lld";
+"connection.statusConnecting" = "ブリッジ経由、リレー: %lld。ブリッジはまだ応答していません";
+"connection.statusBlind" = "ブリッジ経由、リレー: %lld。ブリッジはメッセージの内容を見ることはできません";
 "connection.statusFailed" = "オンにできませんでした";
 "connection.pending" = "この画面を離れると新しい設定が有効になります。アプリが自動で再接続します。";
 "connection.applyNow" = "今すぐ再接続";
@@ -219,12 +238,12 @@
    said here rather than only in the status: this is what somebody is looking at. */
 "connection.address" = "ブリッジのアドレス";
 "connection.addressPrompt" = "npub1… または 16 進 64 文字";
-"connection.addressFooter" = "ブリッジは起動時にアドレスを表示します。「bridge address for Iskra: npub1…」という行です。この欄が空のあいだはスイッチは何もせず、通信は直接サーバーへ向かいます。";
+"connection.addressFooter" = "ブリッジは起動時にアドレスを表示します。「bridge address for Iskra: npub1…」の行です。";
 "connection.addressBad" = "ブリッジの鍵ではないようです";
 "connection.addressSecret" = "それは秘密鍵です。ここに入れるのは公開鍵、npub で始まるほうです。";
 
 "connection.relays" = "リレー";
-"connection.relaysPrompt" = "wss://nos.lol, wss://relay.primal.net";
+"connection.relaysPrompt" = "wss://relay.snort.social, wss://nostr.wine";
 "connection.relaysFooter" = "アプリとブリッジはここで互いを見つけます。複数あるのは予備ではありません。リクエストは全部に同時に送られ、いちばん速かったところから返事が来ます。空欄ならデフォルトの 3 つを使います。";
 
 "connection.myKey" = "このデバイスの鍵";
@@ -237,8 +256,16 @@
 "connection.checkOK" = "ブリッジが応答し、サーバーもつながっています — %lld ms";
 "connection.checkNoRelay" = "応答するリレーがありません";
 "connection.checkSilent" = "ブリッジが応答しません。起動していますか？鍵は正しいですか？";
-"connection.checkRefused" = "ブリッジに断られました。このサーバーには対応していません";
 "connection.checkFailed" = "うまくいきませんでした: %@";
+"bridge.refusal.notAllowed" = "ブリッジはこのサーバーへの接続を許可していません。ブリッジのリストにありません";
+"bridge.refusal.notMatrix" = "ブリッジはこのサーバーを Matrix サーバーとして認めませんでした";
+"bridge.refusal.badPort" = "ブリッジはポート 443 にしか接続しません。このサーバーは別のポートです";
+"bridge.refusal.notPublic" = "サーバーがプライベートネットワーク上にあり、公開ブリッジはそこへは接続しません";
+"bridge.refusal.noSuchHost" = "ブリッジはこのサーバーを見つけられませんでした";
+"bridge.refusal.unreachable" = "ブリッジはサーバーに接続できませんでした";
+"bridge.refusal.busy" = "ブリッジが混み合っています。1 分ほどしてからもう一度お試しください";
+"bridge.refusal.disagreement" = "アプリとブリッジの通信がかみ合いませんでした。アプリかブリッジを更新してください";
+"bridge.refusal.broke" = "ブリッジが接続を切りました: %@";
 
 /* Not "what is unfinished" but what to expect: the numbers come from measuring a whole session
    through the bridge (Bridge/README.md), and whoever turns the bridge on should know them first. */
@@ -246,7 +273,7 @@
 "connection.unfinishedBody" = "リクエストはすべてリレーを回り道するため 200〜350 ms かかります。そのためサインインや初めてチャットを開くときは、直接接続より目に見えて遅くなります。一瞬だったところに 1 秒ほど。一方、新しいメッセージは直接とほぼ同じ速さで届きます。大きな添付ファイルも届きますが、公開リレーは避けたほうがいいでしょう。メディア用にはブリッジ専用のリレーを用意してください。";
 
 "connection.sees" = "ブリッジから見えるもの";
-"connection.seesBody" = "ブリッジはサーバーへのリクエストを開いて中継するので、あなたのトークン、参加しているルーム、暗号化されていないチャットのメッセージ本文が見えます。暗号化された会話は読めません。だからブリッジは他人のものではなく、自分で用意するのがおすすめです。";
+"connection.seesBody" = "見えるのは、どのサーバーにいつ接続し、何バイト送受信したかだけです。サーバーとの接続はアプリ自身が暗号化するため、トークン、ルーム、メッセージは、暗号化されていないチャットのものも含め、ブリッジからは見えません。IP アドレスを見るのはリレーで、ブリッジではありません。";
 
 /* App lock by Face ID / device passcode. */
 "settings.lock" = "アプリのロック";
@@ -357,6 +384,7 @@
 "signIn.problem.storageUnavailable" = "Iskra はこのデバイスに安全な保存領域を用意できなかったため、安全にサインインできません。";
 
 "signIn.problem.unreachable" = "このアドレスに接続できませんでした。接続を確認して、もう一度お試しください。";
+"signIn.problem.bridgeUnavailable" = "ブリッジを起動できませんでした。ブリッジがオンの間、Iskra は直接接続しません。接続設定でブリッジのアドレスとリレーを確認してください。";
 
 "signIn.problem.unsupportedMethod" = "このサービスは、Iskra がまだ対応していないサインイン方法を使っています。";
 
@@ -394,7 +422,7 @@
 /* The question that replaces asking for a 'homeserver URL'. */
 "signIn.whereIsAccount" = "アカウントはどこにありますか？";
 
-"signIn.whereIsAccountHelp" = "サーバーのアドレスを教わっている場合は入力してください。わからなければ matrix.org のままで大丈夫です。";
+"signIn.whereIsAccountHelp" = "アカウントがあるサーバー、またはアカウントを作りたいサーバーのアドレスを入力してください。";
 
 "room.attachPhoto" = "写真またはビデオ";
 
@@ -678,6 +706,31 @@
 "location.myLocation" = "現在地";
 "location.attach" = "位置情報";
 "message.spoken.sentLocation" = "位置情報";
+"poll.kind" = "投票";
+"poll.kindAnonymous" = "匿名投票";
+"poll.ended" = "投票は終了しました";
+"poll.multiple" = "複数選択可";
+"poll.noVotes" = "まだ誰も投票していません";
+"poll.hiddenUntilEnd" = "結果は終了後に表示";
+"poll.end" = "投票を終了";
+"poll.endConfirmTitle" = "投票を終了しますか？";
+"poll.endConfirmMessage" = "これ以上投票できなくなり、全員に結果が表示されます。";
+"poll.attach" = "投票";
+"poll.newTitle" = "新しい投票";
+"poll.question" = "質問";
+"poll.questionPlaceholder" = "何を聞きますか？";
+"poll.answers" = "選択肢";
+"poll.answerPlaceholder" = "選択肢";
+"poll.addAnswer" = "選択肢を追加";
+"poll.removeAnswer" = "選択肢を削除";
+"poll.settings" = "設定";
+"poll.allowMultiple" = "複数回答";
+"poll.anonymous" = "結果は終了後のみ";
+"poll.anonymousFooter" = "投票中は、ほかの人の投票内容は誰にも見えません。終了できるのはあなただけです。";
+"poll.send" = "送信";
+"poll.cancel" = "キャンセル";
+"poll.chosen" = "あなたの回答";
+"message.spoken.sentPoll" = "投票「%@」";
 
 /* Running a room. Shown only to whoever the room allows to do it. */
 "room.manage.namePlaceholder" = "チャット名";
@@ -685,12 +738,12 @@
 "room.manage.openToAnyone" = "オープンなチャット";
 "room.manage.openToAnyoneHelp" = "このチャットを見つけた人は誰でも参加できます。オフなら招待制です。";
 "room.manage.invite" = "招待";
-"room.manage.inviteTitle" = "誰を招待しますか？";
-"room.manage.inviteHelp" = "Matrix のアドレスは @名前:サーバー の形式です。";
-"room.manage.invitePlaceholder" = "@名前:サーバー";
+"room.invite.inviteCount" = "招待（%lld）";
+"room.invite.chosen" = "選択済み";
+"room.invite.alreadyHere" = "参加済み";
+"room.invite.byAddress" = "このアドレスで招待";
 "room.manage.role" = "役割";
 "room.manage.roleHeader" = "できること";
-"room.manage.roleQuestion" = "%@ にできること";
 "room.manage.member" = "メンバー";
 "room.manage.write" = "メッセージを送る";
 "room.manage.goToChat" = "チャットへ移動";
@@ -705,6 +758,27 @@
 /* Why everything on the room-settings screen is greyed out. Shown only while offline. Must say
    what still works — reading and writing — rather than only what does not. */
 "room.manage.offline" = "オフラインでもチャットを読んだり書いたりはできますが、設定は変更できません。";
+"room.rules.title" = "役割と権限";
+"room.rules.staffHeader" = "チャットの管理者";
+"room.rules.staffFooter" = "役割を変えるには、その人を左にスワイプするか、ページを開いてください。";
+"room.rules.rulesHeader" = "できる人";
+"room.rules.rulesFooter" = "「モデレーター」はモデレーターと管理者のことです。";
+"room.rules.sendMessages" = "メッセージを送る";
+"room.rules.invite" = "人を招待する";
+"room.rules.remove" = "メンバーを外す";
+"room.rules.ban" = "ブロックする";
+"room.rules.deleteOthers" = "他人のメッセージを削除する";
+"room.rules.rename" = "名前を変える";
+"room.rules.changeTopic" = "説明を変える";
+"room.rules.changePicture" = "写真を変える";
+"room.rules.everyone" = "全員";
+"room.rules.moderators" = "モデレーター";
+"room.rules.administrators" = "管理者";
+"room.manage.chooseRole" = "役割を選んでください";
+"room.rules.addStaff" = "追加";
+"room.rules.appointTitle" = "任命";
+"room.rules.nobodyToAppoint" = "ほかに任命できる人はいません。";
+"room.rules.demote" = "役割を外す";
 "room.manage.cancel" = "キャンセル";
 "problem.title" = "うまくいきませんでした";
 
@@ -752,7 +826,6 @@
 
 /* The archive: the shelf for set-aside chats and the way back to them. */
 "roomList.archive.title" = "アーカイブ";
-"roomList.archive.entry" = "アーカイブ (%lld)";
 "roomList.archive.emptyTitle" = "アーカイブは空です";
 "roomList.archive.emptyMessage" = "チャットを左にスワイプしてアーカイブすると、一覧からは外れますが、消えはしません。";
 
@@ -833,9 +906,8 @@
 "room.typingBy" = "%@ が入力中…";
 
 "room.scrollToBottom" = "最新のメッセージへ";
-"room.loadEarlier" = "それ以前を表示";
 
-/* Stands where the "show earlier" button would be, when the older messages could not be fetched —
+/* Stands at the top of the conversation when the older messages could not be fetched —
    offline, this is where the cached history runs out. Explains; does not promise. */
 "room.earlierUnavailable" = "それ以前のメッセージは、オンラインに戻ったら表示します";
 "appearance.previewAsk" = "何色にしたの？";
@@ -1139,6 +1211,8 @@
 "chats.shareActive" = "使用中";
 "chats.shareAll" = "すべて";
 "chats.shareHelp" = "ほかのアプリから共有するときに、どのアカウントのチャットを表示するか。「使用中」は今 Iskra で開いているアカウントです。";
+"chats.widgetSection" = "「お気に入りのチャット」ウィジェット";
+"chats.widgetHelp" = "ウィジェットでチャットを選んでいないときに、どのアカウントのチャットを表示するか。「使用中」は今 Iskra で開いているアカウントです。";
 
 /* Settings → Privacy. */
 "privacy.title" = "プライバシー";
@@ -1171,7 +1245,7 @@
 "devices.newSignInNo" = "自分ではありません";
 
 /* Who reacted: the "everybody" tab. */
-"message.menu.reactorsAll" = "すべて %lld";
+"message.menu.reactorsAll" = "すべて · %lld";
 
 /* Media viewer: the counter and video skipping. */
 "message.media.counter" = "%lld / %lld";
@@ -1197,7 +1271,7 @@
 "accounts.signOutTitle" = "%@ からサインアウトしますか？";
 "accounts.signOutMessage" = "このアカウントのチャットはこのデバイスから削除されます。暗号化されたメッセージをもう一度読むには、復元キーかほかのデバイスが必要です。";
 "stickers.subscribe" = "追加";
-"stickers.settings.sheetSection" = "表示するもの";
+"stickers.settings.sheetSection" = "ステッカーの表示";
 "stickers.settings.builtIn" = "スパークス";
 "stickers.settings.roomPacks" = "チャットのステッカー";
 "stickers.settings.roomPacksHelp" = "チャットに独自のステッカーがあれば、そのチャットにいる間は表示されます。上の「追加」をタップすると、すべてのチャットで使えます。";
@@ -1231,3 +1305,164 @@
 "qr.openRoom" = "開く";
 "qr.roomUnknown" = "サーバーはこのルームについて何も教えてくれませんでしたが、参加を試すことはできます。";
 "qr.inviteOnlyRoom" = "このルームは招待制です。";
+
+/* Under the empty address field on the sign-in screen: opens the list of public servers. */
+"signIn.chooseServer" = "どのサーバーを選べばいいかわかりませんか？";
+/* The main button under the address field. */
+"signIn.next" = "次へ";
+/* A small grey link at the foot of the sign-in screen: opens a screen explaining Matrix. */
+"signIn.whatIsMatrix" = "Matrixとは？";
+/* The title of that screen. */
+"aboutMatrix.title" = "Matrixとは";
+
+/* The list of public servers, opened from the sign-in screen. */
+"servers.title" = "サーバーを選ぶ";
+"servers.intro" = "アカウントは1つのサーバーにありますが、ほかのどのサーバーの人ともやり取りできます。メールと同じです。以下のサーバーなら、Iskraからそのままアカウントを作れます。";
+"servers.matrixOrg" = "最大のMatrixサーバーです。Matrix自体を開発している財団が運営しています。";
+/* Where the server is. */
+"servers.matrixOrgWhere" = "イギリス";
+/* A warning on matrix.org: it is blocked in Russia. */
+"servers.matrixOrgBlocked" = "ロシアからは利用できません";
+"servers.tchncs" = "最も古いコミュニティサーバーの1つです。運営者はほかの自由なサービスも提供しています。";
+"servers.tchncsWhere" = "ドイツ";
+"servers.quassel" = "日常の会話のための開かれたサーバーです。誰でも無料で使えます。";
+"servers.quasselWhere" = "ドイツ、サーバーはフィンランド";
+"servers.nopeChat" = "ほかの自由なサービスも提供しているadminForgeのチームが運営しています。ほかのメッセンジャーへのブリッジがあります。";
+"servers.nopeChatWhere" = "ドイツ";
+/* The last entry: running a server of your own. Opens a page about it in the browser. */
+"servers.ownTitle" = "自分のサーバー";
+"servers.ownAbout" = "自分でサーバーを立てることもできます。そうすれば、会話は完全にあなたの手の中にあります。ドメインと少しの時間が必要です。";
+
+/* Under the "open to anyone" switch when making a room: what the room will be. Changes with the switch. */
+"roomList.new.willBeEncrypted" = "このルームは暗号化されます";
+"roomList.new.willNotBeEncrypted" = "このルームは暗号化されません";
+
+/* Room access: history, address, blocked (stage 9) */
+"room.access.historyHeader" = "新しいメンバーへの履歴";
+"room.access.historyFooter" = "後から参加した人が、それまでの会話をどこまで見られるか。保護されたチャットでは、鍵がないため古いメッセージを開けない場合があります。";
+"room.access.history.shared" = "すべての履歴";
+"room.access.history.invited" = "招待された時点から";
+"room.access.history.joined" = "参加した時点から";
+"room.access.history.worldReadable" = "参加していない人にも";
+"room.access.addressHeader" = "アドレス";
+"room.access.addressPlaceholder" = "名前";
+"room.access.addressFooter" = "アドレスがあると、チャットを検索したりリンクから開いたりできます。消すとアドレスはなくなります。";
+"room.access.inDirectory" = "サーバーのディレクトリに表示";
+"room.access.inDirectoryHelp" = "%@ の公開ルーム検索で見つかるようになります。";
+"room.access.banned" = "ブロック中";
+"room.access.bannedFooter" = "招待されても、このチャットには参加できません。";
+"room.access.unban" = "ブロック解除";
+"room.access.unbanQuestion" = "%@ のブロックを解除しますか？";
+"room.access.unbanHelp" = "また参加できるようになります。自動では戻らないので、招待するかリンクを送ってください。";
+
+/* Choosing several messages (stage 9) */
+"message.menu.select" = "選択";
+"message.selection.count" = "%lld 件選択";
+"message.selection.cancel" = "キャンセル";
+"message.selection.deleteTitle" = "選択したメッセージを削除しますか？";
+"message.selection.deleteMessage" = "チャットの全員から消え、元に戻すことはできません。";
+"message.selection.copied" = "コピーしました";
+
+/* Chat folders (stage 9) */
+"folders.all" = "すべて";
+"folders.title" = "フォルダ";
+"folders.explanation" = "フォルダは、個人・グループ・未読などのルールでチャットをまとめ、リストの上にタブとして表示します。すべてのデバイスで共通です。";
+"folders.new" = "新しいフォルダ";
+"folders.suggested" = "おすすめ";
+"folders.add" = "追加";
+"folders.edit" = "フォルダ";
+"folders.namePlaceholder" = "名前";
+"folders.kindsHeader" = "対象のチャット";
+"folders.kind.direct" = "個人";
+"folders.kind.groups" = "グループ";
+"folders.kind.spaces" = "スペース";
+"folders.kind.invitations" = "招待";
+"folders.suggestion.unread" = "未読";
+"folders.conditionsHeader" = "条件";
+"folders.onlyUnread" = "未読のみ";
+"folders.excludesMuted" = "ミュート中を除く";
+"folders.includesArchived" = "アーカイブも含める";
+"folders.includedHeader" = "常に表示";
+"folders.excludedHeader" = "表示しない";
+"folders.addChats" = "チャットを追加";
+"folders.chooseChats" = "チャットを選択";
+"folders.done" = "完了";
+"folders.cancel" = "キャンセル";
+"folders.delete" = "フォルダを削除";
+"folders.deleteQuestion" = "フォルダ「%@」を削除しますか？";
+"folders.deleteHelp" = "チャットはそのまま残り、タブだけが消えます。";
+"folders.addToFolder" = "フォルダへ";
+"folders.membershipTitle" = "フォルダ";
+"folders.membershipFooter" = "チェックすると、ルールに合わなくてもフォルダに入ります。外すと入りません。";
+"folders.emptyTitle" = "このフォルダはまだ空です";
+"folders.emptyMessage" = "ルールに合うチャットがここに表示されます。";
+
+/* Which account a notification came for */
+"chats.namesAccount" = "通知にアカウントを表示";
+"chats.namesAccountHelp" = "通知のタイトルに、どのアカウント宛てかが表示されます。";
+
+"poll.retract" = "投票を取り消す";
+
+"stickers.settings.mine" = "マイステッカー";
+
+/* Beta: for developers */
+"beta.developers" = "開発者向け";
+"beta.showsSource" = "メニューにメッセージのJSON";
+"beta.showsSourceHelp" = "メッセージのメニューに「JSONを表示」が加わり、サーバーから届いたイベントをそのまま見られます。表示がおかしいときに役立ちます。";
+"beta.viewSource" = "JSONを表示";
+"beta.noSource" = "このメッセージにはまだサーバー上のイベントがありません。";
+"beta.demoSignIn" = "デモサインイン";
+"beta.demoSignInHelp" = "アプリ内のサーバーに対するサインイン画面です：alice / password。あなたのアカウントには影響せず、サインインしたらすぐにサインアウトします。";
+"beta.demoSignedIn" = "サインインしました：%@";
+"beta.close" = "閉じる";
+
+/* Threads */
+"thread.title" = "スレッド";
+"thread.replyInThread" = "スレッドで返信";
+"thread.replies" = "返信 %lld 件";
+
+/* Live location */
+"location.shareLive" = "リアルタイムで共有";
+"location.shareLiveFor" = "位置情報をどのくらい共有しますか？";
+"location.liveUntil" = "リアルタイム · %@まで";
+"location.liveEnded" = "リアルタイム共有は終了しました";
+"location.liveWaiting" = "最初の位置を待っています…";
+"location.youAreSharing" = "%@まで位置情報を共有しています";
+"location.stop" = "停止";
+
+"location.liveForMinutes" = "%lld分間";
+"location.liveForHours" = "%lld時間";
+
+/* Voice transcription */
+"message.transcript.show" = "文字起こし";
+"message.transcript.hide" = "テキストを隠す";
+"message.transcript.notAllowed" = "音声認識が許可されていません。設定で許可できます。";
+"message.transcript.unavailable" = "このデバイスではあなたの言語をオフラインで認識できません。Iskraは音声をサーバーに送りません。";
+"message.transcript.nothingHeard" = "言葉を聞き取れませんでした。";
+"message.transcript.failed" = "文字起こしできませんでした。もう一度お試しください。";
+
+"chats.threads" = "スレッドを表示";
+"chats.threadsHelp" = "スレッドの返信は元のメッセージの下に「返信 3 件」としてまとめられます。返信を隠さない限り、チャット内にも他のメッセージと並んで表示されます。変更はチャットを開き直したときから反映されます。個人チャットにはスレッドがありません。";
+"chats.threadsAlways" = "常に";
+"chats.threadsLargeRooms" = "100 人を超えるチャットで";
+"chats.threadsNever" = "表示しない";
+"chats.threadsHideReplies" = "チャットで返信を隠す";
+
+/* The photo editor — PhotoEditor */
+"photoEditor.edit" = "写真を編集";
+"photoEditor.cancel" = "キャンセル";
+"photoEditor.done" = "完了";
+"photoEditor.undo" = "取り消す";
+"photoEditor.draw" = "描く";
+"photoEditor.text" = "テキスト";
+"photoEditor.crop" = "切り取る";
+"photoEditor.rotate" = "回転";
+"photoEditor.textPrompt" = "何か書いてください";
+"photoEditor.failed" = "変更を保存できませんでした。写真は元のままです";
+"photoEditor.ok" = "OK";
+"photoEditor.white" = "白";
+"photoEditor.black" = "黒";
+"photoEditor.red" = "赤";
+"photoEditor.yellow" = "黄";
+"photoEditor.green" = "緑";
+"photoEditor.blue" = "青";

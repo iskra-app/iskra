@@ -224,6 +224,322 @@ struct DemoBackendTests {
 
     /// Stickers through the real SDK: the account's pack from account data, the room's from its
     /// state over the app's own request, a sent one arriving as a sticker, and a received one added.
+    @Test("an answer in a thread stays in the thread, and the room shows it under its root")
+    func threads() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(component: "iskra-thread-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let client = try await DemoBackend.makeClient(data: root.appending(component: "data"),
+                                                      cache: root.appending(component: "cache"),
+                                                      search: root.appending(component: "search"))
+        let session = UserSession(client: client, authentication: AuthenticationService(), sessionID: "demo", isDemo: true)
+        try await session.start()
+        defer { Task { await session.close() } }
+        let devID = "!iskra-dev:iskra.demo"
+        _ = await eventually { session.roomList.rooms.contains { $0.id == devID } }
+
+        // Threads everywhere, answers only in them — what this test is about. The default (threads
+        // in big rooms only, answers left in the room too) would show none of it in the demo's
+        // small rooms. Set before the timeline opens: its focus is fixed from then on.
+        UserDefaults.standard.set(ThreadSettings.Shown.always.rawValue, forKey: ThreadSettings.shownKey)
+        UserDefaults.standard.set(true, forKey: ThreadSettings.hidesRepliesKey)
+        defer {
+            UserDefaults.standard.removeObject(forKey: ThreadSettings.shownKey)
+            UserDefaults.standard.removeObject(forKey: ThreadSettings.hidesRepliesKey)
+        }
+
+        let timeline = try #require(session.timeline(forRoomID: devID))
+        try await timeline.start()
+        defer { timeline.stop() }
+        func isRootCandidate(_ message: Message) -> Bool {
+            if case .text = message.kind { return message.id.hasPrefix("$") }
+            return false
+        }
+        _ = await eventually { timeline.rows.compactMap(\.message).contains(where: isRootCandidate) }
+        let rootMessage = try #require(timeline.rows.compactMap(\.message).last(where: isRootCandidate))
+
+        // The demo's own thread, from sync: three answers under the question, none of them in the room.
+        func seeded() -> Message? {
+            timeline.rows.compactMap(\.message).first {
+                if case let .text(body) = $0.kind { return body.hasPrefix("Что делаем с пушами") }
+                return false
+            }
+        }
+        for _ in 0..<5 where seeded() == nil { await timeline.loadMore() }
+        let seededShown = await eventually { seeded()?.thread?.replies == 3 }
+        #expect(seededShown, "seeded: \(String(describing: seeded()?.thread))")
+        #expect(!timeline.rows.compactMap(\.message).contains { $0.kind == .text("Согласна, iOS важнее") })
+
+        let thread = try #require(session.threadTimeline(forRoomID: devID, rootEventID: rootMessage.id))
+        try await thread.start()
+        defer { thread.stop() }
+        #expect(thread.threadRootID == rootMessage.id)
+
+        await thread.send(text: "это в тред")
+        #expect(thread.failure == nil)
+        let inThread = await eventually {
+            thread.rows.compactMap(\.message).contains { $0.kind == .text("это в тред") && $0.threadRootID == rootMessage.id }
+        }
+        #expect(inThread, "thread rows: \(thread.rows.compactMap(\.message).map(\.kind))")
+
+        // In the room: not as a message of its own, but as a line under the root.
+        let summarised = await eventually {
+            timeline.rows.message(withID: rootMessage.id)?.thread?.replies ?? 0 >= 1
+        }
+        #expect(summarised, "root: \(String(describing: timeline.rows.message(withID: rootMessage.id)?.thread))")
+        #expect(!timeline.rows.compactMap(\.message).contains { $0.kind == .text("это в тред") })
+        // No threads between two people: a personal chat opens without them.
+        let anya = try #require(session.timeline(forRoomID: "!anya:iskra.demo"))
+        try await anya.start()
+        defer { anya.stop() }
+        #expect(!anya.usesThreads)
+        #expect(timeline.usesThreads)
+
+        // An album can be a thread's root too: one row, three pictures, and the line under it.
+        let familyID = "!family:iskra.demo"
+        let family = try #require(session.timeline(forRoomID: familyID))
+        try await family.start()
+        defer { family.stop() }
+        func album() -> Message? { family.rows.compactMap(\.message).first { $0.album?.count == 3 } }
+        for _ in 0..<5 where album() == nil { await family.loadMore() }
+        #expect(await eventually { album()?.thread?.replies == 2 }, "album: \(String(describing: album()?.thread))")
+
+        let unrecognized = await MockHomeserver.shared.unrecognized
+        #expect(unrecognized.isEmpty, "\(unrecognized)")
+    }
+
+    @Test("a live location share starts as a message that says so, and stops")
+    func liveLocation() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(component: "iskra-live-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let client = try await DemoBackend.makeClient(data: root.appending(component: "data"),
+                                                      cache: root.appending(component: "cache"),
+                                                      search: root.appending(component: "search"))
+        let session = UserSession(client: client, authentication: AuthenticationService(), sessionID: "demo", isDemo: true)
+        try await session.start()
+        defer { Task { await session.close() } }
+        let anyaID = "!anya:iskra.demo"
+        _ = await eventually { session.roomList.rooms.contains { $0.id == anyaID } }
+
+        let timeline = try #require(session.timeline(forRoomID: anyaID))
+        try await timeline.start()
+        defer { timeline.stop() }
+
+        session.liveLocation.authorize = { true }
+        await session.liveLocation.start(in: anyaID, for: 15 * 60)
+        #expect(session.liveLocation.failure == nil)
+        #expect(session.liveLocation.isSharing(in: anyaID))
+
+        func live() -> Location.LiveSpan? {
+            for message in timeline.rows.compactMap(\.message).reversed() {
+                if case let .location(location) = message.kind, let live = location.live { return live }
+            }
+            return nil
+        }
+        #expect(await eventually { live()?.isActive() == true }, "live: \(String(describing: live()))")
+
+        // And the chat list says what it is — it used to say nothing at all.
+        let preview = String(localized: CoreStrings.Preview.liveLocation)
+        func row() -> RoomSummary? { session.roomList.rooms.first { $0.id == anyaID } }
+        #expect(await eventually { row()?.lastMessage == preview },
+                "last message: \(String(describing: row()?.lastMessage))")
+        #expect(row()?.lastMessageKind == .location)
+
+        await session.liveLocation.stop(in: anyaID)
+        #expect(!session.liveLocation.isSharing(in: anyaID))
+        #expect(await eventually { live()?.isActive() == false }, "live: \(String(describing: live()))")
+        let unrecognized = await MockHomeserver.shared.unrecognized
+        #expect(unrecognized.isEmpty, "\(unrecognized)")
+    }
+
+    @Test("a poll is drawn with its tally, takes a vote, and closes")
+    func polls() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(component: "iskra-poll-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let client = try await DemoBackend.makeClient(data: root.appending(component: "data"),
+                                                      cache: root.appending(component: "cache"),
+                                                      search: root.appending(component: "search"))
+        let session = UserSession(client: client, authentication: AuthenticationService(), sessionID: "demo", isDemo: true)
+        try await session.start()
+        defer { Task { await session.close() } }
+        let devID = "!iskra-dev:iskra.demo"
+        _ = await eventually { session.roomList.rooms.contains { $0.id == devID } }
+
+        let timeline = try #require(session.timeline(forRoomID: devID))
+        try await timeline.start()
+        defer { timeline.stop() }
+
+        func poll() -> (id: String, poll: Poll)? {
+            for row in timeline.rows {
+                if case let .message(message) = row, case let .poll(poll) = message.kind { return (message.id, poll) }
+            }
+            return nil
+        }
+        let found = await eventually(async: {
+            if poll() == nil { await timeline.loadMore() }
+            return poll()?.poll.voters == 2
+        })
+        #expect(found, "poll: \(String(describing: poll()?.poll))")
+        let (id, before) = try #require(poll())
+        #expect(before.question == "Когда созвонимся на неделе?")
+        #expect(before.answers.map(\.text) == ["Во вторник", "В среду", "В четверг"])
+        #expect(!before.hasVoted && !before.showsResults)
+
+        await timeline.vote(inPoll: id, answerIDs: ["a1"])
+        #expect(timeline.failure == nil)
+        let voted = await eventually {
+            guard let poll = poll()?.poll else { return false }
+            return poll.voters == 3 && poll.answers[1].isChosen && poll.answers[1].votes == 2
+        }
+        #expect(voted, "poll: \(String(describing: poll()?.poll))")
+        #expect(poll()?.poll.showsResults == true)
+
+        // Taken back: an empty response, which the poll counts as no vote at all.
+        await timeline.vote(inPoll: id, answerIDs: [])
+        #expect(timeline.failure == nil)
+        let retracted = await eventually {
+            guard let poll = poll()?.poll else { return false }
+            return !poll.hasVoted && poll.voters == 2
+        }
+        #expect(retracted, "poll: \(String(describing: poll()?.poll))")
+
+        // Not ours to close — Лена started it. One of our own is.
+        await timeline.send(poll: {
+            var draft = PollDraft()
+            draft.question = "Пицца или суши?"
+            draft.answers = ["Пицца", "Суши", ""]
+            return draft
+        }())
+        let ownID = await eventually {
+            timeline.rows.contains { row in
+                if case let .message(message) = row, message.canEndPoll,
+                   case let .poll(poll) = message.kind { return poll.question == "Пицца или суши?" }
+                return false
+            }
+        }
+        #expect(ownID)
+        let own = try #require(timeline.rows.compactMap { row -> Message? in
+            if case let .message(message) = row, message.canEndPoll { return message }
+            return nil
+        }.first)
+        await timeline.endPoll(own.id)
+        let ended = await eventually {
+            timeline.rows.contains { row in
+                if case let .message(message) = row, message.id == own.id, case let .poll(poll) = message.kind {
+                    return poll.isEnded
+                }
+                return false
+            }
+        }
+        #expect(ended)
+        #expect(await MockHomeserver.shared.unrecognized.isEmpty)
+    }
+
+    @Test("an administrator hands a rule to the moderators, and the room keeps it")
+    func roomRules() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(component: "iskra-rules-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let client = try await DemoBackend.makeClient(data: root.appending(component: "data"),
+                                                      cache: root.appending(component: "cache"),
+                                                      search: root.appending(component: "search"))
+        let session = UserSession(client: client, authentication: AuthenticationService(), sessionID: "demo", isDemo: true)
+        try await session.start()
+        defer { Task { await session.close() } }
+        let devID = "!iskra-dev:iskra.demo"
+        _ = await eventually { session.roomList.rooms.contains { $0.id == devID } }
+
+        let details = try #require(session.details(forRoomID: devID))
+        await details.load()
+        defer { details.stop() }
+        let loaded = await eventually { details.rules != nil && !details.members.isEmpty }
+        #expect(loaded)
+        #expect(details.permissions.canChangeRoles)
+        #expect(details.staff.contains { $0.id == "@sasha:iskra.demo" })
+
+        let before = try #require(details.rules?.role(for: .ban))
+        let target: RoomRole = before == .moderator ? .administrator : .moderator
+        #expect(details.roles(for: .ban).contains(target))
+        await details.setRule(.ban, to: target)
+        #expect(details.failure == nil)
+
+        // Read back from the room, not from what the store put on the screen.
+        _ = await eventually { details.rules?.role(for: .ban) == target }
+        let again = try #require(session.details(forRoomID: devID))
+        await again.load()
+        defer { again.stop() }
+        let kept = await eventually { again.rules?.role(for: .ban) == target }
+        // And the screen that made the change kept showing it — it was not put back by a stale read.
+        #expect(details.rules?.role(for: .ban) == target, "before: \(before), now: \(String(describing: details.rules?.levels[.ban]))")
+        #expect(kept, "ban: \(String(describing: again.rules?.levels[.ban]))")
+
+        // Somebody appointed shows among the staff on the same screen, without reopening it.
+        if let member = details.members.first(where: { $0.role == .member && details.assignableRoles(for: $0).contains(.moderator) }) {
+            await details.setRole(.moderator, for: member)
+            #expect(details.failure == nil)
+            #expect(details.staff.contains { $0.id == member.id })
+            #expect(await eventually { details.staff.contains { $0.id == member.id && $0.role == .moderator } })
+        } else {
+            Issue.record("nobody in the room to appoint")
+        }
+        #expect(await MockHomeserver.shared.unrecognized.isEmpty)
+    }
+
+    @Test("blocked, let back, history changed, an address given and listed")
+    func roomAccess() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(component: "iskra-access-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let client = try await DemoBackend.makeClient(data: root.appending(component: "data"),
+                                                      cache: root.appending(component: "cache"),
+                                                      search: root.appending(component: "search"))
+        let session = UserSession(client: client, authentication: AuthenticationService(), sessionID: "demo", isDemo: true)
+        try await session.start()
+        defer { Task { await session.close() } }
+        let devID = "!iskra-dev:iskra.demo"
+        _ = await eventually { session.roomList.rooms.contains { $0.id == devID } }
+
+        let details = try #require(session.details(forRoomID: devID))
+        await details.load()
+        defer { details.stop() }
+        _ = await eventually { details.permissions.canBan && !details.members.isEmpty }
+        #expect(details.permissions.canChangeHistory)
+        #expect(details.permissions.canChangeAddress)
+
+        // Blocked, and found on the list of the blocked.
+        let target = try #require(details.members.first { details.canManage($0) })
+        await details.ban(target)
+        #expect(details.failure == nil)
+        #expect(await eventually { details.banned.contains { $0.id == target.id } })
+        #expect(!details.members.contains { $0.id == target.id })
+
+        // Let back: off the list, and not brought in.
+        await details.unban(target)
+        #expect(details.failure == nil)
+        #expect(await eventually { !details.banned.contains { $0.id == target.id } })
+
+        // Who may read the past — kept by the room, not just by the screen.
+        let history: HistoryAccess = details.history == .joined ? .invited : .joined
+        await details.setHistory(history)
+        #expect(details.failure == nil)
+        #expect(await eventually { details.history == history })
+
+        // An address, written however it was typed.
+        await details.setAddress("#Iskra Dev:elsewhere.org")
+        #expect(details.failure == nil)
+        #expect(details.canonicalAlias == "#iskra-dev:iskra.demo")
+        #expect(await MockHomeserver.shared.aliases["#iskra-dev:iskra.demo"] == devID)
+
+        // And in the server's list.
+        await details.loadDirectory()
+        await details.setInDirectory(true)
+        #expect(details.failure == nil)
+        await details.loadDirectory()
+        #expect(details.isInDirectory == true)
+
+        #expect(await MockHomeserver.shared.unrecognized.isEmpty)
+    }
+
     @Test("stickers: packs are read, one is sent, and one somebody sent is added")
     func stickers() async throws {
         let root = FileManager.default.temporaryDirectory.appending(component: "iskra-stickers-\(UUID().uuidString)")
@@ -490,6 +806,33 @@ struct DemoBackendTests {
 
         await store.apply([IdentityStatusChange(userId: "@anya:iskra.demo", changedTo: .pinned)])
         #expect(store.changes.isEmpty)
+    }
+
+    /// Back from the pocket onto a connection that will never answer: "Waiting for network" for
+    /// ever, until the app was killed by hand. The list restarts sync by itself now
+    /// (`RoomListStore.scheduleRecovery`), and comes back once the server can be reached again.
+    @Test("a sync that hangs after the pocket is restarted, and the list comes back")
+    func recoversFromAHungSync() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(component: "iskra-demo-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let client = try await DemoBackend.makeClient(data: root.appending(component: "data"),
+                                                      cache: root.appending(component: "cache"),
+                                                      search: root.appending(component: "search"))
+        let list = RoomListStore(client: client)
+        try await list.start()
+        defer { Task { await list.stop() } }
+        #expect(await eventually { !list.rooms.isEmpty && !list.isUpdating })
+
+        await list.pause()
+        await MockHomeserver.shared.setHoldsSync(true)
+        await list.resume()
+        let stalled = await eventually(seconds: 30) { list.isUnreachable }
+        await MockHomeserver.shared.setHoldsSync(false)
+        #expect(stalled)
+
+        // Nothing else happens to help it: no network change, no foreground. Only the restart —
+        // well inside the minute the SDK's own request timeout would have taken to give up on it.
+        #expect(await eventually(seconds: 35) { !list.isUnreachable && !list.isUpdating })
     }
 
     /// `stop()` while `start()` is still on its way: an account switched on a cold launch from a

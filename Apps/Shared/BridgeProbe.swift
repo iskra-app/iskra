@@ -1,8 +1,9 @@
 import Foundation
 import IskraCore
 
-/// `Iskra --probe-bridge [address] [homeserver]` sends one real request through the nostr tunnel
-/// and says what came back.
+/// `Iskra --probe-bridge [address] [homeserver]` sends one real request through the bridge — TLS
+/// to the homeserver, carried as nostr streams, the way the SDK's own requests go — and says what
+/// came back.
 ///
 /// It exists for the same reason as the other probes: every way this feature fails looks the same
 /// from inside the app — a sign-in that spins. A key with a typo in it, a bridge that is not
@@ -29,17 +30,23 @@ enum BridgeProbe {
     }
 
     static func runAndExit() -> Never {
-        let address = arguments.first ?? TunnelSettings.store.string(forKey: TunnelSettings.addressKey) ?? ""
+        // Given nothing, the bridge the app would use: the chosen public one, or the one typed in.
+        let chosen = TunnelSettings.bridgeKey().map(BridgeAddress.npub(for:))
+        let address = arguments.first ?? chosen ?? ""
         let homeserverText = arguments.dropFirst().first ?? "matrix.org"
         let homeserver = TunnelSettings.upstreamURL(from: homeserverText) ?? URL(string: "https://matrix.org")!
         let relays = TunnelSettings.relays()
 
         print("Iskra bridge probe")
+        if arguments.first == nil {
+            let kind = TunnelSettings.source() == .publicList ? "public list" : "own bridge"
+            print("  bridge in use: \(kind) — \(TunnelSettings.chosenBridge()?.name ?? "none")")
+        }
         print("  homeserver : \(homeserver.absoluteString)")
         print("  relays     : \(relays.map(\.absoluteString).joined(separator: ", "))")
 
         guard case .success(let key) = BridgeAddress.publicKey(from: address) else {
-            print("  ❌ no bridge address. Paste one in Settings → Connection, or pass it here:")
+            print("  ❌ no bridge. Pick one in Settings → Connection, or pass an address here:")
             print("     Iskra --probe-bridge npub1… [matrix.org]")
             exit(1)
         }
@@ -58,10 +65,14 @@ enum BridgeProbe {
             case .reachable(let milliseconds):
                 print("  ✅ the bridge answered and the homeserver is behind it — \(milliseconds) ms")
                 exit(0)
-            case .refused:
-                print("  ❌ the bridge refused this homeserver. Its ALLOWED_UPSTREAMS does not cover")
-                print("     \(homeserver.absoluteString) — which on matrix.org means both matrix.org")
-                print("     and matrix-client.matrix.org.")
+            case .refused(let refusal) where refusal.isRefusal:
+                print("  ❌ the bridge will not take this device to \(homeserver.absoluteString): \(refusal).")
+                print("     Either its ALLOWED_UPSTREAMS does not cover it — which on matrix.org means")
+                print("     both matrix.org and matrix-client.matrix.org — or, on an open bridge, the")
+                print("     host did not answer as a Matrix server on a public address, port 443.")
+                exit(1)
+            case .refused(let refusal):
+                print("  ❌ the bridge ended the stream: \(refusal).")
                 exit(1)
             case .noRelay:
                 print("  ❌ no relay would take the request. Is there any network here at all?")

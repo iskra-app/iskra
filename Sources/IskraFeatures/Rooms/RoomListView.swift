@@ -86,6 +86,53 @@ public struct RoomListView: View {
     /// Which of the two things the "+" was pressed for, and nil when it was not.
     @State private var isStartingChat = false
 
+    /// The folder whose tab is open — "" for "All". Per device, as Telegram's is: which tab you
+    /// were looking at is not a fact about the account.
+    @AppStorage("roomList.folder") private var folderID = ""
+    @State private var isEditingFolders = false
+
+    /// Where the rows stand in their arrival from another folder: 0 is home, ±1 is a whole
+    /// `Theme.Size.folderSlide` to the side the new tab is on, and faded out.
+    ///
+    /// The rows move, not the list: offset the `List` itself and its background goes with it,
+    /// leaving a strip of window down one side. And they are not swapped by a transition, which
+    /// would hold two lists of rows on screen at once — the rebuild is the expensive part of a
+    /// switch (see `FolderTabs.shown`), and this costs nothing on top of it: the new rows are put
+    /// to the side in the same update that builds them, and slid home on the next frame.
+    @State private var folderArrival: CGFloat = 0
+
+    /// The tab strip's selection, set the way a tap sets it — with the rows sent off to the side
+    /// they will come back from.
+    private var folderSelection: Binding<String> {
+        Binding(get: { folderID }, set: { id in
+            guard id != folderID else { return }
+            let order = [""] + session.folders.folders.map(\.id)
+            let from = order.firstIndex(of: folderID) ?? 0
+            let to = order.firstIndex(of: id) ?? 0
+            var instant = Transaction()
+            instant.disablesAnimations = true
+            withTransaction(instant) {
+                folderArrival = to > from ? 1 : -1
+                folderID = id
+            }
+            Task { @MainActor in
+                await Task.yield()
+                withAnimation(Theme.Timing.folderSwitches) { folderArrival = 0 }
+            }
+        })
+    }
+
+    /// The open folder, while it still exists — one deleted on another device falls back to "All".
+    private var activeFolder: ChatFolder? {
+        folderID.isEmpty ? nil : session.folders.folders.first { $0.id == folderID }
+    }
+
+    /// The list as the open tab sees it — every chat, or the folder's, in the list's own order.
+    private var listedRooms: [RoomSummary] {
+        guard let activeFolder else { return session.roomList.rooms }
+        return activeFolder.rooms(from: session.roomList.rooms, archived: session.roomList.archivedRooms)
+    }
+
     public init(session: UserSession,
                 selectedRoomID: Binding<String?>,
                 selectedEventID: Binding<String?> = .constant(nil),
@@ -109,11 +156,32 @@ public struct RoomListView: View {
                 // a Mac is — see `sectionedRooms` and `isNativeSidebar`.
                 sectionedRooms
             } else {
-                archiveEntry
+                if activeFolder == nil { archiveEntry.arrivingFromFolder(folderArrival) }
                 rooms
             }
         }
         .roomListStyle(nativeSidebar: isNativeSidebar)
+        // The folders, right over the list — under the banners, which are about the account and
+        // not about which chats are showing.
+        .safeAreaInset(edge: .top) {
+            if !session.folders.folders.isEmpty, !isSearching {
+                FolderTabs(folders: session.folders.folders,
+                           rooms: session.roomList.rooms,
+                           archived: session.roomList.archivedRooms,
+                           selection: folderSelection,
+                           onEdit: { isEditingFolders = true })
+            }
+        }
+        .sheet(isPresented: $isEditingFolders) {
+            NavigationStack {
+                FoldersView(folders: session.folders, roomList: session.roomList)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button(String(app: Strings.Folders.done)) { isEditingFolders = false }
+                        }
+                    }
+            }
+        }
         // A chat that has just been written in rises to the top the way Telegram's does — it slides
         // up past the ones it overtakes, rather than vanishing from its row and reappearing at the
         // top while every row in between jumps down one. Scoped to the *order* of the list, so a
@@ -142,7 +210,7 @@ public struct RoomListView: View {
         // on iOS and on the Mac; `navigationBarTitleDisplayMode` would only say it on iOS.
         .toolbarTitleDisplayMode(.inline)
         .toolbar {
-            if isSidebar {
+            if hasSidebarChrome {
                 ToolbarItem(placement: .primaryAction) { newConversationMenu }
                 ToolbarItem(placement: .primaryAction) { settingsButton }
             } else {
@@ -192,7 +260,7 @@ public struct RoomListView: View {
         // the title's "Waiting for network…" is a word in the bar, and the strip is the thing that
         // cannot be missed.
         .offlineBanner()
-        .overlay { emptyState }
+        .overlay { emptyState.arrivingFromFolder(folderArrival) }
         // A real destination on this column's stack, not a view swapped in behind a
         // hand-rolled transition. That is what buys the stock push, the back button and
         // the swipe back — none of which is worth reimplementing, and all of which is
@@ -295,6 +363,21 @@ public struct RoomListView: View {
         !searchText.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
+    /// Whether the bar carries the sidebar's buttons — "+" beside the gear — or the phone's: "+" at
+    /// the left, the face at the right.
+    ///
+    /// Never the sidebar's on an iPhone, whatever the size class says. An iPhone is `.regular`
+    /// wide in landscape on the big models, and for a moment whenever the system draws the app
+    /// sideways for the app switcher — and the list, told it was a sidebar, moved its "+" over to
+    /// the right beside a gear the phone never shows, and left it there when it came back.
+    private var hasSidebarChrome: Bool {
+        #if os(iOS)
+        isSidebar && UIDevice.current.userInterfaceIdiom != .phone
+        #else
+        isSidebar
+        #endif
+    }
+
     /// Whether this list is drawn as the Mac's own sidebar.
     ///
     /// Three conditions and all three matter. The platform, because the thing being imitated only
@@ -362,9 +445,10 @@ public struct RoomListView: View {
 
     @ViewBuilder
     private var rooms: some View {
-        let rooms = session.roomList.rooms
+        let rooms = listedRooms
         ForEach(Array(rooms.enumerated()), id: \.element.id) { index, room in
             row(for: room)
+                .arrivingFromFolder(folderArrival)
                 .separatorsBetweenRowsOnly(isFirst: index == 0, isLast: index == rooms.count - 1)
         }
     }
@@ -432,7 +516,7 @@ public struct RoomListView: View {
     /// never a re-sort: the busiest conversation is still at the top of the one it belongs to.
     @ViewBuilder
     private var sectionedRooms: some View {
-        let all = session.roomList.rooms
+        let all = listedRooms
         let invitations = all.filter(\.isInvitation)
         let spaces = all.filter { $0.isSpace && !$0.isInvitation }
         let chats = all.filter { !$0.isSpace && !$0.isInvitation }
@@ -443,7 +527,7 @@ public struct RoomListView: View {
         // bottom here, on the theory that a Mac sidebar files the shelf you rarely open under
         // everything you do — and under a few hundred chats that put it where nobody would ever
         // scroll to find it.
-        if !session.roomList.archivedRooms.isEmpty {
+        if !session.roomList.archivedRooms.isEmpty, activeFolder == nil {
             Section { archiveEntry.sidebarRowInsets() }
         }
 
@@ -497,12 +581,11 @@ public struct RoomListView: View {
     /// shelf that is usually empty.
     @ViewBuilder
     private var archiveEntry: some View {
-        let archived = session.roomList.archivedRooms
-        if !archived.isEmpty {
+        if !session.roomList.archivedRooms.isEmpty {
             Button {
                 isShowingArchive = true
             } label: {
-                Label(String(app: Strings.RoomList.Archive.entry(archived.count)),
+                Label(String(app: Strings.RoomList.Archive.title),
                       systemImage: "archivebox")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.secondary)
@@ -550,6 +633,10 @@ public struct RoomListView: View {
     private var emptyState: some View {
         if isSearching, session.search.foundNothing, !session.search.isSearching {
             ContentUnavailableView.search(text: searchText)
+        } else if !isSearching, activeFolder != nil, listedRooms.isEmpty, !session.roomList.rooms.isEmpty {
+            ContentUnavailableView(String(app: Strings.Folders.emptyTitle),
+                                   systemImage: "folder",
+                                   description: Text(Strings.Folders.emptyMessage))
         } else if !isSearching, session.roomList.rooms.isEmpty {
             if session.roomList.isLoadingInitialRooms {
                 RoomListSkeleton()
@@ -812,9 +899,30 @@ struct RoomRow: View {
     /// a photo, a voice message, a sticker. Part of the same `Text`, so the two lines wrap as one.
     private var preview: Text {
         if isTyping { return Text(Strings.Room.typing) }
-        let words = Text(room.lastMessage ?? " ")
-        guard let symbol = room.lastMessageKind.map(Self.symbol(for:)) else { return words }
-        return Text(Image(systemName: symbol)) + Text(verbatim: " ") + words
+        // A draft is what you came back for, so it stands where the last message would — all of it
+        // in italics, the label and the words alike, so it cannot be mistaken for something sent.
+        if let draft = room.draft {
+            return Text(Strings.RoomList.draft(Self.oneLine(draft))).italic()
+        }
+        var words = Text(room.lastMessage ?? " ")
+        if let symbol = room.lastMessageKind.map(Self.symbol(for:)) {
+            words = Text(Image(systemName: symbol)) + Text(verbatim: " ") + words
+        }
+        // In a group, who said it, on a line of its own over the words — Telegram's. Not in a
+        // personal chat, where it can only be the one person the row is named after.
+        if let sender = room.lastSender, room.kind == .group, !compact {
+            return Text(verbatim: sender).foregroundStyle(.primary) + Text(verbatim: "\n") + words
+        }
+        if let sender = room.lastSender, room.kind == .group {
+            return Text(verbatim: "\(sender): ").foregroundStyle(.primary) + words
+        }
+        return words
+    }
+
+    /// A draft's lines run together: the row has two lines of its own to give, and a draft that
+    /// begins with a blank line would spend one of them on nothing.
+    static func oneLine(_ text: String) -> String {
+        text.split(whereSeparator: \.isNewline).joined(separator: " ")
     }
 
     static func symbol(for kind: PreviewKind) -> String {
@@ -866,7 +974,11 @@ struct RoomRow: View {
         if room.isPinned {
             parts.append(String(app: Strings.RoomList.pinned))
         }
-        if let message = room.lastMessage { parts.append(message) }
+        if let draft = room.draft {
+            parts.append(String(app: Strings.RoomList.draft(Self.oneLine(draft))))
+        } else if let message = room.lastMessage {
+            parts.append(room.kind == .group ? room.lastSender.map { "\($0): \(message)" } ?? message : message)
+        }
 
         // Both, when both are true, and that is the fix rather than a flourish. These used to be
         // an either/or: a mention suppressed the unread count entirely, so a room with twelve
@@ -1034,5 +1146,13 @@ extension View {
     func separatorsBetweenRowsOnly(isFirst: Bool, isLast: Bool) -> some View {
         listRowSeparator(isFirst ? .hidden : .automatic, edges: .top)
             .listRowSeparator(isLast ? .hidden : .automatic, edges: .bottom)
+    }
+}
+
+private extension View {
+    /// A row of the chat list part of the way in from another folder — see `folderArrival`.
+    func arrivingFromFolder(_ arrival: CGFloat) -> some View {
+        offset(x: arrival * Theme.Size.folderSlide)
+            .opacity(1 - abs(arrival))
     }
 }

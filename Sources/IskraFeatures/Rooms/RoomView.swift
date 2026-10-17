@@ -7,6 +7,8 @@ import IskraDesign
 public struct RoomView: View {
     @State private var timeline: TimelineStore
     @State private var draft = ""
+    /// Who the draft's `@Name`s are — see `ComposerMention`.
+    @State private var draftMentions: [ComposerMention] = []
     /// Recording a round video message.
     ///
     /// The recorder lives here and not in the sheet that shows the camera, because the gesture
@@ -45,6 +47,44 @@ public struct RoomView: View {
     /// message — and only the screen can see both ends.
     @State private var composerContext: ComposerContext?
 
+    /// Builds a thread's timeline from its root's event ID — see `UserSession.threadTimeline`. Nil
+    /// inside a thread, which is the same screen on a different timeline.
+    private let makeThread: ((String) -> TimelineStore?)?
+    /// The thread open over this room, pushed onto the same stack.
+    @State private var openedThread: OpenedThread?
+
+    /// The store is made once, when the thread is opened, and held here: a destination closure is
+    /// run on every redraw, and a timeline built in one would be a fresh thread on every keystroke.
+    private struct OpenedThread: Identifiable, Hashable {
+        let rootID: String
+        let store: TimelineStore
+        var id: String { rootID }
+        static func == (lhs: Self, rhs: Self) -> Bool { lhs.rootID == rhs.rootID }
+        func hash(into hasher: inout Hasher) { hasher.combine(rootID) }
+    }
+
+    /// This screen is a thread, not the room — see `TimelineStore.threadRootID`.
+    private var isThread: Bool { timeline.threadRootID != nil }
+
+    /// The three sources of the sticker sheet — with all of them off there is no sheet worth a
+    /// button. See `StickerSettings.showsAnything`.
+    @AppStorage(StickerSettings.showsBuiltInKey) private var showsBuiltInStickers = true
+    @AppStorage(StickerSettings.showsRoomPackKey) private var showsRoomStickers = true
+    @AppStorage(StickerSettings.showsMineKey) private var showsMyStickers = true
+    @AppStorage(BetaFeatures.showsEventSourceKey) private var showsEventSource = false
+    /// Settings → Chats → Threads. In a room without them there is no "Reply in thread" — see
+    /// `ThreadSettings` and `TimelineStore.usesThreads`.
+    @AppStorage(ThreadSettings.shownKey) private var threadsShown = ThreadSettings.shown()
+    private var showsStickers: Bool { showsBuiltInStickers || showsRoomStickers || showsMyStickers }
+
+    /// Messages being chosen together, while they are — see `MessageSelection`. Nil the rest of
+    /// the time, which is nearly always.
+    @State private var selection: MessageSelection?
+    @State private var isForwardingSelection = false
+    @State private var isConfirmingSelectionDelete = false
+    @Environment(\.forwarding) private var forwarding
+    @Environment(\.liveLocation) private var liveLocation
+
     /// The pinned messages, opened when the room has any. Built once and kept, for the same
     /// reason `details` is: `navigationDestination` re-evaluates on every redraw, and a fresh
     /// store each time would open a fresh timeline on every keystroke in the composer.
@@ -62,12 +102,16 @@ public struct RoomView: View {
     @State private var isChoosingPhoto = false
     @State private var isChoosingFile = false
     @State private var isChoosingLocation = false
+    @State private var isCreatingPoll = false
     @State private var isChoosingSticker = false
     @State private var pickedItems: [PhotosPickerItem] = []
 
     /// Pictures pasted or dropped into the room, waiting in the composer for send. Here and not in
     /// the composer because a drop lands on the whole room — see `PendingAttachment`.
     @State private var attachments: [PendingAttachment] = []
+
+    /// A waiting photo open in `PhotoEditor`, from the pencil on its tile.
+    @State private var editingPhoto: EditingPhoto?
 
     /// Whether a picture is being dragged over the room right now, which is when it says what
     /// letting go will do.
@@ -419,12 +463,14 @@ public struct RoomView: View {
     public init(timeline: TimelineStore,
                 identityChanges: IdentityChangesStore? = nil,
                 makeDetails: @escaping () -> RoomDetailsStore?,
+                makeThread: ((String) -> TimelineStore?)? = nil,
                 openAt: Binding<String?> = .constant(nil),
                 onLeave: @escaping () -> Void,
                 onClose: @escaping () -> Void = {}) {
         _timeline = State(initialValue: timeline)
         _identityChanges = State(initialValue: identityChanges)
         self.makeDetails = makeDetails
+        self.makeThread = makeThread
         _openAt = openAt
         self.onLeave = onLeave
         self.onClose = onClose
@@ -875,6 +921,15 @@ public struct RoomView: View {
             .onChange(of: timeline.hasLoaded, initial: true) { _, loaded in
                 if loaded { isRevealed = true }
             }
+            // A room shorter than the screen cannot be scrolled, so nothing in the geometry will
+            // ever ask it for more — `needsMoreHistory` is the store saying so, and this is the
+            // fetch, made explicitly rather than hung off something drawn. It ends by itself: a
+            // fetch either fills the screen, reaches the room's beginning, or fails, and each of
+            // those turns the flag off.
+            .task(id: timeline.needsMoreHistory) {
+                guard timeline.needsMoreHistory else { return }
+                await timeline.loadMoreHistory()
+            }
             // …and a floor under it, because "when the store is done" is a promise about a
             // network. A conversation half-fetched is worth more than an empty screen that goes
             // on being empty, so past this point the room is shown with whatever it has.
@@ -1119,7 +1174,9 @@ public struct RoomView: View {
         }
         .safeAreaInset(edge: .bottom) {
             Group {
-                if let blockedID {
+                if let selection {
+                    selectionBar(selection)
+                } else if let blockedID {
                     BlockedBanner {
                         Task { await blockStore?.unblock(userID: blockedID) }
                     }
@@ -1180,9 +1237,19 @@ public struct RoomView: View {
             }
             .animation(.smooth, value: identityChanges?.changes.first?.id)
         }
+        // While this account is sharing where it is with this chat: said, with the way to stop it,
+        // above everything else in the room — see `LiveLocationSharer`.
+        .safeAreaInset(edge: .top) {
+            if let liveLocation, let until = liveLocation.shares[timeline.roomID], until > .now {
+                LiveLocationStrip(until: until) {
+                    Task { await liveLocation.stop(in: timeline.roomID) }
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
         .safeAreaInset(edge: .top) {
             Group {
-                if !timeline.pinnedEventIDs.isEmpty, let pinned {
+                if !isThread, !timeline.pinnedEventIDs.isEmpty, let pinned {
                     PinnedStrip(pinned: pinned,
                                 onGoTo: { message in jumpTarget = message.id },
                                 onOpenList: { isShowingPinned = true })
@@ -1231,7 +1298,7 @@ public struct RoomView: View {
                 // picture goes to the trailing edge, near the thumb. Two controls, one
                 // destination: both open the room.
                 ToolbarItem(placement: .principal) {
-                    RoomTitle(name: timeline.roomName,
+                    RoomTitle(name: headerName,
                               privacy: timeline.privacy,
                               subtitle: headerSubtitle,
                               onOpenDetails: openDetails)
@@ -1259,7 +1326,7 @@ public struct RoomView: View {
                 // leading edge — lined up with the conversation below rather than floating
                 // in the centre of a bar that is mostly empty.
                 ToolbarItem(placement: .navigation) {
-                    RoomHeader(name: timeline.roomName,
+                    RoomHeader(name: headerName,
                                avatarURL: timeline.roomAvatarURL,
                                avatarSeed: timeline.roomAvatarSeed,
                                faces: timeline.roomFaces,
@@ -1296,6 +1363,12 @@ public struct RoomView: View {
                 })
             }
         }
+        .navigationDestination(item: $openedThread) { thread in
+            RoomView(timeline: thread.store,
+                     makeDetails: makeDetails,
+                     onLeave: { openedThread = nil; onLeave() },
+                     onClose: { openedThread = nil })
+        }
         .navigationDestination(isPresented: $isShowingPinned) {
             if let pinned {
                 PinnedMessagesView(pinned: pinned, isOneToOne: timeline.isOneToOne)
@@ -1324,6 +1397,14 @@ public struct RoomView: View {
             guard case let .success(url) = result else { return }
             Task { await sendPickedFile(url) }
         }
+        // A cover on the phone and a sheet on the Mac, like the photo viewer — see `MessageRow`.
+        // And, like the viewer, the room under it is covered, not left.
+        #if os(iOS)
+        .fullScreenCover(item: $editingPhoto) { photoEditor($0) }
+        .onChange(of: editingPhoto != nil) { _, isOpen in isCoveredByMedia = isOpen }
+        #else
+        .sheet(item: $editingPhoto) { photoEditor($0) }
+        #endif
         .sheet(isPresented: $isChoosingSticker) {
             StickerPicker(roomID: timeline.roomID) { sticker in
                 // Read now, before `cancelContext` clears it: the sticker answers what was being
@@ -1339,11 +1420,19 @@ public struct RoomView: View {
             // shown, and adding a sticker from the sheet is one of the two ways to need it.
             .failureAlert(stickerFailure)
         }
+        .sheet(isPresented: $isCreatingPoll) {
+            PollComposer { draft in
+                await timeline.send(poll: draft)
+            }
+        }
+        .failureAlert(Binding(get: { liveLocation?.failure }, set: { liveLocation?.failure = $0 }))
         .sheet(isPresented: $isChoosingLocation) {
-            LocationPicker { location in
+            LocationPicker(onPick: { location in
                 await timeline.send(location: location, replyingTo: replyID)
                 cancelContext()
-            }
+            }, onShareLive: liveLocation == nil || isThread ? nil : { duration in
+                await liveLocation?.start(in: timeline.roomID, for: duration)
+            })
         }
         // Writing. `typed()` is cheap to call on every keystroke on purpose — it tells the server
         // once and then only pushes back the moment it takes it back — so this can be exactly what
@@ -1640,10 +1729,16 @@ public struct RoomView: View {
     /// nothing else (`PresenceLabel`) — or, when the server will not say, their Matrix ID. In a
     /// room, how many people are in it. Nil until the room has synced enough to say: a header that
     /// reads "0 participants" for a moment is worse than one that is briefly just a name.
+    /// "Thread" over a thread, with the room it is in under it; the room's own name otherwise.
+    private var headerName: String {
+        isThread ? String(app: Strings.Thread.title) : timeline.roomName
+    }
+
     private var headerSubtitle: String? {
         if let status = RoomListStatus(isOffline: isOffline, isUpdating: isUpdating) {
             return String(app: status.title)
         }
+        if isThread { return timeline.roomName }
         if let typing = typingSubtitle {
             return typing
         }
@@ -1713,10 +1808,16 @@ public struct RoomView: View {
                         onChoosePhoto: { isChoosingPhoto = true },
                         onChooseFile: { isChoosingFile = true },
                         onChooseLocation: { isChoosingLocation = true },
-                        onChooseSticker: stickers == nil ? nil : { isChoosingSticker = true },
+                        // A poll is a question to a group; in a personal chat it is one person
+                        // voting on the other's question.
+                        onCreatePoll: timeline.kind == .direct ? nil : { isCreatingPoll = true },
+                        onChooseSticker: stickers == nil || !showsStickers ? nil : { isChoosingSticker = true },
                         attachments: attachments,
                         onRemoveAttachment: { image in attachments.removeAll { $0.id == image.id } },
-                        onPasteImage: { Task { await pasteImages() } })
+                        onEditAttachment: editPhoto,
+                        onPasteImage: { Task { await pasteImages() } },
+                        mentions: $draftMentions,
+                        loadMentionCandidates: timeline.isOneToOne ? nil : { await timeline.mentionCandidates() })
     }
 
     /// What the room looks like while a picture is held over it: an outline, and a sentence saying
@@ -1778,6 +1879,29 @@ public struct RoomView: View {
         stage(items, unreadable: unreadable)
     }
 
+    private func editPhoto(_ attachment: PendingAttachment) {
+        guard let photo = EditablePhoto(data: attachment.data) else {
+            problem = .unreadableAttachment
+            return
+        }
+        editingPhoto = EditingPhoto(attachmentID: attachment.id, photo: photo)
+    }
+
+    private func photoEditor(_ editing: EditingPhoto) -> some View {
+        PhotoEditor(photo: editing.photo) { data in
+            // Put back where it was in the row, not at the end: the order is the order they go in.
+            if let index = attachments.firstIndex(where: { $0.id == editing.attachmentID }),
+               let edited = PendingAttachment(data: data, type: nil) {
+                attachments[index] = edited
+            } else {
+                problem = .unreadableAttachment
+            }
+            editingPhoto = nil
+        } onCancel: {
+            editingPhoto = nil
+        }
+    }
+
     private func stage(_ items: [PendingAttachment], unreadable: Int) {
         if unreadable > 0 { problem = .unreadableAttachment }
         guard !items.isEmpty else { return }
@@ -1794,10 +1918,12 @@ public struct RoomView: View {
     /// long as the send does — gone the moment it returns, which is safe although the send does not
     /// wait for the upload: the queue copies the file into its own encrypted store as it takes it.
     /// See `sendVoice`, where the same reasoning is set out at length.
-    private func send(_ item: PendingAttachment, replyingTo replyID: String?) async {
+    ///
+    /// Answers whether `caption` went with it. A WebP is a sticker and takes none, and a photo that
+    /// could not be sent took nothing anywhere — the words are then still the caller's to send.
+    private func send(_ item: PendingAttachment, caption: MediaCaption? = nil, replyingTo replyID: String?) async -> Bool {
         guard item.isVideo else {
-            await timeline.send(photo: item.data, filename: item.filename, replyingTo: replyID)
-            return
+            return await timeline.send(photo: item.data, filename: item.filename, caption: caption, replyingTo: replyID)
         }
 
         let url = URL.temporaryDirectory.appending(component: item.filename)
@@ -1806,10 +1932,54 @@ public struct RoomView: View {
         } catch {
             Log.media.error("the video could not be staged for upload: \(Log.describe(error), privacy: .public)")
             problem = .unreadableAttachment
-            return
+            return false
         }
         defer { try? FileManager.default.removeItem(at: url) }
-        await timeline.send(video: url, replyingTo: replyID)
+        await timeline.send(video: url, caption: caption, replyingTo: replyID)
+        return true
+    }
+
+    /// The bar in the composer's place while messages are chosen. Each act is offered only where it
+    /// applies to *every* chosen message — a delete that would quietly skip somebody else's words is
+    /// a delete that lies about what it did.
+    private func selectionBar(_ selection: MessageSelection) -> some View {
+        let chosen = selection.ordered(in: timeline.rows)
+        let canDelete = !chosen.isEmpty && !isOffline && chosen.allSatisfy { message in
+            message.canDelete || (timeline.canDeleteOthers && message.canBeDeletedByModerator)
+        }
+        let canForward = !chosen.isEmpty && !isOffline && forwarding != nil && chosen.allSatisfy(\.canForward)
+        let transcript = MessageSelection.transcript(of: chosen)
+        return MessageSelectionBar(count: selection.ids.count,
+                                   canDelete: canDelete,
+                                   canForward: canForward,
+                                   canCopy: transcript != nil,
+                                   onCancel: endSelection,
+                                   onDelete: { isConfirmingSelectionDelete = true },
+                                   onForward: { isForwardingSelection = true },
+                                   onCopy: {
+                                       if let transcript { Clipboard.copy(transcript) }
+                                       endSelection()
+                                   })
+            .confirmationDialog(Text(Strings.Message.Selection.deleteTitle),
+                                isPresented: $isConfirmingSelectionDelete,
+                                titleVisibility: .visible) {
+                Button(String(app: Strings.Message.Menu.delete), role: .destructive) {
+                    let ids = chosen.flatMap(\.members).map(\.id)
+                    endSelection()
+                    Task { for id in ids { await timeline.delete(messageID: id) } }
+                }
+            } message: {
+                Text(Strings.Message.Selection.deleteMessage)
+            }
+            .sheet(isPresented: $isForwardingSelection, onDismiss: endSelection) {
+                if let forwarding {
+                    ForwardPicker(messages: chosen, forwarding: forwarding)
+                }
+            }
+    }
+
+    private func endSelection() {
+        withAnimation(.smooth(duration: Theme.Timing.chrome)) { selection = nil }
     }
 
     private var readOnlyBanner: some View {
@@ -2045,6 +2215,31 @@ public struct RoomView: View {
                             opensDay: Bool,
                             arrives: Bool,
                             in scroll: ScrollViewProxy) -> some View {
+        if let selection {
+            // While choosing, a tap on a message ticks it and does nothing else: the row underneath
+            // is drawn as ever but takes no touches — no menu, no photo opening, no link.
+            let isOn = selection.contains(message.id)
+            HStack(spacing: Theme.Spacing.close) {
+                SelectionMark(isOn: isOn)
+                plainRow(message, opensDay: opensDay, arrives: arrives, in: scroll)
+                    .allowsHitTesting(false)
+            }
+            .contentShape(.rect)
+            .onTapGesture {
+                withAnimation(.smooth(duration: Theme.Timing.chrome)) { self.selection?.toggle(message.id) }
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)
+        } else {
+            plainRow(message, opensDay: opensDay, arrives: arrives, in: scroll)
+        }
+    }
+
+    @ViewBuilder
+    private func plainRow(_ message: Message,
+                          opensDay: Bool,
+                          arrives: Bool,
+                          in scroll: ScrollViewProxy) -> some View {
         let handlers = handlers(for: message, in: scroll)
         let isPinned = timeline.isPinned(messageID: message.id)
         let isHighlighted = highlighted == message.id
@@ -2075,8 +2270,11 @@ public struct RoomView: View {
     /// Built in a function of its own, and the comment above `view(for:followsEvent:in:)` says
     /// why: written inline, these closures are what the type checker gives up on.
     private func handlers(for message: Message, in scroll: ScrollViewProxy) -> MessageHandlers {
-        MessageHandlers(
-            onRetry: { Task { await timeline.retrySending(messageID: message.id) } },
+        // An album is several messages in one row, and what is done to the row is done to all of
+        // them: deleting the bubble deletes every picture in it. See `Album`.
+        let members = message.members.map(\.id)
+        return MessageHandlers(
+            onRetry: { Task { for id in members { await timeline.retrySending(messageID: id) } } },
             onSendAnyway: {
                 Task {
                     do { try await timeline.sendAnyway(messageID: message.id) } catch { problem = .sendAnywayFailed }
@@ -2085,8 +2283,8 @@ public struct RoomView: View {
             onToggleReaction: { emoji in
                 Task { await timeline.toggleReaction(messageID: message.id, key: emoji) }
             },
-            onDelete: { Task { await timeline.delete(messageID: message.id) } },
-            onDiscard: { Task { await timeline.discard(messageID: message.id) } },
+            onDelete: { Task { for id in members { await timeline.delete(messageID: id) } } },
+            onDiscard: { Task { for id in members { await timeline.discard(messageID: id) } } },
             onReply: { startReplying(to: message) },
             onEdit: { startEditing(message) },
             onTogglePin: { Task { await togglePin(message) } },
@@ -2103,6 +2301,20 @@ public struct RoomView: View {
                 jumpTarget = eventID
             },
             onReport: { reason in Task { await timeline.report(messageID: message.id, reason: reason) } },
+            onVote: { answers in Task { await timeline.vote(inPoll: message.id, answerIDs: answers) } },
+            onEndPoll: { Task { await timeline.endPoll(message.id) } },
+            onOpenThread: makeThread == nil || isThread
+                || !ThreadSettings.usesThreads(kind: timeline.kind, memberCount: timeline.memberCount, shown: threadsShown) ? nil : {
+                guard let store = makeThread?(message.id) else { return }
+                Keyboard.dismiss()
+                openedThread = OpenedThread(rootID: message.id, store: store)
+            },
+            onSelect: {
+                Keyboard.dismiss()
+                withAnimation(.smooth(duration: Theme.Timing.chrome)) { selection = MessageSelection(message.id) }
+            },
+            loadSource: showsEventSource ? { timeline.sourceJSON(of: message.id) } : nil,
+            canDeleteOthers: timeline.canDeleteOthers,
             loadReactors: timeline.isOneToOne ? nil : { await timeline.reactors(of: message.id) }
         )
     }
@@ -2133,39 +2345,17 @@ public struct RoomView: View {
         }
     }
 
-    /// The way to the rest of a conversation the reader cannot scroll to.
+    /// What stands at the head of the list when the older messages could not be fetched.
     ///
-    /// Everywhere else, older messages are asked for by scrolling to the top, and that is the right
-    /// gesture: it is the one people already make. But it is a gesture only a scrollable room can
-    /// receive — and a room that came up holding two messages is shorter than the screen it is on.
-    /// There is nothing to pull, the geometry never changes, so nothing ever asks for history
-    /// again and the room stays two messages long for as long as it is open. The store knows when
-    /// it is in that state (`needsMoreHistory`); this is what it offers when it is.
-    ///
-    /// A real row at the head of the list, not an overlay like the spinner. The spinner is a thing
-    /// that comes and goes twice a page and must not shove the conversation about; this appears
-    /// once, in a room with nothing above the first message anyway, and stays until it is pressed
-    /// or until it has done its job. It *is* the top of the conversation, so that is where it goes.
+    /// A room too short to scroll asks for its history by itself — see the `.task` on
+    /// `timeline.needsMoreHistory` — so there is no button to press for it any more. What is left
+    /// here is the one case nothing automatic can mend: the fetch failed, and the line says so.
     @ViewBuilder
     private var loadEarlier: some View {
-        if timeline.needsMoreHistory {
-            Button {
-                Task { await timeline.loadMoreHistory() }
-            } label: {
-                Text(Strings.Room.loadEarlier)
-                    .font(.subheadline.weight(.medium))
-                    .padding(.horizontal, Theme.Spacing.normal)
-                    .padding(.vertical, Theme.Spacing.close)
-                    .navigationGlass(in: .capsule)
-                    .contentShape(.capsule)
-            }
-            .buttonStyle(.plain)
-            .padding(.vertical, Theme.Spacing.normal)
-        } else if timeline.historyIsStranded {
-            // The same place, and deliberately not the same thing. There is more of this
-            // conversation and we could not fetch it — so what goes here is the reason, not an
-            // offer we cannot keep. Pressing it is still allowed, because a network can come back
-            // between one glance at the screen and the next.
+        if timeline.historyIsStranded {
+            // There is more of this conversation and we could not fetch it — so what goes here is
+            // the reason, not an offer we cannot keep. Pressing it is still allowed, because a
+            // network can come back between one glance at the screen and the next.
             Button {
                 Task { await timeline.loadMoreHistory() }
             } label: {
@@ -2301,9 +2491,12 @@ public struct RoomView: View {
     /// whole point: an edit that started from an empty field would be a rewrite, and the user
     /// pressed "Edit" because they want to change a word.
     private func startEditing(_ message: Message) {
-        guard let text = message.editableText else { return }
+        // An album is its first picture, and so is its caption — see `Album`.
+        guard let text = message.editingText else { return }
         composerContext = .editing(message)
-        draft = text
+        let (words, mentions) = ComposerMentions.unlinked(text)
+        draft = words
+        draftMentions = mentions
     }
 
     /// Backs out of a reply or an edit.
@@ -2314,7 +2507,10 @@ public struct RoomView: View {
     /// message you were editing sitting in the composer, ready to be sent again as a new one.
     /// An abandoned reply keeps the draft, because every word in it is the user's own.
     private func cancelContext() {
-        if case .editing = composerContext { draft = "" }
+        if case .editing = composerContext {
+            draft = ""
+            draftMentions = []
+        }
         composerContext = nil
     }
 
@@ -2331,7 +2527,10 @@ public struct RoomView: View {
         let needsScope = url.startAccessingSecurityScopedResource()
         defer { if needsScope { url.stopAccessingSecurityScopedResource() } }
 
+        let bytes = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        let job = timeline.follow([MediaSendJobs.Item(isFile: true, bytes: bytes)])
         await timeline.send(file: url, replyingTo: replyID)
+        timeline.endFollowing(job)
         cancelContext()
     }
 
@@ -2345,13 +2544,16 @@ public struct RoomView: View {
     /// have to stand guard over it.
     private func send() {
         let text = draft
+        let mentions = draftMentions
         let context = composerContext
 
         // An empty edit is the one thing the send button refuses — it disables itself, because a
         // blank edit is not an edit and the core drops it anyway. A keyboard Return reaches here
         // past that disabled button (on macOS, where Return submits), so it is refused in the same
         // breath: the composer is left exactly as it was, still holding the edit.
-        if case .editing = context, text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return }
+        // A caption is the exception: emptied, it is taken off the photo, which is an edit.
+        if case let .editing(message) = context, !message.hasCaption,
+           text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return }
 
         // Photos and videos go with anything but an edit, which cannot add one to a message already
         // sent. They stay waiting through the edit and leave with the next ordinary send.
@@ -2363,36 +2565,45 @@ public struct RoomView: View {
         guard hasText || !images.isEmpty || context?.isEditing == true else { return }
 
         draft = ""
+        draftMentions = []
         composerContext = nil
         if !images.isEmpty { attachments = [] }
 
         Task {
-            // Pictures first, then the words: the words are nearly always *about* the pictures, and
-            // read as a caption only if they arrive under them. Not as a Matrix caption — this app
-            // does not put captions on photos (see `Message.editableText`). An answer threads onto
-            // whichever goes first, which is the thing the reader will see beside the quote.
+            // The words go *with* the pictures, as their caption, on the first of them — Telegram's
+            // place for it, and the message an album is (`Album`). The answer threads onto the same
+            // one. A sticker takes no caption, so after one the words go on their own, as they
+            // always used to.
             var replyingTo: String?
             if case let .replying(message) = context { replyingTo = message.id }
-            for item in images {
-                await send(item, replyingTo: replyingTo)
+            let caption = hasText ? MediaCaption(text: text, mentions: mentions) : nil
+            var captioned = false
+            // A video or an album is followed past this screen — into a Live Activity, or the
+            // system's own indicator — so that it keeps going in a pocket. See `MediaSendJobs`.
+            let job = timeline.follow(images.map { MediaSendJobs.Item(isVideo: $0.isVideo, bytes: $0.data.count) })
+            for (index, item) in images.enumerated() {
+                let isFirst = index == 0
+                let went = await send(item, caption: isFirst ? caption : nil, replyingTo: replyingTo)
+                if isFirst, caption != nil { captioned = went }
                 replyingTo = nil
             }
-            guard hasText || context?.isEditing == true else {
+            timeline.endFollowing(job)
+            guard (hasText && !captioned) || context?.isEditing == true else {
                 await timeline.clearDraft()
                 return
             }
 
             switch context {
             case let .editing(message):
-                await timeline.edit(messageID: message.id, text: text)
+                await timeline.edit(messageID: message.id, text: text, mentions: mentions)
             case .replying:
                 if let replyingTo {
-                    await timeline.send(text: text, replyingTo: replyingTo)
+                    await timeline.send(text: text, replyingTo: replyingTo, mentions: mentions)
                 } else {
-                    await timeline.send(text: text)
+                    await timeline.send(text: text, mentions: mentions)
                 }
             case nil:
-                await timeline.send(text: text)
+                await timeline.send(text: text, mentions: mentions)
             }
 
             // The words have gone; there is nothing left to come back to. Without this the room

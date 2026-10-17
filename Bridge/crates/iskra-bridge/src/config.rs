@@ -1,17 +1,16 @@
 //! Everything the bridge needs, taken from the environment and validated once.
 //!
-//! Validated *once*, at startup, is the point: a bridge that discovers its homeserver URL is
-//! nonsense on the first tunnelled request has already accepted traffic it cannot serve.
+//! Validated *once*, at startup, is the point: a bridge that discovers its homeserver list is
+//! nonsense on the first stream has already accepted traffic it cannot serve.
 
 use std::collections::{BTreeSet, HashSet};
 use std::fs::OpenOptions;
 use std::io::{ErrorKind, Write};
 use std::num::NonZeroU32;
 use std::path::Path;
-use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
-use iskra_tunnel_proto::DEFAULT_MAX_BODY_CHUNK;
+use iskra_tunnel_proto::{DEFAULT_POW_BITS, DEFAULT_SEGMENT, MAX_POW_BITS};
 use nostr_sdk::prelude::{Keys, PublicKey};
 use url::Url;
 
@@ -20,16 +19,36 @@ use crate::upstream::{parse_origin, Allowed, Upstreams};
 /// Relays a bridge listens on when told nothing: the same three the app uses when *it* is told
 /// nothing (`TunnelSettings.defaultRelays`), so a bridge and a client set up by somebody who left
 /// both fields empty already agree. `relay.damus.io` is left out on purpose — it answers `503` to
-/// the connection itself often enough to be the standing example.
-pub const DEFAULT_RELAYS: [&str; 3] = [
-    "wss://nos.lol",
+/// the connection itself often enough to be the standing example. Chosen to be reachable from
+/// Russia, where relays on Hetzner, Contabo, DigitalOcean and most of Cloudflare stop at ~16 KB —
+/// the reasons are written out at `TunnelSettings.defaultRelays`.
+pub const DEFAULT_RELAYS: [&str; 5] = [
+    "wss://relay.snort.social",
+    "wss://nostr.wine",
+    "wss://offchain.pub",
+    "wss://nostr.bitcoiner.social",
     "wss://relay.primal.net",
-    "wss://relay.nostr.band",
+];
+
+/// Events per minute one client key may send before the bridge stops decrypting them. Charged
+/// before anything is known about an event, because decrypting is the bridge's main cost. A 64 MiB
+/// minute of streaming is about 2700 segments, plus their acknowledgements; this is well above it.
+pub const DEFAULT_EVENTS_PER_MIN: u32 = 8192;
+
+/// Settings of the protocol that is gone. Set, they are said out loud at startup rather than
+/// ignored in silence: an operator who still sets `HOMESERVER_URL` believes something about this
+/// bridge that is no longer true.
+const RETIRED: [(&str, &str); 5] = [
+    ("HOMESERVER_URL", "list the homeserver in ALLOWED_UPSTREAMS"),
+    ("RATE_LIMIT_PER_MIN", "the bridge no longer sees requests; see STREAM_BYTES_PER_MIN and EVENTS_PER_MIN"),
+    ("REQUEST_TIMEOUT_SECS", "the bridge no longer makes requests"),
+    ("MAX_BODY_CHUNK", "renamed SEGMENT_BYTES"),
+    ("BLIND_ONLY", "the bridge carries streams only, always"),
 ];
 
 #[derive(Debug, Clone)]
 pub struct Config {
-    /// Which homeservers this bridge will go to, and which one it falls back on.
+    /// Which homeservers this bridge will carry streams to.
     pub upstreams: Upstreams,
     /// The bridge's own nostr identity. Clients address it by this public key.
     pub keys: Keys,
@@ -38,36 +57,67 @@ pub struct Config {
     /// Relays the bridge tells clients to use. Usually the same list; separate so it can be
     /// changed for clients without restarting what the bridge itself is connected to.
     pub client_relays: Vec<String>,
-    pub rate_limit_per_min: NonZeroU32,
+    /// Events per minute per client key, charged before decrypting.
+    pub events_per_min: NonZeroU32,
     /// `None` means an open bridge. `Some` means only these keys are served.
     pub allowed_pubkeys: Option<HashSet<PublicKey>>,
-    pub max_body_chunk: usize,
-    pub request_timeout: Duration,
+    /// Bytes per segment the bridge cuts what it reads into.
+    pub segment_bytes: usize,
+    /// NIP-13 bits an `open` must be mined to. `0` turns it off.
+    pub pow_bits: u8,
+    pub streams: StreamLimits,
+}
+
+/// The ceilings on streams. None of them is per *request* — the bridge sees no requests — and
+/// none can be got round by a new nostr key alone: the totals hold whatever the key.
+#[derive(Debug, Clone)]
+pub struct StreamLimits {
+    /// Streams one client key may have open. The SDK keeps a small pool of connections, one or two
+    /// with HTTP/2; sixteen is room for that and for the notification extension beside it.
+    pub per_client: usize,
+    /// Streams open at once, everybody together. Each holds a socket and up to a window of memory.
+    pub total: usize,
+    /// Bytes per minute one client may move, both directions together. Over it, the stream slows
+    /// down — the bridge stops reading and stops acknowledging — rather than breaking.
+    pub bytes_per_min: NonZeroU32,
+    /// The same for everybody together, so that one neighbour cannot take the whole uplink.
+    pub bytes_per_min_total: Option<NonZeroU32>,
+}
+
+impl Default for StreamLimits {
+    fn default() -> Self {
+        Self {
+            per_client: 16,
+            total: 2048,
+            bytes_per_min: NonZeroU32::new(64 * 1024 * 1024).expect("a non-zero constant"),
+            bytes_per_min_total: None,
+        }
+    }
 }
 
 impl Config {
     pub fn from_env() -> Result<Self> {
-        // Both optional, and at least one required — `Upstreams::new` is what insists on that.
-        // `HOMESERVER_URL` alone keeps an existing deployment behaving exactly as it did: one
-        // homeserver, no client may name another.
-        let homeserver = match optional("HOMESERVER_URL") {
-            None => None,
-            Some(raw) => {
-                let url = Url::parse(&raw)
-                    .with_context(|| "HOMESERVER_URL is not a URL".to_string())?;
-                if !matches!(url.scheme(), "http" | "https") {
-                    return Err(anyhow!("HOMESERVER_URL must be http or https"));
-                }
-                Some(url)
+        for (name, instead) in RETIRED {
+            if optional(name).is_some() {
+                tracing::warn!("{name} is no longer read — {instead}");
             }
-        };
+        }
 
         let allowed = match optional("ALLOWED_UPSTREAMS") {
-            None => None,
+            None if optional("HOMESERVER_URL").is_some() => {
+                return Err(anyhow!(
+                    "HOMESERVER_URL is gone; put the homeserver in ALLOWED_UPSTREAMS instead"
+                ))
+            }
+            None => {
+                return Err(anyhow!(
+                    "ALLOWED_UPSTREAMS is required: a list of homeservers, or * for any public one"
+                ))
+            }
             // `*` is deliberately ugly to write and impossible to arrive at by accident: it turns
             // the bridge into one anybody on any homeserver can use, which is a decision, not a
             // default.
-            Some(raw) if raw.trim() == "*" => Some(Allowed::Anywhere),
+            Some(raw) if raw.trim() == "*" => Allowed::Anywhere,
             Some(raw) => {
                 let mut set = BTreeSet::new();
                 for item in raw.split(',').map(str::trim).filter(|s| !s.is_empty()) {
@@ -75,14 +125,10 @@ impl Config {
                         format!("ALLOWED_UPSTREAMS contains a bad entry: {item}")
                     })?);
                 }
-                if set.is_empty() {
-                    return Err(anyhow!("ALLOWED_UPSTREAMS is empty; remove it or fill it in"));
-                }
-                Some(Allowed::These(set))
+                Allowed::These(set)
             }
         };
-
-        let upstreams = Upstreams::new(homeserver, allowed)?;
+        let upstreams = Upstreams::new(allowed)?;
 
         let keys = match (optional("BRIDGE_NOSTR_PRIVKEY"), optional("BRIDGE_KEY_FILE")) {
             (Some(secret), _) => Keys::parse(secret.trim())
@@ -105,9 +151,8 @@ impl Config {
             None => relays.clone(),
         };
 
-        let rate_limit_per_min = parse_or("RATE_LIMIT_PER_MIN", 120u32)?;
-        let rate_limit_per_min = NonZeroU32::new(rate_limit_per_min)
-            .ok_or_else(|| anyhow!("RATE_LIMIT_PER_MIN must be at least 1"))?;
+        let events_per_min = NonZeroU32::new(parse_or("EVENTS_PER_MIN", DEFAULT_EVENTS_PER_MIN)?)
+            .ok_or_else(|| anyhow!("EVENTS_PER_MIN must be at least 1"))?;
 
         let allowed_pubkeys = match std::env::var("ALLOWED_PUBKEYS") {
             Err(_) => None,
@@ -123,18 +168,48 @@ impl Config {
             }
         };
 
-        let max_body_chunk = parse_or("MAX_BODY_CHUNK", DEFAULT_MAX_BODY_CHUNK)?;
-        let request_timeout = Duration::from_secs(parse_or("REQUEST_TIMEOUT_SECS", 60u64)?);
+        let segment_bytes = parse_or("SEGMENT_BYTES", DEFAULT_SEGMENT)?;
+        if segment_bytes == 0 || segment_bytes > DEFAULT_SEGMENT {
+            return Err(anyhow!(
+                "SEGMENT_BYTES must be between 1 and {DEFAULT_SEGMENT}: a larger segment does not fit one NIP-44 payload"
+            ));
+        }
+
+        let pow_bits = parse_or("POW_DIFFICULTY", DEFAULT_POW_BITS)?;
+        if pow_bits > MAX_POW_BITS {
+            // Each bit doubles the client's work, and clients ignore a difficulty past this: a
+            // bridge set higher would be a bridge nobody can use, not a well-defended one.
+            return Err(anyhow!("POW_DIFFICULTY must be at most {MAX_POW_BITS}"));
+        }
+
+        let defaults = StreamLimits::default();
+        let streams = StreamLimits {
+            per_client: parse_or("MAX_STREAMS_PER_CLIENT", defaults.per_client)?.max(1),
+            total: parse_or("MAX_STREAMS", defaults.total)?.max(1),
+            bytes_per_min: NonZeroU32::new(parse_or(
+                "STREAM_BYTES_PER_MIN",
+                defaults.bytes_per_min.get(),
+            )?)
+            .ok_or_else(|| anyhow!("STREAM_BYTES_PER_MIN must be at least 1"))?,
+            bytes_per_min_total: match optional("STREAM_BYTES_PER_MIN_TOTAL") {
+                None => None,
+                Some(_) => Some(
+                    NonZeroU32::new(parse_or("STREAM_BYTES_PER_MIN_TOTAL", 0u32)?)
+                        .ok_or_else(|| anyhow!("STREAM_BYTES_PER_MIN_TOTAL must be at least 1"))?,
+                ),
+            },
+        };
 
         Ok(Self {
             upstreams,
             keys,
             relays,
             client_relays,
-            rate_limit_per_min,
+            events_per_min,
             allowed_pubkeys,
-            max_body_chunk,
-            request_timeout,
+            segment_bytes,
+            pow_bits,
+            streams,
         })
     }
 

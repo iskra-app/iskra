@@ -5,3 +5,8 @@
 "Send Message" = "Nachricht senden";
 "Chat" = "Chat";
 "Message" = "Nachricht";
+
+/* The favourites widget and the live location activity — see Apps/Widgets. */
+"Choose Chats" = "Chats auswählen";
+"Chats" = "Chats";
+"Stop Sharing Location" = "Standortfreigabe beenden";

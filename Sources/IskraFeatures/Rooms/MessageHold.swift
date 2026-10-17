@@ -49,6 +49,17 @@ struct MessageHold: UIViewRepresentable {
     /// The hold happened: lift the message into the menu.
     let onHold: () -> Void
 
+    /// Whether the finger that held is taken away from the view under it once the hold happens.
+    ///
+    /// Off for a message, on for a row of the chat list. A `List` row lights up under a finger and
+    /// goes dark again only when that touch ends or is cancelled — and since nothing here consumed
+    /// it, the touch ended as a tap, the list's selection refused it (`ChatPeekPresenter
+    /// .isPeeking(at:)`), and the cell was left lit grey for as long as the app ran. Cancelling
+    /// the touch once the hold has fired is what turns the light off. It costs nothing to the
+    /// scroll: by then the finger has been still for the whole of the wait, which is the one thing
+    /// a scroll is not.
+    var cancelsTouches = false
+
     func makeUIView(context: Context) -> UIView {
         let view = AttachingView()
         // Invisible to touches, and that is the entire point — see the note above about the
@@ -63,6 +74,7 @@ struct MessageHold: UIViewRepresentable {
         context.coordinator.onPressingChanged = onPressingChanged
         context.coordinator.onHold = onHold
         context.coordinator.duration = duration
+        context.coordinator.cancelsTouches = cancelsTouches
     }
 
     func makeCoordinator() -> Coordinator {
@@ -99,6 +111,9 @@ struct MessageHold: UIViewRepresentable {
         var duration: TimeInterval
         var onPressingChanged: (Bool) -> Void
         var onHold: () -> Void
+        var cancelsTouches = false {
+            didSet { hold?.cancelsTouchesInView = cancelsTouches }
+        }
 
         /// The row this speaks for, which is also the rectangle a touch has to be inside.
         private weak var mine: UIView?
@@ -143,6 +158,7 @@ struct MessageHold: UIViewRepresentable {
             hold.minimumPressDuration = duration
             hold.allowableMovement = Self.slop
             configure(hold)
+            hold.cancelsTouchesInView = cancelsTouches
             host.addGestureRecognizer(hold)
             self.hold = hold
 
@@ -212,6 +228,15 @@ struct MessageHold: UIViewRepresentable {
 
         /// Yes, to everything. This is the answer SwiftUI's long press has no way of giving, and the
         /// whole reason the conversation scrolls again.
+        /// Every row puts its own recogniser on the one scroll view, so a hold that cancels touches
+        /// must begin only for the row under the finger — otherwise every row's would begin, and
+        /// each would cancel. For a hold that cancels nothing it makes no difference, and `held`
+        /// asks `isMine` either way.
+        func gestureRecognizerShouldBegin(_ recogniser: UIGestureRecognizer) -> Bool {
+            guard recogniser === hold, cancelsTouches else { return true }
+            return isMine(recogniser)
+        }
+
         nonisolated func gestureRecognizer(_ recogniser: UIGestureRecognizer,
                                            shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
             true

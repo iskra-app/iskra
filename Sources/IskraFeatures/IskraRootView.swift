@@ -213,6 +213,7 @@ public struct IskraRootView: View {
                     .onChange(of: session.displayName) { reloadAccounts(session) }
                     .onChange(of: session.avatarURL) { reloadAccounts(session) }
                     .environment(\.forwarding, Forwarding(session: session))
+                    .environment(\.liveLocation, session.liveLocation)
                     // Writing to somebody whose name was pressed in a room's member list, and the
                     // one wire that lets a screen several pushes deep in the conversation column
                     // change which conversation that column is showing. See `PersonalChats`.
@@ -231,6 +232,13 @@ public struct IskraRootView: View {
                         return .handled
                     })
                     .onOpenURL { url in
+                        // A tapped Live Activity asks for its chat — and, like a widget's face,
+                        // for the account it belongs to. The same way in as Shortcuts.
+                        if let request = ChatDirectory.OpenRequest(url: url) {
+                            ChatDirectory.requestOpen(roomID: request.roomID, accountID: request.accountID)
+                            Task { await handleIntents(session) }
+                            return
+                        }
                         guard let link = Self.matrixLink(in: url) else { return }
                         openedLink = OpenedLink(link: link)
                     }
@@ -348,10 +356,31 @@ public struct IskraRootView: View {
                         AppBadge.update(for: rooms, account: session.isDemo ? nil : session.sessionID)
                         switcher.refreshUnread()
                     }
+                    // New pictures landed for the share sheet and the widget: written into the
+                    // directory now, rather than with whatever the next sync happens to bring.
+                    .onChange(of: session.chatFaces.revision) {
+                        if !session.isDemo { writeChatDirectory(session.roomList.rooms, of: session) }
+                    }
                     // Act on what an intent asked for: open the chat it launched us for, and send any
                     // messages it left in the outbox. Once on appear (a cold launch by an intent), and
                     // again whenever we come back to the front.
                     .task { await handleIntents(session) }
+                    // A widget's face or a shortcut asked for a chat — heard whether it was asked
+                    // before or after the app came to the front. See `OpenRequestSignal`.
+                    .task {
+                        for await _ in OpenRequestSignal.announcements() {
+                            await handleIntents(session)
+                        }
+                    }
+                    #if os(iOS)
+                    // The live location activity and a long upload's background time follow this
+                    // session from here on, pocket included — see `LiveLocationActivity` and
+                    // `MediaSendBackground`.
+                    .task(id: session.sessionID) {
+                        LiveLocationActivity.attach(session)
+                        MediaSendBackground.shared.attach(session)
+                    }
+                    #endif
                     .onChange(of: scenePhase) { _, phase in
                         if phase == .active { Task { await handleIntents(session) } }
                     }
@@ -474,6 +503,11 @@ public struct IskraRootView: View {
         }
         .animation(.smooth(duration: Theme.Timing.reaction), value: tintsInterface)
         .environment(\.appLock, appLock)
+        // The widget hides its faces behind the lock, so turning the lock on or off is something it
+        // has to be told about at once — not with the next message.
+        .onChange(of: appLock.isEnabled) {
+            WidgetRefresh.directoryChanged()
+        }
         // The cover the app wears on its way out, so that the picture iOS keeps for the app switcher
         // is a padlock and not somebody's conversation — see `PrivacyCover` — and the shield,
         // above everything: the tint, a sheet, a media viewer. On iOS both live in a window of their
@@ -522,17 +556,14 @@ public struct IskraRootView: View {
     }
 
     /// Writes the joined conversations (not spaces, not invitations) into the shared directory the
-    /// App Intents read. Names only — nothing an intent needs to fetch.
+    /// App Intents, the share sheet and the widget read — see `UserSession.chatDirectoryEntries`.
     private func writeChatDirectory(_ rooms: [RoomSummary], of session: UserSession) {
-        let entries = rooms
-            .filter { !$0.isInvitation && !$0.isSpace }
-            .map { ChatDirectoryEntry(id: $0.id, name: $0.name,
-                                      accountID: session.sessionID, accountName: session.displayName,
-                                      avatarSeed: $0.avatarSeed) }
         // This account's part of the list; everybody else's stays as it was.
-        ChatDirectory.writeDirectory(entries, account: session.sessionID)
+        ChatDirectory.writeDirectory(session.chatDirectoryEntries(for: rooms), account: session.sessionID)
         // And whose list is live: the share sheet's "active account" is this one.
         ChatDirectory.recordActiveAccount(session.sessionID)
+        // The widget, only when what it draws has changed — see `WidgetRefresh`.
+        WidgetRefresh.directoryChanged()
     }
 
     /// Acts on what a Shortcuts intent left behind: opens the chat it asked for, and sends the
@@ -868,6 +899,7 @@ public struct IskraRootView: View {
                     RoomView(timeline: timeline,
                              identityChanges: session.identityChanges(forRoomID: roomID),
                              makeDetails: { session.details(forRoomID: roomID) },
+                             makeThread: { session.threadTimeline(forRoomID: roomID, rootEventID: $0) },
                              openAt: $selectedEventID,
                              onLeave: { selectedRoomID = nil },
                              onClose: { selectedRoomID = nil })
@@ -922,6 +954,8 @@ public struct IskraRootView: View {
         // And the Share extension's copies that nothing is waiting to send any more — see
         // `ChatDirectory.sweepOutbox`. They are somebody's photos in the clear in a shared folder.
         ChatDirectory.sweepOutbox()
+        // And the chats' pictures nobody names any more — see `DirectoryFaces.sweep`.
+        DirectoryFaces.sweep()
 
         // And whatever the last run left in the *container*: encrypted stores belonging to sign-ins
         // that never finished and sessions that have been replaced. They are readable — the

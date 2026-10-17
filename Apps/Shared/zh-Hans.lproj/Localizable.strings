@@ -5,3 +5,8 @@
 "Send Message" = "发送消息";
 "Chat" = "聊天";
 "Message" = "消息";
+
+/* The favourites widget and the live location activity — see Apps/Widgets. */
+"Choose Chats" = "选择聊天";
+"Chats" = "聊天";
+"Stop Sharing Location" = "停止共享位置";

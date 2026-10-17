@@ -66,6 +66,8 @@
 "room.attach" = "Добавить фото или файл";
 
 "room.composerPlaceholder" = "Сообщение";
+"room.captionPlaceholder" = "Подпись";
+"room.mentionSuggestions" = "Кого упомянуть";
 
 /* Плашка вместо поля ввода, когда в чат нельзя писать. */
 "room.readOnly" = "В этот чат нельзя отправлять сообщения";
@@ -94,6 +96,7 @@
 
 /* Accessibility label for the pin icon on a pinned chat. */
 "roomList.pinned" = "Закреплённый чат";
+"roomList.draft" = "Черновик: %@";
 "roomList.hasUnread" = "Есть непрочитанные";
 
 "roomList.searchPrompt" = "Поиск по сообщениям";
@@ -204,11 +207,27 @@
 "connection.title" = "Соединение";
 "connection.bridge" = "Через мост";
 "connection.bridgeFooter" = "Трафик к серверу пойдёт через мост, а не напрямую. Это нужно там, где сервер недоступен.";
+"connection.publicSection" = "Публичные мосты";
+"connection.publicFooter" = "Проверенные мосты из списка github.com/iskra-app/public-bridges. Что видит мост — ниже. Список приложение раз в сутки скачивает напрямую с GitHub, так что это видно GitHub и вашей сети; если GitHub недоступен, берётся сохранённый.";
+"connection.publicEmpty" = "В списке пока нет ни одного моста. Добавьте свой ниже.";
+"connection.publicAnyServer" = "любой сервер Matrix";
+"connection.publicServers" = "только %@";
+"connection.publicOperator" = "держит %@";
+"connection.notListed" = "больше нет в списке";
+"connection.ownSection" = "Свои мосты";
+"connection.ownFooter" = "Мост, который вы подняли сами или получили от того, кто его держит. Их может быть несколько — используется тот, что отмечен.";
+"connection.addBridge" = "Добавить мост";
+"connection.editBridge" = "Изменить мост";
+"connection.deleteBridge" = "Удалить";
+"connection.saveBridge" = "Сохранить";
+"connection.cancelEditing" = "Отмена";
+"connection.bridgeName" = "Название";
+"connection.bridgeNamePrompt" = "Например, «Дом»";
 
 "connection.status" = "Состояние";
 "connection.statusDirect" = "Напрямую";
-"connection.statusLocal" = "Через локальный слой";
-"connection.statusBridged" = "Через мост, relay: %lld";
+"connection.statusConnecting" = "Через мост, relay: %lld. Мост пока не ответил";
+"connection.statusBlind" = "Через мост, relay: %lld. Мост не видит ваших сообщений";
 "connection.statusFailed" = "Не удалось включить";
 "connection.pending" = "Новые настройки заработают, как только вы уйдёте с этого экрана: приложение переподключится само.";
 "connection.applyNow" = "Переподключиться сейчас";
@@ -217,12 +236,12 @@
    а не только в состоянии: человек смотрит на поле, когда заполняет его. */
 "connection.address" = "Адрес моста";
 "connection.addressPrompt" = "npub1… или 64 знака hex";
-"connection.addressFooter" = "Адрес мост печатает при запуске — строка «bridge address for Iskra: npub1…». Пока поле пустое, переключатель ничего не даёт: трафик идёт к серверу напрямую.";
+"connection.addressFooter" = "Адрес мост печатает при запуске — строка «bridge address for Iskra: npub1…».";
 "connection.addressBad" = "Не похоже на ключ моста";
 "connection.addressSecret" = "Это секретный ключ. Нужен публичный — тот, что начинается с npub.";
 
 "connection.relays" = "Relay";
-"connection.relaysPrompt" = "wss://nos.lol, wss://relay.primal.net";
+"connection.relaysPrompt" = "wss://relay.snort.social, wss://nostr.wine";
 "connection.relaysFooter" = "Через них приложение и мост находят друг друга. Несколько — не запас: запрос уходит сразу на все, а ответ приходит с того, который оказался быстрее. Пусто — возьмутся три по умолчанию.";
 
 "connection.myKey" = "Ключ этого устройства";
@@ -235,8 +254,16 @@
 "connection.checkOK" = "Мост ответил, сервер на месте — %lld мс";
 "connection.checkNoRelay" = "Ни один relay не отвечает";
 "connection.checkSilent" = "Мост молчит. Он запущен, и ключ тот самый?";
-"connection.checkRefused" = "Мост отказал: этот сервер он не обслуживает";
 "connection.checkFailed" = "Не вышло: %@";
+"bridge.refusal.notAllowed" = "Мост не пускает к этому серверу — его нет в списке моста";
+"bridge.refusal.notMatrix" = "Мост не признал этот сервер Matrix-сервером";
+"bridge.refusal.badPort" = "Мост ходит только на порт 443, а этот сервер — на другом";
+"bridge.refusal.notPublic" = "Сервер в частной сети, а открытый мост туда не ходит";
+"bridge.refusal.noSuchHost" = "Мост не нашёл такого сервера";
+"bridge.refusal.unreachable" = "Мост не смог подключиться к серверу";
+"bridge.refusal.busy" = "Мост перегружен. Попробуйте через минуту";
+"bridge.refusal.disagreement" = "Приложение и мост не поняли друг друга. Обновите приложение или мост";
+"bridge.refusal.broke" = "Мост оборвал соединение: %@";
 
 /* Не «что не доделано», а чего ждать: цифры взяты из замера целой сессии через мост
    (Bridge/README.md), и человек, который включил мост, должен знать их заранее. */
@@ -244,7 +271,7 @@
 "connection.unfinishedBody" = "Каждый запрос идёт кругом через relay и стоит 200–350 мс, поэтому вход и первое открытие чатов заметно медленнее прямого соединения — секунда там, где было мгновенно. А новые сообщения приходят почти так же быстро, как напрямую. Большие вложения тоже доедут, но гонять их через публичные relay не стоит: для медиа мосту лучше дать свой relay.";
 
 "connection.sees" = "Что видит мост";
-"connection.seesBody" = "Мост разбирает запросы к серверу, а значит видит ваш токен, в каких вы комнатах и тексты сообщений в незашифрованных чатах. Зашифрованную переписку он прочитать не может. Поэтому мост стоит поднимать свой, а не пользоваться чужим.";
+"connection.seesBody" = "Только к какому серверу вы подключаетесь, когда и сколько байт. Соединение с сервером шифрует само приложение, поэтому ваш токен, комнаты и сообщения — даже в незашифрованных чатах — мосту не видны. Ваш IP видят relay, а не мост.";
 
 /* Блокировка приложения по Face ID / коду устройства. */
 "settings.lock" = "Код-пароль";
@@ -354,6 +381,7 @@
 "signIn.problem.storageUnavailable" = "Iskra не смогла подготовить защищённое хранилище на этом устройстве, поэтому безопасно войти не получится.";
 
 "signIn.problem.unreachable" = "Не удалось связаться с этим адресом. Проверьте соединение и попробуйте снова.";
+"signIn.problem.bridgeUnavailable" = "Мост не включился, а напрямую Iskra не пойдёт, пока мост включён. Проверьте адрес моста и relay в настройках соединения.";
 
 "signIn.problem.unsupportedMethod" = "Этот сервис использует способ входа, который Iskra пока не поддерживает.";
 
@@ -392,7 +420,7 @@
 /* The question that replaces asking for a 'homeserver URL'. */
 "signIn.whereIsAccount" = "Где ваш аккаунт?";
 
-"signIn.whereIsAccountHelp" = "Если вам дали адрес сервера — введите его. Если нет, оставьте matrix.org: там большинство аккаунтов.";
+"signIn.whereIsAccountHelp" = "Введите адрес сервера, на котором у вас аккаунт или где вы хотите его создать.";
 
 "room.attachPhoto" = "Фото или видео";
 
@@ -675,6 +703,31 @@
 "location.myLocation" = "Я здесь";
 "location.attach" = "Геопозиция";
 "message.spoken.sentLocation" = "геопозиция";
+"poll.kind" = "Опрос";
+"poll.kindAnonymous" = "Анонимный опрос";
+"poll.ended" = "Опрос завершён";
+"poll.multiple" = "можно выбрать несколько";
+"poll.noVotes" = "Пока никто не голосовал";
+"poll.hiddenUntilEnd" = "результаты — после завершения";
+"poll.end" = "Завершить опрос";
+"poll.endConfirmTitle" = "Завершить опрос?";
+"poll.endConfirmMessage" = "Голосовать больше будет нельзя, а результаты увидят все.";
+"poll.attach" = "Опрос";
+"poll.newTitle" = "Новый опрос";
+"poll.question" = "Вопрос";
+"poll.questionPlaceholder" = "О чём спросить?";
+"poll.answers" = "Варианты ответа";
+"poll.answerPlaceholder" = "Вариант";
+"poll.addAnswer" = "Добавить вариант";
+"poll.removeAnswer" = "Убрать вариант";
+"poll.settings" = "Настройки";
+"poll.allowMultiple" = "Несколько ответов";
+"poll.anonymous" = "Результаты после завершения";
+"poll.anonymousFooter" = "Пока опрос идёт, никто не видит, как голосуют другие. Завершить его можете только вы.";
+"poll.send" = "Отправить";
+"poll.cancel" = "Отмена";
+"poll.chosen" = "ваш ответ";
+"message.spoken.sentPoll" = "опрос «%@»";
 
 /* Управление комнатой. Показывается только тем, кому комната это разрешает. */
 "room.manage.namePlaceholder" = "Название чата";
@@ -682,12 +735,12 @@
 "room.manage.openToAnyone" = "Открытый чат";
 "room.manage.openToAnyoneHelp" = "Войти сможет любой, кто найдёт чат. Иначе — только по приглашению.";
 "room.manage.invite" = "Пригласить";
-"room.manage.inviteTitle" = "Кого пригласить?";
-"room.manage.inviteHelp" = "Адрес в Matrix выглядит как @имя:сервер.";
-"room.manage.invitePlaceholder" = "@имя:сервер";
+"room.invite.inviteCount" = "Пригласить (%lld)";
+"room.invite.chosen" = "Выбранные";
+"room.invite.alreadyHere" = "Уже в комнате";
+"room.invite.byAddress" = "Пригласить по этому адресу";
 "room.manage.role" = "Роль";
 "room.manage.roleHeader" = "Что может в чате";
-"room.manage.roleQuestion" = "Что может %@?";
 "room.manage.member" = "Участник";
 "room.manage.write" = "Написать";
 "room.manage.goToChat" = "Перейти в чат";
@@ -702,6 +755,27 @@
 /* Why everything on the room-settings screen is greyed out. Shown only while offline. Must say
    what still works — reading and writing — rather than only what does not. */
 "room.manage.offline" = "Без сети чат можно читать и писать в него, но не менять.";
+"room.rules.title" = "Роли и разрешения";
+"room.rules.staffHeader" = "Управляют чатом";
+"room.rules.staffFooter" = "Чтобы сменить роль, проведите по человеку влево или откройте его страницу.";
+"room.rules.rulesHeader" = "Кто может";
+"room.rules.rulesFooter" = "«Модераторы» — это модераторы и администраторы.";
+"room.rules.sendMessages" = "Писать сообщения";
+"room.rules.invite" = "Приглашать людей";
+"room.rules.remove" = "Удалять участников";
+"room.rules.ban" = "Блокировать";
+"room.rules.deleteOthers" = "Удалять чужие сообщения";
+"room.rules.rename" = "Менять название";
+"room.rules.changeTopic" = "Менять описание";
+"room.rules.changePicture" = "Менять фото";
+"room.rules.everyone" = "Все";
+"room.rules.moderators" = "Модераторы";
+"room.rules.administrators" = "Администраторы";
+"room.manage.chooseRole" = "Выберите роль";
+"room.rules.addStaff" = "Добавить";
+"room.rules.appointTitle" = "Назначить";
+"room.rules.nobodyToAppoint" = "Больше назначить некого.";
+"room.rules.demote" = "Снять роль";
 "room.manage.cancel" = "Отмена";
 "problem.title" = "Не получилось";
 
@@ -749,7 +823,6 @@
 
 /* Архив: полка для отложенных чатов и дорога обратно к ним. */
 "roomList.archive.title" = "Архив";
-"roomList.archive.entry" = "Архив (%lld)";
 "roomList.archive.emptyTitle" = "В архиве пусто";
 "roomList.archive.emptyMessage" = "Смахните чат влево и уберите его в архив — он не будет мешать в общем списке, но и никуда не денется.";
 
@@ -830,9 +903,8 @@
 "room.typingBy" = "%@ печатает…";
 
 "room.scrollToBottom" = "Вниз, к последнему сообщению";
-"room.loadEarlier" = "Показать, что было раньше";
 
-/* Stands where the "show earlier" button would be, when the older messages could not be fetched —
+/* Stands at the top of the conversation when the older messages could not be fetched —
    offline, this is where the cached history runs out. Explains; does not promise. */
 "room.earlierUnavailable" = "Что было раньше, покажем, когда вернётся связь";
 "appearance.previewAsk" = "Какой цвет выбрал?";
@@ -1135,6 +1207,8 @@
 "chats.shareActive" = "Активный";
 "chats.shareAll" = "Все";
 "chats.shareHelp" = "Чьи чаты показывать, когда делитесь чем-то из другого приложения. «Активный» — тот, что сейчас открыт в Искре.";
+"chats.widgetSection" = "Виджет «Избранные чаты»";
+"chats.widgetHelp" = "Чьи чаты показывать в виджете, если в нём самом ничего не выбрано. «Активный» — тот, что сейчас открыт в Искре.";
 
 /* Настройки → Конфиденциальность. */
 "privacy.title" = "Конфиденциальность";
@@ -1167,7 +1241,7 @@
 "devices.newSignInNo" = "Это не я";
 
 /* Кто поставил реакции: вкладка «все». */
-"message.menu.reactorsAll" = "Все %lld";
+"message.menu.reactorsAll" = "Все · %lld";
 
 /* Просмотрщик медиа: счётчик и перемотка видео. */
 "message.media.counter" = "%lld из %lld";
@@ -1193,7 +1267,7 @@
 "accounts.signOutTitle" = "Выйти из %@?";
 "accounts.signOutMessage" = "Чаты этого аккаунта удалятся с устройства. Чтобы снова читать зашифрованные сообщения, понадобится ключ восстановления или другое ваше устройство.";
 "stickers.subscribe" = "Добавить себе";
-"stickers.settings.sheetSection" = "Что показывать";
+"stickers.settings.sheetSection" = "Отображение стикеров";
 "stickers.settings.builtIn" = "Искорки";
 "stickers.settings.roomPacks" = "Наборы чатов";
 "stickers.settings.roomPacksHelp" = "Если у чата есть свой набор, он виден, пока вы в этом чате. Нажмите «Добавить себе» над ним — и он будет во всех чатах.";
@@ -1227,3 +1301,164 @@
 "qr.openRoom" = "Открыть";
 "qr.roomUnknown" = "Сервер ничего не рассказал об этой комнате, но войти всё равно можно попробовать.";
 "qr.inviteOnlyRoom" = "В эту комнату пускают только по приглашению.";
+
+/* Under the empty address field on the sign-in screen: opens the list of public servers. */
+"signIn.chooseServer" = "Не знаете, какой сервер выбрать?";
+/* The main button under the address field. */
+"signIn.next" = "Далее";
+/* A small grey link at the foot of the sign-in screen: opens a screen explaining Matrix. */
+"signIn.whatIsMatrix" = "Что такое Matrix?";
+/* The title of that screen. */
+"aboutMatrix.title" = "Что такое Matrix";
+
+/* The list of public servers, opened from the sign-in screen. */
+"servers.title" = "Выбор сервера";
+"servers.intro" = "Аккаунт живёт на одном сервере, а писать можно людям с любого другого — как с почтой. На всех серверах ниже аккаунт можно создать прямо в Iskra.";
+"servers.matrixOrg" = "Самый большой сервер Matrix. Его держит фонд, который развивает сам Matrix.";
+/* Where the server is. */
+"servers.matrixOrgWhere" = "Великобритания";
+/* A warning on matrix.org: it is blocked in Russia. */
+"servers.matrixOrgBlocked" = "Недоступен из России";
+"servers.tchncs" = "Один из старейших общественных серверов. Владелец держит и другие свободные сервисы.";
+"servers.tchncsWhere" = "Германия";
+"servers.quassel" = "Открытый сервер для повседневного общения, бесплатный для всех.";
+"servers.quasselWhere" = "Германия, сервер в Финляндии";
+"servers.nopeChat" = "Сервер команды adminForge, которая держит и другие свободные сервисы. Есть мосты в другие мессенджеры.";
+"servers.nopeChatWhere" = "Германия";
+/* The last entry: running a server of your own. Opens a page about it in the browser. */
+"servers.ownTitle" = "Свой сервер";
+"servers.ownAbout" = "Можно поднять собственный сервер — тогда переписка будет полностью в ваших руках. Понадобятся свой домен и немного времени.";
+
+/* Under the "open to anyone" switch when making a room: what the room will be. Changes with the switch. */
+"roomList.new.willBeEncrypted" = "Комната будет с шифрованием";
+"roomList.new.willNotBeEncrypted" = "Комната будет без шифрования";
+
+/* Room access: history, address, blocked (stage 9) */
+"room.access.historyHeader" = "История для новых участников";
+"room.access.historyFooter" = "Что из уже сказанного увидит тот, кто придёт позже. В защищённом чате старые сообщения могут у него не открыться: ключей к ним у него нет.";
+"room.access.history.shared" = "Вся история";
+"room.access.history.invited" = "С момента приглашения";
+"room.access.history.joined" = "С момента вступления";
+"room.access.history.worldReadable" = "Всем, даже без вступления";
+"room.access.addressHeader" = "Адрес";
+"room.access.addressPlaceholder" = "название";
+"room.access.addressFooter" = "По адресу чат находят и открывают по ссылке. Если стереть его, адреса не будет.";
+"room.access.inDirectory" = "Показывать в каталоге сервера";
+"room.access.inDirectoryHelp" = "Чат найдут в поиске публичных комнат на %@.";
+"room.access.banned" = "Заблокированные";
+"room.access.bannedFooter" = "Они не могут войти в чат, даже по приглашению.";
+"room.access.unban" = "Разблокировать";
+"room.access.unbanQuestion" = "Разблокировать %@?";
+"room.access.unbanHelp" = "Человек снова сможет войти. Сам в чате он не появится — его нужно пригласить или дать ссылку.";
+
+/* Choosing several messages (stage 9) */
+"message.menu.select" = "Выбрать";
+"message.selection.count" = "Выбрано: %lld";
+"message.selection.cancel" = "Отмена";
+"message.selection.deleteTitle" = "Удалить выбранные сообщения?";
+"message.selection.deleteMessage" = "Они исчезнут у всех участников чата. Вернуть их будет нельзя.";
+"message.selection.copied" = "Скопировано";
+
+/* Chat folders (stage 9) */
+"folders.all" = "Все";
+"folders.title" = "Папки";
+"folders.explanation" = "Папки собирают чаты по правилам — личные, группы, непрочитанные — и стоят вкладками над списком. Они общие для всех ваших устройств.";
+"folders.new" = "Новая папка";
+"folders.suggested" = "Можно начать с этих";
+"folders.add" = "Добавить";
+"folders.edit" = "Папка";
+"folders.namePlaceholder" = "Название";
+"folders.kindsHeader" = "Какие чаты";
+"folders.kind.direct" = "Личные";
+"folders.kind.groups" = "Группы";
+"folders.kind.spaces" = "Пространства";
+"folders.kind.invitations" = "Приглашения";
+"folders.suggestion.unread" = "Непрочитанные";
+"folders.conditionsHeader" = "Условия";
+"folders.onlyUnread" = "Только непрочитанные";
+"folders.excludesMuted" = "Без беззвучных";
+"folders.includesArchived" = "Вместе с архивом";
+"folders.includedHeader" = "Всегда показывать";
+"folders.excludedHeader" = "Никогда не показывать";
+"folders.addChats" = "Добавить чаты";
+"folders.chooseChats" = "Выберите чаты";
+"folders.done" = "Готово";
+"folders.cancel" = "Отмена";
+"folders.delete" = "Удалить папку";
+"folders.deleteQuestion" = "Удалить папку «%@»?";
+"folders.deleteHelp" = "Чаты останутся на месте — пропадёт только вкладка.";
+"folders.addToFolder" = "В папку";
+"folders.membershipTitle" = "Папки";
+"folders.membershipFooter" = "С галочкой чат будет в папке, даже если не подходит под её правила. Без галочки — не попадёт в неё никогда.";
+"folders.emptyTitle" = "В папке пока пусто";
+"folders.emptyMessage" = "Сюда попадут чаты, которые подходят под её правила.";
+
+/* Which account a notification came for */
+"chats.namesAccount" = "Аккаунт в уведомлениях";
+"chats.namesAccountHelp" = "В заголовке уведомления будет видно, на какой из ваших аккаунтов оно пришло.";
+
+"poll.retract" = "Отменить голос";
+
+"stickers.settings.mine" = "Мои стикеры";
+
+/* Beta: for developers */
+"beta.developers" = "Для разработчиков";
+"beta.showsSource" = "JSON сообщения в меню";
+"beta.showsSourceHelp" = "В меню сообщения появится «Просмотреть JSON» — событие так, как его прислал сервер. Пригодится, если сообщение показывается не так.";
+"beta.viewSource" = "Просмотреть JSON";
+"beta.noSource" = "У этого сообщения пока нет события на сервере.";
+"beta.demoSignIn" = "Демо-вход";
+"beta.demoSignInHelp" = "Экран входа на сервере внутри приложения: alice / password. Ваш аккаунт он не трогает, а вошедший сразу выходит.";
+"beta.demoSignedIn" = "Вход прошёл: %@";
+"beta.close" = "Закрыть";
+
+/* Threads */
+"thread.title" = "Тред";
+"thread.replyInThread" = "Ответить в треде";
+"thread.replies" = "%lld ответа";
+
+/* Live location */
+"location.shareLive" = "Делиться в реальном времени";
+"location.shareLiveFor" = "На сколько делиться геопозицией?";
+"location.liveUntil" = "В реальном времени · до %@";
+"location.liveEnded" = "Трансляция окончена";
+"location.liveWaiting" = "Ждём первую точку…";
+"location.youAreSharing" = "Вы делитесь геопозицией до %@";
+"location.stop" = "Остановить";
+
+"location.liveForMinutes" = "%lld минут";
+"location.liveForHours" = "%lld часов";
+
+/* Voice transcription */
+"message.transcript.show" = "Расшифровать";
+"message.transcript.hide" = "Скрыть текст";
+"message.transcript.notAllowed" = "Нет доступа к распознаванию речи. Его можно дать в Настройках.";
+"message.transcript.unavailable" = "Для вашего языка на этом устройстве нет распознавания без интернета — а отправлять голос на сервер Искра не станет.";
+"message.transcript.nothingHeard" = "Слов не разобрать.";
+"message.transcript.failed" = "Не получилось расшифровать. Попробуйте ещё раз.";
+
+"chats.threads" = "Показывать треды";
+"chats.threadsHelp" = "Ответы в тредах собираются под сообщением строкой «3 ответа». Пока ответы не скрыты, они видны и в самом чате, среди остальных сообщений. Изменения действуют с того момента, как вы откроете чат заново. В личных чатах тредов нет.";
+"chats.threadsAlways" = "Всегда";
+"chats.threadsLargeRooms" = "В чатах больше 100 человек";
+"chats.threadsNever" = "Никогда";
+"chats.threadsHideReplies" = "Скрывать ответы из чата";
+
+/* The photo editor — PhotoEditor */
+"photoEditor.edit" = "Изменить фото";
+"photoEditor.cancel" = "Отмена";
+"photoEditor.done" = "Готово";
+"photoEditor.undo" = "Отменить";
+"photoEditor.draw" = "Рисовать";
+"photoEditor.text" = "Текст";
+"photoEditor.crop" = "Обрезать";
+"photoEditor.rotate" = "Повернуть";
+"photoEditor.textPrompt" = "Напишите что-нибудь";
+"photoEditor.failed" = "Не получилось сохранить изменения — фото осталось как было";
+"photoEditor.ok" = "Понятно";
+"photoEditor.white" = "Белый";
+"photoEditor.black" = "Чёрный";
+"photoEditor.red" = "Красный";
+"photoEditor.yellow" = "Жёлтый";
+"photoEditor.green" = "Зелёный";
+"photoEditor.blue" = "Синий";

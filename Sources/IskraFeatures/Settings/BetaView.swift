@@ -18,6 +18,12 @@ struct BetaView: View {
     @AppStorage(BetaFeatures.blobatarKey, store: BetaFeatures.faceStore) private var blobatar = BetaFeatures.blobatarByDefault
     @AppStorage(BetaFeatures.forceBlobatarKey, store: BetaFeatures.faceStore) private var forceBlobatar = BetaFeatures.forceBlobatarByDefault
     @AppStorage(BetaFeatures.mockBackendKey) private var mockBackend = false
+    @AppStorage(BetaFeatures.showsEventSourceKey) private var showsEventSource = false
+
+    /// The sign-in screen against the server inside the app — see `MockSignIn` — and its address
+    /// once that server is up.
+    @State private var demoServer: DemoServer?
+    @State private var demoSignedIn: String?
 
     var body: some View {
         Form {
@@ -85,8 +91,61 @@ struct BetaView: View {
             } footer: {
                 Text(Strings.Beta.mockBackendHelp)
             }
+
+            Section {
+                Button {
+                    Task { demoServer = await MockSignIn.start().map(DemoServer.init) }
+                } label: {
+                    Label(Strings.Beta.demoSignIn, systemImage: "person.badge.key")
+                }
+                Toggle(isOn: $showsEventSource) {
+                    Label(Strings.Beta.showsSource, systemImage: "curlybraces")
+                }
+                .accentControl()
+            } header: {
+                Text(Strings.Beta.developers)
+            } footer: {
+                Text(Strings.Beta.demoSignInHelp) + Text(verbatim: "\n\n") + Text(Strings.Beta.showsSourceHelp)
+            }
         }
         .formStyle(.grouped)
         .navigationTitle(Text(Strings.Beta.title))
+        #if os(iOS)
+        .fullScreenCover(item: $demoServer) { server in demoSignIn(server.address) }
+        #else
+        .sheet(item: $demoServer) { server in
+            demoSignIn(server.address)
+                .frame(minWidth: Theme.Size.signInColumn, minHeight: Theme.Size.signInColumn * 4 / 3)
+        }
+        #endif
+        .alert(Text(Strings.Beta.demoSignedIn(demoSignedIn ?? "")),
+               isPresented: Binding(get: { demoSignedIn != nil }, set: { if !$0 { demoSignedIn = nil } })) {
+            Button(String(app: Strings.Folders.done)) { demoSignedIn = nil }
+        }
     }
+
+    /// The real sign-in screen, the real SDK, a made-up server — and a session that is closed the
+    /// moment it opens: the point is the way in, not what is behind it. Nothing touches the account
+    /// on the device: `MockSignIn.authentication` keeps its store in scratch and its secrets in memory.
+    private func demoSignIn(_ address: String) -> some View {
+        NavigationStack {
+            SignInView(authentication: MockSignIn.authentication, address: address) { session in
+                let who = session.userID
+                Task { await session.close() }
+                demoServer = nil
+                demoSignedIn = who
+            }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(String(app: Strings.Beta.close)) { demoServer = nil }
+                }
+            }
+        }
+    }
+}
+
+/// The demo server's address, as something a cover can be presented for.
+private struct DemoServer: Identifiable {
+    let address: String
+    var id: String { address }
 }

@@ -4,7 +4,7 @@ import Testing
 @testable import IskraCore
 
 /// The parts of the tunnel that can be pinned without a relay: how a bridge address is read, how
-/// an event is built, and what the envelope looks like on the wire.
+/// an event is built, and what a stream frame looks like on the wire.
 struct NostrTunnelTests {
     // MARK: - The address somebody pastes
 
@@ -76,7 +76,7 @@ struct NostrTunnelTests {
 
     @Test func asignedEventVerifies() throws {
         let keys = try NostrKeypair.generate()
-        let event = try NostrEvent.signed(kind: TunnelKind.request,
+        let event = try NostrEvent.signed(kind: TunnelKind.streamClient,
                                           content: "not really ciphertext",
                                           tags: [["p", Hex.string(keys.publicKey)]],
                                           keys: keys)
@@ -91,7 +91,7 @@ struct NostrTunnelTests {
     /// dropped as a duplicate.
     @Test func aForgeryDoesNotShadowTheRealEvent() async throws {
         let keys = try NostrKeypair.generate()
-        let real = try NostrEvent.signed(kind: TunnelKind.response, content: "the answer",
+        let real = try NostrEvent.signed(kind: TunnelKind.streamBridge, content: "the answer",
                                          tags: [], keys: keys)
         var forged = real
         forged.content = "not the answer"
@@ -117,7 +117,7 @@ struct NostrTunnelTests {
     /// relay from handing us somebody else's answer with the bridge's name on it.
     @Test func atamperedEventDoesNotVerify() throws {
         let keys = try NostrKeypair.generate()
-        var event = try NostrEvent.signed(kind: TunnelKind.request, content: "one",
+        var event = try NostrEvent.signed(kind: TunnelKind.streamClient, content: "one",
                                           tags: [], keys: keys)
         event.content = "two"
         #expect(!event.isAuthentic())
@@ -129,62 +129,10 @@ struct NostrTunnelTests {
     @Test func theSerializationIsExactly() throws {
         let serialized = NostrEvent.serialize(pubkey: String(repeating: "a", count: 64),
                                               createdAt: 1_700_000_000,
-                                              kind: 20_001,
+                                              kind: 20_010,
                                               tags: [["p", "beef"]],
                                               content: "a \"quote\",\na tab\there")
-        #expect(serialized == #"[0,"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",1700000000,20001,[["p","beef"]],"a \"quote\",\na tab\there"]"#)
-    }
-
-    // MARK: - The envelope
-
-    /// Field for field, the JSON the bridge's serde expects. A rename here is a tunnel that fails
-    /// on the first request and nowhere else, so the names are pinned as text.
-    @Test func theEnvelopeIsSpelledTheWayTheBridgeSpellsIt() throws {
-        let envelope = TunnelEnvelope(id: "abc",
-                                      seq: 0,
-                                      total: 1,
-                                      method: "GET",
-                                      path: "/_matrix/client/versions",
-                                      headers: ["accept": "application/json"],
-                                      status: nil,
-                                      upstream: "https://matrix-client.matrix.org",
-                                      bodyChunk: "")
-
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = .sortedKeys
-        let json = try #require(String(bytes: try encoder.encode(envelope), encoding: .utf8))
-        #expect(json == #"{"body_chunk":"","headers":{"accept":"application\/json"},"id":"abc","method":"GET","path":"\/_matrix\/client\/versions","seq":0,"total":1,"upstream":"https:\/\/matrix-client.matrix.org","v":1}"#)
-        // A response has a status and no method. Absent fields are absent, not null: the bridge
-        // refuses head fields on a later chunk, and `null` is a field.
-        #expect(!json.contains("status"))
-    }
-
-    @Test func aresponseEnvelopeSurvivesTheRoundTrip() throws {
-        let envelope = TunnelEnvelope(id: "xyz", seq: 0, total: 1, status: 200,
-                                      bodyChunk: Data("{}".utf8).base64EncodedString())
-        let data = try JSONEncoder().encode(envelope)
-        let back = try JSONDecoder().decode(TunnelEnvelope.self, from: data).validated()
-        #expect(back.status == 200)
-        #expect(try back.body == Data("{}".utf8))
-    }
-
-    /// The same refusals the bridge makes. An envelope that contradicts itself arrives from a
-    /// relay, which is to say from anybody.
-    @Test func selfContradictoryEnvelopesAreRefused() throws {
-        var envelope = TunnelEnvelope(id: "a", seq: 0, total: 1, status: 200, bodyChunk: "")
-        envelope.total = 0
-        #expect(throws: TunnelProtocolError.malformed("total is zero")) { try envelope.validated() }
-
-        envelope = TunnelEnvelope(id: "a", seq: 3, total: 2, status: 200, bodyChunk: "")
-        #expect(throws: TunnelProtocolError.malformed("seq is past total")) { try envelope.validated() }
-
-        envelope = TunnelEnvelope(id: "a", seq: 1, total: 3, status: 200, bodyChunk: "")
-        #expect(throws: TunnelProtocolError.malformed("head fields on a non-first chunk")) {
-            try envelope.validated()
-        }
-
-        envelope = TunnelEnvelope(version: 2, id: "a", seq: 0, total: 1, bodyChunk: "")
-        #expect(throws: TunnelProtocolError.unsupportedVersion(2)) { try envelope.validated() }
+        #expect(serialized == #"[0,"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",1700000000,20010,[["p","beef"]],"a \"quote\",\na tab\there"]"#)
     }
 
     // MARK: - The device's own key
@@ -200,33 +148,6 @@ struct NostrTunnelTests {
     }
 
     // MARK: - Settings
-
-    @Test func theBridgeKeyComesBackOutOfSettings() throws {
-        let defaults = try #require(UserDefaults(suiteName: "bridge-\(UUID().uuidString)"))
-        #expect(TunnelSettings.bridgeKey(defaults) == nil)
-
-        let keys = try NostrKeypair.generate()
-        defaults.set(keys.npub, forKey: TunnelSettings.addressKey)
-        #expect(TunnelSettings.bridgeKey(defaults) == keys.publicKey)
-
-        // Half a key is no key, and must not be read as one.
-        defaults.set(String(keys.npub.dropLast(4)), forKey: TunnelSettings.addressKey)
-        #expect(TunnelSettings.bridgeKey(defaults) == nil)
-    }
-
-    /// A mistyped address is not an empty one. `route` refuses the first and goes local on the
-    /// second, and the two used to look the same — `bridgeKey() == nil` — so a typo went direct.
-    @Test func aMistypedAddressIsStillAnAddress() throws {
-        let defaults = try #require(UserDefaults(suiteName: "address-\(UUID().uuidString)"))
-        #expect(!TunnelSettings.hasAddress(defaults))
-        defaults.set("   ", forKey: TunnelSettings.addressKey)
-        #expect(!TunnelSettings.hasAddress(defaults))
-
-        let keys = try NostrKeypair.generate()
-        defaults.set(String(keys.npub.dropLast(4)), forKey: TunnelSettings.addressKey)
-        #expect(TunnelSettings.hasAddress(defaults))
-        #expect(TunnelSettings.bridgeKey(defaults) == nil)
-    }
 
     /// The notification extension decides the route from these settings too, and its own
     /// `.standard` is empty. Kept there, the extension went straight to the homeserver on every
@@ -246,32 +167,97 @@ struct NostrTunnelTests {
         #expect(!TunnelSettings.isEnabled())
     }
 
-    /// Leaving the Connection screen rebuilds the session only when the connection would really be
-    /// different. Tearing one down to build it again identically is a spinner for nothing.
-    @Test func onlyAChangeThatMattersAsksForAReconnect() throws {
-        let defaults = try #require(UserDefaults(suiteName: "snapshot-\(UUID().uuidString)"))
-        let keys = try NostrKeypair.generate()
-        defaults.set(true, forKey: TunnelSettings.enabledKey)
-        defaults.set(Hex.string(keys.publicKey), forKey: TunnelSettings.addressKey)
-        let before = TunnelSettings.snapshot(defaults)
+}
 
-        // The same key as npub, with a stray space; relays emptied back to what the defaults are.
-        defaults.set(" \(keys.npub) ", forKey: TunnelSettings.addressKey)
-        defaults.set("  ", forKey: TunnelSettings.relaysKey)
-        #expect(TunnelSettings.snapshot(defaults) == before)
+// MARK: - Stream frames
 
-        defaults.set(false, forKey: TunnelSettings.enabledKey)
-        #expect(TunnelSettings.snapshot(defaults) != before)
-        defaults.set(true, forKey: TunnelSettings.enabledKey)
+/// The same strings `stream.rs`'s `frames_are_exactly_this_json` pins, so a field renamed on either
+/// side shows up as a test, not as a tunnel that silently never opens.
+extension NostrTunnelTests {
+    private static let sid = "6f1c2a7e-0000-4000-8000-000000000001"
 
-        defaults.set("wss://relay.example", forKey: TunnelSettings.relaysKey)
-        #expect(TunnelSettings.snapshot(defaults) != before)
+    @Test func streamFramesAreExactlyThisJSON() throws {
+        let hi = Data("hi".utf8)
+        let cases: [(StreamFrame, String)] = [
+            (.open(Self.sid, host: "matrix-client.matrix.org", port: 443, first: hi),
+             #"{"v":2,"sid":"6f1c2a7e-0000-4000-8000-000000000001","op":"open","host":"matrix-client.matrix.org","port":443,"seq":0,"data":"aGk="}"#),
+            (.opened(Self.sid),
+             #"{"v":2,"sid":"6f1c2a7e-0000-4000-8000-000000000001","op":"opened"}"#),
+            (.data(Self.sid, seq: 7, bytes: hi),
+             #"{"v":2,"sid":"6f1c2a7e-0000-4000-8000-000000000001","op":"data","seq":7,"data":"aGk="}"#),
+            (.ack(Self.sid, 12),
+             #"{"v":2,"sid":"6f1c2a7e-0000-4000-8000-000000000001","op":"ack","ack":12}"#),
+            (.fin(Self.sid, seq: 13),
+             #"{"v":2,"sid":"6f1c2a7e-0000-4000-8000-000000000001","op":"fin","seq":13}"#),
+            (.rst(Self.sid, reason: StreamReason.notMatrix),
+             #"{"v":2,"sid":"6f1c2a7e-0000-4000-8000-000000000001","op":"rst","reason":"not matrix"}"#),
+        ]
+        for (frame, json) in cases {
+            _ = try frame.validated()
+            #expect(String(decoding: frame.wire, as: UTF8.self) == json)
+            #expect(try JSONDecoder().decode(StreamFrame.self, from: Data(json.utf8)) == frame)
+        }
     }
 
-    @Test func theOriginIsSchemeHostAndPort() throws {
-        #expect(NostrTunnelUpstream.origin(of: try #require(URL(string: "https://matrix.org/_matrix/client")))
-                == "https://matrix.org")
-        #expect(NostrTunnelUpstream.origin(of: try #require(URL(string: "http://192.168.1.2:8008")))
-                == "http://192.168.1.2:8008")
+    /// Base64 carries `/`, and an escaped `\/` is a different string to anybody comparing text.
+    @Test func streamFramesDoNotEscapeSlashes() throws {
+        let frame = StreamFrame.data(Self.sid, seq: 1, bytes: Data([0xff, 0xff, 0xff]))
+        #expect(String(decoding: frame.wire, as: UTF8.self).contains(#""data":"////""#))
+    }
+
+    @Test func aStreamFrameWithAFieldItsOpDoesNotCarryIsRefused() {
+        var ack = StreamFrame.ack(Self.sid, 3)
+        ack.seq = 3
+        #expect(throws: TunnelProtocolError.self) { try ack.validated() }
+
+        var data = StreamFrame.data(Self.sid, seq: 1, bytes: Data("x".utf8))
+        data.host = "matrix.org"
+        #expect(throws: TunnelProtocolError.self) { try data.validated() }
+    }
+
+    @Test func aStreamFrameMissingAFieldItsOpNeedsIsRefused() {
+        var open = StreamFrame.open(Self.sid, host: "matrix.org", port: 443, first: Data("x".utf8))
+        open.port = nil
+        #expect(throws: TunnelProtocolError.self) { try open.validated() }
+
+        var data = StreamFrame.data(Self.sid, seq: 1, bytes: Data("x".utf8))
+        data.seq = nil
+        #expect(throws: TunnelProtocolError.self) { try data.validated() }
+    }
+
+    @Test func openIsSegmentZeroAndNothingElse() {
+        var open = StreamFrame.open(Self.sid, host: "matrix.org", port: 443, first: Data("x".utf8))
+        open.seq = 1
+        #expect(throws: TunnelProtocolError.self) { try open.validated() }
+    }
+
+    @Test func aV1OrFutureStreamFrameIsRefused() {
+        for version: UInt8 in [1, 3] {
+            var frame = StreamFrame.opened(Self.sid)
+            frame.v = version
+            #expect(throws: TunnelProtocolError.unsupportedVersion(version)) { try frame.validated() }
+        }
+    }
+
+    @Test func anOversizedSegmentIsRefusedBeforeItIsDecoded() throws {
+        let tooBig = StreamFrame.data(Self.sid, seq: 1, bytes: Data(count: StreamFrame.maxSegment + 3))
+        #expect(throws: TunnelProtocolError.self) { try tooBig.validated() }
+        _ = try StreamFrame.data(Self.sid, seq: 1, bytes: Data(count: StreamFrame.maxSegment)).validated()
+    }
+
+    /// The arithmetic `MAX_BODY_CHUNK` rests on, for v2: a full segment, framed and encrypted, is
+    /// still an event a public relay takes.
+    @Test func aFullSegmentFitsOneNIP44Payload() throws {
+        let frame = StreamFrame.data(Self.sid, seq: .max,
+                                     bytes: Data(repeating: 0xff, count: StreamFrame.defaultSegment))
+        #expect(frame.wire.count < 65_535)
+        let keys = try NostrKeypair.generate()
+        let bridge = try NostrKeypair.generate()
+        let event = try NostrStreamTunnel.seal(frame,
+                                               conversationKey: try NIP44.conversationKey(ourSecret: keys.secret,
+                                                                                          theirPublicKey: bridge.publicKey),
+                                               bridgeKeyHex: Hex.string(bridge.publicKey), keys: keys)
+        #expect(event.kind == TunnelKind.streamClient)
+        #expect(event.isAuthentic())
     }
 }

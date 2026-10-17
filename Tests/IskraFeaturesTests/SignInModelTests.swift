@@ -41,7 +41,7 @@ struct SignInModelTests {
         await model.findServer()
 
         #expect(model.problem == nil)
-        guard case let .ready(options) = model.step else {
+        guard case let .found(options) = model.step else {
             Issue.record("Expected to reach the sign-in step, got \(model.step)")
             return
         }
@@ -65,13 +65,13 @@ struct SignInModelTests {
         #expect(!problem.lowercased().contains("homeserver"))
     }
 
-    /// Nobody is asked where their account is: matrix.org is filled in, and the buttons work at
-    /// once. Clearing the server is still not something that can be submitted.
-    @Test("the server starts on matrix.org, and an empty one cannot be submitted")
+    /// The field starts empty — no server is chosen for anybody — and an empty one, or one of
+    /// spaces, cannot be submitted.
+    @Test("the server starts empty, and an empty one cannot be submitted")
     func requiresAnAddress() {
         let model = model()
-        #expect(model.address == SignInModel.defaultAddress)
-        #expect(model.canContinue)
+        #expect(model.address.isEmpty)
+        #expect(!model.canContinue)
 
         model.address = "  "
         #expect(!model.canContinue)

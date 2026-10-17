@@ -33,6 +33,9 @@ struct CompactMessageRow: View {
     /// Everything the row can ask the conversation to do — see `MessageHandlers`.
     var handlers = MessageHandlers()
 
+    /// The "who reacted" list a held pill has opened — see `ReactionPill.onShowReactors`.
+    @State private var reactorsRequest: ReactorsRequest?
+
     /// Whether this message is currently pinned, which is the whole of what the menu item
     /// needs to know to say the right word.
     var isPinned: Bool = false
@@ -67,25 +70,14 @@ struct CompactMessageRow: View {
     @ScaledSize(Theme.Size.avatarSmall) private var avatarSize
 
     var body: some View {
-        HStack(alignment: .top, spacing: Theme.Spacing.close) {
-            avatarColumn
+        VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+            spokenContent
 
-            VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-                if !message.isContinuation {
-                    Text(message.senderName)
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(.secondary)
-                }
-
-                line
-
-                if !message.reactions.isEmpty {
-                    reactions
-                        .transition(.reactionsAppear)
-                }
+            if !message.reactions.isEmpty {
+                reactions
+                    .padding(.leading, avatarSize + Theme.Spacing.close)
+                    .transition(.reactionsAppear)
             }
-
-            Spacer(minLength: 0)
         }
         // A run closes up and a new speaker gets air, exactly as in the bubbles — and the first
         // message under a date takes none, because the date has already given it. See `MessageRow`.
@@ -131,6 +123,32 @@ struct CompactMessageRow: View {
         }
     }
 
+    /// The face, the name and the line — everything a long press lifts.
+    ///
+    /// Here, unlike in the bubbles, the menu takes the whole row and not only the words. A bubble
+    /// is a shape that says who spoke by which side it stands on; a plain line lifted on its own
+    /// was a sentence floating over the darkened room with nothing to say whose it was or when.
+    /// Without the face, the name and the clock, the compact layout has nothing else to say it.
+    /// The emoji stay behind, as they do under a bubble: the menu draws its own.
+    private var heading: some View {
+        HStack(alignment: .top, spacing: Theme.Spacing.close) {
+            avatarColumn
+
+            VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                if !message.isContinuation {
+                    Text(message.senderName)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
+
+                line
+            }
+
+            Spacer(minLength: 0)
+        }
+        .modifier(LiftedCard())
+    }
+
     /// The message itself, and the grey facts at the end of it.
     ///
     /// `.top`, and not a baseline: the fourteen kinds are not all made of text, and a clock
@@ -141,8 +159,22 @@ struct CompactMessageRow: View {
     /// The marks are pushed to the far edge rather than left beside the words, so the times make
     /// a quiet column down the side instead of a ragged edge that moves with every sentence.
     private var line: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+            lineContent
+            if let thread = message.thread, let open = handlers.onOpenThread {
+                ThreadLine(thread: thread, onOpen: open)
+            }
+        }
+    }
+
+    private var lineContent: some View {
         HStack(alignment: .top, spacing: Theme.Spacing.close) {
-            spokenContent
+            MessageContent(message: message,
+                           style: .plain,
+                           playingDiameter: playingDiameter,
+                           onOpenReply: handlers.onOpenReply,
+                       onVote: handlers.onVote)
+                .uploadProgress(of: message, onCancel: handlers.onDiscard)
 
             Spacer(minLength: 0)
 
@@ -158,9 +190,6 @@ struct CompactMessageRow: View {
 
             MessageMarks(message: message)
         }
-        // Everything is anchored to the leading edge here, your own messages included, so every
-        // message gives the same way — see `SwipeToReply.dragsToward`.
-        .swipeToReply(message, dragsToward: .trailing, onReply: handlers.onReply)
     }
 
     /// One sentence for VoiceOver, unless there is a button inside the message that flattening
@@ -172,12 +201,12 @@ struct CompactMessageRow: View {
     /// bubbles.
     @ViewBuilder
     private var spokenContent: some View {
-        let content = MessageContent(message: message,
-                                     style: .plain,
-                                     playingDiameter: playingDiameter,
-                                     onOpenReply: handlers.onOpenReply)
-            .uploadProgress(of: message, onCancel: handlers.onDiscard)
+        let content = heading
             .messageActions(message, isPinned: isPinned, handlers: handlers)
+            // Everything is anchored to the leading edge here, your own messages included, so
+            // every message gives the same way — see `SwipeToReply.dragsToward`. Outside the menu,
+            // so the copy it lifts does not carry a gesture of its own.
+            .swipeToReply(message, dragsToward: .trailing, onReply: handlers.onReply)
 
         if message.hasPressableContent {
             content.accessibilityElement(children: .contain)
@@ -196,12 +225,16 @@ struct CompactMessageRow: View {
     private var reactions: some View {
         FlowLayout(spacing: Theme.Spacing.tight, alignment: .leading) {
             ForEach(message.reactions) { reaction in
-                ReactionPill(reaction: reaction) {
+                ReactionPill(reaction: reaction,
+                             onShowReactors: handlers.loadReactors == nil ? nil : {
+                                 reactorsRequest = ReactorsRequest(filter: reaction.key)
+                             }) {
                     handlers.onToggleReaction(reaction.key)
                 }
                 .transition(.scale(scale: 0.3).combined(with: .opacity))
             }
         }
+        .reactorsSheet($reactorsRequest, reactions: message.reactions, load: handlers.loadReactors)
     }
 
     /// How big a video note goes while it plays.
@@ -218,6 +251,27 @@ struct CompactMessageRow: View {
             : min(available, Theme.Size.videoNote * Theme.Size.videoNoteGrowth)
 
         return max(Theme.Size.videoNote, wanted)
+    }
+}
+
+/// The page under a compact row while it is up in the message menu — see `bubbleIsLifted`.
+///
+/// A plain row has no fill of its own, and over the menu's curtain its grey name and clock were
+/// grey on grey. Lifted, it carries a card of the page with it, so it reads as it did in the
+/// conversation; in the conversation it carries nothing.
+private struct LiftedCard: ViewModifier {
+    @Environment(\.bubbleIsLifted) private var isLifted
+
+    func body(content: Content) -> some View {
+        // Drawn out past the row rather than padding it: the menu puts the copy exactly where the
+        // row stood, and a row grown by its own margin would land beside itself.
+        content.background {
+            if isLifted {
+                RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                    .fill(Color.page)
+                    .padding(-Theme.Spacing.close)
+            }
+        }
     }
 }
 

@@ -114,5 +114,69 @@
 				<string>%lld autocollants</string>
 		</dict>
 	</dict>
+	<key>poll.voters</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+				<key>one</key>
+				<string>%lld vote</string>
+				<key>other</key>
+				<string>%lld votes</string>
+		</dict>
+	</dict>
+	<key>thread.replies</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+				<key>one</key>
+				<string>%lld réponse</string>
+				<key>other</key>
+				<string>%lld réponses</string>
+		</dict>
+	</dict>
+	<key>location.liveForMinutes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+				<key>one</key>
+				<string>%lld minute</string>
+				<key>other</key>
+				<string>%lld minutes</string>
+		</dict>
+	</dict>
+	<key>location.liveForHours</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+				<key>one</key>
+				<string>%lld heure</string>
+				<key>other</key>
+				<string>%lld heures</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

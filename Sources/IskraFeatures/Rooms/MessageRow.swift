@@ -15,6 +15,9 @@ struct MessageRow: View {
     /// where each one is explained.
     var handlers = MessageHandlers()
 
+    /// The "who reacted" list a held pill has opened — see `ReactionPill.onShowReactors`.
+    @State private var reactorsRequest: ReactorsRequest?
+
     /// Whether this message is currently pinned, which is the whole of what the menu item
     /// needs to know to say the right word.
     var isPinned: Bool = false
@@ -186,10 +189,13 @@ struct MessageRow: View {
                 timestamp
             }
 
-            // Only the first message in a run carries an avatar; the rest are indented
-            // to line up under it.
+            // Only the last message in a run carries an avatar, at the foot of it — Telegram's:
+            // the name opens the run and the face closes it, so the two are never on one bubble
+            // unless the run is one message long. The rest keep an empty column of the same
+            // width, so the whole run stands on one edge. The row is bottom-aligned, which is
+            // what puts the face level with the bubble's last line rather than its first.
             if showsSender {
-                if message.isContinuation {
+                if message.isContinued {
                     Color.clear.frame(width: avatarSize)
                 } else {
                     // Pressing a face goes to the person — Telegram's. A button only where a room
@@ -228,6 +234,11 @@ struct MessageRow: View {
                 } else {
                     actionableContent
                 }
+
+                // The answers kept under it, a press away — see `ThreadLine`.
+                if let thread = message.thread, let open = handlers.onOpenThread {
+                    ThreadLine(thread: thread, onOpen: open)
+                }
             }
 
             if !message.isOwn {
@@ -244,7 +255,8 @@ struct MessageRow: View {
         MessageContent(message: message,
                        style: style,
                        playingDiameter: playingDiameter,
-                       onOpenReply: handlers.onOpenReply)
+                       onOpenReply: handlers.onOpenReply,
+                       onVote: handlers.onVote)
             .uploadProgress(of: message, onCancel: handlers.onDiscard)
             // One of ours comes across from where it was typed — Telegram's send. See
             // `ComposerTravel`. On the bubble rather than the row, which spans the screen.
@@ -266,7 +278,10 @@ struct MessageRow: View {
         FlowLayout(spacing: Theme.Spacing.tight,
                    alignment: message.isOwn ? .trailing : .leading) {
             ForEach(message.reactions) { reaction in
-                ReactionPill(reaction: reaction) {
+                ReactionPill(reaction: reaction,
+                             onShowReactors: handlers.loadReactors == nil ? nil : {
+                                 reactorsRequest = ReactorsRequest(filter: reaction.key)
+                             }) {
                     handlers.onToggleReaction(reaction.key)
                 }
                 // Each pill grows from nothing rather than fading in on the spot, so an
@@ -280,6 +295,7 @@ struct MessageRow: View {
         // Drawn after the bubble and therefore over it — which is the whole point, and is
         // only true because this comes second in the stack.
         .zIndex(1)
+        .reactorsSheet($reactorsRequest, reactions: message.reactions, load: handlers.loadReactors)
     }
 
     /// Two different things, added together, and worth keeping apart in the head.
@@ -371,12 +387,38 @@ struct MessageRow: View {
 /// the navigation layer — see `IskraDesign/Glass.swift`.
 struct ReactionPill: View {
     let reaction: MessageReaction
+    /// Who left it, and who else left what — a hold on the pill, as in Signal. Nil where nobody can
+    /// be asked (`MessageHandlers.loadReactors`), and then a hold does nothing.
+    var onShowReactors: (() -> Void)?
     let onToggle: () -> Void
 
     @Environment(\.accent) private var accent
 
+    /// A tap and a hold, and not a `Button`: a button takes the whole touch for itself, and a hold
+    /// on one ends in its action as soon as the finger lifts — the reaction toggled under the list
+    /// that was opened to look at it.
     var body: some View {
-        Button(action: onToggle) {
+        pill
+            .onTapGesture(perform: onToggle)
+            .onLongPressGesture {
+                guard let onShowReactors else { return }
+                holds += 1
+                onShowReactors()
+            }
+            .sensoryFeedback(.impact(weight: .medium), trigger: holds)
+            .accessibilityAction(.default, onToggle)
+            .accessibilityActions {
+                if let onShowReactors {
+                    Button(action: onShowReactors) { Text(Strings.Message.Menu.reactors(reaction.count)) }
+                }
+            }
+    }
+
+    /// Counts holds that opened the list, only so the phone can answer each one.
+    @State private var holds = 0
+
+    private var pill: some View {
+        Group {
             HStack(spacing: Theme.Spacing.tight) {
                 Text(reaction.key)
                     .font(.caption)
@@ -404,7 +446,7 @@ struct ReactionPill: View {
             }
             .contentShape(.capsule)
         }
-        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(Strings.Message.Menu.reaction(reaction.key, reaction.count)))
         // What pressing it will do, which is the one thing the pill's appearance cannot
         // say out loud.
@@ -854,6 +896,16 @@ struct VoiceMessageView: View {
 
     @State private var playback = AudioPlayback()
 
+    /// The words, once asked for — see `VoiceTranscriber`, which keeps them in memory only.
+    @State private var transcript: Transcript = .hidden
+
+    private enum Transcript: Equatable {
+        case hidden
+        case working
+        case shown(String)
+        case failed(VoiceTranscriber.Failure)
+    }
+
     /// Forty bars, whatever the sender sent. A voice message is a bubble in a conversation, and
     /// a hundred-and-twenty two-point bars in one is a barcode.
     private var bars: [Float] {
@@ -861,6 +913,88 @@ struct VoiceMessageView: View {
     }
 
     var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.close) {
+            player
+            transcriptText
+        }
+        .animation(.smooth(duration: Theme.Timing.chrome), value: transcript)
+        // The bytes are plaintext on disk while this is playing. Scroll it away and they go.
+        .onDisappear { playback.stop() }
+    }
+
+    @ViewBuilder
+    private var transcriptText: some View {
+        switch transcript {
+        case .hidden, .working:
+            EmptyView()
+        case let .shown(text):
+            Text(verbatim: text)
+                .font(.body)
+                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+        case let .failed(failure):
+            Text(Self.explanation(of: failure))
+                .font(.footnote)
+                .opacity(0.7)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private static func explanation(of failure: VoiceTranscriber.Failure) -> LocalizedStringResource {
+        switch failure {
+        case .notAllowed: Strings.Message.Transcript.notAllowed
+        case .unavailable: Strings.Message.Transcript.unavailable
+        case .nothingHeard: Strings.Message.Transcript.nothingHeard
+        case .failed: Strings.Message.Transcript.failed
+        }
+    }
+
+    /// Words, or not: pressed once it transcribes (or shows what it already did), pressed again it
+    /// folds them away.
+    private var transcribeButton: some View {
+        Button {
+            switch transcript {
+            case .shown, .failed:
+                transcript = .hidden
+            case .working:
+                break
+            case .hidden:
+                if let known = VoiceTranscriber.shared.cached(attachment) {
+                    transcript = .shown(known)
+                    return
+                }
+                guard let loader else { return }
+                transcript = .working
+                Task {
+                    do {
+                        transcript = .shown(try await VoiceTranscriber.shared.transcribe(attachment, using: loader))
+                    } catch {
+                        transcript = .failed(error as? VoiceTranscriber.Failure ?? .failed)
+                    }
+                }
+            }
+        } label: {
+            Group {
+                if transcript == .working {
+                    ProgressView().controlSize(.mini)
+                } else {
+                    Image(systemName: isShowingWords ? "text.bubble.fill" : "text.bubble")
+                        .font(.footnote.weight(.semibold))
+                }
+            }
+            .frame(width: Theme.Size.voiceButton, height: Theme.Size.voiceButton)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(isShowingWords ? Strings.Message.Transcript.hide : Strings.Message.Transcript.show))
+    }
+
+    private var isShowingWords: Bool {
+        if case .shown = transcript { return true }
+        return false
+    }
+
+    private var player: some View {
         HStack(spacing: Theme.Spacing.close) {
             Button {
                 Task { await playback.toggle(attachment, using: loader) }
@@ -908,9 +1042,9 @@ struct VoiceMessageView: View {
                 Text(Duration.seconds(duration), format: .time(pattern: .minuteSecond))
                     .font(.caption.monospacedDigit())
             }
+
+            transcribeButton
         }
-        // The bytes are plaintext on disk while this is playing. Scroll it away and they go.
-        .onDisappear { playback.stop() }
     }
 
     private func hasPlayed(_ index: Int) -> Bool {
@@ -1013,6 +1147,10 @@ struct PictureBubble: View {
     let sender: String
     let timestamp: Date
 
+    /// The caption, painted by `MessageContent` with its links and mentions live. Nil draws the
+    /// attachment's plain caption, for the places that have no painter to hand.
+    var caption: AnyView?
+
     /// The photograph, once it has arrived, kept so the bubble can be made out of it. See
     /// `backdrop`.
     @State private var loaded: Image?
@@ -1047,16 +1185,18 @@ struct PictureBubble: View {
         VStack(alignment: .leading, spacing: 0) {
             picture
 
-            if let caption = attachment.caption {
-                Text(caption)
+            if let plain = attachment.caption {
+                Group {
+                    if let caption { caption } else { Text(plain) }
+                }
                     .font(.body)
                     // White, because what is behind it is a darkened photograph and not the
                     // bubble fill the rest of the app writes on. `.primary` here would be
                     // black text on somebody's night sky in the light appearance, and it
                     // would be unreadable exactly half the time — which is worse than always.
                     .foregroundStyle(.white)
-                    .padding(.top, Theme.Spacing.close)
-                    .padding(.horizontal, Theme.Spacing.tight)
+                    .padding(.horizontal, Theme.Spacing.captionHorizontal)
+                    .padding(.vertical, Theme.Spacing.captionVertical)
             }
         }
         .padding(Theme.Spacing.tight)
@@ -1129,7 +1269,8 @@ struct PictureBubble: View {
                 // picture in it.
                 .containerRelativeFrame(.vertical) { height, _ in
                     min(Theme.Size.picture / aspectRatio,
-                        (timelineHeight > 0 ? timelineHeight : height) * Theme.Size.pictureHeightFraction)
+                        (timelineHeight > 0 ? timelineHeight : height) * Theme.Size.pictureHeightFraction,
+                        Theme.Size.pictureMaxHeight)
                 }
                 .overlay {
                     if isPlayable {

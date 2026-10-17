@@ -66,6 +66,8 @@
 "room.attach" = "添加照片或文件";
 
 "room.composerPlaceholder" = "消息";
+"room.captionPlaceholder" = "添加说明";
+"room.mentionSuggestions" = "要提及的人";
 
 /* The banner shown in place of the composer when posting is not allowed. */
 "room.readOnly" = "您不能在这个聊天中发消息";
@@ -94,6 +96,7 @@
 
 /* Accessibility label for the pin icon on a pinned chat. */
 "roomList.pinned" = "已置顶的聊天";
+"roomList.draft" = "草稿：%@";
 "roomList.hasUnread" = "有未读";
 
 "roomList.searchPrompt" = "搜索消息";
@@ -206,11 +209,27 @@
 "connection.title" = "连接";
 "connection.bridge" = "通过网桥";
 "connection.bridgeFooter" = "流量经由网桥而不是直接到达服务器。适用于无法访问服务器的地方。";
+"connection.publicSection" = "公共网桥";
+"connection.publicFooter" = "来自 github.com/iskra-app/public-bridges 列表的已验证网桥。网桥能看到什么，见下文。应用每天直接从 GitHub 下载一次列表，因此 GitHub 和您的网络能看到这次下载；如果无法连接 GitHub，则使用已保存的列表。";
+"connection.publicEmpty" = "列表中还没有网桥。请在下方添加您自己的网桥。";
+"connection.publicAnyServer" = "任意 Matrix 服务器";
+"connection.publicServers" = "仅 %@";
+"connection.publicOperator" = "由 %@ 维护";
+"connection.notListed" = "已不在列表中";
+"connection.ownSection" = "您的网桥";
+"connection.ownFooter" = "您自己运行的网桥，或从其维护者处获得的网桥。可以保存多个——使用的是打勾的那个。";
+"connection.addBridge" = "添加网桥";
+"connection.editBridge" = "编辑网桥";
+"connection.deleteBridge" = "删除";
+"connection.saveBridge" = "保存";
+"connection.cancelEditing" = "取消";
+"connection.bridgeName" = "名称";
+"connection.bridgeNamePrompt" = "例如“家”";
 
 "connection.status" = "状态";
 "connection.statusDirect" = "直连";
-"connection.statusLocal" = "通过本地层";
-"connection.statusBridged" = "通过网桥，中继：%lld";
+"connection.statusConnecting" = "通过网桥，中继：%lld。网桥尚未响应";
+"connection.statusBlind" = "通过网桥，中继：%lld。网桥看不到您的消息";
 "connection.statusFailed" = "无法开启";
 "connection.pending" = "离开此页面后新设置即生效：应用会自动重新连接。";
 "connection.applyNow" = "立即重新连接";
@@ -219,12 +238,12 @@
    said here rather than only in the status: this is what somebody is looking at. */
 "connection.address" = "网桥地址";
 "connection.addressPrompt" = "npub1… 或 64 位十六进制字符";
-"connection.addressFooter" = "网桥启动时会打印它的地址，就是“bridge address for Iskra: npub1…”那一行。此栏为空时，开关不起作用：流量直接发往服务器。";
+"connection.addressFooter" = "网桥启动时会打印它的地址——即“bridge address for Iskra: npub1…”这一行。";
 "connection.addressBad" = "这看起来不像网桥密钥";
 "connection.addressSecret" = "这是私钥。这里需要的是公钥，也就是以 npub 开头的那个。";
 
 "connection.relays" = "中继";
-"connection.relaysPrompt" = "wss://nos.lol, wss://relay.primal.net";
+"connection.relaysPrompt" = "wss://relay.snort.social, wss://nostr.wine";
 "connection.relaysFooter" = "应用和网桥通过它们找到彼此。多个并不是备胎：请求会同时发往所有中继，回答来自最快的那个。留空则使用默认的三个。";
 
 "connection.myKey" = "本设备的密钥";
@@ -237,8 +256,16 @@
 "connection.checkOK" = "网桥已响应，服务器正常 — %lld 毫秒";
 "connection.checkNoRelay" = "没有中继响应";
 "connection.checkSilent" = "网桥没有回应。它在运行吗？密钥对吗？";
-"connection.checkRefused" = "网桥拒绝了：它不为这个服务器提供服务";
 "connection.checkFailed" = "没成功：%@";
+"bridge.refusal.notAllowed" = "网桥不允许连接到这个服务器：它不在网桥的列表中";
+"bridge.refusal.notMatrix" = "网桥不认为这个服务器是 Matrix 服务器";
+"bridge.refusal.badPort" = "网桥只连接 443 端口，而这个服务器在其他端口";
+"bridge.refusal.notPublic" = "服务器在私有网络中，开放网桥不会连接到那里";
+"bridge.refusal.noSuchHost" = "网桥找不到这个服务器";
+"bridge.refusal.unreachable" = "网桥无法连接到服务器";
+"bridge.refusal.busy" = "网桥负载过高。请一分钟后再试";
+"bridge.refusal.disagreement" = "应用和网桥没能互相理解。请更新应用或网桥";
+"bridge.refusal.broke" = "网桥断开了连接：%@";
 
 /* Not "what is unfinished" but what to expect: the numbers come from measuring a whole session
    through the bridge (Bridge/README.md), and whoever turns the bridge on should know them first. */
@@ -246,7 +273,7 @@
 "connection.unfinishedBody" = "每个请求都要绕道中继，耗时 200–350 毫秒，因此登录和首次打开聊天会明显比直连慢——原本瞬间完成的地方要等上一秒。不过新消息几乎和直连一样快。大附件也能传过去，但最好不要经过公共中继：媒体请给网桥配一个专用中继。";
 
 "connection.sees" = "网桥能看到什么";
-"connection.seesBody" = "网桥会拆开您发往服务器的请求，因此能看到您的令牌、您在哪些房间，以及未加密聊天中的消息文字。加密的对话它读不了。所以网桥最好是您自己的，而不是别人的。";
+"connection.seesBody" = "只有您连接到哪个服务器、何时以及多少字节。与服务器的连接由应用自己加密，因此您的令牌、房间和消息——即使在未加密的聊天中——网桥都看不到。您的 IP 地址由中继看到，而不是网桥。";
 
 /* App lock by Face ID / device passcode. */
 "settings.lock" = "应用锁";
@@ -357,6 +384,7 @@
 "signIn.problem.storageUnavailable" = "Iskra 无法在这台设备上准备安全存储，因此无法安全地登录。";
 
 "signIn.problem.unreachable" = "无法连接到这个地址。请检查网络后再试一次。";
+"signIn.problem.bridgeUnavailable" = "网桥没有启动，而在网桥开启时，Iskra 不会直接连接。请在连接设置中检查网桥地址和中继。";
 
 "signIn.problem.unsupportedMethod" = "该服务使用的登录方式 Iskra 暂不支持。";
 
@@ -394,7 +422,7 @@
 /* The question that replaces asking for a 'homeserver URL'. */
 "signIn.whereIsAccount" = "您的账户在哪里？";
 
-"signIn.whereIsAccountHelp" = "如果有人给了您服务器地址，请输入。否则保留 matrix.org——大多数账户都在那里。";
+"signIn.whereIsAccountHelp" = "请输入您账户所在的服务器地址，或您想创建账户的服务器地址。";
 
 "room.attachPhoto" = "照片或视频";
 
@@ -678,6 +706,31 @@
 "location.myLocation" = "我的位置";
 "location.attach" = "位置";
 "message.spoken.sentLocation" = "一个位置";
+"poll.kind" = "投票";
+"poll.kindAnonymous" = "匿名投票";
+"poll.ended" = "投票已结束";
+"poll.multiple" = "可多选";
+"poll.noVotes" = "还没有人投票";
+"poll.hiddenUntilEnd" = "结束后公布结果";
+"poll.end" = "结束投票";
+"poll.endConfirmTitle" = "结束投票？";
+"poll.endConfirmMessage" = "之后就不能再投票了，所有人都会看到结果。";
+"poll.attach" = "投票";
+"poll.newTitle" = "新投票";
+"poll.question" = "问题";
+"poll.questionPlaceholder" = "您想问什么？";
+"poll.answers" = "选项";
+"poll.answerPlaceholder" = "选项";
+"poll.addAnswer" = "添加选项";
+"poll.removeAnswer" = "删除选项";
+"poll.settings" = "设置";
+"poll.allowMultiple" = "多个答案";
+"poll.anonymous" = "结束后才公布结果";
+"poll.anonymousFooter" = "投票进行期间，谁都看不到别人投了什么。只有您可以结束它。";
+"poll.send" = "发送";
+"poll.cancel" = "取消";
+"poll.chosen" = "您的选择";
+"message.spoken.sentPoll" = "投票“%@”";
 
 /* Running a room. Shown only to whoever the room allows to do it. */
 "room.manage.namePlaceholder" = "聊天名称";
@@ -685,12 +738,12 @@
 "room.manage.openToAnyone" = "公开聊天";
 "room.manage.openToAnyoneHelp" = "任何找到这个聊天的人都能加入。否则仅限受邀者。";
 "room.manage.invite" = "邀请";
-"room.manage.inviteTitle" = "邀请谁？";
-"room.manage.inviteHelp" = "Matrix 地址的格式是 @名字:服务器。";
-"room.manage.invitePlaceholder" = "@名字:服务器";
+"room.invite.inviteCount" = "邀请（%lld）";
+"room.invite.chosen" = "已选择";
+"room.invite.alreadyHere" = "已在聊天室中";
+"room.invite.byAddress" = "邀请此地址";
 "room.manage.role" = "角色";
 "room.manage.roleHeader" = "可以做什么";
-"room.manage.roleQuestion" = "%@ 可以做什么？";
 "room.manage.member" = "成员";
 "room.manage.write" = "发消息";
 "room.manage.goToChat" = "前往聊天";
@@ -705,6 +758,27 @@
 /* Why everything on the room-settings screen is greyed out. Shown only while offline. Must say
    what still works — reading and writing — rather than only what does not. */
 "room.manage.offline" = "没有网络时，您可以阅读这个聊天、在里面发消息，但不能修改它。";
+"room.rules.title" = "角色与权限";
+"room.rules.staffHeader" = "管理聊天的人";
+"room.rules.staffFooter" = "要更改角色，请在此人上向左轻扫，或打开其页面。";
+"room.rules.rulesHeader" = "谁可以";
+"room.rules.rulesFooter" = "“版主”指版主和管理员。";
+"room.rules.sendMessages" = "发送消息";
+"room.rules.invite" = "邀请他人";
+"room.rules.remove" = "移除成员";
+"room.rules.ban" = "封禁他人";
+"room.rules.deleteOthers" = "删除他人的消息";
+"room.rules.rename" = "更改名称";
+"room.rules.changeTopic" = "更改简介";
+"room.rules.changePicture" = "更改照片";
+"room.rules.everyone" = "所有人";
+"room.rules.moderators" = "版主";
+"room.rules.administrators" = "管理员";
+"room.manage.chooseRole" = "请选择角色";
+"room.rules.addStaff" = "添加";
+"room.rules.appointTitle" = "任命";
+"room.rules.nobodyToAppoint" = "没有其他可以任命的人了。";
+"room.rules.demote" = "取消角色";
 "room.manage.cancel" = "取消";
 "problem.title" = "没成功";
 
@@ -752,7 +826,6 @@
 
 /* The archive: the shelf for set-aside chats and the way back to them. */
 "roomList.archive.title" = "归档";
-"roomList.archive.entry" = "归档 (%lld)";
 "roomList.archive.emptyTitle" = "归档是空的";
 "roomList.archive.emptyMessage" = "把聊天向左滑并归档——它不会再占用主列表，但也不会消失。";
 
@@ -833,9 +906,8 @@
 "room.typingBy" = "%@ 正在输入…";
 
 "room.scrollToBottom" = "跳到最新消息";
-"room.loadEarlier" = "显示更早的内容";
 
-/* Stands where the "show earlier" button would be, when the older messages could not be fetched —
+/* Stands at the top of the conversation when the older messages could not be fetched —
    offline, this is where the cached history runs out. Explains; does not promise. */
 "room.earlierUnavailable" = "恢复联网后，我们会显示更早的内容";
 "appearance.previewAsk" = "你选了什么颜色？";
@@ -1139,6 +1211,8 @@
 "chats.shareActive" = "当前";
 "chats.shareAll" = "全部";
 "chats.shareHelp" = "从其他应用分享时显示哪个账户的聊天。“当前”指现在在 Iskra 中打开的那个。";
+"chats.widgetSection" = "“收藏的聊天”小组件";
+"chats.widgetHelp" = "小组件中未选择聊天时显示哪个账户的聊天。“当前”指现在在 Iskra 中打开的那个。";
 
 /* Settings → Privacy. */
 "privacy.title" = "隐私";
@@ -1171,7 +1245,7 @@
 "devices.newSignInNo" = "不是我";
 
 /* Who reacted: the "everybody" tab. */
-"message.menu.reactorsAll" = "全部 %lld";
+"message.menu.reactorsAll" = "全部 · %lld";
 
 /* Media viewer: the counter and video skipping. */
 "message.media.counter" = "%lld / %lld";
@@ -1197,7 +1271,7 @@
 "accounts.signOutTitle" = "退出 %@？";
 "accounts.signOutMessage" = "这个账号的聊天将从此设备上删除。要再次阅读加密消息，需要您的恢复密钥或您的其他设备。";
 "stickers.subscribe" = "添加";
-"stickers.settings.sheetSection" = "显示内容";
+"stickers.settings.sheetSection" = "贴纸显示";
 "stickers.settings.builtIn" = "小火花";
 "stickers.settings.roomPacks" = "聊天贴纸包";
 "stickers.settings.roomPacksHelp" = "如果聊天有自己的贴纸包，您在这个聊天里时就能看到。点按上方的“添加”，它就会出现在所有聊天里。";
@@ -1231,3 +1305,164 @@
 "qr.openRoom" = "打开";
 "qr.roomUnknown" = "服务器没有提供这个房间的信息，但您仍然可以尝试加入。";
 "qr.inviteOnlyRoom" = "这个房间仅限邀请加入。";
+
+/* Under the empty address field on the sign-in screen: opens the list of public servers. */
+"signIn.chooseServer" = "不知道该选哪个服务器？";
+/* The main button under the address field. */
+"signIn.next" = "下一步";
+/* A small grey link at the foot of the sign-in screen: opens a screen explaining Matrix. */
+"signIn.whatIsMatrix" = "什么是 Matrix？";
+/* The title of that screen. */
+"aboutMatrix.title" = "什么是 Matrix";
+
+/* The list of public servers, opened from the sign-in screen. */
+"servers.title" = "选择服务器";
+"servers.intro" = "您的账户位于一个服务器上，但可以和任何其他服务器上的人交流——就像电子邮件一样。下面的服务器都可以直接在 Iskra 中创建账户。";
+"servers.matrixOrg" = "最大的 Matrix 服务器，由开发 Matrix 本身的基金会运营。";
+/* Where the server is. */
+"servers.matrixOrgWhere" = "英国";
+/* A warning on matrix.org: it is blocked in Russia. */
+"servers.matrixOrgBlocked" = "在俄罗斯无法访问";
+"servers.tchncs" = "最早的社区服务器之一。运营者还提供其他自由服务。";
+"servers.tchncsWhere" = "德国";
+"servers.quassel" = "面向日常交流的开放服务器，对所有人免费。";
+"servers.quasselWhere" = "德国，服务器位于芬兰";
+"servers.nopeChat" = "由 adminForge 团队运营，他们也提供其他自由服务。支持与其他通讯软件的桥接。";
+"servers.nopeChatWhere" = "德国";
+/* The last entry: running a server of your own. Opens a page about it in the browser. */
+"servers.ownTitle" = "自建服务器";
+"servers.ownAbout" = "您可以搭建自己的服务器——这样您的对话就完全掌握在您自己手中。您需要一个域名和一点时间。";
+
+/* Under the "open to anyone" switch when making a room: what the room will be. Changes with the switch. */
+"roomList.new.willBeEncrypted" = "该房间将加密";
+"roomList.new.willNotBeEncrypted" = "该房间将不加密";
+
+/* Room access: history, address, blocked (stage 9) */
+"room.access.historyHeader" = "新成员可见的历史";
+"room.access.historyFooter" = "之后加入的人能看到多少已有的内容。在受保护的聊天中，旧消息可能打不开：他们没有对应的密钥。";
+"room.access.history.shared" = "全部历史";
+"room.access.history.invited" = "从被邀请时起";
+"room.access.history.joined" = "从加入时起";
+"room.access.history.worldReadable" = "任何人，无需加入";
+"room.access.addressHeader" = "地址";
+"room.access.addressPlaceholder" = "名称";
+"room.access.addressFooter" = "有了地址，聊天就能被找到，也能通过链接打开。清空后就没有地址了。";
+"room.access.inDirectory" = "在服务器目录中显示";
+"room.access.inDirectoryHelp" = "在 %@ 搜索公开房间时就能找到这个聊天。";
+"room.access.banned" = "已封禁";
+"room.access.bannedFooter" = "即使被邀请，他们也无法进入这个聊天。";
+"room.access.unban" = "解除封禁";
+"room.access.unbanQuestion" = "解除对 %@ 的封禁？";
+"room.access.unbanHelp" = "对方可以再次加入，但不会自动出现在聊天中——请邀请对方或发送链接。";
+
+/* Choosing several messages (stage 9) */
+"message.menu.select" = "选择";
+"message.selection.count" = "已选 %lld 条";
+"message.selection.cancel" = "取消";
+"message.selection.deleteTitle" = "删除所选消息？";
+"message.selection.deleteMessage" = "它们会对聊天中的所有人消失，且无法恢复。";
+"message.selection.copied" = "已复制";
+
+/* Chat folders (stage 9) */
+"folders.all" = "全部";
+"folders.title" = "文件夹";
+"folders.explanation" = "文件夹按规则归类聊天——私聊、群组、未读——并以标签的形式显示在列表上方。在您的所有设备上都一样。";
+"folders.new" = "新建文件夹";
+"folders.suggested" = "可以从这些开始";
+"folders.add" = "添加";
+"folders.edit" = "文件夹";
+"folders.namePlaceholder" = "名称";
+"folders.kindsHeader" = "哪些聊天";
+"folders.kind.direct" = "私聊";
+"folders.kind.groups" = "群组";
+"folders.kind.spaces" = "空间";
+"folders.kind.invitations" = "邀请";
+"folders.suggestion.unread" = "未读";
+"folders.conditionsHeader" = "条件";
+"folders.onlyUnread" = "仅未读";
+"folders.excludesMuted" = "不含已静音";
+"folders.includesArchived" = "包括归档";
+"folders.includedHeader" = "始终显示";
+"folders.excludedHeader" = "从不显示";
+"folders.addChats" = "添加聊天";
+"folders.chooseChats" = "选择聊天";
+"folders.done" = "完成";
+"folders.cancel" = "取消";
+"folders.delete" = "删除文件夹";
+"folders.deleteQuestion" = "删除文件夹“%@”？";
+"folders.deleteHelp" = "聊天会保留，只有标签会消失。";
+"folders.addToFolder" = "加入文件夹";
+"folders.membershipTitle" = "文件夹";
+"folders.membershipFooter" = "勾选后，即使不符合规则，聊天也会在文件夹中；取消勾选则永远不会。";
+"folders.emptyTitle" = "文件夹里还没有内容";
+"folders.emptyMessage" = "符合规则的聊天会出现在这里。";
+
+/* Which account a notification came for */
+"chats.namesAccount" = "通知中显示账号";
+"chats.namesAccountHelp" = "通知标题会显示它发给了您的哪个账号。";
+
+"poll.retract" = "撤回投票";
+
+"stickers.settings.mine" = "我的贴纸";
+
+/* Beta: for developers */
+"beta.developers" = "开发者选项";
+"beta.showsSource" = "菜单中显示消息 JSON";
+"beta.showsSourceHelp" = "消息菜单中会出现“查看 JSON”——服务器发来的原始事件。消息显示不对时很有用。";
+"beta.viewSource" = "查看 JSON";
+"beta.noSource" = "这条消息在服务器上还没有事件。";
+"beta.demoSignIn" = "演示登录";
+"beta.demoSignInHelp" = "针对应用内服务器的登录界面：alice / password。不会影响您的账号，登录后会立即退出。";
+"beta.demoSignedIn" = "已登录：%@";
+"beta.close" = "关闭";
+
+/* Threads */
+"thread.title" = "话题";
+"thread.replyInThread" = "在话题中回复";
+"thread.replies" = "%lld 条回复";
+
+/* Live location */
+"location.shareLive" = "实时共享位置";
+"location.shareLiveFor" = "共享位置多长时间？";
+"location.liveUntil" = "实时 · 至 %@";
+"location.liveEnded" = "实时位置已结束";
+"location.liveWaiting" = "正在等待第一个位置…";
+"location.youAreSharing" = "您正在共享位置，直到 %@";
+"location.stop" = "停止";
+
+"location.liveForMinutes" = "%lld 分钟";
+"location.liveForHours" = "%lld 小时";
+
+/* Voice transcription */
+"message.transcript.show" = "转写";
+"message.transcript.hide" = "隐藏文字";
+"message.transcript.notAllowed" = "未允许语音识别。可以在“设置”中允许。";
+"message.transcript.unavailable" = "此设备无法离线识别您的语言——Iskra 不会把语音发送到服务器。";
+"message.transcript.nothingHeard" = "听不出任何字词。";
+"message.transcript.failed" = "没能转写。请再试一次。";
+
+"chats.threads" = "显示话题";
+"chats.threadsHelp" = "话题中的回复会以“3 条回复”的形式收在原消息下面。只要不隐藏回复，它们也会和其他消息一起显示在聊天中。更改会在重新打开聊天时生效。私聊没有话题。";
+"chats.threadsAlways" = "始终";
+"chats.threadsLargeRooms" = "在超过 100 人的聊天中";
+"chats.threadsNever" = "从不";
+"chats.threadsHideReplies" = "在聊天中隐藏回复";
+
+/* The photo editor — PhotoEditor */
+"photoEditor.edit" = "编辑照片";
+"photoEditor.cancel" = "取消";
+"photoEditor.done" = "完成";
+"photoEditor.undo" = "撤销";
+"photoEditor.draw" = "绘制";
+"photoEditor.text" = "文字";
+"photoEditor.crop" = "裁剪";
+"photoEditor.rotate" = "旋转";
+"photoEditor.textPrompt" = "请写点什么";
+"photoEditor.failed" = "无法保存更改，照片保持原样";
+"photoEditor.ok" = "好的";
+"photoEditor.white" = "白色";
+"photoEditor.black" = "黑色";
+"photoEditor.red" = "红色";
+"photoEditor.yellow" = "黄色";
+"photoEditor.green" = "绿色";
+"photoEditor.blue" = "蓝色";

@@ -3,14 +3,22 @@ import IskraCore
 import IskraDesign
 
 /// Who reacted to a message, and with what — opened from the message menu in a group, the way
-/// Telegram's "N reactions" row opens its list. In a personal chat the question answers itself, so
-/// the row is not offered there (see `MessageHandlers.loadReactors`).
+/// Telegram's "N reactions" row opens its list, or by holding a reaction under the message, the way
+/// Signal's does. In a personal chat the question answers itself, so neither is offered there (see
+/// `MessageHandlers.loadReactors`).
 ///
 /// Tabs across the top: everybody, then one per emoji with its count. Each line is a face, a name
-/// and the emoji they left — so "All" reads as a list of people, not of emoji.
+/// and the emoji they left — so "All" reads as a list of people, not of emoji. Opened from a pill,
+/// it starts on that pill's emoji: the one held is the one being asked about.
 struct ReactorsSheet: View {
     let reactions: [MessageReaction]
     let load: () async -> [Reactor]
+
+    init(reactions: [MessageReaction], filter: String? = nil, load: @escaping () async -> [Reactor]) {
+        self.reactions = reactions
+        self.load = load
+        _filter = State(initialValue: filter)
+    }
 
     @Environment(\.dismiss) private var dismiss
 
@@ -49,20 +57,25 @@ struct ReactorsSheet: View {
                     .accessibilityElement(children: .combine)
                 }
             }
+            .animation(.smooth(duration: Theme.Timing.chrome), value: filter)
             .safeAreaInset(edge: .top, spacing: 0) { tabs }
             .navigationTitle(Text(Strings.Message.Menu.reactors(total)))
             #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
+            // A sheet a thumb pulls up and flicks away, as Signal's is: the tabs are its top edge,
+            // and a title bar above them would only say again what the "All" tab says.
+            .toolbar(.hidden, for: .navigationBar)
+            #else
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button { dismiss() } label: { Text(Strings.Devices.done) }
                 }
             }
+            #endif
             .task { reactors = await load() }
         }
         #if os(iOS)
         .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
         #endif
     }
 
@@ -80,7 +93,8 @@ struct ReactorsSheet: View {
                 }
             }
             .padding(.horizontal, Theme.Spacing.roomy)
-            .padding(.vertical, Theme.Spacing.close)
+            .padding(.top, Theme.Spacing.generous)
+            .padding(.bottom, Theme.Spacing.close)
         }
     }
 
@@ -96,5 +110,25 @@ struct ReactorsSheet: View {
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+}
+
+/// Which "who reacted" list a row has asked for: everybody, or one emoji's people.
+struct ReactorsRequest: Identifiable {
+    let filter: String?
+    var id: String { filter ?? "" }
+}
+
+extension View {
+    /// The "who reacted" sheet, for a row whose reaction pills can be held. Nothing when `load` is
+    /// nil — a personal chat, or a row drawn where nobody can be asked.
+    func reactorsSheet(_ request: Binding<ReactorsRequest?>,
+                       reactions: [MessageReaction],
+                       load: (() async -> [Reactor])?) -> some View {
+        sheet(item: request) { request in
+            if let load {
+                ReactorsSheet(reactions: reactions, filter: request.filter, load: load)
+            }
+        }
     }
 }

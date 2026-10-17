@@ -145,7 +145,8 @@ struct ReactionsView: View {
                                reaction = emoji
                                isPickingEmoji = false
                            },
-                           isFloating: false)
+                           isFloating: false,
+                           height: proxy.size.height)
             }
             .navigationTitle(Text(Strings.Reactions.more))
             .toolbarTitleDisplayMode(.inline)
@@ -155,6 +156,6 @@ struct ReactionsView: View {
                 }
             }
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.medium, .large])
     }
 }

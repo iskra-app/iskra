@@ -39,6 +39,9 @@ public enum Theme {
         /// own radius inside the bubble's own inset would run *outside* the shape it sits in,
         /// and the eye reads that as a picture pushing through its frame.
         public static let picture: CGFloat = 20
+        /// The bottom corners of an album's pictures when words follow them: the pictures end and
+        /// the caption begins, and a full bubble's curve there reads as two bubbles stacked.
+        public static let pictureAboveCaption: CGFloat = 8
 
         /// The corner of an app icon drawn at some size — see `Size.appIconTile`.
         ///
@@ -66,6 +69,8 @@ public enum Theme {
         /// A warning's colour spread under its words — enough to be told apart from an ordinary
         /// notice at a glance, little enough that the words on it stay the words' own colour.
         public static let warningWash: Double = 0.14
+        /// The pill under the open folder tab — there, and only just. See `FolderTabs`.
+        public static let selectedTab: Double = 0.2
     }
 
     public enum Spacing {
@@ -78,6 +83,17 @@ public enum Theme {
         public static let betweenSenders: CGFloat = 12
         /// Between two messages from the same person.
         public static let withinRun: CGFloat = 2
+        /// Between the pictures of an album — a hairline of the bubble showing through, as in
+        /// Telegram, so the set reads as one thing made of several. See `AlbumMosaic`.
+        public static let albumGap: CGFloat = 2
+        /// Around a caption under a picture, inside the bubble's own `tight` frame — so that the
+        /// words stand exactly as far from the bubble's edges as a text message's do (`roomy` to the
+        /// sides, `normal` above and below; see `MessageBubble`).
+        public static let captionHorizontal: CGFloat = roomy - tight
+        public static let captionVertical: CGFloat = normal - tight
+        /// Between an album's pictures and the caption under them — more than a single photo
+        /// gives, because a mosaic is busy right up to its edge.
+        public static let albumCaptionTop: CGFloat = normal
 
         /// How far the emoji under a message climb back onto it.
         ///
@@ -167,6 +183,10 @@ public enum Theme {
         /// was a spring more than half as slow again as Telegram's — and with less damping. The
         /// message drifted up into the menu where Telegram's snaps into it and lands.
         public static let menuOpens: Animation = .spring(response: 0.265, dampingFraction: 0.775)
+
+        /// The pill under the folder tabs sliding from one tab to the next, and the chats of the
+        /// new tab sliding in after it — see `FolderTabs` and `RoomListView.folderSelection`.
+        public static let folderSwitches: Animation = .spring(duration: 0.35, bounce: 0.15)
 
         /// And the menu going away: no spring at all. Telegram puts a message back on a plain
         /// 0.2 s ease-in-ease-out — a thing being put down is not thrown.
@@ -500,6 +520,12 @@ public enum Theme {
     public enum Size {
         public static let avatar: CGFloat = 40
 
+        /// A face in the favourites widget: four fit a small widget with their names under them,
+        /// eight a medium one.
+        public static let widgetFace: CGFloat = 48
+        /// The face on a Live Activity's lock-screen banner and in the expanded Dynamic Island.
+        public static let activityFace: CGFloat = 44
+
         /// The face beside a conversation in the chat list.
         ///
         /// Bigger than `avatar`, and it is a size of its own rather than a bump to that one
@@ -516,6 +542,10 @@ public enum Theme {
         /// there: it is the size the list has always drawn, moved here from a literal in the row
         /// rather than redesigned in passing.
         public static let unreadDot: CGFloat = 10
+
+        /// How far the chats of a newly opened folder travel in from the side of the tab they
+        /// came from. Short on purpose: it says which way you went, it is not a page being turned.
+        public static let folderSlide: CGFloat = 40
         public static let avatarSmall: CGFloat = 28
         /// A picture that *is* a button in the title bar: the chat's, at the end of a room's
         /// bar, and the user's own at the end of the room list's.
@@ -595,6 +625,11 @@ public enum Theme {
         public static let qrCode: CGFloat = 240
         /// A chat's face in the share sheet's grid — four to a row on a phone, Telegram's size.
         public static let shareFace: CGFloat = 60
+        /// How wide a poll's bubble is. Fixed, not hugging its words: the bars are a comparison,
+        /// and a bar is only comparable to another drawn against the same width.
+        public static let poll: CGFloat = 264
+        /// The thickness of a result bar under an answer.
+        public static let pollBar: CGFloat = 4
         /// Nothing tappable is ever smaller than this. Apple's floor, and ours.
         public static let minimumTapTarget: CGFloat = 44
 
@@ -688,6 +723,16 @@ public enum Theme {
         /// It is a fraction rather than a number because a Mac window and an iPhone are
         /// not the same height, and half of each is the point.
         public static let pictureHeightFraction: CGFloat = 0.5
+        /// The same for an album, which is allowed a little more: it is several pictures, and
+        /// squeezed into half the screen each of them would be cropped down to a strip.
+        public static let albumHeightFraction: CGFloat = 0.6
+
+        /// And a ceiling on both, in points, under the fractions: half of an iPad or of a tall Mac
+        /// window is still a portrait photo that fills the view, and the conversation it was sent
+        /// in is gone again. A bit taller than `picture` is wide, so a portrait photo still reads
+        /// as one — at most one and a seventh of its width, and the caption, which is not the
+        /// picture, comes under it and is not counted.
+        public static let pictureMaxHeight: CGFloat = 320
 
         /// The smallest an opened video is allowed to be. It matters on the Mac, where the
         /// viewer is a sheet rather than the whole screen and would otherwise shrink to the
@@ -762,6 +807,12 @@ public enum Theme {
         /// A pasted or dropped picture waiting in the composer. Big enough to tell one screenshot
         /// from another at a glance, small enough that four of them are still one row.
         public static let attachmentTile: CGFloat = 64
+
+        /// A colour to draw or write in, in the photo editor. Drawn smaller than the tap target it
+        /// sits in, so that six of them fit a phone's width with room between.
+        public static let inkSwatch: CGFloat = 28
+        /// How far each arm of a corner of the crop frame reaches along its edges.
+        public static let cropCorner: CGFloat = 20
 
         /// The search field floating at the bottom of the room list. The same height as
         /// the composer, and for the same reason — it sits where the thumb already is.

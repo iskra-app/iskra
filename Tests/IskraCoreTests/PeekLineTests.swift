@@ -33,6 +33,14 @@ struct PeekLineTests {
         #expect(line?.mark == nil)
     }
 
+    @Test("somebody else's message names them; yours and a grey line do not")
+    func sender() {
+        #expect(PeekLine.last(in: [message(.text("hi"))])?.sender == "А")
+        #expect(PeekLine.last(in: [message(.text("hi"), isOwn: true, delivery: .sent)])?.sender == nil)
+        let event = RoomEvent(id: "$j", kind: .joined(["Аня"]), timestamp: Date(timeIntervalSince1970: 3))
+        #expect(PeekLine.last(in: [.event(event)])?.sender == nil)
+    }
+
     @Test("your own message read on the other side says so")
     func readMark() {
         let line = PeekLine.last(in: [message(.text("hi"), isOwn: true, delivery: .read)])

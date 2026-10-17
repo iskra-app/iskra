@@ -6,30 +6,33 @@ import IskraCore
 ///
 /// Matrix's sign-in story is genuinely complicated — three auth methods, servers
 /// discovered from a domain name, a browser round-trip — and none of that is the
-/// user's problem. This model absorbs it and exposes two states: the door ("sign in" or
-/// "create an account", on a server already filled in) and, only where the door alone was not
-/// enough, "here's how you get in".
+/// user's problem. This model absorbs it and exposes three states: the address, the door
+/// ("sign in" or "create an account", on the server that was just found) and, only where the door
+/// alone was not enough, "here's how you get in".
 @MainActor
 @Observable
 public final class SignInModel {
     public enum Step: Equatable {
-        /// The opening screen: the two buttons, and the server they will go to.
+        /// The opening screen: the server's address, and "Next".
         case enteringAddress
-        /// The server was found and told us how it lets people in.
+        /// The server answered: the two buttons, "sign in" and "create an account", on the same
+        /// screen, in place of the field.
+        case found(SignInOptions)
+        /// The form, where the door alone was not enough — a server with nothing but a password,
+        /// or a browser closed half way.
         case ready(SignInOptions)
     }
 
-    /// The server, filled in before anybody is asked: matrix.org, where most people's accounts
-    /// are and where a new one is made. It is shown as one quiet line with "Change" beside it, so
-    /// the person who was given an address can type it and nobody else has to think about it.
+    /// The server, as typed or as picked from `PublicServer.all`.
+    ///
+    /// It starts empty. It used to start on matrix.org, which quietly made one server's choice for
+    /// everybody and put every new account in the same place; now the question is asked, and
+    /// "Not sure which server to choose?" is right under it for the people who have no answer.
     public var address: String = ""
 
     /// What the visitor pressed — sign in, or make an account. Which button spins.
     public enum Intent: Equatable { case signIn, createAccount }
     public private(set) var pending: Intent?
-
-    /// The server matrix.org, as the opening screen offers it.
-    public static let defaultAddress = "matrix.org"
 
     private var hasSignedIn = false
     public private(set) var step: Step = .enteringAddress
@@ -47,7 +50,7 @@ public final class SignInModel {
                 address: String = "",
                 onSignedIn: @escaping @MainActor (UserSession) -> Void) {
         self.authentication = authentication
-        self.address = address.isEmpty ? Self.defaultAddress : address
+        self.address = address
         self.onSignedIn = onSignedIn
     }
 
@@ -65,34 +68,36 @@ public final class SignInModel {
         return name
     }
 
-    /// One of the two buttons on the opening screen.
+    /// The options of the server that was found, on either of the two steps past the address.
+    private var options: SignInOptions? {
+        switch step {
+        case .enteringAddress: nil
+        case let .found(options), let .ready(options): options
+        }
+    }
+
+    /// One of the two buttons that replace the field once the server is found.
     ///
     /// Signing in, on a server with a sign-in page of its own, goes straight to it — no second
     /// screen asking which way in. Only a server with nothing but a password gets a form, and a
     /// browser closed half way brings up the same quiet second screen, with the way back to the
     /// browser and the password beside it. Making an account goes to the server's page for it,
     /// and says so plainly where the server has none.
+    ///
+    /// The server is not looked up again: "Next" did that, and the attempt it started is still
+    /// open — which is also why a browser closed half way leaves it open rather than cancelling
+    /// it, so the next press goes straight back to the browser.
     public func begin(_ intent: Intent) async {
-        guard !isBusy else { return }
+        guard !isBusy, let options else { return }
         pending = intent
         defer { pending = nil }
-
-        if case .ready = step {
-            await authentication.cancelSignIn()
-            step = .enteringAddress
-        }
-        guard let options = await lookUp() else { return }
 
         switch intent {
         case .signIn:
             if options.canUseSingleSignOn {
                 await continueWithSingleSignOn()
-                if !hasSignedIn {
-                    if problem == nil || options.supportsPassword {
-                        step = .ready(options)
-                    } else {
-                        await authentication.cancelSignIn()
-                    }
+                if !hasSignedIn, problem == nil || options.supportsPassword {
+                    step = .ready(options)
                 }
             } else {
                 step = .ready(options)
@@ -100,18 +105,26 @@ public final class SignInModel {
 
         case .createAccount:
             guard options.supportsRegistration else {
-                await authentication.cancelSignIn()
                 problem = Strings.SignIn.Problem.noRegistration
                 return
             }
             await createAccount()
-            if !hasSignedIn { await authentication.cancelSignIn() }
         }
     }
 
-    /// Looks up the address the user typed and works out how they can sign in.
+    /// "Next": looks up the address the user typed and works out how they can sign in.
     public func findServer() async {
-        if let options = await lookUp() { step = .ready(options) }
+        guard canContinue else { return }
+        if let options = await lookUp() { step = .found(options) }
+    }
+
+    /// From the form back to the two buttons. The server is the same one, so the attempt stays.
+    public func back() {
+        guard let options else { return }
+        step = .found(options)
+        problem = nil
+        username = ""
+        password = ""
     }
 
     private func lookUp() async -> SignInOptions? {
@@ -131,6 +144,12 @@ public final class SignInModel {
             // Nothing to do with what they typed, so do not send them back to the
             // address field to hunt for a typo that isn't there.
             problem = Strings.SignIn.Problem.storageUnavailable
+        } catch AuthenticationError.bridgeRefused(let refusal) {
+            // The same reasoning: the address is fine, the bridge will not go there. The SDK would
+            // have called it "not found" and sent them hunting for a typo.
+            problem = Strings.Bridge.refusal(refusal)
+        } catch AuthenticationError.bridgeUnavailable {
+            problem = Strings.SignIn.Problem.bridgeUnavailable
         } catch {
             problem = Strings.SignIn.Problem.unreachable
         }
@@ -228,6 +247,8 @@ public final class SignInModel {
         problem = Strings.SignIn.Problem.alreadySignedIn
     }
 
+    /// Back to the address, to change it. What was typed stays, to be corrected rather than
+    /// typed again.
     public func startOver() async {
         await authentication.cancelSignIn()
         step = .enteringAddress

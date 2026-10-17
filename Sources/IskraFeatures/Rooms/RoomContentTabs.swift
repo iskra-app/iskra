@@ -189,33 +189,46 @@ struct AutoLoadEarlier: View {
 /// Telegram's shared media: three square tiles to a row, edge to edge with a hairline between them
 /// and no rounded corners — a contact sheet, not a set of cards — broken up by the month each run
 /// was sent in, and a video wearing its length in the corner.
+///
+/// Each month heading and each run of three is a row of the form, not one row holding the whole
+/// grid. A lazy grid inside a single list row is not lazy at all — the row is laid out whole — so a
+/// room with a few hundred pictures built and fetched every tile the moment the tab opened, and
+/// again on every page that arrived. As rows, the form only builds what is on screen.
 struct RoomMediaGrid: View {
     let items: [MediaItem]
     /// Opening one opens all of them, swipeable: the index is which one was pressed.
-    @State private var openedAt: Int?
+    let open: (Int) -> Void
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: Theme.Border.hairline), count: 3)
+    private static let perRow = 3
 
     var body: some View {
-        LazyVStack(alignment: .leading, spacing: 0) {
-            ForEach(MonthGroups.group(items, by: \.timestamp), id: \.month) { group in
-                MonthHeader(month: group.month)
-                LazyVGrid(columns: columns, spacing: Theme.Border.hairline) {
-                    ForEach(group.items, id: \.element.id) { index, item in
-                        tile(item, at: index)
+        ForEach(MonthGroups.group(items, by: \.timestamp), id: \.month) { group in
+            MonthHeader(month: group.month)
+            ForEach(Self.rows(of: group.items), id: \.first?.element.id) { row in
+                HStack(spacing: Theme.Border.hairline) {
+                    ForEach(0..<Self.perRow, id: \.self) { column in
+                        if column < row.count {
+                            tile(row[column].element, at: row[column].offset)
+                        } else {
+                            // An empty square keeps a short last row in the same columns as the rest.
+                            Color.clear.aspectRatio(1, contentMode: .fit)
+                        }
                     }
                 }
+                .padding(.bottom, Theme.Border.hairline)
             }
         }
-        .sheet(item: Binding(get: { openedAt.map { OpenedIndex(value: $0) } },
-                             set: { openedAt = $0?.value })) { opened in
-            MediaPager(items: items, startIndex: opened.value)
+    }
+
+    private static func rows<T>(of items: [T]) -> [[T]] {
+        stride(from: 0, to: items.count, by: perRow).map { start in
+            Array(items[start..<min(start + perRow, items.count)])
         }
     }
 
     private func tile(_ item: MediaItem, at index: Int) -> some View {
         Button {
-                    openedAt = index
+                    open(index)
                 } label: {
                     // The square is the *container*, and the picture is a passenger inside it.
                     //
@@ -322,12 +335,58 @@ enum MonthGroups {
 
     /// "Октябрь 2026": the month as it stands alone (`LLLL` — nominative in Russian, not "октября"),
     /// capitalised, and the year.
-    static func label(for month: Date, locale: Locale = .current) -> String {
+    @MainActor static func label(for month: Date, locale: Locale = .current) -> String {
+        let text = formatter(for: locale).string(from: month)
+        return text.prefix(1).uppercased() + text.dropFirst()
+    }
+
+    /// One formatter per locale: building a `DateFormatter` costs more than the formatting, and a
+    /// heading is drawn on every pass over the grid.
+    @MainActor private static var formatters: [Locale: DateFormatter] = [:]
+
+    @MainActor private static func formatter(for locale: Locale) -> DateFormatter {
+        if let formatter = formatters[locale] { return formatter }
         let formatter = DateFormatter()
         formatter.locale = locale
         formatter.setLocalizedDateFormatFromTemplate("LLLLyyyy")
-        let text = formatter.string(from: month)
-        return text.prefix(1).uppercased() + text.dropFirst()
+        formatters[locale] = formatter
+        return formatter
+    }
+}
+
+/// The history sorted into the tabs of the info screen, newest first.
+///
+/// The timeline holds messages the way a conversation reads: oldest at the top, newest at the
+/// bottom, which is right for the chat and backwards for every tab. Nobody opens the files tab to
+/// find the first file ever sent. Reversed once, here, so the lists cannot disagree about it — and
+/// so a link posted this morning is not eleven screens down.
+///
+/// Worked out as a value, once per change of the timeline and off the main thread. It used to be
+/// six computed properties, each starting again from every row, read several times per redraw —
+/// and the links tab runs a data detector over every text message, so each page of history that
+/// arrived while the tab was open stalled the scroll it was arriving for.
+struct RoomContents: Sendable {
+    var photos: [MediaItem] = []
+    var voices: [MediaItem] = []
+    var videoNotes: [MediaItem] = []
+    var files: [MediaItem] = []
+    var links: [LinkItem] = []
+
+    init() {}
+
+    init(rows: [TimelineRow]) {
+        let messages: [Message] = rows.reversed().compactMap { row in
+            if case let .message(message) = row { message } else { nil }
+        }
+        for item in MediaItem.items(from: messages) {
+            switch item.kind {
+            case .photo, .video: photos.append(item)
+            case .voice, .audio: voices.append(item)
+            case .videoNote: videoNotes.append(item)
+            case .file: files.append(item)
+            }
+        }
+        links = LinkItem.items(from: messages)
     }
 }
 

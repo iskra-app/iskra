@@ -64,6 +64,10 @@ struct EmojiPanel: View {
     /// sheet's own background shows through it.
     var isFloating = true
 
+    /// How tall the panel is. Over a message it is the panel's own fixed height; in a sheet it is
+    /// the sheet's, so the catalogue fills what it was given rather than floating in the top of it.
+    var height: CGFloat?
+
     @Environment(\.accent) private var accent
 
     /// Which tab is lit. Followed by the scroll rather than driving it — pressing a tab jumps
@@ -119,7 +123,7 @@ struct EmojiPanel: View {
 
             tabs
         }
-        .frame(width: width, height: Theme.Size.emojiPanel)
+        .frame(width: width, height: height ?? Theme.Size.emojiPanel)
     }
 
     /// - Parameter across: how many to a row. Left off, the grid fits as many as the panel

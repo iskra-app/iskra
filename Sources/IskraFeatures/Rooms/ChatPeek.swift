@@ -112,8 +112,14 @@ private struct ChatPeekTrigger: ViewModifier {
 
     @Environment(\.chatPeek) private var peek
 
+    /// Which folders this chat is in, opened from its menu — see `FolderMembershipSheet`.
+    @State private var isChoosingFolders = false
+
     func body(content: Content) -> some View {
         content
+            .sheet(isPresented: $isChoosingFolders) {
+                FolderMembershipSheet(room: room, folders: session.folders)
+            }
             // UIKit's hold on the phone, for the reason the message bubble uses it: a SwiftUI long
             // press inside a scrolling list takes the touch, and the list stops scrolling. See
             // `MessageHold`, which has the measurements.
@@ -121,7 +127,8 @@ private struct ChatPeekTrigger: ViewModifier {
             .overlay {
                 MessageHold(duration: Theme.Timing.peekLift,
                             onPressingChanged: { _ in },
-                            onHold: lift)
+                            onHold: lift,
+                            cancelsTouches: true)
             }
             #else
             // A Mac has no long press worth the name, and a right-click is where a Mac user looks
@@ -151,7 +158,7 @@ private struct ChatPeekTrigger: ViewModifier {
         let roomList = session.roomList
         let roomID = room.id
 
-        return [
+        var actions = [
             MessageMenuAction(title: Strings.RoomList.Peek.open,
                               systemImage: "arrow.up.forward.app",
                               perform: onOpen),
@@ -173,6 +180,12 @@ private struct ChatPeekTrigger: ViewModifier {
                                   Task { await roomList.setArchived(roomID: roomID, !isArchived) }
                               }),
         ]
+        if !session.folders.folders.isEmpty, !room.isInvitation {
+            actions.append(MessageMenuAction(title: Strings.Folders.addToFolder,
+                                             systemImage: "folder.badge.plus",
+                                             perform: { isChoosingFolders = true }))
+        }
+        return actions
     }
 }
 
@@ -261,11 +274,6 @@ private struct ChatPeekCard: View {
     /// See `EnvironmentValues.timelineWidth` — measured on the container, never in a row.
     @State private var timelineWidth: CGFloat = 0
 
-    /// Whether the reader has touched the scroll yet. History is asked for from the top of the
-    /// card, and until the card has been anchored at the bottom it *is* at the top — the same trap
-    /// `RoomView` describes, where a room wound itself back to its first day unasked.
-    @State private var hasScrolled = false
-
     private var timeline: TimelineStore { presentation.timeline }
     private var room: RoomSummary { presentation.room }
 
@@ -317,29 +325,32 @@ private struct ChatPeekCard: View {
 
     private var conversation: some View {
         ScrollView {
+            // Upside down, as the room itself is — see `RoomView.body`. The newest message is the
+            // start of the content and history is added at its end, so a page landing above what
+            // is being read moves nothing on the screen, and the card opens at the latest message
+            // without having to be anchored there.
             LazyVStack(spacing: 0) {
-                ForEach(placedRows) { placed in
+                ForEach(placedRows.reversed()) { placed in
                     view(for: placed)
+                        .flippedForTimeline()
                         .id(placed.id)
                 }
             }
             .padding(.horizontal, Theme.Spacing.normal)
-            .padding(.bottom, Theme.Spacing.close)
+            // The top of the content, upside down, is the bottom of the card.
+            .padding(.top, Theme.Spacing.close)
         }
-        // At the latest message, and held there while history lands above — see the two lines
-        // in `RoomView` these are copied from, which say why both are needed.
-        .defaultScrollAnchor(.bottom)
-        .defaultScrollAnchor(.bottom, for: .sizeChanges)
-        .onScrollPhaseChange { _, phase in
-            if phase == .interacting { hasScrolled = true }
-        }
-        // Older messages when the reader nears the top — which is what makes this a look at the
-        // conversation and not at its last screenful. `loadMore` ignores a call while a page is
-        // already coming and once the room has none left, so asking on every change is free.
+        .scrollIndicators(.hidden)
+        .flippedForTimeline()
+        // Older messages when the reader nears the oldest end — which is what makes this a look at
+        // the conversation and not at its last screenful. Turned over, that end is the bottom of
+        // the content, and a card shorter than its history asks at once, which is what fills it.
+        // `loadMore` ignores a call while a page is already coming and once the room has none left,
+        // so asking on every change is free.
         .onScrollGeometryChange(for: CGFloat.self) { geometry in
-            geometry.contentOffset.y + geometry.contentInsets.top
-        } action: { _, offset in
-            guard hasScrolled, offset < Self.historyMargin else { return }
+            geometry.contentSize.height - geometry.contentOffset.y - geometry.containerSize.height
+        } action: { _, toOldest in
+            guard timeline.hasLoaded, toOldest < Self.historyMargin else { return }
             Task { await timeline.loadMore() }
         }
         .onGeometryChange(for: CGFloat.self) { proxy in

@@ -1,19 +1,22 @@
 //! The Iskra nostr tunnel bridge.
 //!
-//! A Matrix client that cannot reach its homeserver directly wraps each HTTP request in a NIP-44
-//! encrypted nostr event and publishes it to a relay. This service listens on those relays,
-//! unwraps the request, makes it against the real homeserver, and sends the response back the same
-//! way. To the network between the client and the relay it looks like nostr, because it is.
+//! A Matrix client that cannot reach its homeserver directly opens a TCP stream through nostr: each
+//! frame is a NIP-44 encrypted event on a relay. This service listens on those relays, connects to
+//! the homeserver the client asked for, and moves bytes both ways. To the network between the
+//! client and the relay it looks like nostr, because it is.
 //!
-//! What the bridge can see is the whole point of the threat model and is stated plainly in the
-//! README: it terminates the Matrix Client-Server API, so it sees the access token, every room and
-//! event id, and the bodies of messages in **unencrypted** rooms. Encrypted rooms stay encrypted —
-//! Olm and Megolm live above this layer and the bridge never holds their keys.
+//! **The bridge cannot read what it carries.** The SDK speaks TLS to the homeserver itself, with
+//! the real certificate checked, through the stream; the bridge sees which host, when, and how many
+//! bytes. No token, no path, no message — not in unencrypted rooms either. That is the whole threat
+//! model, and `docs/BLIND-BRIDGE.md` has it as a table. (The protocol before this one read every
+//! request, token included. It is gone.)
 
+pub mod blind;
 pub mod config;
-pub mod forwarder;
 pub mod listener;
 pub mod ratelimit;
+pub mod sni;
+pub mod stream;
 pub mod upstream;
 
 pub use config::Config;

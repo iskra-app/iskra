@@ -60,6 +60,26 @@ struct MessageHandlers {
     /// holds the store that can send it, so the reason is handed upward.
     var onReport: (String) -> Void = { _ in }
 
+    /// Answers a poll with the whole new choice, or closes one this account started.
+    var onVote: ([String]) -> Void = { _ in }
+    var onEndPoll: () -> Void = {}
+
+    /// Opens the thread under this message — its answers, and a composer that answers into it.
+    /// Nil inside a thread, where there is no thread under a thread, and wherever no room can open one.
+    var onOpenThread: (() -> Void)?
+
+    /// Starts choosing several messages, with this one already chosen — see `MessageSelection`.
+    /// Nil where there is nothing to do with a choice: a pinned list, a search result, a peek.
+    var onSelect: (() -> Void)?
+
+    /// The event's JSON, for the developer's "View JSON" — nil unless that is switched on in Beta.
+    var loadSource: (() -> String?)?
+
+    /// Whether the room lets this account delete other people's messages — see
+    /// `TimelineStore.canDeleteOthers`. A fact rather than a closure, but it travels with the acts
+    /// it unlocks, to both rows and the menu alike.
+    var canDeleteOthers = false
+
     /// Who reacted, named — for the "N reactions" line in a group's menu. Nil in a personal chat,
     /// and nil means the line is not offered. See `ReactorsSheet`.
     var loadReactors: (() async -> [Reactor])?

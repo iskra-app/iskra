@@ -164,66 +164,107 @@ accent and wallpaper where they were.
 
 ### The bridge, from this side
 
-`Bridge/` is a Rust service that carries Matrix over nostr; `IskraCore/Transport/Nostr/` is the
-other half of it. Both link the same wire format on purpose — an envelope one side chunks one way
-and the other reassembles another way fails only under load and only in production — so
-`TunnelEnvelope` mirrors `iskra-tunnel-proto`'s `Envelope` field for field, `body_chunk` included,
-and `NostrTunnelTests` pins that JSON as text.
+`Bridge/` is a Rust service that carries Matrix over nostr; `IskraCore/Transport/` is the other
+half of it. Both speak one wire format on purpose — a stream one side cuts one way and the other
+reassembles another way fails only under load and only in production — so `StreamFrame`,
+`StreamWindow` and `StreamPump` (`Transport/Nostr/`) mirror `iskra-tunnel-proto/src/stream.rs`
+field for field: `NostrTunnelTests` pins the frame JSON as the same text the Rust test does, and
+`StreamWindowTests` asks the window and the reassembly the same questions (reordering, duplicates,
+a hole past `GAP_TIMEOUT`, `fin` before the last `data`, an `ack` for something never sent, the
+1 MiB / 64-segment window measured from what was *written*).
 
-`NostrTunnelUpstream` is an `HTTPUpstream`, which is the whole trick: it stands exactly where
-`DirectUpstream` stands, behind the same `LocalHTTPProxy` that puts the SDK's requests in front of
-us in the clear, and nothing above the transport learns anything. The bridge's address is
-`TunnelSettings.addressKey` in the **App Group's** defaults (`TunnelSettings.store`, Settings →
-Connection) — the notification extension routes by it too, and with it in `.standard` every push
-went straight to the homeserver with the bridge switched on; this device's own nostr key
-is in the Keychain, under a **service of its own** — the session's service is emptied on the way
-out (`SessionStore.remove(sessionID:)` per account, `SessionStore.clear` for all), and a key
-regenerated there would have to be re-added to every closed bridge
-before the user could sign in again, through the bridge they can no longer reach.
-
-A message longer than 24 KiB travels in several events (`TunnelChunker`, `TunnelReassembler`), and
-the arithmetic is the Rust side's, case for case — `TunnelChunkingTests` asks this implementation
-the same questions `chunk.rs` and `reassemble.rs` are asked. Three of those cases are worth knowing
-by heart, because each is a bug that only shows up under load: the head fields ride on chunk 0 and
-an envelope carrying them elsewhere is refused by both ends; chunks arrive out of order and more
-than once, so the head may be last and a duplicate must count once; and everything half-arrived is
-capped — 512 chunks, 8 MB, 64 messages at a time, 60 seconds each — because on a phone the memory
-being held is somebody's.
+**The SDK talks TLS to the real homeserver itself.** With a bridge address filled in, the client is
+built with the homeserver's real URL plus `.proxy(url:)` pointing at `LocalConnectProxy` — a
+loopback listener that answers `CONNECT` and nothing else, and only with its per-launch secret in
+`Proxy-Authorization` (anything on the device can knock on a loopback port; without it, `407`).
+reqwest runs its own TLS through the `CONNECT`, and `NostrStreamTunnel` carries the connection over
+nostr. Nothing above the transport learns anything, and the bridge sees ciphertext.
+`BlindRouteTests` holds that *everything* goes that way — sign-in, sliding sync, media, the
+notification extension's client — against a demo homeserver with real TLS. `LocalHTTPProxy` is no
+longer the bridge's: it stays for the demo and sign-in servers, which live inside the app in the
+clear. Which bridge is a choice between the **public list** (`PublicBridges`, `bridges.json` from
+`github.com/iskra-app/public-bridges` — fetched directly at most once a day, raw GitHub then the
+jsDelivr mirror, with a snapshot in `Resources/public-bridges.json`) and **one's own bridges**,
+as many as the person likes (`TunnelSettings.customBridges`). The bridge in use is stored
+**whole** (`chosenBridgeKey`) — never re-derived from a list — so a public entry that leaves the
+list, or a list reordered tomorrow, never moves anybody to another bridge behind their back; the
+first public bridge used without being picked is written down as picked (`route`). With the
+switch on, the public list *always* asks for a bridge: an empty one is a refusal, not a direct
+route. The old single address field (`addressKey`, `relaysKey`) is read once, into the first of
+one's own bridges. All of it is in the **App Group's** defaults
+(`TunnelSettings.store`, Settings → Connection) — the notification extension routes by it too, and
+with it in `.standard` every push went straight to the homeserver with the bridge switched on; this
+device's own nostr key is in the Keychain, under a **service of its own** — the session's service is
+emptied on the way out (`SessionStore.remove(sessionID:)` per account, `SessionStore.clear` for
+all), and a key regenerated there would have to be re-added to every closed bridge before the user
+could sign in again, through the bridge they can no longer reach.
 
 Four rules about it fail far from their cause:
 
 - **With an address filled in, a tunnel that will not come up is a refusal**
-  (`AuthenticationError.bridgeUnavailable`), never a quiet direct connection. While there was
-  nothing on the far side of the switch, falling back cost nothing; now the switch is a decision
-  about who may see the traffic, and going direct without saying so answers that question behind
-  the user's back. With **no** address, there is nothing to fall back *from*: the listener comes up,
-  requests go straight out, and the status says `routingLocally` in those words.
+  (`AuthenticationError.bridgeUnavailable`), never a quiet direct connection: the switch is a
+  decision about who may see the traffic, and going direct without saying so answers that question
+  behind the user's back. A bridge that answers `open` with `rst` says why in one word (`reason` in
+  `stream.rs`), and that word reaches the screen. With **no** address, there is nothing to fall
+  back *from*: the client is built without a proxy and the status says `.off`.
 - **A relay list of one is a mistake, not a simplification.** An event is published to all relays
   at once and the answer comes from whichever is quickest; `relay.damus.io` answers `503` to the
   connection itself often enough to be the standing example. Duplicates are the price, and
   `NostrRelayPool` drops them by event id.
 - **Nothing in the tunnel waits for a relay to say `OK`.** `NostrRelayPool.publish` hands the event
-  to every open socket and returns; what is waited for is the *answer*. The bridge learnt this the
-  expensive way: nostr-sdk's `send_event` returns only once every relay has acknowledged or timed
-  out — ten seconds for a relay that is down — and chunks sent one after another each waited out the
-  dead relay, so a three-chunk sync answer took twenty seconds and the chat list with it. Waiting
-  for acknowledgements "to be sure" here would bring exactly that back, on the phone.
-  `LiveBridgeSessionTests` is what found it: a whole SDK session through a real bridge, timed
-  request by request against the same session run direct.
-- **The loopback listener does not survive a suspension by itself.** iOS reclaims a suspended
-  app's listening sockets (TN2277), and the SDK knows the homeserver only as
-  `http://127.0.0.1:<that port>` — so after a while in a pocket every request was refused and the
-  app said "no network" while the bridge answered perfectly well. `LocalHTTPProxy` watches its
-  listener for the whole of its life and rebinds on the **same** port when it is lost, and
-  `UserSession.enteredForeground` wakes the tunnels (listener checked, relays pinged, backoff cut
-  short) *before* sync resumes. The same goes for the demo and sign-in servers, which stand behind
-  the same listener. A change of bridge settings is applied the same way a change of account is —
-  the session closed and restored (`TunnelSettings.changed`, answered by the root) — because a
-  client cannot be re-pointed live, and "on the next launch" was an app that stopped loading
-  messages the moment somebody switched the bridge on.
+  to every open socket and returns; what is waited for is the next frame from the other side. The
+  bridge learnt this the expensive way: nostr-sdk's `send_event` returns only once every relay has
+  acknowledged or timed out — ten seconds for a relay that is down — and events sent one after
+  another each waited out the dead relay, so a three-event sync answer took twenty seconds and the
+  chat list with it. Waiting for acknowledgements "to be sure" here would bring exactly that back,
+  on the phone. `LiveBridgeSessionTests` is what found it: a whole SDK session through a real
+  bridge, timed request by request against the same session run direct.
+- **A loopback listener does not survive a suspension by itself.** iOS reclaims a suspended app's
+  listening sockets (TN2277), and the SDK knows its proxy only as `127.0.0.1:<that port>` — so after
+  a while in a pocket every connection was refused and the app said "no network" while the bridge
+  answered perfectly well. `LoopbackListener`, shared by `LocalConnectProxy` and `LocalHTTPProxy`,
+  watches its listener for the whole of its life and rebinds on the **same** port when it is lost,
+  and `UserSession.enteredForeground` wakes the tunnels (listener checked, relays pinged, backoff cut
+  short) *before* sync resumes. A change of bridge settings is applied the same way a change of
+  account is — the session closed and restored (`TunnelSettings.changed`, answered by the root) —
+  because a client cannot be re-pointed live, and "on the next launch" was an app that stopped
+  loading messages the moment somebody switched the bridge on.
+
+**The bridge is blind, and only blind** (kinds 20010/20011, `Bridge/crates/iskra-bridge/src/stream.rs`,
+plan in `docs/BLIND-BRIDGE.md`): it carries a TCP stream the SDK's own TLS runs over, so it sees the
+host and the byte counts and nothing inside. The protocol before it (v1, kinds 20001/20002, HTTP
+requests the bridge read in order to repeat, token included) is **gone from both sides**; there is
+no mode to choose and nothing to fall back to, and bringing any of it back brings back a bridge that
+reads tokens. The frames are `StreamFrame` in `iskra-tunnel-proto/src/stream.rs`; the Swift side
+mirrors them field for field and asks the same questions of its reassembly (`Inbound`/`Outbound`).
+Two rules about it:
+
+- **The words "the bridge cannot see your messages" belong to `.bridgedBlind` and to nothing else** —
+  the status says what is true *now*, not what was chosen. `.connecting` (the tunnel is up, no
+  stream connected yet) claims nothing; `.refused` says the bridge's refusal in words
+  (`BridgeRefusal`, `Strings.Bridge.refusal` — one set of words for the status, "Check the bridge"
+  and sign-in). A sign-in the bridge refused is `AuthenticationError.bridgeRefused`, never the
+  SDK's "not found": that would send somebody hunting for a typo in an address that is fine.
+- **Every `open` carries NIP-13 proof of work** (16 bits, a `nonce` tag committing to the target;
+  segments inside a stream carry none). A nostr key costs nothing, so every ceiling "per key" is a
+  ceiling on nobody; work is the one that holds. The difficulty is not announced anywhere — a
+  bridge that wants more answers `rst` `pow <bits>`, and `NostrStreamTunnel` mines the next `open`
+  to it — up to `maxPowBits` (24) and no further: a broken or hostile bridge must not be able to set
+  a phone mining until the battery is gone, so a higher ask is ignored and mining is bounded and
+  cancellable. Mining hashes only the nonce and the tail of the serialization
+  (`NostrEvent.minedParts`); rebuilding the whole string per try made sixteen bits cost a second.
+- **The host from `open` must equal the ClientHello's SNI, and the connection goes to the addresses
+  that were checked** (`blind.rs`) — on an open bridge, only those that *themselves* answered as
+  Matrix, remembered per `(name, address)` — never to a second lookup of the name. Either shortcut
+  turns the Matrix-host check into a formality: the first by a different virtual host on the same
+  IP, the second by DNS rebinding. What SNI cannot bind is the HTTP `Host` inside the TLS: a Matrix
+  server behind a shared CDN fronts for every site on it, and that limit is stated in
+  `Bridge/README.md`, not "fixed".
 
 `Iskra --probe-bridge [npub] [homeserver]` and the "Check the bridge" button both drive
-`BridgeCheck`, so the terminal and the screen cannot disagree. `LiveBridgeTests` is the end-to-end
+`BridgeCheck` — a `URLSession` through the same `LocalConnectProxy`, `GET /_matrix/client/versions`
+with real TLS — so the terminal and the screen cannot disagree. (CFNetwork never proxies
+`127.0.0.1`, which is why its test names a host only the test pipe resolves.) `LiveBridgeTests` is the end-to-end
 check against a real bridge and is **off** unless `ISKRA_BRIDGE_PUBKEY` is set — `swift test` stays
 offline. See `Bridge/README.md` for the bridge itself and for what it can see.
 
@@ -238,7 +279,17 @@ Three SwiftPM library targets, and the dependency rule between them is the whole
 | `IskraFeatures` | The screens | Both — the only place they meet. |
 
 Keeping Matrix out of the views and views out of Matrix is what lets one set of screens serve three
-platforms. `IskraCore` never leaks an SDK type upward: `UserSession` owns the `Client`, and nothing
+platforms.
+
+**`IskraCore` is a package of its own (`Core/`) and a *dynamic* framework**, and the first is what
+makes the second possible. It carries the Rust SDK, ~100 MB of machine code, and the app and both
+extensions link it. Linked statically, each of the three carried its own copy, and the app weighed
+half a gigabyte on a phone. Inside the root package it could not be shared: `IskraFeatures` depends
+on the `IskraCore` *target* there, which is always linked statically, and Xcode refuses outright to
+have one target linked both ways into one app. Across a package boundary `IskraFeatures` depends
+on the *product*, and so the SDK ships once, in `Frameworks/IskraCore.framework`, and the extensions
+load the app's copy (`@executable_path/../../Frameworks`). Putting `IskraCore` back next to
+`IskraFeatures` brings the three copies back; the build will not mention it. `IskraCore` never leaks an SDK type upward: `UserSession` owns the `Client`, and nothing
 above it touches the SDK directly.
 
 The app shells in `Apps/` are deliberately thin — they own the bundle, entitlements and (soon) the
@@ -347,6 +398,28 @@ empty: a switch only the app can see is a switch the lock screen silently disobe
 is an empty circle with nothing in any log. `BetaFeatures` itself moved to `IskraCore` for the same
 reason. Everything else in it stays in `.standard`, where a preference of the app's belongs.
 
+### The widgets and the Live Activities are a third extension
+
+`IskraWidgets` (`Apps/Widgets/`) draws the favourites widget and both Live Activities; the app
+starts and moves the activities (`LiveLocationActivity`, `MediaSendBackground` in
+`IskraFeatures/Support/`) and writes everything the widget reads. Linked like the share
+extension — `IskraCore` and `IskraDesign`, never `IskraFeatures`, the App Group and **not** the
+Keychain group. Four things about it fail far from their cause:
+
+- **`ChatEntity.swift` and `WidgetIntents.swift` are compiled into both bundles**, and their words
+  (`Apps/Shared/<lang>.lproj/Localizable.strings`) are copied into the widget too. A widget's
+  configuration and its buttons are intents matched across bundles by type; a look-alike copy is a
+  different type, and a chat somebody picked fails to resolve in the app, where `perform` runs.
+- **Pictures come from the app.** Neither the widget nor the share sheet holds a token, so the app
+  downloads chats' avatars into the App Group (`DirectoryFaces`, `ChatFaces`) and the directory
+  entry names the file only once it is there. Written `.completeUntilFirstUserAuthentication`:
+  a widget is drawn on a locked phone, and `.complete` would draw it with empty circles.
+- **The widget is reloaded only when what it draws changes** (`WidgetChats.fingerprint`,
+  `WidgetRefresh`). The directory is rewritten on every sync tick; WidgetKit's daily budget is not.
+- **The activities' types are in `IskraCore`** (`LiveActivityAttributes.swift`) because the app and
+  the extension must agree on their JSON. Nothing updates them by push — that would tell our
+  Sygnal who is sharing a location right now.
+
 ### More than one account
 
 Several accounts can be signed in on one device; one is on screen and syncing, the others are
@@ -421,7 +494,9 @@ button with nothing written on it. Tinting each site by hand is not the fix eith
 mono accent the tint *is* `.primary` and the slab comes straight back. The two styles here draw the
 fill and the words from `AccentTheme.color` and `AccentTheme.foreground(in:)`, which is the pair
 "the accent, and what stays readable on top of it". Use `.glassAction` on the navigation layer
-(sign-in, recovery) and `.primaryAction` in content.
+(sign-in, recovery) and `.primaryAction` in content. The second button beside a `.glassAction` is
+`.glassSecondary` — same capsule, same height — not the system's `.glass`, which is a few points
+shorter and made the two stacked buttons look like two different kinds of thing.
 
 **`@Environment(\.dismiss)` is not allowed in a screen pushed onto the sidebar column.** On
 macOS 26 a view that sits in the sidebar's stack, reads `dismiss`, *and* pushes a screen of its

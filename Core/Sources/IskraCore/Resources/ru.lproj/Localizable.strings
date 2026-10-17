@@ -1,0 +1,238 @@
+/* Iskra — user-facing text.
+   Edit the values, never the keys. The keys are referenced from Strings.swift.
+   Language: ru */
+
+/* Device name shown in the user's list of signed-in devices. */
+"device.generic" = "Iskra";
+
+/* Device name shown in the user's list of signed-in devices. */
+"device.iOS" = "Iskra на iPhone или iPad";
+
+/* Device name shown in the user's list of signed-in devices. */
+"device.mac" = "Iskra на Mac";
+
+/* Summary line for an audio file in the chat list. */
+"preview.audio" = "Аудио";
+
+/* Summary line for a message that was deleted. */
+"preview.deleted" = "Сообщение удалено";
+
+/* Summary line for a file attachment in the chat list. */
+"preview.file" = "Файл";
+
+/* Summary line for a shared location. */
+"preview.location" = "Геопозиция";
+"preview.liveLocation" = "Геопозиция в реальном времени";
+
+/* Summary line for a photo in the chat list. */
+"preview.photo" = "Фото";
+
+/* Summary line for a poll. */
+"preview.poll" = "Опрос";
+
+/* Summary line for a sticker. */
+"preview.sticker" = "Стикер";
+
+/* Summary line for a message this device has no key for. Deliberately avoids the words 'decrypt' and 'key'. */
+"preview.unreadable" = "Сообщение, которое пока не открыть";
+
+/* Summary line for a video in the chat list. */
+"preview.video" = "Видео";
+
+/* Summary line for a round video message. */
+"preview.videoNote" = "Видеосообщение";
+
+/* Summary line for a voice message. */
+"preview.voice" = "Голосовое сообщение";
+
+/* Says an unencrypted room is one, in three words. Read as a status, not as a warning. */
+"privacy.notProtected" = "Переписка не зашифрована";
+
+/* Says an encrypted room is one. Sits directly under the name, where it is read at a glance. */
+"privacy.protected" = "Переписка зашифрована";
+
+/* Shown before we have synced enough to know. Never claim protection we cannot see. */
+"privacy.unknown" = "Проверяем шифрование";
+
+/* Fallback name for a conversation that has none. Most Matrix DMs have no name. */
+"room.untitled" = "Чат";
+
+/* Shown when a message could not be sent. The SDK retries, so this reassures rather than alarms. */
+"timeline.sendFailed" = "Сообщение не отправилось. Попробуем ещё раз автоматически.";
+
+/* A sticker that did not go. Unlike a message, it is not retried. */
+"timeline.stickerFailed" = "Стикер не отправился. Проверьте связь и попробуйте ещё раз.";
+
+/* The account's sticker pack would not take a new sticker. */
+"stickers.addFailed" = "Не получилось добавить стикер. Попробуйте ещё раз.";
+
+/* The account's sticker pack would not let a sticker go. */
+"stickers.removeFailed" = "Не получилось убрать стикер. Попробуйте ещё раз.";
+
+/* Shown when an emoji reaction could not be sent. Must not say "message" — nothing the user wrote is at stake. */
+"timeline.reactionFailed" = "Реакция не отправилась. Попробуйте ещё раз.";
+
+/* Shown when deleting a message failed. Must be unambiguous: the message is still there, and everyone can still read it. */
+"timeline.deleteFailed" = "Сообщение не удалилось — оно всё ещё в чате. Попробуйте ещё раз.";
+
+/* Why a message is stuck, tapped from the badge beside it. Each names what to do next:
+   the user is the only one who can clear these. No cryptography vocabulary. */
+"sendFailure.insecureDevices" = "Проверенный вами собеседник вошёл с устройства, которое сам ещё не подтвердил. Если доверяете этому устройству — отправьте всё равно.";
+"sendFailure.identityChanged" = "Ключи шифрования у проверенного вами собеседника сменились. Если уверены, что это тот же человек, — отправьте всё равно.";
+"sendFailure.verificationRequired" = "Подтвердите это устройство, чтобы писать в защищённый чат. Это делается в настройках.";
+"sendFailure.missingMedia" = "Файла больше нет на этом устройстве — отправлять нечего.";
+"sendFailure.unsupportedFileType" = "Такие файлы отправлять нельзя.";
+"sendFailure.server" = "Ваш сервер не принял это сообщение.";
+
+/* Экран «Устройства», когда что-то не вышло. */
+"devices.loadFailed" = "Не получилось загрузить список устройств. Проверьте связь и попробуйте ещё раз.";
+"devices.endFailed" = "Сеанс не завершился. Попробуйте ещё раз.";
+"devices.wrongPassword" = "Пароль не подошёл.";
+"devices.managedElsewhere" = "На этом сервере сеансы завершаются на его сайте.";
+
+/* The strip above a message that answers another one. */
+"reply.loading" = "Загружаем сообщение…";
+"reply.unavailable" = "Сообщение недоступно";
+
+/* Shown when an edit could not be sent. The message still says the old thing — say so. */
+"timeline.editFailed" = "Изменение не сохранилось — сообщение осталось прежним. Попробуйте ещё раз.";
+
+/* Shown when pinning or unpinning was refused. */
+"timeline.pinFailed" = "Не получилось изменить закреплённые сообщения. Возможно, у вас нет на это прав.";
+"timeline.reportFailed" = "Жалоба не ушла. Попробуйте ещё раз.";
+"timeline.pollFailed" = "Не получилось — опрос остался как был. Попробуйте ещё раз.";
+"timeline.pollEndedBody" = "Опрос завершён";
+
+/* The grey lines across a conversation: people coming and going, the room changing.
+   Written so they are true of anybody: Matrix does not know anyone's gender, so
+   "Аня вошла" is a coin flip on every name. Neutral phrasing sidesteps it entirely. */
+"roomEvent.joined" = "%@ теперь в чате";
+"roomEvent.left" = "%@ больше не в чате";
+"roomEvent.invited" = "Пригласили: %@";
+"roomEvent.removed" = "Исключили: %@";
+"roomEvent.banned" = "Заблокировали: %@";
+"roomEvent.renamedThemselves" = "%1$@ теперь %2$@";
+"roomEvent.roomRenamed" = "Теперь чат называется «%@»";
+"roomEvent.roomTopicChanged" = "Описание чата изменилось";
+"roomEvent.roomPictureChanged" = "У чата новое фото";
+"roomEvent.roomCreated" = "Чат создан";
+"roomEvent.encryptionEnabled" = "Шифрование включено";
+"roomEvent.pair" = "%1$@ и %2$@";
+
+/* What a client that cannot draw a map shows instead of one. */
+"timeline.locationBody" = "Геопозиция: %1$.6f, %2$.6f";
+
+/* Изменения комнаты, которых сервер не сделал. Каждое — своей фразой: «что-то пошло не
+   так» не говорит человеку ничего, а «вас не пустили» говорит, что дело в правах и что
+   в комнате всё осталось как было. */
+"roomAction.renameFailed" = "Название не изменилось. Возможно, у вас нет на это прав.";
+"roomAction.topicFailed" = "Описание не изменилось. Возможно, у вас нет на это прав.";
+"roomAction.pictureFailed" = "Фото не изменилось. Возможно, у вас нет на это прав.";
+"roomAction.visibilityFailed" = "Не получилось изменить, кто может войти в чат.";
+"roomAction.inviteFailed" = "Не получилось пригласить. Проверьте адрес — он выглядит как @имя:сервер.";
+"roomAction.removeFailed" = "Не получилось исключить. Человек остался в чате.";
+"roomAction.banFailed" = "Не получилось заблокировать. Человек остался в чате.";
+"roomAction.roleFailed" = "Роль не изменилась. Возможно, у вас нет на это прав.";
+"roomAction.rulesFailed" = "Разрешение не изменилось. Возможно, у вас нет на это прав.";
+"roomAction.leaveFailed" = "Не получилось выйти из чата. Попробуйте ещё раз.";
+"roomAction.createFailed" = "Чат не создался. Возможно, сервер не ответил — попробуйте ещё раз.";
+"roomAction.joinAddressInvalid" = "Адрес комнаты выглядит как #название:сервер или !id:сервер.";
+"roomAction.joinFailed" = "Не получилось войти в комнату. Возможно, её нет, она закрыта или сервер не ответил.";
+"roomAction.alertsFailed" = "Уведомления этого чата не изменились. Попробуйте ещё раз.";
+
+/* Аккаунт: имя, фото и шифрование. */
+"account.nameFailed" = "Имя не изменилось. Попробуйте ещё раз.";
+"account.pictureFailed" = "Фото не изменилось. Попробуйте ещё раз.";
+"account.protectFailed" = "Не получилось защитить переписку. Попробуйте ещё раз — ключи от старых сообщений остались там, где были.";
+"account.newKeyFailed" = "Новый код не создался. Старый по-прежнему работает.";
+"account.restoreFailed" = "Код не подошёл. Проверьте, что скопировали его целиком, вместе с пробелами.";
+"account.staleCodeFailed" = "Код составлен верно — и всё-таки не подходит к этому аккаунту. Так бывает, когда код восстановления создали заново: прежний перестаёт работать навсегда.";
+
+/* Сброс не удался — и это тот редкий случай, когда неудача хорошая новость: ничего не потеряно. */
+"account.startOverFailed" = "Не получилось начать заново. Попробуйте ещё раз — пока всё осталось как было.";
+"account.blockFailed" = "Не получилось заблокировать. Попробуйте ещё раз.";
+"account.unblockFailed" = "Не получилось разблокировать. Попробуйте ещё раз.";
+
+/* Пуши. Сообщение говорит само за себя — переводить тут нечего, кроме приглашения. */
+"push.invite" = "%@ приглашает вас в чат";
+"push.hiddenTitle" = "Iskra";
+"push.hiddenBody" = "Новое сообщение";
+
+/* Кто-то поставил реакцию на ваше сообщение. Существительное, а не глагол: Matrix не знает
+   рода, а «отреагировал(а)» — это не по-русски. Какая именно реакция, SDK не сообщает. */
+"push.reaction" = "Реакция на ваше сообщение";
+
+/* Расширение «Поделиться». */
+"share.title" = "Отправить в…";
+"share.cancel" = "Отмена";
+"share.empty" = "Сначала откройте Iskra и войдите — тогда здесь появятся чаты.";
+"share.willSendOnOpen" = "Уйдёт сразу — Iskra откроется, чтобы отправить.";
+"share.comment" = "Добавить комментарий…";
+"share.send" = "Отправить";
+"share.locked" = "Iskra заперта";
+"share.lockedBody" = "Разблокируйте её — и появятся ваши чаты.";
+"share.unlock" = "Разблокировать";
+"share.unlockReason" = "Чтобы отправить это в Iskra";
+
+/* Приглашения в комнату. */
+"roomAction.acceptInviteFailed" = "Не получилось войти в чат. Возможно, приглашение отозвали.";
+"roomAction.declineInviteFailed" = "Не получилось отклонить приглашение. Оно всё ещё висит — попробуйте ещё раз.";
+
+/* Организация списка: закрепить, архивировать, отметить прочитанным, пожаловаться. */
+"roomAction.pinFailed" = "Не получилось закрепить чат. Он вернулся на место — попробуйте ещё раз.";
+"roomAction.archiveFailed" = "Не получилось убрать чат в архив. Он всё ещё в списке — попробуйте ещё раз.";
+"roomAction.readFailed" = "Не получилось изменить статус прочтения.";
+"roomAction.reportFailed" = "Жалоба не ушла. Попробуйте ещё раз.";
+
+/* Комната не открылась вовсе — это единственный отказ, который не про действие человека:
+   он ничего не нажимал, и ему ничего не отказали. Просто не удалось прочитать комнату. */
+"roomAction.loadFailed" = "Не удалось открыть этот чат. Попробуйте ещё раз.";
+
+/* Правила уведомлений всей учётной записи — см. `NotificationRulesStore`. Это не настройки
+   этого телефона, а пуш-правила на сервере: они действуют на всех устройствах сразу. */
+"notificationRules.directFailed" = "Не получилось изменить уведомления для личных чатов. Переключатель вернулся на место — попробуйте ещё раз.";
+"notificationRules.groupFailed" = "Не получилось изменить уведомления для групп. Переключатель вернулся на место — попробуйте ещё раз.";
+"notificationRules.mentionFailed" = "Не получилось изменить уведомления об упоминаниях. Попробуйте ещё раз.";
+"notificationRules.roomMentionFailed" = "Не получилось изменить уведомления об обращениях ко всем (@room). Попробуйте ещё раз.";
+"notificationRules.invitationFailed" = "Не получилось изменить уведомления о приглашениях. Попробуйте ещё раз.";
+"notificationRules.callFailed" = "Не получилось изменить уведомления о звонках. Попробуйте ещё раз.";
+
+"stickers.subscribeFailed" = "Не получилось добавить набор. Попробуйте ещё раз.";
+"stickers.unsubscribeFailed" = "Не получилось убрать набор. Попробуйте ещё раз.";
+"stickers.clearRecentFailed" = "Не получилось очистить недавние. Попробуйте ещё раз.";
+
+/* Room settings: unban, history, address (stage 9) */
+"roomAction.unbanFailed" = "Не получилось разблокировать. Человек по-прежнему не может войти.";
+"roomAction.historyFailed" = "Не получилось изменить, кому видна история. Осталось как было.";
+"roomAction.addressFailed" = "Не получилось изменить адрес. Попробуйте ещё раз.";
+"roomAction.addressTaken" = "Этот адрес уже занят. Попробуйте другой.";
+"roomAction.directoryFailed" = "Не получилось изменить, видна ли комната в каталоге сервера.";
+
+/* Chat folders (stage 9) */
+"folders.saveFailed" = "Не получилось сохранить папки. Попробуйте ещё раз.";
+
+/* Live location */
+"liveLocation.startFailed" = "Не получилось начать трансляцию геопозиции. Попробуйте ещё раз.";
+"liveLocation.denied" = "У Искры нет доступа к геопозиции. Его можно дать в Настройках.";
+
+"liveLocation.stopFailed" = "Точки больше не отправляются, но сервер не услышал об остановке — у собеседников трансляция может выглядеть живой до конца срока.";
+
+/* Widget and Live Activities — see Apps/Widgets */
+"widget.favourites.name" = "Избранные чаты";
+"widget.favourites.description" = "Лица тех, кому вы пишете чаще всего. Нажмите на лицо — откроется чат.";
+"widget.locked" = "Iskra заперта";
+"widget.empty" = "Откройте Iskra и войдите — тогда здесь появятся чаты.";
+
+"liveActivity.location.sharing" = "Вы делитесь геопозицией";
+"liveActivity.location.finding" = "Ищу, где вы…";
+"liveActivity.location.stop" = "Остановить";
+"liveActivity.location.ended" = "Трансляция окончена";
+"liveActivity.location.stopFailed" = "Сервер не услышал об остановке — у собеседников трансляция может выглядеть живой до конца срока.";
+"liveActivity.media.sendingVideo" = "Отправляю видео";
+"liveActivity.media.sendingPhoto" = "Отправляю фото";
+"liveActivity.media.sendingAlbum" = "Отправляю альбом";
+"liveActivity.media.sendingFile" = "Отправляю файл";
+"liveActivity.media.preparing" = "Готовлю…";
+"liveActivity.media.sent" = "Отправлено";
+"liveActivity.media.failed" = "Не отправилось — нажмите, чтобы открыть чат";
+"liveActivity.media.waiting" = "Продолжит, когда откроете Iskra";

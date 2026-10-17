@@ -182,7 +182,6 @@ struct LocalizationTests {
         (Strings.RoomList.Swipe.delete, en: "Delete", ru: "Удалить"),
         (Strings.RoomList.Swipe.leaveConfirm, en: "Leave", ru: "Выйти"),
         (Strings.RoomList.Archive.title, en: "Archive", ru: "Архив"),
-        (Strings.RoomList.Archive.entry(3), en: "Archive (3)", ru: "Архив (3)"),
 
         // Links behind a confirmation, and reporting a message.
         (Strings.Message.Link.open, en: "Open", ru: "Открыть"),
@@ -636,7 +635,7 @@ struct LocalizationTests {
     /// empty string and, on being sent, replace a caption that was never there. The rule that
     /// prevents it is `editableText`, and it is the same property that fills the box, which is
     /// what keeps the two from drifting apart.
-    @Test("editing is offered only on your own text, and only once it has landed")
+    @Test("editing is offered only on your own words or caption, and only once it has landed")
     func editingIsOfferedHonestly() {
         func message(isOwn: Bool, delivery: DeliveryStatus?, kind: MessageKind = .text("hi")) -> Message {
             Message(id: "1",
@@ -658,7 +657,8 @@ struct LocalizationTests {
         #expect(!message(isOwn: false, delivery: nil).canEdit)
         // Not one still in the queue: an edit points at an event, and there is none yet.
         #expect(!message(isOwn: true, delivery: .sending).canEdit)
-        // Not a photograph, which has no text to change.
+        // A photograph, whose caption is its text — "Edit" is also how one is added afterwards.
+        // But not a sticker, which has nothing to write under it.
         let photo = try? MessageKind.image(Attachment(source: MediaSource.fromUrl(url: "mxc://x/y"),
                                                       thumbnailSource: nil,
                                                       filename: "cat.jpg",
@@ -669,8 +669,11 @@ struct LocalizationTests {
                                                       mimeType: "image/jpeg",
                                                       blurhash: nil))
         #expect(photo != nil)
-        if let photo {
-            #expect(!message(isOwn: true, delivery: .sent, kind: photo).canEdit)
+        if case let .image(attachment)? = photo {
+            #expect(message(isOwn: true, delivery: .sent, kind: .image(attachment)).canEdit)
+            #expect(message(isOwn: true, delivery: .sent, kind: .image(attachment)).editingText == "")
+            #expect(!message(isOwn: true, delivery: .sent, kind: .sticker(attachment)).canEdit)
+            #expect(!message(isOwn: false, delivery: nil, kind: .image(attachment)).canEdit)
         }
         // Not one that is gone.
         #expect(!message(isOwn: true, delivery: .sent, kind: .deleted).canEdit)

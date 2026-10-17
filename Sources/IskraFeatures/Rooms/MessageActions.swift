@@ -17,7 +17,9 @@ import IskraDesign
 /// That is deliberate: the long press lifts what it is attached to, and a menu attached to the
 /// row would lift the avatar, the clock and the width of the screen along with the message.
 /// The one gesture that does belong to the whole row is the swipe, which is why it is a
-/// separate modifier — see `SwipeToReply`.
+/// separate modifier — see `SwipeToReply`. The compact row is the exception, and on purpose: a
+/// plain line has no shape to say whose it is, so there the face, the name and the clock go up
+/// with it — see `CompactMessageRow.heading`.
 ///
 /// It is a view that *wraps* the content rather than a modifier applied to it, and that is not
 /// a matter of taste. The menu lifts a copy of the message out of the scroll view and draws it
@@ -67,6 +69,9 @@ struct MessageActions<Content: View>: View {
     /// other item in that menu can.
     @State private var isConfirmingDelete = false
 
+    /// Whether "End the poll?" is up. Closing a poll cannot be undone, so it asks, as deleting does.
+    @State private var isConfirmingEndPoll = false
+
     /// Whether the report form is up for this message.
     @State private var isReporting = false
 
@@ -75,6 +80,9 @@ struct MessageActions<Content: View>: View {
 
     /// Whether "who reacted" is up — see `ReactorsSheet`.
     @State private var isShowingReactors = false
+
+    /// The event's JSON, while the developer's sheet for it is up — see `BetaFeatures.showsEventSourceKey`.
+    @State private var source: EventSource?
 
     /// Which of the two taps this message's finger turned out to be — see `MessageTaps`.
     @State private var taps = MessageTaps()
@@ -207,6 +215,13 @@ struct MessageActions<Content: View>: View {
             } message: {
                 Text(Strings.Message.Menu.deleteConfirmMessage)
             }
+            .confirmationDialog(Text(Strings.Poll.endConfirmTitle),
+                                isPresented: $isConfirmingEndPoll,
+                                titleVisibility: .visible) {
+                Button(String(app: Strings.Poll.end), role: .destructive, action: handlers.onEndPoll)
+            } message: {
+                Text(Strings.Poll.endConfirmMessage)
+            }
             .sheet(isPresented: $isReporting) {
                 ReportSheet(onReport: handlers.onReport)
             }
@@ -219,6 +234,9 @@ struct MessageActions<Content: View>: View {
                 if let load = handlers.loadReactors {
                     ReactorsSheet(reactions: message.reactions, load: load)
                 }
+            }
+            .sheet(item: $source) { source in
+                EventSourceSheet(json: source.json)
             }
     }
 
@@ -393,6 +411,14 @@ struct MessageActions<Content: View>: View {
                                              perform: handlers.onReply))
         }
 
+        // Answering in a thread rather than in the room: the same thread the line under the message
+        // opens, started here when there is none yet. Only on something the server has.
+        if message.canReply, message.threadRootID == nil, let onOpenThread = handlers.onOpenThread {
+            actions.append(MessageMenuAction(title: Strings.Thread.replyInThread,
+                                             systemImage: "bubble.left.and.text.bubble.right",
+                                             perform: onOpenThread))
+        }
+
         if message.canEdit && !isOffline {
             actions.append(MessageMenuAction(title: Strings.Message.Menu.edit,
                                              systemImage: "pencil",
@@ -443,6 +469,39 @@ struct MessageActions<Content: View>: View {
                                              perform: handlers.onTogglePin))
         }
 
+        // Several at once: forward them together, copy them as one piece of text, delete a run of
+        // mistakes. Telegram's "Select", with this message already ticked.
+        if let onSelect = handlers.onSelect, message.delivery?.hasFailed != true {
+            actions.append(MessageMenuAction(title: Strings.Message.Menu.select,
+                                             systemImage: "checkmark.circle",
+                                             perform: onSelect))
+        }
+
+        // For whoever is chasing a message that draws wrong — Beta → for developers.
+        if let loadSource = handlers.loadSource {
+            actions.append(MessageMenuAction(title: Strings.Beta.viewSource,
+                                             systemImage: "curlybraces",
+                                             perform: {
+                                                 source = EventSource(json: loadSource() ?? String(app: Strings.Beta.noSource))
+                                             }))
+        }
+
+        // Taking a vote back: a response with no answers in it, which the poll counts as no vote at
+        // all (MSC3381). Only while the poll is open, and only for somebody who has voted.
+        if case let .poll(poll) = message.kind, poll.hasVoted, !poll.isEnded, !isOffline {
+            actions.append(MessageMenuAction(title: Strings.Poll.retract,
+                                             systemImage: "arrow.uturn.backward.circle",
+                                             perform: { handlers.onVote([]) }))
+        }
+
+        // Only the sender may close a poll — the room ignores an end from anybody else — and only
+        // one the server has.
+        if message.canEndPoll && !isOffline {
+            actions.append(MessageMenuAction(title: Strings.Poll.end,
+                                             systemImage: "stop.circle",
+                                             perform: { isConfirmingEndPoll = true }))
+        }
+
         return actions
     }
 
@@ -451,7 +510,8 @@ struct MessageActions<Content: View>: View {
     private var reporting: [MessageMenuAction] {
         var actions: [MessageMenuAction] = []
 
-        if message.canDelete && !isOffline {
+        // Your own, or — for a moderator the room allows it — anybody's.
+        if (message.canDelete || (handlers.canDeleteOthers && message.canBeDeletedByModerator)) && !isOffline {
             actions.append(MessageMenuAction(title: Strings.Message.Menu.delete,
                                              systemImage: "trash",
                                              manner: .destructive,

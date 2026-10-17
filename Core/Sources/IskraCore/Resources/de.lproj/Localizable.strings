@@ -1,0 +1,235 @@
+/* Iskra — user-facing text.
+   Edit the values, never the keys. The keys are referenced from Strings.swift.
+   Language: de */
+
+/* Device name shown in the user's list of signed-in devices. */
+"device.generic" = "Iskra";
+
+/* Device name shown in the user's list of signed-in devices. */
+"device.iOS" = "Iskra auf iPhone oder iPad";
+
+/* Device name shown in the user's list of signed-in devices. */
+"device.mac" = "Iskra auf dem Mac";
+
+/* Summary line for an audio file in the chat list. */
+"preview.audio" = "Audio";
+
+/* Summary line for a message that was deleted. */
+"preview.deleted" = "Nachricht gelöscht";
+
+/* Summary line for a file attachment in the chat list. */
+"preview.file" = "Datei";
+
+/* Summary line for a shared location. */
+"preview.location" = "Standort";
+"preview.liveLocation" = "Live-Standort";
+
+/* Summary line for a photo in the chat list. */
+"preview.photo" = "Foto";
+
+/* Summary line for a poll. */
+"preview.poll" = "Umfrage";
+
+/* Summary line for a sticker. */
+"preview.sticker" = "Sticker";
+
+/* Summary line for a message this device has no key for. Deliberately avoids the words 'decrypt' and 'key'. */
+"preview.unreadable" = "Nachricht, die sich noch nicht öffnen lässt";
+
+/* Summary line for a video in the chat list. */
+"preview.video" = "Video";
+
+/* Summary line for a round video message. */
+"preview.videoNote" = "Videonachricht";
+
+/* Summary line for a voice message. */
+"preview.voice" = "Sprachnachricht";
+
+/* Says an unencrypted room is one, in three words. Read as a status, not as a warning. */
+"privacy.notProtected" = "Dieser Chat ist nicht verschlüsselt";
+
+/* Says an encrypted room is one. Sits directly under the name, where it is read at a glance. */
+"privacy.protected" = "Dieser Chat ist verschlüsselt";
+
+/* Shown before we have synced enough to know. Never claim protection we cannot see. */
+"privacy.unknown" = "Verschlüsselung wird geprüft";
+
+/* Fallback name for a conversation that has none. Most Matrix DMs have no name. */
+"room.untitled" = "Chat";
+
+/* Shown when a message could not be sent. The SDK retries, so this reassures rather than alarms. */
+"timeline.sendFailed" = "Die Nachricht ist nicht rausgegangen. Wir versuchen es automatisch noch einmal.";
+
+/* A sticker that did not go. Unlike a message, it is not retried. */
+"timeline.stickerFailed" = "Der Sticker ist nicht rausgegangen. Prüfen Sie Ihre Verbindung und versuchen Sie es noch einmal.";
+
+/* The account's sticker pack would not take a new sticker. */
+"stickers.addFailed" = "Der Sticker konnte nicht hinzugefügt werden. Versuchen Sie es noch einmal.";
+
+/* The account's sticker pack would not let a sticker go. */
+"stickers.removeFailed" = "Der Sticker konnte nicht entfernt werden. Versuchen Sie es noch einmal.";
+
+/* Shown when an emoji reaction could not be sent. Must not say "message" — nothing the user wrote is at stake. */
+"timeline.reactionFailed" = "Die Reaktion ist nicht rausgegangen. Versuchen Sie es noch einmal.";
+
+/* Shown when deleting a message failed. Must be unambiguous: the message is still there, and everyone can still read it. */
+"timeline.deleteFailed" = "Die Nachricht wurde nicht gelöscht – sie ist noch im Chat. Versuchen Sie es noch einmal.";
+
+/* Why a message is stuck, tapped from the badge beside it. Each names what to do next:
+   the user is the only one who can clear these. No cryptography vocabulary. */
+"sendFailure.insecureDevices" = "Jemand, den Sie verifiziert haben, ist auf einem Gerät angemeldet, das er selbst noch nicht bestätigt hat. Wenn Sie diesem Gerät vertrauen, senden Sie trotzdem.";
+"sendFailure.identityChanged" = "Die Verschlüsselungsschlüssel einer Person, die Sie verifiziert haben, haben sich geändert. Wenn Sie sicher sind, dass es noch dieselbe Person ist, senden Sie trotzdem.";
+"sendFailure.verificationRequired" = "Bestätigen Sie dieses Gerät, um in einen geschützten Chat zu schreiben. Das geht in den Einstellungen.";
+"sendFailure.missingMedia" = "Die Datei ist nicht mehr auf diesem Gerät – es gibt nichts mehr zu senden.";
+"sendFailure.unsupportedFileType" = "Solche Dateien können nicht gesendet werden.";
+"sendFailure.server" = "Ihr Server hat diese Nachricht nicht angenommen.";
+
+/* The Devices screen, when something did not work. */
+"devices.loadFailed" = "Die Geräteliste konnte nicht geladen werden. Prüfen Sie Ihre Verbindung und versuchen Sie es noch einmal.";
+"devices.endFailed" = "Die Sitzung wurde nicht beendet. Versuchen Sie es noch einmal.";
+"devices.wrongPassword" = "Das Passwort hat nicht gepasst.";
+"devices.managedElsewhere" = "Auf diesem Server werden Sitzungen auf seiner Website beendet.";
+
+/* The strip above a message that answers another one. */
+"reply.loading" = "Nachricht wird geladen…";
+"reply.unavailable" = "Nachricht nicht verfügbar";
+
+/* Shown when an edit could not be sent. The message still says the old thing — say so. */
+"timeline.editFailed" = "Die Änderung wurde nicht gespeichert – die Nachricht ist unverändert. Versuchen Sie es noch einmal.";
+
+/* Shown when pinning or unpinning was refused. */
+"timeline.pinFailed" = "Die angehefteten Nachrichten konnten nicht geändert werden. Vielleicht haben Sie dazu keine Berechtigung.";
+"timeline.reportFailed" = "Die Meldung ist nicht rausgegangen. Versuchen Sie es noch einmal.";
+"timeline.pollFailed" = "Das hat nicht geklappt – die Umfrage ist unverändert. Versuchen Sie es noch einmal.";
+"timeline.pollEndedBody" = "Die Umfrage ist beendet";
+
+/* The grey lines across a conversation: people coming and going, the room changing. */
+"roomEvent.joined" = "%@ ist jetzt im Chat";
+"roomEvent.left" = "%@ ist nicht mehr im Chat";
+"roomEvent.invited" = "Eingeladen: %@";
+"roomEvent.removed" = "Entfernt: %@";
+"roomEvent.banned" = "Blockiert: %@";
+"roomEvent.renamedThemselves" = "%1$@ heißt jetzt %2$@";
+"roomEvent.roomRenamed" = "Der Chat heißt jetzt „%@“";
+"roomEvent.roomTopicChanged" = "Die Chatbeschreibung hat sich geändert";
+"roomEvent.roomPictureChanged" = "Der Chat hat ein neues Bild";
+"roomEvent.roomCreated" = "Chat erstellt";
+"roomEvent.encryptionEnabled" = "Verschlüsselung aktiviert";
+"roomEvent.pair" = "%1$@ und %2$@";
+
+/* What a client that cannot draw a map shows instead of one. */
+"timeline.locationBody" = "Standort: %1$.6f, %2$.6f";
+
+/* Changes to a room the homeserver would not make. One sentence each: "something went
+   wrong" tells nobody anything, while "you weren't allowed to" says it was a question of
+   rights and that the room is unchanged. */
+"roomAction.renameFailed" = "Der Name hat sich nicht geändert. Vielleicht haben Sie dazu keine Berechtigung.";
+"roomAction.topicFailed" = "Die Beschreibung hat sich nicht geändert. Vielleicht haben Sie dazu keine Berechtigung.";
+"roomAction.pictureFailed" = "Das Bild hat sich nicht geändert. Vielleicht haben Sie dazu keine Berechtigung.";
+"roomAction.visibilityFailed" = "Es konnte nicht geändert werden, wer dem Chat beitreten kann.";
+"roomAction.inviteFailed" = "Die Einladung ist nicht rausgegangen. Prüfen Sie die Adresse – sie sieht aus wie @name:server.";
+"roomAction.removeFailed" = "Die Person konnte nicht entfernt werden. Sie ist noch im Chat.";
+"roomAction.banFailed" = "Die Person konnte nicht blockiert werden. Sie ist noch im Chat.";
+"roomAction.roleFailed" = "Die Rolle hat sich nicht geändert. Vielleicht haben Sie dazu keine Berechtigung.";
+"roomAction.rulesFailed" = "Die Berechtigung hat sich nicht geändert. Vielleicht fehlen Ihnen die Rechte dafür.";
+"roomAction.leaveFailed" = "Sie konnten den Chat nicht verlassen. Versuchen Sie es noch einmal.";
+"roomAction.createFailed" = "Der Chat wurde nicht erstellt. Vielleicht hat der Server nicht geantwortet – versuchen Sie es noch einmal.";
+"roomAction.joinAddressInvalid" = "Eine Raumadresse sieht so aus: #name:server oder !id:server.";
+"roomAction.joinFailed" = "Dem Raum konnte nicht beigetreten werden. Vielleicht gibt es ihn nicht, er ist geschlossen oder der Server hat nicht geantwortet.";
+"roomAction.alertsFailed" = "Die Mitteilungen dieses Chats haben sich nicht geändert. Versuchen Sie es noch einmal.";
+
+/* The account: name, picture and encryption. */
+"account.nameFailed" = "Ihr Name hat sich nicht geändert. Versuchen Sie es noch einmal.";
+"account.pictureFailed" = "Ihr Bild hat sich nicht geändert. Versuchen Sie es noch einmal.";
+"account.protectFailed" = "Ihre Nachrichten konnten nicht geschützt werden. Versuchen Sie es noch einmal – die Schlüssel zu Ihren alten Nachrichten sind noch da, wo sie waren.";
+"account.newKeyFailed" = "Der neue Code wurde nicht erstellt. Der alte funktioniert weiterhin.";
+"account.restoreFailed" = "Der Code hat nicht gepasst. Prüfen Sie, ob Sie ihn vollständig kopiert haben, samt Leerzeichen.";
+"account.staleCodeFailed" = "Der Code ist richtig aufgebaut – und passt trotzdem nicht zu diesem Konto. Das passiert, wenn ein Wiederherstellungscode neu erstellt wurde: Der vorherige funktioniert dann nie wieder.";
+
+/* The reset failed — the rare case where failure is the good news: nothing was lost. */
+"account.startOverFailed" = "Neustart hat nicht geklappt. Versuchen Sie es noch einmal – vorerst ist alles wie vorher.";
+"account.blockFailed" = "Blockieren hat nicht geklappt. Versuchen Sie es noch einmal.";
+"account.unblockFailed" = "Entsperren hat nicht geklappt. Versuchen Sie es noch einmal.";
+
+/* Pushes. A message speaks for itself — there is nothing to translate but the invitation. */
+"push.invite" = "%@ lädt Sie in den Chat ein";
+"push.hiddenTitle" = "Iskra";
+"push.hiddenBody" = "Neue Nachricht";
+
+/* Somebody reacted to something you said. Which reaction is not in the push — see Strings.swift. */
+"push.reaction" = "Reaktion auf Ihre Nachricht";
+
+/* The Share extension. */
+"share.title" = "Senden an …";
+"share.cancel" = "Abbrechen";
+"share.empty" = "Öffnen Sie zuerst Iskra und melden Sie sich an – dann erscheinen hier Ihre Chats.";
+"share.willSendOnOpen" = "Geht sofort raus – Iskra öffnet sich zum Senden.";
+"share.comment" = "Kommentar hinzufügen…";
+"share.send" = "Senden";
+"share.locked" = "Iskra ist gesperrt";
+"share.lockedBody" = "Entsperren Sie sie, dann erscheinen Ihre Chats.";
+"share.unlock" = "Entsperren";
+"share.unlockReason" = "Um das an Iskra zu senden";
+
+/* Room invitations. */
+"roomAction.acceptInviteFailed" = "Sie konnten dem Chat nicht beitreten. Vielleicht wurde die Einladung zurückgezogen.";
+"roomAction.declineInviteFailed" = "Die Einladung wurde nicht abgelehnt. Sie ist noch da – versuchen Sie es noch einmal.";
+
+/* Organising the list: pin, archive, mark read, report. */
+"roomAction.pinFailed" = "Der Chat wurde nicht angeheftet. Er ist zurückgerutscht – versuchen Sie es noch einmal.";
+"roomAction.archiveFailed" = "Der Chat wurde nicht archiviert. Er ist noch in der Liste – versuchen Sie es noch einmal.";
+"roomAction.readFailed" = "Der Lesestatus konnte nicht geändert werden.";
+"roomAction.reportFailed" = "Die Meldung ist nicht rausgegangen. Versuchen Sie es noch einmal.";
+
+/* The room would not open at all — the one refusal here that is not about something the user did:
+   they pressed nothing and were refused nothing. The room simply could not be read. */
+"roomAction.loadFailed" = "Dieser Chat ließ sich nicht öffnen. Versuchen Sie es noch einmal.";
+
+/* Account-wide notification rules — see `NotificationRulesStore`. These are not settings on this
+   phone but push rules on the server: they apply to every device at once. */
+"notificationRules.directFailed" = "Die Mitteilungen für private Chats haben sich nicht geändert. Der Schalter ist zurückgesprungen – versuchen Sie es noch einmal.";
+"notificationRules.groupFailed" = "Die Mitteilungen für Gruppen haben sich nicht geändert. Der Schalter ist zurückgesprungen – versuchen Sie es noch einmal.";
+"notificationRules.mentionFailed" = "Die Mitteilungen für Erwähnungen haben sich nicht geändert. Versuchen Sie es noch einmal.";
+"notificationRules.roomMentionFailed" = "Die Mitteilungen für @room haben sich nicht geändert. Versuchen Sie es noch einmal.";
+"notificationRules.invitationFailed" = "Die Mitteilungen für Einladungen haben sich nicht geändert. Versuchen Sie es noch einmal.";
+"notificationRules.callFailed" = "Die Mitteilungen für Anrufe haben sich nicht geändert. Versuchen Sie es noch einmal.";
+
+"stickers.subscribeFailed" = "Das Set konnte nicht hinzugefügt werden. Versuchen Sie es noch einmal.";
+"stickers.unsubscribeFailed" = "Das Set konnte nicht entfernt werden. Versuchen Sie es noch einmal.";
+"stickers.clearRecentFailed" = "Die zuletzt verwendeten Sticker konnten nicht gelöscht werden. Versuchen Sie es noch einmal.";
+
+/* Room settings: unban, history, address (stage 9) */
+"roomAction.unbanFailed" = "Die Blockierung ließ sich nicht aufheben. Die Person kann weiterhin nicht beitreten.";
+"roomAction.historyFailed" = "Wer den Verlauf sieht, ließ sich nicht ändern. Es bleibt, wie es war.";
+"roomAction.addressFailed" = "Die Adresse ließ sich nicht ändern. Versuchen Sie es noch einmal.";
+"roomAction.addressTaken" = "Diese Adresse ist schon vergeben. Versuchen Sie eine andere.";
+"roomAction.directoryFailed" = "Ob der Raum im Verzeichnis des Servers steht, ließ sich nicht ändern.";
+
+/* Chat folders (stage 9) */
+"folders.saveFailed" = "Die Ordner ließen sich nicht speichern. Versuchen Sie es noch einmal.";
+
+/* Live location */
+"liveLocation.startFailed" = "Der Live-Standort ließ sich nicht starten. Versuchen Sie es noch einmal.";
+"liveLocation.denied" = "Iskra darf Ihren Standort nicht verwenden. Das lässt sich in den Einstellungen erlauben.";
+
+"liveLocation.stopFailed" = "Es werden keine Punkte mehr gesendet, aber der Server hat das Ende nicht mitbekommen – andere sehen es womöglich bis zum Ablauf als live.";
+
+/* Widget and Live Activities — see Apps/Widgets */
+"widget.favourites.name" = "Favorisierte Chats";
+"widget.favourites.description" = "Die Menschen, denen Sie am häufigsten schreiben. Tippen Sie auf ein Gesicht, um den Chat zu öffnen.";
+"widget.locked" = "Iskra ist gesperrt";
+"widget.empty" = "Öffnen Sie Iskra und melden Sie sich an – dann erscheinen hier Ihre Chats.";
+
+"liveActivity.location.sharing" = "Sie teilen Ihren Standort";
+"liveActivity.location.finding" = "Standort wird gesucht …";
+"liveActivity.location.stop" = "Beenden";
+"liveActivity.location.ended" = "Teilen beendet";
+"liveActivity.location.stopFailed" = "Der Server hat das Ende nicht mitbekommen – andere sehen es womöglich bis zum Ablauf als live.";
+"liveActivity.media.sendingVideo" = "Video wird gesendet";
+"liveActivity.media.sendingPhoto" = "Foto wird gesendet";
+"liveActivity.media.sendingAlbum" = "Album wird gesendet";
+"liveActivity.media.sendingFile" = "Datei wird gesendet";
+"liveActivity.media.preparing" = "Wird vorbereitet …";
+"liveActivity.media.sent" = "Gesendet";
+"liveActivity.media.failed" = "Nicht gesendet – tippen Sie, um den Chat zu öffnen";
+"liveActivity.media.waiting" = "Geht weiter, sobald Sie Iskra öffnen";
