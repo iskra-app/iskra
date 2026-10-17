@@ -239,7 +239,6 @@ public enum Strings {
 
         public static let status = LocalizedStringResource("connection.status", bundle: bundle)
         public static let statusDirect = LocalizedStringResource("connection.statusDirect", bundle: bundle)
-        public static let statusLocal = LocalizedStringResource("connection.statusLocal", bundle: bundle)
         public static func statusBridged(_ relays: Int) -> LocalizedStringResource {
             LocalizedStringResource("connection.statusBridged",
                                     defaultValue: "Through the bridge, relays: \(relays)",

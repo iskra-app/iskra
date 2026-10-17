@@ -1,5 +1,4 @@
 import Foundation
-import Synchronization
 
 /// The user's choice about routing traffic through a bridge, and where that choice is written down.
 ///
@@ -102,9 +101,9 @@ public enum TunnelSettings {
     /// for. The root view answers it — closing the session and restoring it again, which is what a
     /// relaunch used to be needed for.
     ///
-    /// Needed at all because a Matrix client is built *around* its homeserver address: with the
-    /// switch on, that address is this app's own listener, and with it off, the homeserver. A live
-    /// client cannot be moved from one to the other, so flipping the switch did nothing until the
+    /// Needed at all because a Matrix client is built *around* its connection: with the switch on it
+    /// goes through this app's own proxy, and with it off, straight out. A live client cannot be
+    /// moved from one to the other, so flipping the switch did nothing until the
     /// next launch — and in a place where the direct route is blocked, "nothing" was an app that
     /// stopped loading messages the moment somebody reached for the thing that would fix it.
     public static let changed = Notification.Name("moscow.swag.iskra.tunnelSettingsChanged")
@@ -136,55 +135,19 @@ public enum TunnelSettings {
         return URL(string: "https://\(trimmed)")
     }
 
-    // MARK: - What the listener is standing in for
-
-    /// The real homeserver behind the loopback address, for as long as the listener is up.
-    ///
-    /// A process-wide register rather than a value passed around, because of who needs to read it:
-    /// `SessionDelegate.saveSessionInKeychain` is called *synchronously from a Rust thread* in the
-    /// middle of a token refresh, has no actor to await and no route back to whoever built the
-    /// client.
-    ///
-    /// Keyed by the listener's port, because there can be more than one listener: every signed-in
-    /// account on its own homeserver has its own, and signing another one in while the first is
-    /// open raises a third. One register for all of them wrote the last homeserver down for every
-    /// account — the loopback address of one account's session swapped for another account's
-    /// server. The entry under no port is what a caller that does not know its port said.
-    private static let standIn = Mutex<[String: String]>([:])
-
-    private static func slot(_ port: UInt16?) -> String { port.map(String.init) ?? "*" }
-
-    /// Called when the listener comes up, and again when `.well-known` reveals where the homeserver
-    /// really lives — `matrix.org` delegates to `matrix-client.matrix.org`, and it is the second
-    /// address that every request after discovery belongs to.
-    public static func listenerStandsIn(for homeserver: URL, port: UInt16? = nil) {
-        standIn.withLock { $0[slot(port)] = homeserver.absoluteString }
-    }
-
-    /// One listener gone, or — given no port — all of them.
-    public static func listenerStoppedStandingIn(port: UInt16? = nil) {
-        standIn.withLock { table in
-            if let port { table[slot(port)] = nil } else { table.removeAll() }
-        }
-    }
-
-    /// Whether this address is one of our own listeners rather than a homeserver.
+    /// Whether this address is this machine.
     public static func isLoopback(_ url: String) -> Bool {
         guard let host = URL(string: url)?.host()?.lowercased() else { return false }
         return host == "127.0.0.1" || host == "localhost" || host == "::1"
     }
 
-    /// The address worth writing down, given the one the SDK believes in.
-    ///
-    /// **A loopback address must never reach the Keychain.** It carries a port the system handed
-    /// out for this launch only; written down, it is read back next launch as the address of
-    /// nothing at all, and the app reports "no network" pointing at a port that closed when it
-    /// last quit. Persisting the homeserver the listener stands in for keeps the record true
-    /// whether or not the switch is on the next time.
-    public static func persistableHomeserver(_ url: String) -> String {
-        guard isLoopback(url) else { return url }
-        let port = URL(string: url)?.port.flatMap { UInt16(exactly: $0) }
-        return standIn.withLock { $0[slot(port)] ?? $0[slot(nil)] } ?? url
+    /// Whether this is the address of one of this app's own HTTP listeners — loopback, and plain
+    /// `http`, because that is all they speak. What `restoreClient` repairs: an account signed in
+    /// while the bridge's first protocol stood a listener in for the homeserver, from before the
+    /// app learnt never to write that address down. A loopback `https` address is somebody's real
+    /// server behind real TLS — the blind-route tests' homeserver — and is left alone.
+    public static func isOurListener(_ url: String) -> Bool {
+        isLoopback(url) && URL(string: url)?.scheme?.lowercased() == "http"
     }
 }
 
@@ -192,16 +155,15 @@ public enum TunnelSettings {
 ///
 /// Every case says what is true of the traffic *now*, never what was chosen. A status that implied
 /// protection there was none of would be the worst kind of lie an app of this sort can tell — which
-/// is why `.routingLocally` is still here and still says what it says: with the switch on and no
-/// bridge address filled in, the listener comes up and the requests still go straight at the
-/// homeserver.
+/// is why the switch on with no bridge address is `.off`: nothing is in the way, and the SDK talks
+/// to the homeserver directly.
 public enum TunnelStatus: Sendable, Equatable {
-    /// The switch is off; the SDK talks to the homeserver directly.
+    /// No bridge: the SDK talks to the homeserver directly.
     case off
-    /// The local listener is up and the SDK's traffic goes through it — but onward from there it
-    /// still goes straight to the homeserver. No nostr, no bridge, no circumvention.
-    case routingLocally(port: UInt16)
-    /// Every request leaves as an encrypted nostr event, with this many relays connected.
+    /// Every connection leaves as a stream of encrypted nostr events, with this many relays
+    /// connected. (The words about what the bridge cannot see are for a case of their own, which
+    /// says it only once the bridge has shown it speaks the blind protocol — `docs/BLIND-BRIDGE.md`,
+    /// step 4.)
     case bridged(relays: Int)
     /// The listener could not be started, or the bridge could not be reached.
     case failed(String)

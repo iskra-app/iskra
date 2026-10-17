@@ -212,7 +212,6 @@
 
 "connection.status" = "Status";
 "connection.statusDirect" = "Direkt";
-"connection.statusLocal" = "Über die lokale Schicht";
 "connection.statusBridged" = "Über die Bridge, Relays: %lld";
 "connection.statusFailed" = "Ließ sich nicht einschalten";
 "connection.pending" = "Die neuen Einstellungen gelten, sobald Sie diesen Bildschirm verlassen: Die App verbindet sich selbst neu.";

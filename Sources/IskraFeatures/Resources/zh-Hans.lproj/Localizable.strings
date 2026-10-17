@@ -212,7 +212,6 @@
 
 "connection.status" = "状态";
 "connection.statusDirect" = "直连";
-"connection.statusLocal" = "通过本地层";
 "connection.statusBridged" = "通过网桥，中继：%lld";
 "connection.statusFailed" = "无法开启";
 "connection.pending" = "离开此页面后新设置即生效：应用会自动重新连接。";

@@ -18,17 +18,11 @@ public struct StoredSession: Codable, Sendable, Equatable {
     /// Opaque OAuth state the SDK hands back; needed to refresh tokens later.
     public let oauthData: String?
 
-    /// - Note: `homeserverURL` is deliberately **not** taken from the session as-is. With the
-    ///   bridge switch on, the SDK's idea of its homeserver is `http://127.0.0.1:<port>` — this
-    ///   launch's listener, on a port the system handed out for this launch only. Writing that
-    ///   down is writing down an address that stops existing when the app quits, and the next
-    ///   launch dials it and reports no network. `TunnelSettings.persistableHomeserver` swaps it
-    ///   back for the homeserver the listener stands in for.
     init(sessionID: String, session: Session) {
         self.init(sessionID: sessionID,
                   userID: session.userId,
                   deviceID: session.deviceId,
-                  homeserverURL: TunnelSettings.persistableHomeserver(session.homeserverUrl),
+                  homeserverURL: session.homeserverUrl,
                   accessToken: session.accessToken,
                   refreshToken: session.refreshToken,
                   oauthData: session.oauthData)

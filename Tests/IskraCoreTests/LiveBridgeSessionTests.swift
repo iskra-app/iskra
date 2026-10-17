@@ -5,22 +5,23 @@ import Testing
 
 /// A whole Matrix session through the bridge — and a stopwatch on every request in it.
 ///
-/// `LiveBridgeTests` proves the tunnel carries a request. This proves it carries a *session*: the
+/// `LiveBridgeTests` proves the bridge carries a connection. This proves it carries a *session*: the
 /// real SDK signs in, sliding sync fills the chat list, a room opens and pages in its history, a
 /// message goes out and an answer comes back — every byte of it as nostr events on public relays,
-/// through a real bridge, to the demo homeserver that lives inside the app.
+/// through a real bridge, to the demo homeserver that lives inside the app, behind real TLS.
 ///
 /// ```
-/// SDK → listener → NostrTunnelUpstream → relays → iskra-bridge → listener → MockHomeserver
+/// SDK → LocalConnectProxy → NostrStreamTunnel → relays → iskra-bridge → TLS listener → MockHomeserver
 /// ```
 ///
 /// The same session is run twice, once straight at the demo server and once through the bridge,
-/// so that what is printed at the end is the tunnel's cost and nothing else. It exists because the
-/// next piece of work on the bridge — a sync aggregator — was planned on an assumption about where
-/// the time goes, and this is where the time actually goes.
+/// so that what is printed at the end is the bridge's cost and nothing else. The stopwatch is at the
+/// server's end: the bridge carries the SDK's own TLS, and only the homeserver ever sees a request.
 ///
 /// It spawns its own bridge, because it has to: the bridge must be allowed to reach this process's
-/// listener, and that port is chosen at run time. So:
+/// listener, and that port is chosen at run time. `localhost` and not `127.0.0.1`, because the
+/// bridge holds the ClientHello's server name to the host it was asked for, and an IP address is
+/// sent without one. So:
 ///
 /// ```sh
 /// (cd Bridge && cargo build -p iskra-bridge)
@@ -31,18 +32,23 @@ import Testing
 struct LiveBridgeSessionTests {
     @Test func aWholeSessionThroughTheBridgeAndWhatItCosts() async throws {
         await MockHomeserver.shared.setReplyDelay(.milliseconds(300))
+        let tls = try TestTLS.make()
 
-        // The demo server, on a port of its own — this is what the bridge will be pointed at.
-        let server = LocalHTTPProxy(upstream: MockHomeserver.shared)
-        let serverPort = try await server.start()
-        defer { Task { await server.stop() } }
-        let homeserver = try #require(URL(string: "http://127.0.0.1:\(serverPort)"))
-
-        // Baseline: the same listener shape, straight at the server.
+        // Baseline: the demo server behind TLS, straight at it.
         let direct = TimedUpstream(MockHomeserver.shared)
-        let baseline = try await runSession(through: direct, label: "direct")
+        let directServer = LocalHTTPProxy(upstream: direct, tls: tls.identity)
+        let directPort = try await directServer.start()
+        defer { Task { await directServer.stop() } }
+        let baseline = try await runSession(homeserver: "https://localhost:\(directPort)", proxy: nil,
+                                            roots: [tls.certificate], label: "direct")
 
-        // And through the bridge.
+        // And through the bridge, to a listener of its own so the two stopwatches stay apart.
+        let tunnelled = TimedUpstream(MockHomeserver.shared)
+        let bridgedServer = LocalHTTPProxy(upstream: tunnelled, tls: tls.identity)
+        let bridgedPort = try await bridgedServer.start()
+        defer { Task { await bridgedServer.stop() } }
+        let homeserver = try #require(URL(string: "https://localhost:\(bridgedPort)"))
+
         let bridgeKeys = try NostrKeypair.generate()
         let bridge = try BridgeProcess.start(secret: bridgeKeys.secret,
                                              allowing: homeserver,
@@ -50,15 +56,18 @@ struct LiveBridgeSessionTests {
         defer { bridge.stop() }
         try await bridge.waitUntilListening()
 
-        let tunnel = try NostrTunnelUpstream(bridgeKey: bridgeKeys.publicKey,
-                                             relays: TunnelSettings.defaultRelays.compactMap(URL.init(string:)),
-                                             keys: try TunnelIdentity(secrets: InMemorySecrets()).keypair(),
-                                             homeserver: homeserver)
-        await tunnel.start()
-        defer { Task { await tunnel.stop() } }
+        let streams = try NostrStreamTunnel(bridgeKey: bridgeKeys.publicKey,
+                                            relays: TunnelSettings.defaultRelays.compactMap(URL.init(string:)),
+                                            keys: try TunnelIdentity(secrets: InMemorySecrets()).keypair())
+        await streams.start()
+        defer { Task { await streams.stop() } }
+        let connect = LocalConnectProxy(upstream: streams)
+        try await connect.start()
+        defer { Task { await connect.stop() } }
 
-        let tunnelled = TimedUpstream(tunnel)
-        let bridged = try await runSession(through: tunnelled, label: "bridge")
+        let bridged = try await runSession(homeserver: homeserver.absoluteString,
+                                           proxy: try #require(await connect.proxyURL),
+                                           roots: [tls.certificate], label: "bridge")
 
         print(Report(baseline: baseline, bridged: bridged,
                      direct: await direct.entries, tunnel: await tunnelled.entries))
@@ -91,7 +100,8 @@ struct LiveBridgeSessionTests {
         var historyPage: Duration = .zero
     }
 
-    private func runSession(through upstream: TimedUpstream, label: String) async throws -> Milestones {
+    private func runSession(homeserver: String, proxy: String?, roots: [Data],
+                            label: String) async throws -> Milestones {
         let root = FileManager.default.temporaryDirectory.appending(component: "iskra-bridge-session-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: root) }
         let data = root.appending(component: "data")
@@ -100,10 +110,6 @@ struct LiveBridgeSessionTests {
         for url in [data, cache, search] {
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         }
-
-        let listener = LocalHTTPProxy(upstream: upstream)
-        let port = try await listener.start()
-        defer { Task { await listener.stop() } }
 
         var milestones = Milestones(label: label)
         let clock = ContinuousClock()
@@ -117,12 +123,14 @@ struct LiveBridgeSessionTests {
         let store = SqliteStoreBuilder(dataPath: data.path(percentEncoded: false),
                                        cachePath: cache.path(percentEncoded: false))
             .passphrase(passphrase: UUID().uuidString)
-        let client = try await ClientBuilder()
+        var builder = ClientBuilder()
             .sqliteStore(config: store)
             .withSearchIndexStore(path: search.path(percentEncoded: false), password: UUID().uuidString)
-            .homeserverUrl(url: "http://127.0.0.1:\(port)")
+            .homeserverUrl(url: homeserver)
+            .addRootCertificates(certificates: roots)
             .slidingSyncVersionBuilder(versionBuilder: .native)
-            .build()
+        if let proxy { builder = builder.proxy(url: proxy) }
+        let client = try await builder.build()
         try await client.login(username: DemoBackend.username, password: "demo",
                                initialDeviceName: "Iskra (bridge session)", deviceId: nil)
         milestones.signedIn = lap()
@@ -215,10 +223,6 @@ actor TimedUpstream: HTTPUpstream {
         return response
     }
 
-    func discovered(homeserver: URL) async {
-        await inner.discovered(homeserver: homeserver)
-    }
-
     /// A route without the identifiers in it, so that forty `send`s are one row and not forty.
     static func kind(of request: ProxiedRequest) -> String {
         let path = request.target.split(separator: "?").first.map(String.init) ?? request.target
@@ -258,9 +262,10 @@ final class BridgeProcess: @unchecked Sendable {
         environment["BRIDGE_NOSTR_PRIVKEY"] = Hex.string(secret)
         environment["RELAY_LIST"] = relays.joined(separator: ",")
         environment["ALLOWED_UPSTREAMS"] = homeserver.absoluteString
-        // The default rate limit, deliberately: a session is dozens of requests in its first
+        // The default limits, deliberately: a session opens several connections in its first
         // seconds, and a default a real session does not fit in is a bridge that works for nobody.
-        environment.removeValue(forKey: "RATE_LIMIT_PER_MIN")
+        environment.removeValue(forKey: "EVENTS_PER_MIN")
+        environment.removeValue(forKey: "STREAM_BYTES_PER_MIN")
         environment["RUST_LOG"] = "info"
         environment["NO_COLOR"] = "1"
         bridge.process.environment = environment
@@ -338,10 +343,7 @@ struct Report: CustomStringConvertible {
 
         out += "\nrequests: direct \(direct.count), bridge \(tunnel.count)\n"
         let span = (tunnel.map(\.started).max() ?? .now) - (tunnel.map(\.started).min() ?? .now)
-        out += "through the bridge: \(tunnel.count) requests in \(Self.ms(span)) "
-        out += "(the bridge's default allows a burst of 120, then two a second)\n"
-        let events = tunnel.reduce(0) { $0 + TunnelChunker.chunkCount(of: $1.requestBytes) }
-        out += "request events published: \(events)\n"
+        out += "through the bridge: \(tunnel.count) requests in \(Self.ms(span))\n"
 
         out += "\nthrough the bridge, by kind       n     p50      p95      max    bytes out/in\n"
         let groups = Dictionary(grouping: tunnel, by: \.kind).sorted { $0.value.count > $1.value.count }

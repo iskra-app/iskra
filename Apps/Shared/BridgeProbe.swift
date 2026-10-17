@@ -1,8 +1,9 @@
 import Foundation
 import IskraCore
 
-/// `Iskra --probe-bridge [address] [homeserver]` sends one real request through the nostr tunnel
-/// and says what came back.
+/// `Iskra --probe-bridge [address] [homeserver]` sends one real request through the bridge — TLS
+/// to the homeserver, carried as nostr streams, the way the SDK's own requests go — and says what
+/// came back.
 ///
 /// It exists for the same reason as the other probes: every way this feature fails looks the same
 /// from inside the app — a sign-in that spins. A key with a typo in it, a bridge that is not
@@ -59,9 +60,10 @@ enum BridgeProbe {
                 print("  ✅ the bridge answered and the homeserver is behind it — \(milliseconds) ms")
                 exit(0)
             case .refused:
-                print("  ❌ the bridge refused this homeserver. Its ALLOWED_UPSTREAMS does not cover")
-                print("     \(homeserver.absoluteString) — which on matrix.org means both matrix.org")
-                print("     and matrix-client.matrix.org.")
+                print("  ❌ the bridge will not take this device to \(homeserver.absoluteString).")
+                print("     Either its ALLOWED_UPSTREAMS does not cover it — which on matrix.org means")
+                print("     both matrix.org and matrix-client.matrix.org — or, on an open bridge, the")
+                print("     host did not answer as a Matrix server on a public address, port 443.")
                 exit(1)
             case .noRelay:
                 print("  ❌ no relay would take the request. Is there any network here at all?")

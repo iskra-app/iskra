@@ -212,7 +212,6 @@
 
 "connection.status" = "Estado";
 "connection.statusDirect" = "Directa";
-"connection.statusLocal" = "A través de la capa local";
 "connection.statusBridged" = "A través del puente, relays: %lld";
 "connection.statusFailed" = "No se ha podido activar";
 "connection.pending" = "La nueva configuración se aplicará en cuanto salga de esta pantalla: la app se reconectará sola.";
