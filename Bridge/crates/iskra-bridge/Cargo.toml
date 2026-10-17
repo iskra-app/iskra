@@ -8,7 +8,7 @@ license.workspace = true
 [dependencies]
 iskra-tunnel-proto = { path = "../iskra-tunnel-proto" }
 nostr-sdk.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, features = ["net", "io-util"] }
 reqwest.workspace = true
 serde_json.workspace = true
 anyhow.workspace = true
@@ -22,3 +22,9 @@ url.workspace = true
 iskra-tunnel-probe = { path = "../iskra-tunnel-probe" }
 nostr-relay-builder = "0.44"
 wiremock = "0.6"
+# A TLS server of the tests' own, for a stream to carry ciphertext to. `ring`, like everything
+# else in the tree: aws-lc would bring a C toolchain into a build that has none.
+rcgen = { version = "0.14", default-features = false, features = ["crypto", "ring", "pem"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
+tracing-subscriber = { workspace = true, features = ["fmt"] }

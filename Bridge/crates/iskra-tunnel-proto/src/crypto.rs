@@ -7,7 +7,9 @@
 use nostr_sdk::nips::nip44::{self, Version};
 use nostr_sdk::prelude::{PublicKey, SecretKey};
 
-use crate::{Envelope, ProtoError, MAX_NIP44_PLAINTEXT};
+use serde::Serialize;
+
+use crate::{Envelope, ProtoError, StreamFrame, MAX_NIP44_PLAINTEXT};
 
 /// Serialize an envelope and encrypt it for `recipient`.
 pub fn seal(
@@ -15,7 +17,24 @@ pub fn seal(
     recipient: &PublicKey,
     envelope: &Envelope,
 ) -> Result<String, ProtoError> {
-    let json = serde_json::to_vec(envelope)?;
+    seal_json(sender_secret, recipient, envelope)
+}
+
+/// The same for a v2 stream frame.
+pub fn seal_frame(
+    sender_secret: &SecretKey,
+    recipient: &PublicKey,
+    frame: &StreamFrame,
+) -> Result<String, ProtoError> {
+    seal_json(sender_secret, recipient, frame)
+}
+
+fn seal_json(
+    sender_secret: &SecretKey,
+    recipient: &PublicKey,
+    value: &impl Serialize,
+) -> Result<String, ProtoError> {
+    let json = serde_json::to_vec(value)?;
     if json.len() > MAX_NIP44_PLAINTEXT {
         return Err(ProtoError::TooLarge(json.len()));
     }
@@ -37,6 +56,20 @@ pub fn open(
     let envelope: Envelope = serde_json::from_str(&plaintext)?;
     envelope.validate()?;
     Ok(envelope)
+}
+
+/// Decrypt an event's content and parse the stream frame inside it. Validated, like an envelope,
+/// before anything sees it.
+pub fn open_frame(
+    recipient_secret: &SecretKey,
+    sender: &PublicKey,
+    content: &str,
+) -> Result<StreamFrame, ProtoError> {
+    let plaintext = nip44::decrypt(recipient_secret, sender, content)
+        .map_err(|_| ProtoError::Undecryptable)?;
+    let frame: StreamFrame = serde_json::from_str(&plaintext)?;
+    frame.validate()?;
+    Ok(frame)
 }
 
 #[cfg(test)]

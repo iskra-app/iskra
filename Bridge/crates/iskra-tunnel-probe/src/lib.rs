@@ -6,6 +6,10 @@
 //! generated one — including the dispatch loop below, which is not an optimisation but the only
 //! shape that survives more than one request in flight.
 
+pub mod stream;
+
+pub use stream::{Outcome, StreamClient, TunnelStream};
+
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};

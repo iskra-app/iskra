@@ -233,11 +233,7 @@ async fn is_public(target: &Url) -> Result<(), Refusal> {
     let host = target.host_str().ok_or(Refusal::BadOrigin)?;
     let port = target.port_or_known_default().unwrap_or(443);
 
-    if host.eq_ignore_ascii_case("localhost")
-        || host.ends_with(".localhost")
-        || host.ends_with(".local")
-        || host.ends_with(".internal")
-    {
+    if is_local_name(host) {
         return Err(Refusal::NotPublic);
     }
 
@@ -254,12 +250,21 @@ async fn is_public(target: &Url) -> Result<(), Refusal> {
     Ok(())
 }
 
+/// Names that are private by what they are called, before anybody resolves them.
+pub(crate) fn is_local_name(host: &str) -> bool {
+    let host = host.trim_end_matches('.').to_ascii_lowercase();
+    host == "localhost"
+        || host.ends_with(".localhost")
+        || host.ends_with(".local")
+        || host.ends_with(".internal")
+}
+
 /// Whether an address is one the public internet routes to.
 ///
 /// Written out rather than using `IpAddr::is_global`, which is still unstable. Anything not
 /// recognised as public is refused, so a gap here errs towards refusing traffic rather than
 /// towards opening a door onto the operator's network.
-fn is_global(address: &IpAddr) -> bool {
+pub(crate) fn is_global(address: &IpAddr) -> bool {
     match address {
         IpAddr::V4(v4) => {
             !(v4.is_private()

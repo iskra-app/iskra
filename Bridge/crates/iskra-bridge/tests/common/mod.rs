@@ -3,13 +3,15 @@
 // Each test binary uses its own slice of this; what one does not call, another does.
 #![allow(dead_code)]
 
+pub mod tls;
+
 use std::num::NonZeroU32;
 use std::sync::Arc;
 use std::time::Duration;
 
 use iskra_bridge::upstream::Upstreams;
 use iskra_bridge::{Bridge, Config};
-use iskra_tunnel_probe::TunnelClient;
+use iskra_tunnel_probe::{StreamClient, TunnelClient};
 use nostr_relay_builder::builder::RateLimit;
 use nostr_relay_builder::{LocalRelay, RelayBuilder};
 use nostr_sdk::prelude::Keys;
@@ -76,6 +78,8 @@ impl Harness {
             allowed_pubkeys: None,
             max_body_chunk: iskra_tunnel_proto::DEFAULT_MAX_BODY_CHUNK,
             request_timeout: Duration::from_secs(10),
+            blind_only: false,
+            streams: Default::default(),
         });
 
         let bridge = Arc::new(Bridge::start(config).await.expect("bridge starts"));
@@ -98,9 +102,16 @@ impl Harness {
         self.client_with(Keys::generate()).await
     }
 
+    /// A v2 client — streams, not requests.
+    pub async fn stream_client(&self) -> StreamClient {
+        StreamClient::connect(Keys::generate(), self.bridge.public_key(), &self.relay_urls)
+            .await
+            .expect("stream client connects")
+    }
+
     pub async fn client_with(&self, keys: Keys) -> TunnelClient {
         TunnelClient::connect(keys, self.bridge.public_key(), &self.relay_urls)
-        .await
-        .expect("client connects")
+            .await
+            .expect("client connects")
     }
 }
