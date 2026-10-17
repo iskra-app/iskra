@@ -209,22 +209,6 @@
 "connection.title" = "Conexión";
 "connection.bridge" = "A través de un puente";
 "connection.bridgeFooter" = "El tráfico llega al servidor a través de un puente en lugar de ir directo. Sirve para lugares donde no se puede llegar al servidor.";
-"connection.publicSection" = "Puentes públicos";
-"connection.publicFooter" = "Puentes comprobados de la lista de github.com/iskra-app/public-bridges. Lo que ve un puente está más abajo. La aplicación descarga la lista una vez al día directamente de GitHub, así que GitHub y su red pueden verlo; si GitHub no responde, se usa la copia guardada.";
-"connection.publicEmpty" = "Aún no hay ningún puente en la lista. Añada el suyo abajo.";
-"connection.publicAnyServer" = "cualquier servidor de Matrix";
-"connection.publicServers" = "solo %@";
-"connection.publicOperator" = "lo mantiene %@";
-"connection.notListed" = "ya no está en la lista";
-"connection.ownSection" = "Sus puentes";
-"connection.ownFooter" = "Un puente que mantiene usted o que le ha dado quien lo mantiene. Puede tener varios: se usa el marcado.";
-"connection.addBridge" = "Añadir puente";
-"connection.editBridge" = "Editar puente";
-"connection.deleteBridge" = "Eliminar";
-"connection.saveBridge" = "Guardar";
-"connection.cancelEditing" = "Cancelar";
-"connection.bridgeName" = "Nombre";
-"connection.bridgeNamePrompt" = "Por ejemplo, «Casa»";
 
 "connection.status" = "Estado";
 "connection.statusDirect" = "Directa";
@@ -238,9 +222,10 @@
    said here rather than only in the status: this is what somebody is looking at. */
 "connection.address" = "Dirección del puente";
 "connection.addressPrompt" = "npub1… o 64 caracteres hex";
-"connection.addressFooter" = "El puente muestra su dirección al arrancar: la línea «bridge address for Iskra: npub1…».";
+"connection.addressFooter" = "Por defecto aquí está el puente que mantienen los desarrolladores de Iskra. Un puente propio muestra su dirección al arrancar: la línea «bridge address for Iskra: npub1…».";
 "connection.addressBad" = "No parece una clave de puente";
 "connection.addressSecret" = "Esa es una clave secreta. Aquí hace falta la pública: la que empieza por npub.";
+"connection.defaultBridge" = "Volver al puente de Iskra";
 
 "connection.relays" = "Relays";
 "connection.relaysPrompt" = "wss://relay.snort.social, wss://nostr.wine";

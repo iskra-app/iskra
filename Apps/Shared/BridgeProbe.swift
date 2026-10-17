@@ -30,23 +30,18 @@ enum BridgeProbe {
     }
 
     static func runAndExit() -> Never {
-        // Given nothing, the bridge the app would use: the chosen public one, or the one typed in.
-        let chosen = TunnelSettings.bridgeKey().map(BridgeAddress.npub(for:))
-        let address = arguments.first ?? chosen ?? ""
+        // Given nothing, the bridge the app would use: the one in Settings → Connection.
+        let address = arguments.first ?? TunnelSettings.address()
         let homeserverText = arguments.dropFirst().first ?? "matrix.org"
         let homeserver = TunnelSettings.upstreamURL(from: homeserverText) ?? URL(string: "https://matrix.org")!
         let relays = TunnelSettings.relays()
 
         print("Iskra bridge probe")
-        if arguments.first == nil {
-            let kind = TunnelSettings.source() == .publicList ? "public list" : "own bridge"
-            print("  bridge in use: \(kind) — \(TunnelSettings.chosenBridge()?.name ?? "none")")
-        }
         print("  homeserver : \(homeserver.absoluteString)")
         print("  relays     : \(relays.map(\.absoluteString).joined(separator: ", "))")
 
         guard case .success(let key) = BridgeAddress.publicKey(from: address) else {
-            print("  ❌ no bridge. Pick one in Settings → Connection, or pass an address here:")
+            print("  ❌ no bridge address. Paste one in Settings → Connection, or pass it here:")
             print("     Iskra --probe-bridge npub1… [matrix.org]")
             exit(1)
         }

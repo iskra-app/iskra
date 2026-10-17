@@ -763,25 +763,13 @@ public actor AuthenticationService {
             await stopTunnel()
             return ClientRoute(homeserver: address)
         }
-        if TunnelSettings.source() == .publicList {
-            // An empty list on a first launch — the snapshot built into the app may have nothing on
-            // it yet — is worth one download before it becomes a refusal.
-            if PublicBridges.current().isEmpty { await PublicBridges.refresh() }
-            // The first bridge on the list, used without anybody picking it, is written down as
-            // picked: a list reordered tomorrow must not move this device to another bridge.
-            if let bridge = TunnelSettings.chosenBridge(), !TunnelSettings.hasChosen() {
-                TunnelSettings.choose(bridge, source: .publicList)
-            }
-        }
-        // A bridge is asked for and there is none to use: something is written in the bridge field
-        // and it is not a key — a mistyped `npub`, a pasted `nsec` — or the public list is chosen
-        // and has no bridge on it yet. Either is a bridge the user meant to use and cannot, and it
-        // has to be a refusal: read as "no address", it would go straight to the homeserver with
-        // the switch on.
+        // Something is written in the bridge field and it is not a key — a mistyped `npub`, a
+        // pasted `nsec`. That is a bridge the user meant to use and cannot, and it has to be a
+        // refusal: read as "no address", it would go straight to the homeserver with the switch on.
         guard let bridgeKey = TunnelSettings.bridgeKey() else {
             await stopTunnel()
             if TunnelSettings.asksForBridge() {
-                tunnelState = .failed("no usable bridge")
+                tunnelState = .failed("bad bridge address")
                 throw AuthenticationError.bridgeUnavailable(NostrStreamTunnel.Failure.bridgeAddressUnusable)
             }
             return ClientRoute(homeserver: address)

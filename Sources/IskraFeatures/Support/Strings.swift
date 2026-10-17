@@ -301,28 +301,7 @@ public enum Strings {
         public static let addressFooter = LocalizedStringResource("connection.addressFooter", bundle: bundle)
         public static let addressBad = LocalizedStringResource("connection.addressBad", bundle: bundle)
         public static let addressSecret = LocalizedStringResource("connection.addressSecret", bundle: bundle)
-
-        // Which bridge: one from the public list, or one of one's own.
-        public static let publicSection = LocalizedStringResource("connection.publicSection", bundle: bundle)
-        public static let publicFooter = LocalizedStringResource("connection.publicFooter", bundle: bundle)
-        public static let publicEmpty = LocalizedStringResource("connection.publicEmpty", bundle: bundle)
-        public static let publicAnyServer = LocalizedStringResource("connection.publicAnyServer", bundle: bundle)
-        public static func publicServers(_ servers: String) -> LocalizedStringResource {
-            LocalizedStringResource("connection.publicServers", defaultValue: "Only \(servers)", bundle: bundle)
-        }
-        public static func publicOperator(_ name: String) -> LocalizedStringResource {
-            LocalizedStringResource("connection.publicOperator", defaultValue: "Run by \(name)", bundle: bundle)
-        }
-        public static let notListed = LocalizedStringResource("connection.notListed", bundle: bundle)
-        public static let ownSection = LocalizedStringResource("connection.ownSection", bundle: bundle)
-        public static let ownFooter = LocalizedStringResource("connection.ownFooter", bundle: bundle)
-        public static let addBridge = LocalizedStringResource("connection.addBridge", bundle: bundle)
-        public static let editBridge = LocalizedStringResource("connection.editBridge", bundle: bundle)
-        public static let deleteBridge = LocalizedStringResource("connection.deleteBridge", bundle: bundle)
-        public static let saveBridge = LocalizedStringResource("connection.saveBridge", bundle: bundle)
-        public static let cancelEditing = LocalizedStringResource("connection.cancelEditing", bundle: bundle)
-        public static let bridgeName = LocalizedStringResource("connection.bridgeName", bundle: bundle)
-        public static let bridgeNamePrompt = LocalizedStringResource("connection.bridgeNamePrompt", bundle: bundle)
+        public static let defaultBridge = LocalizedStringResource("connection.defaultBridge", bundle: bundle)
 
         public static let relays = LocalizedStringResource("connection.relays", bundle: bundle)
         public static let relaysPrompt = LocalizedStringResource("connection.relaysPrompt", bundle: bundle)

@@ -209,22 +209,6 @@
 "connection.title" = "Connection";
 "connection.bridge" = "Through a bridge";
 "connection.bridgeFooter" = "Traffic reaches the server through a bridge instead of going there directly. This is for places where the server cannot be reached.";
-"connection.publicSection" = "Public bridges";
-"connection.publicFooter" = "Checked bridges from the list at github.com/iskra-app/public-bridges. What a bridge sees is below. The app downloads the list once a day straight from GitHub, so GitHub and your network can see that it did; if GitHub can’t be reached, the saved copy is used.";
-"connection.publicEmpty" = "There are no bridges on the list yet. Add your own below.";
-"connection.publicAnyServer" = "any Matrix server";
-"connection.publicServers" = "only %@";
-"connection.publicOperator" = "run by %@";
-"connection.notListed" = "no longer on the list";
-"connection.ownSection" = "Your bridges";
-"connection.ownFooter" = "A bridge you run yourself, or got from whoever runs it. You can keep several — the one with the tick is used.";
-"connection.addBridge" = "Add bridge";
-"connection.editBridge" = "Edit bridge";
-"connection.deleteBridge" = "Delete";
-"connection.saveBridge" = "Save";
-"connection.cancelEditing" = "Cancel";
-"connection.bridgeName" = "Name";
-"connection.bridgeNamePrompt" = "For example, “Home”";
 
 "connection.status" = "Status";
 "connection.statusDirect" = "Direct";
@@ -238,9 +222,10 @@
    said here rather than only in the status: this is what somebody is looking at. */
 "connection.address" = "Bridge address";
 "connection.addressPrompt" = "npub1… or 64 hex characters";
-"connection.addressFooter" = "The bridge prints its address when it starts — the line “bridge address for Iskra: npub1…”.";
+"connection.addressFooter" = "By default this is the bridge the Iskra developers run. A bridge of your own prints its address when it starts — the line “bridge address for Iskra: npub1…”.";
 "connection.addressBad" = "That does not look like a bridge key";
 "connection.addressSecret" = "That is a secret key. The public one is wanted here — the one that starts with npub.";
+"connection.defaultBridge" = "Back to the Iskra bridge";
 
 "connection.relays" = "Relays";
 "connection.relaysPrompt" = "wss://relay.snort.social, wss://nostr.wine";

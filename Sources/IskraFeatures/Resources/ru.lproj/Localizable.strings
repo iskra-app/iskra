@@ -207,22 +207,6 @@
 "connection.title" = "Соединение";
 "connection.bridge" = "Через мост";
 "connection.bridgeFooter" = "Трафик к серверу пойдёт через мост, а не напрямую. Это нужно там, где сервер недоступен.";
-"connection.publicSection" = "Публичные мосты";
-"connection.publicFooter" = "Проверенные мосты из списка github.com/iskra-app/public-bridges. Что видит мост — ниже. Список приложение раз в сутки скачивает напрямую с GitHub, так что это видно GitHub и вашей сети; если GitHub недоступен, берётся сохранённый.";
-"connection.publicEmpty" = "В списке пока нет ни одного моста. Добавьте свой ниже.";
-"connection.publicAnyServer" = "любой сервер Matrix";
-"connection.publicServers" = "только %@";
-"connection.publicOperator" = "держит %@";
-"connection.notListed" = "больше нет в списке";
-"connection.ownSection" = "Свои мосты";
-"connection.ownFooter" = "Мост, который вы подняли сами или получили от того, кто его держит. Их может быть несколько — используется тот, что отмечен.";
-"connection.addBridge" = "Добавить мост";
-"connection.editBridge" = "Изменить мост";
-"connection.deleteBridge" = "Удалить";
-"connection.saveBridge" = "Сохранить";
-"connection.cancelEditing" = "Отмена";
-"connection.bridgeName" = "Название";
-"connection.bridgeNamePrompt" = "Например, «Дом»";
 
 "connection.status" = "Состояние";
 "connection.statusDirect" = "Напрямую";
@@ -236,9 +220,10 @@
    а не только в состоянии: человек смотрит на поле, когда заполняет его. */
 "connection.address" = "Адрес моста";
 "connection.addressPrompt" = "npub1… или 64 знака hex";
-"connection.addressFooter" = "Адрес мост печатает при запуске — строка «bridge address for Iskra: npub1…».";
+"connection.addressFooter" = "По умолчанию здесь мост, который держат разработчики Iskra. Свой мост печатает адрес при запуске — строка «bridge address for Iskra: npub1…».";
 "connection.addressBad" = "Не похоже на ключ моста";
 "connection.addressSecret" = "Это секретный ключ. Нужен публичный — тот, что начинается с npub.";
+"connection.defaultBridge" = "Вернуть мост Iskra";
 
 "connection.relays" = "Relay";
 "connection.relaysPrompt" = "wss://relay.snort.social, wss://nostr.wine";

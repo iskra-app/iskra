@@ -209,22 +209,6 @@
 "connection.title" = "接続";
 "connection.bridge" = "ブリッジ経由";
 "connection.bridgeFooter" = "通信は直接ではなく、ブリッジを経由してサーバーに届きます。サーバーにつながらない場所のための機能です。";
-"connection.publicSection" = "公開ブリッジ";
-"connection.publicFooter" = "github.com/iskra-app/public-bridges のリストにある、確認済みのブリッジです。ブリッジに何が見えるかは下に書いてあります。アプリはこのリストを 1 日に 1 回 GitHub から直接ダウンロードするため、GitHub とお使いのネットワークにはそのことがわかります。GitHub に接続できないときは保存済みのリストを使います。";
-"connection.publicEmpty" = "リストにはまだブリッジがありません。下で自分のブリッジを追加してください。";
-"connection.publicAnyServer" = "すべての Matrix サーバー";
-"connection.publicServers" = "%@ のみ";
-"connection.publicOperator" = "運営: %@";
-"connection.notListed" = "リストから外れました";
-"connection.ownSection" = "自分のブリッジ";
-"connection.ownFooter" = "自分で運営しているブリッジや、運営者から教わったブリッジです。複数登録でき、チェックの付いたものが使われます。";
-"connection.addBridge" = "ブリッジを追加";
-"connection.editBridge" = "ブリッジを編集";
-"connection.deleteBridge" = "削除";
-"connection.saveBridge" = "保存";
-"connection.cancelEditing" = "キャンセル";
-"connection.bridgeName" = "名前";
-"connection.bridgeNamePrompt" = "例: 自宅";
 
 "connection.status" = "状態";
 "connection.statusDirect" = "直接";
@@ -238,9 +222,10 @@
    said here rather than only in the status: this is what somebody is looking at. */
 "connection.address" = "ブリッジのアドレス";
 "connection.addressPrompt" = "npub1… または 16 進 64 文字";
-"connection.addressFooter" = "ブリッジは起動時にアドレスを表示します。「bridge address for Iskra: npub1…」の行です。";
+"connection.addressFooter" = "初期設定では Iskra の開発者が運営するブリッジです。ご自身のブリッジは起動時にアドレスを表示します。「bridge address for Iskra: npub1…」の行です。";
 "connection.addressBad" = "ブリッジの鍵ではないようです";
 "connection.addressSecret" = "それは秘密鍵です。ここに入れるのは公開鍵、npub で始まるほうです。";
+"connection.defaultBridge" = "Iskra のブリッジに戻す";
 
 "connection.relays" = "リレー";
 "connection.relaysPrompt" = "wss://relay.snort.social, wss://nostr.wine";
