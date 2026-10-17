@@ -19,9 +19,10 @@ public enum BridgeCheck {
     public enum Outcome: Sendable, Equatable {
         /// The bridge answered and the homeserver behind it answered too.
         case reachable(milliseconds: Int)
-        /// The bridge is there and will not take this device to this homeserver: not on its list,
-        /// not a Matrix server, not on the public internet, not port 443.
-        case refused
+        /// The bridge is there and ended the stream, with its reason: most often that it will not
+        /// take this device to this homeserver — not on its list, not a Matrix server, not on the
+        /// public internet, not port 443 — and otherwise that it is busy or the stream broke.
+        case refused(BridgeRefusal)
         /// No relay took the request. Nothing was published, so nothing was heard.
         case noRelay
         /// Published, and nobody answered: the wrong key, a bridge that is not running, or a
@@ -29,12 +30,6 @@ public enum BridgeCheck {
         case silent
         case failed(String)
     }
-
-    /// The `rst` reasons that mean "the bridge will not take you there" — as opposed to a bridge
-    /// that is busy, or a stream that broke on the way.
-    static let refusals: Set<String> = [StreamReason.notAllowed, StreamReason.notMatrix,
-                                        StreamReason.badPort, StreamReason.notPublic,
-                                        StreamReason.noSuchHost]
 
     /// - Parameter limit: shorter than the SDK's own, on purpose. This is somebody standing in front
     ///   of the screen waiting for an answer, not a request that matters.
@@ -90,7 +85,7 @@ public enum BridgeCheck {
             return status == 200 ? .reachable(milliseconds: elapsed) : .failed("HTTP \(status)")
         } catch {
             if let reason = heard?.lastReset {
-                return refusals.contains(reason) ? .refused : .failed("bridge: \(reason)")
+                return .refused(BridgeRefusal(reason: reason))
             }
             if await relays() == 0 { return .noRelay }
             if heard?.anything == false { return .silent }

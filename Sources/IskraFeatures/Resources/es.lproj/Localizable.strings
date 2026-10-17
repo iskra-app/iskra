@@ -212,7 +212,8 @@
 
 "connection.status" = "Estado";
 "connection.statusDirect" = "Directa";
-"connection.statusBridged" = "A través del puente, relays: %lld";
+"connection.statusConnecting" = "A través del puente, relays: %lld. El puente aún no ha respondido";
+"connection.statusBlind" = "A través del puente, relays: %lld. El puente no puede ver sus mensajes";
 "connection.statusFailed" = "No se ha podido activar";
 "connection.pending" = "La nueva configuración se aplicará en cuanto salga de esta pantalla: la app se reconectará sola.";
 "connection.applyNow" = "Reconectar ahora";
@@ -239,8 +240,16 @@
 "connection.checkOK" = "El puente ha respondido y el servidor está ahí: %lld ms";
 "connection.checkNoRelay" = "Ningún relay responde";
 "connection.checkSilent" = "El puente no responde. ¿Está en marcha y es la clave correcta?";
-"connection.checkRefused" = "El puente se ha negado: no da servicio a este servidor";
 "connection.checkFailed" = "No ha funcionado: %@";
+"bridge.refusal.notAllowed" = "El puente no le deja llegar a este servidor: no está en su lista";
+"bridge.refusal.notMatrix" = "El puente no reconoce este servidor como servidor de Matrix";
+"bridge.refusal.badPort" = "El puente solo va al puerto 443, y este servidor está en otro";
+"bridge.refusal.notPublic" = "El servidor está en una red privada, y un puente abierto no va allí";
+"bridge.refusal.noSuchHost" = "El puente no ha encontrado este servidor";
+"bridge.refusal.unreachable" = "El puente no ha podido conectar con el servidor";
+"bridge.refusal.busy" = "El puente está saturado. Inténtelo de nuevo dentro de un minuto";
+"bridge.refusal.disagreement" = "La aplicación y el puente no se han entendido. Actualice la aplicación o el puente";
+"bridge.refusal.broke" = "El puente ha cortado la conexión: %@";
 
 /* Not "what is unfinished" but what to expect: the numbers come from measuring a whole session
    through the bridge (Bridge/README.md), and whoever turns the bridge on should know them first. */
@@ -248,7 +257,7 @@
 "connection.unfinishedBody" = "Cada petición da un rodeo por un relay y cuesta 200–350 ms, así que iniciar sesión y abrir los chats por primera vez es bastante más lento que con una conexión directa: un segundo donde antes era instantáneo. Los mensajes nuevos, en cambio, llegan casi tan rápido como en directo. Los adjuntos grandes también llegan, pero es mejor no pasarlos por relays públicos: para los archivos multimedia, dele al puente un relay propio.";
 
 "connection.sees" = "Qué ve el puente";
-"connection.seesBody" = "El puente desempaqueta sus peticiones al servidor, así que ve su token, en qué salas está usted y el texto de los mensajes de los chats sin cifrar. No puede leer las conversaciones cifradas. Por eso conviene que el puente sea suyo y no de otra persona.";
+"connection.seesBody" = "Solo a qué servidor se conecta, cuándo y cuántos bytes. La conexión con el servidor la cifra la propia aplicación, así que su token, sus salas y sus mensajes —incluso en chats sin cifrar— quedan ocultos para el puente. Su dirección IP la ven los relays, no el puente.";
 
 /* App lock by Face ID / device passcode. */
 "settings.lock" = "Bloqueo de la app";
@@ -359,6 +368,7 @@
 "signIn.problem.storageUnavailable" = "Iskra no ha podido preparar un almacenamiento seguro en este dispositivo, así que no puede iniciar su sesión de forma segura.";
 
 "signIn.problem.unreachable" = "No se ha podido conectar con esa dirección. Compruebe la conexión e inténtelo de nuevo.";
+"signIn.problem.bridgeUnavailable" = "El puente no ha arrancado, e Iskra no irá directamente mientras el puente esté activado. Compruebe la dirección del puente y los relays en los ajustes de conexión.";
 
 "signIn.problem.unsupportedMethod" = "Este servicio usa una forma de iniciar sesión que Iskra aún no admite.";
 

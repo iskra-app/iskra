@@ -191,12 +191,36 @@ public enum Strings {
             public static let unsupportedMethod = LocalizedStringResource("signIn.problem.unsupportedMethod", bundle: bundle)
             public static let storageUnavailable = LocalizedStringResource("signIn.problem.storageUnavailable", bundle: bundle)
             public static let unreachable = LocalizedStringResource("signIn.problem.unreachable", bundle: bundle)
+            /// The bridge is switched on and would not come up — and the app will not go direct.
+            public static let bridgeUnavailable = LocalizedStringResource("signIn.problem.bridgeUnavailable", bundle: bundle)
             public static let ssoIncomplete = LocalizedStringResource("signIn.problem.ssoIncomplete", bundle: bundle)
             public static let badCredentials = LocalizedStringResource("signIn.problem.badCredentials", bundle: bundle)
             /// Signing in, from "Add account", to somebody who is already on the device.
             public static let alreadySignedIn = LocalizedStringResource("signIn.problem.alreadySignedIn", bundle: bundle)
             /// "Create an account" on a server that will not make one through an app.
             public static let noRegistration = LocalizedStringResource("signIn.problem.noRegistration", bundle: bundle)
+        }
+    }
+
+    /// What the bridge said when it ended a stream, in words a person can act on. Shared by the
+    /// status line, "Check the bridge" and sign-in, so the three never describe one refusal
+    /// three ways.
+    public enum Bridge {
+        public static func refusal(_ refusal: BridgeRefusal) -> LocalizedStringResource {
+            switch refusal {
+            case .notAllowed: LocalizedStringResource("bridge.refusal.notAllowed", bundle: bundle)
+            case .notMatrix: LocalizedStringResource("bridge.refusal.notMatrix", bundle: bundle)
+            case .badPort: LocalizedStringResource("bridge.refusal.badPort", bundle: bundle)
+            case .notPublic: LocalizedStringResource("bridge.refusal.notPublic", bundle: bundle)
+            case .noSuchHost: LocalizedStringResource("bridge.refusal.noSuchHost", bundle: bundle)
+            case .unreachable: LocalizedStringResource("bridge.refusal.unreachable", bundle: bundle)
+            case .busy: LocalizedStringResource("bridge.refusal.busy", bundle: bundle)
+            case .disagreement: LocalizedStringResource("bridge.refusal.disagreement", bundle: bundle)
+            case .broke(let word):
+                LocalizedStringResource("bridge.refusal.broke",
+                                        defaultValue: "The bridge dropped the connection: \(word)",
+                                        bundle: bundle)
+            }
         }
     }
 
@@ -239,9 +263,17 @@ public enum Strings {
 
         public static let status = LocalizedStringResource("connection.status", bundle: bundle)
         public static let statusDirect = LocalizedStringResource("connection.statusDirect", bundle: bundle)
-        public static func statusBridged(_ relays: Int) -> LocalizedStringResource {
-            LocalizedStringResource("connection.statusBridged",
-                                    defaultValue: "Through the bridge, relays: \(relays)",
+        /// The tunnel is up and the bridge has not connected anything yet: nothing is claimed.
+        public static func statusConnecting(_ relays: Int) -> LocalizedStringResource {
+            LocalizedStringResource("connection.statusConnecting",
+                                    defaultValue: "Through the bridge, relays: \(relays). The bridge hasn’t answered yet",
+                                    bundle: bundle)
+        }
+        /// The one place the screen says the bridge cannot see — `TunnelStatus.bridgedBlind`, true
+        /// of traffic that is flowing, never of a setting.
+        public static func statusBlind(_ relays: Int) -> LocalizedStringResource {
+            LocalizedStringResource("connection.statusBlind",
+                                    defaultValue: "Through the bridge, relays: \(relays). The bridge can’t see your messages",
                                     bundle: bundle)
         }
         public static let statusFailed = LocalizedStringResource("connection.statusFailed", bundle: bundle)
@@ -276,7 +308,6 @@ public enum Strings {
         }
         public static let checkNoRelay = LocalizedStringResource("connection.checkNoRelay", bundle: bundle)
         public static let checkSilent = LocalizedStringResource("connection.checkSilent", bundle: bundle)
-        public static let checkRefused = LocalizedStringResource("connection.checkRefused", bundle: bundle)
         public static func checkFailed(_ reason: String) -> LocalizedStringResource {
             LocalizedStringResource("connection.checkFailed", defaultValue: "No luck: \(reason)", bundle: bundle)
         }

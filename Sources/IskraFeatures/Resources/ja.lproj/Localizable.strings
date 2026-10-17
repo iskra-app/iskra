@@ -212,7 +212,8 @@
 
 "connection.status" = "状態";
 "connection.statusDirect" = "直接";
-"connection.statusBridged" = "ブリッジ経由、リレー: %lld";
+"connection.statusConnecting" = "ブリッジ経由、リレー: %lld。ブリッジはまだ応答していません";
+"connection.statusBlind" = "ブリッジ経由、リレー: %lld。ブリッジはメッセージの内容を見ることはできません";
 "connection.statusFailed" = "オンにできませんでした";
 "connection.pending" = "この画面を離れると新しい設定が有効になります。アプリが自動で再接続します。";
 "connection.applyNow" = "今すぐ再接続";
@@ -239,8 +240,16 @@
 "connection.checkOK" = "ブリッジが応答し、サーバーもつながっています — %lld ms";
 "connection.checkNoRelay" = "応答するリレーがありません";
 "connection.checkSilent" = "ブリッジが応答しません。起動していますか？鍵は正しいですか？";
-"connection.checkRefused" = "ブリッジに断られました。このサーバーには対応していません";
 "connection.checkFailed" = "うまくいきませんでした: %@";
+"bridge.refusal.notAllowed" = "ブリッジはこのサーバーへの接続を許可していません。ブリッジのリストにありません";
+"bridge.refusal.notMatrix" = "ブリッジはこのサーバーを Matrix サーバーとして認めませんでした";
+"bridge.refusal.badPort" = "ブリッジはポート 443 にしか接続しません。このサーバーは別のポートです";
+"bridge.refusal.notPublic" = "サーバーがプライベートネットワーク上にあり、公開ブリッジはそこへは接続しません";
+"bridge.refusal.noSuchHost" = "ブリッジはこのサーバーを見つけられませんでした";
+"bridge.refusal.unreachable" = "ブリッジはサーバーに接続できませんでした";
+"bridge.refusal.busy" = "ブリッジが混み合っています。1 分ほどしてからもう一度お試しください";
+"bridge.refusal.disagreement" = "アプリとブリッジの通信がかみ合いませんでした。アプリかブリッジを更新してください";
+"bridge.refusal.broke" = "ブリッジが接続を切りました: %@";
 
 /* Not "what is unfinished" but what to expect: the numbers come from measuring a whole session
    through the bridge (Bridge/README.md), and whoever turns the bridge on should know them first. */
@@ -248,7 +257,7 @@
 "connection.unfinishedBody" = "リクエストはすべてリレーを回り道するため 200〜350 ms かかります。そのためサインインや初めてチャットを開くときは、直接接続より目に見えて遅くなります。一瞬だったところに 1 秒ほど。一方、新しいメッセージは直接とほぼ同じ速さで届きます。大きな添付ファイルも届きますが、公開リレーは避けたほうがいいでしょう。メディア用にはブリッジ専用のリレーを用意してください。";
 
 "connection.sees" = "ブリッジから見えるもの";
-"connection.seesBody" = "ブリッジはサーバーへのリクエストを開いて中継するので、あなたのトークン、参加しているルーム、暗号化されていないチャットのメッセージ本文が見えます。暗号化された会話は読めません。だからブリッジは他人のものではなく、自分で用意するのがおすすめです。";
+"connection.seesBody" = "見えるのは、どのサーバーにいつ接続し、何バイト送受信したかだけです。サーバーとの接続はアプリ自身が暗号化するため、トークン、ルーム、メッセージは、暗号化されていないチャットのものも含め、ブリッジからは見えません。IP アドレスを見るのはリレーで、ブリッジではありません。";
 
 /* App lock by Face ID / device passcode. */
 "settings.lock" = "アプリのロック";
@@ -359,6 +368,7 @@
 "signIn.problem.storageUnavailable" = "Iskra はこのデバイスに安全な保存領域を用意できなかったため、安全にサインインできません。";
 
 "signIn.problem.unreachable" = "このアドレスに接続できませんでした。接続を確認して、もう一度お試しください。";
+"signIn.problem.bridgeUnavailable" = "ブリッジを起動できませんでした。ブリッジがオンの間、Iskra は直接接続しません。接続設定でブリッジのアドレスとリレーを確認してください。";
 
 "signIn.problem.unsupportedMethod" = "このサービスは、Iskra がまだ対応していないサインイン方法を使っています。";
 

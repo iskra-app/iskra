@@ -160,11 +160,31 @@ public enum TunnelSettings {
 public enum TunnelStatus: Sendable, Equatable {
     /// No bridge: the SDK talks to the homeserver directly.
     case off
-    /// Every connection leaves as a stream of encrypted nostr events, with this many relays
-    /// connected. (The words about what the bridge cannot see are for a case of their own, which
-    /// says it only once the bridge has shown it speaks the blind protocol — `docs/BLIND-BRIDGE.md`,
-    /// step 4.)
-    case bridged(relays: Int)
+    /// The tunnel is up, with this many relays connected, and the bridge has not connected a
+    /// stream yet. Nothing is said about what it cannot see until it has carried something.
+    case connecting(relays: Int)
+    /// The bridge has connected this device's streams: every connection leaves as encrypted nostr
+    /// events, and the TLS inside them is the app's own, end to end to the homeserver. The one
+    /// case in which the screen may say "the bridge cannot see your messages" — because it is now
+    /// true of traffic that is actually flowing, not of a setting.
+    case bridgedBlind(relays: Int)
+    /// The bridge answered and would not take this device to its server.
+    case refused(BridgeRefusal)
     /// The listener could not be started, or the bridge could not be reached.
     case failed(String)
+
+    /// A raised tunnel's status, from what the bridge has said so far. The last settled stream
+    /// decides between "refused" and the rest: a bridge that turned the last stream away is
+    /// refusing *now*, even if it carried an earlier one; and "cannot see" waits for a stream the
+    /// bridge actually connected.
+    init(heard: Heard, relays: Int) {
+        if case .reset(let reason) = heard.last {
+            let refusal = BridgeRefusal(reason: reason)
+            if refusal.isRefusal {
+                self = .refused(refusal)
+                return
+            }
+        }
+        self = heard.everOpened ? .bridgedBlind(relays: relays) : .connecting(relays: relays)
+    }
 }

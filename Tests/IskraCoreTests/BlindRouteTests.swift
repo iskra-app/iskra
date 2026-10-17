@@ -33,7 +33,7 @@ struct BlindRouteTests {
         }
     }
 
-    private func rig(upstream: ConnectUpstream) async throws -> Rig {
+    private func rig(upstream: ConnectUpstream, heard: Heard? = nil) async throws -> Rig {
         let tls = try TestTLS.make()
         let homeserver = LocalHTTPProxy(upstream: MockHomeserver(), tls: tls.identity)
         let port = try await homeserver.start()
@@ -44,9 +44,29 @@ struct BlindRouteTests {
         return Rig(homeserver: homeserver,
                    address: "https://127.0.0.1:\(port)",
                    connect: connect,
-                   route: .init(proxy: proxy, rootCertificates: [tls.certificate]),
+                   route: .init(proxy: proxy, rootCertificates: [tls.certificate], heard: heard),
                    environment: AppEnvironment(storage: .scratch(root)),
                    sessionStore: SessionStore(secrets: InMemorySecrets()))
+    }
+
+    /// A bridge that will not go to the server is said to be that, not "server not found" — which
+    /// is what the SDK makes of a connection the bridge reset, and which would send the person back
+    /// to the address field to hunt for a typo that is not there.
+    @Test("sign-in through a bridge that refuses the server names the refusal")
+    func signInThroughARefusingBridge() async throws {
+        let tunnel = await TestStreamTunnel()
+        await tunnel.bridge.refusing(with: StreamReason.notAllowed)
+        let rig = try await rig(upstream: tunnel, heard: tunnel.heard)
+        defer { Task { await rig.stop() } }
+
+        do {
+            _ = try await rig.authentication().startSignIn(homeserverAddress: rig.address)
+            Issue.record("sign-in went through a bridge that refuses everything")
+        } catch AuthenticationError.bridgeRefused(let refusal) {
+            #expect(refusal == .notAllowed)
+        } catch {
+            Issue.record("expected the bridge's refusal, got \(error)")
+        }
     }
 
     @Test("sign-in, sliding sync, media and the push client all go through the proxy")
@@ -199,7 +219,7 @@ struct BridgeCheckTests {
         let outcome = await BridgeCheck.check(through: connect,
                                               homeserver: try #require(URL(string: "https://example.org")),
                                               limit: .seconds(10), heard: tunnel.heard)
-        #expect(outcome == .refused)
+        #expect(outcome == .refused(.notMatrix))
         // URLSession may try a reset connection again; every try is refused the same way.
         #expect(!tunnel.ended.isEmpty)
         #expect(tunnel.ended.allSatisfy { $0 == .reset(StreamReason.notMatrix) }, "\(tunnel.ended)")

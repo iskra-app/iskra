@@ -104,6 +104,33 @@ pub mod reason {
     pub const EXPIRED: &str = "expired";
     /// The side that sent it has closed the stream itself.
     pub const CLOSED: &str = "closed";
+    /// The `open` carried less proof of work than the bridge asks for. Sent as `pow <bits>` — see
+    /// [`super::pow_reason`] — so the client learns the difficulty from the refusal itself.
+    pub const POW: &str = "pow";
+}
+
+/// The difficulty a client mines its `open` to when it knows nothing better: NIP-13 leading zero
+/// bits of the event id. Sixteen is a fraction of a second on a phone once per connection, and
+/// costly for anybody opening thousands — which is the point: a nostr key costs nothing, so every
+/// ceiling "per key" can be dodged with a new one, and this is the one that cannot.
+pub const DEFAULT_POW_BITS: u8 = 16;
+
+/// The `rst` reason for an `open` mined to too few bits: `pow 20`.
+///
+/// The difficulty travels in the refusal rather than in an announcement of its own, so a bridge
+/// under attack can raise it without an app update, without a config event on the relays, and
+/// without anybody having to ask: the next `open` from that client is mined to what it was told.
+pub fn pow_reason(bits: u8) -> String {
+    format!("{} {bits}", reason::POW)
+}
+
+/// The difficulty a `pow <bits>` refusal asks for, or `None` for any other reason.
+pub fn pow_required(reason: &str) -> Option<u8> {
+    let (word, bits) = reason.split_once(' ')?;
+    if word != reason::POW {
+        return None;
+    }
+    bits.parse().ok()
 }
 
 /// What a frame does.
@@ -533,6 +560,16 @@ mod tests {
 
     /// The format, pinned as text. The Swift mirror pins the same strings; a field renamed on
     /// one side shows up here, not as a tunnel that silently never opens.
+    #[test]
+    fn a_pow_refusal_carries_its_difficulty() {
+        assert_eq!(pow_reason(20), "pow 20");
+        assert_eq!(pow_required("pow 20"), Some(20));
+        assert_eq!(pow_required("pow"), None);
+        assert_eq!(pow_required("powder 3"), None);
+        assert_eq!(pow_required("not matrix"), None);
+        StreamFrame::rst(SID, &pow_reason(255)).validate().unwrap();
+    }
+
     #[test]
     fn frames_are_exactly_this_json() {
         let cases = [

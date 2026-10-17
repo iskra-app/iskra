@@ -62,6 +62,13 @@ public enum AuthenticationError: Error {
     /// traffic, going direct without saying so would tell somebody they were protected while they
     /// were not, and that is the one failure this feature must never have.
     case bridgeUnavailable(Error)
+    /// The bridge is there and answered, and it will not take this device to this server — not on
+    /// its list, not a Matrix server, not on port 443, not on the public internet.
+    ///
+    /// Its own case because the SDK, handed a connection the bridge reset, reports "server not
+    /// found", and the advice that follows from that — check the address you typed — is wrong:
+    /// the address is fine, and what has to change is the bridge's list or the bridge.
+    case bridgeRefused(BridgeRefusal)
     /// `startSignIn` was not called, or the flow was abandoned.
     case noSignInInProgress
     /// The account just signed in to is already on this device.
@@ -120,6 +127,8 @@ public actor AuthenticationService {
     struct FixedRoute: Sendable {
         var proxy: String
         var rootCertificates: [Data]
+        /// What the stand-in bridge said, for the tests about refusals reaching the screen.
+        var heard: Heard? = nil
     }
 
     private let fixedRoute: FixedRoute?
@@ -386,6 +395,14 @@ public actor AuthenticationService {
         let route = try await route(to: address)
         let entryPoint = route.homeserver
         let routed = through(route, builder)
+        // Where the bridge's record stood before this lookup, so that a refusal from an earlier
+        // attempt — another address, another bridge list — is not blamed on this one.
+        let heard = tunnel?.streams.heard ?? fixedRoute?.heard
+        let mark = heard?.mark ?? 0
+        let refused = { () -> AuthenticationError? in
+            guard let refusal = heard?.refusal(since: mark), refusal.isRefusal else { return nil }
+            return .bridgeRefused(refusal)
+        }
 
         let client: Client
         do {
@@ -395,9 +412,9 @@ public actor AuthenticationService {
                     .build()
             }
         } catch is TimeoutError {
-            throw AuthenticationError.homeserverUnreachable
+            throw refused() ?? AuthenticationError.homeserverUnreachable
         } catch {
-            throw AuthenticationError.homeserverNotFound
+            throw refused() ?? AuthenticationError.homeserverNotFound
         }
 
         let details: HomeserverLoginDetails
@@ -406,7 +423,7 @@ public actor AuthenticationService {
                 await client.homeserverLoginDetails()
             }
         } catch {
-            throw AuthenticationError.homeserverUnreachable
+            throw refused() ?? AuthenticationError.homeserverUnreachable
         }
 
         pendingClient = client
@@ -704,8 +721,8 @@ public actor AuthenticationService {
     /// The relay count is asked for rather than remembered: relays come and go on their own, and a
     /// number written down when the tunnel was raised would be a number from another hour.
     public func tunnelStatus() async -> TunnelStatus {
-        guard case .bridged = tunnelState, let tunnel else { return tunnelState }
-        return .bridged(relays: await tunnel.streams.connectedRelays())
+        guard case .connecting = tunnelState, let tunnel else { return tunnelState }
+        return TunnelStatus(heard: tunnel.streams.heard, relays: await tunnel.streams.connectedRelays())
     }
 
     /// The builder, sent through the route's proxy if it has one.
@@ -761,7 +778,7 @@ public actor AuthenticationService {
         let relays = TunnelSettings.relays()
         if let tunnel, tunnel.bridgeKey == bridgeKey, tunnel.relays == relays,
            let proxy = await tunnel.connect.proxyURL {
-            tunnelState = .bridged(relays: await tunnel.streams.connectedRelays())
+            tunnelState = .connecting(relays: await tunnel.streams.connectedRelays())
             return ClientRoute(homeserver: address, proxy: proxy)
         }
         await stopTunnel()
@@ -780,7 +797,7 @@ public actor AuthenticationService {
             guard let proxy = await connect.proxyURL else { throw LocalHTTPProxy.ProxyError.notStarted }
 
             tunnel = Tunnel(connect: connect, streams: streams, bridgeKey: bridgeKey, relays: relays)
-            tunnelState = .bridged(relays: await streams.connectedRelays())
+            tunnelState = .connecting(relays: await streams.connectedRelays())
             Log.session.info("traffic is going through the bridge")
             return ClientRoute(homeserver: address, proxy: proxy)
         } catch {

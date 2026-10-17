@@ -10,7 +10,7 @@ use std::num::NonZeroU32;
 use std::path::Path;
 
 use anyhow::{anyhow, Context, Result};
-use iskra_tunnel_proto::DEFAULT_SEGMENT;
+use iskra_tunnel_proto::{DEFAULT_POW_BITS, DEFAULT_SEGMENT};
 use nostr_sdk::prelude::{Keys, PublicKey};
 use url::Url;
 
@@ -59,6 +59,8 @@ pub struct Config {
     pub allowed_pubkeys: Option<HashSet<PublicKey>>,
     /// Bytes per segment the bridge cuts what it reads into.
     pub segment_bytes: usize,
+    /// NIP-13 bits an `open` must be mined to. `0` turns it off.
+    pub pow_bits: u8,
     pub streams: StreamLimits,
 }
 
@@ -169,6 +171,13 @@ impl Config {
             ));
         }
 
+        let pow_bits = parse_or("POW_DIFFICULTY", DEFAULT_POW_BITS)?;
+        if pow_bits > 32 {
+            // Each bit doubles the client's work; past 32 a phone mines for minutes per
+            // connection, which is a bridge nobody can use, not a well-defended one.
+            return Err(anyhow!("POW_DIFFICULTY must be at most 32"));
+        }
+
         let defaults = StreamLimits::default();
         let streams = StreamLimits {
             per_client: parse_or("MAX_STREAMS_PER_CLIENT", defaults.per_client)?.max(1),
@@ -195,6 +204,7 @@ impl Config {
             events_per_min,
             allowed_pubkeys,
             segment_bytes,
+            pow_bits,
             streams,
         })
     }

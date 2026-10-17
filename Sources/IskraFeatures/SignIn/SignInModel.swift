@@ -144,6 +144,12 @@ public final class SignInModel {
             // Nothing to do with what they typed, so do not send them back to the
             // address field to hunt for a typo that isn't there.
             problem = Strings.SignIn.Problem.storageUnavailable
+        } catch AuthenticationError.bridgeRefused(let refusal) {
+            // The same reasoning: the address is fine, the bridge will not go there. The SDK would
+            // have called it "not found" and sent them hunting for a typo.
+            problem = Strings.Bridge.refusal(refusal)
+        } catch AuthenticationError.bridgeUnavailable {
+            problem = Strings.SignIn.Problem.bridgeUnavailable
         } catch {
             problem = Strings.SignIn.Problem.unreachable
         }

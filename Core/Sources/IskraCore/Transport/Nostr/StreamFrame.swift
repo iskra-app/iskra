@@ -187,7 +187,19 @@ enum StreamReason {
     static let idle = "idle"
     static let expired = "expired"
     static let closed = "closed"
+    /// The `open` carried less proof of work than the bridge asks for: sent as `pow <bits>`.
+    static let pow = "pow"
+
+    /// The difficulty a `pow <bits>` refusal asks for — `pow_required` in `stream.rs`.
+    static func powRequired(_ reason: String) -> UInt8? {
+        let parts = reason.split(separator: " ")
+        guard parts.count == 2, parts[0] == Self.pow else { return nil }
+        return UInt8(parts[1])
+    }
 }
+
+/// `DEFAULT_POW_BITS`: what every `open` is mined to until the bridge asks for more.
+let defaultPowBits: UInt8 = 16
 
 enum TunnelProtocolError: Error, Equatable {
     case unsupportedVersion(UInt8)

@@ -18,14 +18,14 @@ pub mod stream;
 
 pub use crypto::{open_frame, seal_frame};
 pub use stream::{
-    new_stream_id, reason, Inbound, Outbound, StreamFrame, StreamOp, Violation,
-    STREAM_PROTOCOL_VERSION,
+    new_stream_id, pow_reason, pow_required, reason, Inbound, Outbound, StreamFrame, StreamOp,
+    Violation, DEFAULT_POW_BITS, STREAM_PROTOCOL_VERSION,
 };
 
 use thiserror::Error;
 
-/// Bridge → client: the relay list, segment size and proof-of-work difficulty the bridge wants
-/// used. Reserved; not sent yet.
+/// Bridge → client: the relay list and segment size the bridge wants used. Reserved; not sent.
+/// (The proof-of-work difficulty, once meant for it, travels in the `rst` that asks for more.)
 pub const KIND_CONFIG: u16 = 20005;
 /// Client → bridge: one frame of a stream.
 pub const KIND_STREAM_CLIENT: u16 = 20010;
