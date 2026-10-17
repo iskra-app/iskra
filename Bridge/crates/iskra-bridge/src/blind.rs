@@ -23,8 +23,16 @@ use std::net::SocketAddr;
 use std::sync::Mutex as StdMutex;
 use std::time::{Duration, Instant};
 
+use std::num::NonZeroU32;
+
+use governor::clock::DefaultClock;
+use governor::state::{InMemoryState, NotKeyed};
+use governor::{Quota, RateLimiter};
 use iskra_tunnel_proto::reason;
+use nostr_sdk::prelude::PublicKey;
 use url::Url;
+
+use crate::ratelimit::RateLimit;
 
 use crate::sni::normalise;
 use crate::upstream::{is_global, is_local_name, Upstreams};
@@ -38,6 +46,16 @@ const MATRIX_NO_FOR: Duration = Duration::from_secs(10 * 60);
 /// Most hosts remembered. Past this the memory is dropped whole, as `reassemble`'s refusals are:
 /// forgetting only costs a second probe.
 const MAX_REMEMBERED: usize = 4096;
+/// Most addresses probed for one stream. Each probe is two HTTPS requests to a machine the client
+/// chose by naming it; probing every address a name returns would make the bridge an amplifier
+/// aimed at whoever those addresses belong to.
+const MAX_PROBED_PER_OPEN: usize = 2;
+/// A name resolving to more addresses than this is refused on an open bridge. Real homeservers
+/// have a handful; a name with dozens is a list of targets.
+const MAX_ADDRESSES: usize = 16;
+/// Probes per minute — per client key, and for everybody, because keys cost nothing.
+const PROBES_PER_CLIENT_PER_MIN: u32 = 10;
+const PROBES_PER_MIN: u32 = 120;
 /// How long the probe waits for a host to answer, and how much of the answer it reads.
 const PROBE_TIMEOUT: Duration = Duration::from_secs(10);
 const PROBE_MAX_BODY: usize = 64 * 1024;
@@ -49,6 +67,8 @@ pub enum Refusal {
     NotPublic,
     NoSuchHost,
     NotMatrix,
+    /// The probe allowance is spent; asked again later, the same host may be fine.
+    Busy,
 }
 
 impl Refusal {
@@ -60,6 +80,7 @@ impl Refusal {
             Refusal::NotPublic => reason::NOT_PUBLIC,
             Refusal::NoSuchHost => reason::NO_SUCH_HOST,
             Refusal::NotMatrix => reason::NOT_MATRIX,
+            Refusal::Busy => reason::BUSY,
         }
     }
 }
@@ -73,6 +94,8 @@ enum Rule {
 pub struct Destinations {
     rule: Rule,
     probe: MatrixProbe,
+    probes_per_client: RateLimit,
+    probes_total: RateLimiter<NotKeyed, InMemoryState, DefaultClock>,
 }
 
 impl Destinations {
@@ -98,7 +121,16 @@ impl Destinations {
                     .collect(),
             )
         };
-        Self { rule, probe }
+        Self {
+            rule,
+            probe,
+            probes_per_client: RateLimit::per_minute(
+                NonZeroU32::new(PROBES_PER_CLIENT_PER_MIN).expect("a non-zero constant"),
+            ),
+            probes_total: RateLimiter::direct(Quota::per_minute(
+                NonZeroU32::new(PROBES_PER_MIN).expect("a non-zero constant"),
+            )),
+        }
     }
 
     /// The addresses to connect to, or why not.
@@ -106,7 +138,12 @@ impl Destinations {
     /// **The caller connects to exactly these.** Resolving the name a second time to connect would
     /// be DNS rebinding handed over on a plate: the check would have been about one address and
     /// the connection made to another.
-    pub async fn admit(&self, host: &str, port: u16) -> Result<Vec<SocketAddr>, Refusal> {
+    pub async fn admit(
+        &self,
+        client: &PublicKey,
+        host: &str,
+        port: u16,
+    ) -> Result<Vec<SocketAddr>, Refusal> {
         let host = normalise(host);
         match &self.rule {
             Rule::Listed(list) => {
@@ -143,9 +180,19 @@ impl Destinations {
             if !addresses.iter().all(|address| is_global(&address.ip())) {
                 return Err(Refusal::NotPublic);
             }
+            if addresses.len() > MAX_ADDRESSES {
+                return Err(Refusal::NotMatrix);
+            }
             // Only the addresses that themselves answered as Matrix are handed back, and so only
             // they are connected to.
-            let confirmed = self.probe.matrix_addresses(&host, &addresses).await;
+            // A probe is charged when one is about to go out, never for a remembered answer:
+            // a client reconnecting to its own homeserver pays nothing.
+            let mut allowance =
+                || self.probes_per_client.allow(client) && self.probes_total.check().is_ok();
+            let confirmed = self
+                .probe
+                .matrix_addresses(&host, &addresses, &mut allowance)
+                .await?;
             if confirmed.is_empty() {
                 return Err(Refusal::NotMatrix);
             }
@@ -185,7 +232,14 @@ impl MatrixProbe {
     /// pinned to its address, so the answer belongs to that machine. Probing stops at the first
     /// new yes — a name with eight addresses costs one probe, not eight — and the stream then goes
     /// only to addresses that have said yes.
-    pub async fn matrix_addresses(&self, host: &str, addresses: &[SocketAddr]) -> Vec<SocketAddr> {
+    ///
+    /// `allowance` is asked before each probe that would go out; `false` is [`Refusal::Busy`].
+    pub async fn matrix_addresses(
+        &self,
+        host: &str,
+        addresses: &[SocketAddr],
+        allowance: &mut (dyn FnMut() -> bool + Send),
+    ) -> Result<Vec<SocketAddr>, Refusal> {
         let mut confirmed = Vec::new();
         let mut unknown = Vec::new();
         {
@@ -195,7 +249,11 @@ impl MatrixProbe {
                 match remembered.get(&(host.to_string(), *address)) {
                     Some(&(answer, when))
                         if now.duration_since(when)
-                            < if answer { MATRIX_YES_FOR } else { MATRIX_NO_FOR } =>
+                            < if answer {
+                                MATRIX_YES_FOR
+                            } else {
+                                MATRIX_NO_FOR
+                            } =>
                     {
                         if answer {
                             confirmed.push(*address);
@@ -206,26 +264,29 @@ impl MatrixProbe {
             }
         }
         if !confirmed.is_empty() {
-            return confirmed;
+            return Ok(confirmed);
         }
-        for address in unknown {
+        for address in unknown.into_iter().take(MAX_PROBED_PER_OPEN) {
+            if !allowance() {
+                return Err(Refusal::Busy);
+            }
             let answer = self.ask(host, &[address]).await;
             let mut remembered = self.remembered.lock().expect("probe memory");
-            if remembered.len() >= MAX_REMEMBERED {
-                remembered.clear();
-            }
+            make_room(&mut remembered, Instant::now());
             remembered.insert((host.to_string(), address), (answer, Instant::now()));
             if answer {
                 confirmed.push(address);
                 break;
             }
         }
-        confirmed
+        Ok(confirmed)
     }
 
-    /// Whether any of `addresses` answers as Matrix for `host`.
+    /// Whether any of `addresses` answers as Matrix for `host`, with no allowance to spend.
     pub async fn is_matrix(&self, host: &str, addresses: &[SocketAddr]) -> bool {
-        !self.matrix_addresses(host, addresses).await.is_empty()
+        self.matrix_addresses(host, addresses, &mut || true)
+            .await
+            .is_ok_and(|confirmed| !confirmed.is_empty())
     }
 
     async fn ask(&self, host: &str, addresses: &[SocketAddr]) -> bool {
@@ -266,6 +327,33 @@ impl MatrixProbe {
     }
 }
 
+/// Room for one more answer. Expired answers go first, then the oldest — never the whole memory: a
+/// stranger filling it with names of their own must not flush everybody's remembered homeservers
+/// and make each of them be probed again.
+fn make_room(remembered: &mut HashMap<(String, SocketAddr), (bool, Instant)>, now: Instant) {
+    if remembered.len() < MAX_REMEMBERED {
+        return;
+    }
+    remembered.retain(|_, (answer, when)| {
+        now.duration_since(*when)
+            < if *answer {
+                MATRIX_YES_FOR
+            } else {
+                MATRIX_NO_FOR
+            }
+    });
+    while remembered.len() >= MAX_REMEMBERED {
+        let oldest = remembered
+            .iter()
+            .min_by_key(|(_, (_, when))| *when)
+            .map(|(key, _)| key.clone());
+        match oldest {
+            Some(key) => remembered.remove(&key),
+            None => break,
+        };
+    }
+}
+
 async fn fetch_json(http: &reqwest::Client, url: &str) -> Option<serde_json::Value> {
     let mut response = http.get(url).send().await.ok()?;
     if !response.status().is_success() {
@@ -297,6 +385,10 @@ mod tests {
         Upstreams::new(None, Some(Allowed::These(set))).unwrap()
     }
 
+    fn nobody() -> PublicKey {
+        nostr_sdk::prelude::Keys::generate().public_key()
+    }
+
     fn open() -> Upstreams {
         Upstreams::new(None, Some(Allowed::Anywhere)).unwrap()
     }
@@ -304,7 +396,10 @@ mod tests {
     #[tokio::test]
     async fn a_listed_host_on_its_port_is_admitted_private_or_not() {
         let destinations = Destinations::new(&listed(&["https://localhost:8448"]));
-        let addresses = destinations.admit("LOCALHOST.", 8448).await.unwrap();
+        let addresses = destinations
+            .admit(&nobody(), "LOCALHOST.", 8448)
+            .await
+            .unwrap();
         assert!(addresses
             .iter()
             .all(|a| a.ip().is_loopback() && a.port() == 8448));
@@ -314,11 +409,11 @@ mod tests {
     async fn an_unlisted_host_is_not_allowed_and_an_unlisted_port_is_a_bad_port() {
         let destinations = Destinations::new(&listed(&["matrix.org"]));
         assert_eq!(
-            destinations.admit("example.org", 443).await,
+            destinations.admit(&nobody(), "example.org", 443).await,
             Err(Refusal::NotAllowed)
         );
         assert_eq!(
-            destinations.admit("matrix.org", 22).await,
+            destinations.admit(&nobody(), "matrix.org", 22).await,
             Err(Refusal::BadPort)
         );
     }
@@ -328,7 +423,7 @@ mod tests {
     async fn an_http_origin_is_not_a_stream_target() {
         let destinations = Destinations::new(&listed(&["http://localhost:8008"]));
         assert_eq!(
-            destinations.admit("localhost", 8008).await,
+            destinations.admit(&nobody(), "localhost", 8008).await,
             Err(Refusal::BadPort)
         );
     }
@@ -338,7 +433,7 @@ mod tests {
         let destinations = Destinations::new(&open());
         for port in [22, 25, 80, 8443, 8448] {
             assert_eq!(
-                destinations.admit("matrix.org", port).await,
+                destinations.admit(&nobody(), "matrix.org", port).await,
                 Err(Refusal::BadPort)
             );
         }
@@ -356,7 +451,7 @@ mod tests {
             "::1",
         ] {
             assert_eq!(
-                destinations.admit(host, 443).await,
+                destinations.admit(&nobody(), host, 443).await,
                 Err(Refusal::NotPublic),
                 "{host}"
             );
@@ -495,13 +590,81 @@ mod tests {
         let (matrix, root, _) = server(200, "/_matrix/client/versions", r#"{"versions":[]}"#).await;
         let (website, _, asked) = server(200, "/", "<html></html>").await;
         let probe = MatrixProbe::new(vec![root]);
-        assert_eq!(probe.matrix_addresses("localhost", &[matrix]).await, vec![matrix]);
+        assert_eq!(
+            probe
+                .matrix_addresses("localhost", &[matrix], &mut || true)
+                .await,
+            Ok(vec![matrix])
+        );
         // The name now resolves to the other machine as well: only the machine that said yes is
         // handed back.
-        assert_eq!(probe.matrix_addresses("localhost", &[website, matrix]).await, vec![matrix]);
+        assert_eq!(
+            probe
+                .matrix_addresses("localhost", &[website, matrix], &mut || true)
+                .await,
+            Ok(vec![matrix])
+        );
         // And to the other machine alone: it is asked itself, and it is not Matrix.
-        assert!(probe.matrix_addresses("localhost", &[website]).await.is_empty());
-        assert_eq!(asked.load(std::sync::atomic::Ordering::SeqCst), 0, "untrusted cert, no answer read");
+        assert!(!probe.is_matrix("localhost", &[website]).await);
+        assert_eq!(
+            asked.load(std::sync::atomic::Ordering::SeqCst),
+            0,
+            "untrusted cert, no answer read"
+        );
+    }
+
+    /// However many addresses a name returns, one stream probes at most two of them.
+    #[tokio::test]
+    async fn one_open_probes_at_most_two_addresses() {
+        let mut targets = Vec::new();
+        let mut counters = Vec::new();
+        for _ in 0..5 {
+            let (address, _, asked) = server(200, "/", "<html></html>").await;
+            targets.push(address);
+            counters.push(asked);
+        }
+        let probe = MatrixProbe::new(Vec::new());
+        let mut probes = 0;
+        let confirmed = probe
+            .matrix_addresses("localhost", &targets, &mut || {
+                probes += 1;
+                true
+            })
+            .await
+            .unwrap();
+        assert!(confirmed.is_empty());
+        assert_eq!(probes, MAX_PROBED_PER_OPEN);
+    }
+
+    #[tokio::test]
+    async fn with_the_allowance_spent_the_answer_is_busy() {
+        let (address, root, asked) =
+            server(200, "/_matrix/client/versions", r#"{"versions":[]}"#).await;
+        let probe = MatrixProbe::new(vec![root]);
+        assert_eq!(
+            probe
+                .matrix_addresses("localhost", &[address], &mut || false)
+                .await,
+            Err(Refusal::Busy)
+        );
+        assert_eq!(asked.load(std::sync::atomic::Ordering::SeqCst), 0);
+    }
+
+    #[test]
+    fn a_full_memory_drops_its_oldest_not_everything() {
+        let start = Instant::now();
+        let mut remembered = HashMap::new();
+        for n in 0..MAX_REMEMBERED {
+            let address: SocketAddr = format!("192.0.2.1:{}", n + 1).parse().unwrap();
+            remembered.insert(
+                ("h".to_string(), address),
+                (true, start + Duration::from_millis(n as u64)),
+            );
+        }
+        make_room(&mut remembered, start + Duration::from_secs(1));
+        assert_eq!(remembered.len(), MAX_REMEMBERED - 1);
+        let first: SocketAddr = "192.0.2.1:1".parse().unwrap();
+        assert!(!remembered.contains_key(&("h".to_string(), first)));
     }
 
     #[tokio::test]
