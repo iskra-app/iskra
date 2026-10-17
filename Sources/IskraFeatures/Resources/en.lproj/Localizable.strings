@@ -1331,6 +1331,15 @@
 "signIn.whatIsMatrix" = "What is Matrix?";
 /* The title of that screen. */
 "aboutMatrix.title" = "What is Matrix";
+/* The opening paragraph, set larger than the rest. */
+"aboutMatrix.intro" = "Matrix is an open way for messaging apps to talk to each other. Iskra is one of those apps. There are others, and they all understand each other.";
+/* Then three short sections: a heading and a paragraph under it. */
+"aboutMatrix.email.title" = "Like email, but for chats";
+"aboutMatrix.email.body" = "Your account lives on one server, and you can write to people on any other. Email works the same way: you’re on Gmail, your friend is on Yahoo, and the mail still arrives. A Matrix address looks like this: @name:server.";
+"aboutMatrix.nobody.title" = "Nobody’s in charge";
+"aboutMatrix.nobody.body" = "Matrix isn’t owned by one company that could shut it down, sell your data or change the rules. There are thousands of servers, run by foundations, communities and ordinary people. You can run one too.";
+"aboutMatrix.private.title" = "Your conversations stay yours";
+"aboutMatrix.private.body" = "Messages are encrypted right on your device, and only the person you’re writing to can decrypt them. The server stores and passes them along, but it can’t read them.";
 
 /* The list of public servers, opened from the sign-in screen. */
 "servers.title" = "Choose a server";

@@ -228,12 +228,20 @@ public enum Strings {
         }
     }
 
-    /// "Not sure which server to choose?" — the public servers, and running your own.
-    /// See `PublicServer` for why these four.
+    /// "What is Matrix?" — for somebody who has never heard the word.
     public enum AboutMatrix {
         public static let title = LocalizedStringResource("aboutMatrix.title", bundle: bundle)
+        public static let intro = LocalizedStringResource("aboutMatrix.intro", bundle: bundle)
+        public static let emailTitle = LocalizedStringResource("aboutMatrix.email.title", bundle: bundle)
+        public static let emailBody = LocalizedStringResource("aboutMatrix.email.body", bundle: bundle)
+        public static let nobodyTitle = LocalizedStringResource("aboutMatrix.nobody.title", bundle: bundle)
+        public static let nobodyBody = LocalizedStringResource("aboutMatrix.nobody.body", bundle: bundle)
+        public static let privateTitle = LocalizedStringResource("aboutMatrix.private.title", bundle: bundle)
+        public static let privateBody = LocalizedStringResource("aboutMatrix.private.body", bundle: bundle)
     }
 
+    /// "Not sure which server to choose?" — the public servers, and running your own.
+    /// See `PublicServer` for why these four.
     public enum Servers {
         public static let title = LocalizedStringResource("servers.title", bundle: bundle)
         public static let intro = LocalizedStringResource("servers.intro", bundle: bundle)

@@ -1327,6 +1327,15 @@
 "signIn.whatIsMatrix" = "Что такое Matrix?";
 /* The title of that screen. */
 "aboutMatrix.title" = "Что такое Matrix";
+/* The opening paragraph, set larger than the rest. */
+"aboutMatrix.intro" = "Matrix — открытый способ, которым приложения для переписки общаются между собой. Iskra — одно из таких приложений. Есть и другие, и все они друг друга понимают.";
+/* Then three short sections: a heading and a paragraph under it. */
+"aboutMatrix.email.title" = "Как почта, только для чатов";
+"aboutMatrix.email.body" = "Аккаунт живёт на одном сервере, а писать можно людям с любого другого. С почтой так же: у вас Gmail, у друга Яндекс, а письма всё равно доходят. Адрес в Matrix выглядит так: @имя:сервер.";
+"aboutMatrix.nobody.title" = "Здесь никто не главный";
+"aboutMatrix.nobody.body" = "Matrix не принадлежит одной компании, которая может закрыть сервис, продать ваши данные или поменять правила. Серверов тысячи, и держат их фонды, сообщества и обычные люди. Можно поднять и свой.";
+"aboutMatrix.private.title" = "Переписка остаётся вашей";
+"aboutMatrix.private.body" = "Сообщения шифруются прямо на вашем устройстве, а расшифровать их может только собеседник. Сервер их хранит и пересылает, но прочитать не может.";
 
 /* The list of public servers, opened from the sign-in screen. */
 "servers.title" = "Выбор сервера";

@@ -1331,6 +1331,15 @@
 "signIn.whatIsMatrix" = "什么是 Matrix？";
 /* The title of that screen. */
 "aboutMatrix.title" = "什么是 Matrix";
+/* The opening paragraph, set larger than the rest. */
+"aboutMatrix.intro" = "Matrix 是一种开放的方式，让聊天应用彼此交流。Iskra 就是其中之一。还有别的应用，它们彼此都能互通。";
+/* Then three short sections: a heading and a paragraph under it. */
+"aboutMatrix.email.title" = "像电子邮件，只不过是聊天";
+"aboutMatrix.email.body" = "您的账号在一台服务器上，却可以给任何其他服务器上的人发消息。电子邮件也是这样：您用 Gmail，朋友用 QQ 邮箱，邮件照样能送到。Matrix 地址看起来是这样的：@名字:服务器。";
+"aboutMatrix.nobody.title" = "这里没有谁说了算";
+"aboutMatrix.nobody.body" = "Matrix 不属于任何一家公司，没有人能关掉它、卖掉您的数据或随意改规则。服务器有成千上万台，由基金会、社区和普通人运营。您也可以自己搭一台。";
+"aboutMatrix.private.title" = "您的对话只属于您";
+"aboutMatrix.private.body" = "消息直接在您的设备上加密，只有对方才能解密。服务器负责保存和转发，但读不了内容。";
 
 /* The list of public servers, opened from the sign-in screen. */
 "servers.title" = "选择服务器";
