@@ -1,13 +1,12 @@
 //! Where a blind stream may go.
 //!
-//! In v1 `upstream.rs` decides this from the request: the path must be under `/_matrix/`, the
-//! address public, the origin listed. A blind bridge never sees a path, so "is this Matrix" moves
-//! from the request to the **host**, and the rules become these:
+//! The bridge never sees a path — the request is inside the client's TLS — so "is this Matrix" is
+//! a question about the **host**, and the rules are these:
 //!
 //! - **Port 443 only**, unless the operator listed a host with another port. An open 25 or 22 is
 //!   what gets an operator's server switched off by the hosting company.
 //! - **Listed hosts only**, when `ALLOWED_UPSTREAMS` is a list. An operator who names their
-//!   homeservers has vouched for them, private address and all, as in v1.
+//!   homeservers has vouched for them, private address and all.
 //! - **On an open bridge, public addresses only** — every address the name resolves to, not just
 //!   the first — and **only hosts that answer like a Matrix server**, asked by the bridge itself
 //!   over real TLS, on the very addresses it will then connect to.
@@ -99,8 +98,8 @@ pub struct Destinations {
 }
 
 impl Destinations {
-    /// The same list v1 serves, read as hosts. Only `https` origins count: a stream is somebody's
-    /// own TLS, and an `http` homeserver has none for the bridge to be blind to.
+    /// `ALLOWED_UPSTREAMS`, read as hosts and ports. Only `https` origins exist there: a stream is
+    /// somebody's own TLS, and an `http` homeserver has none for the bridge to be blind to.
     pub fn new(upstreams: &Upstreams) -> Self {
         Self::with_probe(upstreams, MatrixProbe::new(Vec::new()))
     }
@@ -395,7 +394,7 @@ mod tests {
 
     fn listed(origins: &[&str]) -> Upstreams {
         let set: BTreeSet<String> = origins.iter().map(|o| parse_origin(o).unwrap()).collect();
-        Upstreams::new(None, Some(Allowed::These(set))).unwrap()
+        Upstreams::new(Allowed::These(set)).unwrap()
     }
 
     fn nobody() -> PublicKey {
@@ -403,7 +402,7 @@ mod tests {
     }
 
     fn open() -> Upstreams {
-        Upstreams::new(None, Some(Allowed::Anywhere)).unwrap()
+        Upstreams::new(Allowed::Anywhere).unwrap()
     }
 
     #[tokio::test]
@@ -431,17 +430,7 @@ mod tests {
         );
     }
 
-    /// An `http` homeserver has no TLS for the bridge to be blind to, so it is no stream target.
-    #[tokio::test]
-    async fn an_http_origin_is_not_a_stream_target() {
-        let destinations = Destinations::new(&listed(&["http://localhost:8008"]));
-        assert_eq!(
-            destinations.admit(&nobody(), "localhost", 8008).await,
-            Err(Refusal::BadPort)
-        );
-    }
-
-    #[tokio::test]
+#[tokio::test]
     async fn an_open_bridge_carries_443_and_nothing_else() {
         let destinations = Destinations::new(&open());
         for port in [22, 25, 80, 8443, 8448] {

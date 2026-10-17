@@ -911,16 +911,24 @@ event id (или переиндексировать комнату), либо в
 План — `docs/BLIND-BRIDGE.md`: мост по умолчанию, который *не может* видеть токен и сообщения, —
 TLS насквозь до хоумсервера, мост перекладывает шифротекст.
 
-- [ ] Замер: `LiveBridgeSessionTests` прямо, v1 и v2; держит ли SDK соединения живыми.
+- [ ] Замер: `LiveBridgeSessionTests` прямо и через мост; держит ли SDK соединения живыми.
 - [x] Протокол потока: `StreamFrame`, окно, сборка (`iskra-tunnel-proto/src/stream.rs`).
-- [x] Мост: `stream.rs`, `BLIND_ONLY`, куда можно (`blind.rs`), SNI = хост (`sni.rs`), потолки на
+- [x] Мост: `stream.rs`, куда можно (`blind.rs`), SNI = хост (`sni.rs`), потолки на
       потоки и байты. Сквозные тесты с настоящим TLS и тест, что в логах нет токена, пароля и тела.
-- [ ] Клиент: `LocalConnectProxy`, `NostrStreamTunnel`, `.proxy` в `ClientBuilder`, `DirectPipe`.
+- [x] v1 (HTTP через мост, kind 20001/20002) удалён из моста: чанкер, реассемблер, `forwarder`,
+      `HOMESERVER_URL`, `RATE_LIMIT_PER_MIN`, `BLIND_ONLY`. Мост всегда слепой.
+- [ ] v1 удалён из приложения: `NostrTunnelUpstream`, `TunnelEnvelope`, `TunnelChunker`,
+      `TunnelReassembler` — вместе с клиентом ниже.
+- [x] Клиент: `LocalConnectProxy`, `NostrStreamTunnel`, `.proxy` в `ClientBuilder`, `DirectPipe`.
+      `StreamFrame` и окно — зеркало `stream.rs` с теми же тестами-вопросами; через прокси ходит всё
+      (`BlindRouteTests`: вход, sliding sync, медиа, клиент расширения — к хоумсерверу с настоящим
+      TLS), и SDK входит и синхронизируется по потокам, которые перемешивает и дублирует мост-заглушка.
+      Включается только `TunnelSettings.blindKey`, переключателя на экране нет.
 - [ ] `BridgeCheck`, `--probe-bridge`, `.bridgedBlind`; отказы словами — «мост старый», «не пускает
       к этому серверу», «перегружен».
 - [ ] PoW на `open` и сложность в `KIND_CONFIG`. Обязателен до моста по умолчанию: без него общий
       бюджет проверок «это Matrix» выжимается бесплатными ключами.
-- [ ] Мост по умолчанию: `BLIND_ONLY=true`, `*`, его `npub` и relay в `TunnelSettings`; потом — фраза
+- [ ] Мост по умолчанию: `*`, его `npub` и relay в `TunnelSettings`; потом — фраза
       на экране.
 
 ## Что легко нарушить по дороге

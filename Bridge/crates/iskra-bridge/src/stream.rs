@@ -1,4 +1,4 @@
-//! Protocol v2: the bridge as a pipe for somebody else's TLS.
+//! The bridge as a pipe for somebody else's TLS.
 //!
 //! A client asks for `host:443` and sends its ClientHello in the same frame. The bridge reads the
 //! server name out of it, decides whether it will go there (`blind.rs`), connects to the address it

@@ -7,7 +7,6 @@
 # ровно в ту же стену, что и телефон, и смысла в нём не будет.
 #
 #   ./run-local.sh
-#   HOMESERVER_URL=https://matrix.example.org ./run-local.sh
 #   ALLOWED_UPSTREAMS='matrix.org,matrix-client.matrix.org,example.org' ./run-local.sh
 #   ALLOWED_UPSTREAMS='*' ./run-local.sh    # любой публичный хоумсервер
 #   RELEASE=1 ./run-local.sh          # медленнее собирается, быстрее работает
@@ -27,8 +26,6 @@ ALLOWED_UPSTREAMS="${ALLOWED_UPSTREAMS:-matrix.org,matrix-client.matrix.org}"
 # нескольких relay — не запас на будущее, а рабочая отказоустойчивость: событие уходит на все сразу,
 # ответ приходит с того, который оказался быстрее.
 RELAY_LIST="${RELAY_LIST:-wss://nos.lol,wss://relay.primal.net,wss://relay.nostr.band}"
-RATE_LIMIT_PER_MIN="${RATE_LIMIT_PER_MIN:-120}"
-REQUEST_TIMEOUT_SECS="${REQUEST_TIMEOUT_SECS:-60}"
 RUST_LOG="${RUST_LOG:-info}"
 
 if ! command -v cargo >/dev/null 2>&1; then
@@ -58,7 +55,6 @@ else
   echo "серверы    : $ALLOWED_UPSTREAMS"
 fi
 echo "relay      : $RELAY_LIST"
-echo "лимит      : $RATE_LIMIT_PER_MIN запросов в минуту на клиента"
 if [ -n "${ALLOWED_PUBKEYS:-}" ]; then
   echo "доступ     : только перечисленные ключи"
 else
@@ -69,11 +65,9 @@ echo
 
 exec env \
   ALLOWED_UPSTREAMS="$ALLOWED_UPSTREAMS" \
-  ${HOMESERVER_URL:+HOMESERVER_URL="$HOMESERVER_URL"} \
   BRIDGE_KEY_FILE="$KEY_FILE" \
   RELAY_LIST="$RELAY_LIST" \
-  RATE_LIMIT_PER_MIN="$RATE_LIMIT_PER_MIN" \
-  REQUEST_TIMEOUT_SECS="$REQUEST_TIMEOUT_SECS" \
+  ${STREAM_BYTES_PER_MIN:+STREAM_BYTES_PER_MIN="$STREAM_BYTES_PER_MIN"} \
   ${ALLOWED_PUBKEYS:+ALLOWED_PUBKEYS="$ALLOWED_PUBKEYS"} \
   ${CLIENT_RELAY_LIST:+CLIENT_RELAY_LIST="$CLIENT_RELAY_LIST"} \
   RUST_LOG="$RUST_LOG" \

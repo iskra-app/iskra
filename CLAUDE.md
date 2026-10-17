@@ -222,19 +222,17 @@ Four rules about it fail far from their cause:
   client cannot be re-pointed live, and "on the next launch" was an app that stopped loading
   messages the moment somebody switched the bridge on.
 
-**Protocol v2, the blind bridge** (kinds 20010/20011, `Bridge/crates/iskra-bridge/src/stream.rs`,
-plan in `docs/BLIND-BRIDGE.md`) carries a TCP stream the SDK's own TLS runs over, so the bridge sees
-the host and the byte counts and nothing inside. Its frames are `StreamFrame` in
-`iskra-tunnel-proto/src/stream.rs`, and the Swift side, when it is written, mirrors them field for
-field and asks the same questions of its reassembly (`Inbound`/`Outbound`). Three rules about it:
+**The bridge is blind, and only blind** (kinds 20010/20011, `Bridge/crates/iskra-bridge/src/stream.rs`,
+plan in `docs/BLIND-BRIDGE.md`): it carries a TCP stream the SDK's own TLS runs over, so it sees the
+host and the byte counts and nothing inside. The protocol before it (v1, kinds 20001/20002, HTTP
+requests the bridge read in order to repeat, token included) is **gone from both sides**; there is
+no mode to choose and nothing to fall back to, and bringing any of it back brings back a bridge that
+reads tokens. The frames are `StreamFrame` in `iskra-tunnel-proto/src/stream.rs`; the Swift side
+mirrors them field for field and asks the same questions of its reassembly (`Inbound`/`Outbound`).
+Two rules about it:
 
-- **A bridge run for other people runs with `BLIND_ONLY=true`.** With v1 still on, an old client
-  hands that bridge its token in the clear, and "the bridge cannot see" is the operator's promise
-  rather than the bridge's property. A bridge without the flag serves both protocols.
 - **The words "the bridge cannot see your messages" belong to `.bridgedBlind` and to nothing else** —
-  the status says what is true *now*, not what was chosen. A bridge that does not speak v2 is said
-  so in words; falling back to v1 quietly is the same mistake as falling back to a direct
-  connection.
+  the status says what is true *now*, not what was chosen.
 - **The host from `open` must equal the ClientHello's SNI, and the connection goes to the addresses
   that were checked** (`blind.rs`) — on an open bridge, only those that *themselves* answered as
   Matrix, remembered per `(name, address)` — never to a second lookup of the name. Either shortcut
