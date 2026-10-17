@@ -5,8 +5,8 @@
 <h1 align="center">Iskra</h1>
 
 <p align="center">
-  A native <a href="https://matrix.org">Matrix</a> client for iPhone, iPad and Mac.<br>
-  One SwiftUI codebase, with all Matrix and cryptography work done by
+  Клиент <a href="https://matrix.org">Matrix</a> для iPhone, iPad и Mac.<br>
+  Один код на SwiftUI, а всю работу с Matrix и шифрованием делает
   <a href="https://github.com/matrix-org/matrix-rust-sdk">matrix-rust-sdk</a>.
 </p>
 
@@ -16,69 +16,72 @@
   <a href="LICENSE-EXCEPTION.md"><img src="https://img.shields.io/badge/licence-GPL--3.0-blue" alt="GPL-3.0"></a>
 </p>
 
-## What it does
+<p align="center"><b>Русский</b> · <a href="README.en.md">English</a></p>
 
-- **Chats as you expect them** — DMs, groups and spaces, replies, edits, reactions, pins,
-  mentions, polls, locations, files, voice messages and round video messages.
-- **End-to-end encryption** with device verification and key backup.
-- **Notifications that say something** — an encrypted push is decrypted on the device, so
-  the lock screen shows the message, and the server never could.
-- **Several accounts** on one device, a tap apart.
-- **Widgets, Live Activities, Siri and Shortcuts.**
-- **Seven languages**: English, Russian, German, Spanish, French, Japanese, Chinese.
-- **A way around a blocked network.** Where the homeserver cannot be reached directly,
-  the connection can be carried over [nostr](https://nostr.com) through a
-  [bridge](https://github.com/iskra-app/iskra-bridge) — which sees only the host and the byte counts, because the
-  TLS runs end to end through it.
+## Что умеет
 
-## Privacy
+- **Чаты, какими вы их ждёте** — личные, группы и пространства, ответы, правки, реакции,
+  закрепы, упоминания, опросы, геопозиция, файлы, голосовые и видеосообщения в кружке.
+- **Сквозное шифрование** с подтверждением устройств и резервной копией ключей.
+- **Уведомления, в которых что-то написано.** Зашифрованный пуш расшифровывается на самом
+  телефоне: на экране блокировки видно сообщение, хотя сервер прочитать его не может.
+- **Несколько аккаунтов** на одном устройстве, переключение в одно касание.
+- **Виджеты, Live Activities, Siri и Команды.**
+- **Семь языков**: русский, английский, немецкий, испанский, французский, японский, китайский.
+- **Обход блокировок.** Если до сервера не достучаться напрямую, соединение можно провести
+  через [nostr](https://nostr.com) и [мост](https://github.com/iskra-app/iskra-bridge). Мост
+  видит только адрес сервера и сколько байт прошло: TLS идёт сквозь него до самого сервера.
 
-- Tokens and store keys live only in the Keychain, never synced or backed up.
-- The message store and the search index are encrypted on disk; search never leaves the
-  device.
-- Photos and videos are sent without their metadata by default.
-- Nothing logs messages, tokens or passwords.
-- All Matrix cryptography is the Rust SDK's — none of it is reimplemented here.
+## Приватность
 
-## Building
+- Токены и ключи хранилища лежат только в Связке ключей и никуда не синхронизируются, даже
+  в резервные копии.
+- Сообщения и поисковый индекс зашифрованы на диске, а поиск не выходит за пределы
+  устройства.
+- Фото и видео по умолчанию уходят без метаданных.
+- В логи не попадают ни сообщения, ни токены, ни пароли.
+- Вся криптография Matrix — из Rust SDK, здесь ничего из неё не переписано.
 
-You need Xcode 26 or later and
-[XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`).
+## Сборка
+
+Нужны Xcode 26 или новее и [XcodeGen](https://github.com/yonaskolb/XcodeGen)
+(`brew install xcodegen`).
 
 ```sh
-swift build && swift test         # the libraries, where all the behaviour lives
-./run.sh                          # the app on the Mac and in the iPhone simulator
-./run.sh ios --mock-backend       # with the built-in demo server: every screen has something on it
+swift build && swift test         # библиотеки, в которых живёт всё поведение
+./run.sh                          # приложение на Mac и в симуляторе iPhone
+./run.sh ios --mock-backend       # со встроенным демо-сервером: на каждом экране что-то есть
 ```
 
-The Xcode project is generated from `Apps/project.yml`. To sign your own build, put your
-team in `DEVELOPMENT_TEAM` and your own prefix in `bundleIdPrefix` there.
+Проект Xcode генерируется из `Apps/project.yml`. Чтобы подписать свою сборку, укажите там
+свою команду в `DEVELOPMENT_TEAM` и свой префикс в `bundleIdPrefix`.
 
-The bridge is a separate Rust service in its own repository,
-[`iskra-app/iskra-bridge`](https://github.com/iskra-app/iskra-bridge), where its images and
-releases are published.
+Мост — отдельный сервис на Rust в своём репозитории,
+[`iskra-app/iskra-bridge`](https://github.com/iskra-app/iskra-bridge); там же выходят его
+образы и релизы.
 
-## Layout
+## Устройство
 
 | | |
 |---|---|
-| `Core/` — **IskraCore** | Sessions, secrets, rooms, timeline, search, media, the bridge client. Never SwiftUI. |
-| `Sources/IskraDesign` | Bubbles, glass, spacing, colour. Never Matrix. |
-| `Sources/IskraFeatures` | The screens — the only place the two meet. |
-| `Apps/` | Thin app shells, the notification, share and widget extensions. |
-| `docs/` | Design notes: [why things are the way they are](docs/DECISIONS.md), the [blind bridge](docs/BLIND-BRIDGE.md), the [push gateway](docs/PUSH-GATEWAY.md). |
+| `Core/` — **IskraCore** | Сессии, секреты, комнаты, лента, поиск, медиа, клиент моста. Без SwiftUI. |
+| `Sources/IskraDesign` | Пузыри, стекло, отступы, цвета. Без Matrix. |
+| `Sources/IskraFeatures` | Экраны — единственное место, где встречаются оба. |
+| `Apps/` | Тонкие оболочки приложений, расширения уведомлений, «Поделиться» и виджетов. |
+| `docs/` | Заметки: [почему всё устроено так](docs/DECISIONS.md), [слепой мост](docs/BLIND-BRIDGE.md), [сервер пушей](docs/PUSH-GATEWAY.md). |
 
-What is done and what is next is in [`ROADMAP.md`](ROADMAP.md). The working guide to the
-code — its rules and the mistakes they prevent — is [`CLAUDE.md`](CLAUDE.md).
+Что сделано и что дальше — в [`ROADMAP.md`](ROADMAP.md). Рабочее руководство по коду — его
+правила и ошибки, от которых они берегут, — в [`CLAUDE.md`](CLAUDE.md).
 
-## Contributing
+## Участие
 
-Welcome. Please read [`CONTRIBUTING.md`](CONTRIBUTING.md) first: every commit is signed
-off, and the sign-off includes agreeing that the app may be published through app stores.
+Будем рады. Сначала прочитайте [`CONTRIBUTING.md`](CONTRIBUTING.md): каждый коммит
+подписывается (`git commit -s`), и подпись означает в том числе согласие на публикацию
+приложения в магазинах приложений.
 
-## Licence
+## Лицензия
 
-Iskra is [GPL-3.0](LICENSE) with an
-[additional permission for app stores](LICENSE-EXCEPTION.md). The
-[bridge](https://github.com/iskra-app/iskra-bridge) is MIT. Generated avatars are a port of [blobatar](https://blobatar.dev),
-MIT ([notice](Licenses/blobatar.txt)).
+Iskra распространяется под [GPL-3.0](LICENSE) с
+[дополнительным разрешением для магазинов приложений](LICENSE-EXCEPTION.md).
+[Мост](https://github.com/iskra-app/iskra-bridge) — под MIT. Сгенерированные аватары — порт
+[blobatar](https://blobatar.dev), MIT ([уведомление](Licenses/blobatar.txt)).

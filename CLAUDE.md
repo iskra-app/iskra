@@ -6,9 +6,11 @@ Iskra is a native Matrix client for iPhone, iPad and Mac: one Swift/SwiftUI code
 Matrix protocol and cryptography work done by `matrix-rust-sdk` over FFI.
 
 `docs/DECISIONS.md` carries the *rationale* behind the decisions below and is worth reading
-before changing any of them. This file is the operational summary. `README.md` is the
-project's front page for people who have never seen it — short on purpose; reasoning that
-grows there belongs in `docs/DECISIONS.md`, and rules in this file.
+before changing any of them. This file is the operational summary. `README.md` (Russian)
+and `README.en.md` (English) are the project's front page for people who have never seen it —
+short on purpose, and the same page in two languages: a change to one is made to the other in
+the same commit. Reasoning that grows there belongs in `docs/DECISIONS.md`, and rules in this
+file.
 
 `ROADMAP.md` is the plan of work to MVP: what is done, what is half-done, what is next, and which
 SDK call each remaining piece hangs off. It is kept current — a finished item is ticked there in
