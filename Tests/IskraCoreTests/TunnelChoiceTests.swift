@@ -23,7 +23,8 @@ struct TunnelChoiceTests {
     func publicByDefault() throws {
         let defaults = try fresh()
         #expect(TunnelSettings.source(defaults) == .publicList)
-        #expect(TunnelSettings.bridgeKey(defaults) == nil)
+        // Before any download, the snapshot built into the app.
+        #expect(TunnelSettings.bridgeKey(defaults) == PublicBridges.bundled.bridges.first?.bridgeKey)
 
         let first = try entry("first")
         try list([first, try entry("second")], into: defaults)
@@ -48,14 +49,16 @@ struct TunnelChoiceTests {
     }
 
     /// Half a key in the old field is not carried over as a bridge, and with the switch on the
-    /// public list is what is asked for — a refusal while it is empty, never a quiet direct route.
+    /// public list is what is asked for — its first bridge, or a refusal while it is empty, never a
+    /// quiet direct route.
     @Test("a mistyped old address is not a bridge, and still no direct route")
     func aMistypedOldAddress() throws {
         let defaults = try fresh()
         defaults.set(true, forKey: TunnelSettings.enabledKey)
         defaults.set(String(try NostrKeypair.generate().npub.dropLast(4)), forKey: TunnelSettings.addressKey)
         #expect(TunnelSettings.customBridges(defaults).isEmpty)
-        #expect(TunnelSettings.bridgeKey(defaults) == nil)
+        #expect(TunnelSettings.source(defaults) == .publicList)
+        #expect(TunnelSettings.bridgeKey(defaults) == PublicBridges.bundled.bridges.first?.bridgeKey)
         #expect(TunnelSettings.asksForBridge(defaults))
     }
 
@@ -186,7 +189,7 @@ struct TunnelChoiceTests {
         let start = Date()
 
         #expect(await PublicBridges.refresh(defaults: defaults, now: start) { _ in throw URLError(.notConnectedToInternet) } == false)
-        #expect(PublicBridges.current(defaults).isEmpty)
+        #expect(PublicBridges.current(defaults) == PublicBridges.bundled.bridges)
 
         #expect(await PublicBridges.refresh(defaults: defaults, now: start) { _ in good })
         #expect(PublicBridges.current(defaults) == [bridge])
@@ -215,8 +218,11 @@ struct TunnelChoiceTests {
     }
 
     @Test("the snapshot built into the app is a list this build can read")
-    func bundledSnapshotParses() {
-        // Empty until the repository has its first bridge — but always readable.
+    func bundledSnapshotParses() throws {
         #expect(PublicBridges.bundled.version == PublicBridgeList.formatVersion)
+        // `parse` drops an entry it cannot use, so a typo in the npub would vanish quietly.
+        let ours = try #require(PublicBridges.bundled.bridges.first { $0.id == "iskra-default" })
+        #expect(ours.bridgeKey.map { Hex.string($0) } == "6b84b4c69a5850afb04c38bd5020da3e537b3fa0f118a30eab482a19c06556f9")
+        #expect(ours.relays == TunnelSettings.defaultRelays)
     }
 }
