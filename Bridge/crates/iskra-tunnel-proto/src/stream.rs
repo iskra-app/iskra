@@ -403,6 +403,8 @@ pub struct Inbound {
 
     /// Segments the owner has reported written to its socket — what `ack` says.
     written: u32,
+    /// Bytes handed out by `accept` and not yet reported written: the owner's queue to its socket.
+    unwritten_bytes: usize,
     unacked_segments: u32,
     unacked_bytes: usize,
 }
@@ -427,11 +429,13 @@ impl Inbound {
         if self.fin.is_some_and(|fin| seq >= fin) {
             return Err(Violation::DataAfterFin);
         }
-        // The sender's window starts at the last acknowledgement, which is never past `next`, so
-        // a correct sender never sends this far ahead. One that does is asking to be held in
-        // memory without limit.
-        if seq >= self.next.saturating_add(WINDOW_SEGMENTS)
-            || self.held_bytes + bytes.len() > WINDOW_BYTES + MAX_SEGMENT
+        // The window is measured from what has been **written**, not from what has been
+        // assembled. The sender's window starts at its last acknowledgement, which is never past
+        // `written`, so a correct sender never gets this far ahead. Measured from `next` instead,
+        // a sender ignoring acknowledgements could keep the prefix moving and pile up everything
+        // in front of a slow socket — held nowhere in this struct, and so capped by nothing.
+        if seq >= self.written.saturating_add(WINDOW_SEGMENTS)
+            || self.held_bytes + self.unwritten_bytes + bytes.len() > WINDOW_BYTES + MAX_SEGMENT
         {
             return Err(Violation::BeyondWindow);
         }
@@ -445,6 +449,7 @@ impl Inbound {
                 ready.push(bytes);
                 self.next += 1;
             }
+            self.unwritten_bytes += ready.iter().map(Vec::len).sum::<usize>();
         } else {
             self.held_bytes += bytes.len();
             self.held.insert(seq, bytes);
@@ -498,6 +503,7 @@ impl Inbound {
     /// the far socket has accepted", and so what carries TCP's back-pressure across the tunnel.
     pub fn written(&mut self, segments: u32, bytes: usize) -> Option<u32> {
         self.written += segments;
+        self.unwritten_bytes = self.unwritten_bytes.saturating_sub(bytes);
         self.unacked_segments += segments;
         self.unacked_bytes += bytes;
         if self.unacked_segments >= ACK_EVERY_SEGMENTS || self.unacked_bytes >= ACK_EVERY_BYTES {
@@ -750,6 +756,40 @@ mod tests {
             Err(Violation::BeyondWindow)
         );
         inbound.accept(WINDOW_SEGMENTS - 1, seg(0), now).unwrap();
+    }
+
+    /// A sender that ignores acknowledgements is refused even when it sends in order: what has
+    /// not reached the socket counts against the window as much as what is waiting on a hole.
+    #[test]
+    fn in_order_segments_past_an_unwritten_window_are_a_violation() {
+        let mut inbound = Inbound::new();
+        let now = Instant::now();
+        for seq in 0..WINDOW_SEGMENTS {
+            assert_eq!(inbound.accept(seq, seg(0), now).unwrap().len(), 1);
+        }
+        assert_eq!(
+            inbound.accept(WINDOW_SEGMENTS, seg(0), now),
+            Err(Violation::BeyondWindow)
+        );
+        inbound.written(1, 10);
+        assert_eq!(inbound.accept(WINDOW_SEGMENTS, seg(0), now).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn unwritten_bytes_past_the_window_are_a_violation() {
+        let mut inbound = Inbound::new();
+        let now = Instant::now();
+        let big = vec![0; MAX_SEGMENT];
+        let mut seq = 0;
+        let refused = loop {
+            match inbound.accept(seq, big.clone(), now) {
+                Ok(_) => seq += 1,
+                Err(violation) => break violation,
+            }
+        };
+        assert_eq!(refused, Violation::BeyondWindow);
+        inbound.written(seq, seq as usize * MAX_SEGMENT);
+        inbound.accept(seq, big, now).unwrap();
     }
 
     #[test]

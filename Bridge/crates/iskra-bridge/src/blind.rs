@@ -143,19 +143,29 @@ impl Destinations {
             if !addresses.iter().all(|address| is_global(&address.ip())) {
                 return Err(Refusal::NotPublic);
             }
-            if !self.probe.is_matrix(&host, &addresses).await {
+            // Only the addresses that themselves answered as Matrix are handed back, and so only
+            // they are connected to.
+            let confirmed = self.probe.matrix_addresses(&host, &addresses).await;
+            if confirmed.is_empty() {
                 return Err(Refusal::NotMatrix);
             }
+            return Ok(confirmed);
         }
         Ok(addresses)
     }
 }
 
-/// Asks a host whether it is a Matrix server, and remembers the answer.
+/// Asks a host whether it is a Matrix server, and remembers the answer — **per address**.
+///
+/// Remembered per name alone, the answer could be reused for addresses that never gave it: a name
+/// answers "yes" from a server of its owner's, its DNS is then pointed at somebody else's public
+/// address, and for a day the bridge carries raw TCP on 443 to that address. The client brings its
+/// own TLS and need not check the certificate that comes back, so a certificate mismatch protects
+/// nobody here. Keyed by `(name, address)`, a yes covers exactly the machine that said it.
 pub struct MatrixProbe {
     /// Extra roots to trust, beyond the public ones. Empty in production; a test's own CA in tests.
     roots: Vec<reqwest::Certificate>,
-    remembered: StdMutex<HashMap<String, (bool, Instant)>>,
+    remembered: StdMutex<HashMap<(String, SocketAddr), (bool, Instant)>>,
 }
 
 impl MatrixProbe {
@@ -166,34 +176,56 @@ impl MatrixProbe {
         }
     }
 
-    /// `GET /_matrix/client/versions` answering JSON with a `versions` array, or
-    /// `GET /.well-known/matrix/client` answering JSON with `m.homeserver` — the second is what a
-    /// delegating name like `matrix.org` serves, where the API itself lives elsewhere.
+    /// The addresses among `addresses` that answer as a Matrix server for `host`: `GET
+    /// /_matrix/client/versions` with a `versions` array, or `GET /.well-known/matrix/client` with
+    /// `m.homeserver` — the second is what a delegating name like `matrix.org` serves, where the
+    /// API itself lives elsewhere.
     ///
-    /// Asked over the bridge's own TLS, certificate checked, on the addresses already judged:
-    /// `resolve_to_addrs` pins the probe to them, so it cannot be answered by a different machine
-    /// than the one the stream will reach.
-    pub async fn is_matrix(&self, host: &str, addresses: &[SocketAddr]) -> bool {
-        let now = Instant::now();
-        if let Some(&(answer, when)) = self.remembered.lock().expect("probe memory").get(host) {
-            let good_for = if answer {
-                MATRIX_YES_FOR
-            } else {
-                MATRIX_NO_FOR
-            };
-            if now.duration_since(when) < good_for {
-                return answer;
+    /// Asked over the bridge's own TLS, certificate checked, one address at a time: each probe is
+    /// pinned to its address, so the answer belongs to that machine. Probing stops at the first
+    /// new yes — a name with eight addresses costs one probe, not eight — and the stream then goes
+    /// only to addresses that have said yes.
+    pub async fn matrix_addresses(&self, host: &str, addresses: &[SocketAddr]) -> Vec<SocketAddr> {
+        let mut confirmed = Vec::new();
+        let mut unknown = Vec::new();
+        {
+            let now = Instant::now();
+            let remembered = self.remembered.lock().expect("probe memory");
+            for address in addresses {
+                match remembered.get(&(host.to_string(), *address)) {
+                    Some(&(answer, when))
+                        if now.duration_since(when)
+                            < if answer { MATRIX_YES_FOR } else { MATRIX_NO_FOR } =>
+                    {
+                        if answer {
+                            confirmed.push(*address);
+                        }
+                    }
+                    _ => unknown.push(*address),
+                }
             }
         }
-
-        let answer = self.ask(host, addresses).await;
-
-        let mut remembered = self.remembered.lock().expect("probe memory");
-        if remembered.len() >= MAX_REMEMBERED {
-            remembered.clear();
+        if !confirmed.is_empty() {
+            return confirmed;
         }
-        remembered.insert(host.to_string(), (answer, now));
-        answer
+        for address in unknown {
+            let answer = self.ask(host, &[address]).await;
+            let mut remembered = self.remembered.lock().expect("probe memory");
+            if remembered.len() >= MAX_REMEMBERED {
+                remembered.clear();
+            }
+            remembered.insert((host.to_string(), address), (answer, Instant::now()));
+            if answer {
+                confirmed.push(address);
+                break;
+            }
+        }
+        confirmed
+    }
+
+    /// Whether any of `addresses` answers as Matrix for `host`.
+    pub async fn is_matrix(&self, host: &str, addresses: &[SocketAddr]) -> bool {
+        !self.matrix_addresses(host, addresses).await.is_empty()
     }
 
     async fn ask(&self, host: &str, addresses: &[SocketAddr]) -> bool {
@@ -454,6 +486,22 @@ mod tests {
                 .is_matrix("localhost", &[address])
                 .await
         );
+    }
+
+    /// The case the per-address memory exists for: a yes from one machine is no licence for
+    /// another address the same name later points at.
+    #[tokio::test]
+    async fn a_yes_covers_the_address_that_gave_it_and_no_other() {
+        let (matrix, root, _) = server(200, "/_matrix/client/versions", r#"{"versions":[]}"#).await;
+        let (website, _, asked) = server(200, "/", "<html></html>").await;
+        let probe = MatrixProbe::new(vec![root]);
+        assert_eq!(probe.matrix_addresses("localhost", &[matrix]).await, vec![matrix]);
+        // The name now resolves to the other machine as well: only the machine that said yes is
+        // handed back.
+        assert_eq!(probe.matrix_addresses("localhost", &[website, matrix]).await, vec![matrix]);
+        // And to the other machine alone: it is asked itself, and it is not Matrix.
+        assert!(probe.matrix_addresses("localhost", &[website]).await.is_empty());
+        assert_eq!(asked.load(std::sync::atomic::Ordering::SeqCst), 0, "untrusted cert, no answer read");
     }
 
     #[tokio::test]

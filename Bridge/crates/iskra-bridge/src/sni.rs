@@ -4,7 +4,13 @@
 //! cannot read. Without this check the host checked and the server talked to could differ: open a
 //! stream to a Matrix server's address and say `Host: someone-else` inside, and a virtual host
 //! sharing that IP is reached through the bridge. Requiring the ClientHello's SNI to equal the
-//! host from `open` is what ties the two together.
+//! host from `open` is what ties the two together — **at the TLS layer, and no further.**
+//!
+//! Inside the TLS is an HTTP `Host` the bridge cannot see, and a front that routes on it rather than
+//! on SNI — a CDN shared by many sites — will hand the connection to whichever site that header
+//! names. A Matrix server behind such a CDN therefore opens the way to every site on it: domain
+//! fronting. Nothing on this side of the TLS can close that; it is a limit of a blind bridge, said
+//! in the README, and an operator who cannot accept it lists hosts instead of running open.
 //!
 //! Only as much of the ClientHello is parsed as it takes to find `server_name`, and every length
 //! is checked against what is actually there: these bytes come from a stranger.
