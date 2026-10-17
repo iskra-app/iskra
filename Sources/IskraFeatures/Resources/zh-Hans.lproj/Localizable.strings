@@ -209,6 +209,22 @@
 "connection.title" = "连接";
 "connection.bridge" = "通过网桥";
 "connection.bridgeFooter" = "流量经由网桥而不是直接到达服务器。适用于无法访问服务器的地方。";
+"connection.publicSection" = "公共网桥";
+"connection.publicFooter" = "来自 github.com/iskra-app/public-bridges 列表的已验证网桥。网桥能看到什么，见下文。应用每天直接从 GitHub 下载一次列表，因此 GitHub 和您的网络能看到这次下载；如果无法连接 GitHub，则使用已保存的列表。";
+"connection.publicEmpty" = "列表中还没有网桥。请在下方添加您自己的网桥。";
+"connection.publicAnyServer" = "任意 Matrix 服务器";
+"connection.publicServers" = "仅 %@";
+"connection.publicOperator" = "由 %@ 维护";
+"connection.notListed" = "已不在列表中";
+"connection.ownSection" = "您的网桥";
+"connection.ownFooter" = "您自己运行的网桥，或从其维护者处获得的网桥。可以保存多个——使用的是打勾的那个。";
+"connection.addBridge" = "添加网桥";
+"connection.editBridge" = "编辑网桥";
+"connection.deleteBridge" = "删除";
+"connection.saveBridge" = "保存";
+"connection.cancelEditing" = "取消";
+"connection.bridgeName" = "名称";
+"connection.bridgeNamePrompt" = "例如“家”";
 
 "connection.status" = "状态";
 "connection.statusDirect" = "直连";
@@ -222,7 +238,7 @@
    said here rather than only in the status: this is what somebody is looking at. */
 "connection.address" = "网桥地址";
 "connection.addressPrompt" = "npub1… 或 64 位十六进制字符";
-"connection.addressFooter" = "网桥启动时会打印它的地址，就是“bridge address for Iskra: npub1…”那一行。此栏为空时，开关不起作用：流量直接发往服务器。";
+"connection.addressFooter" = "网桥启动时会打印它的地址——即“bridge address for Iskra: npub1…”这一行。";
 "connection.addressBad" = "这看起来不像网桥密钥";
 "connection.addressSecret" = "这是私钥。这里需要的是公钥，也就是以 npub 开头的那个。";
 

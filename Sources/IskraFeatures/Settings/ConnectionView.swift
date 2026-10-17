@@ -18,8 +18,14 @@ struct ConnectionView: View {
     let session: UserSession
 
     @AppStorage(TunnelSettings.enabledKey, store: TunnelSettings.store) private var throughBridge = false
-    @AppStorage(TunnelSettings.addressKey, store: TunnelSettings.store) private var address = ""
-    @AppStorage(TunnelSettings.relaysKey, store: TunnelSettings.store) private var relays = ""
+
+    /// The bridges on the public list, as the app has it — refreshed when the screen opens.
+    @State private var bridges: [PublicBridge] = PublicBridges.current()
+    /// One's own bridges.
+    @State private var own: [PublicBridge] = TunnelSettings.customBridges()
+    @State private var choice: Choice? = Self.currentChoice()
+    /// One's own bridge being added (`nil` bridge) or edited.
+    @State private var editing: BridgeEditor.Target?
 
     @State private var status: TunnelStatus = .off
     @State private var myKey: String?
@@ -42,40 +48,52 @@ struct ConnectionView: View {
             }
 
             Section {
-                TextField(String(localized: Strings.Connection.addressPrompt),
-                          text: $address.animation(.smooth(duration: Theme.Timing.reaction)),
-                          axis: .vertical)
-                    .textContentType(.none)
-                    .autocorrectionDisabled()
-                    #if os(iOS)
-                    .textInputAutocapitalization(.never)
-                    #endif
-                    .font(.body.monospaced())
-                    .lineLimit(1...3)
-
-                if let complaint {
-                    Label(complaint, systemImage: "exclamationmark.triangle")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                ForEach(listed) { bridge in
+                    row(bridge, choice: .publicBridge(bridge.id), detail: detail(of: bridge))
                 }
             } header: {
-                Text(Strings.Connection.address)
+                Text(Strings.Connection.publicSection)
             } footer: {
-                Text(Strings.Connection.addressFooter)
+                Text(bridges.isEmpty ? Strings.Connection.publicEmpty : Strings.Connection.publicFooter)
             }
 
             Section {
-                TextField(String(localized: Strings.Connection.relaysPrompt), text: $relays, axis: .vertical)
-                    .autocorrectionDisabled()
-                    #if os(iOS)
-                    .textInputAutocapitalization(.never)
-                    #endif
-                    .font(.body.monospaced())
-                    .lineLimit(1...4)
+                ForEach(own) { bridge in
+                    row(bridge, choice: .custom(bridge.id), detail: TunnelSettings.shortAddress(bridge.npub))
+                        .swipeActions {
+                            Button(role: .destructive) {
+                                remove(bridge)
+                            } label: {
+                                Label(Strings.Connection.deleteBridge, systemImage: "trash")
+                            }
+                            Button {
+                                editing = .init(bridge: bridge)
+                            } label: {
+                                Label(Strings.Connection.editBridge, systemImage: "pencil")
+                            }
+                        }
+                        .contextMenu {
+                            Button {
+                                editing = .init(bridge: bridge)
+                            } label: {
+                                Label(Strings.Connection.editBridge, systemImage: "pencil")
+                            }
+                            Button(role: .destructive) {
+                                remove(bridge)
+                            } label: {
+                                Label(Strings.Connection.deleteBridge, systemImage: "trash")
+                            }
+                        }
+                }
+                Button {
+                    editing = .init(bridge: nil)
+                } label: {
+                    Label(Strings.Connection.addBridge, systemImage: "plus")
+                }
             } header: {
-                Text(Strings.Connection.relays)
+                Text(Strings.Connection.ownSection)
             } footer: {
-                Text(Strings.Connection.relaysFooter)
+                Text(Strings.Connection.ownFooter)
             }
 
             if let myKey {
@@ -122,7 +140,7 @@ struct ConnectionView: View {
                         Label(Strings.Connection.check, systemImage: "bolt.horizontal")
                     }
                 }
-                .disabled(checking || !BridgeAddress.isValid(address))
+                .disabled(checking || checkTarget == nil)
 
                 if let outcome {
                     Text(describe(outcome))
@@ -150,9 +168,19 @@ struct ConnectionView: View {
             }
         }
         .navigationTitle(Text(Strings.Connection.title))
+        .sheet(item: $editing) { target in
+            BridgeEditor(target: target) { bridge in saved(bridge, isNew: target.bridge == nil) }
+        }
         .task {
             status = await session.tunnelStatus()
             myKey = await session.tunnelPublicKey()
+        }
+        .task {
+            // At most once a day, and only for somebody using the list: the download goes direct.
+            guard TunnelSettings.source() == .publicList else { return }
+            if await PublicBridges.refresh() {
+                withAnimation(.smooth(duration: Theme.Timing.reaction)) { bridges = PublicBridges.current() }
+            }
         }
         .onAppear {
             if appeared == nil { appeared = TunnelSettings.snapshot() }
@@ -166,23 +194,13 @@ struct ConnectionView: View {
     /// edit, because the fields are `@AppStorage` and every edit redraws.
     private var isPending: Bool {
         guard let appeared else { return false }
-        _ = (throughBridge, address, relays)
+        _ = (throughBridge, choice, own)
         return TunnelSettings.snapshot() != appeared
     }
 
     private func apply() {
         appeared = TunnelSettings.snapshot()
         NotificationCenter.default.post(name: TunnelSettings.changed, object: nil)
-    }
-
-    /// What is wrong with what has been typed, if anything. Nothing while the field is empty: an
-    /// empty field is where everybody starts, not a mistake.
-    private var complaint: LocalizedStringResource? {
-        switch BridgeAddress.publicKey(from: address) {
-        case .success, .failure(.empty): nil
-        case .failure(.looksLikeASecretKey): Strings.Connection.addressSecret
-        case .failure(.notAKey): Strings.Connection.addressBad
-        }
     }
 
     private func describe(_ status: TunnelStatus) -> LocalizedStringResource {
@@ -205,19 +223,115 @@ struct ConnectionView: View {
         }
     }
 
+    /// What "Check the bridge" checks: the bridge chosen on this screen, before it is applied.
+    private var checkTarget: (key: Data, relays: [URL])? {
+        guard let bridge = TunnelSettings.chosenBridge(), let key = bridge.bridgeKey else { return nil }
+        _ = choice
+        return (key, bridge.relayURLs)
+    }
+
     private func check() {
-        guard case .success(let key) = BridgeAddress.publicKey(from: address) else { return }
+        guard let target = checkTarget else { return }
         checking = true
         outcome = nil
         Task {
             let homeserver = await session.homeserverURL
-            outcome = await BridgeCheck.run(bridgeKey: key,
-                                            relays: TunnelSettings.parseRelays(relays).isEmpty
-                                                ? TunnelSettings.defaultRelays.compactMap(URL.init(string:))
-                                                : TunnelSettings.parseRelays(relays),
-                                            homeserver: homeserver)
+            outcome = await BridgeCheck.run(bridgeKey: target.key, relays: target.relays, homeserver: homeserver)
             checking = false
         }
+    }
+
+    // MARK: - Which bridge
+
+    enum Choice: Hashable {
+        case publicBridge(String)
+        case custom(String)
+    }
+
+    private static func currentChoice() -> Choice? {
+        guard let bridge = TunnelSettings.chosenBridge() else { return nil }
+        switch TunnelSettings.source() {
+        case .publicList: return .publicBridge(bridge.id)
+        case .custom: return .custom(bridge.id)
+        }
+    }
+
+    /// The public list as shown: the bridges on it, and the one chosen earlier if it has since left
+    /// the list — it stays chosen until the person picks another, and says it is no longer listed.
+    private var listed: [PublicBridge] {
+        guard TunnelSettings.source() == .publicList, let chosen = TunnelSettings.chosenBridge(),
+              !bridges.contains(where: { $0.id == chosen.id }) else { return bridges }
+        return bridges + [chosen]
+    }
+
+    /// One bridge, chosen with a tap; the one in use carries the mark.
+    private func row(_ bridge: PublicBridge, choice: Choice, detail: String?) -> some View {
+        Button {
+            switch choice {
+            case .publicBridge: TunnelSettings.choose(bridge, source: .publicList)
+            case .custom: TunnelSettings.choose(bridge, source: .custom)
+            }
+            outcome = nil
+            withAnimation(.smooth(duration: Theme.Timing.reaction)) { self.choice = choice }
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                    Text(bridge.name)
+                        .foregroundStyle(.primary)
+                    if let detail {
+                        Text(detail)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+                if self.choice == choice {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(.tint)
+                        .accessibilityHidden(true)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(self.choice == choice ? .isSelected : [])
+    }
+
+    private func remove(_ bridge: PublicBridge) {
+        TunnelSettings.removeCustom(id: bridge.id)
+        withAnimation(.smooth(duration: Theme.Timing.reaction)) {
+            own = TunnelSettings.customBridges()
+            choice = Self.currentChoice()
+        }
+    }
+
+    /// Back from the editor: the list redrawn, and a bridge just added put in use — adding one is
+    /// almost always the step before using it.
+    private func saved(_ bridge: PublicBridge, isNew: Bool) {
+        if isNew { TunnelSettings.choose(bridge, source: .custom) }
+        withAnimation(.smooth(duration: Theme.Timing.reaction)) {
+            own = TunnelSettings.customBridges()
+            choice = Self.currentChoice()
+        }
+    }
+
+    /// Who runs it and where it goes, in one line.
+    private func detail(of bridge: PublicBridge) -> String? {
+        var parts: [String] = []
+        if !bridges.contains(where: { $0.id == bridge.id }) {
+            parts.append(String(localized: Strings.Connection.notListed))
+        }
+        if let name = bridge.operator, !name.isEmpty {
+            parts.append(String(localized: Strings.Connection.publicOperator(name)))
+        }
+        if let servers = bridge.homeservers {
+            parts.append(String(localized: Strings.Connection.publicServers(servers.joined(separator: ", "))))
+        } else {
+            parts.append(String(localized: Strings.Connection.publicAnyServer))
+        }
+        guard let line = parts.first.map({ _ in parts.joined(separator: " · ") }) else { return nil }
+        // The parts are written to sit mid-sentence; the line as a whole starts with a capital.
+        return line.prefix(1).uppercased() + line.dropFirst()
     }
 
     private func copy(_ text: String) {

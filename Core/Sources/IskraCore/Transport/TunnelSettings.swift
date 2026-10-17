@@ -6,12 +6,29 @@ import Foundation
 /// `AuthenticationService` reads it when it builds a client, long before any screen exists.
 public enum TunnelSettings {
     public static let enabledKey = "transport.bridgeEnabled"
-    /// The bridge's public key, as the person pasted it: hex or `npub1…`.
+    /// The person's own bridges, as JSON: `[PublicBridge]` — the same shape as an entry on the
+    /// public list, with an id of the app's making.
+    public static let customBridgesKey = "transport.customBridges"
+    /// Which kind of bridge is in use: one from the public list, or one of the person's own.
+    public static let sourceKey = "transport.bridgeSource"
+    /// The bridge in use, the whole entry as JSON — not only its id, so that the notification
+    /// extension can connect to it without either list, and so that a public entry that leaves the
+    /// list does not silently become another bridge.
+    public static let chosenBridgeKey = "transport.chosenBridge"
+
+    /// The single bridge address and relay list from before a person could have several. Read once,
+    /// to carry them into `customBridgesKey`, and never written again.
     public static let addressKey = "transport.bridgeAddress"
-    /// The relays to meet it on, one per line or separated by commas.
     public static let relaysKey = "transport.bridgeRelays"
 
-    /// Where the three settings are kept: the App Group's defaults, not `.standard`.
+    public enum Source: String, Sendable {
+        /// A bridge from `github.com/iskra-app/public-bridges`.
+        case publicList = "public"
+        /// One of the person's own.
+        case custom
+    }
+
+    /// Where these settings are kept: the App Group's defaults, not `.standard`.
     ///
     /// Because the notification extension builds a client too. Inside an `.appex`, `.standard` is
     /// the extension's own and empty, so with the settings kept there the extension read "no
@@ -42,26 +59,156 @@ public enum TunnelSettings {
         defaults.bool(forKey: enabledKey)
     }
 
-    /// Whether anything at all is written in the address field.
+    // MARK: - One's own bridges
+
+    /// The person's own bridges, oldest first.
     ///
-    /// Not the same question as `bridgeKey() != nil`, and the difference is the whole point: an
-    /// empty field is "no bridge yet", while a field holding a mistyped `npub` is a bridge the user
-    /// meant to use and cannot — which must be a refusal, never a quiet direct connection.
-    public static func hasAddress(_ defaults: UserDefaults = store) -> Bool {
-        !(defaults.string(forKey: addressKey) ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    /// The first time it is asked, a bridge typed into the old single address field becomes the
+    /// first of them — and the one in use, if it was — so that nobody who set up a bridge before
+    /// there could be several finds it gone.
+    public static func customBridges(_ defaults: UserDefaults = store) -> [PublicBridge] {
+        if let data = defaults.data(forKey: customBridgesKey) {
+            return ((try? JSONDecoder().decode([PublicBridge].self, from: data)) ?? []).filter(\.isUsable)
+        }
+        return migrateLegacy(defaults)
     }
 
-    // MARK: - Which bridge, and where to meet it
+    /// Add one's own bridge, or replace the one with the same id. Returns the entry as stored.
+    @discardableResult
+    public static func saveCustom(name: String, address: String, relays: String, id: String? = nil,
+                                  _ defaults: UserDefaults = store) -> PublicBridge? {
+        guard case .success(let key) = BridgeAddress.publicKey(from: address) else { return nil }
+        let typed = parseRelays(relays).map(\.absoluteString)
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let npub = BridgeAddress.npub(for: key)
+        let bridge = PublicBridge(id: id ?? UUID().uuidString,
+                                  name: String((trimmed.isEmpty ? shortName(npub) : trimmed).prefix(64)),
+                                  npub: npub,
+                                  relays: typed.isEmpty ? defaultRelays : typed)
+        var all = customBridges(defaults)
+        if let index = all.firstIndex(where: { $0.id == bridge.id }) {
+            all[index] = bridge
+        } else {
+            all.append(bridge)
+        }
+        write(all, defaults)
+        // The one in use, edited, is still the one in use — with its new address.
+        if source(defaults) == .custom, chosenEntry(defaults)?.id == bridge.id {
+            choose(bridge, source: .custom, defaults)
+        }
+        return bridge
+    }
 
-    /// The bridge's 32-byte public key, if the settings hold a usable one.
+    /// Forget one of one's own bridges. If it was the one in use, none of one's own is in use now.
+    public static func removeCustom(id: String, _ defaults: UserDefaults = store) {
+        write(customBridges(defaults).filter { $0.id != id }, defaults)
+        if source(defaults) == .custom, chosenEntry(defaults)?.id == id {
+            defaults.removeObject(forKey: chosenBridgeKey)
+        }
+    }
+
+    private static func write(_ bridges: [PublicBridge], _ defaults: UserDefaults) {
+        defaults.set(try? JSONEncoder().encode(bridges), forKey: customBridgesKey)
+    }
+
+    private static func migrateLegacy(_ defaults: UserDefaults) -> [PublicBridge] {
+        let address = (defaults.string(forKey: addressKey) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard case .success(let key) = BridgeAddress.publicKey(from: address) else {
+            write([], defaults)
+            return []
+        }
+        let typed = parseRelays(defaults.string(forKey: relaysKey) ?? "").map(\.absoluteString)
+        let npub = BridgeAddress.npub(for: key)
+        let bridge = PublicBridge(id: UUID().uuidString, name: shortName(npub), npub: npub,
+                                  relays: typed.isEmpty ? defaultRelays : typed)
+        write([bridge], defaults)
+        if defaults.string(forKey: sourceKey) == nil {
+            choose(bridge, source: .custom, defaults)
+        }
+        return [bridge]
+    }
+
+    /// `npub1abcd…wxyz`: what a bridge is called until somebody names it, and how its address is
+    /// shown under its name.
+    public static func shortAddress(_ npub: String) -> String { shortName(npub) }
+
+    static func shortName(_ npub: String) -> String {
+        guard npub.count > 16 else { return npub }
+        return "\(npub.prefix(9))…\(npub.suffix(4))"
+    }
+
+    // MARK: - Which bridge is in use
+
+    /// Which kind of bridge. Nothing chosen means the public list — unless the person has bridges
+    /// of their own, which they set up on purpose and must keep using.
+    public static func source(_ defaults: UserDefaults = store) -> Source {
+        if let raw = defaults.string(forKey: sourceKey), let source = Source(rawValue: raw) { return source }
+        return customBridges(defaults).isEmpty ? .publicList : .custom
+    }
+
+    /// The bridge in use, whichever kind it is.
     ///
-    /// `nil` is not an error state — it is the ordinary case of somebody turning the switch on
-    /// before pasting an address. What it must never come to mean is "carry on without a bridge".
-    public static func bridgeKey(_ defaults: UserDefaults = store) -> Data? {
-        guard let text = defaults.string(forKey: addressKey),
-              case .success(let key) = BridgeAddress.publicKey(from: text)
+    /// - **Public:** the one chosen, or the first on the list when none has been. A chosen bridge
+    ///   stays chosen even after it leaves the list — it was stored whole — because swapping in
+    ///   another bridge behind the person's back is the one thing the switch must never do; the
+    ///   screen says it is no longer listed.
+    /// - **Own:** the one chosen, while it still exists; deleted, there is none.
+    public static func chosenBridge(_ defaults: UserDefaults = store) -> PublicBridge? {
+        switch source(defaults) {
+        case .publicList:
+            return chosenEntry(defaults) ?? PublicBridges.current(defaults).first
+        case .custom:
+            let own = customBridges(defaults)
+            guard let chosen = chosenEntry(defaults) else { return own.first }
+            return own.first { $0.id == chosen.id }
+        }
+    }
+
+    /// The entry stored as chosen, of the kind in use — a public entry is no answer for "which of
+    /// my own", and the other way round.
+    private static func chosenEntry(_ defaults: UserDefaults) -> PublicBridge? {
+        guard let data = defaults.data(forKey: chosenBridgeKey),
+              let stored = try? JSONDecoder().decode(ChosenBridge.self, from: data),
+              stored.source == (defaults.string(forKey: sourceKey) ?? ""), stored.bridge.isUsable
         else { return nil }
-        return key
+        return stored.bridge
+    }
+
+    /// Whether a bridge of the kind in use has been chosen — rather than defaulted to.
+    public static func hasChosen(_ defaults: UserDefaults = store) -> Bool {
+        chosenEntry(defaults) != nil
+    }
+
+    private struct ChosenBridge: Codable {
+        var source: String
+        var bridge: PublicBridge
+    }
+
+    /// Use this bridge from now on.
+    public static func choose(_ bridge: PublicBridge, source: Source, _ defaults: UserDefaults = store) {
+        defaults.set(source.rawValue, forKey: sourceKey)
+        defaults.set(try? JSONEncoder().encode(ChosenBridge(source: source.rawValue, bridge: bridge)),
+                     forKey: chosenBridgeKey)
+    }
+
+    /// Whether the settings ask for a bridge — which, with the switch on, means a connection that
+    /// cannot get one is a refusal and never a quiet direct one. A public bridge is always asked
+    /// for, even while the list is empty; one's own, as soon as there is one.
+    public static func asksForBridge(_ defaults: UserDefaults = store) -> Bool {
+        guard isEnabled(defaults) else { return false }
+        switch source(defaults) {
+        case .publicList: return true
+        case .custom: return !customBridges(defaults).isEmpty
+        }
+    }
+
+    /// The 32-byte public key of the bridge in use, if there is one.
+    ///
+    /// `nil` is not an error state by itself — somebody who turned the switch on and has not yet
+    /// picked a bridge of their own. What it must never come to mean is "carry on without a bridge"
+    /// while `asksForBridge` says one was asked for.
+    public static func bridgeKey(_ defaults: UserDefaults = store) -> Data? {
+        chosenBridge(defaults)?.bridgeKey
     }
 
     /// Relays the tunnel meets the bridge on.
@@ -76,8 +223,8 @@ public enum TunnelSettings {
                                        "wss://relay.nostr.band"]
 
     public static func relays(_ defaults: UserDefaults = store) -> [URL] {
-        let parsed = parseRelays(defaults.string(forKey: relaysKey) ?? "")
-        return parsed.isEmpty ? defaultRelays.compactMap(URL.init(string:)) : parsed
+        let chosen = chosenBridge(defaults)?.relayURLs ?? []
+        return chosen.isEmpty ? defaultRelays.compactMap(URL.init(string:)) : chosen
     }
 
     // MARK: - Applying a change
