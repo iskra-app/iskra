@@ -372,7 +372,7 @@ async fn run(
     };
 
     // ---- Where, and whether. Then a connection to exactly the address that was judged. ----
-    let addresses = match shared.destinations.admit(&host, port).await {
+    let addresses = match shared.destinations.admit(&client, &host, port).await {
         Ok(addresses) => addresses,
         Err(refusal) => return Ended::Reset(refusal.as_str()),
     };
