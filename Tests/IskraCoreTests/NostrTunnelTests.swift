@@ -149,33 +149,6 @@ struct NostrTunnelTests {
 
     // MARK: - Settings
 
-    @Test func theBridgeKeyComesBackOutOfSettings() throws {
-        let defaults = try #require(UserDefaults(suiteName: "bridge-\(UUID().uuidString)"))
-        #expect(TunnelSettings.bridgeKey(defaults) == nil)
-
-        let keys = try NostrKeypair.generate()
-        defaults.set(keys.npub, forKey: TunnelSettings.addressKey)
-        #expect(TunnelSettings.bridgeKey(defaults) == keys.publicKey)
-
-        // Half a key is no key, and must not be read as one.
-        defaults.set(String(keys.npub.dropLast(4)), forKey: TunnelSettings.addressKey)
-        #expect(TunnelSettings.bridgeKey(defaults) == nil)
-    }
-
-    /// A mistyped address is not an empty one. `route` refuses the first and goes direct on the
-    /// second, and the two used to look the same — `bridgeKey() == nil` — so a typo went direct.
-    @Test func aMistypedAddressIsStillAnAddress() throws {
-        let defaults = try #require(UserDefaults(suiteName: "address-\(UUID().uuidString)"))
-        #expect(!TunnelSettings.hasAddress(defaults))
-        defaults.set("   ", forKey: TunnelSettings.addressKey)
-        #expect(!TunnelSettings.hasAddress(defaults))
-
-        let keys = try NostrKeypair.generate()
-        defaults.set(String(keys.npub.dropLast(4)), forKey: TunnelSettings.addressKey)
-        #expect(TunnelSettings.hasAddress(defaults))
-        #expect(TunnelSettings.bridgeKey(defaults) == nil)
-    }
-
     /// The notification extension decides the route from these settings too, and its own
     /// `.standard` is empty. Kept there, the extension went straight to the homeserver on every
     /// push with the bridge switched on.
@@ -194,27 +167,6 @@ struct NostrTunnelTests {
         #expect(!TunnelSettings.isEnabled())
     }
 
-    /// Leaving the Connection screen rebuilds the session only when the connection would really be
-    /// different. Tearing one down to build it again identically is a spinner for nothing.
-    @Test func onlyAChangeThatMattersAsksForAReconnect() throws {
-        let defaults = try #require(UserDefaults(suiteName: "snapshot-\(UUID().uuidString)"))
-        let keys = try NostrKeypair.generate()
-        defaults.set(true, forKey: TunnelSettings.enabledKey)
-        defaults.set(Hex.string(keys.publicKey), forKey: TunnelSettings.addressKey)
-        let before = TunnelSettings.snapshot(defaults)
-
-        // The same key as npub, with a stray space; relays emptied back to what the defaults are.
-        defaults.set(" \(keys.npub) ", forKey: TunnelSettings.addressKey)
-        defaults.set("  ", forKey: TunnelSettings.relaysKey)
-        #expect(TunnelSettings.snapshot(defaults) == before)
-
-        defaults.set(false, forKey: TunnelSettings.enabledKey)
-        #expect(TunnelSettings.snapshot(defaults) != before)
-        defaults.set(true, forKey: TunnelSettings.enabledKey)
-
-        defaults.set("wss://relay.example", forKey: TunnelSettings.relaysKey)
-        #expect(TunnelSettings.snapshot(defaults) != before)
-    }
 }
 
 // MARK: - Stream frames

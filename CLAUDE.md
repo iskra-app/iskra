@@ -182,7 +182,16 @@ nostr. Nothing above the transport learns anything, and the bridge sees cipherte
 `BlindRouteTests` holds that *everything* goes that way — sign-in, sliding sync, media, the
 notification extension's client — against a demo homeserver with real TLS. `LocalHTTPProxy` is no
 longer the bridge's: it stays for the demo and sign-in servers, which live inside the app in the
-clear. The bridge's address is `TunnelSettings.addressKey` in the **App Group's** defaults
+clear. Which bridge is a choice between the **public list** (`PublicBridges`, `bridges.json` from
+`github.com/iskra-app/public-bridges` — fetched directly at most once a day, raw GitHub then the
+jsDelivr mirror, with a snapshot in `Resources/public-bridges.json`) and **one's own bridges**,
+as many as the person likes (`TunnelSettings.customBridges`). The bridge in use is stored
+**whole** (`chosenBridgeKey`) — never re-derived from a list — so a public entry that leaves the
+list, or a list reordered tomorrow, never moves anybody to another bridge behind their back; the
+first public bridge used without being picked is written down as picked (`route`). With the
+switch on, the public list *always* asks for a bridge: an empty one is a refusal, not a direct
+route. The old single address field (`addressKey`, `relaysKey`) is read once, into the first of
+one's own bridges. All of it is in the **App Group's** defaults
 (`TunnelSettings.store`, Settings → Connection) — the notification extension routes by it too, and
 with it in `.standard` every push went straight to the homeserver with the bridge switched on; this
 device's own nostr key is in the Keychain, under a **service of its own** — the session's service is

@@ -209,6 +209,22 @@
 "connection.title" = "Connexion";
 "connection.bridge" = "Via un pont";
 "connection.bridgeFooter" = "Le trafic passe par un pont au lieu d’aller directement au serveur. C’est utile là où le serveur est injoignable.";
+"connection.publicSection" = "Ponts publics";
+"connection.publicFooter" = "Des ponts vérifiés, issus de la liste github.com/iskra-app/public-bridges. Ce que voit un pont est expliqué plus bas. L’application télécharge la liste une fois par jour, directement depuis GitHub : GitHub et votre réseau peuvent le voir ; si GitHub est injoignable, elle utilise la copie enregistrée.";
+"connection.publicEmpty" = "La liste ne contient encore aucun pont. Ajoutez le vôtre ci-dessous.";
+"connection.publicAnyServer" = "n’importe quel serveur Matrix";
+"connection.publicServers" = "seulement %@";
+"connection.publicOperator" = "tenu par %@";
+"connection.notListed" = "n’est plus dans la liste";
+"connection.ownSection" = "Vos ponts";
+"connection.ownFooter" = "Un pont que vous faites tourner vous-même, ou que vous tenez de celui qui le fait tourner. Vous pouvez en garder plusieurs : celui qui est coché est utilisé.";
+"connection.addBridge" = "Ajouter un pont";
+"connection.editBridge" = "Modifier le pont";
+"connection.deleteBridge" = "Supprimer";
+"connection.saveBridge" = "Enregistrer";
+"connection.cancelEditing" = "Annuler";
+"connection.bridgeName" = "Nom";
+"connection.bridgeNamePrompt" = "Par exemple « Maison »";
 
 "connection.status" = "État";
 "connection.statusDirect" = "Directe";
@@ -222,7 +238,7 @@
    said here rather than only in the status: this is what somebody is looking at. */
 "connection.address" = "Adresse du pont";
 "connection.addressPrompt" = "npub1… ou 64 caractères hex";
-"connection.addressFooter" = "Un pont affiche son adresse au démarrage : la ligne « bridge address for Iskra: npub1… ». Tant que ce champ est vide, l’interrupteur ne sert à rien : le trafic va directement au serveur.";
+"connection.addressFooter" = "Le pont affiche son adresse au démarrage — la ligne « bridge address for Iskra: npub1… ».";
 "connection.addressBad" = "Cela ne ressemble pas à une clé de pont";
 "connection.addressSecret" = "C’est une clé secrète. Il faut ici la clé publique, celle qui commence par npub.";
 
