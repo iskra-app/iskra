@@ -101,6 +101,7 @@ impl Bridge {
             Destinations::new(&config.upstreams),
             config.streams.clone(),
             config.segment_bytes,
+            config.pow_bits,
         );
 
         Ok(Self {
@@ -186,7 +187,7 @@ impl Bridge {
             return;
         }
         match open_frame(self.config.keys.secret_key(), &sender, &event.content) {
-            Ok(frame) => self.streams.deliver(sender, frame),
+            Ok(frame) => self.streams.deliver(sender, frame, proof_of_work(event)),
             // Anyone may tag an event at the bridge's public key. Undecryptable is ordinary.
             Err(error) => tracing::debug!(client = %sender, %error, "dropped an unreadable frame"),
         }
@@ -197,6 +198,24 @@ impl Bridge {
     }
 }
 
+/// The NIP-13 work an event carries: the leading zero bits of its id, but no more than the target
+/// its `nonce` tag committed to. The commitment is what keeps a flood of cheap events from being
+/// mined to nothing and passing whenever one happens, by luck, to start with zeros.
+fn proof_of_work(event: &Event) -> u8 {
+    let committed = event
+        .tags
+        .iter()
+        .find_map(|tag| {
+            let tag = tag.as_slice();
+            (tag.first().map(String::as_str) == Some("nonce"))
+                .then(|| tag.get(2).and_then(|bits| bits.parse::<u8>().ok()))
+                .flatten()
+        })
+        .unwrap_or(0);
+    let bits = nostr_sdk::nips::nip13::get_leading_zero_bits(event.id.as_bytes());
+    bits.min(committed)
+}
+
 /// Whether an event was made close enough to now to be a frame somebody is waiting on.
 fn is_fresh(created_at: Timestamp, now: Timestamp) -> bool {
     created_at.as_secs().abs_diff(now.as_secs()) <= MAX_CLOCK_SKEW_SECS
@@ -205,6 +224,20 @@ fn is_fresh(created_at: Timestamp, now: Timestamp) -> bool {
 #[cfg(test)]
 mod freshness {
     use super::*;
+
+    #[test]
+    fn work_counts_only_up_to_what_the_nonce_committed_to() {
+        let keys = Keys::generate();
+        let mined = EventBuilder::new(Kind::Custom(KIND_STREAM_CLIENT), "x")
+            .pow(8)
+            .sign_with_keys(&keys)
+            .unwrap();
+        assert!(proof_of_work(&mined) >= 8);
+        let unmined = EventBuilder::new(Kind::Custom(KIND_STREAM_CLIENT), "x")
+            .sign_with_keys(&keys)
+            .unwrap();
+        assert_eq!(proof_of_work(&unmined), 0, "no nonce, no work, however lucky the id");
+    }
 
     #[test]
     fn an_event_from_just_now_is_fresh_and_a_recording_is_not() {

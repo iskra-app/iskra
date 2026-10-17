@@ -212,7 +212,8 @@
 
 "connection.status" = "Status";
 "connection.statusDirect" = "Direkt";
-"connection.statusBridged" = "Über die Bridge, Relays: %lld";
+"connection.statusConnecting" = "Über die Bridge, Relays: %lld. Die Bridge hat noch nicht geantwortet";
+"connection.statusBlind" = "Über die Bridge, Relays: %lld. Die Bridge kann Ihre Nachrichten nicht sehen";
 "connection.statusFailed" = "Ließ sich nicht einschalten";
 "connection.pending" = "Die neuen Einstellungen gelten, sobald Sie diesen Bildschirm verlassen: Die App verbindet sich selbst neu.";
 "connection.applyNow" = "Jetzt neu verbinden";
@@ -239,8 +240,16 @@
 "connection.checkOK" = "Die Bridge hat geantwortet, der Server ist da – %lld ms";
 "connection.checkNoRelay" = "Kein Relay antwortet";
 "connection.checkSilent" = "Die Bridge schweigt. Läuft sie, und ist das der richtige Schlüssel?";
-"connection.checkRefused" = "Die Bridge hat abgelehnt: Diesen Server bedient sie nicht";
 "connection.checkFailed" = "Hat nicht geklappt: %@";
+"bridge.refusal.notAllowed" = "Die Bridge lässt Sie nicht zu diesem Server – er steht nicht auf ihrer Liste";
+"bridge.refusal.notMatrix" = "Die Bridge erkennt diesen Server nicht als Matrix-Server";
+"bridge.refusal.badPort" = "Die Bridge geht nur auf Port 443, und dieser Server liegt auf einem anderen";
+"bridge.refusal.notPublic" = "Der Server steht in einem privaten Netz, und eine offene Bridge geht dort nicht hin";
+"bridge.refusal.noSuchHost" = "Die Bridge hat diesen Server nicht gefunden";
+"bridge.refusal.unreachable" = "Die Bridge konnte keine Verbindung zum Server herstellen";
+"bridge.refusal.busy" = "Die Bridge ist überlastet. Versuchen Sie es in einer Minute erneut";
+"bridge.refusal.disagreement" = "App und Bridge haben sich nicht verstanden. Aktualisieren Sie die App oder die Bridge";
+"bridge.refusal.broke" = "Die Bridge hat die Verbindung abgebrochen: %@";
 
 /* Not "what is unfinished" but what to expect: the numbers come from measuring a whole session
    through the bridge (Bridge/README.md), and whoever turns the bridge on should know them first. */
@@ -248,7 +257,7 @@
 "connection.unfinishedBody" = "Jede Anfrage nimmt den Umweg über ein Relay und kostet 200–350 ms, deshalb sind die Anmeldung und das erste Öffnen von Chats spürbar langsamer als direkt – eine Sekunde, wo es sonst sofort ging. Neue Nachrichten kommen dagegen fast so schnell an wie direkt. Große Anhänge kommen auch durch, gehören aber besser nicht über öffentliche Relays: Geben Sie der Bridge für Medien ein eigenes Relay.";
 
 "connection.sees" = "Was die Bridge sieht";
-"connection.seesBody" = "Eine Bridge entpackt Ihre Anfragen an den Server und sieht daher Ihr Token, in welchen Räumen Sie sind und den Text von Nachrichten in unverschlüsselten Chats. Verschlüsselte Unterhaltungen kann sie nicht lesen. Deshalb sollte die Bridge Ihre eigene sein und nicht die von jemand anderem.";
+"connection.seesBody" = "Nur, mit welchem Server Sie sich verbinden, wann und wie viele Bytes. Die Verbindung zum Server verschlüsselt die App selbst, darum sind Ihr Token, Ihre Räume und Ihre Nachrichten – auch in unverschlüsselten Chats – für die Bridge unsichtbar. Ihre IP-Adresse sehen die Relays, nicht die Bridge.";
 
 /* App lock by Face ID / device passcode. */
 "settings.lock" = "App-Sperre";
@@ -359,6 +368,7 @@
 "signIn.problem.storageUnavailable" = "Iskra konnte auf diesem Gerät keinen geschützten Speicher einrichten und kann Sie deshalb nicht sicher anmelden.";
 
 "signIn.problem.unreachable" = "Diese Adresse ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es noch einmal.";
+"signIn.problem.bridgeUnavailable" = "Die Bridge ist nicht hochgekommen, und solange sie eingeschaltet ist, verbindet sich Iskra nicht direkt. Prüfen Sie Adresse und Relays der Bridge in den Verbindungseinstellungen.";
 
 "signIn.problem.unsupportedMethod" = "Dieser Dienst nutzt eine Anmeldeart, die Iskra noch nicht unterstützt.";
 

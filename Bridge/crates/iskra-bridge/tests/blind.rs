@@ -510,7 +510,8 @@ async fn a_dead_relay_does_not_hold_up_a_download() {
     relays.push("ws://127.0.0.1:1".into());
     let client = StreamClient::connect(Keys::generate(), harness.bridge.public_key(), &relays)
         .await
-        .unwrap();
+        .unwrap()
+        .with_pow(common::TEST_POW_BITS);
 
     let size = 1024 * 1024;
     let request =
@@ -530,4 +531,27 @@ async fn a_dead_relay_does_not_hold_up_a_download() {
         "a megabyte took {:?} with a dead relay in the list",
         started.elapsed()
     );
+}
+
+/// An `open` with too little work is turned away with the difficulty in the refusal, and the next
+/// one is mined to it and goes through. This is how a bridge under attack raises the price without
+/// an app update: the client learns it from the first refusal.
+#[tokio::test]
+async fn too_little_work_is_refused_with_the_price_and_the_next_open_pays_it() {
+    let harness = Harness::start_with(|config| Config {
+        pow_bits: 10,
+        ..config
+    })
+    .await;
+    let server = &harness.server;
+    let client = harness.stream_client().await.with_pow(0);
+
+    let reason = refused(&client, "localhost", server.port, Some("localhost"), server).await;
+    assert_eq!(reason, "pow 10");
+    assert_eq!(client.pow_bits(), 10, "the client took the price from the refusal");
+
+    let request = b"GET /_matrix/client/versions HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n";
+    let (answer, outcome) = https(server, client.open("localhost", server.port), "localhost", request).await;
+    assert_eq!(body_of(&answer), br#"{"versions":["v1.11"]}"#);
+    assert_eq!(outcome, Outcome::Closed);
 }

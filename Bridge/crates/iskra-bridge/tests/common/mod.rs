@@ -20,6 +20,9 @@ use nostr_sdk::prelude::Keys;
 
 use tls::TlsServer;
 
+/// What the test bridge asks for, and the test clients mine to.
+pub const TEST_POW_BITS: u8 = 4;
+
 pub struct Harness {
     _relays: Vec<LocalRelay>,
     /// The homeserver, listed in `ALLOWED_UPSTREAMS` as `https://localhost:<port>`.
@@ -80,6 +83,9 @@ impl Harness {
             events_per_min: NonZeroU32::new(1_000_000).unwrap(),
             allowed_pubkeys: None,
             segment_bytes: iskra_tunnel_proto::DEFAULT_SEGMENT,
+            // Easier than a deployed bridge: 16 bits in a debug build is seconds per connection,
+            // and the tests open hundreds. `blind.rs` checks the refusal at full strength.
+            pow_bits: TEST_POW_BITS,
             streams: StreamLimits::default(),
         });
 
@@ -107,5 +113,6 @@ impl Harness {
         StreamClient::connect(keys, self.bridge.public_key(), &self.relay_urls)
             .await
             .expect("stream client connects")
+            .with_pow(TEST_POW_BITS)
     }
 }

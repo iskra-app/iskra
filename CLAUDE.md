@@ -231,7 +231,17 @@ mirrors them field for field and asks the same questions of its reassembly (`Inb
 Two rules about it:
 
 - **The words "the bridge cannot see your messages" belong to `.bridgedBlind` and to nothing else** —
-  the status says what is true *now*, not what was chosen.
+  the status says what is true *now*, not what was chosen. `.connecting` (the tunnel is up, no
+  stream connected yet) claims nothing; `.refused` says the bridge's refusal in words
+  (`BridgeRefusal`, `Strings.Bridge.refusal` — one set of words for the status, "Check the bridge"
+  and sign-in). A sign-in the bridge refused is `AuthenticationError.bridgeRefused`, never the
+  SDK's "not found": that would send somebody hunting for a typo in an address that is fine.
+- **Every `open` carries NIP-13 proof of work** (16 bits, a `nonce` tag committing to the target;
+  segments inside a stream carry none). A nostr key costs nothing, so every ceiling "per key" is a
+  ceiling on nobody; work is the one that holds. The difficulty is not announced anywhere — a
+  bridge that wants more answers `rst` `pow <bits>`, and `NostrStreamTunnel` mines the next `open`
+  to it. Mining hashes only the nonce and the tail of the serialization (`NostrEvent.minedParts`);
+  rebuilding the whole string per try made sixteen bits cost a second.
 - **The host from `open` must equal the ClientHello's SNI, and the connection goes to the addresses
   that were checked** (`blind.rs`) — on an open bridge, only those that *themselves* answered as
   Matrix, remembered per `(name, address)` — never to a second lookup of the name. Either shortcut

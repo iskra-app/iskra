@@ -59,11 +59,14 @@ enum BridgeProbe {
             case .reachable(let milliseconds):
                 print("  ✅ the bridge answered and the homeserver is behind it — \(milliseconds) ms")
                 exit(0)
-            case .refused:
-                print("  ❌ the bridge will not take this device to \(homeserver.absoluteString).")
+            case .refused(let refusal) where refusal.isRefusal:
+                print("  ❌ the bridge will not take this device to \(homeserver.absoluteString): \(refusal).")
                 print("     Either its ALLOWED_UPSTREAMS does not cover it — which on matrix.org means")
                 print("     both matrix.org and matrix-client.matrix.org — or, on an open bridge, the")
                 print("     host did not answer as a Matrix server on a public address, port 443.")
+                exit(1)
+            case .refused(let refusal):
+                print("  ❌ the bridge ended the stream: \(refusal).")
                 exit(1)
             case .noRelay:
                 print("  ❌ no relay would take the request. Is there any network here at all?")

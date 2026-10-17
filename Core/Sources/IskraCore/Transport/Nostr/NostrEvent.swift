@@ -7,6 +7,7 @@ import secp256k1
 /// The id is a hash of the event's own fields, so it cannot be chosen, and the signature is over
 /// that hash. Both are computed here rather than trusted from the wire.
 struct NostrEvent: Sendable, Equatable {
+
     var id: String
     var pubkey: String
     var createdAt: Int
@@ -33,6 +34,77 @@ struct NostrEvent: Sendable, Equatable {
                           tags: tags,
                           content: content,
                           sig: Hex.string(signature))
+    }
+
+    /// Build an event mined to `bits` of NIP-13 proof of work, and sign it.
+    ///
+    /// A `nonce` tag is appended — `["nonce", "<n>", "<bits>"]`, the last element being the target
+    /// the work commits to, which the bridge checks so that a cheap event cannot pass by a lucky
+    /// id — and `n` is counted up until the id starts with `bits` zero bits. Each try hashes the
+    /// whole serialization, content included; at sixteen bits that is around 65 000 hashes of a
+    /// few kilobytes, a fraction of a second, once per connection.
+    static func mined(kind: Int,
+                      content: String,
+                      tags: [[String]],
+                      bits: UInt8,
+                      createdAt: Int = Int(Date().timeIntervalSince1970),
+                      keys: NostrKeypair) throws -> NostrEvent {
+        guard bits > 0 else {
+            return try signed(kind: kind, content: content, tags: tags, createdAt: createdAt, keys: keys)
+        }
+        let pubkey = Hex.string(keys.publicKey)
+        // The serialization is the same on every try but for the nonce's digits, so it is built
+        // once around them: the hash state after the prefix is copied (CryptoKit's hasher is a
+        // value), and each try feeds it the digits and the suffix — content included, which the
+        // id has to cover. Rebuilding the whole string per try cost a second at sixteen bits.
+        let (prefix, suffix) = minedParts(pubkey: pubkey, createdAt: createdAt, kind: kind,
+                                          tags: tags, bits: bits, content: content)
+        var head = CryptoKit.SHA256()
+        head.update(data: Data(prefix.utf8))
+        let tail = Data(suffix.utf8)
+
+        var nonce: UInt64 = 0
+        while true {
+            var hasher = head
+            hasher.update(data: Data(String(nonce).utf8))
+            hasher.update(data: tail)
+            let id = Data(hasher.finalize())
+            if leadingZeroBits(id) >= Int(bits) {
+                let signature = try keys.sign(id)
+                return NostrEvent(id: Hex.string(id), pubkey: pubkey, createdAt: createdAt, kind: kind,
+                                  tags: tags + [["nonce", String(nonce), String(bits)]],
+                                  content: content, sig: Hex.string(signature))
+            }
+            nonce &+= 1
+        }
+    }
+
+    /// The serialization of an event whose last tag is `["nonce", <n>, "<bits>"]`, in the two
+    /// pieces either side of `<n>`. `prefix + String(n) + suffix` is exactly what `serialize` writes
+    /// for that event — `BridgeRefusalTests` holds it to that — so the id mined is the id verified.
+    static func minedParts(pubkey: String, createdAt: Int, kind: Int, tags: [[String]],
+                           bits: UInt8, content: String) -> (prefix: String, suffix: String) {
+        let earlier = tags.map { tag in
+            "[" + tag.map { "\"\(escape($0))\"" }.joined(separator: ",") + "]"
+        }
+        let opening = "[" + (earlier + [""]).joined(separator: ",")
+        let prefix = "[0,\"\(pubkey)\",\(createdAt),\(kind),\(opening)[\"nonce\",\""
+        let suffix = "\",\"\(bits)\"]],\"\(escape(content))\"]"
+        return (prefix, suffix)
+    }
+
+    /// NIP-13's count: zero bits at the front of the id.
+    static func leadingZeroBits(_ id: Data) -> Int {
+        var count = 0
+        for byte in id {
+            if byte == 0 {
+                count += 8
+                continue
+            }
+            count += byte.leadingZeroBitCount
+            break
+        }
+        return count
     }
 
     /// The exact bytes an event id is the hash of.

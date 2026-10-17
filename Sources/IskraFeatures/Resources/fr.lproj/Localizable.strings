@@ -212,7 +212,8 @@
 
 "connection.status" = "État";
 "connection.statusDirect" = "Directe";
-"connection.statusBridged" = "Via le pont, relais : %lld";
+"connection.statusConnecting" = "Via le pont, relais : %lld. Le pont n’a pas encore répondu";
+"connection.statusBlind" = "Via le pont, relais : %lld. Le pont ne peut pas voir vos messages";
 "connection.statusFailed" = "Impossible d’activer";
 "connection.pending" = "Les nouveaux réglages s’appliquent dès que vous quittez cet écran : l’app se reconnecte d’elle-même.";
 "connection.applyNow" = "Se reconnecter maintenant";
@@ -239,8 +240,16 @@
 "connection.checkOK" = "Le pont a répondu, le serveur est là — %lld ms";
 "connection.checkNoRelay" = "Aucun relais ne répond";
 "connection.checkSilent" = "Le pont ne répond pas. Est-il lancé, et est-ce la bonne clé ?";
-"connection.checkRefused" = "Le pont a refusé : il ne dessert pas ce serveur";
 "connection.checkFailed" = "Échec : %@";
+"bridge.refusal.notAllowed" = "Le pont ne vous laisse pas aller jusqu’à ce serveur : il n’est pas sur sa liste";
+"bridge.refusal.notMatrix" = "Le pont ne reconnaît pas ce serveur comme un serveur Matrix";
+"bridge.refusal.badPort" = "Le pont ne va que sur le port 443, et ce serveur est sur un autre";
+"bridge.refusal.notPublic" = "Le serveur est sur un réseau privé, et un pont ouvert n’y va pas";
+"bridge.refusal.noSuchHost" = "Le pont n’a pas trouvé ce serveur";
+"bridge.refusal.unreachable" = "Le pont n’a pas pu se connecter au serveur";
+"bridge.refusal.busy" = "Le pont est surchargé. Réessayez dans une minute";
+"bridge.refusal.disagreement" = "L’application et le pont ne se sont pas compris. Mettez à jour l’application ou le pont";
+"bridge.refusal.broke" = "Le pont a coupé la connexion : %@";
 
 /* Not "what is unfinished" but what to expect: the numbers come from measuring a whole session
    through the bridge (Bridge/README.md), and whoever turns the bridge on should know them first. */
@@ -248,7 +257,7 @@
 "connection.unfinishedBody" = "Chaque requête fait le détour par un relais et coûte 200 à 350 ms : la connexion et la première ouverture des discussions sont donc nettement plus lentes qu’en direct, une seconde là où c’était instantané. Les nouveaux messages arrivent en revanche presque aussi vite qu’en direct. Les grosses pièces jointes passent aussi, mais mieux vaut les éviter sur des relais publics : pour les médias, donnez au pont un relais à lui.";
 
 "connection.sees" = "Ce que voit le pont";
-"connection.seesBody" = "Un pont déballe vos requêtes au serveur : il voit donc votre jeton, les salons où vous êtes et le texte des messages des discussions non chiffrées. Il ne peut pas lire les conversations chiffrées. C’est pourquoi le pont devrait être le vôtre plutôt que celui de quelqu’un d’autre.";
+"connection.seesBody" = "Seulement à quel serveur vous vous connectez, quand, et combien d’octets. L’application chiffre elle-même la connexion au serveur : votre jeton, vos salons et vos messages — même dans les discussions non chiffrées — restent invisibles pour le pont. Votre adresse IP est vue par les relais, pas par le pont.";
 
 /* App lock by Face ID / device passcode. */
 "settings.lock" = "Verrouillage de l’app";
@@ -359,6 +368,7 @@
 "signIn.problem.storageUnavailable" = "Iskra n’a pas pu préparer de stockage sécurisé sur cet appareil et ne peut donc pas vous connecter en toute sécurité.";
 
 "signIn.problem.unreachable" = "Impossible de joindre cette adresse. Vérifiez la connexion et réessayez.";
+"signIn.problem.bridgeUnavailable" = "Le pont n’a pas démarré, et Iskra ne passera pas en direct tant que le pont est activé. Vérifiez l’adresse du pont et les relais dans les réglages de connexion.";
 
 "signIn.problem.unsupportedMethod" = "Ce service utilise un mode de connexion qu’Iskra ne prend pas encore en charge.";
 

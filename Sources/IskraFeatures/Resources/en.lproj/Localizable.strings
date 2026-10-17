@@ -212,7 +212,8 @@
 
 "connection.status" = "Status";
 "connection.statusDirect" = "Direct";
-"connection.statusBridged" = "Through the bridge, relays: %lld";
+"connection.statusConnecting" = "Through the bridge, relays: %lld. The bridge hasn’t answered yet";
+"connection.statusBlind" = "Through the bridge, relays: %lld. The bridge can’t see your messages";
 "connection.statusFailed" = "Could not be turned on";
 "connection.pending" = "The new settings take effect as soon as you leave this screen: the app reconnects by itself.";
 "connection.applyNow" = "Reconnect now";
@@ -239,8 +240,16 @@
 "connection.checkOK" = "The bridge answered, the server is there — %lld ms";
 "connection.checkNoRelay" = "No relay is answering";
 "connection.checkSilent" = "The bridge is silent. Is it running, and is that the right key?";
-"connection.checkRefused" = "The bridge said no: it does not serve this server";
 "connection.checkFailed" = "No luck: %@";
+"bridge.refusal.notAllowed" = "The bridge won’t take you to this server — it isn’t on the bridge’s list";
+"bridge.refusal.notMatrix" = "The bridge doesn’t recognise this server as a Matrix server";
+"bridge.refusal.badPort" = "The bridge only goes to port 443, and this server is on another";
+"bridge.refusal.notPublic" = "The server is on a private network, and an open bridge doesn’t go there";
+"bridge.refusal.noSuchHost" = "The bridge couldn’t find this server";
+"bridge.refusal.unreachable" = "The bridge couldn’t connect to the server";
+"bridge.refusal.busy" = "The bridge is overloaded. Try again in a minute";
+"bridge.refusal.disagreement" = "The app and the bridge didn’t understand each other. Update the app or the bridge";
+"bridge.refusal.broke" = "The bridge dropped the connection: %@";
 
 /* Not "what is unfinished" but what to expect: the numbers come from measuring a whole session
    through the bridge (Bridge/README.md), and whoever turns the bridge on should know them first. */
@@ -248,7 +257,7 @@
 "connection.unfinishedBody" = "Every request goes the long way round through a relay and costs 200–350 ms, so signing in and opening chats for the first time are noticeably slower than a direct connection — a second where it used to be instant. New messages, though, arrive almost as fast as they do directly. Large attachments will get through too, but they are better kept off public relays: for media, give the bridge a relay of its own.";
 
 "connection.sees" = "What the bridge sees";
-"connection.seesBody" = "A bridge unpacks your requests to the server, so it sees your token, which rooms you are in, and the text of messages in unencrypted chats. It cannot read encrypted conversations. This is why the bridge should be your own rather than somebody else's.";
+"connection.seesBody" = "Only which server you connect to, when, and how many bytes. The app encrypts the connection to the server itself, so your token, your rooms and your messages — even in unencrypted chats — are hidden from the bridge. Your IP address is seen by the relays, not the bridge.";
 
 /* App lock by Face ID / device passcode. */
 "settings.lock" = "App Lock";
@@ -359,6 +368,7 @@
 "signIn.problem.storageUnavailable" = "Iskra couldn’t set up secure storage on this device, so it can’t sign you in safely.";
 
 "signIn.problem.unreachable" = "Something went wrong reaching that address. Check your connection and try again.";
+"signIn.problem.bridgeUnavailable" = "The bridge didn’t come up, and Iskra won’t go direct while the bridge is on. Check the bridge address and relays in Connection settings.";
 
 "signIn.problem.unsupportedMethod" = "That service uses a way of signing in that Iskra doesn’t support yet.";
 

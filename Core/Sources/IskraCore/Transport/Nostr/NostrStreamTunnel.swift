@@ -33,6 +33,10 @@ actor NostrStreamTunnel: ConnectUpstream {
     /// What the check needs to tell "silent" from "refused": whether the bridge has said anything,
     /// and the last reason it gave for ending a stream.
     let heard = Heard()
+    /// NIP-13 bits every `open` is mined to: `defaultPowBits` until the bridge refuses one with
+    /// `pow <bits>`, and what it asked for after that. Kept for the life of the tunnel only: a
+    /// bridge that raised the price under attack has usually lowered it again by the next launch.
+    let pow = PowBits()
 
     /// - Parameters:
     ///   - bridgeKey: the bridge's 32-byte x-only public key — what it prints at startup.
@@ -55,8 +59,11 @@ actor NostrStreamTunnel: ConnectUpstream {
 
         let pool = PoolBox()
         self.pool = pool
+        let pow = self.pow
         self.carrier = StreamCarrier(link: { frame in
-            let event = try Self.seal(frame, conversationKey: conversationKey, bridgeKeyHex: bridgeKeyHex, keys: keys)
+            let bits = frame.op == .open ? pow.bits : 0
+            let event = try Self.seal(frame, conversationKey: conversationKey, bridgeKeyHex: bridgeKeyHex,
+                                      keys: keys, pow: bits)
             guard let relays = pool.current else { throw NostrRelayError.noRelayConnected }
             try await relays.publish(event)
         }, maximumSegment: maximumSegment)
@@ -80,6 +87,7 @@ actor NostrStreamTunnel: ConnectUpstream {
         let conversationKey = self.conversationKey
         let bridgeKeyHex = self.bridgeKeyHex
         let heard = self.heard
+        let pow = self.pow
         dispatcher = Task.detached(priority: .userInitiated) {
             for await event in stream {
                 guard event.pubkey == bridgeKeyHex,
@@ -91,6 +99,9 @@ actor NostrStreamTunnel: ConnectUpstream {
                     continue
                 }
                 heard.frame(frame)
+                if frame.op == .rst, let reason = frame.reason, let bits = StreamReason.powRequired(reason) {
+                    pow.bits = bits
+                }
                 await carrier.deliver(frame)
             }
         }
@@ -130,13 +141,27 @@ actor NostrStreamTunnel: ConnectUpstream {
         }
     }
 
+    /// - Parameter pow: NIP-13 bits to mine to — the `open`'s difficulty, `0` for every other
+    ///   frame: segments inside a stream carry none, or a photo would cost hundreds of proofs.
     static func seal(_ frame: StreamFrame, conversationKey: Data, bridgeKeyHex: String,
-                     keys: NostrKeypair) throws -> NostrEvent {
+                     keys: NostrKeypair, pow: UInt8 = 0) throws -> NostrEvent {
         let content = try NIP44.encrypt(frame.wire, conversationKey: conversationKey)
-        return try NostrEvent.signed(kind: TunnelKind.streamClient,
-                                     content: content,
-                                     tags: [["p", bridgeKeyHex]],
-                                     keys: keys)
+        return try NostrEvent.mined(kind: TunnelKind.streamClient,
+                                    content: content,
+                                    tags: [["p", bridgeKeyHex]],
+                                    bits: pow,
+                                    keys: keys)
+    }
+}
+
+/// The difficulty `open`s are mined to, shared by the link that mines and the dispatcher that hears
+/// a bridge ask for more.
+final class PowBits: Sendable {
+    private let value = Mutex<UInt8>(defaultPowBits)
+
+    var bits: UInt8 {
+        get { value.withLock { $0 } }
+        set { value.withLock { $0 = newValue } }
     }
 }
 
@@ -151,19 +176,65 @@ private final class PoolBox: Sendable {
     }
 }
 
-/// What has been heard from the bridge, for `BridgeCheck`.
+/// What has been heard from the bridge: for `BridgeCheck`, for the status line, and for telling a
+/// sign-in the bridge refused from one the server refused.
 final class Heard: Sendable {
-    private let state = Mutex<(any: Bool, reset: String?)>((false, nil))
+    /// The last thing that settled a stream one way or the other.
+    enum Last: Sendable, Equatable {
+        case opened
+        case reset(String)
+    }
+
+    private struct State {
+        var any = false
+        var opened = false
+        var last: Last?
+        var resets = 0
+    }
+
+    private let state = Mutex(State())
 
     func frame(_ frame: StreamFrame) {
         state.withLock {
             $0.any = true
-            if frame.op == .rst, let reason = frame.reason { $0.reset = reason }
+            switch frame.op {
+            case .opened:
+                $0.opened = true
+                $0.last = .opened
+            case .rst:
+                if let reason = frame.reason {
+                    $0.last = .reset(reason)
+                    $0.resets += 1
+                }
+            default:
+                break
+            }
         }
     }
 
     /// Whether any frame at all came back from the bridge.
     var anything: Bool { state.withLock { $0.any } }
+    /// Whether the bridge has ever connected a stream — which is what makes it a bridge carrying
+    /// this device's TLS, and not merely a key on a relay.
+    var everOpened: Bool { state.withLock { $0.opened } }
+    /// The last stream to be settled, opened or reset.
+    var last: Last? { state.withLock { $0.last } }
     /// The bridge's last word for ending a stream.
-    var lastReset: String? { state.withLock { $0.reset } }
+    var lastReset: String? {
+        state.withLock {
+            if case .reset(let reason) = $0.last { return reason }
+            return nil
+        }
+    }
+
+    /// A place to come back to: `refusal(since:)` answers only for what happened after it.
+    var mark: Int { state.withLock { $0.resets } }
+
+    /// What the bridge said, if it reset a stream since `mark` and the last word was a refusal.
+    func refusal(since mark: Int) -> BridgeRefusal? {
+        state.withLock {
+            guard $0.resets > mark, case .reset(let reason) = $0.last else { return nil }
+            return BridgeRefusal(reason: reason)
+        }
+    }
 }

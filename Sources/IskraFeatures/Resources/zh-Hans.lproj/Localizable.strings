@@ -212,7 +212,8 @@
 
 "connection.status" = "状态";
 "connection.statusDirect" = "直连";
-"connection.statusBridged" = "通过网桥，中继：%lld";
+"connection.statusConnecting" = "通过网桥，中继：%lld。网桥尚未响应";
+"connection.statusBlind" = "通过网桥，中继：%lld。网桥看不到您的消息";
 "connection.statusFailed" = "无法开启";
 "connection.pending" = "离开此页面后新设置即生效：应用会自动重新连接。";
 "connection.applyNow" = "立即重新连接";
@@ -239,8 +240,16 @@
 "connection.checkOK" = "网桥已响应，服务器正常 — %lld 毫秒";
 "connection.checkNoRelay" = "没有中继响应";
 "connection.checkSilent" = "网桥没有回应。它在运行吗？密钥对吗？";
-"connection.checkRefused" = "网桥拒绝了：它不为这个服务器提供服务";
 "connection.checkFailed" = "没成功：%@";
+"bridge.refusal.notAllowed" = "网桥不允许连接到这个服务器：它不在网桥的列表中";
+"bridge.refusal.notMatrix" = "网桥不认为这个服务器是 Matrix 服务器";
+"bridge.refusal.badPort" = "网桥只连接 443 端口，而这个服务器在其他端口";
+"bridge.refusal.notPublic" = "服务器在私有网络中，开放网桥不会连接到那里";
+"bridge.refusal.noSuchHost" = "网桥找不到这个服务器";
+"bridge.refusal.unreachable" = "网桥无法连接到服务器";
+"bridge.refusal.busy" = "网桥负载过高。请一分钟后再试";
+"bridge.refusal.disagreement" = "应用和网桥没能互相理解。请更新应用或网桥";
+"bridge.refusal.broke" = "网桥断开了连接：%@";
 
 /* Not "what is unfinished" but what to expect: the numbers come from measuring a whole session
    through the bridge (Bridge/README.md), and whoever turns the bridge on should know them first. */
@@ -248,7 +257,7 @@
 "connection.unfinishedBody" = "每个请求都要绕道中继，耗时 200–350 毫秒，因此登录和首次打开聊天会明显比直连慢——原本瞬间完成的地方要等上一秒。不过新消息几乎和直连一样快。大附件也能传过去，但最好不要经过公共中继：媒体请给网桥配一个专用中继。";
 
 "connection.sees" = "网桥能看到什么";
-"connection.seesBody" = "网桥会拆开您发往服务器的请求，因此能看到您的令牌、您在哪些房间，以及未加密聊天中的消息文字。加密的对话它读不了。所以网桥最好是您自己的，而不是别人的。";
+"connection.seesBody" = "只有您连接到哪个服务器、何时以及多少字节。与服务器的连接由应用自己加密，因此您的令牌、房间和消息——即使在未加密的聊天中——网桥都看不到。您的 IP 地址由中继看到，而不是网桥。";
 
 /* App lock by Face ID / device passcode. */
 "settings.lock" = "应用锁";
@@ -359,6 +368,7 @@
 "signIn.problem.storageUnavailable" = "Iskra 无法在这台设备上准备安全存储，因此无法安全地登录。";
 
 "signIn.problem.unreachable" = "无法连接到这个地址。请检查网络后再试一次。";
+"signIn.problem.bridgeUnavailable" = "网桥没有启动，而在网桥开启时，Iskra 不会直接连接。请在连接设置中检查网桥地址和中继。";
 
 "signIn.problem.unsupportedMethod" = "该服务使用的登录方式 Iskra 暂不支持。";
 

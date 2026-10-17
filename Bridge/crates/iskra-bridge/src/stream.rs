@@ -20,7 +20,8 @@ use std::time::{Duration, Instant};
 
 use iskra_tunnel_proto::stream::COALESCE;
 use iskra_tunnel_proto::{
-    reason, seal_frame, Inbound, Outbound, StreamFrame, StreamOp, Violation, KIND_STREAM_BRIDGE,
+    pow_reason, reason, seal_frame, Inbound, Outbound, StreamFrame, StreamOp, Violation,
+    KIND_STREAM_BRIDGE,
 };
 use nostr_sdk::prelude::*;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
@@ -64,6 +65,7 @@ struct Shared {
     bytes: ByteLimit,
     limits: StreamLimits,
     max_segment: usize,
+    pow_bits: u8,
     table: StdMutex<Table>,
 }
 
@@ -111,6 +113,7 @@ impl Streams {
         destinations: Destinations,
         limits: StreamLimits,
         max_segment: usize,
+        pow_bits: u8,
     ) -> Self {
         Self {
             shared: Arc::new(Shared {
@@ -120,6 +123,7 @@ impl Streams {
                 destinations,
                 limits,
                 max_segment,
+                pow_bits,
                 table: StdMutex::new(Table::default()),
             }),
         }
@@ -143,12 +147,12 @@ impl Streams {
             .retain(|_, when| now.duration_since(*when) < TOMBSTONE_FOR);
     }
 
-    /// Hand one decrypted, validated frame to its stream — opening the stream if this is the first
-    /// frame of it the bridge has heard.
+    /// Hand one decrypted, validated frame to its stream — opening the stream if it is an `open`
+    /// the bridge has not heard before, mined to `pow` NIP-13 bits.
     ///
     /// Called from the relay loop and never awaits: one slow stream must not stop the bridge
     /// hearing the rest.
-    pub fn deliver(&self, from: PublicKey, frame: StreamFrame) {
+    pub fn deliver(&self, from: PublicKey, frame: StreamFrame, pow: u8) {
         let key = (from, frame.sid.clone());
         let now = Instant::now();
         let mut table = self.shared.table.lock().expect("stream table");
@@ -165,17 +169,27 @@ impl Streams {
                     table.bury(key.clone(), now);
                     drop(table);
                     tracing::info!(client = %from, reason = reason::WINDOW, "stream flooded");
-                    self.shared
-                        .publish(&from, StreamFrame::rst(&key.1, reason::WINDOW));
+                    self.shared.publish(&from, StreamFrame::rst(&key.1, reason::WINDOW));
                 }
                 Err(mpsc::error::TrySendError::Closed(_)) => {}
             }
             return;
         }
 
-        // Only an `open`, or a segment that overtook its `open` on a faster relay, starts a
-        // stream. An `ack` or a `fin` for a stream nobody has is a late copy of something over.
-        if !matches!(frame.op, StreamOp::Open | StreamOp::Data) {
+        // Only an `open` starts a stream: it is the one frame that carries proof of work, and a
+        // stream started by anything else would be a stream started for free. A segment that
+        // overtook its `open` on a faster relay is lost, and the hole it leaves resets the stream;
+        // the client sends nothing after the ClientHello until the server answers, so this is
+        // rare, and cheap when it happens.
+        if frame.op != StreamOp::Open {
+            return;
+        }
+        if pow < self.shared.pow_bits {
+            table.bury(key.clone(), now);
+            drop(table);
+            tracing::info!(client = %from, reason = reason::POW, "stream refused");
+            self.shared
+                .publish(&from, StreamFrame::rst(&key.1, &pow_reason(self.shared.pow_bits)));
             return;
         }
         let mine = table.per_client.get(&from).copied().unwrap_or(0);

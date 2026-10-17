@@ -6,6 +6,7 @@
 //! talking to an ordinary `http://` proxy and never knowing there is nostr underneath.
 
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
@@ -13,7 +14,8 @@ use anyhow::Result;
 use base64::prelude::{Engine as _, BASE64_STANDARD};
 use iskra_tunnel_proto::stream::COALESCE;
 use iskra_tunnel_proto::{
-    new_stream_id, open_frame, reason, seal_frame, Inbound, Outbound, StreamFrame, StreamOp,
+    new_stream_id, open_frame, pow_required, reason, seal_frame, Inbound, Outbound, StreamFrame,
+    StreamOp, DEFAULT_POW_BITS,
     DEFAULT_SEGMENT, KIND_STREAM_BRIDGE, KIND_STREAM_CLIENT,
 };
 use nostr_sdk::prelude::*;
@@ -50,6 +52,9 @@ struct Shared {
     bridge: PublicKey,
     client: Client,
     routes: Routes,
+    /// NIP-13 bits every `open` is mined to: [`DEFAULT_POW_BITS`] until the bridge asks for more
+    /// with `rst` `pow <bits>`, and whatever it asked for after that.
+    pow: AtomicU8,
 }
 
 impl StreamClient {
@@ -92,9 +97,22 @@ impl StreamClient {
                 bridge,
                 client,
                 routes,
+                pow: AtomicU8::new(DEFAULT_POW_BITS),
             }),
             dispatch,
         })
+    }
+
+    /// Mine `open`s to `bits` from now on — for tests against a bridge set to an easier
+    /// difficulty, where 16 bits in a debug build is seconds per connection.
+    pub fn with_pow(self, bits: u8) -> Self {
+        self.shared.pow.store(bits, Ordering::Relaxed);
+        self
+    }
+
+    /// The difficulty the next `open` will be mined to.
+    pub fn pow_bits(&self) -> u8 {
+        self.shared.pow.load(Ordering::Relaxed)
     }
 
     pub fn public_key(&self) -> PublicKey {
@@ -234,10 +252,14 @@ impl Shared {
         let Ok(content) = seal_frame(self.keys.secret_key(), &self.bridge, &frame) else {
             return;
         };
-        let Ok(event) = EventBuilder::new(Kind::Custom(KIND_STREAM_CLIENT), content)
-            .tag(Tag::public_key(self.bridge))
-            .sign_with_keys(&self.keys)
-        else {
+        let mut builder =
+            EventBuilder::new(Kind::Custom(KIND_STREAM_CLIENT), content).tag(Tag::public_key(self.bridge));
+        // Only the `open`: it is what starts a stream, and segments inside one carry none, or a
+        // photo would cost hundreds of proofs.
+        if frame.op == StreamOp::Open {
+            builder = builder.pow(self.pow.load(Ordering::Relaxed));
+        }
+        let Ok(event) = builder.sign_with_keys(&self.keys) else {
             return;
         };
         let client = self.client.clone();
@@ -341,7 +363,12 @@ async fn pump(
                         }
                     }
                     StreamOp::Rst => {
-                        return Outcome::Reset(frame.reason.unwrap_or_default());
+                        let why = frame.reason.unwrap_or_default();
+                        // The difficulty the bridge wants is in its refusal; the next `open` pays it.
+                        if let Some(bits) = pow_required(&why) {
+                            shared.pow.store(bits, Ordering::Relaxed);
+                        }
+                        return Outcome::Reset(why);
                     }
                     StreamOp::Open => return reset(reason::PROTOCOL),
                 }

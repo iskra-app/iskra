@@ -188,7 +188,9 @@ struct ConnectionView: View {
     private func describe(_ status: TunnelStatus) -> LocalizedStringResource {
         switch status {
         case .off: Strings.Connection.statusDirect
-        case .bridged(let relays): Strings.Connection.statusBridged(relays)
+        case .connecting(let relays): Strings.Connection.statusConnecting(relays)
+        case .bridgedBlind(let relays): Strings.Connection.statusBlind(relays)
+        case .refused(let refusal): Strings.Bridge.refusal(refusal)
         case .failed: Strings.Connection.statusFailed
         }
     }
@@ -196,7 +198,7 @@ struct ConnectionView: View {
     private func describe(_ outcome: BridgeCheck.Outcome) -> LocalizedStringResource {
         switch outcome {
         case .reachable(let milliseconds): Strings.Connection.checkOK(milliseconds)
-        case .refused: Strings.Connection.checkRefused
+        case .refused(let refusal): Strings.Bridge.refusal(refusal)
         case .noRelay: Strings.Connection.checkNoRelay
         case .silent: Strings.Connection.checkSilent
         case .failed(let reason): Strings.Connection.checkFailed(reason)
