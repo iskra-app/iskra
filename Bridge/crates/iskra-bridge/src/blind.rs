@@ -133,6 +133,12 @@ impl Destinations {
         }
     }
 
+    /// Forget the probe allowances of clients that have gone quiet. Without it every key that
+    /// ever asked for a probe stays in memory for the life of the process.
+    pub fn tidy(&self) {
+        self.probes_per_client.retain_recent();
+    }
+
     /// The addresses to connect to, or why not.
     ///
     /// **The caller connects to exactly these.** Resolving the name a second time to connect would
@@ -187,8 +193,15 @@ impl Destinations {
             // they are connected to.
             // A probe is charged when one is about to go out, never for a remembered answer:
             // a client reconnecting to its own homeserver pays nothing.
+            // The shared bucket first, so that a refusal there leaves no per-client entry behind.
+            //
+            // Keys cost nothing, so the shared bucket can be drained by keys made for the
+            // purpose, and while it is, a *new* homeserver waits ("busy"); a remembered one costs
+            // no probe and is not affected, and neither is a closed bridge. Making identities
+            // cost something is the PoW on `open` — step 5 of `docs/BLIND-BRIDGE.md` — and not
+            // something a ceiling here can do.
             let mut allowance =
-                || self.probes_per_client.allow(client) && self.probes_total.check().is_ok();
+                || self.probes_total.check().is_ok() && self.probes_per_client.allow(client);
             let confirmed = self
                 .probe
                 .matrix_addresses(&host, &addresses, &mut allowance)
