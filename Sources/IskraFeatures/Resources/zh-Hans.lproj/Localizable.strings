@@ -268,7 +268,7 @@
 "bridge.refusal.broke" = "网桥断开了连接：%@";
 
 /* Not "what is unfinished" but what to expect: the numbers come from measuring a whole session
-   through the bridge (Bridge/README.md), and whoever turns the bridge on should know them first. */
+   through the bridge (the README of iskra-app/iskra-bridge), and whoever turns the bridge on should know them first. */
 "connection.unfinished" = "预期表现";
 "connection.unfinishedBody" = "每个请求都要绕道中继，耗时 200–350 毫秒，因此登录和首次打开聊天会明显比直连慢——原本瞬间完成的地方要等上一秒。不过新消息几乎和直连一样快。大附件也能传过去，但最好不要经过公共中继：媒体请给网桥配一个专用中继。";
 
@@ -351,6 +351,19 @@
    Apache 2.0 and MIT travel with the binary, so a person holding the app has to be able to read
    about them inside the app. */
 "about.licences" = "许可证";
+
+/* The GPL's "appropriate legal notices", under the links on the About screen: who holds the
+   copyright, that the app is free software under the GPL, and that it comes with no warranty.
+   The name stays in Latin letters, as it is in the licence. */
+"about.copyright" = "© 2026 Boris Zhuravlev 及 Iskra 贡献者";
+"about.freeSoftware" = "Iskra 是自由软件：您可以按照 GNU GPL 第 3 版的条款分享和修改它。本软件不提供任何担保。";
+
+/* On the licences screen: the heading over the projects Iskra is made from, the row that opens
+   the extra permission that lets the GPL'd app be published in app stores, and the link from a
+   licence's text to the project it belongs to. */
+"licences.builtOn" = "Iskra 所使用的软件";
+"licences.storePermission" = "应用商店分发许可";
+"licences.projectPage" = "项目主页";
 
 /* The screen where the double-tap reaction is chosen: the heading over the six emoji, and
    the line under them. */

@@ -250,9 +250,10 @@ final class BridgeProcess: @unchecked Sendable {
 
     static func start(secret: Data, allowing homeserver: URL, relays: [String]) throws -> BridgeProcess {
         let bridge = BridgeProcess()
-        let packageRoot = URL(filePath: #filePath)
-            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-        let binary = packageRoot.appending(path: "Bridge/target/debug/iskra-bridge")
+        guard let repository = BridgeSource.directory else {
+            throw BridgeProcessError.notBuilt(BridgeSource.missing)
+        }
+        let binary = repository.appending(path: "target/debug/iskra-bridge")
         guard FileManager.default.isExecutableFile(atPath: binary.path(percentEncoded: false)) else {
             throw BridgeProcessError.notBuilt(binary.path(percentEncoded: false))
         }

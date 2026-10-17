@@ -1,199 +1,84 @@
-# Iskra
+<p align="center">
+  <img src="Sources/IskraFeatures/Resources/icon-iskra.png" width="128" height="128" alt="Iskra">
+</p>
 
-A native Matrix client for iPhone, iPad and Mac. One Swift codebase, SwiftUI
-throughout, with all Matrix and cryptography work done by
-[matrix-rust-sdk](https://github.com/matrix-org/matrix-rust-sdk).
+<h1 align="center">Iskra</h1>
 
-## Layout
+<p align="center">
+  A native <a href="https://matrix.org">Matrix</a> client for iPhone, iPad and Mac.<br>
+  One SwiftUI codebase, with all Matrix and cryptography work done by
+  <a href="https://github.com/matrix-org/matrix-rust-sdk">matrix-rust-sdk</a>.
+</p>
 
-| Target | Holds | Knows about |
-|---|---|---|
-| `IskraCore` | Sessions, secrets, rooms, timeline, search, media | Matrix. No SwiftUI. |
-| `IskraDesign` | Bubbles, glass, spacing, colour | SwiftUI. No Matrix. |
-| `IskraFeatures` | The screens | Both — the only place they meet. |
+<p align="center">
+  <img src="https://img.shields.io/badge/iOS-18%2B-black" alt="iOS 18+">
+  <img src="https://img.shields.io/badge/macOS-15%2B-black" alt="macOS 15+">
+  <a href="LICENSE-EXCEPTION.md"><img src="https://img.shields.io/badge/licence-GPL--3.0-blue" alt="GPL-3.0"></a>
+</p>
 
-Keeping Matrix out of the views and views out of Matrix is what allows one set of
-screens to serve three platforms.
+## What it does
 
-## Decisions worth knowing
+- **Chats as you expect them** — DMs, groups and spaces, replies, edits, reactions, pins,
+  mentions, polls, locations, files, voice messages and round video messages.
+- **End-to-end encryption** with device verification and key backup.
+- **Notifications that say something** — an encrypted push is decrypted on the device, so
+  the lock screen shows the message, and the server never could.
+- **Several accounts** on one device, a tap apart.
+- **Widgets, Live Activities, Siri and Shortcuts.**
+- **Seven languages**: English, Russian, German, Spanish, French, Japanese, Chinese.
+- **A way around a blocked network.** Where the homeserver cannot be reached directly,
+  the connection can be carried over [nostr](https://nostr.com) through a
+  [bridge](https://github.com/iskra-app/iskra-bridge) — which sees only the host and the byte counts, because the
+  TLS runs end to end through it.
 
-**We depend on `matrix-org/matrix-rust-components-swift`, not the `element-hq`
-fork.** Element's fork is what Element X iOS uses, but it ships an iOS-only
-XCFramework. The upstream package publishes a `macos-arm64_x86_64` slice, and that
-single fact is what makes a native Mac build possible rather than a Catalyst
-compromise.
+## Privacy
 
-**Deployment target is iOS 18 / macOS 15.** Both numbers are set by `Mutex`
-(Synchronization), which the code leans on in eleven places; that is the lowest floor
-reached without rewriting its locks, and iOS 18 runs on every iPhone iOS 17 does
-(XS and XR onwards), so going lower would buy no phones. Below that the cost climbs
-fast: `@Observable` is iOS 17, and the SDK itself stops at iOS 16 / macOS 12.
-
-Liquid Glass is OS 26, and it is still used directly — but only inside
-`IskraDesign/Glass.swift`, which is the one place that checks availability. On the
-older systems it draws the navigation layer the way it was drawn before glass: a
-system material where glass floats, the accent as a solid fill where it is tinted,
-and nothing at all for the effects that only exist between sheets of glass. No view
-checks for OS 26 because of glass.
-
-The Mac build links ~200 warnings that SDK objects were "built for newer macOS version
-(26.5)". They are the C libraries inside the Rust SDK (zstd, the TLS stack), compiled
-without a deployment target of their own, and they call nothing but libc and pthreads —
-checked symbol by symbol. The warning is about the label, not the contents.
-
-**Liquid Glass is confined to the navigation layer.** Apple's guidance is explicit
-that glass belongs on toolbars, controls and floating panels — not on content, and
-never on top of other glass. So the composer, the toolbar buttons and the sign-in
-actions are glass; message bubbles are opaque fills. `IskraDesign/Glass.swift`
-encodes this: there is no general `.glass()` modifier to reach for, only
-`.navigationGlass()`.
-
-**Round video messages are recognised by shape, not by a flag.** Matrix has no
-round-video event type. Tagging one with a custom field would mean building the
-event by hand — `Client.uploadMedia` plus `Room.sendRaw` — and `uploadMedia` does
-*not* encrypt attachments. In an encrypted room that would upload the user's face to
-the homeserver in the clear. So we send an ordinary `m.video` through
-`Timeline.sendVideo`, which encrypts it properly, and make it recognisable instead:
-exactly square, at most 60 seconds. The cost is cosmetic and symmetric — our circles
-appear as square videos in other clients, and a square clip from another client
-appears as a circle here. Nothing leaks. See `IskraCore/Media/VideoNote.swift`.
-
-## Text and translations
-
-No user-facing string appears in a view. Every one is named in a `Strings.swift`
-(`Sources/IskraFeatures/Support/Strings.swift` for the screens,
-`Sources/IskraCore/Support/Strings.swift` for what the model layer produces), and the
-words themselves live in `Resources/<lang>.lproj/Localizable.strings`. **Those `.strings`
-files are the ones to edit.** English and Russian are both complete; neither is a
-fallback for the other. German, Spanish, French, Japanese and Chinese are complete as
-well.
-
-Two things here are easy to get wrong and are worth stating:
-
-- **We use `.lproj/.strings`, not a `.xcstrings` String Catalog.** Catalogs are the
-  nicer format, but they are compiled by Xcode's `XCStringsTool` and SwiftPM's
-  command-line build does not run it — it copies the `.xcstrings` into the bundle
-  untouched, so every string resolves to its own key and `swift test` sees an
-  unlocalized app while Xcode sees a localized one. One consistent format beats a
-  prettier one that only works half the time.
-
-- **The app bundle must declare `CFBundleLocalizations`.** Without it the system
-  treats the app as English-only, `Locale.current` can never become Russian, and the
-  translations sitting in the package bundle are never reached — while every
-  localization unit test still passes, because tests set the locale by hand. The
-  declaration is in `Apps/project.yml`.
-
-Russian plurals (one/few/many) live in `Localizable.stringsdict`; `.strings` cannot
-express them.
-
-## Security
-
-- Access token, refresh token, the SQLite store passphrase and the search-index key
-  live **only** in the Keychain, in a shared access group so the notification
-  extension can decrypt messages on device.
-- Keychain items are `AfterFirstUnlockThisDeviceOnly`: readable while the phone is
-  locked (notifications need that), never synced to iCloud or a backup.
-- The Matrix store and the local search index are both encrypted at rest.
-- Message search runs against the local index. The query never reaches the server.
-- All cryptography — Olm, Megolm, attachment encryption — is the Rust SDK's. None of
-  it is reimplemented here, and none of it should be.
-- Nothing logs message content, tokens, passwords, or OAuth callback URLs. The
-  callback URL carries an authorization code and is as sensitive as the token it
-  buys.
-
-## On Element X and AGPL
-
-[element-x-ios](https://github.com/element-hq/element-x-ios) was read as a reference
-for how a SwiftUI client sits on top of this SDK. **No code was copied from it.**
-Every file here was written against the SDK's own generated bindings and its
-official example. This matters because element-x-ios is AGPL-3.0, and copying from
-it would carry that licence into this project. If any code is ever lifted from it
-directly, it must be flagged in the commit that does so.
+- Tokens and store keys live only in the Keychain, never synced or backed up.
+- The message store and the search index are encrypted on disk; search never leaves the
+  device.
+- Photos and videos are sent without their metadata by default.
+- Nothing logs messages, tokens or passwords.
+- All Matrix cryptography is the Rust SDK's — none of it is reimplemented here.
 
 ## Building
 
-The libraries, which is where all the behaviour lives:
+You need Xcode 26 or later and
+[XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`).
 
 ```sh
-swift build            # macOS
-swift test             # includes a test that the Rust SDK links and is callable
-xcodebuild -scheme IskraFeatures -destination 'generic/platform=iOS' build
+swift build && swift test         # the libraries, where all the behaviour lives
+./run.sh                          # the app on the Mac and in the iPhone simulator
+./run.sh ios --mock-backend       # with the built-in demo server: every screen has something on it
 ```
 
-## Running the app
+The Xcode project is generated from `Apps/project.yml`. To sign your own build, put your
+team in `DEVELOPMENT_TEAM` and your own prefix in `bundleIdPrefix` there.
 
-The `.xcodeproj` is generated and not committed, so every run starts here:
+The bridge is a separate Rust service in its own repository,
+[`iskra-app/iskra-bridge`](https://github.com/iskra-app/iskra-bridge), where its images and
+releases are published.
 
-```sh
-cd Apps && xcodegen && cd ..
-```
+## Layout
 
-**On the Mac:**
+| | |
+|---|---|
+| `Core/` — **IskraCore** | Sessions, secrets, rooms, timeline, search, media, the bridge client. Never SwiftUI. |
+| `Sources/IskraDesign` | Bubbles, glass, spacing, colour. Never Matrix. |
+| `Sources/IskraFeatures` | The screens — the only place the two meet. |
+| `Apps/` | Thin app shells, the notification, share and widget extensions. |
+| `docs/` | Design notes: [why things are the way they are](docs/DECISIONS.md), the [blind bridge](docs/BLIND-BRIDGE.md), the [push gateway](docs/PUSH-GATEWAY.md). |
 
-```sh
-xcodebuild -project Apps/Iskra.xcodeproj -scheme 'Iskra (macOS)' \
-  -destination 'platform=macOS' -derivedDataPath .build/xcode build
-open .build/xcode/Build/Products/Debug/Iskra.app
-```
+What is done and what is next is in [`ROADMAP.md`](ROADMAP.md). The working guide to the
+code — its rules and the mistakes they prevent — is [`CLAUDE.md`](CLAUDE.md).
 
-**On the iPhone simulator:**
+## Contributing
 
-```sh
-# `generic/platform=iOS Simulator` rather than a device name: several simulators can
-# share a name, and xcodebuild refuses an ambiguous one.
-xcodebuild -project Apps/Iskra.xcodeproj -scheme 'Iskra (iOS)' \
-  -destination 'generic/platform=iOS Simulator' \
-  -derivedDataPath .build/xcode build
+Welcome. Please read [`CONTRIBUTING.md`](CONTRIBUTING.md) first: every commit is signed
+off, and the sign-off includes agreeing that the app may be published through app stores.
 
-# Xcode 27 replaced Simulator.app with DeviceHub.app, and DeviceHub shows the devices
-# without booting any of them — so the boot is its own step now, and `open -a Simulator`
-# fails outright rather than quietly doing nothing.
-xcrun simctl bootstatus 'iPhone 18 Pro' -b   # any iPhone will do; waits until it is up
-open -b com.apple.dt.Devices                 # DeviceHub, to see the screen
-xcrun simctl install booted .build/xcode/Build/Products/Debug-iphonesimulator/Iskra.app
-xcrun simctl launch booted moscow.swag.iskra
-```
+## Licence
 
-**Never add `CODE_SIGNING_ALLOWED=NO` to those commands.** It builds and installs
-perfectly, and then the app dies with `SIGTRAP` the moment you sign in — because
-without a signature the system grants the app none of its entitlements, the App Group
-container cannot be resolved, and `AppEnvironment.containerURL` refuses to invent one.
-The trap is doing its job; the build was the lie. The symptom appears at sign-in
-rather than at launch only because that is the first moment anything opens the store.
-
-To ask a build whether it really has the storage it claims — which the test suite
-cannot answer, since `swift test` produces an unsigned binary the Keychain rejects
-outright:
-
-```sh
-xcrun simctl launch --console booted moscow.swag.iskra --verify-storage
-```
-
-## Not built yet
-
-Almost everything this section used to list has been built, and it went on listing it —
-which is the failure mode a "not built yet" section has. It said creating a room was "the
-shape of it and nothing more", that there were no voice messages, no notification
-extension, and no device verification. All four exist. `ROADMAP.md` is the file that is
-kept honest, in the commit that finishes each thing; this one had simply fallen out of the
-ritual.
-
-What is actually left:
-
-- **Push, proven on a phone.** Everything is built and the gateway is up — a
-  [Sygnal](https://github.com/matrix-org/sygnal) of this project's own, because the public one at
-  matrix.org only accepts app ids registered with them. What is left cannot be checked anywhere but
-  on a real device: that iOS wakes the notification extension at all, and that the extension's
-  *own* entitlements resolve — it is a separate bundle id, granted the App Group and the Keychain
-  separately from the app. The simulator has no APNs, and `--probe-notification` runs inside the
-  app's process, so neither answers it. See `docs/PUSH-GATEWAY.md`.
-
-- **Answering a verification request.** Iskra can ask to be verified — seven emoji, compared
-  against a device that is already trusted — and cannot yet answer somebody else who asks. So
-  a new Iskra device is verified from Element, or from the web client, or with the recovery
-  key; two Iskra devices cannot yet verify each other.
-
-- **A list of your other sessions.** Not an omission: `Client.devices()` does not exist in the
-  FFI, and the internal HTTP client that could reach the endpoint carries no access token.
-  `Iskra --probe-devices` demonstrates it against a real homeserver, and `ROADMAP.md` stage 6
-  records the answer.
+Iskra is [GPL-3.0](LICENSE) with an
+[additional permission for app stores](LICENSE-EXCEPTION.md). The
+[bridge](https://github.com/iskra-app/iskra-bridge) is MIT. Generated avatars are a port of [blobatar](https://blobatar.dev),
+MIT ([notice](Licenses/blobatar.txt)).

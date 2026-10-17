@@ -268,7 +268,7 @@
 "bridge.refusal.broke" = "ブリッジが接続を切りました: %@";
 
 /* Not "what is unfinished" but what to expect: the numbers come from measuring a whole session
-   through the bridge (Bridge/README.md), and whoever turns the bridge on should know them first. */
+   through the bridge (the README of iskra-app/iskra-bridge), and whoever turns the bridge on should know them first. */
 "connection.unfinished" = "知っておきたいこと";
 "connection.unfinishedBody" = "リクエストはすべてリレーを回り道するため 200〜350 ms かかります。そのためサインインや初めてチャットを開くときは、直接接続より目に見えて遅くなります。一瞬だったところに 1 秒ほど。一方、新しいメッセージは直接とほぼ同じ速さで届きます。大きな添付ファイルも届きますが、公開リレーは避けたほうがいいでしょう。メディア用にはブリッジ専用のリレーを用意してください。";
 
@@ -351,6 +351,19 @@
    Apache 2.0 and MIT travel with the binary, so a person holding the app has to be able to read
    about them inside the app. */
 "about.licences" = "ライセンス";
+
+/* The GPL's "appropriate legal notices", under the links on the About screen: who holds the
+   copyright, that the app is free software under the GPL, and that it comes with no warranty.
+   The name stays in Latin letters, as it is in the licence. */
+"about.copyright" = "© 2026 Boris Zhuravlev と Iskra の貢献者";
+"about.freeSoftware" = "Iskra はフリーソフトウェアです。GNU GPL バージョン 3 の条件のもとで、共有・改変できます。いかなる保証もありません。";
+
+/* On the licences screen: the heading over the projects Iskra is made from, the row that opens
+   the extra permission that lets the GPL'd app be published in app stores, and the link from a
+   licence's text to the project it belongs to. */
+"licences.builtOn" = "Iskra を支えるソフトウェア";
+"licences.storePermission" = "アプリストアでの配布の許可";
+"licences.projectPage" = "プロジェクトのページ";
 
 /* The screen where the double-tap reaction is chosen: the heading over the six emoji, and
    the line under them. */

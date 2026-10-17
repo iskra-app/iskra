@@ -266,7 +266,7 @@
 "bridge.refusal.broke" = "Мост оборвал соединение: %@";
 
 /* Не «что не доделано», а чего ждать: цифры взяты из замера целой сессии через мост
-   (Bridge/README.md), и человек, который включил мост, должен знать их заранее. */
+   (the README of iskra-app/iskra-bridge), и человек, который включил мост, должен знать их заранее. */
 "connection.unfinished" = "Чего ждать";
 "connection.unfinishedBody" = "Каждый запрос идёт кругом через relay и стоит 200–350 мс, поэтому вход и первое открытие чатов заметно медленнее прямого соединения — секунда там, где было мгновенно. А новые сообщения приходят почти так же быстро, как напрямую. Большие вложения тоже доедут, но гонять их через публичные relay не стоит: для медиа мосту лучше дать свой relay.";
 
@@ -320,6 +320,19 @@
    вежливости: Apache 2.0 и MIT путешествуют вместе с программой, и человек должен иметь
    возможность прочитать о них в самом приложении. */
 "about.licences" = "Лицензии";
+
+/* The GPL's "appropriate legal notices", under the links on the About screen: who holds the
+   copyright, that the app is free software under the GPL, and that it comes with no warranty.
+   The name stays in Latin letters, as it is in the licence. */
+"about.copyright" = "© 2026 Boris Zhuravlev и участники проекта Iskra";
+"about.freeSoftware" = "Iskra — свободная программа: её можно распространять и изменять на условиях GNU GPL версии 3. Никаких гарантий к ней не прилагается.";
+
+/* On the licences screen: the heading over the projects Iskra is made from, the row that opens
+   the extra permission that lets the GPL'd app be published in app stores, and the link from a
+   licence's text to the project it belongs to. */
+"licences.builtOn" = "На чём построена Iskra";
+"licences.storePermission" = "Разрешение для магазинов приложений";
+"licences.projectPage" = "Страница проекта";
 
 /* Экран «Хранилище»: сколько места занимает приложение, чем именно и что из этого можно
    выбросить. У каждого вида данных есть не только название, но и фраза о том, чего стоит

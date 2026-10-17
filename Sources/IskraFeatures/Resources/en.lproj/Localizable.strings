@@ -268,7 +268,7 @@
 "bridge.refusal.broke" = "The bridge dropped the connection: %@";
 
 /* Not "what is unfinished" but what to expect: the numbers come from measuring a whole session
-   through the bridge (Bridge/README.md), and whoever turns the bridge on should know them first. */
+   through the bridge (the README of iskra-app/iskra-bridge), and whoever turns the bridge on should know them first. */
 "connection.unfinished" = "What to expect";
 "connection.unfinishedBody" = "Every request goes the long way round through a relay and costs 200–350 ms, so signing in and opening chats for the first time are noticeably slower than a direct connection — a second where it used to be instant. New messages, though, arrive almost as fast as they do directly. Large attachments will get through too, but they are better kept off public relays: for media, give the bridge a relay of its own.";
 
@@ -351,6 +351,19 @@
    Apache 2.0 and MIT travel with the binary, so a person holding the app has to be able to read
    about them inside the app. */
 "about.licences" = "Licences";
+
+/* The GPL's "appropriate legal notices", under the links on the About screen: who holds the
+   copyright, that the app is free software under the GPL, and that it comes with no warranty.
+   The name stays in Latin letters, as it is in the licence. */
+"about.copyright" = "© 2026 Boris Zhuravlev and the Iskra contributors";
+"about.freeSoftware" = "Iskra is free software: you can share and change it under the GNU GPL, version 3. It comes with no warranty of any kind.";
+
+/* On the licences screen: the heading over the projects Iskra is made from, the row that opens
+   the extra permission that lets the GPL'd app be published in app stores, and the link from a
+   licence's text to the project it belongs to. */
+"licences.builtOn" = "What Iskra is built on";
+"licences.storePermission" = "App store permission";
+"licences.projectPage" = "Project page";
 
 /* The screen where the double-tap reaction is chosen: the heading over the six emoji, and
    the line under them. */

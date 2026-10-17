@@ -268,7 +268,7 @@
 "bridge.refusal.broke" = "Die Bridge hat die Verbindung abgebrochen: %@";
 
 /* Not "what is unfinished" but what to expect: the numbers come from measuring a whole session
-   through the bridge (Bridge/README.md), and whoever turns the bridge on should know them first. */
+   through the bridge (the README of iskra-app/iskra-bridge), and whoever turns the bridge on should know them first. */
 "connection.unfinished" = "Was Sie erwartet";
 "connection.unfinishedBody" = "Jede Anfrage nimmt den Umweg über ein Relay und kostet 200–350 ms, deshalb sind die Anmeldung und das erste Öffnen von Chats spürbar langsamer als direkt – eine Sekunde, wo es sonst sofort ging. Neue Nachrichten kommen dagegen fast so schnell an wie direkt. Große Anhänge kommen auch durch, gehören aber besser nicht über öffentliche Relays: Geben Sie der Bridge für Medien ein eigenes Relay.";
 
@@ -351,6 +351,19 @@
    Apache 2.0 and MIT travel with the binary, so a person holding the app has to be able to read
    about them inside the app. */
 "about.licences" = "Lizenzen";
+
+/* The GPL's "appropriate legal notices", under the links on the About screen: who holds the
+   copyright, that the app is free software under the GPL, and that it comes with no warranty.
+   The name stays in Latin letters, as it is in the licence. */
+"about.copyright" = "© 2026 Boris Zhuravlev und die Mitwirkenden an Iskra";
+"about.freeSoftware" = "Iskra ist freie Software: Sie dürfen sie unter den Bedingungen der GNU GPL, Version 3, weitergeben und verändern. Sie wird ohne jede Gewährleistung bereitgestellt.";
+
+/* On the licences screen: the heading over the projects Iskra is made from, the row that opens
+   the extra permission that lets the GPL'd app be published in app stores, and the link from a
+   licence's text to the project it belongs to. */
+"licences.builtOn" = "Worauf Iskra aufbaut";
+"licences.storePermission" = "Erlaubnis für App-Stores";
+"licences.projectPage" = "Projektseite";
 
 /* The screen where the double-tap reaction is chosen: the heading over the six emoji, and
    the line under them. */
