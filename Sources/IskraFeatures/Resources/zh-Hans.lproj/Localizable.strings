@@ -398,8 +398,8 @@
 
 "signIn.problem.unreachable" = "无法连接到这个地址。请检查网络后再试一次。";
 "signIn.problem.bridgeUnavailable" = "网桥没有启动，而在网桥开启时，Iskra 不会直接连接。请在连接设置中检查网桥地址和中继。";
-/* Under "couldn't reach the server", when the bridge is off: the bridge as a way round a block. */
-"signIn.bridgeOffer" = "如果服务器在您所在的地方被封锁，可以通过网桥连接。";
+/* Under "couldn't reach the server", when the bridge is off: the bridge as a second route. */
+"signIn.bridgeOffer" = "如果无法直接连接，请尝试通过网桥连接。";
 /* The button under it: switches the bridge on and looks the server up again. */
 "signIn.tryThroughBridge" = "开启网桥并重试";
 
@@ -1347,8 +1347,8 @@
 "servers.matrixOrg" = "最大的 Matrix 服务器，由开发 Matrix 本身的基金会运营。";
 /* Where the server is. */
 "servers.matrixOrgWhere" = "英国";
-/* A note on matrix.org: it is blocked in Russia, and the bridge gets round that. */
-"servers.matrixOrgBlocked" = "在俄罗斯被封锁，但可以通过网桥使用";
+/* A note on matrix.org, shown only on a phone with Russian language or region: it may not answer from there. */
+"servers.matrixOrgBlocked" = "从俄罗斯可能无法访问";
 "servers.tchncs" = "最早的社区服务器之一。运营者还提供其他自由服务。";
 "servers.tchncsWhere" = "德国";
 "servers.quassel" = "面向日常交流的开放服务器，对所有人免费。";

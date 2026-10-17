@@ -28,10 +28,11 @@
 - **Several accounts** on one device, a tap apart.
 - **Widgets, Live Activities, Siri and Shortcuts.**
 - **Seven languages**: English, Russian, German, Spanish, French, Japanese, Chinese.
-- **A way around a blocked network.** Where the homeserver cannot be reached directly,
-  the connection can be carried over [nostr](https://nostr.com) through a
-  [bridge](https://github.com/iskra-app/iskra-bridge) — which sees only the host and the
-  byte counts, because the TLS runs end to end through it.
+- **Connecting through a bridge.** The connection to the server can be carried over
+  [nostr](https://nostr.com) through a [bridge](https://github.com/iskra-app/iskra-bridge),
+  and then the network the phone is on does not see which server you talk to. The bridge sees
+  only the host and the byte counts, because the TLS runs end to end through it. It is also a
+  second route when a direct connection does not work.
 
 ## Privacy
 
