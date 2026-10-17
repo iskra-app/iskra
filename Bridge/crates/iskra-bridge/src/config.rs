@@ -43,6 +43,40 @@ pub struct Config {
     pub allowed_pubkeys: Option<HashSet<PublicKey>>,
     pub max_body_chunk: usize,
     pub request_timeout: Duration,
+    /// `BLIND_ONLY` — refuse v1 entirely and carry streams only. **A bridge run for strangers runs
+    /// like this.** With v1 still on, an old client brings its access token in the clear, and
+    /// "the bridge cannot see" becomes a promise of the operator's instead of a property of the
+    /// bridge.
+    pub blind_only: bool,
+    pub streams: StreamLimits,
+}
+
+/// The ceilings on v2 streams. None of them is per *request* — a blind bridge sees no requests —
+/// and none can be got round by a new nostr key alone: the totals hold whatever the key.
+#[derive(Debug, Clone)]
+pub struct StreamLimits {
+    /// Streams one client key may have open. The SDK keeps a small pool of connections, one or two
+    /// with HTTP/2; sixteen is room for that and for the notification extension beside it.
+    pub per_client: usize,
+    /// Streams open at once, everybody together. Each holds a socket and up to a window of memory.
+    pub total: usize,
+    /// Bytes per minute one client may move, both directions together. Bytes and not requests,
+    /// because bytes are all a blind bridge can count. Over it, the stream slows down — the bridge
+    /// stops reading and stops acknowledging — rather than breaking.
+    pub bytes_per_min: NonZeroU32,
+    /// The same for everybody together, so that one neighbour cannot take the whole uplink.
+    pub bytes_per_min_total: Option<NonZeroU32>,
+}
+
+impl Default for StreamLimits {
+    fn default() -> Self {
+        Self {
+            per_client: 16,
+            total: 2048,
+            bytes_per_min: NonZeroU32::new(64 * 1024 * 1024).expect("a non-zero constant"),
+            bytes_per_min_total: None,
+        }
+    }
 }
 
 impl Config {
@@ -126,6 +160,25 @@ impl Config {
         let max_body_chunk = parse_or("MAX_BODY_CHUNK", DEFAULT_MAX_BODY_CHUNK)?;
         let request_timeout = Duration::from_secs(parse_or("REQUEST_TIMEOUT_SECS", 60u64)?);
 
+        let blind_only = flag("BLIND_ONLY")?;
+        let defaults = StreamLimits::default();
+        let streams = StreamLimits {
+            per_client: parse_or("MAX_STREAMS_PER_CLIENT", defaults.per_client)?.max(1),
+            total: parse_or("MAX_STREAMS", defaults.total)?.max(1),
+            bytes_per_min: NonZeroU32::new(parse_or(
+                "STREAM_BYTES_PER_MIN",
+                defaults.bytes_per_min.get(),
+            )?)
+            .ok_or_else(|| anyhow!("STREAM_BYTES_PER_MIN must be at least 1"))?,
+            bytes_per_min_total: match optional("STREAM_BYTES_PER_MIN_TOTAL") {
+                None => None,
+                Some(_) => Some(
+                    NonZeroU32::new(parse_or("STREAM_BYTES_PER_MIN_TOTAL", 0u32)?)
+                        .ok_or_else(|| anyhow!("STREAM_BYTES_PER_MIN_TOTAL must be at least 1"))?,
+                ),
+            },
+        };
+
         Ok(Self {
             upstreams,
             keys,
@@ -135,6 +188,8 @@ impl Config {
             allowed_pubkeys,
             max_body_chunk,
             request_timeout,
+            blind_only,
+            streams,
         })
     }
 
@@ -197,6 +252,20 @@ pub fn load_or_create_key(path: &Path) -> Result<Keys> {
         Err(error) => Err(error).with_context(|| {
             format!("cannot create {}; is the directory writable?", path.display())
         }),
+    }
+}
+
+/// `true`/`false`, and the spellings people put in compose files. Anything else is refused at
+/// startup: a `BLIND_ONLY=ture` read as "off" is a bridge carrying tokens its operator thinks it
+/// cannot see.
+fn flag(name: &str) -> Result<bool> {
+    match optional(name) {
+        None => Ok(false),
+        Some(raw) => match raw.trim().to_ascii_lowercase().as_str() {
+            "1" | "true" | "yes" | "on" => Ok(true),
+            "0" | "false" | "no" | "off" => Ok(false),
+            _ => Err(anyhow!("{name} must be true or false, got {raw}")),
+        },
     }
 }
 

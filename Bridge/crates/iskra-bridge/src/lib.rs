@@ -9,11 +9,18 @@
 //! README: it terminates the Matrix Client-Server API, so it sees the access token, every room and
 //! event id, and the bodies of messages in **unencrypted** rooms. Encrypted rooms stay encrypted —
 //! Olm and Megolm live above this layer and the bridge never holds their keys.
+//!
+//! That is protocol v1. Protocol v2 (`stream`) is the bridge that **cannot** see: it carries a TCP
+//! connection the client's own TLS runs over, and sees the host, the timing and the byte counts —
+//! nothing inside. `BLIND_ONLY=true` turns v1 off, and a bridge run for strangers runs like that.
 
+pub mod blind;
 pub mod config;
 pub mod forwarder;
 pub mod listener;
 pub mod ratelimit;
+pub mod sni;
+pub mod stream;
 pub mod upstream;
 
 pub use config::Config;

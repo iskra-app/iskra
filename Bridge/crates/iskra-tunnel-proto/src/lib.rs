@@ -12,11 +12,16 @@ pub mod chunk;
 pub mod crypto;
 pub mod envelope;
 pub mod reassemble;
+pub mod stream;
 
 pub use chunk::chunk_count;
-pub use crypto::{open, seal};
+pub use crypto::{open, open_frame, seal, seal_frame};
 pub use envelope::{Envelope, HttpRequest, HttpResponse, MAX_ID_LEN, PROTOCOL_VERSION};
 pub use reassemble::{Accepted, Limits, Reassembler};
+pub use stream::{
+    new_stream_id, reason, Inbound, Outbound, StreamFrame, StreamOp, Violation,
+    STREAM_PROTOCOL_VERSION,
+};
 
 use thiserror::Error;
 
@@ -30,6 +35,11 @@ pub const KIND_SUBSCRIBE: u16 = 20003;
 pub const KIND_PUSH: u16 = 20004;
 /// Bridge → client: the relay list and chunk size the bridge wants used.
 pub const KIND_CONFIG: u16 = 20005;
+/// Client → bridge: one frame of a v2 stream. Its own kind, so that a v1 bridge does not hear it
+/// at all rather than trying to read it as a request and failing in some way of its own.
+pub const KIND_STREAM_CLIENT: u16 = 20010;
+/// Bridge → client: one frame of a v2 stream.
+pub const KIND_STREAM_BRIDGE: u16 = 20011;
 
 /// NIP-44 v2 refuses to encrypt more than this in one payload. Every chunk budget is derived from
 /// it rather than from a round number, because a round number that happens to exceed it produces a

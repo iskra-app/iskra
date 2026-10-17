@@ -6,8 +6,8 @@ use std::time::Instant;
 
 use anyhow::Result;
 use iskra_tunnel_proto::{
-    log_path, open, seal, Accepted, HttpRequest, HttpResponse, Limits, ProtoError, Reassembler,
-    KIND_REQUEST, KIND_RESPONSE,
+    log_path, open, open_frame, seal, Accepted, HttpRequest, HttpResponse, Limits, ProtoError,
+    Reassembler, KIND_REQUEST, KIND_RESPONSE, KIND_STREAM_CLIENT,
 };
 use nostr_sdk::prelude::*;
 use tokio::sync::{broadcast, Mutex, Semaphore};
@@ -21,9 +21,11 @@ use tokio::task::JoinSet;
 /// anything is awaited.
 type Partials = Arc<StdMutex<Reassembler<(PublicKey, String)>>>;
 
+use crate::blind::Destinations;
 use crate::config::Config;
 use crate::forwarder::Forwarder;
 use crate::ratelimit::RateLimit;
+use crate::stream::Streams;
 
 /// How many events one request may spend before the *event* ceiling notices. A request is almost
 /// always one event; an upload at the 8 MB reassembly ceiling is about 340. Sixty-four per request
@@ -63,6 +65,7 @@ pub struct Bridge {
     forwarder: Arc<Forwarder>,
     ceilings: Arc<Ceilings>,
     partials: Partials,
+    streams: Streams,
     client: Client,
     /// Taken by `run`. Held here because the order of the two lines that create it matters —
     /// see `start`.
@@ -101,8 +104,14 @@ impl Bridge {
 
         let notifications = client.notifications();
 
+        // With `BLIND_ONLY` the bridge does not even ask the relays for v1 requests: a token that
+        // never reaches the bridge is one nobody has to promise not to look at.
+        let mut kinds = vec![Kind::Custom(KIND_STREAM_CLIENT)];
+        if !config.blind_only {
+            kinds.push(Kind::Custom(KIND_REQUEST));
+        }
         let filter = Filter::new()
-            .kind(Kind::Custom(KIND_REQUEST))
+            .kinds(kinds)
             .pubkey(config.keys.public_key())
             // Relays are not supposed to store ephemeral events, but one that does would otherwise
             // replay its whole backlog here and the bridge would re-issue requests answered days
@@ -121,6 +130,14 @@ impl Bridge {
         } else {
             tracing::info!(homeservers = ?config.upstreams.listed(), "serving");
         }
+        if config.blind_only {
+            tracing::info!("BLIND_ONLY — streams only; this bridge sees hosts and byte counts, not tokens or messages");
+        } else {
+            tracing::warn!(
+                "v1 is on — this bridge reads the requests it carries, access tokens included; \
+                 set BLIND_ONLY=true for a bridge that cannot"
+            );
+        }
         if config.allowed_pubkeys.is_none() {
             tracing::warn!(
                 "ALLOWED_PUBKEYS is empty — anyone who knows this bridge's address can use it; \
@@ -138,7 +155,16 @@ impl Bridge {
         let Ok(npub) = config.keys.public_key().to_bech32();
         tracing::info!("bridge address for Iskra: {npub}");
 
+        let streams = Streams::new(
+            config.keys.clone(),
+            client.clone(),
+            Destinations::new(&config.upstreams),
+            config.streams.clone(),
+            config.max_body_chunk,
+        );
+
         Ok(Self {
+            streams,
             config: Arc::new(config),
             forwarder: Arc::new(forwarder),
             ceilings: Arc::new(ceilings),
@@ -170,6 +196,7 @@ impl Bridge {
                 _ = forget.tick() => {
                     self.ceilings.requests.retain_recent();
                     self.ceilings.events.retain_recent();
+                    self.streams.tidy();
                     continue;
                 }
             };
@@ -190,7 +217,11 @@ impl Bridge {
             let RelayPoolNotification::Event { event, .. } = notification else {
                 continue;
             };
-            if event.kind != Kind::Custom(KIND_REQUEST) {
+            if event.kind == Kind::Custom(KIND_STREAM_CLIENT) {
+                self.stream_frame(&event);
+                continue;
+            }
+            if event.kind != Kind::Custom(KIND_REQUEST) || self.config.blind_only {
                 continue;
             }
             // Dropped rather than answered: answering a flood would be publishing on its behalf.
@@ -216,6 +247,35 @@ impl Bridge {
         }
 
         Ok(())
+    }
+
+    /// Streams open right now. For tests and for whoever is watching the bridge.
+    pub fn open_streams(&self) -> usize {
+        self.streams.open_count()
+    }
+
+    /// One v2 frame. The same gate as a v1 request — allow list, freshness, the event ceiling,
+    /// all before decrypting — and then straight to its stream, in the relay loop and in arrival
+    /// order: decrypting one frame is cheap, and handing frames to tasks of their own would only
+    /// shuffle an order the receiver then has to put back.
+    fn stream_frame(&self, event: &Event) {
+        let sender = event.pubkey;
+        if !self.config.allows(&sender) {
+            tracing::debug!(client = %sender, "not on the allow list");
+            return;
+        }
+        if !is_fresh(event.created_at, Timestamp::now()) {
+            tracing::info!(client = %sender, "dropped a stale or future event");
+            return;
+        }
+        if !self.ceilings.events.allow(&sender) {
+            tracing::info!(client = %sender, "too many events");
+            return;
+        }
+        match open_frame(self.config.keys.secret_key(), &sender, &event.content) {
+            Ok(frame) => self.streams.deliver(sender, frame),
+            Err(error) => tracing::debug!(client = %sender, %error, "dropped an unreadable frame"),
+        }
     }
 
     pub async fn shutdown(&self) {

@@ -15,6 +15,7 @@ services:
       ALLOWED_PUBKEYS: ${ALLOWED_PUBKEYS:-}
       RELAY_LIST: ${RELAY_LIST:-}
       RATE_LIMIT_PER_MIN: ${RATE_LIMIT_PER_MIN:-}
+      BLIND_ONLY: ${BLIND_ONLY:-}
     volumes:
       # Здесь лежит ключ моста, а значит и его адрес. Удалить том — получить новый адрес и
       # вписывать его заново на всех устройствах.
