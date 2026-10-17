@@ -39,6 +39,11 @@ public final class SignInModel {
     public private(set) var isBusy = false
     /// Always a sentence, always about what the user should do next.
     public private(set) var problem: LocalizedStringResource?
+    /// Whether the problem is one the bridge might get round: the server did not answer, and the
+    /// bridge is off. A blocked server and a mistyped one fail alike from here — a block cuts the
+    /// connection, and the SDK calls that "not found" — so the offer comes with both, and says it
+    /// is about a block.
+    public private(set) var canTryBridge = false
 
     public var username: String = ""
     public var password: String = ""
@@ -127,17 +132,33 @@ public final class SignInModel {
         password = ""
     }
 
+    /// "Turn on the bridge and try again": the switch in Settings → Connection, flipped from here,
+    /// and the same lookup again.
+    ///
+    /// It is the device's switch and not a one-off for this attempt — an account reached through
+    /// the bridge has to keep being reached through it. `changed` is posted for the account that
+    /// may be open under "Add account", which goes through the bridge from now on as well.
+    public func tryThroughBridge() async {
+        guard canTryBridge, !isBusy else { return }
+        TunnelSettings.store.set(true, forKey: TunnelSettings.enabledKey)
+        NotificationCenter.default.post(name: TunnelSettings.changed, object: nil)
+        await findServer()
+    }
+
     private func lookUp() async -> SignInOptions? {
         isBusy = true
         problem = nil
+        canTryBridge = false
         defer { isBusy = false }
 
         do {
             return try await authentication.startSignIn(homeserverAddress: address.trimmingCharacters(in: .whitespaces))
         } catch AuthenticationError.homeserverNotFound {
             problem = Strings.SignIn.Problem.notFound
+            canTryBridge = !TunnelSettings.isEnabled()
         } catch AuthenticationError.homeserverUnreachable {
             problem = Strings.SignIn.Problem.unreachable
+            canTryBridge = !TunnelSettings.isEnabled()
         } catch AuthenticationError.noSupportedSignInMethod {
             problem = Strings.SignIn.Problem.unsupportedMethod
         } catch AuthenticationError.storageUnavailable {
@@ -152,6 +173,7 @@ public final class SignInModel {
             problem = Strings.SignIn.Problem.bridgeUnavailable
         } catch {
             problem = Strings.SignIn.Problem.unreachable
+            canTryBridge = !TunnelSettings.isEnabled()
         }
         return nil
     }
@@ -253,6 +275,7 @@ public final class SignInModel {
         await authentication.cancelSignIn()
         step = .enteringAddress
         problem = nil
+        canTryBridge = false
         username = ""
         password = ""
     }

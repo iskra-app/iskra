@@ -385,6 +385,10 @@
 
 "signIn.problem.unreachable" = "Impossible de joindre cette adresse. Vérifiez la connexion et réessayez.";
 "signIn.problem.bridgeUnavailable" = "Le pont n’a pas démarré, et Iskra ne passera pas en direct tant que le pont est activé. Vérifiez l’adresse du pont et les relais dans les réglages de connexion.";
+/* Under "couldn't reach the server", when the bridge is off: the bridge as a way round a block. */
+"signIn.bridgeOffer" = "Si le serveur est bloqué là où vous êtes, un pont peut quand même l’atteindre.";
+/* The button under it: switches the bridge on and looks the server up again. */
+"signIn.tryThroughBridge" = "Activer le pont et réessayer";
 
 "signIn.problem.unsupportedMethod" = "Ce service utilise un mode de connexion qu’Iskra ne prend pas encore en charge.";
 
@@ -1321,8 +1325,8 @@
 "servers.matrixOrg" = "Le plus grand serveur Matrix, géré par la fondation qui développe Matrix.";
 /* Where the server is. */
 "servers.matrixOrgWhere" = "Royaume-Uni";
-/* A warning on matrix.org: it is blocked in Russia. */
-"servers.matrixOrgBlocked" = "Inaccessible depuis la Russie";
+/* A note on matrix.org: it is blocked in Russia, and the bridge gets round that. */
+"servers.matrixOrgBlocked" = "Bloqué en Russie, mais fonctionne via un pont";
 "servers.tchncs" = "L’un des plus anciens serveurs communautaires. Son propriétaire héberge aussi d’autres services libres.";
 "servers.tchncsWhere" = "Allemagne";
 "servers.quassel" = "Un serveur ouvert pour les conversations de tous les jours, gratuit pour tous.";

@@ -30,9 +30,9 @@ struct PublicServer: Identifiable {
         PublicServer(address: "matrix.org",
                      about: Strings.Servers.matrixOrg,
                      whereabouts: Strings.Servers.matrixOrgWhere,
-                     // Blocked in Russia: an account made there is one its owner cannot reach
-                     // from home without a VPN or a bridge. Said only on a phone that has
-                     // something Russian about it — to everybody else it is noise.
+                     // Blocked in Russia, and reachable through the bridge — which the sign-in
+                     // screen offers to switch on the moment the lookup fails. Said only on a
+                     // phone that has something Russian about it — to everybody else it is noise.
                      warning: isRussianLocale ? Strings.Servers.matrixOrgBlocked : nil),
         PublicServer(address: "tchncs.de",
                      about: Strings.Servers.tchncs,

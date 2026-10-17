@@ -385,6 +385,10 @@
 
 "signIn.problem.unreachable" = "Something went wrong reaching that address. Check your connection and try again.";
 "signIn.problem.bridgeUnavailable" = "The bridge didn’t come up, and Iskra won’t go direct while the bridge is on. Check the bridge address and relays in Connection settings.";
+/* Under "couldn't reach the server", when the bridge is off: the bridge as a way round a block. */
+"signIn.bridgeOffer" = "If the server is blocked where you are, a bridge can still reach it.";
+/* The button under it: switches the bridge on and looks the server up again. */
+"signIn.tryThroughBridge" = "Turn on the bridge and try again";
 
 "signIn.problem.unsupportedMethod" = "That service uses a way of signing in that Iskra doesn’t support yet.";
 
@@ -1321,8 +1325,8 @@
 "servers.matrixOrg" = "The largest Matrix server, run by the foundation that develops Matrix itself.";
 /* Where the server is. */
 "servers.matrixOrgWhere" = "United Kingdom";
-/* A warning on matrix.org: it is blocked in Russia. */
-"servers.matrixOrgBlocked" = "Not available from Russia";
+/* A note on matrix.org: it is blocked in Russia, and the bridge gets round that. */
+"servers.matrixOrgBlocked" = "Blocked in Russia, but works through a bridge";
 "servers.tchncs" = "One of the oldest community servers. Its owner runs other free services too.";
 "servers.tchncsWhere" = "Germany";
 "servers.quassel" = "An open server for everyday conversation, free for everyone.";

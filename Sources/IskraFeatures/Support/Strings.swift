@@ -184,6 +184,10 @@ public enum Strings {
         public static let continueInBrowser = LocalizedStringResource("signIn.continueInBrowser", bundle: bundle)
         public static let browserHelp = LocalizedStringResource("signIn.browserHelp", bundle: bundle)
         public static let passwordHelp = LocalizedStringResource("signIn.passwordHelp", bundle: bundle)
+        /// Under a server that could not be reached, with the bridge off: the bridge as the way round
+        /// a block, and the button that switches it on and looks again.
+        public static let bridgeOffer = LocalizedStringResource("signIn.bridgeOffer", bundle: bundle)
+        public static let tryThroughBridge = LocalizedStringResource("signIn.tryThroughBridge", bundle: bundle)
 
         /// Errors. Each says what happened and what to do; none names a protocol.
         public enum Problem {
