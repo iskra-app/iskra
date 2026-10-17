@@ -918,7 +918,8 @@ TLS насквозь до хоумсервера, мост перекладыв�
 - [ ] Клиент: `LocalConnectProxy`, `NostrStreamTunnel`, `.proxy` в `ClientBuilder`, `DirectPipe`.
 - [ ] `BridgeCheck`, `--probe-bridge`, `.bridgedBlind`; отказы словами — «мост старый», «не пускает
       к этому серверу», «перегружен».
-- [ ] PoW на `open` и сложность в `KIND_CONFIG`.
+- [ ] PoW на `open` и сложность в `KIND_CONFIG`. Обязателен до моста по умолчанию: без него общий
+      бюджет проверок «это Matrix» выжимается бесплатными ключами.
 - [ ] Мост по умолчанию: `BLIND_ONLY=true`, `*`, его `npub` и relay в `TunnelSettings`; потом — фраза
       на экране.
 

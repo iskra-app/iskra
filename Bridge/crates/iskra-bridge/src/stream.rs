@@ -133,6 +133,7 @@ impl Streams {
     /// Forget what is old enough to forget: quiet clients' byte allowances, old tombstones.
     pub fn tidy(&self) {
         self.shared.bytes.retain_recent();
+        self.shared.destinations.tidy();
         let now = Instant::now();
         self.shared
             .table
