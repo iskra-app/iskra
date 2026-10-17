@@ -241,7 +241,7 @@
 "connection.addressSecret" = "Это секретный ключ. Нужен публичный — тот, что начинается с npub.";
 
 "connection.relays" = "Relay";
-"connection.relaysPrompt" = "wss://nos.lol, wss://relay.primal.net";
+"connection.relaysPrompt" = "wss://relay.snort.social, wss://nostr.wine";
 "connection.relaysFooter" = "Через них приложение и мост находят друг друга. Несколько — не запас: запрос уходит сразу на все, а ответ приходит с того, который оказался быстрее. Пусто — возьмутся три по умолчанию.";
 
 "connection.myKey" = "Ключ этого устройства";

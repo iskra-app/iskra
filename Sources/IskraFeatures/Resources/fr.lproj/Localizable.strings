@@ -243,7 +243,7 @@
 "connection.addressSecret" = "C’est une clé secrète. Il faut ici la clé publique, celle qui commence par npub.";
 
 "connection.relays" = "Relais";
-"connection.relaysPrompt" = "wss://nos.lol, wss://relay.primal.net";
+"connection.relaysPrompt" = "wss://relay.snort.social, wss://nostr.wine";
 "connection.relaysFooter" = "C’est là que l’app et le pont se retrouvent. En mettre plusieurs n’est pas une roue de secours : la requête part vers tous à la fois et la réponse revient du plus rapide. Laissez vide pour les trois par défaut.";
 
 "connection.myKey" = "Clé de cet appareil";

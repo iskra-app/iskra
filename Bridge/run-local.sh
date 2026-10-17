@@ -25,7 +25,9 @@ ALLOWED_UPSTREAMS="${ALLOWED_UPSTREAMS:-matrix.org,matrix-client.matrix.org}"
 # damus по умолчанию не включён: он регулярно отвечает 503 на само подключение. Список из
 # нескольких relay — не запас на будущее, а рабочая отказоустойчивость: событие уходит на все сразу,
 # ответ приходит с того, который оказался быстрее.
-RELAY_LIST="${RELAY_LIST:-wss://nos.lol,wss://relay.primal.net,wss://relay.nostr.band}"
+# Список тот же, что в приложении (`TunnelSettings.defaultRelays`): эти доходят из России, а relay
+# на Hetzner, Contabo, DigitalOcean и большей части Cloudflare там встают на ~16 КБ.
+RELAY_LIST="${RELAY_LIST:-wss://relay.snort.social,wss://nostr.wine,wss://offchain.pub,wss://nostr.bitcoiner.social,wss://relay.primal.net}"
 RUST_LOG="${RUST_LOG:-info}"
 
 if ! command -v cargo >/dev/null 2>&1; then

@@ -243,7 +243,7 @@
 "connection.addressSecret" = "Das ist ein geheimer Schlüssel. Hier wird der öffentliche gebraucht – der, der mit npub beginnt.";
 
 "connection.relays" = "Relays";
-"connection.relaysPrompt" = "wss://nos.lol, wss://relay.primal.net";
+"connection.relaysPrompt" = "wss://relay.snort.social, wss://nostr.wine";
 "connection.relaysFooter" = "Hier finden sich die App und die Bridge. Mehrere sind kein Ersatzrad: Eine Anfrage geht an alle gleichzeitig, und die Antwort kommt von dem, der am schnellsten war. Leer lassen für die drei Standard-Relays.";
 
 "connection.myKey" = "Schlüssel dieses Geräts";
