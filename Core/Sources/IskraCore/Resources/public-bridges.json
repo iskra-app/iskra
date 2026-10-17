@@ -13,7 +13,7 @@
         "wss://relay.primal.net"
       ],
       "operator": "Iskra developers",
-      "homeservers": ["matrix.org", "matrix-client.matrix.org"]
+      "homeservers": "*"
     }
   ]
 }
