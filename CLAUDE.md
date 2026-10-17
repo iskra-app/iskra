@@ -236,9 +236,12 @@ field and asks the same questions of its reassembly (`Inbound`/`Outbound`). Thre
   so in words; falling back to v1 quietly is the same mistake as falling back to a direct
   connection.
 - **The host from `open` must equal the ClientHello's SNI, and the connection goes to the addresses
-  that were checked** (`blind.rs`), never to a second lookup of the name. Either shortcut turns the
-  Matrix-host check into a formality: the first by a different virtual host on the same IP, the
-  second by DNS rebinding.
+  that were checked** (`blind.rs`) — on an open bridge, only those that *themselves* answered as
+  Matrix, remembered per `(name, address)` — never to a second lookup of the name. Either shortcut
+  turns the Matrix-host check into a formality: the first by a different virtual host on the same
+  IP, the second by DNS rebinding. What SNI cannot bind is the HTTP `Host` inside the TLS: a Matrix
+  server behind a shared CDN fronts for every site on it, and that limit is stated in
+  `Bridge/README.md`, not "fixed".
 
 `Iskra --probe-bridge [npub] [homeserver]` and the "Check the bridge" button both drive
 `BridgeCheck`, so the terminal and the screen cannot disagree. `LiveBridgeTests` is the end-to-end
