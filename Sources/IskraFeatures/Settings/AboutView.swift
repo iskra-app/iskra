@@ -76,6 +76,14 @@ struct AboutView: View {
                 } label: {
                     Text(Strings.About.licences)
                 }
+            } footer: {
+                // The GPL asks an interactive program for exactly this, on screen: whose it is,
+                // that it is free software, and that there is no warranty. Under the source and
+                // licence rows, because those are the two things the sentence points at.
+                VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                    Text(Strings.About.copyright)
+                    Text(Strings.About.freeSoftware)
+                }
             }
         }
         .formStyle(.grouped)
@@ -159,59 +167,3 @@ struct AboutView: View {
     }
 }
 
-/// Whose code ships inside the app, under which licence, and a way through to the text of it.
-///
-/// This is not decoration. Every line of Matrix and every line of Matrix cryptography here is
-/// `matrix-rust-sdk`'s, under Apache-2.0, and the avatars are a port of blobatar, under MIT —
-/// licences that travel with the binary and need somewhere in the shipped app a person can
-/// actually reach. Each row is a link rather than a name, because a name with no way through
-/// to the licence is a thank-you, not a notice.
-struct LicensesView: View {
-    @Environment(\.accent) private var accent
-
-    /// One piece of somebody else's work, and where its licence is published.
-    private struct Credit: Identifiable {
-        let name: String
-        let licence: String
-        let url: URL
-        var id: String { name }
-    }
-
-    /// Names and licence names are not translated — "Apache 2.0" and "MIT" are what the
-    /// licences are called in every language, and the project names are proper nouns.
-    private static let credits: [Credit] = [
-        Credit(name: "matrix-rust-sdk",
-               licence: "Apache 2.0",
-               url: URL(string: "https://github.com/matrix-org/matrix-rust-sdk/blob/main/LICENSE")!),
-        Credit(name: "matrix-rust-components-swift",
-               licence: "Apache 2.0",
-               url: URL(string: "https://github.com/matrix-org/matrix-rust-components-swift/blob/main/LICENSE")!),
-        Credit(name: "swift-secp256k1",
-               licence: "MIT",
-               url: URL(string: "https://github.com/21-DOT-DEV/swift-secp256k1")!),
-        Credit(name: "blobatar",
-               licence: "MIT © 2026 Alain",
-               url: URL(string: "https://blobatar.dev")!),
-    ]
-
-    var body: some View {
-        Form {
-            Section {
-                ForEach(LicensesView.credits) { credit in
-                    Link(destination: credit.url) {
-                        LabeledContent {
-                            Image(systemName: "arrow.up.right")
-                                .foregroundStyle(.secondary)
-                        } label: {
-                            Text(verbatim: credit.name)
-                            Text(verbatim: credit.licence)
-                        }
-                    }
-                }
-            }
-        }
-        .formStyle(.grouped)
-        .tint(accent.color)
-        .navigationTitle(Text(Strings.About.licences))
-    }
-}

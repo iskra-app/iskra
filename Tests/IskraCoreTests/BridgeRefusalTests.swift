@@ -8,11 +8,11 @@ struct BridgeRefusalTests {
     /// Every word the bridge can send, read out of the Rust source itself — so a word added there
     /// without a case here fails this rather than reaching the screen as "the stream broke" when
     /// it means something a person could act on.
-    @Test("every reason the bridge sends is known here")
+    @Test("every reason the bridge sends is known here",
+          .enabled(if: BridgeSource.directory != nil, Comment(rawValue: BridgeSource.missing)))
     func everyRustReasonIsKnown() throws {
-        let source = URL(filePath: #filePath)
-            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-            .appending(path: "Bridge/crates/iskra-tunnel-proto/src/stream.rs")
+        let source = try #require(BridgeSource.directory)
+            .appending(path: "crates/iskra-tunnel-proto/src/stream.rs")
         let rust = try String(contentsOf: source, encoding: .utf8)
         let module = try #require(rust.range(of: "pub mod reason {"))
         let body = rust[module.upperBound...].prefix { $0 != "}" }

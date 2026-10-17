@@ -63,6 +63,8 @@ struct SignInModelTests {
         #expect(problem.contains("address"))
         // And it must not leak protocol vocabulary onto the screen.
         #expect(!problem.lowercased().contains("homeserver"))
+        // A block fails the same way a typo does, so the bridge is offered — where it is off.
+        #expect(model.canTryBridge == !TunnelSettings.isEnabled())
     }
 
     /// The field starts empty — no server is chosen for anybody — and an empty one, or one of

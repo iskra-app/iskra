@@ -268,7 +268,7 @@
 "bridge.refusal.broke" = "Le pont a coupé la connexion : %@";
 
 /* Not "what is unfinished" but what to expect: the numbers come from measuring a whole session
-   through the bridge (Bridge/README.md), and whoever turns the bridge on should know them first. */
+   through the bridge (the README of iskra-app/iskra-bridge), and whoever turns the bridge on should know them first. */
 "connection.unfinished" = "À quoi s’attendre";
 "connection.unfinishedBody" = "Chaque requête fait le détour par un relais et coûte 200 à 350 ms : la connexion et la première ouverture des discussions sont donc nettement plus lentes qu’en direct, une seconde là où c’était instantané. Les nouveaux messages arrivent en revanche presque aussi vite qu’en direct. Les grosses pièces jointes passent aussi, mais mieux vaut les éviter sur des relais publics : pour les médias, donnez au pont un relais à lui.";
 
@@ -352,6 +352,19 @@
    about them inside the app. */
 "about.licences" = "Licences";
 
+/* The GPL's "appropriate legal notices", under the links on the About screen: who holds the
+   copyright, that the app is free software under the GPL, and that it comes with no warranty.
+   The name stays in Latin letters, as it is in the licence. */
+"about.copyright" = "© 2026 Boris Zhuravlev et les contributeurs d’Iskra";
+"about.freeSoftware" = "Iskra est un logiciel libre : vous pouvez le partager et le modifier selon les termes de la GNU GPL, version 3. Il est fourni sans aucune garantie.";
+
+/* On the licences screen: the heading over the projects Iskra is made from, the row that opens
+   the extra permission that lets the GPL'd app be published in app stores, and the link from a
+   licence's text to the project it belongs to. */
+"licences.builtOn" = "Sur quoi repose Iskra";
+"licences.storePermission" = "Autorisation pour les boutiques d’applications";
+"licences.projectPage" = "Page du projet";
+
 /* The screen where the double-tap reaction is chosen: the heading over the six emoji, and
    the line under them. */
 "reactions.quick" = "Réaction rapide";
@@ -385,6 +398,10 @@
 
 "signIn.problem.unreachable" = "Impossible de joindre cette adresse. Vérifiez la connexion et réessayez.";
 "signIn.problem.bridgeUnavailable" = "Le pont n’a pas démarré, et Iskra ne passera pas en direct tant que le pont est activé. Vérifiez l’adresse du pont et les relais dans les réglages de connexion.";
+/* Under "couldn't reach the server", when the bridge is off: the bridge as a way round a block. */
+"signIn.bridgeOffer" = "Si le serveur est bloqué là où vous êtes, un pont peut quand même l’atteindre.";
+/* The button under it: switches the bridge on and looks the server up again. */
+"signIn.tryThroughBridge" = "Activer le pont et réessayer";
 
 "signIn.problem.unsupportedMethod" = "Ce service utilise un mode de connexion qu’Iskra ne prend pas encore en charge.";
 
@@ -1321,8 +1338,8 @@
 "servers.matrixOrg" = "Le plus grand serveur Matrix, géré par la fondation qui développe Matrix.";
 /* Where the server is. */
 "servers.matrixOrgWhere" = "Royaume-Uni";
-/* A warning on matrix.org: it is blocked in Russia. */
-"servers.matrixOrgBlocked" = "Inaccessible depuis la Russie";
+/* A note on matrix.org: it is blocked in Russia, and the bridge gets round that. */
+"servers.matrixOrgBlocked" = "Bloqué en Russie, mais fonctionne via un pont";
 "servers.tchncs" = "L’un des plus anciens serveurs communautaires. Son propriétaire héberge aussi d’autres services libres.";
 "servers.tchncsWhere" = "Allemagne";
 "servers.quassel" = "Un serveur ouvert pour les conversations de tous les jours, gratuit pour tous.";

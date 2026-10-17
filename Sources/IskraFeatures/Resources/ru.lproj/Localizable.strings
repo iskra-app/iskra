@@ -266,7 +266,7 @@
 "bridge.refusal.broke" = "Мост оборвал соединение: %@";
 
 /* Не «что не доделано», а чего ждать: цифры взяты из замера целой сессии через мост
-   (Bridge/README.md), и человек, который включил мост, должен знать их заранее. */
+   (the README of iskra-app/iskra-bridge), и человек, который включил мост, должен знать их заранее. */
 "connection.unfinished" = "Чего ждать";
 "connection.unfinishedBody" = "Каждый запрос идёт кругом через relay и стоит 200–350 мс, поэтому вход и первое открытие чатов заметно медленнее прямого соединения — секунда там, где было мгновенно. А новые сообщения приходят почти так же быстро, как напрямую. Большие вложения тоже доедут, но гонять их через публичные relay не стоит: для медиа мосту лучше дать свой relay.";
 
@@ -320,6 +320,19 @@
    вежливости: Apache 2.0 и MIT путешествуют вместе с программой, и человек должен иметь
    возможность прочитать о них в самом приложении. */
 "about.licences" = "Лицензии";
+
+/* The GPL's "appropriate legal notices", under the links on the About screen: who holds the
+   copyright, that the app is free software under the GPL, and that it comes with no warranty.
+   The name stays in Latin letters, as it is in the licence. */
+"about.copyright" = "© 2026 Boris Zhuravlev и участники проекта Iskra";
+"about.freeSoftware" = "Iskra — свободная программа: её можно распространять и изменять на условиях GNU GPL версии 3. Никаких гарантий к ней не прилагается.";
+
+/* On the licences screen: the heading over the projects Iskra is made from, the row that opens
+   the extra permission that lets the GPL'd app be published in app stores, and the link from a
+   licence's text to the project it belongs to. */
+"licences.builtOn" = "На чём построена Iskra";
+"licences.storePermission" = "Разрешение для магазинов приложений";
+"licences.projectPage" = "Страница проекта";
 
 /* Экран «Хранилище»: сколько места занимает приложение, чем именно и что из этого можно
    выбросить. У каждого вида данных есть не только название, но и фраза о том, чего стоит
@@ -382,6 +395,10 @@
 
 "signIn.problem.unreachable" = "Не удалось связаться с этим адресом. Проверьте соединение и попробуйте снова.";
 "signIn.problem.bridgeUnavailable" = "Мост не включился, а напрямую Iskra не пойдёт, пока мост включён. Проверьте адрес моста и relay в настройках соединения.";
+/* Under "couldn't reach the server", when the bridge is off: the bridge as a way round a block. */
+"signIn.bridgeOffer" = "Если сервер заблокирован там, где вы сейчас, до него можно дотянуться через мост.";
+/* The button under it: switches the bridge on and looks the server up again. */
+"signIn.tryThroughBridge" = "Включить мост и попробовать снова";
 
 "signIn.problem.unsupportedMethod" = "Этот сервис использует способ входа, который Iskra пока не поддерживает.";
 
@@ -1317,8 +1334,8 @@
 "servers.matrixOrg" = "Самый большой сервер Matrix. Его держит фонд, который развивает сам Matrix.";
 /* Where the server is. */
 "servers.matrixOrgWhere" = "Великобритания";
-/* A warning on matrix.org: it is blocked in Russia. */
-"servers.matrixOrgBlocked" = "Недоступен из России";
+/* A note on matrix.org: it is blocked in Russia, and the bridge gets round that. */
+"servers.matrixOrgBlocked" = "Недоступен из России, но работает через мост";
 "servers.tchncs" = "Один из старейших общественных серверов. Владелец держит и другие свободные сервисы.";
 "servers.tchncsWhere" = "Германия";
 "servers.quassel" = "Открытый сервер для повседневного общения, бесплатный для всех.";

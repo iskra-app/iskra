@@ -216,7 +216,7 @@ public enum TunnelSettings {
     /// Several by default, and not as a spare tyre: an event is published to all of them at once
     /// and the answer comes back from whichever is quickest, so a relay that is down — and
     /// `relay.damus.io` answers `503` to the connection itself often enough to be the example —
-    /// costs nothing. These are the ones `Bridge/run-local.sh` starts with, so a bridge raised by
+    /// costs nothing. These are the ones `run-local.sh` in iskra-bridge starts with, so a bridge raised by
     /// that script and a client that was told nothing about relays already agree.
     ///
     /// Chosen by where they are reachable *from*, not by how popular they are. Measured from Moscow

@@ -5,8 +5,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Iskra is a native Matrix client for iPhone, iPad and Mac: one Swift/SwiftUI codebase, with all
 Matrix protocol and cryptography work done by `matrix-rust-sdk` over FFI.
 
-`README.md` carries the *rationale* behind the decisions below and is worth reading before
-changing any of them. This file is the operational summary.
+`docs/DECISIONS.md` carries the *rationale* behind the decisions below and is worth reading
+before changing any of them. This file is the operational summary. `README.md` (Russian)
+and `README.en.md` (English) are the project's front page for people who have never seen it —
+short on purpose, and the same page in two languages: a change to one is made to the other in
+the same commit. Reasoning that grows there belongs in `docs/DECISIONS.md`, and rules in this
+file.
 
 `ROADMAP.md` is the plan of work to MVP: what is done, what is half-done, what is next, and which
 SDK call each remaining piece hangs off. It is kept current — a finished item is ticked there in
@@ -164,8 +168,10 @@ accent and wallpaper where they were.
 
 ### The bridge, from this side
 
-`Bridge/` is a Rust service that carries Matrix over nostr; `IskraCore/Transport/` is the other
-half of it. Both speak one wire format on purpose — a stream one side cuts one way and the other
+The bridge is a Rust service that carries Matrix over nostr, in a repository of its own —
+[`iskra-app/iskra-bridge`](https://github.com/iskra-app/iskra-bridge), checked out next to this
+one as `../iskra-bridge`; `IskraCore/Transport/` is the other half of it. Its images and releases
+are published from there (a tag `vX.Y.Z`), not from here. Both speak one wire format on purpose — a stream one side cuts one way and the other
 reassembles another way fails only under load and only in production — so `StreamFrame`,
 `StreamWindow` and `StreamPump` (`Transport/Nostr/`) mirror `iskra-tunnel-proto/src/stream.rs`
 field for field: `NostrTunnelTests` pins the frame JSON as the same text the Rust test does, and
@@ -230,7 +236,7 @@ Four rules about it fail far from their cause:
   because a client cannot be re-pointed live, and "on the next launch" was an app that stopped
   loading messages the moment somebody switched the bridge on.
 
-**The bridge is blind, and only blind** (kinds 20010/20011, `Bridge/crates/iskra-bridge/src/stream.rs`,
+**The bridge is blind, and only blind** (kinds 20010/20011, `iskra-bridge/crates/iskra-bridge/src/stream.rs`,
 plan in `docs/BLIND-BRIDGE.md`): it carries a TCP stream the SDK's own TLS runs over, so it sees the
 host and the byte counts and nothing inside. The protocol before it (v1, kinds 20001/20002, HTTP
 requests the bridge read in order to repeat, token included) is **gone from both sides**; there is
@@ -258,15 +264,22 @@ Two rules about it:
   Matrix, remembered per `(name, address)` — never to a second lookup of the name. Either shortcut
   turns the Matrix-host check into a formality: the first by a different virtual host on the same
   IP, the second by DNS rebinding. What SNI cannot bind is the HTTP `Host` inside the TLS: a Matrix
-  server behind a shared CDN fronts for every site on it, and that limit is stated in
-  `Bridge/README.md`, not "fixed".
+  server behind a shared CDN fronts for every site on it, and that limit is stated in the
+  bridge's README, not "fixed".
 
 `Iskra --probe-bridge [npub] [homeserver]` and the "Check the bridge" button both drive
 `BridgeCheck` — a `URLSession` through the same `LocalConnectProxy`, `GET /_matrix/client/versions`
 with real TLS — so the terminal and the screen cannot disagree. (CFNetwork never proxies
 `127.0.0.1`, which is why its test names a host only the test pipe resolves.) `LiveBridgeTests` is the end-to-end
 check against a real bridge and is **off** unless `ISKRA_BRIDGE_PUBKEY` is set — `swift test` stays
-offline. See `Bridge/README.md` for the bridge itself and for what it can see.
+offline. See the bridge's README for the bridge itself and for what it can see.
+
+Two tests here read the bridge's repository, and find it as `../iskra-bridge` or at
+`ISKRA_BRIDGE_DIR` (`BridgeSource`): `BridgeRefusalTests` takes every refusal word out of
+`stream.rs` so that a word added there cannot reach the screen as "the stream broke", and
+`LiveBridgeSessionTests` runs its `target/debug/iskra-bridge`. **Without that checkout the first
+is skipped, not failed** — so a change to the bridge's words is checked only on a machine that has
+both; keep them side by side.
 
 ## Architecture
 
@@ -653,6 +666,15 @@ view and not from `IskraApp.init`, because `supportsAlternateIcons` answers `fal
 before UIKit has finished launching — which is a lie that looks exactly like a locked-down device.
 
 ## Dependencies and licence
+
+**Iskra is GPL-3.0 with a section 7 permission for app stores** (`LICENSE`, verbatim, and
+`LICENSE-EXCEPTION.md`); the bridge, in its own repository, is MIT. The permission is what lets the
+App Store build contain anybody's code but the maintainer's, and it holds only because every
+contribution is signed off under it (`CONTRIBUTING.md`). So: **keep `LICENSE` byte for byte the
+FSF's text** — GitHub recognises the licence by it, and the permission lives in its own file for
+that reason; never merge commits without a `Signed-off-by`; and a new dependency must be
+GPL-3.0-compatible (Apache-2.0, MIT, BSD, MPL-2.0 are; GPL-2.0-only is not), and never AGPL code
+whose copyright is someone else's.
 
 The package depends on `matrix-org/matrix-rust-components-swift`, **not** the `element-hq` fork.
 Element's fork ships an iOS-only XCFramework; upstream publishes a `macos-arm64_x86_64` slice, and

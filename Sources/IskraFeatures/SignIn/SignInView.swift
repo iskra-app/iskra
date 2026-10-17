@@ -68,6 +68,7 @@ public struct SignInView: View {
         }
         .animation(.smooth, value: model.step)
         .animation(.smooth, value: model.problem)
+        .animation(.smooth, value: model.canTryBridge)
         .sheet(isPresented: $isPickingServer) {
             ServerPickerView { model.address = $0 }
         }
@@ -148,6 +149,10 @@ public struct SignInView: View {
 
             if let problem = model.problem {
                 problemPanel(problem)
+            }
+
+            if model.canTryBridge {
+                bridgeOffer
             }
 
             Button {
@@ -269,6 +274,34 @@ public struct SignInView: View {
     /// rather than fading in — a thing that appears where nothing was is a thing the eye goes to.
     /// It is *not* glass and not a banner over the form: it is content, it is about the field
     /// directly above it, and it belongs in the layout beside it rather than floating over it.
+    /// Under a server that did not answer, with the bridge off: the way round a block, one tap
+    /// away instead of three screens into Settings — where somebody stuck on this screen, with no
+    /// account yet, would not think to look.
+    private var bridgeOffer: some View {
+        VStack(spacing: Theme.Spacing.close) {
+            Text(Strings.SignIn.bridgeOffer)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Button {
+                Task { await model.tryThroughBridge() }
+            } label: {
+                Label {
+                    Text(Strings.SignIn.tryThroughBridge)
+                } icon: {
+                    Image(systemName: "point.3.filled.connected.trianglepath.dotted")
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.glassSecondary)
+            .frame(maxWidth: .infinity)
+            .disabled(model.isBusy)
+        }
+        .transition(.opacity)
+    }
+
     private func problemPanel(_ problem: LocalizedStringResource) -> some View {
         Label {
             Text(problem)

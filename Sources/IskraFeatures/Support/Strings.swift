@@ -184,6 +184,10 @@ public enum Strings {
         public static let continueInBrowser = LocalizedStringResource("signIn.continueInBrowser", bundle: bundle)
         public static let browserHelp = LocalizedStringResource("signIn.browserHelp", bundle: bundle)
         public static let passwordHelp = LocalizedStringResource("signIn.passwordHelp", bundle: bundle)
+        /// Under a server that could not be reached, with the bridge off: the bridge as the way round
+        /// a block, and the button that switches it on and looks again.
+        public static let bridgeOffer = LocalizedStringResource("signIn.bridgeOffer", bundle: bundle)
+        public static let tryThroughBridge = LocalizedStringResource("signIn.tryThroughBridge", bundle: bundle)
 
         /// Errors. Each says what happened and what to do; none names a protocol.
         public enum Problem {
@@ -1984,6 +1988,22 @@ public enum Strings {
 
         /// The row that leads to `LicensesView`, and that screen's title.
         public static let licences = LocalizedStringResource("about.licences", bundle: bundle)
+
+        /// The GPL's "appropriate legal notices" (sections 0 and 5(d)): an interactive program
+        /// under it has to say who holds the copyright, that it is free software under the GPL,
+        /// and that there is no warranty — on a screen, not only in a file in the repository.
+        public static let copyright = LocalizedStringResource("about.copyright", bundle: bundle)
+        public static let freeSoftware = LocalizedStringResource("about.freeSoftware", bundle: bundle)
+    }
+
+    /// The licences screen, past the list itself — see `LicensesView`.
+    public enum Licences {
+        /// Over the projects Iskra is made from, below Iskra's own licence.
+        public static let builtOn = LocalizedStringResource("licences.builtOn", bundle: bundle)
+        /// The section 7 permission that lets the app be published in app stores at all.
+        public static let storePermission = LocalizedStringResource("licences.storePermission", bundle: bundle)
+        /// From the text of a licence to the project it belongs to.
+        public static let projectPage = LocalizedStringResource("licences.projectPage", bundle: bundle)
     }
 
     /// What the app is keeping on the device, and the one part of it the user can throw away.
