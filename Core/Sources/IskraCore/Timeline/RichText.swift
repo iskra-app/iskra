@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 /// Turns a message's plain body into an `AttributedString` with the two things a bubble has to be
 /// able to draw over bare text: **links** and **mentions**.
@@ -43,11 +44,48 @@ public enum RichText {
     /// The same, from the message's HTML when it has some — `MatrixHTML` draws the formatting, and
     /// then mentions and bare addresses are found in the words exactly as they are in a plain body.
     /// Falls back to the plain body when the HTML has nothing in it worth drawing.
+    ///
+    /// Remembered, because it is asked for far more often than a message changes. A bubble's body
+    /// is evaluated again whenever anything it is handed is not provably the same — and it is
+    /// handed closures, which never are — so every diff of the room re-ran this for every bubble
+    /// on the screen: the HTML parsed again, the link detector run again, over words that had not
+    /// changed. The answer is a pure function of its arguments, so they are the key.
     public static func attributed(body: String,
                                   formattedBody: String?,
                                   mentionedUserIDs: Set<String> = [],
                                   displayNames: [String: String] = [:],
                                   ownUserID: String? = nil) -> AttributedString {
+        let key = CacheKey(body: body, formattedBody: formattedBody, mentionedUserIDs: mentionedUserIDs,
+                           displayNames: displayNames, ownUserID: ownUserID)
+        if let known = cache.withLock({ $0[key] }) { return known }
+
+        let made = make(body: body, formattedBody: formattedBody, mentionedUserIDs: mentionedUserIDs,
+                        displayNames: displayNames, ownUserID: ownUserID)
+        cache.withLock { cache in
+            // Crude, and enough: a few screens of conversation fit many times over, and starting
+            // again costs one parse per bubble on the screen.
+            if cache.count >= cacheLimit { cache.removeAll(keepingCapacity: true) }
+            cache[key] = made
+        }
+        return made
+    }
+
+    private struct CacheKey: Hashable {
+        let body: String
+        let formattedBody: String?
+        let mentionedUserIDs: Set<String>
+        let displayNames: [String: String]
+        let ownUserID: String?
+    }
+
+    private static let cacheLimit = 512
+    private static let cache = Mutex<[CacheKey: AttributedString]>([:])
+
+    private static func make(body: String,
+                             formattedBody: String?,
+                             mentionedUserIDs: Set<String>,
+                             displayNames: [String: String],
+                             ownUserID: String?) -> AttributedString {
         guard let formattedBody, var attributed = MatrixHTML.attributed(formattedBody, ownUserID: ownUserID) else {
             return Self.attributed(body: body, mentionedUserIDs: mentionedUserIDs,
                                    displayNames: displayNames, ownUserID: ownUserID)

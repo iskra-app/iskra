@@ -96,6 +96,8 @@ final class RoomPeek {
     private let ownUserID: String
     private var timeline: Timeline?
     private var items: [TimelineItem] = []
+    /// `items`, already mapped. See `TimelineMapper.Memo`.
+    private let mapped = TimelineMapper.Memo()
     private var listenerHandle: TaskHandle?
     private var diffContinuation: AsyncStream<UnsafeTransfer<[TimelineDiff]>>.Continuation?
     private var diffTask: Task<Void, Never>?
@@ -158,6 +160,7 @@ final class RoomPeek {
         diffTask = nil
         timeline = nil
         items = []
+        mapped.removeAll()
     }
 
     /// Settings → Chats changed which grey lines are shown; the row follows the chat.
@@ -175,6 +178,7 @@ final class RoomPeek {
             // time it appears it is peeked at afresh.
             Log.rooms.error("A chat-list peek is out of step with the SDK: \(what, privacy: .public)")
             items = []
+            mapped.removeAll()
             line = nil
             onChange?()
         }
@@ -182,7 +186,7 @@ final class RoomPeek {
 
     private func update() {
         let rows = TimelineMapper.rows(from: items, ownUserID: ownUserID,
-                                       hiding: ServiceEventSettings.current())
+                                       hiding: ServiceEventSettings.current(), memo: mapped)
         let next = PeekLine.last(in: rows)
         guard next != line else { return }
         line = next
