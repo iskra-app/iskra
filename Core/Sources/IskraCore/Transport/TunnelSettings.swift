@@ -216,11 +216,21 @@ public enum TunnelSettings {
     /// Several by default, and not as a spare tyre: an event is published to all of them at once
     /// and the answer comes back from whichever is quickest, so a relay that is down — and
     /// `relay.damus.io` answers `503` to the connection itself often enough to be the example —
-    /// costs nothing. These are the three `Bridge/run-local.sh` starts with, so a bridge raised by
+    /// costs nothing. These are the ones `Bridge/run-local.sh` starts with, so a bridge raised by
     /// that script and a client that was told nothing about relays already agree.
-    public static let defaultRelays = ["wss://nos.lol",
-                                       "wss://relay.primal.net",
-                                       "wss://relay.nostr.band"]
+    ///
+    /// Chosen by where they are reachable *from*, not by how popular they are. Measured from Moscow
+    /// in October 2026, home Wi-Fi and MTS: relays on Hetzner, Contabo, DigitalOcean and most of
+    /// Cloudflare connect, answer a ping, and then stop dead at ~16 KB — which is every relay this
+    /// list used to have (`nos.lol`, `relay.nostr.band`) but one. A tunnel carries a whole sync
+    /// through its relay, so a relay that passes a ping and nothing more is no relay at all.
+    /// `offchain.pub` and `nostr.bitcoiner.social` share a hoster; `relay.primal.net` passed on one
+    /// network out of two and is last.
+    public static let defaultRelays = ["wss://relay.snort.social",
+                                       "wss://nostr.wine",
+                                       "wss://offchain.pub",
+                                       "wss://nostr.bitcoiner.social",
+                                       "wss://relay.primal.net"]
 
     public static func relays(_ defaults: UserDefaults = store) -> [URL] {
         let chosen = chosenBridge(defaults)?.relayURLs ?? []

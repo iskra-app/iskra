@@ -19,11 +19,15 @@ use crate::upstream::{parse_origin, Allowed, Upstreams};
 /// Relays a bridge listens on when told nothing: the same three the app uses when *it* is told
 /// nothing (`TunnelSettings.defaultRelays`), so a bridge and a client set up by somebody who left
 /// both fields empty already agree. `relay.damus.io` is left out on purpose — it answers `503` to
-/// the connection itself often enough to be the standing example.
-pub const DEFAULT_RELAYS: [&str; 3] = [
-    "wss://nos.lol",
+/// the connection itself often enough to be the standing example. Chosen to be reachable from
+/// Russia, where relays on Hetzner, Contabo, DigitalOcean and most of Cloudflare stop at ~16 KB —
+/// the reasons are written out at `TunnelSettings.defaultRelays`.
+pub const DEFAULT_RELAYS: [&str; 5] = [
+    "wss://relay.snort.social",
+    "wss://nostr.wine",
+    "wss://offchain.pub",
+    "wss://nostr.bitcoiner.social",
     "wss://relay.primal.net",
-    "wss://relay.nostr.band",
 ];
 
 /// Events per minute one client key may send before the bridge stops decrypting them. Charged

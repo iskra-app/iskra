@@ -243,7 +243,7 @@
 "connection.addressSecret" = "这是私钥。这里需要的是公钥，也就是以 npub 开头的那个。";
 
 "connection.relays" = "中继";
-"connection.relaysPrompt" = "wss://nos.lol, wss://relay.primal.net";
+"connection.relaysPrompt" = "wss://relay.snort.social, wss://nostr.wine";
 "connection.relaysFooter" = "应用和网桥通过它们找到彼此。多个并不是备胎：请求会同时发往所有中继，回答来自最快的那个。留空则使用默认的三个。";
 
 "connection.myKey" = "本设备的密钥";

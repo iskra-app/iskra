@@ -81,7 +81,7 @@ git-тега `bridge-v1.2.3`. Собрать образ у себя из исх�
 | `ALLOWED_UPSTREAMS` | да | — | Хоумсерверы, к которым мост согласен открывать потоки, через запятую, только `https`. `*` — любой публичный Matrix-сервер. |
 | `BRIDGE_NOSTR_PRIVKEY` | да\* | — | Секретный ключ бриджа, `nsec` или hex. |
 | `BRIDGE_KEY_FILE` | да\* | в образе `/data/bridge-key` | Файл с ключом. Если файла нет, бридж создаёт его сам (права `600`) и дальше читает. Если в файле не ключ, бридж не запускается, а файл не трогает. |
-| `RELAY_LIST` | нет | `nos.lol`, `relay.primal.net`, `relay.nostr.band` | Relay, которые бридж слушает, через запятую. `ws://`/`wss://`. По умолчанию те же три, что приложение берёт при пустом поле. |
+| `RELAY_LIST` | нет | `relay.snort.social`, `nostr.wine`, `offchain.pub`, `nostr.bitcoiner.social`, `relay.primal.net` | Relay, которые бридж слушает, через запятую. `ws://`/`wss://`. По умолчанию те же, что приложение берёт при пустом поле, — выбранные так, чтобы доходить из России: relay на Hetzner, Contabo, DigitalOcean и большей части Cloudflare там встают на ~16 КБ. |
 | `CLIENT_RELAY_LIST` | нет | `RELAY_LIST` | Что бридж рекомендует клиентам. Отдельно — чтобы менять список у клиентов, не трогая свои подключения. |
 | `ALLOWED_PUBKEYS` | нет | пусто | Если задан — обслуживаются только эти ключи. Пусто = открытый бридж. |
 | `MAX_STREAMS_PER_CLIENT` | нет | `16` | Потоков на один pubkey клиента. Сверх — `rst` «busy». |
@@ -181,7 +181,7 @@ cargo clippy --workspace --all-targets
 
 ```sh
 BRIDGE_PUBKEY=<npub из лога бриджа> \
-RELAY_LIST=wss://nos.lol,wss://relay.primal.net \
+RELAY_LIST=wss://relay.snort.social,wss://nostr.wine \
 cargo run -p iskra-tunnel-probe -- matrix-client.matrix.org /_matrix/client/versions
 ```
 

@@ -6,7 +6,7 @@
 //! what it carried.
 //!
 //! ```sh
-//! BRIDGE_PUBKEY=npub1… RELAY_LIST=wss://nos.lol,wss://relay.primal.net \
+//! BRIDGE_PUBKEY=npub1… RELAY_LIST=wss://relay.snort.social,wss://nostr.wine \
 //!   iskra-tunnel-probe matrix-client.matrix.org /_matrix/client/versions
 //! ```
 

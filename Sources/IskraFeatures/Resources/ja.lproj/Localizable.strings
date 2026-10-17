@@ -243,7 +243,7 @@
 "connection.addressSecret" = "それは秘密鍵です。ここに入れるのは公開鍵、npub で始まるほうです。";
 
 "connection.relays" = "リレー";
-"connection.relaysPrompt" = "wss://nos.lol, wss://relay.primal.net";
+"connection.relaysPrompt" = "wss://relay.snort.social, wss://nostr.wine";
 "connection.relaysFooter" = "アプリとブリッジはここで互いを見つけます。複数あるのは予備ではありません。リクエストは全部に同時に送られ、いちばん速かったところから返事が来ます。空欄ならデフォルトの 3 つを使います。";
 
 "connection.myKey" = "このデバイスの鍵";
