@@ -1,9 +1,7 @@
-//! Protocol v2: a byte stream instead of an HTTP message.
-//!
-//! In v1 the bridge terminates the Client-Server API — it reads the request, so it reads the access
-//! token. In v2 it carries a TCP connection that the client's own TLS runs over, and the bridge
-//! sees ciphertext and nothing else. What it still sees is the host it was asked to connect to,
-//! when, and how many bytes; that is the whole list, and `docs/BLIND-BRIDGE.md` has it as a table.
+//! The stream: the tunnel carries a TCP connection that the client's own TLS runs over, and the
+//! bridge sees ciphertext and nothing else. What it still sees is the host it was asked to connect
+//! to, when, and how many bytes; that is the whole list, and `docs/BLIND-BRIDGE.md` has it as a
+//! table.
 //!
 //! Three pieces, all free of I/O like the rest of this crate:
 //!
@@ -29,11 +27,10 @@ use base64::prelude::{Engine as _, BASE64_STANDARD};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{ProtoError, MAX_ID_LEN};
+use crate::{ProtoError, MAX_SID_LEN};
 
-/// `v` of every stream frame. A v1 bridge never sees one — streams travel on their own kinds —
-/// but the field is there for the same reason it is in v1: a future version is refused, not
-/// guessed at.
+/// `v` of every frame — 2, because the protocol before it was 1, and a frame from that one (or
+/// from a future one) is refused rather than guessed at.
 pub const STREAM_PROTOCOL_VERSION: u8 = 2;
 
 /// Most unacknowledged bytes a sender may have out. 1 MiB is about forty segments, which keeps a
@@ -65,7 +62,7 @@ pub const MAX_HOST_LEN: usize = 253;
 /// Longest reason an `rst` may carry. The reasons are the short words in [`reason`].
 pub const MAX_REASON_LEN: usize = 64;
 
-/// Largest segment either side accepts, decoded. Senders cut at `DEFAULT_MAX_BODY_CHUNK`; this is
+/// Largest segment either side accepts, decoded. Senders cut at `DEFAULT_SEGMENT`; this is
 /// room above that, and a ceiling on what a stranger can make the receiver decode.
 pub const MAX_SEGMENT: usize = 64 * 1024;
 
@@ -154,7 +151,7 @@ pub struct StreamFrame {
     pub reason: Option<String>,
 }
 
-/// A fresh stream id. A UUID, like a v1 message id, and for the same reason: the id is a key the
+/// A fresh stream id. A UUID, because the id is a key the
 /// bridge holds, and it is the client's to choose.
 pub fn new_stream_id() -> String {
     Uuid::new_v4().to_string()
@@ -230,7 +227,7 @@ impl StreamFrame {
         if self.sid.is_empty() {
             return Err(ProtoError::Malformed("sid is empty"));
         }
-        if self.sid.len() > MAX_ID_LEN {
+        if self.sid.len() > MAX_SID_LEN {
             return Err(ProtoError::Malformed("sid is too long"));
         }
 
@@ -623,7 +620,7 @@ mod tests {
 
     #[test]
     fn a_full_segment_fits_one_nip44_payload() {
-        let frame = StreamFrame::data(SID, u32::MAX, &vec![0xff; crate::DEFAULT_MAX_BODY_CHUNK]);
+        let frame = StreamFrame::data(SID, u32::MAX, &vec![0xff; crate::DEFAULT_SEGMENT]);
         let json = serde_json::to_vec(&frame).unwrap();
         assert!(
             json.len() < crate::MAX_NIP44_PLAINTEXT,
@@ -772,7 +769,10 @@ mod tests {
             Err(Violation::BeyondWindow)
         );
         inbound.written(1, 10);
-        assert_eq!(inbound.accept(WINDOW_SEGMENTS, seg(0), now).unwrap().len(), 1);
+        assert_eq!(
+            inbound.accept(WINDOW_SEGMENTS, seg(0), now).unwrap().len(),
+            1
+        );
     }
 
     #[test]

@@ -9,14 +9,12 @@ use std::io::Write;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use iskra_bridge::upstream::{parse_origin, Allowed, Upstreams};
-use iskra_bridge::Config;
 use iskra_tunnel_probe::{Outcome, TunnelStream};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing_subscriber::fmt::MakeWriter;
 
 mod common;
-use common::tls::{server_name, TlsServer};
+use common::tls::server_name;
 use common::Harness;
 
 #[derive(Clone, Default)]
@@ -51,14 +49,8 @@ async fn trace_logs_hold_no_token_no_password_no_body_and_no_host() {
         .with_writer(captured.clone())
         .init();
 
-    let server = TlsServer::start().await;
-    let origin = parse_origin(&format!("https://localhost:{}", server.port)).unwrap();
-    let harness = Harness::start_with(move |config| Config {
-        upstreams: Upstreams::new(None, Some(Allowed::These([origin].into()))).unwrap(),
-        blind_only: true,
-        ..config
-    })
-    .await;
+    let harness = Harness::start().await;
+    let server = &harness.server;
     let client = harness.stream_client().await;
 
     let body = format!(r#"{{"type":"m.login.password","password":"{PASSWORD}"}}"#);

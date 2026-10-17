@@ -1,14 +1,22 @@
-//! `iskra-tunnel-probe GET /_matrix/client/versions`
+//! `iskra-tunnel-probe [homeserver] [path]`
 //!
-//! Prints what came back through the tunnel, and nothing about how. If this prints a Matrix
-//! version list, the bridge works.
+//! One real HTTPS request through the bridge, made the way the Matrix SDK makes it: reqwest with
+//! its own TLS, pointed at an `http://` proxy that is a stream underneath. Prints what came back.
+//! If this prints a Matrix version list, the bridge works — and it worked without seeing a byte of
+//! what it carried.
+//!
+//! ```sh
+//! BRIDGE_PUBKEY=npub1… RELAY_LIST=wss://nos.lol,wss://relay.primal.net \
+//!   iskra-tunnel-probe matrix-client.matrix.org /_matrix/client/versions
+//! ```
 
-use std::collections::BTreeMap;
+use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{anyhow, Result};
-use iskra_tunnel_probe::TunnelClient;
+use iskra_tunnel_probe::StreamClient;
 use nostr_sdk::prelude::{Keys, PublicKey};
+use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
@@ -18,17 +26,15 @@ async fn main() -> Result<()> {
         .init();
 
     let mut args = std::env::args().skip(1);
-    let method = args.next().unwrap_or_else(|| "GET".into());
+    let homeserver = args
+        .next()
+        .unwrap_or_else(|| "matrix-client.matrix.org".into());
     let path = args
         .next()
         .unwrap_or_else(|| "/_matrix/client/versions".into());
 
-    // Which homeserver to ask for. Optional: a bridge with a default serves a probe that names
-    // nothing, which is how this was used before one bridge could front several homeservers.
-    let upstream = std::env::var("PROBE_UPSTREAM").ok().filter(|s| !s.trim().is_empty());
-
-    let bridge = std::env::var("BRIDGE_PUBKEY")
-        .map_err(|_| anyhow!("BRIDGE_PUBKEY is required"))?;
+    let bridge =
+        std::env::var("BRIDGE_PUBKEY").map_err(|_| anyhow!("BRIDGE_PUBKEY is required"))?;
     let bridge = PublicKey::parse(&bridge).map_err(|_| anyhow!("BRIDGE_PUBKEY is not a key"))?;
 
     let relays: Vec<String> = std::env::var("RELAY_LIST")
@@ -42,19 +48,32 @@ async fn main() -> Result<()> {
         return Err(anyhow!("RELAY_LIST is empty"));
     }
 
-    // A throwaway identity unless one is given: the probe is not a session.
+    // A throwaway identity unless one is given: the probe is not a session. A closed bridge needs
+    // a key it knows, which is what PROBE_PRIVKEY is for.
     let keys = match std::env::var("PROBE_PRIVKEY") {
         Ok(secret) => Keys::parse(&secret).map_err(|_| anyhow!("PROBE_PRIVKEY is not a key"))?,
         Err(_) => Keys::generate(),
     };
     eprintln!("probe pubkey: {}", keys.public_key());
 
-    let client = TunnelClient::connect(keys, bridge, &relays).await?;
+    let client = Arc::new(StreamClient::connect(keys, bridge, &relays).await?);
+    let listener = TcpListener::bind("127.0.0.1:0").await?;
+    let port = listener.local_addr()?.port();
+    let secret = nostr_sdk::prelude::Keys::generate().public_key().to_hex();
+    tokio::spawn(Arc::clone(&client).serve_connect(listener, Some(secret.clone())));
+
+    let http = reqwest::Client::builder()
+        .proxy(reqwest::Proxy::all(format!(
+            "http://iskra:{secret}@127.0.0.1:{port}"
+        ))?)
+        .timeout(Duration::from_secs(60))
+        .build()?;
+    let url = format!("https://{homeserver}{path}");
 
     // `PROBE_REPEAT` exists because the first request is not the interesting one: it pays for
-    // process start, three TLS handshakes and the websocket upgrades, and quoting that number as
-    // "the latency of the tunnel" would be off by most of itself. What matters is the steady-state
-    // round trip on a connection that is already open.
+    // the relay connections, the stream's `open` and a TLS handshake through the tunnel, and
+    // quoting that number as "the latency of the bridge" would be off by most of itself. Later
+    // requests ride the same kept-alive connection, which is what the SDK does.
     let repeat: usize = std::env::var("PROBE_REPEAT")
         .ok()
         .and_then(|raw| raw.parse().ok())
@@ -64,25 +83,16 @@ async fn main() -> Result<()> {
     let mut timings = Vec::with_capacity(repeat);
     for attempt in 1..=repeat {
         let started = std::time::Instant::now();
-        let response = client
-            .request(
-                &method,
-                &path,
-                upstream.as_deref(),
-                BTreeMap::new(),
-                Vec::new(),
-                Duration::from_secs(30),
-            )
-            .await?;
+        let response = http.get(&url).send().await?;
+        let status = response.status();
+        let body = response.bytes().await?;
         let elapsed = started.elapsed();
         timings.push(elapsed);
         eprintln!(
-            "#{attempt} HTTP {} — {} bytes in {:?}",
-            response.status,
-            response.body.len(),
-            elapsed
+            "#{attempt} HTTP {status} — {} bytes in {elapsed:?}",
+            body.len()
         );
-        last = Some(response);
+        last = Some(body);
     }
     client.shutdown().await;
 
@@ -98,8 +108,8 @@ async fn main() -> Result<()> {
         );
     }
 
-    if let Some(response) = last {
-        println!("{}", String::from_utf8_lossy(&response.body));
+    if let Some(body) = last {
+        println!("{}", String::from_utf8_lossy(&body));
     }
     Ok(())
 }

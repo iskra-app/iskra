@@ -1,6 +1,6 @@
 [package]
 name = "iskra-bridge"
-description = "Nostr-to-Matrix tunnel bridge for Iskra"
+description = "Nostr tunnel bridge for Iskra: carries the client's own TLS to its homeserver"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -21,7 +21,6 @@ url.workspace = true
 [dev-dependencies]
 iskra-tunnel-probe = { path = "../iskra-tunnel-probe" }
 nostr-relay-builder = "0.44"
-wiremock = "0.6"
 # A TLS server of the tests' own, for a stream to carry ciphertext to. `ring`, like everything
 # else in the tree: aws-lc would bring a C toolchain into a build that has none.
 rcgen = { version = "0.14", default-features = false, features = ["crypto", "ring", "pem"] }

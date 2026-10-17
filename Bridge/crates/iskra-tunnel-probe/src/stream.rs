@@ -1,4 +1,4 @@
-//! The client side of protocol v2, in as little code as it can be written.
+//! Streams over nostr, and an HTTP `CONNECT` proxy in front of them.
 //!
 //! What `NostrStreamTunnel` and `LocalConnectProxy` will do in Swift, done here first so the blind
 //! bridge can be proven end to end — with a real TLS client on top and, through
@@ -14,7 +14,7 @@ use base64::prelude::{Engine as _, BASE64_STANDARD};
 use iskra_tunnel_proto::stream::COALESCE;
 use iskra_tunnel_proto::{
     new_stream_id, open_frame, reason, seal_frame, Inbound, Outbound, StreamFrame, StreamOp,
-    DEFAULT_MAX_BODY_CHUNK, KIND_STREAM_BRIDGE, KIND_STREAM_CLIENT,
+    DEFAULT_SEGMENT, KIND_STREAM_BRIDGE, KIND_STREAM_CLIENT,
 };
 use nostr_sdk::prelude::*;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt, DuplexStream};
@@ -53,8 +53,18 @@ struct Shared {
 }
 
 impl StreamClient {
-    /// Connect, subscribe once, one dispatcher for every stream — for the reasons `TunnelClient`
-    /// gives, which hold here twice over: a stream is many frames, not one answer.
+    /// Connect, subscribe once, and start one dispatcher for the life of the connection.
+    ///
+    /// One subscription, not one per stream: a subscription per stream leaves the Nth stream with
+    /// N live subscriptions on every relay, each delivering its own copy of every frame, and relays
+    /// are entitled to start refusing them.
+    ///
+    /// One reader, not one per stream, for a sharper reason. Notifications arrive on a bounded
+    /// broadcast channel. Give every stream its own receiver and each one sees *every* other
+    /// stream's traffic, so the work is quadratic in streams open and the channel overflows under
+    /// load — at which point a receiver is handed `Lagged`, and frames that did arrive are lost to
+    /// the stream waiting for them. Here one reader drains the channel and routes each frame by
+    /// its stream id.
     pub async fn connect(keys: Keys, bridge: PublicKey, relays: &[String]) -> Result<Self> {
         let client = Client::new(keys.clone());
         for relay in relays {
@@ -253,7 +263,7 @@ async fn pump(
     local: DuplexStream,
     mut frames: mpsc::UnboundedReceiver<StreamFrame>,
 ) -> Outcome {
-    let max = DEFAULT_MAX_BODY_CHUNK;
+    let max = DEFAULT_SEGMENT;
     let (mut reader, mut writer) = tokio::io::split(local);
 
     let first = match next_segment(&mut reader, max).await {

@@ -59,6 +59,15 @@ impl TlsServer {
         }
     }
 
+    /// Another handle on the same server, for tasks that outlive a borrow of the harness.
+    pub fn clone_handle(&self) -> Self {
+        Self {
+            port: self.port,
+            cert: self.cert.clone(),
+            requests: Arc::clone(&self.requests),
+        }
+    }
+
     pub fn reqwest_root(&self) -> reqwest::Certificate {
         reqwest::Certificate::from_der(&self.cert).unwrap()
     }

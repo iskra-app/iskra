@@ -10,6 +10,7 @@ iskra-tunnel-proto = { path = "../iskra-tunnel-proto" }
 nostr-sdk.workspace = true
 tokio = { workspace = true, features = ["net", "io-util"] }
 base64.workspace = true
+reqwest.workspace = true
 anyhow.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
