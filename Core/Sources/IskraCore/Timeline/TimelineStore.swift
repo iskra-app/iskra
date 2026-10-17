@@ -200,6 +200,9 @@ public final class TimelineStore {
     private var roomInfoHandle: TaskHandle?
     private var items: [TimelineItem] = []
 
+    /// `items`, already mapped — so a diff maps only the items it brought. See `TimelineMapper.Memo`.
+    @ObservationIgnored private let mapped = TimelineMapper.Memo()
+
     /// Reactions we have handed to the send queue and not yet heard the end of, and the ones
     /// we know never got out of it. See `toggleReaction`.
     private var reactionsInFlight: [InFlightReaction] = []
@@ -833,6 +836,7 @@ public final class TimelineStore {
         // an empty reset and repopulates from scratch, and leaving the old ones here would have
         // the next `apply` computing diffs against a timeline that no longer exists.
         items = []
+        mapped.removeAll()
 
         // And the rows those items made. `rows` deliberately stay — they are what the reader is
         // looking at, and `open()` holds them on the screen while it fetches the conversation
@@ -2083,7 +2087,7 @@ public final class TimelineStore {
         // Photos sent together become one row — see `Album`. Here and not in the mapper: the
         // mapper also builds the pinned list and the chat list's peek, where an album is not a thing.
         var built = Album.grouping(TimelineMapper.rows(from: items, ownUserID: ownUserID, unsent: unsentReactions,
-                                                       hiding: ServiceEventSettings.current()))
+                                                       hiding: ServiceEventSettings.current(), memo: mapped))
 
         // The messages we have sent and not yet been shown, added to the end of the conversation —
         // and dropped again the moment the SDK's own echo of one turns up among the rows above.
@@ -2243,7 +2247,9 @@ public final class TimelineStore {
     private func fetchReplyDetails() {
         guard let timeline else { return }
 
-        let missing = TimelineMapper.repliesMissingTheirOriginal(in: items)
+        // Read off the mapping `rebuildRows()` has just made, rather than by lifting every item
+        // out of the SDK a second time.
+        let missing = mapped.unresolvedReplies
             .filter { !askedForReplyDetails.contains($0) }
 
         guard !missing.isEmpty else { return }

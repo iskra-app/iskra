@@ -31,6 +31,8 @@ public final class PinnedStore {
     private var timeline: Timeline?
     private var listenerHandle: TaskHandle?
     private var items: [TimelineItem] = []
+    /// `items`, already mapped. See `TimelineMapper.Memo`.
+    @ObservationIgnored private let mapped = TimelineMapper.Memo()
 
     /// The store counts its openings, exactly as `TimelineStore` does and for the same reason: a
     /// `Task` already inside an SDK await does not stop because `stop()` cancelled a handle, and
@@ -177,6 +179,7 @@ public final class PinnedStore {
         // an empty reset and repopulates from scratch, and leaving these here would have the next
         // `apply` computing diffs against a timeline that no longer exists.
         items = []
+        mapped.removeAll()
         hasLoaded = false
     }
 
@@ -207,7 +210,7 @@ public final class PinnedStore {
 
         // Only the messages. A pinned timeline carries date dividers like any other, and a
         // list of four pinned messages is not a conversation that needs its days marked.
-        messages = TimelineMapper.rows(from: items, ownUserID: ownUserID).compactMap(\.message)
+        messages = TimelineMapper.rows(from: items, ownUserID: ownUserID, memo: mapped).compactMap(\.message)
     }
 
     /// What we hold is no longer what the SDK is talking about, so it is asked again.

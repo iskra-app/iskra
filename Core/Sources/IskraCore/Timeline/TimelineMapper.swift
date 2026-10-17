@@ -24,18 +24,143 @@ enum TimelineMapper {
     /// would all be a thousand times too tall, and only on messages this app had sent.
     static let waveformScale = 1024
 
+    /// What one SDK item comes to, before it meets its neighbours.
+    ///
+    /// Everything here is a function of the item alone (and of who we are, which does not change
+    /// for the life of a timeline) — which is what lets `Memo` keep it. The passes that need the
+    /// neighbours — runs, merged grey lines, the read watermark, the unread bar — are cheap Swift
+    /// over these and run every time.
+    struct Mapped {
+        enum Body {
+            case dayDivider(DayDivider)
+            case readMarker
+            case event(RoomEvent)
+            /// With the reactions as the SDK reported them; `UnsentReactions` is applied later,
+            /// because it changes without the item changing.
+            case message(Message)
+            case nothing
+        }
+
+        let body: Body
+        /// Somebody other than us has a read receipt on this item — see `rows(from:)`.
+        let hasForeignReceipt: Bool
+        /// When they did, for an item that has one. See `readAt(of:ownUserID:)`.
+        let receiptReadAt: Date?
+        /// The reply's own event ID, for a reply whose original the SDK holds nothing for — see
+        /// `repliesMissingTheirOriginal`.
+        let unresolvedReply: String?
+    }
+
+    /// The items already mapped, held by the very object the SDK handed over.
+    ///
+    /// Without it every diff — a receipt, a reaction, one new message — mapped the *whole*
+    /// timeline again, and mapping is not Swift work: `asEvent()` lifts the entire record across
+    /// the FFI (content, receipts, reactions, profile), and it was being called three times per
+    /// item per diff — twice in `rows` and once more for the replies. A room paginated back a few
+    /// hundred messages paid a few hundred record lifts, on the main thread, for one tick.
+    ///
+    /// Keyed by identity, and that is sound rather than clever: an SDK item is an immutable
+    /// snapshot, a change to a message arrives as a `set` carrying a *new* object, and an object
+    /// still in `items` is the same object it was. The entry holds the item strongly, so its
+    /// address cannot be reused by another while the entry exists; `===` is checked anyway.
+    /// Pruned to the items passed on every call, so it never holds more than the timeline does.
+    final class Memo {
+        private var entries: [ObjectIdentifier: (item: TimelineItem, mapped: Mapped)] = [:]
+
+        /// The replies in the last mapping whose originals are missing, in timeline order.
+        private(set) var unresolvedReplies: [String] = []
+
+        init() {}
+
+        func mapped(_ items: [TimelineItem], ownUserID: String) -> [Mapped] {
+            var next: [ObjectIdentifier: (item: TimelineItem, mapped: Mapped)] = [:]
+            next.reserveCapacity(items.count)
+            var replies: [String] = []
+
+            let result = items.map { item -> Mapped in
+                let key = ObjectIdentifier(item)
+                let mapped: Mapped
+                if let entry = entries[key], entry.item === item {
+                    mapped = entry.mapped
+                } else {
+                    mapped = TimelineMapper.map(item, ownUserID: ownUserID)
+                }
+                next[key] = (item, mapped)
+                if let reply = mapped.unresolvedReply { replies.append(reply) }
+                return mapped
+            }
+
+            entries = next
+            unresolvedReplies = replies
+            return result
+        }
+
+        /// Lets go of every SDK item — for a store putting its timeline down.
+        func removeAll() {
+            entries.removeAll()
+            unresolvedReplies.removeAll()
+        }
+    }
+
+    static func map(_ item: TimelineItem, ownUserID: String) -> Mapped {
+        if let virtual = item.asVirtual() {
+            let body: Mapped.Body = switch virtual {
+            case let .dateDivider(timestamp):
+                .dayDivider(DayDivider(id: "divider-\(timestamp)", date: MessagePreview.date(from: timestamp)))
+            case .readMarker:
+                .readMarker
+            default:
+                .nothing
+            }
+            return Mapped(body: body, hasForeignReceipt: false, receiptReadAt: nil, unresolvedReply: nil)
+        }
+
+        // Once. It is the expensive call — the whole record, lifted out of Rust.
+        guard let event = item.asEvent() else {
+            return Mapped(body: .nothing, hasForeignReceipt: false, receiptReadAt: nil, unresolvedReply: nil)
+        }
+
+        let foreign = hasForeignReceipt(event, ownUserID: ownUserID)
+        let body: Mapped.Body
+        if let roomEvent = roomEvent(from: event) {
+            body = .event(roomEvent)
+        } else if let message = message(from: event, ownUserID: ownUserID) {
+            body = .message(message)
+        } else {
+            body = .nothing
+        }
+
+        return Mapped(body: body,
+                      hasForeignReceipt: foreign,
+                      receiptReadAt: foreign ? readAt(of: event, ownUserID: ownUserID) : nil,
+                      unresolvedReply: unresolvedReply(of: event))
+    }
+
     /// `ownUserID` is here for one reason: a reaction pill has to know whether *you* are
     /// among the people who left it, because pressing it again takes it back. The SDK
     /// tells us who reacted, not whether one of them is us.
     ///
     /// `unsent` is the reactions of ours that never left the send queue. The SDK goes on
     /// reporting them as though they had, so they are subtracted here — see `UnsentReactions`.
+    ///
+    /// `memo`, where the caller keeps one, is what spares the items that have not changed from
+    /// being mapped again — see `Memo`.
     static func rows(from items: [TimelineItem],
                      ownUserID: String,
                      unsent: UnsentReactions = UnsentReactions(),
-                     hiding hidden: ServiceEventSettings = ServiceEventSettings()) -> [TimelineRow] {
+                     hiding hidden: ServiceEventSettings = ServiceEventSettings(),
+                     memo: Memo? = nil) -> [TimelineRow] {
+        let mapped = memo?.mapped(items, ownUserID: ownUserID)
+            ?? items.map { map($0, ownUserID: ownUserID) }
+        return rows(from: mapped, ownUserID: ownUserID, unsent: unsent, hiding: hidden)
+    }
+
+    static func rows(from mapped: [Mapped],
+                     ownUserID: String,
+                     unsent: UnsentReactions,
+                     hiding hidden: ServiceEventSettings) -> [TimelineRow] {
         var rows: [TimelineRow] = []
-        rows.reserveCapacity(items.count)
+        rows.reserveCapacity(mapped.count)
 
         var previous: Message?
 
@@ -50,40 +175,35 @@ enum TimelineMapper {
         // could see was read.
         var readPrefixAt: Date?
 
-        for item in items {
+        for item in mapped {
             // Whatever this item turns into — a row, a merged grey line, or nothing — everything
             // above it has been read the moment it carries a receipt. Recorded after the item is
             // handled, hence the `defer`, and counted in rows rather than in items so the number
             // still means something after the events this app never shows are dropped.
-            let receiptEvent = item.asEvent().flatMap { hasForeignReceipt($0, ownUserID: ownUserID) ? $0 : nil }
             defer {
-                if let receiptEvent {
+                if item.hasForeignReceipt {
                     readPrefix = rows.count
-                    readPrefixAt = readAt(of: receiptEvent, ownUserID: ownUserID)
+                    readPrefixAt = item.receiptReadAt
                 }
             }
 
-            if let virtual = item.asVirtual() {
-                if case let .dateDivider(timestamp) = virtual {
-                    let date = MessagePreview.date(from: timestamp)
-                    rows.append(.dayDivider(DayDivider(id: "divider-\(timestamp)", date: date)))
-                    // A date divider breaks the visual grouping.
-                    previous = nil
-                } else if case .readMarker = virtual {
-                    // Where the reader left off. A bar across the conversation, so it breaks a run
-                    // the same way a date does. See `TimelineRow.unreadDivider`.
-                    rows.append(.unreadDivider)
-                    previous = nil
-                }
-                continue
-            }
+            switch item.body {
+            case let .dayDivider(divider):
+                rows.append(.dayDivider(divider))
+                // A date divider breaks the visual grouping.
+                previous = nil
 
-            guard let event = item.asEvent() else { continue }
+            case .readMarker:
+                // Where the reader left off. A bar across the conversation, so it breaks a run
+                // the same way a date does. See `TimelineRow.unreadDivider`.
+                rows.append(.unreadDivider)
+                previous = nil
 
-            // Something that happened rather than something somebody said. It goes in as a
-            // grey line — and it may not go in at all, because two people joining one after
-            // the other is one line and not two. See `append`.
-            if let roomEvent = roomEvent(from: event) {
+            case let .event(roomEvent):
+                // Something that happened rather than something somebody said. It goes in as a
+                // grey line — and it may not go in at all, because two people joining one after
+                // the other is one line and not two. See `append`.
+                //
                 // Switched off in Settings → Chats: dropped like any event this app never shows, so
                 // it neither breaks a run of messages nor keeps an empty day's header alive.
                 if hidden.hides(roomEvent.kind) { continue }
@@ -91,21 +211,27 @@ enum TimelineMapper {
                 // A note across the conversation breaks a run of messages: the one below it
                 // is no longer "the same person still talking".
                 previous = nil
+
+            case var .message(message):
+                if !unsent.isEmpty {
+                    message.reactions = unsent.applied(to: message.reactions, messageID: message.id,
+                                                       ownUserID: ownUserID)
+                }
+
+                // Group consecutive messages from the same person, iMessage-style: only
+                // the first one in a run carries a name and an avatar.
+                if let previous,
+                   previous.senderID == message.senderID,
+                   message.timestamp.timeIntervalSince(previous.timestamp) < runWindow {
+                    message.isContinuation = true
+                }
+
+                rows.append(.message(message))
+                previous = message
+
+            case .nothing:
                 continue
             }
-
-            guard var message = message(from: event, ownUserID: ownUserID, unsent: unsent) else { continue }
-
-            // Group consecutive messages from the same person, iMessage-style: only
-            // the first one in a run carries a name and an avatar.
-            if let previous,
-               previous.senderID == message.senderID,
-               message.timestamp.timeIntervalSince(previous.timestamp) < runWindow {
-                message.isContinuation = true
-            }
-
-            rows.append(.message(message))
-            previous = message
         }
 
         // The bar first, then the empty days: a date whose only row was an unearned bar is a date
@@ -299,8 +425,7 @@ enum TimelineMapper {
     }
 
     private static func message(from event: EventTimelineItem,
-                                ownUserID: String,
-                                unsent: UnsentReactions) -> Message? {
+                                ownUserID: String) -> Message? {
         guard let kind = kind(from: event.content, ownUserID: ownUserID) else { return nil }
 
         let (name, avatar) = profile(from: event.senderProfile, fallback: event.sender)
@@ -317,8 +442,7 @@ enum TimelineMapper {
                        readAt: event.isOwn ? readAt(of: event, ownUserID: ownUserID) : nil,
                        isEdited: isEdited(event.content),
                        replyTo: replyPreview(from: event.content),
-                       reactions: unsent.applied(to: reactions(from: event.content, ownUserID: ownUserID),
-                                                 messageID: id, ownUserID: ownUserID),
+                       reactions: reactions(from: event.content, ownUserID: ownUserID),
                        deletedAt: kind == .deleted ? redaction(of: event) : nil,
                        mentionedUserIDs: mentionedUserIDs(from: event.content),
                        formattedBody: formattedBody(from: event.content),
@@ -448,17 +572,19 @@ enum TimelineMapper {
     /// The ID wanted is the *reply's* own, not the one it is answering: the SDK is being asked to
     /// finish an item it already holds.
     static func repliesMissingTheirOriginal(in items: [TimelineItem]) -> [String] {
-        items.compactMap { item -> String? in
-            guard let event = item.asEvent(),
-                  case let .eventId(eventID) = event.eventOrTransactionId,
-                  case let .msgLike(msgLike) = event.content,
-                  let details = msgLike.inReplyTo else { return nil }
+        items.compactMap { $0.asEvent().flatMap(unresolvedReply(of:)) }
+    }
 
-            // `.pending` is the SDK already fetching it. Asking again would be asking twice.
-            switch details.event() {
-            case .unavailable: return eventID
-            case .ready, .pending, .error: return nil
-            }
+    /// One item's half of `repliesMissingTheirOriginal`.
+    private static func unresolvedReply(of event: EventTimelineItem) -> String? {
+        guard case let .eventId(eventID) = event.eventOrTransactionId,
+              case let .msgLike(msgLike) = event.content,
+              let details = msgLike.inReplyTo else { return nil }
+
+        // `.pending` is the SDK already fetching it. Asking again would be asking twice.
+        switch details.event() {
+        case .unavailable: return eventID
+        case .ready, .pending, .error: return nil
         }
     }
 

@@ -218,8 +218,21 @@ public final class RoomListStore {
     /// What the last transition actually did to the loop, as opposed to what was last asked for.
     private var isSyncAsleep = false
 
-    /// The room handles, in the order the SDK says they should appear.
-    private var orderedRooms: [Room] = []
+    /// The room handles, in the order the SDK says they should appear — each with its ID, read
+    /// once when the handle arrives. `id()` is a call into Rust and a string lifted back out of it,
+    /// and a rebuild used to make it three times per room (the rebuild, the typing watch, the
+    /// prune), on every rebuild, for every room in the account.
+    private var orderedRooms: [Listed] = []
+
+    private struct Listed {
+        let room: Room
+        let id: String
+
+        init(_ room: Room) {
+            self.room = room
+            id = room.id()
+        }
+    }
 
     /// Coalesces bursts of diffs into one summary rebuild. During initial sync the
     /// SDK can emit many updates in quick succession and rebuilding on each one
@@ -814,21 +827,24 @@ public final class RoomListStore {
         // The rooms this batch says something about — the only ones whose summaries need asking
         // for again. See `scheduleRebuild(only:)`.
         var touched: Set<String> = []
-        func touch(_ rooms: [Room]) { for room in rooms { touched.insert(room.id()) } }
+        func listed(_ rooms: [Room]) -> [Listed] {
+            rooms.map { room in
+                let entry = Listed(room)
+                touched.insert(entry.id)
+                return entry
+            }
+        }
 
         for diff in diffs {
             switch diff {
             case let .append(values):
-                touch(values)
-                orderedRooms.append(contentsOf: values)
+                orderedRooms.append(contentsOf: listed(values))
             case .clear:
                 orderedRooms.removeAll()
             case let .pushFront(value):
-                touch([value])
-                orderedRooms.insert(value, at: 0)
+                orderedRooms.insert(contentsOf: listed([value]), at: 0)
             case let .pushBack(value):
-                touch([value])
-                orderedRooms.append(value)
+                orderedRooms.append(contentsOf: listed([value]))
             case .popFront:
                 if !orderedRooms.isEmpty { orderedRooms.removeFirst() }
             case .popBack:
@@ -843,15 +859,13 @@ public final class RoomListStore {
                 guard i <= orderedRooms.count else {
                     return desynced("insert at \(i) of \(orderedRooms.count)")
                 }
-                touch([value])
-                orderedRooms.insert(value, at: i)
+                orderedRooms.insert(contentsOf: listed([value]), at: i)
             case let .set(index, value):
                 let i = Int(index)
                 guard orderedRooms.indices.contains(i) else {
                     return desynced("set at \(i) of \(orderedRooms.count)")
                 }
-                touch([value])
-                orderedRooms[i] = value
+                orderedRooms[i] = listed([value])[0]
             case let .remove(index):
                 let i = Int(index)
                 guard orderedRooms.indices.contains(i) else {
@@ -866,8 +880,7 @@ public final class RoomListStore {
                 orderedRooms.removeSubrange(n...)
 
             case let .reset(values):
-                touch(values)
-                orderedRooms = values
+                orderedRooms = listed(values)
             }
         }
 
@@ -1046,10 +1059,10 @@ public final class RoomListStore {
     /// `asking`: the rooms to ask the SDK about again, every other one reusing its summary; nil asks
     /// about all of them. See `scheduleRebuild(only:)`.
     private func rebuildSummaries(asking changed: Set<String>?) async {
-        let handles = orderedRooms
+        let listed = orderedRooms
 
         var summaries: [RoomSummary] = []
-        summaries.reserveCapacity(handles.count)
+        summaries.reserveCapacity(listed.count)
 
         // Nothing on the screen yet: the first rooms go up as soon as there are enough of them to
         // fill it, rather than after the last of several hundred has been asked about. That wait was
@@ -1065,38 +1078,92 @@ public final class RoomListStore {
         let generation = self.generation
         func isCurrent() -> Bool { !Task.isCancelled && !hasStopped && generation == self.generation }
 
-        for room in handles {
+        // A batch at a time, and the batch asked all at once. One room at a time was two or three
+        // round trips into Rust per room, each waiting its turn and each coming back through the
+        // main actor before the next could even be asked — on a few hundred chats, the whole of the
+        // first launch's wait. The SDK answers them concurrently perfectly well; the order of the
+        // list is kept by assembling each batch in order once it is back.
+        var start = listed.startIndex
+        while start < listed.endIndex {
+            guard isCurrent() else { return }
+            let end = min(start + Self.askedAtOnce, listed.endIndex)
+            let batch = listed[start..<end]
+            start = end
+
+            let toAsk = batch.filter { entry in
+                changed.map { $0.contains(entry.id) } ?? true || summaryCache[entry.id] == nil
+            }
+            let answers = toAsk.isEmpty ? [:] : await Self.ask(toAsk.map { ($0.id, $0.room, drafts[$0.id] == nil) })
             guard isCurrent() else { return }
 
-            let roomID = room.id()
-            if let changed, !changed.contains(roomID), let cached = summaryCache[roomID] {
-                if let cached { summaries.append(cached) }
-                continue
+            let asked = Set(toAsk.map(\.id))
+            for entry in batch {
+                guard asked.contains(entry.id) else {
+                    if let cached = summaryCache[entry.id], let cached { summaries.append(cached) }
+                    continue
+                }
+
+                guard let answer = answers[entry.id], let summary = summary(from: answer.value) else {
+                    summaryCache[entry.id] = .some(nil)
+                    continue
+                }
+                summaryCache[entry.id] = summary
+                summaries.append(summary)
             }
 
-            let built = await summary(of: room)
-            guard isCurrent() else { return }
-
-            guard let summary = built else {
-                summaryCache[roomID] = .some(nil)
-                continue
-            }
-            summaryCache[roomID] = summary
-            summaries.append(summary)
-
-            if isFirstPaint, summaries.count == Self.firstPaint {
+            if isFirstPaint, summaries.count >= Self.firstPaint {
                 isFirstPaint = false
                 publish(summaries)
             }
         }
 
         guard isCurrent() else { return }
-        watchTyping(in: handles)
+        watchTyping(in: listed)
         publish(summaries)
 
         // Rooms that have left the list take their summaries with them.
-        let present = Set(handles.map { $0.id() })
+        let present = Set(listed.map(\.id))
         summaryCache = summaryCache.filter { present.contains($0.key) }
+    }
+
+    /// How many rooms are asked about at once. Enough that a launch is not a queue; few enough that
+    /// a few hundred chats are not a few hundred tasks in flight against one store.
+    private static let askedAtOnce = 16
+
+    /// What the SDK says about one room — everything a row needs that is not already held here.
+    private struct Answer {
+        let info: RoomInfo
+        let latest: LatestEventValue
+        /// Only when asked for: `.none` is "not asked", `.some(nil)` is "asked, and there is none".
+        let draft: String??
+    }
+
+    /// Asks about every room in `rooms` at once, off the main actor, and hands back what each
+    /// said. A room whose `roomInfo()` fails is simply missing from the answer.
+    nonisolated private static func ask(_ rooms: [(id: String, room: Room, wantsDraft: Bool)]) async
+        -> [String: UnsafeTransfer<Answer>] {
+        await withTaskGroup(of: (String, UnsafeTransfer<Answer>?).self) { group in
+            for (id, room, wantsDraft) in rooms {
+                group.addTask {
+                    guard let info = try? await room.roomInfo() else { return (id, nil) }
+                    let latest = await room.latestEvent()
+                    var draft: String??
+                    if wantsDraft {
+                        let saved = (try? await room.loadComposerDraft(threadRoot: nil))?.plainText
+                            .trimmingCharacters(in: .whitespacesAndNewlines)
+                        draft = .some(saved?.isEmpty == false ? saved : nil)
+                    }
+                    return (id, UnsafeTransfer(value: Answer(info: info, latest: latest, draft: draft)))
+                }
+            }
+
+            var answers: [String: UnsafeTransfer<Answer>] = [:]
+            answers.reserveCapacity(rooms.count)
+            for await (id, answer) in group {
+                if let answer { answers[id] = answer }
+            }
+            return answers
+        }
     }
 
     /// One list in, two lists out: the archive is everything the user swept aside, the main list is
@@ -1112,9 +1179,9 @@ public final class RoomListStore {
         isLoadingInitialRooms = false
     }
 
-    /// One room's row, asked of the SDK.
-    private func summary(of room: Room) async -> RoomSummary? {
-        guard let info = try? await room.roomInfo() else { return nil }
+    /// One room's row, from what the SDK said about it.
+    private func summary(from answer: Answer) -> RoomSummary? {
+        let info = answer.info
 
         var preview: String?
         var activity: Date?
@@ -1122,7 +1189,7 @@ public final class RoomListStore {
         var mark: LastMessageMark?
         var sender: String?
 
-        switch await room.latestEvent() {
+        switch answer.latest {
         case let .remote(timestamp, senderID, isOwn, profile, content):
             if !isOwn {
                 if case let .ready(displayName, _, _) = profile, let displayName, !displayName.isEmpty {
@@ -1165,12 +1232,8 @@ public final class RoomListStore {
             sender = line.sender
         }
 
-        if drafts[info.id] == nil {
-            let saved = (try? await room.loadComposerDraft(threadRoot: nil))?.plainText
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            // A draft noted while the store was being read is newer than what the store said.
-            if drafts[info.id] == nil { drafts[info.id] = .some(saved?.isEmpty == false ? saved : nil) }
-        }
+        // A draft noted while the store was being read is newer than what the store said.
+        if let saved = answer.draft, drafts[info.id] == nil { drafts[info.id] = .some(saved) }
 
         var summary = RoomSummary(info: info,
                                   ownUserID: ownUserID,
@@ -1237,7 +1300,7 @@ public final class RoomListStore {
             while let self, generation == self.generation, !self.peekQueue.isEmpty {
                 let roomID = self.peekQueue.removeFirst()
                 guard self.peeks[roomID] == nil,
-                      let room = self.orderedRooms.first(where: { $0.id() == roomID }),
+                      let room = self.orderedRooms.first(where: { $0.id == roomID })?.room,
                       // An invitation has no conversation to look into yet, and a space is not one.
                       room.membership() == .joined, !room.isSpace() else { continue }
 
@@ -1299,12 +1362,13 @@ public final class RoomListStore {
 
     /// Keeps one typing subscription per room in the list: new rooms are listened to, rooms that
     /// have left the list are let go of.
-    private func watchTyping(in handles: [Room]) {
+    private func watchTyping(in listed: [Listed]) {
         var current: Set<String> = []
         let ownUserID = ownUserID
 
-        for room in handles {
-            let roomID = room.id()
+        for entry in listed {
+            let room = entry.room
+            let roomID = entry.id
             current.insert(roomID)
             guard typingHandles[roomID] == nil else { continue }
 
@@ -1501,7 +1565,7 @@ public final class RoomListStore {
 
     /// Fetches the live handle for a room, which the timeline needs.
     func room(withID id: String) -> Room? {
-        orderedRooms.first { $0.id() == id }
+        orderedRooms.first { $0.id == id }?.room
     }
 }
 

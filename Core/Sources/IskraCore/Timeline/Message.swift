@@ -306,8 +306,9 @@ public struct Message: Sendable, Identifiable, Equatable {
     /// What this message is an answer to, for one that is.
     public internal(set) var replyTo: ReplyPreview?
     /// In the order they were first left, so a busy message does not reshuffle its own
-    /// emoji every time someone adds one.
-    public let reactions: [MessageReaction]
+    /// emoji every time someone adds one. Settable inside the core, so the reactions that never
+    /// left the send queue can be taken back out — see `UnsentReactions`.
+    public internal(set) var reactions: [MessageReaction]
     /// When the message was taken back, for one that has been. Nil for every message that
     /// is still there — and nil, too, for a redaction the homeserver did not date: see
     /// `TimelineMapper.redaction`.
