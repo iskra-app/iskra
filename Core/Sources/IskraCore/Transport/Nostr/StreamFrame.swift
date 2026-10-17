@@ -191,15 +191,22 @@ enum StreamReason {
     static let pow = "pow"
 
     /// The difficulty a `pow <bits>` refusal asks for — `pow_required` in `stream.rs`.
+    ///
+    /// Past `maxPowBits` the answer is `nil`, as if the bridge had said nothing: a bridge that is
+    /// broken or hostile must not be able to set this phone mining until the battery is gone.
     static func powRequired(_ reason: String) -> UInt8? {
         let parts = reason.split(separator: " ")
-        guard parts.count == 2, parts[0] == Self.pow else { return nil }
-        return UInt8(parts[1])
+        guard parts.count == 2, parts[0] == Self.pow, let bits = UInt8(parts[1]),
+              bits <= maxPowBits else { return nil }
+        return bits
     }
 }
 
 /// `DEFAULT_POW_BITS`: what every `open` is mined to until the bridge asks for more.
 let defaultPowBits: UInt8 = 16
+/// `MAX_POW_BITS`: the most either side accepts. Each bit doubles the work, and 24 is already
+/// seconds on a phone, once per connection.
+let maxPowBits: UInt8 = 24
 
 enum TunnelProtocolError: Error, Equatable {
     case unsupportedVersion(UInt8)

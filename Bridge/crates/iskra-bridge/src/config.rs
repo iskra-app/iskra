@@ -10,7 +10,7 @@ use std::num::NonZeroU32;
 use std::path::Path;
 
 use anyhow::{anyhow, Context, Result};
-use iskra_tunnel_proto::{DEFAULT_POW_BITS, DEFAULT_SEGMENT};
+use iskra_tunnel_proto::{DEFAULT_POW_BITS, DEFAULT_SEGMENT, MAX_POW_BITS};
 use nostr_sdk::prelude::{Keys, PublicKey};
 use url::Url;
 
@@ -172,10 +172,10 @@ impl Config {
         }
 
         let pow_bits = parse_or("POW_DIFFICULTY", DEFAULT_POW_BITS)?;
-        if pow_bits > 32 {
-            // Each bit doubles the client's work; past 32 a phone mines for minutes per
-            // connection, which is a bridge nobody can use, not a well-defended one.
-            return Err(anyhow!("POW_DIFFICULTY must be at most 32"));
+        if pow_bits > MAX_POW_BITS {
+            // Each bit doubles the client's work, and clients ignore a difficulty past this: a
+            // bridge set higher would be a bridge nobody can use, not a well-defended one.
+            return Err(anyhow!("POW_DIFFICULTY must be at most {MAX_POW_BITS}"));
         }
 
         let defaults = StreamLimits::default();
