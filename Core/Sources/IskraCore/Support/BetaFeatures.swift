@@ -39,21 +39,16 @@ public enum BetaFeatures {
     /// is the same question asked on a lock screen.
     public static let blobatarKey = "beta.blobatar"
 
-    /// And it is **on**, which it was not.
+    /// And it is **off**, again — it was on for a while, and the case for that is worth keeping.
     ///
-    /// The argument for off was that this changes what every person in the app looks like, and
-    /// that replacing a hundred familiar circles on somebody's behalf is not a thing to do. That
-    /// argument is about an app somebody is already using. It is not about the app a new person
-    /// meets: what they would meet with this off is a chat list of grey discs with one letter in
-    /// each, because most people in most rooms have never set a picture — and initials are not a
-    /// neutral default, they are the *absence* of a face rendered as a placeholder.
+    /// On, a new person met a chat list of creatures rather than of grey discs with one letter in
+    /// each, because most people in most rooms have never set a picture. But it changes what every
+    /// person in the app looks like, and that is a thing to ask for, not a thing to find: the
+    /// creatures stay one slider away in Beta features (see `FaceMode`), for whoever goes looking.
     ///
-    /// The creature replaces nothing anybody chose: a picture somebody set still wins, which is
-    /// the whole difference between this flag and `forceBlobatarByDefault` below. And the first
-    /// run now asks the question outright, with the three answers drawn rather than named (see
-    /// `FaceMode`), so this default is what the slider starts on rather than something decided
-    /// behind a person's back.
-    public static let blobatarByDefault = true
+    /// Off means off everywhere at once — the chat list, the widget, the share sheet and the lock
+    /// screen all ask `drawsGeneratedFace`, and so all of them fall back to initials together.
+    public static let blobatarByDefault = false
 
     /// Whether the creature wins even against a picture somebody actually set.
     ///

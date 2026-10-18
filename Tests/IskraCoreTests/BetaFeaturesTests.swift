@@ -18,23 +18,22 @@ struct BetaFeaturesTests {
         return defaults
     }
 
-    /// The shipped answer, on defaults nobody has written to: a creature where there is no
-    /// picture, and never over one there is.
+    /// The shipped answer, on defaults nobody has written to: no creature anywhere — not where
+    /// there is no picture, and certainly not over one there is.
     ///
-    /// This test used to pin the opposite — the feature was off until asked for — and the change
-    /// is deliberate rather than a drift: initials are not a neutral default, they are the absence
-    /// of a face, and most people in most rooms have never set a picture. What must not change is
-    /// the second line. A default that drew over a photograph somebody chose would be the app
-    /// overruling them, and that stays behind a switch.
-    @Test("by default a creature stands in for a missing picture, and only for that")
-    func onByDefault() throws {
+    /// This test has pinned both answers in its life. It was on for a while (initials are the
+    /// absence of a face); it is off now, because changing what every person in the app looks like
+    /// is a thing somebody asks for in Beta features, not a thing they find on first launch.
+    @Test("by default nobody gets a creature")
+    func offByDefault() throws {
         let defaults = try freshDefaults("default")
-        #expect(BetaFeatures.drawsGeneratedFace(hasPicture: false, in: defaults))
+        #expect(BetaFeatures.drawsGeneratedFace(hasPicture: false, in: defaults) == false)
         #expect(BetaFeatures.drawsGeneratedFace(hasPicture: true, in: defaults) == false)
     }
 
-    /// And turning it off is still turning it off — the value written by hand beats the default,
-    /// which is the whole of what a default is.
+    /// And a switch turned off by hand stays off — which matters now that off is also the
+    /// default: somebody who turned it off before it was the default must not be counted as
+    /// "no opinion".
     @Test("switched off, nobody gets a creature")
     func offWhenAsked() throws {
         let defaults = try freshDefaults("off")
