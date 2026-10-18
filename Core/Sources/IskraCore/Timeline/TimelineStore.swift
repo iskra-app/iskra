@@ -1654,7 +1654,17 @@ public final class TimelineStore {
             return
         }
         hasReadToEnd = true
-        try? await room.markAsRead(receiptType: .read)
+        // On the timeline this screen holds, not on the room. `Room.markAsRead` builds a timeline
+        // of its own inside the SDK, and a fresh timeline starts empty — the history arrives only
+        // by pagination, which that one never does. With no latest event to attach the receipt
+        // to, it quietly sends nothing, so whether a room stopped being unread after it was read
+        // came down to whether the SDK happened to have the room in memory already. The room's
+        // own call stays for the one moment there is no timeline here to ask.
+        if let timeline, !latestRows.isEmpty {
+            try? await timeline.markAsRead(receiptType: .read)
+        } else {
+            try? await room.markAsRead(receiptType: .read)
+        }
         try? await room.setUnreadFlag(newValue: false)
     }
 

@@ -222,7 +222,7 @@
    said here rather than only in the status: this is what somebody is looking at. */
 "connection.address" = "ブリッジのアドレス";
 "connection.addressPrompt" = "npub1… または 16 進 64 文字";
-"connection.addressFooter" = "初期設定では Iskra の開発者が運営するブリッジです。ご自身のブリッジは起動時にアドレスを表示します。「bridge address for Iskra: npub1…」の行です。";
+"connection.addressFooter" = "ブリッジは起動時にアドレスを表示します。「bridge address for Iskra: npub1…」の行です。";
 "connection.addressBad" = "ブリッジの鍵ではないようです";
 "connection.addressSecret" = "それは秘密鍵です。ここに入れるのは公開鍵、npub で始まるほうです。";
 "connection.defaultBridge" = "Iskra のブリッジに戻す";
@@ -1397,6 +1397,7 @@
 "folders.excludedHeader" = "表示しない";
 "folders.addChats" = "チャットを追加";
 "folders.chooseChats" = "チャットを選択";
+"folders.editList" = "編集";
 "folders.done" = "完了";
 "folders.cancel" = "キャンセル";
 "folders.delete" = "フォルダを削除";

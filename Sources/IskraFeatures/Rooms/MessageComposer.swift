@@ -57,8 +57,9 @@ struct MessageComposer: View {
     /// are their own and survive.
     var onCancelContext: () -> Void = {}
 
-    /// Where the text begins on the screen, reported as it moves — see `ComposerTravel`.
-    var onTextLeading: (CGFloat) -> Void = { _ in }
+    /// Where the text begins on the screen — its leading edge and its top — reported as it moves.
+    /// See `ComposerTravel`.
+    var onTextOrigin: (CGPoint) -> Void = { _ in }
 
     var onSend: () -> Void
 
@@ -184,7 +185,7 @@ struct MessageComposer: View {
     init(draft: Binding<String>,
          context: ComposerContext? = nil,
          onCancelContext: @escaping () -> Void = {},
-         onTextLeading: @escaping (CGFloat) -> Void = { _ in },
+         onTextOrigin: @escaping (CGPoint) -> Void = { _ in },
          onSend: @escaping () -> Void,
          onStartVideoNote: @escaping () -> Void = {},
          onFinishVideoNote: @escaping () -> Void = {},
@@ -213,7 +214,7 @@ struct MessageComposer: View {
         _draft = draft
         self.context = context
         self.onCancelContext = onCancelContext
-        self.onTextLeading = onTextLeading
+        self.onTextOrigin = onTextOrigin
         self.onSend = onSend
         self.onStartVideoNote = onStartVideoNote
         self.onFinishVideoNote = onFinishVideoNote
@@ -363,11 +364,10 @@ struct MessageComposer: View {
                                       selection: $selection, axis: .vertical)
                                 .textFieldStyle(.plain)
                                 // Where the words start on the screen — the point a sent message
-                                // travels across from. Measured on the bare field, inside its
-                                // padding, so it is the first letter's edge and not the glass
-                                // around it.
-                                .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minX } action: {
-                                    onTextLeading($0)
+                                // travels from. Measured on the bare field, inside its padding, so
+                                // it is the first letter's edge and not the glass around it.
+                                .onGeometryChange(for: CGPoint.self) { $0.frame(in: .global).origin } action: {
+                                    onTextOrigin($0)
                                 }
                                 .lineLimit(1...5)
                                 .focused($isFocused)

@@ -220,7 +220,7 @@
    а не только в состоянии: человек смотрит на поле, когда заполняет его. */
 "connection.address" = "Адрес моста";
 "connection.addressPrompt" = "npub1… или 64 знака hex";
-"connection.addressFooter" = "По умолчанию здесь мост, который держат разработчики Iskra. Свой мост печатает адрес при запуске — строка «bridge address for Iskra: npub1…».";
+"connection.addressFooter" = "Мост печатает свой адрес при запуске — строка «bridge address for Iskra: npub1…».";
 "connection.addressBad" = "Не похоже на ключ моста";
 "connection.addressSecret" = "Это секретный ключ. Нужен публичный — тот, что начинается с npub.";
 "connection.defaultBridge" = "Вернуть мост Iskra";
@@ -1393,6 +1393,7 @@
 "folders.excludedHeader" = "Никогда не показывать";
 "folders.addChats" = "Добавить чаты";
 "folders.chooseChats" = "Выберите чаты";
+"folders.editList" = "Изменить";
 "folders.done" = "Готово";
 "folders.cancel" = "Отмена";
 "folders.delete" = "Удалить папку";

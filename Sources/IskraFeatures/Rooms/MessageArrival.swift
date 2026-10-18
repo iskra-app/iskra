@@ -92,16 +92,23 @@ struct MessageArrival: ViewModifier {
 /// Telegram's send animation. Put on the *bubble*, because it is the bubble's leading edge that has
 /// to come from the text field's; the row around it spans the screen.
 ///
-/// Measured once, before it moves, in screen coordinates against `composerTextLeading`. An offset
+/// And from the field's *height*, not from the foot of the conversation. The row alone starts the
+/// bubble where the column ends, which is a little above the composer: the message appeared in the
+/// gap over the field, already out of it, and only then moved. Started at the words' own line, it
+/// leaves the box they were typed in — under the composer, where the conversation fades — and the
+/// gap is crossed on the way rather than appeared in.
+///
+/// Measured once, before it moves, in screen coordinates against `composerTextOrigin`. An offset
 /// does not change the layout, so writing it from the measurement cannot feed back into the
 /// measurement — `EnvironmentValues.timelineWidth` tells the story of a measurement that *did*.
 struct ComposerTravel: ViewModifier {
     let isTravelling: Bool
 
     @State private var across: CGFloat = 0
+    @State private var down: CGFloat = 0
     @State private var hasMeasured: Bool
 
-    @Environment(\.composerTextLeading) private var composerTextLeading
+    @Environment(\.composerTextOrigin) private var composerTextOrigin
 
     init(isTravelling: Bool) {
         self.isTravelling = isTravelling
@@ -110,23 +117,28 @@ struct ComposerTravel: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minX } action: { minX in
+            .onGeometryChange(for: CGPoint.self) { $0.frame(in: .global).origin } action: { origin in
                 guard !hasMeasured else { return }
                 hasMeasured = true
-                guard let composerTextLeading else { return }
+                guard let composerTextOrigin else { return }
 
-                // Only ever leftwards: a bubble of ours sits to the right of where it was typed.
-                // Set without animation, then sent home on the next frame — see `MessageArrival.land`.
+                // Only ever leftwards and downwards: a bubble of ours sits to the right of where it
+                // was typed, and above it. Set without animation, then sent home on the next frame —
+                // see `MessageArrival.land`.
                 var still = Transaction()
                 still.disablesAnimations = true
-                withTransaction(still) { across = min(0, composerTextLeading - minX) }
+                withTransaction(still) {
+                    across = min(0, composerTextOrigin.x - origin.x)
+                    down = max(0, composerTextOrigin.y - origin.y)
+                }
 
                 Task { @MainActor in
                     try? await Task.sleep(for: Theme.Timing.aFrame)
                     withAnimation(Theme.Timing.messageCrosses) { across = 0 }
+                    withAnimation(Theme.Timing.messageLeavesComposer) { down = 0 }
                 }
             }
-            .offset(x: across)
+            .offset(x: across, y: down)
     }
 }
 
@@ -159,10 +171,10 @@ struct ClaimedHeight: Layout {
 }
 
 extension EnvironmentValues {
-    /// The leading edge of the composer's text, in screen coordinates — where a message of ours
-    /// starts its journey across to its bubble. Nil wherever there is no composer (a peek, a
-    /// preview), and then a message of ours simply rises without travelling.
-    @Entry var composerTextLeading: CGFloat?
+    /// Where the composer's text starts — its leading edge and its top, in screen coordinates —
+    /// which is where a message of ours starts its journey to its bubble. Nil wherever there is no
+    /// composer (a peek, a preview), and then a message of ours simply rises without travelling.
+    @Entry var composerTextOrigin: CGPoint?
 }
 
 extension View {

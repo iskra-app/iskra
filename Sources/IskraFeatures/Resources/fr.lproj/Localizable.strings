@@ -222,7 +222,7 @@
    said here rather than only in the status: this is what somebody is looking at. */
 "connection.address" = "Adresse du pont";
 "connection.addressPrompt" = "npub1… ou 64 caractères hex";
-"connection.addressFooter" = "Par défaut, c’est le pont que font tourner les développeurs d’Iskra. Un pont à vous affiche son adresse au démarrage — la ligne « bridge address for Iskra: npub1… ».";
+"connection.addressFooter" = "Un pont affiche son adresse au démarrage — la ligne « bridge address for Iskra: npub1… ».";
 "connection.addressBad" = "Cela ne ressemble pas à une clé de pont";
 "connection.addressSecret" = "C’est une clé secrète. Il faut ici la clé publique, celle qui commence par npub.";
 "connection.defaultBridge" = "Revenir au pont d’Iskra";
@@ -1397,6 +1397,7 @@
 "folders.excludedHeader" = "Ne jamais afficher";
 "folders.addChats" = "Ajouter des discussions";
 "folders.chooseChats" = "Choisissez des discussions";
+"folders.editList" = "Modifier";
 "folders.done" = "OK";
 "folders.cancel" = "Annuler";
 "folders.delete" = "Supprimer le dossier";

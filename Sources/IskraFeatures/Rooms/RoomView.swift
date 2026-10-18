@@ -340,10 +340,10 @@ public struct RoomView: View {
     /// What the picture height limit is taken from — see `EnvironmentValues.timelineHeight`.
     @State private var timelineSize: CGSize = .zero
 
-    /// The leading edge of the composer's text, on the screen — reported by `MessageComposer` and
-    /// handed down for `ComposerTravel`. Nil until the composer has been laid out, and in a room the
+    /// Where the composer's text starts, on the screen — reported by `MessageComposer` and handed
+    /// down for `ComposerTravel`. Nil until the composer has been laid out, and in a room the
     /// account cannot post in, where nothing of ours will ever travel.
-    @State private var composerTextLeading: CGFloat?
+    @State private var composerTextOrigin: CGPoint?
 
     /// The dates above the top of the screen, and so the one to float there — see `FloatingDates`.
     @State private var floatingDates = FloatingDates()
@@ -480,8 +480,8 @@ public struct RoomView: View {
     /// Consumed once and cleared, so that returning to the room by ordinary means goes nowhere.
     @Binding private var openAt: String?
 
-    /// The conversation's opacity down the screen: solid in the middle, fading out over the same
-    /// distance at both ends — into the title bar at the top, into the composer at the bottom — so
+    /// The conversation's opacity down the screen: solid in the middle, fading over the same
+    /// distance at both ends, never quite to nothing (`Theme.Opacity.timelineFadeFloor`) — into the title bar at the top, into the composer at the bottom — so
     /// the two edges read as one effect. Each fade *ends* at its bar's edge and runs under the bar,
     /// never out over the open conversation. `screen` is the mask's own frame, in the same global
     /// coordinates the composer was measured in.
@@ -494,10 +494,11 @@ public struct RoomView: View {
         let hasComposer = composerFrame.height > 0
         let bottomSolid = hasComposer ? max(at(composerFrame.minY), topSolid) : 1
         let bottomClear = hasComposer ? max(at(composerFrame.minY + Theme.Size.timelineFade), bottomSolid) : 1
-        return LinearGradient(stops: [.init(color: .clear, location: topClear),
+        let faded = Color.black.opacity(Theme.Opacity.timelineFadeFloor)
+        return LinearGradient(stops: [.init(color: faded, location: topClear),
                                       .init(color: .black, location: topSolid),
                                       .init(color: .black, location: bottomSolid),
-                                      .init(color: .clear, location: bottomClear)],
+                                      .init(color: faded, location: bottomClear)],
                               startPoint: .top, endPoint: .bottom)
     }
 
@@ -759,7 +760,7 @@ public struct RoomView: View {
             }
             .environment(\.timelineHeight, timelineSize.height)
             // Where a message of ours starts its journey to its bubble — see `ComposerTravel`.
-            .environment(\.composerTextLeading, composerTextLeading)
+            .environment(\.composerTextOrigin, composerTextOrigin)
             // A name in a grey line, a face beside a message: both go to that person's page.
             .environment(\.openProfile) { userID in openProfile(userID) }
             // The floating date — see `FloatingDates`. Written only when a date crosses the line, so
@@ -1780,8 +1781,8 @@ public struct RoomView: View {
         MessageComposer(draft: $draft,
                         context: composerContext,
                         onCancelContext: cancelContext,
-                        onTextLeading: { leading in
-                            if composerTextLeading != leading { composerTextLeading = leading }
+                        onTextOrigin: { origin in
+                            if composerTextOrigin != origin { composerTextOrigin = origin }
                         },
                         onSend: send,
                         onStartVideoNote: startVideoNote,

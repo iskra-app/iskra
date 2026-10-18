@@ -407,6 +407,7 @@ public enum Strings {
         public static let excludedHeader = LocalizedStringResource("folders.excludedHeader", bundle: bundle)
         public static let addChats = LocalizedStringResource("folders.addChats", bundle: bundle)
         public static let chooseChats = LocalizedStringResource("folders.chooseChats", bundle: bundle)
+        public static let editList = LocalizedStringResource("folders.editList", bundle: bundle)
         public static let done = LocalizedStringResource("folders.done", bundle: bundle)
         public static let cancel = LocalizedStringResource("folders.cancel", bundle: bundle)
         public static let delete = LocalizedStringResource("folders.delete", bundle: bundle)

@@ -222,7 +222,7 @@
    said here rather than only in the status: this is what somebody is looking at. */
 "connection.address" = "Dirección del puente";
 "connection.addressPrompt" = "npub1… o 64 caracteres hex";
-"connection.addressFooter" = "Por defecto aquí está el puente que mantienen los desarrolladores de Iskra. Un puente propio muestra su dirección al arrancar: la línea «bridge address for Iskra: npub1…».";
+"connection.addressFooter" = "Un puente muestra su dirección al arrancar: la línea «bridge address for Iskra: npub1…».";
 "connection.addressBad" = "No parece una clave de puente";
 "connection.addressSecret" = "Esa es una clave secreta. Aquí hace falta la pública: la que empieza por npub.";
 "connection.defaultBridge" = "Volver al puente de Iskra";
@@ -1397,6 +1397,7 @@
 "folders.excludedHeader" = "No mostrar nunca";
 "folders.addChats" = "Añadir chats";
 "folders.chooseChats" = "Elija chats";
+"folders.editList" = "Editar";
 "folders.done" = "Listo";
 "folders.cancel" = "Cancelar";
 "folders.delete" = "Eliminar carpeta";

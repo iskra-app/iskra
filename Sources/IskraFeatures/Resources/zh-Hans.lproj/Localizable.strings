@@ -222,7 +222,7 @@
    said here rather than only in the status: this is what somebody is looking at. */
 "connection.address" = "网桥地址";
 "connection.addressPrompt" = "npub1… 或 64 位十六进制字符";
-"connection.addressFooter" = "默认是 Iskra 开发者运行的网桥。您自己的网桥启动时会打印它的地址——即“bridge address for Iskra: npub1…”这一行。";
+"connection.addressFooter" = "网桥启动时会打印它的地址——即“bridge address for Iskra: npub1…”这一行。";
 "connection.addressBad" = "这看起来不像网桥密钥";
 "connection.addressSecret" = "这是私钥。这里需要的是公钥，也就是以 npub 开头的那个。";
 "connection.defaultBridge" = "恢复为 Iskra 网桥";
@@ -1397,6 +1397,7 @@
 "folders.excludedHeader" = "从不显示";
 "folders.addChats" = "添加聊天";
 "folders.chooseChats" = "选择聊天";
+"folders.editList" = "编辑";
 "folders.done" = "完成";
 "folders.cancel" = "取消";
 "folders.delete" = "删除文件夹";

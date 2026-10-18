@@ -16,6 +16,12 @@ struct FoldersView: View {
     /// The folder open in the editor — a new one, or a copy of an existing one.
     @State private var editing: ChatFolder?
 
+    #if os(macOS)
+    /// The Mac's stand-in for `EditButton`, which AppKit does not have: a `Form` there has no
+    /// swipe to delete, so without it a folder could only be deleted from inside its editor.
+    @State private var isEditingList = false
+    #endif
+
     private var suggestions: [ChatFolder] {
         let names = Set(folders.folders.map { $0.name.lowercased() })
         return ChatFolder.suggestions { String(app: Strings.Folders.suggestion($0)) }
@@ -28,18 +34,41 @@ struct FoldersView: View {
         Form {
             Section {
                 ForEach(folders.folders) { folder in
-                    Button {
-                        editing = folder
-                    } label: {
-                        LabeledContent {
-                            Text(folder.rooms(from: roomList.rooms, archived: roomList.archivedRooms).count,
-                                 format: .number)
-                        } label: {
-                            Label(folder.name, systemImage: "folder")
+                    HStack(spacing: Theme.Spacing.normal) {
+                        #if os(macOS)
+                        if isEditingList {
+                            Button {
+                                Task { await folders.delete(folder.id) }
+                            } label: {
+                                Image(systemName: "minus.circle.fill")
+                                    .foregroundStyle(.red)
+                            }
+                            .buttonStyle(.borderless)
+                            .accessibilityLabel(Text(Strings.Folders.delete))
+                            .disabled(isOffline)
                         }
-                        .contentShape(.rect)
+                        #endif
+                        Button {
+                            editing = folder
+                        } label: {
+                            LabeledContent {
+                                Text(folder.rooms(from: roomList.rooms, archived: roomList.archivedRooms).count,
+                                     format: .number)
+                            } label: {
+                                Label(folder.name, systemImage: "folder")
+                            }
+                            .contentShape(.rect)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
+                    #if os(macOS)
+                    .contextMenu {
+                        Button(String(app: Strings.Folders.delete), role: .destructive) {
+                            Task { await folders.delete(folder.id) }
+                        }
+                        .disabled(isOffline)
+                    }
+                    #endif
                 }
                 .onMove { source, destination in
                     Task { await folders.move(fromOffsets: source, toOffset: destination) }
@@ -81,7 +110,20 @@ struct FoldersView: View {
         }
         .formStyle(.grouped)
         .navigationTitle(String(app: Strings.Folders.title))
-        #if !os(macOS)
+        #if os(macOS)
+        .toolbar {
+            if !folders.folders.isEmpty {
+                ToolbarItem(placement: .primaryAction) {
+                    Button(String(app: isEditingList ? Strings.Folders.done : Strings.Folders.editList)) {
+                        isEditingList.toggle()
+                    }
+                }
+            }
+        }
+        .onChange(of: folders.folders.isEmpty) { _, isEmpty in
+            if isEmpty { isEditingList = false }
+        }
+        #else
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if !folders.folders.isEmpty {

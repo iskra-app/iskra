@@ -342,7 +342,7 @@ struct MessageActions<Content: View>: View {
     /// a lifted bubble that was still see-through.
     private var lifted: some View {
         var environment = anchor.environment ?? EnvironmentValues()
-        environment.composerTextLeading = nil
+        environment.composerTextOrigin = nil
         environment.bubbleIsLifted = true
         return content()
             .environment(\.self, environment)

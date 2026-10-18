@@ -71,6 +71,10 @@ public enum Theme {
         public static let warningWash: Double = 0.14
         /// The pill under the open folder tab — there, and only just. See `FolderTabs`.
         public static let selectedTab: Double = 0.2
+        /// What is left of the conversation under the title bar and the composer, at the far end
+        /// of its fade. Not nothing: faded all the way out, the edges read as two solid bands
+        /// cut across the room rather than as messages passing underneath. See `RoomView`.
+        public static let timelineFadeFloor: Double = 0.3
     }
 
     public enum Spacing {
@@ -259,6 +263,12 @@ public enum Theme {
         /// it is fast off the mark and long in the settling, so the words leave the box the instant
         /// send is pressed and ease into the bubble rather than arriving at both ends at once.
         public static let messageCrosses: Animation = .timingCurve(0.23, 1, 0.32, 1, duration: 0.3)
+
+        /// …and up out of the field, from the line the words were typed on to the foot of the
+        /// conversation. The same shape as `messageCrosses` — off at once, long in the settling —
+        /// and a little longer, so the rise is seen as one movement with the column making room
+        /// rather than as a jump to where the column ends.
+        public static let messageLeavesComposer: Animation = .timingCurve(0.23, 1, 0.32, 1, duration: 0.4)
 
         /// Somebody else's message coming up into the space the column has made for it. A fade, and
         /// a short one — Telegram's 0.2 s — because the movement is the column's; this only keeps
