@@ -48,13 +48,13 @@ struct AboutView: View {
             }
 
             Section {
-                Link(destination: URL(string: "https://iskra.swag.moscow")!) {
+                Link(destination: URL(string: "https://iskra.wtf")!) {
                     LabeledContent {
                         Image(systemName: "arrow.up.right")
                             .foregroundStyle(.secondary)
                     } label: {
                         Text(Strings.About.website)
-                        Text(verbatim: "iskra.swag.moscow")
+                        Text(verbatim: "iskra.wtf")
                     }
                 }
 
