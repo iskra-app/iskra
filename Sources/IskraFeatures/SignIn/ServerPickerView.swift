@@ -51,8 +51,9 @@ struct PublicServer: Identifiable {
             || Locale.preferredLanguages.contains { Locale(identifier: $0).language.languageCode == .russian }
     }
 
-    /// Where somebody who would rather run their own is sent to read about it.
-    static let ownServerGuide = URL(string: "https://matrix.org/ecosystem/servers/")!
+    /// Where somebody who would rather run their own is sent to read about it: our own guide, which
+    /// says what Iskra needs from a server (native sliding sync) and picks its language itself.
+    static let ownServerGuide = URL(string: "https://iskra.wtf/server.html")!
 }
 
 /// "Not sure which server to choose?" — a handful of public servers, and, last, the one you run
