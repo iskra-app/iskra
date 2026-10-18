@@ -101,6 +101,13 @@ entitlements — it runs in the *app's* process, and the `.appex` is a different
 the App Group and the Keychain separately — and nothing but a real push proves that iOS wakes the
 extension at all.
 
+`Iskra --probe-push` is the other half: it lists the pushers the homeserver holds for the account
+(marking this build's — its app id *and* its gateway) and has the gateway deliver one push to each
+of ours. Sygnal answers with the pushkeys APNs refused, and that is the only place a sandbox token
+sent to a production entry, or a topic that is not the bundle ID, is ever said. A successful
+`setPusher` logs nothing, so "no pusher of ours" and "a pusher APNs refuses" are both silent
+without it. Run it signed in, on the device that gets nothing: `./device.sh -- --probe-push`.
+
 `Iskra --probe-bridge [npub] [homeserver]` sends one real request through the nostr tunnel and says
 which failure it was. Five things make a bridge look broken in exactly the same way — a mistyped
 key, a bridge that is not running, one whose `ALLOWED_UPSTREAMS` does not cover this homeserver, a

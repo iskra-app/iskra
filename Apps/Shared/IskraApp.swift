@@ -49,6 +49,12 @@ struct IskraApp: App {
             DeviceProbe.runAndExit()
         }
 
+        // `Iskra --probe-push` lists this account's pushers and has the gateway deliver one push
+        // to each of ours, which is where APNs's refusal of a token is ever said. See PushProbe.
+        if PushProbe.wasRequested {
+            PushProbe.runAndExit()
+        }
+
         // `Iskra --probe-bridge [npub] [homeserver]` sends one request through the nostr tunnel
         // and says which of the five identical-looking failures it was. See BridgeProbe.
         if BridgeProbe.wasRequested {
