@@ -496,7 +496,7 @@ event id (или переиндексировать комнату), либо в
 
 - [x] **Push gateway.** Homeserver шлёт пуши не в APNs напрямую, а через шлюз, и публичный шлюз
       matrix.org принимает только зарегистрированные у них app id — элементовские. Поэтому свой
-      Sygnal: `push.iskra.swag.moscow`, в контейнере, за nginx с сертификатом Let's Encrypt, с
+      Sygnal: `push.iskra.wtf`, в контейнере, за nginx с сертификатом Let's Encrypt, с
       APNs-ключом аккаунта. `PushRegistration.gatewayURL` — больше не `nil`. Как он поднят и чем
       проверяется каждый шаг — `docs/PUSH-GATEWAY.md`.
 
@@ -506,7 +506,7 @@ event id (или переиндексировать комнату), либо в
       целиком. `200` там не бывает, и полчаса можно потратить, добиваясь ответа, которого нет.
 
       Одно к этому подготовлено заранее: `PushRegistration.appID` разведён на
-      `moscow.swag.iskra.dev` и `moscow.swag.iskra` по `#if DEBUG`, и в `sygnal.yaml` это два
+      `wtf.iskra.dev` и `wtf.iskra` по `#if DEBUG`, и в `sygnal.yaml` это два
       входа — sandbox и production. Токен dev-сборки живёт в sandbox-APNs, токен из TestFlight — в
       production, и это непересекающиеся миры. С одним входом пуши работали бы до первой выкладки и
       потом замолчали без единой ошибки на нашей стороне, потому что ошибки и нет: токен верный,

@@ -27,7 +27,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 REPO="$PWD"
 
-BUNDLE_ID="moscow.swag.iskra"
+BUNDLE_ID="wtf.iskra"
 BRANCH="dev"
 DERIVED="$REPO/.build/xcode-device"
 SRC="$REPO/.build/dev-src"

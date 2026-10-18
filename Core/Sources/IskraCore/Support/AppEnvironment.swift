@@ -53,7 +53,7 @@ public struct AppEnvironment: Sendable {
     /// it. A bare `iskra:` belongs to nobody and is refused.
     ///
     /// **So this string is not free to choose: it is `clientUri` spelled backwards.** The domain is
-    /// `iskra.swag.moscow`, so the one scheme permitted is `moscow.swag.iskra` — which is also, and
+    /// `iskra.wtf`, so the one scheme permitted is `wtf.iskra` — which is also, and
     /// not by accident, the bundle identifier. Change the domain in `oauthConfiguration()` and this
     /// has to change with it, or the client cannot be registered at all.
     ///
@@ -73,7 +73,7 @@ public struct AppEnvironment: Sendable {
     public let clientName: String
 
     public init(storage: StorageMode,
-                oauthRedirectURI: String = "moscow.swag.iskra:/oauth-callback",
+                oauthRedirectURI: String = "wtf.iskra:/oauth-callback",
                 clientName: String = "Iskra App") {
         self.storage = storage
         self.oauthRedirectURI = oauthRedirectURI
@@ -81,13 +81,13 @@ public struct AppEnvironment: Sendable {
     }
 
     /// The App Group container. Shared files — the encrypted store — live here.
-    public static let appGroupIdentifier = "group.moscow.swag.iskra"
+    public static let appGroupIdentifier = "group.wtf.iskra"
 
     /// What the Share extension opens to hand a message over to the app, which then sends the outbox
     /// the moment it is in front — see `ShareViewController.openApp()`. The same scheme as
     /// `oauthRedirectURI`, declared once in `Apps/project.yml`; the path says nothing the app acts
     /// on, because coming to the front is the whole of the message.
-    public static let shareHandoffURL = URL(string: "moscow.swag.iskra:/share")!
+    public static let shareHandoffURL = URL(string: "wtf.iskra:/share")!
 
     /// The Keychain access group, which is *not* the App Group.
     ///
@@ -97,7 +97,7 @@ public struct AppEnvironment: Sendable {
     ///
     ///     keychain-access-groups = ["936RH3UPR3.*", "com.apple.token"]
     ///
-    /// and `group.moscow.swag.iskra` does not match `936RH3UPR3.*`. Xcode rejects the
+    /// and `group.wtf.iskra` does not match `936RH3UPR3.*`. Xcode rejects the
     /// build with "profile doesn't match the entitlements file's value for the
     /// keychain-access-groups entitlement".
     ///
@@ -107,7 +107,7 @@ public struct AppEnvironment: Sendable {
     /// changes.
     private static var keychainAccessGroup: String {
         let prefix = Bundle.main.object(forInfoDictionaryKey: "AppIdentifierPrefix") as? String ?? ""
-        return prefix + "moscow.swag.iskra.shared"
+        return prefix + "wtf.iskra.shared"
     }
 
     /// Shared with the notification and share extensions. Requires the entitlements in
@@ -140,11 +140,11 @@ public struct AppEnvironment: Sendable {
     /// name to say *who is holding it*, so the two must not answer the same thing.
     ///
     /// `Bundle.main` is the natural answer and is already the right one, because inside an extension
-    /// `Bundle.main` is the *extension's* bundle. The app says `moscow.swag.iskra`; the extension
-    /// says `moscow.swag.iskra.NotificationService`. (This is the same fact that makes
+    /// `Bundle.main` is the *extension's* bundle. The app says `wtf.iskra`; the extension
+    /// says `wtf.iskra.NotificationService`. (This is the same fact that makes
     /// `AppIdentifierPrefix` load-bearing in the extension's own Info.plist — see `CLAUDE.md`.)
     public static var processName: String {
-        Bundle.main.bundleIdentifier ?? "moscow.swag.iskra"
+        Bundle.main.bundleIdentifier ?? "wtf.iskra"
     }
 
     /// The Keychain access group, or nil to use the app's own keychain.

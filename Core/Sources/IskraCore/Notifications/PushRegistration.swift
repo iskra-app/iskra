@@ -45,7 +45,7 @@ public struct PushRegistration: Sendable {
     /// Held here rather than in `AppSettings` because it is not a preference. Nobody chooses it,
     /// and an app that let somebody type a push gateway in would be an app that lets somebody be
     /// talked into typing one in.
-    public static let gatewayURL: String? = "https://push.iskra.swag.moscow/_matrix/push/v1/notify"
+    public static let gatewayURL: String? = "https://push.iskra.wtf/_matrix/push/v1/notify"
 
     /// The app id the gateway knows this app by — the name of an entry in its `sygnal.yaml`, and
     /// the only thing that tells the gateway *which* APNs to talk to.
@@ -65,9 +65,9 @@ public struct PushRegistration: Sendable {
     /// The gateway's `topic` stays the plain bundle id in both entries. That one really is the
     /// bundle id, and there is only one of those.
     #if DEBUG
-    static let appID = "moscow.swag.iskra.dev"
+    static let appID = "wtf.iskra.dev"
     #else
-    static let appID = "moscow.swag.iskra"
+    static let appID = "wtf.iskra"
     #endif
 
     private let client: Client

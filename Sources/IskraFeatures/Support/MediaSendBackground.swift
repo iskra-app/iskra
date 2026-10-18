@@ -103,7 +103,7 @@ final class MediaSendBackground {
 
     @available(iOS 26, *)
     private func submitContinued(for active: [MediaSendJobs.Job]) -> Bool {
-        let identifier = "moscow.swag.iskra.upload.\(UUID().uuidString)"
+        let identifier = "wtf.iskra.upload.\(UUID().uuidString)"
         // A continued-processing task may be registered at any time — the one kind that may — and
         // each identifier once, which is why every job gets a fresh one.
         let registered = BGTaskScheduler.shared.register(forTaskWithIdentifier: identifier, using: nil) { task in

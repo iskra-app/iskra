@@ -155,7 +155,7 @@ public enum TunnelSettings {
     /// moved from one to the other, so flipping the switch did nothing until the
     /// next launch — and in a place where the direct route is blocked, "nothing" was an app that
     /// stopped loading messages the moment somebody reached for the thing that would fix it.
-    public static let changed = Notification.Name("moscow.swag.iskra.tunnelSettingsChanged")
+    public static let changed = Notification.Name("wtf.iskra.tunnelSettingsChanged")
 
     /// Split on commas and newlines, and keep what is actually a relay address.
     ///

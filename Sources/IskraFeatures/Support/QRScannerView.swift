@@ -161,7 +161,7 @@ private struct CameraScanner: UIViewRepresentable {
     final class Coordinator: NSObject, AVCaptureMetadataOutputObjectsDelegate, @unchecked Sendable {
         let session = AVCaptureSession()
         var onCode: (String) -> Void
-        private let queue = DispatchQueue(label: "moscow.swag.iskra.qr-camera")
+        private let queue = DispatchQueue(label: "wtf.iskra.qr-camera")
         /// The last code reported, so a code held in front of the camera is reported once and not
         /// thirty times a second.
         private var lastCode: String?

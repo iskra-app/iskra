@@ -121,6 +121,8 @@ public final class ChatFolders {
         public var explanation: LocalizedStringResource { CoreStrings.Folders.saveFailed }
     }
 
+    /// Still `moscow.swag.iskra`, the app's old prefix, on purpose: this name lives on the server,
+    /// outlives any install and is shared with Android, so renaming it loses what is stored under it.
     nonisolated static let type = "moscow.swag.iskra.chat_folders"
     nonisolated static let timeout: Duration = .seconds(10)
     /// Telegram's limit, and more folders than tabs anybody can read in a row.

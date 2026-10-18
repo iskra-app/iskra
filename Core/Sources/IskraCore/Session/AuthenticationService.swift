@@ -959,13 +959,13 @@ public actor AuthenticationService {
     ///
     /// `clientUri` is load-bearing and is not merely a link on a consent screen: a server running the
     /// authentication service derives the *only* redirect scheme it will accept from this domain,
-    /// reversed. `iskra.swag.moscow` is what makes `moscow.swag.iskra:` legal — see
+    /// reversed. `iskra.wtf` is what makes `wtf.iskra:` legal — see
     /// `AppEnvironment.oauthRedirectURI`, which must be kept in step with it, as must
     /// `CFBundleURLSchemes` in `Apps/project.yml`.
     private func oauthConfiguration() -> OAuthConfiguration {
         OAuthConfiguration(clientName: environment.clientName,
                            redirectUri: environment.oauthRedirectURI,
-                           clientUri: "https://iskra.swag.moscow",
+                           clientUri: "https://iskra.wtf",
                            logoUri: nil,
                            tosUri: nil,
                            policyUri: nil,

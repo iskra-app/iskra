@@ -59,6 +59,8 @@ public final class StickerLibrary {
 
     /// The account data the recent row lives in. In the account and not on the device, so the
     /// stickers somebody sends on their phone are the first ones offered on their Mac.
+    /// Still `moscow.swag.iskra`, the app's old prefix, on purpose: this name lives on the server,
+    /// outlives any install and is shared with Android, so renaming it loses what is stored under it.
     nonisolated static let recentType = "moscow.swag.iskra.recent_stickers"
 
     /// One answer is waited for this long. A pack in a room on a slow federated server must not
@@ -68,6 +70,8 @@ public final class StickerLibrary {
     /// Where the app's own stickers were uploaded to, by shortcode — an MSC2545 pack in shape, so
     /// that it reads like one, but under a type of the app's own: it is not a pack anybody should
     /// find in Element's list of their emoji.
+    /// Still `moscow.swag.iskra`, the app's old prefix, on purpose: this name lives on the server,
+    /// outlives any install and is shared with Android, so renaming it loses what is stored under it.
     nonisolated static let builtInType = "moscow.swag.iskra.builtin_stickers"
 
     /// `upload` is `Client.uploadMedia`. Without it there is no built-in pack: its pictures have

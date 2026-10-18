@@ -151,8 +151,8 @@ SDK-типы не выходят за пределы `IskraCore`: наружу �
 - `AppEnvironment`: `StorageMode.shared(appGroup, keychainGroup)` / `.standalone`.
   Недоступный App Group — **брошенная ошибка, не fallback** (`StorageError.appGroupUnavailable`
   → `AuthenticationError.storageUnavailable` → текст на экране входа).
-  App Group `group.moscow.swag.iskra` ≠ Keychain group
-  `$(AppIdentifierPrefix)moscow.swag.iskra.shared` — и это обязано быть двумя идентификаторами
+  App Group `group.wtf.iskra` ≠ Keychain group
+  `$(AppIdentifierPrefix)wtf.iskra.shared` — и это обязано быть двумя идентификаторами
   (Team Provisioning Profile разрешает только `<TeamID>.*`).
 - `Timeout.swift`: `withTimeout` — гонка через `CheckedContinuation` + `Mutex`, проигравший
   **не** await'ится (task group ждала бы зависший в Rust вызов — это и есть баг, от которого

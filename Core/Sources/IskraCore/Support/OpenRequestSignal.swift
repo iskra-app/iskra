@@ -13,7 +13,7 @@ import Foundation
 /// Darwin notifications carry nothing but their name — which is the point: the request itself stays
 /// in the App Group, where `ChatDirectory.takePendingOpenRequest` reads and clears it once.
 public enum OpenRequestSignal {
-    private static var name: CFString { "moscow.swag.iskra.openRequested" as CFString }
+    private static var name: CFString { "wtf.iskra.openRequested" as CFString }
 
     static func post() {
         CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),

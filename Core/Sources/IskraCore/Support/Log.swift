@@ -12,7 +12,7 @@ import OSLog
 /// which is what `.public` is safe to mark. If a value cannot be shown to a stranger
 /// reading the device console, it does not go in the log.
 public enum Log {
-    private static let subsystem = "moscow.swag.iskra"
+    private static let subsystem = "wtf.iskra"
 
     /// Sending pictures, video, files and voice: the one path whose failures come back from
     /// a server as a shrug. Public because the screen is where the picker lives, and the

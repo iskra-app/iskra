@@ -217,7 +217,7 @@ public enum RichText {
 /// The mentioned user's Matrix ID, hung on the run of text that names them.
 public enum MentionUserIDAttribute: AttributedStringKey {
     public typealias Value = String
-    public static let name = "moscow.swag.iskra.mention.userID"
+    public static let name = "wtf.iskra.mention.userID"
 }
 
 /// Whether the mention on this run is of the signed-in user — the one the bubble paints to catch
@@ -225,7 +225,7 @@ public enum MentionUserIDAttribute: AttributedStringKey {
 /// who "you" are.
 public enum MentionIsSelfAttribute: AttributedStringKey {
     public typealias Value = Bool
-    public static let name = "moscow.swag.iskra.mention.isSelf"
+    public static let name = "wtf.iskra.mention.isSelf"
 }
 
 public extension AttributeScopes {

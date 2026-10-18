@@ -47,7 +47,7 @@ enum StorageCheck {
         print("  keychain access group: \(accessGroup)")
 
         // A full round-trip through the real Keychain, in the real access group.
-        let keychain = Keychain(service: "moscow.swag.iskra.storagecheck", accessGroup: accessGroup)
+        let keychain = Keychain(service: "wtf.iskra.storagecheck", accessGroup: accessGroup)
         let secret = Data("iskra-storage-check".utf8)
 
         do {

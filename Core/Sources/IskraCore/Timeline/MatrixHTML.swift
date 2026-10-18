@@ -387,24 +387,24 @@ public enum MatrixHTML {
 /// framework's attribute, which this target does not import.
 public enum UnderlineAttribute: AttributedStringKey {
     public typealias Value = Bool
-    public static let name = "moscow.swag.iskra.underline"
+    public static let name = "wtf.iskra.underline"
 }
 
 /// Hidden until tapped — `<span data-mx-spoiler>`. The value tells one spoiler in a message from
 /// another, so each is revealed by its own tap.
 public enum SpoilerAttribute: AttributedStringKey {
     public typealias Value = Int
-    public static let name = "moscow.swag.iskra.spoiler"
+    public static let name = "wtf.iskra.spoiler"
 }
 
 /// Inside a `<blockquote>` — drawn quieter, with a bar in front of each line.
 public enum QuoteAttribute: AttributedStringKey {
     public typealias Value = Bool
-    public static let name = "moscow.swag.iskra.quote"
+    public static let name = "wtf.iskra.quote"
 }
 
 /// A heading, `<h1>` to `<h6>` — the level, for the bubble to size.
 public enum HeadingAttribute: AttributedStringKey {
     public typealias Value = Int
-    public static let name = "moscow.swag.iskra.heading"
+    public static let name = "wtf.iskra.heading"
 }

@@ -566,7 +566,7 @@ public final class RoomListStore {
                 }
             }
         }
-        monitor.start(queue: DispatchQueue(label: "moscow.swag.iskra.path"))
+        monitor.start(queue: DispatchQueue(label: "wtf.iskra.path"))
         pathMonitor = monitor
     }
 

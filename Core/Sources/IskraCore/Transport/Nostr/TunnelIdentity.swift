@@ -13,7 +13,7 @@ import Foundation
 /// It is not an identity in any social sense: nobody follows it, it posts nothing, and it exists
 /// only so that the answer to a request can be addressed back to the device that asked.
 public struct TunnelIdentity: Sendable {
-    private static let service = "moscow.swag.iskra.transport"
+    private static let service = "wtf.iskra.transport"
     private static let key = "nostr-secret"
 
     private let secrets: any SecretStoring

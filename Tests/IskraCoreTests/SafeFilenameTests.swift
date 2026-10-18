@@ -11,8 +11,8 @@ import Testing
 
     @Test func aNameCannotClimbOutOrHide() {
         #expect(SafeFilename.make("../../x", fallback: "f") == "x")
-        #expect(SafeFilename.make("../../Library/Preferences/moscow.swag.iskra.plist", fallback: "f")
-                == "moscow.swag.iskra.plist")
+        #expect(SafeFilename.make("../../Library/Preferences/wtf.iskra.plist", fallback: "f")
+                == "wtf.iskra.plist")
         #expect(SafeFilename.make("..", fallback: "f") == "f")
         #expect(SafeFilename.make(".", fallback: "f") == "f")
         #expect(SafeFilename.make("", fallback: "f") == "f")

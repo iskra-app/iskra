@@ -50,7 +50,7 @@ xcodebuild -project Apps/Iskra.xcodeproj -scheme 'Iskra (iOS)' \
 xcrun simctl bootstatus 'iPhone 18 Pro' -b
 open -b com.apple.dt.Devices
 xcrun simctl install booted .build/xcode/Build/Products/Debug-iphonesimulator/Iskra.app
-xcrun simctl launch booted moscow.swag.iskra
+xcrun simctl launch booted wtf.iskra
 ```
 
 `./run.sh` wraps the two above (`mac`, `ios`, or both). **A real iPhone is `./device.sh`**, which
@@ -72,7 +72,7 @@ way to check provisioning — `swift test` builds an *unsigned* binary, which th
 Keychain refuses outright (`errSecMissingEntitlement`, -34018) no matter what the entitlements say.
 
 ```sh
-xcrun simctl launch --console booted moscow.swag.iskra --verify-storage
+xcrun simctl launch --console booted wtf.iskra --verify-storage
 ```
 
 `Iskra --probe-signin <address>` drives the same lookup the "Continue" button does, with the SDK's
@@ -81,7 +81,7 @@ in a signed build on a real device, where the only symptom is a spinner. On a de
 `devicectl`:
 
 ```sh
-xcrun devicectl device process launch --console --device <id> moscow.swag.iskra --probe-signin matrix.org
+xcrun devicectl device process launch --console --device <id> wtf.iskra --probe-signin matrix.org
 ```
 
 `Iskra --probe-notification` decrypts a push the way the notification extension will, and prints
@@ -90,8 +90,8 @@ try — a push carries only a room ID and an event ID, and nobody has an event I
 probe that demanded one would be a probe nobody ran.
 
 ```sh
-xcrun simctl launch --console booted moscow.swag.iskra --probe-notification
-xcrun simctl launch --console booted moscow.swag.iskra --probe-notification '!room:matrix.org' '$event'
+xcrun simctl launch --console booted wtf.iskra --probe-notification
+xcrun simctl launch --console booted wtf.iskra --probe-notification '!room:matrix.org' '$event'
 ```
 
 Be exact about what it proves. It proves `PushDecoder` end to end: the session restores, the
@@ -109,7 +109,7 @@ and from inside the app all five are a sign-in that spins. Given no arguments it
 Settings → Connection, which is the case worth having.
 
 ```sh
-xcrun simctl launch --console booted moscow.swag.iskra --probe-bridge
+xcrun simctl launch --console booted wtf.iskra --probe-bridge
 ./device.sh -- --probe-bridge npub1… matrix.org
 ```
 
@@ -148,7 +148,7 @@ flag pick the server: `password` (no browser, no "create account"), `sso` (legac
 only), `closed` (OIDC without registration), `slow` (two seconds a request).
 
 ```sh
-xcrun simctl launch --console booted moscow.swag.iskra --mock-signin
+xcrun simctl launch --console booted wtf.iskra --mock-signin
 ./device.sh -- --mock-signin password slow
 ```
 
@@ -362,8 +362,8 @@ a stall on a real device visible at all — there is no debugger attached to a s
 The level stops at `.info` on purpose: `.debug` and `.trace` make the SDK log request and response
 bodies, and in this app those bodies are people's messages.
 
-The App Group (`group.moscow.swag.iskra`) and the Keychain access group
-(`$(AppIdentifierPrefix)moscow.swag.iskra.shared`) are two different identifiers and have to be: a
+The App Group (`group.wtf.iskra`) and the Keychain access group
+(`$(AppIdentifierPrefix)wtf.iskra.shared`) are two different identifiers and have to be: a
 Team Provisioning Profile allows `keychain-access-groups = ["<TeamID>.*"]`, which an App Group ID
 does not match.
 
@@ -381,7 +381,7 @@ Two things about it are easy to get subtly wrong, and both fail far from their c
 - **`AppIdentifierPrefix` must be in the extension's own Info.plist.**
   `AppEnvironment.keychainAccessGroup` reads that key out of `Bundle.main` — and inside an
   extension `Bundle.main` is the *extension's* bundle, not the app's. Leave it out and the prefix
-  is empty, the Keychain group silently becomes `moscow.swag.iskra.shared` with no team ID in
+  is empty, the Keychain group silently becomes `wtf.iskra.shared` with no team ID in
   front of it, the lookup returns nothing, and the extension reports *"nobody is signed in"* on a
   device where somebody plainly is.
 - **`processSetup: .multipleProcesses`, never `.singleProcess`.** The app may be open and holding
@@ -532,6 +532,13 @@ inside an availability check, so the build itself refuses the shortcut. Any othe
 takes an `#available` where it is used, with the iOS 18 path next to it (`LocationView.openInMaps`).
 The ~200 linker warnings about SDK objects "built for newer macOS version (26.5)" on the Mac are
 expected: vendored C code with no deployment target of its own, calling only libc and pthreads.
+
+**Names that live on the server keep the old prefix.** The app is `wtf.iskra`, but four names
+are still `moscow.swag.iskra.*`: the push rule `…reactions` (`ReactionPushRule`) and the account
+data `…chat_folders`, `…recent_stickers` and `…builtin_stickers`. They outlive every install and
+are shared with Android, so a rename that follows the bundle ID loses people's folders and stickers
+and leaves a second reaction rule beside the first. A rename that sweeps `moscow.swag.iskra`
+must step round them.
 
 **Round video messages are recognised by shape, not by a flag** (`IskraCore/Media/VideoNote.swift`).
 Exactly square, ≤60 s. Tagging them with a custom field would mean `Client.uploadMedia` +

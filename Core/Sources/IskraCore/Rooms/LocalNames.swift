@@ -72,7 +72,7 @@ public enum LocalNames {
     /// because as far as the SDK is concerned nothing has.
     ///
     /// `userInfo["roomID"]` is the room it happened to.
-    public static let didChange = Notification.Name("moscow.swag.iskra.localNameDidChange")
+    public static let didChange = Notification.Name("wtf.iskra.localNameDidChange")
 
     /// The App Group's defaults — the same suite the chat directory uses, and for the same
     /// reason: the notification extension is a second process, and a nickname that the lock

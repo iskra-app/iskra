@@ -99,7 +99,7 @@ public extension AppEnvironment {
     /// The same scheme the share sheet hands over with (`shareHandoffURL`).
     static func openChatURL(roomID: String, accountID: String?) -> URL {
         var components = URLComponents()
-        components.scheme = "moscow.swag.iskra"
+        components.scheme = "wtf.iskra"
         components.path = "/open"
         components.queryItems = [URLQueryItem(name: "room", value: roomID)]
             + (accountID.map { [URLQueryItem(name: "account", value: $0)] } ?? [])
@@ -110,7 +110,7 @@ public extension AppEnvironment {
 public extension ChatDirectory.OpenRequest {
     /// The chat an `openChatURL` asks for, or nil for any other URL.
     init?(url: URL) {
-        guard url.scheme == "moscow.swag.iskra", url.path == "/open",
+        guard url.scheme == "wtf.iskra", url.path == "/open",
               let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
               let room = items.first(where: { $0.name == "room" })?.value, !room.isEmpty
         else { return nil }

@@ -12,7 +12,7 @@ import Synchronization
 /// fake *service* could never hand back, because a session is built around a live `Client`.
 ///
 /// The browser half is real too. OIDC's authorize endpoint answers with a small HTML page, the
-/// page's button redirects to `moscow.swag.iskra:/oauth-callback`, and `ASWebAuthenticationSession`
+/// page's button redirects to `wtf.iskra:/oauth-callback`, and `ASWebAuthenticationSession`
 /// catches it the way it catches Matrix Authentication Service. That is the one piece of the
 /// registration flow nobody can test from `swift test`, and here it can be tapped through.
 ///

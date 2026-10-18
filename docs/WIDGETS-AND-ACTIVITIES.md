@@ -146,7 +146,7 @@
 - **iOS 26: `BGContinuedProcessingTask`** — задача, начатая человеком, которая продолжается после
   сворачивания; индикатор с прогрессом и отменой система рисует **сама**. Своя Live Activity
   поверх была бы вторым индикатором того же — на 26 её не делать. Идентификатор
-  `moscow.swag.iskra.upload.*` в `BGTaskSchedulerPermittedIdentifiers`, наружу — `Progress` и
+  `wtf.iskra.upload.*` в `BGTaskSchedulerPermittedIdentifiers`, наружу — `Progress` и
   заголовок «Отправляю видео в „Кухня“». В `expirationHandler` ничего не теряется: элемент остаётся
   в очереди и уйдёт при следующем открытии.
 - **iOS 18–25: `beginBackgroundTask` + своя Live Activity.** Фона там ~30 секунд, и активность

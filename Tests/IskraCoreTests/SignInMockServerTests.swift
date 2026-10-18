@@ -4,7 +4,7 @@ import Testing
 @testable import IskraCore
 
 /// Plays the browser: loads a URL and hands back where it was redirected, without following it.
-/// The redirect is to `moscow.swag.iskra:`, which nothing here could follow anyway — in the app
+/// The redirect is to `wtf.iskra:`, which nothing here could follow anyway — in the app
 /// that is the moment `ASWebAuthenticationSession` catches it.
 private final class Browser: NSObject, URLSessionTaskDelegate {
     func urlSession(_ session: URLSession, task: URLSessionTask,
@@ -125,7 +125,7 @@ struct SignInMockServerTests {
 
         let answer = try await Browser().submit(page, username: "boris", password: "secret")
         let callback = try #require(answer.location, "the page should have redirected: \(answer.body)")
-        #expect(callback.scheme == "moscow.swag.iskra")
+        #expect(callback.scheme == "wtf.iskra")
 
         let session = try await authentication.completeSingleSignOn(callbackURL: callback)
 

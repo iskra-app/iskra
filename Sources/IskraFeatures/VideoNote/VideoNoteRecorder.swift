@@ -62,7 +62,7 @@ public final class VideoNoteRecorder: NSObject {
 
     /// Where the frames arrive, and where every part of writing them down happens. A serial queue,
     /// so a `finish` dispatched onto it cannot land in the middle of a frame being appended.
-    nonisolated private let frames = DispatchQueue(label: "moscow.swag.iskra.videonote.frames")
+    nonisolated private let frames = DispatchQueue(label: "wtf.iskra.videonote.frames")
 
     /// The two outputs the frames come down. `nonisolated(unsafe)` because the delegate callback
     /// has to tell them apart — it is handed *an* output and must know which — and that callback

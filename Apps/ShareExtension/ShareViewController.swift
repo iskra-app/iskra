@@ -254,7 +254,7 @@ final class ShareViewController: UIViewController {
     }
 
     private func cancel() {
-        extensionContext?.cancelRequest(withError: NSError(domain: "moscow.swag.iskra.share", code: 0))
+        extensionContext?.cancelRequest(withError: NSError(domain: "wtf.iskra.share", code: 0))
     }
 }
 

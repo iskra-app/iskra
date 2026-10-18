@@ -9,7 +9,7 @@
 name: Iskra
 
 options:
-  bundleIdPrefix: moscow.swag
+  bundleIdPrefix: wtf
   createIntermediateGroups: true
   deploymentTarget:
     iOS: "18.0"
@@ -162,7 +162,7 @@ targets:
     settings:
       base:
         PRODUCT_NAME: Iskra
-        PRODUCT_BUNDLE_IDENTIFIER: moscow.swag.iskra
+        PRODUCT_BUNDLE_IDENTIFIER: wtf.iskra
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
         TARGETED_DEVICE_FAMILY: "1,2" # iPhone and iPad
         # ../icons/iskra-spark.icon, an Icon Composer document, named without its extension —
@@ -216,8 +216,8 @@ targets:
         # The App Group must also be enabled on the App ID, or the profile carries no
         # application-groups and the container is refused on device. The Simulator
         # ignores provisioning and will happily hide that from you.
-        com.apple.security.application-groups: [group.moscow.swag.iskra]
-        keychain-access-groups: [$(AppIdentifierPrefix)moscow.swag.iskra.shared]
+        com.apple.security.application-groups: [group.wtf.iskra]
+        keychain-access-groups: [$(AppIdentifierPrefix)wtf.iskra.shared]
         aps-environment: $(APS_ENVIRONMENT)
         # What makes a message from a person look like a message from a person: their avatar in
         # a circle, their name where the app's name would be, a place of their own in
@@ -226,8 +226,8 @@ targets:
         #
         # Unlike everything else in this file, Xcode cannot add this one to a Team Provisioning
         # Profile on its own: "Communication Notifications" has to be enabled on **both** App IDs
-        # at developer.apple.com first — `moscow.swag.iskra` and
-        # `moscow.swag.iskra.notifications`. Without that the build fails outright, with
+        # at developer.apple.com first — `wtf.iskra` and
+        # `wtf.iskra.notifications`. Without that the build fails outright, with
         # "Provisioning profile … doesn't include the Communication Notifications capability",
         # which is a clear enough sentence to recognise if this ever moves to another account.
         com.apple.developer.usernotifications.communication: true
@@ -301,17 +301,17 @@ targets:
         # ASWebAuthenticationSession intercepts the sign-in callback itself, but the
         # scheme is registered so the OAuth provider can hand it back to us.
         CFBundleURLTypes:
-          # Reverse-DNS of the client's domain (iskra.swag.moscow), which is the only scheme a
+          # Reverse-DNS of the client's domain (iskra.wtf), which is the only scheme a
           # homeserver running the authentication service will accept — and the same string as
           # AppEnvironment.oauthRedirectURI, which it has to be.
-          - CFBundleURLName: moscow.swag.iskra.oauth
-            CFBundleURLSchemes: [moscow.swag.iskra]
+          - CFBundleURLName: wtf.iskra.oauth
+            CFBundleURLSchemes: [wtf.iskra]
           # The spec's own scheme for people and rooms (MSC2312): `matrix:u/boris:matrix.org`.
           # Claimed so that a `matrix:` link anywhere on the device — a web page, a note, another
           # app — opens here. `matrix.to` links cannot be claimed this way, and that is not an
           # omission: a domain's links go to an app only if the domain itself names the app, and
           # matrix.to is not ours. See `MatrixLink`.
-          - CFBundleURLName: moscow.swag.iskra.matrix
+          - CFBundleURLName: wtf.iskra.matrix
             CFBundleURLSchemes: [matrix]
         # `location`: a live location share goes on while the phone is in a pocket, which is the
         # whole of what it is for — see `LiveLocationSharer`. The system shows the blue pill for as
@@ -325,7 +325,7 @@ targets:
         # `BGContinuedProcessingTask`, one identifier per upload under this prefix. Without the
         # entry `register` answers no, and the upload falls back to half a minute of
         # `beginBackgroundTask` — see `MediaSendBackground`.
-        BGTaskSchedulerPermittedIdentifiers: [moscow.swag.iskra.upload.*]
+        BGTaskSchedulerPermittedIdentifiers: [wtf.iskra.upload.*]
 
   # The process that decrypts a push. iOS wakes it when one arrives, gives it ~30 seconds,
   # and shows whatever it puts on screen — see Apps/NotificationService/NotificationService.swift.
@@ -364,7 +364,7 @@ targets:
     settings:
       base:
         PRODUCT_NAME: IskraNotificationService
-        PRODUCT_BUNDLE_IDENTIFIER: moscow.swag.iskra.notifications
+        PRODUCT_BUNDLE_IDENTIFIER: wtf.iskra.notifications
     info:
       path: NotificationService/Info.plist
       properties:
@@ -381,7 +381,7 @@ targets:
         # `AppEnvironment.keychainAccessGroup` reads this key out of `Bundle.main` to build
         # the Keychain group — and inside an extension `Bundle.main` is the *extension's*
         # bundle, not the app's. Without this line the prefix comes back empty, the group
-        # silently becomes "moscow.swag.iskra.shared" with no team ID in front of it, the
+        # silently becomes "wtf.iskra.shared" with no team ID in front of it, the
         # Keychain returns nothing, and the extension reports "nobody is signed in" on a
         # device where somebody plainly is.
         AppIdentifierPrefix: $(AppIdentifierPrefix)
@@ -401,8 +401,8 @@ targets:
         # these separately. It opens the app's encrypted SQLite store and reads the app's
         # session out of the app's Keychain group — and if either grant is missing, that is
         # where it fails. `Iskra --probe-notification` is what says so out loud.
-        com.apple.security.application-groups: [group.moscow.swag.iskra]
-        keychain-access-groups: [$(AppIdentifierPrefix)moscow.swag.iskra.shared]
+        com.apple.security.application-groups: [group.wtf.iskra]
+        keychain-access-groups: [$(AppIdentifierPrefix)wtf.iskra.shared]
         # Granted here too, and this is the copy that does the work: the intent is donated and
         # the notification rewritten in *this* process. The app's own grant matters so that the
         # App ID carries the capability at all.
@@ -432,7 +432,7 @@ targets:
     settings:
       base:
         PRODUCT_NAME: IskraShareExtension
-        PRODUCT_BUNDLE_IDENTIFIER: moscow.swag.iskra.share
+        PRODUCT_BUNDLE_IDENTIFIER: wtf.iskra.share
     info:
       path: ShareExtension/Info.plist
       properties:
@@ -461,7 +461,7 @@ targets:
     entitlements:
       path: ShareExtension/Iskra.entitlements
       properties:
-        com.apple.security.application-groups: [group.moscow.swag.iskra]
+        com.apple.security.application-groups: [group.wtf.iskra]
         # No keychain-access-groups, on purpose. This process parses whatever another app hands
         # it and never reads a secret; it has no business holding the group with the tokens and
         # the store passphrases in it.
@@ -498,7 +498,7 @@ targets:
     settings:
       base:
         PRODUCT_NAME: IskraWidgets
-        PRODUCT_BUNDLE_IDENTIFIER: moscow.swag.iskra.widgets
+        PRODUCT_BUNDLE_IDENTIFIER: wtf.iskra.widgets
     info:
       path: Widgets/Info.plist
       properties:
@@ -513,7 +513,7 @@ targets:
     entitlements:
       path: Widgets/Iskra.entitlements
       properties:
-        com.apple.security.application-groups: [group.moscow.swag.iskra]
+        com.apple.security.application-groups: [group.wtf.iskra]
         # No keychain-access-groups, for the share extension's reason: it never reads a secret.
 
   Iskra (macOS):
@@ -531,7 +531,7 @@ targets:
     settings:
       base:
         PRODUCT_NAME: Iskra
-        PRODUCT_BUNDLE_IDENTIFIER: moscow.swag.iskra
+        PRODUCT_BUNDLE_IDENTIFIER: wtf.iskra
         # The same icon as iOS, and set on the target for the same reason. See above.
         ASSETCATALOG_COMPILER_APPICON_NAME: iskra-spark
     info:
@@ -551,17 +551,17 @@ targets:
         # (`requiresOnDeviceRecognition`, see `VoiceTranscriber`) — the recording never goes to Apple.
         NSSpeechRecognitionUsageDescription: Iskra turns a voice message into text when you ask it to, on this device — the recording is never sent anywhere.
         CFBundleURLTypes:
-          # Reverse-DNS of the client's domain (iskra.swag.moscow), which is the only scheme a
+          # Reverse-DNS of the client's domain (iskra.wtf), which is the only scheme a
           # homeserver running the authentication service will accept — and the same string as
           # AppEnvironment.oauthRedirectURI, which it has to be.
-          - CFBundleURLName: moscow.swag.iskra.oauth
-            CFBundleURLSchemes: [moscow.swag.iskra]
+          - CFBundleURLName: wtf.iskra.oauth
+            CFBundleURLSchemes: [wtf.iskra]
           # The spec's own scheme for people and rooms (MSC2312): `matrix:u/boris:matrix.org`.
           # Claimed so that a `matrix:` link anywhere on the device — a web page, a note, another
           # app — opens here. `matrix.to` links cannot be claimed this way, and that is not an
           # omission: a domain's links go to an app only if the domain itself names the app, and
           # matrix.to is not ours. See `MatrixLink`.
-          - CFBundleURLName: moscow.swag.iskra.matrix
+          - CFBundleURLName: wtf.iskra.matrix
             CFBundleURLSchemes: [matrix]
     entitlements:
       path: macOS/Iskra.entitlements
@@ -581,5 +581,5 @@ targets:
         # The same group as iOS. On macOS an *unregistered* group would have to be
         # prefixed with the Team ID instead; registering it lets one identifier serve
         # both platforms.
-        com.apple.security.application-groups: [group.moscow.swag.iskra]
-        keychain-access-groups: [$(AppIdentifierPrefix)moscow.swag.iskra.shared]
+        com.apple.security.application-groups: [group.wtf.iskra]
+        keychain-access-groups: [$(AppIdentifierPrefix)wtf.iskra.shared]

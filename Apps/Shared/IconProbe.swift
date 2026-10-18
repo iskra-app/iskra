@@ -25,7 +25,7 @@ import IskraFeatures
 /// it. That last step is a person tapping a tile.
 ///
 /// ```sh
-/// xcrun simctl launch --console booted moscow.swag.iskra --probe-icons
+/// xcrun simctl launch --console booted wtf.iskra --probe-icons
 /// ```
 enum IconProbe {
     static var wasRequested: Bool {
