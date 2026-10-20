@@ -3,7 +3,9 @@ import IskraCore
 import IskraDesign
 
 /// A face, a name and a code to point a camera at — yours from settings, a person's or a public
-/// room's from its info screen. Telegram's QR screen, without the wallpaper.
+/// room's from its info screen. A white card held up to the viewer, after Threads' invitation:
+/// it sways a little by itself, turns under a finger to show the spark on its back, and a rainbow
+/// comes up across it as it tilts.
 ///
 /// What the code holds is a `matrix.to` link, not the bare ID — see `MatrixLink`, which is where
 /// that choice is argued. The ID is written under the code as well, for the person standing next
@@ -18,43 +20,40 @@ struct QRCodeSheet: View {
     let link: MatrixLink
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.mediaLoader) private var loader
+    @AppStorage(BetaFeatures.blobatarKey, store: BetaFeatures.faceStore) private var blobatarEnabled = BetaFeatures.blobatarByDefault
+    @AppStorage(BetaFeatures.forceBlobatarKey, store: BetaFeatures.faceStore) private var forceBlobatar = BetaFeatures.forceBlobatarByDefault
 
-    /// The code and the name under it, drawn once into a picture for the share sheet.
+    /// The picture on the card, fetched here rather than by an `Avatar` — the card is also drawn
+    /// into the picture that is shared, and a renderer runs no `.task`.
+    @State private var avatar: Image?
+    /// The front of the card, drawn once into a picture for the share sheet.
     @State private var card: Image?
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: Theme.Spacing.roomy) {
-                    Avatar(name: name, url: avatarURL, size: Theme.Size.avatarLarge, shape: shape, seed: seed)
+            VStack(spacing: Theme.Spacing.generous) {
+                Spacer(minLength: 0)
 
-                    Text(name)
-                        .font(.title2.weight(.semibold))
-                        .multilineTextAlignment(.center)
-
-                    QRCodeImage(text: link.url.absoluteString)
-                        .frame(maxWidth: Theme.Size.qrCode)
-
-                    Text(verbatim: subtitle)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
-                        .multilineTextAlignment(.center)
-
-                    // The code itself, as a picture — what somebody sharing a QR code means to send:
-                    // something to show on another screen or to print, that a camera can read. The
-                    // link is the subtitle above, selectable, for anybody who wants the words.
-                    if let card {
-                        ShareLink(item: card, preview: SharePreview(name, image: card)) {
-                            Label(String(app: Strings.Profile.share), systemImage: "square.and.arrow.up")
-                                .frame(maxWidth: Theme.Size.qrCode)
-                        }
-                        .buttonStyle(.primaryAction)
-                    }
+                SpinningCard {
+                    QRCardFront(name: name, subtitle: subtitle, link: link, face: face, holo: $0)
+                } back: {
+                    QRCardBack(holo: $0)
                 }
-                .padding(Theme.Spacing.generous)
-                .frame(maxWidth: .infinity)
+
+                Spacer(minLength: 0)
+
+                // The front of the card, as a picture — what somebody sharing a QR code means to
+                // send: something to show on another screen or to print, that a camera can read.
+                if let card {
+                    ShareLink(item: card, preview: SharePreview(name, image: card)) {
+                        Label(String(app: Strings.Profile.share), systemImage: "square.and.arrow.up")
+                    }
+                    .buttonStyle(.glassAction)
+                }
             }
+            .padding(Theme.Spacing.generous)
+            .frame(maxWidth: .infinity)
             .navigationTitle(Text(Strings.QR.title))
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
@@ -66,12 +65,292 @@ struct QRCodeSheet: View {
                 }
             }
         }
-        .task(id: link.url) { card = renderCard() }
+        .task(id: "\(link.url)\u{0}\(avatarURL ?? "")") {
+            card = renderCard()
+            await loadAvatar()
+            card = renderCard()
+        }
         #if os(macOS)
-        // A Mac sheet is as small as its content will let it be, and a scroll view will let it be
-        // very small indeed.
-        .frame(minWidth: Theme.Size.qrCode * 1.5, minHeight: Theme.Size.qrCode * 2.25)
+        // A Mac sheet is as small as its content will let it be.
+        .frame(minWidth: Theme.Size.qrCardWidth + Theme.Spacing.generous * 4,
+               minHeight: Theme.Size.qrCardWidth * 2)
         #endif
+    }
+
+    private var face: QRCardFace {
+        QRCardFace(name: name, picture: avatar, seed: seed, shape: shape,
+                   blobatarEnabled: blobatarEnabled, forceBlobatar: forceBlobatar)
+    }
+
+    /// From the avatar cache when the face was on screen a moment ago — it nearly always was, on
+    /// the profile this sheet was opened from — and from the server otherwise. Not at all when a
+    /// creature is going to be drawn over it: see `Avatar.load`.
+    private func loadAvatar() async {
+        guard let avatarURL, !(forceBlobatar && blobatarEnabled && seed != nil) else { return }
+        if let cached = AvatarCache.shared.image(for: avatarURL) {
+            avatar = cached
+            return
+        }
+        guard let loader,
+              let data = try? await loader.avatar(url: avatarURL, size: Int(Theme.Size.qrCardFace * 3)),
+              let loaded = Image(mediaData: data) else { return }
+        AvatarCache.shared.store(loaded, for: avatarURL)
+        avatar = loaded
+    }
+}
+
+extension QRCodeSheet {
+    @MainActor
+    func renderCard() -> Image? {
+        Self.card(name: name, subtitle: subtitle, link: link, face: face)
+            .map { Image(decorative: $0, scale: 3) }
+    }
+
+    /// The front of the card, flat, as a picture — a `CGImage`, so a test can read the code back
+    /// out of it. White whatever the appearance, because a QR code on a dark background is one a
+    /// camera may not read, and transparent past the rounded corners, so it is a card wherever it
+    /// lands and not a white rectangle.
+    @MainActor
+    static func card(name: String, subtitle: String, link: MatrixLink, face: QRCardFace,
+                     holo: Holo = .resting) -> CGImage? {
+        let renderer = ImageRenderer(content: QRCardFront(name: name, subtitle: subtitle, link: link,
+                                                          face: face, holo: holo))
+        renderer.scale = 3
+        renderer.isOpaque = false
+        return renderer.cgImage
+    }
+}
+
+/// How much rainbow there is on the card and where its colours stand — worked out from the card's
+/// angle by `SpinningCard`, fixed for the picture that is shared.
+struct Holo {
+    var phase: Double
+    var strength: Double
+
+    /// Face on and still: the watermark only just there.
+    static let resting = Holo(phase: 0, strength: 0.3)
+}
+
+/// The face at the top of the card: the picture, the creature or the initials, by the same rule as
+/// `Avatar` — but drawn from what it is handed, so the renderer that makes the shared picture sees
+/// the same face as the screen.
+struct QRCardFace: View {
+    let name: String
+    let picture: Image?
+    let seed: String?
+    let shape: AvatarShape
+    let blobatarEnabled: Bool
+    let forceBlobatar: Bool
+
+    var body: some View {
+        let outline = AvatarOutline(shape: shape)
+        let creature = Avatar.drawsBlobatar(enabled: blobatarEnabled, forced: forceBlobatar,
+                                            seed: seed, hasPicture: picture != nil)
+        outline
+            .fill(creature ? AnyShapeStyle(.clear) : AnyShapeStyle(.quaternary))
+            .overlay {
+                if creature, let seed {
+                    BlobatarView(seed: seed)
+                } else if let picture {
+                    picture
+                        .resizable()
+                        .scaledToFill()
+                        .clipShape(outline)
+                } else {
+                    Text(Initials.of(name))
+                        .font(.system(size: Theme.Size.qrCardFace * 0.4, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(width: Theme.Size.qrCardFace, height: Theme.Size.qrCardFace)
+            .accessibilityHidden(true)
+    }
+}
+
+/// The face of the card: who it is, the code, and the address under it.
+struct QRCardFront: View {
+    let name: String
+    let subtitle: String
+    let link: MatrixLink
+    let face: QRCardFace
+    let holo: Holo
+
+    var body: some View {
+        VStack(spacing: Theme.Spacing.normal) {
+            face
+
+            Text(name)
+                .font(.title2.weight(.semibold))
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+
+            // No plate of its own: the rainbow runs under the code as well. `QRCardTests` holds
+            // that a camera still reads it with the rainbow at its brightest.
+            QRCodeImage(text: link.url.absoluteString, plate: false)
+
+            Text(verbatim: subtitle)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+        }
+        .foregroundStyle(.black)
+        // The code brings its own margin inside its plate, so the sides take less than the ends.
+        .padding(.horizontal, Theme.Spacing.close)
+        .padding(.vertical, Theme.Spacing.generous)
+        .frame(width: Theme.Size.qrCardWidth)
+        .background { QRCardGround(holo: holo) }
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.qrCard, style: .continuous))
+        .environment(\.colorScheme, .light)
+    }
+}
+
+/// The back: the spark, flat and in outline, grey on the same white — a mark on the back of a
+/// card, quieter than anything on its face.
+struct QRCardBack: View {
+    let holo: Holo
+
+    var body: some View {
+        QRCardGround(holo: holo)
+            .overlay {
+                SparkGlyph()
+                    .stroke(Color(white: 0.6), lineWidth: 3)
+                    .frame(width: Theme.Size.qrCardSpark, height: Theme.Size.qrCardSpark)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.qrCard, style: .continuous))
+    }
+}
+
+/// The white with the rainbow in it, the same on both sides.
+private struct QRCardGround: View {
+    let holo: Holo
+
+    var body: some View {
+        Color.white
+            .overlay { HoloWatermark(phase: holo.phase, strength: holo.strength) }
+    }
+}
+
+/// The card in the hand: it sways a little on its own, turns under a finger, and comes to rest
+/// face on — front or back, whichever it was let go nearer to. A tap turns it over.
+///
+/// The angle is an animatable value of `TurnedCard` and the sway is not, so a spring back to rest
+/// and the sway can run at once without one cancelling the other. The sway starts from nothing
+/// each time the card is let go, so it never jumps; and with Reduce Motion on, there is none — the
+/// root's `respectsReduceMotion` only takes the animation out of a transaction, and a
+/// `TimelineView` would go on turning the card regardless.
+private struct SpinningCard<Front: View, Back: View>: View {
+    @ViewBuilder let front: (Holo) -> Front
+    @ViewBuilder let back: (Holo) -> Back
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// Where the card rests, in degrees about the vertical: a multiple of 180.
+    @State private var yaw: Double = 0
+    @State private var dragYaw: Double = 0
+    @State private var pitch: Double = 0
+    @State private var isDragging = false
+    /// When the sway last started, so that it starts from zero.
+    @State private var swayStart = Date()
+
+    var body: some View {
+        TimelineView(.animation(paused: isDragging || reduceMotion)) { context in
+            let sway = swaying ? Self.sway(since: swayStart, now: context.date) : (yaw: 0, pitch: 0)
+            TurnedCard(yaw: yaw + dragYaw, pitch: pitch,
+                       swayYaw: sway.yaw, swayPitch: sway.pitch,
+                       front: front, back: back)
+        }
+        .contentShape(Rectangle())
+        .gesture(drag)
+        .onTapGesture {
+            swayStart = .now
+            withAnimation(settle) { yaw += 180 }
+        }
+    }
+
+    private var swaying: Bool { !isDragging && !reduceMotion }
+
+    private var settle: Animation? {
+        reduceMotion ? nil : .spring(duration: 0.7, bounce: 0.3)
+    }
+
+    /// A slow figure of eight, coming up over the first second and a half after a rest.
+    private static func sway(since start: Date, now: Date) -> (yaw: Double, pitch: Double) {
+        let t = max(0, now.timeIntervalSince(start))
+        let ease = min(1, t / 1.5)
+        return (yaw: sin(t * 0.8) * 12 * ease, pitch: sin(t * 0.55) * 5 * ease)
+    }
+
+    private var drag: some Gesture {
+        DragGesture(minimumDistance: 4)
+            .onChanged { value in
+                if !isDragging {
+                    // Whatever the sway had turned the card to becomes where the finger picks it up.
+                    let sway = Self.sway(since: swayStart, now: .now)
+                    yaw += reduceMotion ? 0 : sway.yaw
+                    isDragging = true
+                }
+                dragYaw = value.translation.width * 0.5
+                pitch = min(18, max(-18, -value.translation.height * 0.15))
+            }
+            .onEnded { value in
+                let thrown = yaw + value.predictedEndTranslation.width * 0.5
+                yaw += dragYaw
+                dragYaw = 0
+                isDragging = false
+                swayStart = .now
+                withAnimation(settle) {
+                    yaw = (thrown / 180).rounded() * 180
+                    pitch = 0
+                }
+            }
+    }
+}
+
+/// The card at an angle. `Animatable`, so that which side is showing is decided from the angle as
+/// it is in the middle of a turn, not from where the turn will end.
+private struct TurnedCard<Front: View, Back: View>: View, Animatable {
+    var yaw: Double
+    var pitch: Double
+    let swayYaw: Double
+    let swayPitch: Double
+    let front: (Holo) -> Front
+    let back: (Holo) -> Back
+
+    nonisolated var animatableData: AnimatablePair<Double, Double> {
+        get { AnimatablePair(yaw, pitch) }
+        set { (yaw, pitch) = (newValue.first, newValue.second) }
+    }
+
+    var body: some View {
+        let turn = yaw + swayYaw
+        let tilt = pitch + swayPitch
+        let radians = turn * .pi / 180
+        let showsFront = cos(radians) >= 0
+        // Bright as it turns away from face on, and a little with the tilt.
+        let holo = Holo(phase: (turn + tilt * 2) * .pi / 180,
+                        strength: 0.3 + 0.6 * abs(sin(radians)) + 0.3 * abs(sin(tilt * .pi / 180)))
+
+        ZStack {
+            front(holo)
+                .opacity(showsFront ? 1 : 0)
+                .accessibilityHidden(!showsFront)
+            back(holo)
+                .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
+                .opacity(showsFront ? 0 : 1)
+                .accessibilityHidden(true)
+        }
+        .fixedSize()
+        // The side turned away from the light, a shade darker — the one thing that makes a white
+        // card read as turned and not as squeezed.
+        .overlay {
+            RoundedRectangle(cornerRadius: Theme.Radius.qrCard, style: .continuous)
+                .fill(.black.opacity(0.12 * abs(sin(radians))))
+                .allowsHitTesting(false)
+        }
+        .shadow(color: .black.opacity(0.2), radius: Theme.Spacing.generous, y: Theme.Spacing.normal)
+        .rotation3DEffect(.degrees(tilt), axis: (x: 1, y: 0, z: 0), perspective: 0.6)
+        .rotation3DEffect(.degrees(turn), axis: (x: 0, y: 1, z: 0), perspective: 0.6)
     }
 }
 
@@ -81,40 +360,6 @@ struct QRCodeSheet: View {
 /// Never straight into a room. A QR code is somebody else's choice of where to send you, and
 /// joining is visible to everyone already there; so a room is shown first, with what the server
 /// will say about it, and entered with a press. A room this account is already in simply opens.
-extension QRCodeSheet {
-    /// White, the code, the name and the address under it — legible anywhere it is sent, in
-    /// either appearance, because a QR code on a dark background is one a camera may not read.
-    @MainActor
-    func renderCard() -> Image? {
-        Self.card(name: name, subtitle: subtitle, link: link).map { Image(decorative: $0, scale: 3) }
-    }
-
-    /// The picture itself — a `CGImage`, so a test can read the code back out of it.
-    @MainActor
-    static func card(name: String, subtitle: String, link: MatrixLink) -> CGImage? {
-        let content = VStack(spacing: Theme.Spacing.normal) {
-            QRCodeImage(text: link.url.absoluteString)
-                .frame(width: Theme.Size.qrCode)
-            Text(name)
-                .font(.title3.weight(.semibold))
-                .multilineTextAlignment(.center)
-            Text(verbatim: subtitle)
-                .font(.callout)
-                .multilineTextAlignment(.center)
-                .opacity(0.6)
-        }
-        .foregroundStyle(.black)
-        .padding(Theme.Spacing.generous)
-        .frame(width: Theme.Size.qrCode + Theme.Spacing.generous * 2)
-        .background(.white)
-        .environment(\.colorScheme, .light)
-
-        let renderer = ImageRenderer(content: content)
-        renderer.scale = 3
-        return renderer.cgImage
-    }
-}
-
 struct MatrixLinkView: View {
     let session: UserSession
     let link: MatrixLink

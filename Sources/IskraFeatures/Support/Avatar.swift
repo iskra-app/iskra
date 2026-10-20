@@ -77,7 +77,13 @@ struct Avatar: View {
     /// actually set — which is a thing to ask for and never a default, and is also the only way
     /// to see this feature at all in an account where everybody has a face already.
     private var drawsBlobatar: Bool {
-        blobatarEnabled && seed != nil && (image == nil || forceBlobatar)
+        Self.drawsBlobatar(enabled: blobatarEnabled, forced: forceBlobatar, seed: seed, hasPicture: image != nil)
+    }
+
+    /// The same decision, for a face drawn somewhere a `.task` never runs — the QR card, which is
+    /// also rendered into a picture to share — so that the card and the avatar cannot disagree.
+    static func drawsBlobatar(enabled: Bool, forced: Bool, seed: String?, hasPicture: Bool) -> Bool {
+        enabled && seed != nil && (!hasPicture || forced)
     }
 
     var body: some View {

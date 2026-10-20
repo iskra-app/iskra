@@ -52,6 +52,9 @@ public enum Theme {
         public static func appIcon(side: CGFloat) -> CGFloat { side * 0.2237 }
         public static let card: CGFloat = 16
         public static let control: CGFloat = 12
+        /// The white card the QR screen turns in the hand — `QRCodeSheet`. Rounder than `card`,
+        /// because it is held up as an object of its own and not set into a list.
+        public static let qrCard: CGFloat = 28
 
         /// The menu a long press opens, and the panel of emoji beside it — see `MessageMenu`.
         ///
@@ -633,6 +636,16 @@ public enum Theme {
         /// The QR code on its own screen — `QRCodeSheet`. Large enough for a camera across a table,
         /// small enough to leave the name and the face above it on a small phone.
         public static let qrCode: CGFloat = 240
+        /// How wide that card is. The code fills it less the margins, so this is what makes it
+        /// "large": about the width of a phone less a hand's grip on either side.
+        public static let qrCardWidth: CGFloat = 320
+        /// The face at the top of the card.
+        public static let qrCardFace: CGFloat = 72
+        /// The spark on the back of the card.
+        public static let qrCardSpark: CGFloat = 160
+        /// The distance between two sparks of the rainbow watermark — `HoloWatermark`. Small enough
+        /// to read as a texture and not as a pattern of separate pictures.
+        public static let watermarkStep: CGFloat = 16
         /// A chat's face in the share sheet's grid — four to a row on a phone, Telegram's size.
         public static let shareFace: CGFloat = 60
         /// How wide a poll's bubble is. Fixed, not hugging its words: the bars are a comparison,

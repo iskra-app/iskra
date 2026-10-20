@@ -83,6 +83,10 @@ enum QRCode {
 /// ground, and an inverted code is one that half the scanners in the world refuse.
 struct QRCodeImage: View {
     let text: String
+    /// Whether the code stands on a white plate of its own. Off on the QR card, where the card is
+    /// the white: there the light modules are multiplied into whatever is under them, so the
+    /// rainbow runs under the code too, and the dark ones stay black — which is all a camera reads.
+    var plate = true
 
     var body: some View {
         if let image = QRCode.image(for: text) {
@@ -102,8 +106,11 @@ struct QRCodeImage: View {
                             .position(x: proxy.size.width / 2, y: proxy.size.height / 2)
                     }
                 }
+                .compositingGroup()
+                .blendMode(plate ? .normal : .multiply)
                 .padding(Theme.Spacing.roomy)
-                .background(.white, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+                .background(plate ? Color.white : .clear,
+                            in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
                 .accessibilityHidden(true)
         }
     }
