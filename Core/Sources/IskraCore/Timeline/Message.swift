@@ -580,6 +580,7 @@ public struct RoomEvent: Sendable, Identifiable, Equatable {
         case .roomPictureChanged: String(core: CoreStrings.RoomEvent.roomPictureChanged)
         case .roomCreated: String(core: CoreStrings.RoomEvent.roomCreated)
         case .encryptionEnabled: String(core: CoreStrings.RoomEvent.encryptionEnabled)
+        case let .hidden(description): description
         }
     }
 
@@ -641,6 +642,13 @@ public enum RoomEventKind: Sendable, Equatable {
     case roomPictureChanged
     case roomCreated
     case encryptionEnabled
+
+    /// An event this app does not show, described in the protocol's own words — `m.room.power_levels`
+    /// and who sent it. Only ever drawn for a developer who asked to see everything
+    /// (`BetaFeatures.showsAllEventsKey`); to anybody else it is exactly the audit log a
+    /// conversation is not, and `ServiceEventSettings` leaves it out. Not localised, on purpose:
+    /// the event type *is* the information.
+    case hidden(String)
 
     /// The people named, for the shapes that name people. Nil for the rest, which is what
     /// lets `merged(with:)` refuse to pool two lines that have nobody to pool.

@@ -39,6 +39,13 @@ struct ChatSettingsTests {
         }
     }
 
+    @Test("what the app never shows stays out unless a developer asks for everything")
+    func hiddenEventsNeedTheSwitch() {
+        let event = RoomEventKind.hidden("m.room.power_levels — @a:x")
+        #expect(ServiceEventSettings().hides(event))
+        #expect(!ServiceEventSettings(showsEverything: true).hides(event))
+    }
+
     @Test("both switches start off")
     func serviceDefaults() throws {
         #expect(ServiceEventSettings.current(try freshDefaults("serviceDefaults")) == ServiceEventSettings())

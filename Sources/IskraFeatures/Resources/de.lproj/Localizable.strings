@@ -1421,6 +1421,10 @@
 "beta.developers" = "Für Entwickler";
 "beta.showsSource" = "Nachrichten-JSON im Menü";
 "beta.showsSourceHelp" = "Im Menü einer Nachricht erscheint „JSON ansehen“ – das Ereignis, wie der Server es geschickt hat. Hilfreich, wenn eine Nachricht falsch angezeigt wird.";
+"beta.homeserver" = "Server";
+"beta.homeserverHelp" = "Die Adresse, mit der die App wirklich spricht – aus dem Namen des Kontos ermittelt, nicht unbedingt die bei der Anmeldung eingegebene. Eine Brücke ändert sie nicht, sie trägt nur die Verbindung.";
+"beta.showsAllEvents" = "Alle Ereignisse im Chat";
+"beta.showsAllEventsHelp" = "Im Chat erscheinen auch die Ereignisse, die die App sonst weglässt – Berechtigungen, Beitrittsregeln, Anrufe, neue Profilbilder, alles, was sich nicht lesen ließ – als graue Zeile mit Typ und Absender.";
 "beta.viewSource" = "JSON ansehen";
 "beta.noSource" = "Diese Nachricht hat noch kein Ereignis auf dem Server.";
 "beta.demoSignIn" = "Demo-Anmeldung";

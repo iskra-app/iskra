@@ -257,7 +257,7 @@ struct SettingsView: View {
                 // the version is shown, and the only way to the beta features — three taps on the
                 // spark there. See `AboutView`.
                 NavigationLink {
-                    AboutView()
+                    AboutView(homeserver: session.homeserverURL.absoluteString)
                 } label: {
                     Label(Strings.Settings.about, systemImage: "info.circle")
                 }

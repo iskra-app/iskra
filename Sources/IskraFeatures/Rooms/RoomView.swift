@@ -363,6 +363,7 @@ public struct RoomView: View {
     /// screen follows a change at once; `TimelineStore` reads the settings itself.
     @AppStorage(ServiceEventSettings.hidesNameChangesKey) private var hidesNameChanges = false
     @AppStorage(ServiceEventSettings.hidesMembershipChangesKey) private var hidesMembershipChanges = false
+    @AppStorage(BetaFeatures.showsAllEventsKey) private var showsAllEvents = false
 
     /// How tall the conversation is and how far into it the reader has come.
     private struct ScrollMetrics: Equatable {
@@ -1269,6 +1270,7 @@ public struct RoomView: View {
         // the way the chat list's title does — see `headerSubtitle`.
         .onChange(of: hidesNameChanges) { timeline.serviceEventSettingsChanged() }
         .onChange(of: hidesMembershipChanges) { timeline.serviceEventSettingsChanged() }
+        .onChange(of: showsAllEvents) { timeline.serviceEventSettingsChanged() }
         // Opened the first time the room reports anything pinned, and kept afterwards. A room
         // with nothing pinned never opens a second timeline at all.
         .onChange(of: timeline.pinnedEventIDs.isEmpty, initial: true) { _, isEmpty in

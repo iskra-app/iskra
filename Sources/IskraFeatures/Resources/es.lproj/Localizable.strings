@@ -1421,6 +1421,10 @@
 "beta.developers" = "Para desarrolladores";
 "beta.showsSource" = "JSON del mensaje en el menú";
 "beta.showsSourceHelp" = "El menú del mensaje tendrá «Ver JSON»: el evento tal como lo envió el servidor. Útil si un mensaje se muestra mal.";
+"beta.homeserver" = "Servidor";
+"beta.homeserverHelp" = "La dirección con la que la app habla de verdad: se averigua a partir del nombre de la cuenta, no es necesariamente la que se escribió al entrar. Un puente no la cambia; solo lleva la conexión.";
+"beta.showsAllEvents" = "Todos los eventos del chat";
+"beta.showsAllEventsHelp" = "El chat mostrará también los eventos que la app suele omitir —permisos, reglas de acceso, llamadas, cambios de foto, todo lo que no se pudo leer— como una línea gris con el tipo y el remitente.";
 "beta.viewSource" = "Ver JSON";
 "beta.noSource" = "Este mensaje aún no tiene evento en el servidor.";
 "beta.demoSignIn" = "Inicio de sesión de demostración";

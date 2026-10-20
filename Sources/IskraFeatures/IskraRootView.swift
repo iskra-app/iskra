@@ -419,6 +419,14 @@ public struct IskraRootView: View {
                             DeliveredNotifications.clear(roomID: roomID)
                         }
                     }
+                    // One account, one tree. Without this, signing out of one of several came back
+                    // to the settings screen it was pressed on, spinner and all: `restart()` goes to
+                    // `.starting`, the next account is restored from disk before the animation below
+                    // has finished taking the old tree away, and SwiftUI brings a view that is
+                    // still on its way out *back*, `@State` included — the pushed settings and
+                    // `isSigningOut` with them. Adding an account did the same, and every `.task`
+                    // above without an `id` went on holding the session that had left.
+                    .id(session.sessionID)
             }
         }
         .animation(.smooth, value: isSignedIn)

@@ -1421,6 +1421,10 @@
 "beta.developers" = "開発者向け";
 "beta.showsSource" = "メニューにメッセージのJSON";
 "beta.showsSourceHelp" = "メッセージのメニューに「JSONを表示」が加わり、サーバーから届いたイベントをそのまま見られます。表示がおかしいときに役立ちます。";
+"beta.homeserver" = "サーバー";
+"beta.homeserverHelp" = "アプリが実際に通信しているアドレスです。サインイン時に入力したものではなく、アカウント名から見つけたものです。ブリッジはこれを変えず、接続を運ぶだけです。";
+"beta.showsAllEvents" = "チャットのすべてのイベント";
+"beta.showsAllEventsHelp" = "権限、参加ルール、通話、写真の変更、読み取れなかったものなど、普段は表示しないイベントも、種類と送信者を添えた灰色の行としてチャットに表示します。";
 "beta.viewSource" = "JSONを表示";
 "beta.noSource" = "このメッセージにはまだサーバー上のイベントがありません。";
 "beta.demoSignIn" = "デモサインイン";

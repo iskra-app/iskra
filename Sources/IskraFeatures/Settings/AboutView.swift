@@ -11,6 +11,9 @@ import IskraDesign
 /// The licences sit one push further in (`LicensesView`) rather than on this screen: they are
 /// a list somebody opens on purpose, not something to scroll past on the way to a version.
 struct AboutView: View {
+    /// The homeserver the session on screen talks to, for the developers' corner of `BetaView`.
+    var homeserver: String?
+
     @Environment(\.accent) private var accent
 
     /// Whether the beta features are pushed — by three taps on the spark, which is the only way
@@ -93,7 +96,7 @@ struct AboutView: View {
         // there: the way in is a gesture on the icon. `BetaView` reads no `dismiss` — this stack
         // can be the sidebar's, see CLAUDE.md.
         .navigationDestination(isPresented: $isShowingBeta) {
-            BetaView()
+            BetaView(homeserver: homeserver)
         }
     }
 

@@ -1708,6 +1708,12 @@ public enum Strings {
         public static let developers = LocalizedStringResource("beta.developers", bundle: bundle)
         public static let showsSource = LocalizedStringResource("beta.showsSource", bundle: bundle)
         public static let showsSourceHelp = LocalizedStringResource("beta.showsSourceHelp", bundle: bundle)
+        /// The homeserver the SDK really talks to — see `UserSession.homeserverURL`.
+        public static let homeserver = LocalizedStringResource("beta.homeserver", bundle: bundle)
+        public static let homeserverHelp = LocalizedStringResource("beta.homeserverHelp", bundle: bundle)
+        /// See `BetaFeatures.showsAllEventsKey`.
+        public static let showsAllEvents = LocalizedStringResource("beta.showsAllEvents", bundle: bundle)
+        public static let showsAllEventsHelp = LocalizedStringResource("beta.showsAllEventsHelp", bundle: bundle)
         public static let viewSource = LocalizedStringResource("beta.viewSource", bundle: bundle)
         public static let noSource = LocalizedStringResource("beta.noSource", bundle: bundle)
         public static let demoSignIn = LocalizedStringResource("beta.demoSignIn", bundle: bundle)

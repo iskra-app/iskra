@@ -14,11 +14,16 @@ import SwiftUI
 /// people who will go looking, and everybody else is better off never seeing them. The sidebar
 /// switch is the one thing here that is Mac-only; the rest of the screen is the same everywhere.
 struct BetaView: View {
+    /// The homeserver the session on screen really talks to — the client's own answer, after
+    /// discovery, which is not always what was typed at sign-in. Nil where there is no session.
+    var homeserver: String?
+
     @AppStorage(BetaFeatures.nativeSidebarKey) private var nativeSidebar = BetaFeatures.nativeSidebarByDefault
     @AppStorage(BetaFeatures.blobatarKey, store: BetaFeatures.faceStore) private var blobatar = BetaFeatures.blobatarByDefault
     @AppStorage(BetaFeatures.forceBlobatarKey, store: BetaFeatures.faceStore) private var forceBlobatar = BetaFeatures.forceBlobatarByDefault
     @AppStorage(BetaFeatures.mockBackendKey) private var mockBackend = false
     @AppStorage(BetaFeatures.showsEventSourceKey) private var showsEventSource = false
+    @AppStorage(BetaFeatures.showsAllEventsKey) private var showsAllEvents = false
 
     /// The sign-in screen against the server inside the app — see `MockSignIn` — and its address
     /// once that server is up.
@@ -92,6 +97,21 @@ struct BetaView: View {
                 Text(Strings.Beta.mockBackendHelp)
             }
 
+            if let homeserver {
+                Section {
+                    LabeledContent {
+                        Text(verbatim: homeserver)
+                    } label: {
+                        Label(Strings.Beta.homeserver, systemImage: "server.rack")
+                    }
+                    .textSelection(.enabled)
+                } header: {
+                    Text(Strings.Beta.developers)
+                } footer: {
+                    Text(Strings.Beta.homeserverHelp)
+                }
+            }
+
             Section {
                 Button {
                     Task { demoServer = await MockSignIn.start().map(DemoServer.init) }
@@ -102,10 +122,17 @@ struct BetaView: View {
                     Label(Strings.Beta.showsSource, systemImage: "curlybraces")
                 }
                 .accentControl()
+                Toggle(isOn: $showsAllEvents) {
+                    Label(Strings.Beta.showsAllEvents, systemImage: "list.bullet.rectangle")
+                }
+                .accentControl()
             } header: {
-                Text(Strings.Beta.developers)
+                if homeserver == nil {
+                    Text(Strings.Beta.developers)
+                }
             } footer: {
                 Text(Strings.Beta.demoSignInHelp) + Text(verbatim: "\n\n") + Text(Strings.Beta.showsSourceHelp)
+                    + Text(verbatim: "\n\n") + Text(Strings.Beta.showsAllEventsHelp)
             }
         }
         .formStyle(.grouped)

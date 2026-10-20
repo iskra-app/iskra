@@ -127,7 +127,12 @@ enum TimelineMapper {
         } else if let message = message(from: event, ownUserID: ownUserID) {
             body = .message(message)
         } else {
-            body = .nothing
+            // Kept, under a name, rather than dropped here: whether it is drawn is decided with
+            // the rest of the hiding, in `rows`, where the developer's "show everything" is known.
+            body = .event(RoomEvent(id: identifier(for: event.eventOrTransactionId),
+                                    kind: .hidden(hiddenDescription(of: event.content, sender: event.sender)),
+                                    timestamp: MessagePreview.date(from: event.timestamp),
+                                    actorID: event.sender))
         }
 
         return Mapped(body: body,
@@ -554,6 +559,55 @@ enum TimelineMapper {
 
         default:
             return nil
+        }
+    }
+
+    /// An event the app does not show, in the protocol's words: its type, a detail where one says
+    /// more than the type does, and who sent it. For `RoomEventKind.hidden`.
+    private static func hiddenDescription(of content: TimelineItemContent, sender: String) -> String {
+        let what: String = switch content {
+        case let .roomMembership(userId, _, change, _):
+            "m.room.member · \(userId) · \(change.map { String(describing: $0) } ?? "?")"
+        case .profileChange:
+            "m.room.member · profile"
+        case let .state(stateKey, state):
+            stateKey.isEmpty ? stateType(state) : "\(stateType(state)) · \(stateKey)"
+        case .callInvite:
+            "m.call.invite"
+        case .rtcNotification:
+            "org.matrix.msc4075.rtc.notification"
+        case let .failedToParseMessageLike(eventType, error):
+            "\(eventType) · \(error)"
+        case let .failedToParseState(eventType, stateKey, error):
+            "\(eventType) · \(stateKey) · \(error)"
+        case let .msgLike(msgLike):
+            String(describing: msgLike.kind).prefix(while: { $0 != "(" }).description
+        }
+        return "\(what) — \(sender)"
+    }
+
+    private static func stateType(_ state: OtherState) -> String {
+        switch state {
+        case .policyRuleRoom: "m.policy.rule.room"
+        case .policyRuleServer: "m.policy.rule.server"
+        case .policyRuleUser: "m.policy.rule.user"
+        case .roomAvatar: "m.room.avatar"
+        case .roomCanonicalAlias: "m.room.canonical_alias"
+        case .roomCreate: "m.room.create"
+        case .roomEncryption: "m.room.encryption"
+        case .roomGuestAccess: "m.room.guest_access"
+        case .roomHistoryVisibility: "m.room.history_visibility"
+        case .roomJoinRules: "m.room.join_rules"
+        case .roomName: "m.room.name"
+        case .roomPinnedEvents: "m.room.pinned_events"
+        case .roomPowerLevels: "m.room.power_levels"
+        case .roomServerAcl: "m.room.server_acl"
+        case .roomThirdPartyInvite: "m.room.third_party_invite"
+        case .roomTombstone: "m.room.tombstone"
+        case .roomTopic: "m.room.topic"
+        case .spaceChild: "m.space.child"
+        case .spaceParent: "m.space.parent"
+        case let .custom(eventType): eventType
         }
     }
 

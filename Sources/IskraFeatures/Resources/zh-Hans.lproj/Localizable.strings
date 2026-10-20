@@ -1421,6 +1421,10 @@
 "beta.developers" = "开发者选项";
 "beta.showsSource" = "菜单中显示消息 JSON";
 "beta.showsSourceHelp" = "消息菜单中会出现“查看 JSON”——服务器发来的原始事件。消息显示不对时很有用。";
+"beta.homeserver" = "服务器";
+"beta.homeserverHelp" = "应用实际通信的地址——根据账号名称找到，不一定是登录时输入的那个。桥接不会改变它，只负责传输连接。";
+"beta.showsAllEvents" = "聊天中的所有事件";
+"beta.showsAllEventsHelp" = "聊天中也会显示应用通常不显示的事件——权限、加入规则、通话、头像更改、无法解析的内容——以灰色行显示类型和发送者。";
 "beta.viewSource" = "查看 JSON";
 "beta.noSource" = "这条消息在服务器上还没有事件。";
 "beta.demoSignIn" = "演示登录";
