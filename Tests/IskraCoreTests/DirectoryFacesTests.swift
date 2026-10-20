@@ -197,6 +197,9 @@ struct DirectoryFacesTests {
         #expect(request.roomID == "!room:matrix.org")
         #expect(request.accountID == "one")
         #expect(ChatDirectory.OpenRequest(url: AppEnvironment.shareHandoffURL) == nil)
+        // A link to a person or a room shares the scheme, and has a host where this has none.
+        #expect(ChatDirectory.OpenRequest(url: URL(string: "wtf.iskra://x/open?room=!room:matrix.org")!) == nil)
+        #expect(ChatDirectory.OpenRequest(url: MatrixLink.room("!room:matrix.org", via: []).deepLink) == nil)
     }
 
     @Test("the widget's account: the active one, a chosen one, or everybody — and falling back")

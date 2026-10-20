@@ -108,9 +108,10 @@ public extension AppEnvironment {
 }
 
 public extension ChatDirectory.OpenRequest {
-    /// The chat an `openChatURL` asks for, or nil for any other URL.
+    /// The chat an `openChatURL` asks for, or nil for any other URL — including a `wtf.iskra://`
+    /// link to a person or a room (`MatrixLink.deepLink`), which has a host where this has none.
     init?(url: URL) {
-        guard url.scheme == "wtf.iskra", url.path == "/open",
+        guard url.scheme == "wtf.iskra", url.host?.isEmpty ?? true, url.path == "/open",
               let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
               let room = items.first(where: { $0.name == "room" })?.value, !room.isEmpty
         else { return nil }

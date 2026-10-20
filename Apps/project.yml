@@ -240,6 +240,13 @@ targets:
         # "Provisioning profile … doesn't include the Communication Notifications capability",
         # which is a clear enough sentence to recognise if this ever moves to another account.
         com.apple.developer.usernotifications.communication: true
+        # Universal Links: an s.iskra.wtf link — the one in every QR code and behind "Share",
+        # see `MatrixLink.url` — opens straight in the app instead of in Safari, and SwiftUI
+        # hands it to `onOpenURL` like any other. Only if the site agrees: it serves
+        # `/.well-known/apple-app-site-association` naming `936RH3UPR3.wtf.iskra`, and Apple's CDN
+        # fetches that file, not the device. Without it the entitlement is silently ignored and
+        # the link opens the page, whose button (`wtf.iskra://…`) still gets here.
+        com.apple.developer.associated-domains: [applinks:s.iskra.wtf]
 
     info:
       path: iOS/Info.plist
@@ -312,14 +319,18 @@ targets:
         CFBundleURLTypes:
           # Reverse-DNS of the client's domain (iskra.wtf), which is the only scheme a
           # homeserver running the authentication service will accept — and the same string as
-          # AppEnvironment.oauthRedirectURI, which it has to be.
+          # AppEnvironment.oauthRedirectURI, which it has to be. It carries the share sheet's
+          # hand-over and a Live Activity's `wtf.iskra:/open?room=…` too, all without a host;
+          # with one — `wtf.iskra://u/boris:matrix.org` — it is the "Open in Iskra" button on
+          # the s.iskra.wtf page. See `MatrixLink.deepLink`.
           - CFBundleURLName: wtf.iskra.oauth
             CFBundleURLSchemes: [wtf.iskra]
           # The spec's own scheme for people and rooms (MSC2312): `matrix:u/boris:matrix.org`.
           # Claimed so that a `matrix:` link anywhere on the device — a web page, a note, another
           # app — opens here. `matrix.to` links cannot be claimed this way, and that is not an
           # omission: a domain's links go to an app only if the domain itself names the app, and
-          # matrix.to is not ours. See `MatrixLink`.
+          # matrix.to is not ours. s.iskra.wtf is, and is claimed under the entitlements below.
+          # See `MatrixLink`.
           - CFBundleURLName: wtf.iskra.matrix
             CFBundleURLSchemes: [matrix]
         # `location`: a live location share goes on while the phone is in a pocket, which is the
@@ -562,14 +573,18 @@ targets:
         CFBundleURLTypes:
           # Reverse-DNS of the client's domain (iskra.wtf), which is the only scheme a
           # homeserver running the authentication service will accept — and the same string as
-          # AppEnvironment.oauthRedirectURI, which it has to be.
+          # AppEnvironment.oauthRedirectURI, which it has to be. It carries the share sheet's
+          # hand-over and a Live Activity's `wtf.iskra:/open?room=…` too, all without a host;
+          # with one — `wtf.iskra://u/boris:matrix.org` — it is the "Open in Iskra" button on
+          # the s.iskra.wtf page. See `MatrixLink.deepLink`.
           - CFBundleURLName: wtf.iskra.oauth
             CFBundleURLSchemes: [wtf.iskra]
           # The spec's own scheme for people and rooms (MSC2312): `matrix:u/boris:matrix.org`.
           # Claimed so that a `matrix:` link anywhere on the device — a web page, a note, another
           # app — opens here. `matrix.to` links cannot be claimed this way, and that is not an
           # omission: a domain's links go to an app only if the domain itself names the app, and
-          # matrix.to is not ours. See `MatrixLink`.
+          # matrix.to is not ours. s.iskra.wtf is, and is claimed under the entitlements below.
+          # See `MatrixLink`.
           - CFBundleURLName: wtf.iskra.matrix
             CFBundleURLSchemes: [matrix]
     entitlements:
@@ -592,3 +607,10 @@ targets:
         # both platforms.
         com.apple.security.application-groups: [group.wtf.iskra]
         keychain-access-groups: [$(AppIdentifierPrefix)wtf.iskra.shared]
+        # Universal Links: an s.iskra.wtf link — the one in every QR code and behind "Share",
+        # see `MatrixLink.url` — opens straight in the app instead of in Safari, and SwiftUI
+        # hands it to `onOpenURL` like any other. Only if the site agrees: it serves
+        # `/.well-known/apple-app-site-association` naming `936RH3UPR3.wtf.iskra`, and Apple's CDN
+        # fetches that file, not the device. Without it the entitlement is silently ignored and
+        # the link opens the page, whose button (`wtf.iskra://…`) still gets here.
+        com.apple.developer.associated-domains: [applinks:s.iskra.wtf]

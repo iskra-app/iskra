@@ -7,8 +7,8 @@ import IskraDesign
 /// it sways a little by itself, turns under a finger to show the spark on its back, and a rainbow
 /// comes up across it as it tilts.
 ///
-/// What the code holds is a `matrix.to` link, not the bare ID — see `MatrixLink`, which is where
-/// that choice is argued. The ID is written under the code as well, for the person standing next
+/// What the code holds is an `s.iskra.wtf` link, not the bare ID — see `MatrixLink`, which is
+/// where that choice is argued. The ID is written under the code as well, for the person standing next
 /// to you who would rather type it.
 struct QRCodeSheet: View {
     let name: String

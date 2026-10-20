@@ -2210,7 +2210,7 @@ public enum Strings {
     }
 
     /// QR codes: the one that says who you are (or what a room is), and the camera that reads
-    /// somebody else's. What is in the code is a `matrix.to` link — see `MatrixLink`.
+    /// somebody else's. What is in the code is an `s.iskra.wtf` link — see `MatrixLink`.
     public enum QR {
         public static let title = LocalizedStringResource("qr.title", bundle: bundle)
         public static let scan = LocalizedStringResource("qr.scan", bundle: bundle)

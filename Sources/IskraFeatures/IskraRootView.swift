@@ -26,12 +26,16 @@ public struct IskraRootView: View {
         let link: MatrixLink
     }
 
-    /// The person or room a URL points at, if it is a Matrix link: `matrix.to`, or `matrix:`.
-    /// Anything else — a web page, the sign-in callback — is not this function's.
+    /// The person or room a URL points at, if it is a Matrix link: `s.iskra.wtf` or `matrix.to`,
+    /// `matrix:`, or this app's own `wtf.iskra://u/…` (the button on the `s.iskra.wtf` page).
+    /// Anything else — a web page, the sign-in callback, the host-less `wtf.iskra:/open` a Live
+    /// Activity sends — is not this function's.
     static func matrixLink(in url: URL) -> MatrixLink? {
         let scheme = url.scheme?.lowercased()
+        let host = url.host?.lowercased()
         let isMatrix = scheme == "matrix"
-            || ((scheme == "https" || scheme == "http") && url.host?.lowercased() == "matrix.to")
+            || (scheme == "wtf.iskra" && host != nil)
+            || ((scheme == "https" || scheme == "http") && (host == "matrix.to" || host == MatrixLink.webHost))
         guard isMatrix else { return nil }
         return MatrixLink(parsing: url.absoluteString)
     }
@@ -223,9 +227,11 @@ public struct IskraRootView: View {
                         selectedEventID = nil
                     })
                     // A link to a person or a room opens here, wherever it came from: tapped in a
-                    // message (`matrix.to`), or handed over by another app (`matrix:`, the scheme
-                    // this app claims — see `Apps/project.yml`). It opens as a page about them, never
-                    // as a jump into a room: see `MatrixLinkView`.
+                    // message (`matrix.to`, `s.iskra.wtf`), or handed over by the system — `matrix:`
+                    // and `wtf.iskra://`, the schemes this app claims, and `s.iskra.wtf` as a
+                    // Universal Link, which SwiftUI delivers to `onOpenURL` as well (see
+                    // `Apps/project.yml`). It opens as a page about them, never as a jump into a
+                    // room: see `MatrixLinkView`.
                     .environment(\.openURL, OpenURLAction { url in
                         guard let link = Self.matrixLink(in: url) else { return .systemAction }
                         openedLink = OpenedLink(link: link)
@@ -233,7 +239,8 @@ public struct IskraRootView: View {
                     })
                     .onOpenURL { url in
                         // A tapped Live Activity asks for its chat — and, like a widget's face,
-                        // for the account it belongs to. The same way in as Shortcuts.
+                        // for the account it belongs to. The same way in as Shortcuts. Asked first:
+                        // it shares the `wtf.iskra` scheme with the links below.
                         if let request = ChatDirectory.OpenRequest(url: url) {
                             ChatDirectory.requestOpen(roomID: request.roomID, accountID: request.accountID)
                             Task { await handleIntents(session) }
