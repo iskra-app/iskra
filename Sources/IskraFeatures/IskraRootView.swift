@@ -21,6 +21,12 @@ public struct IskraRootView: View {
     /// A link to a person or a room that is being shown — see `matrixLink(in:)`.
     @State private var openedLink: OpenedLink?
 
+    /// A link that has arrived and has nowhere to be shown yet. The system hands one over the
+    /// moment the app is opened by it, and at that moment there may be no signed-in screen to
+    /// receive it — a cold start is still a spinner. It waits here, on the root, which is always
+    /// there, and the signed-in screen takes it as soon as it exists.
+    @State private var incomingLink: MatrixLink?
+
     struct OpenedLink: Identifiable {
         let id = UUID()
         let link: MatrixLink
@@ -246,7 +252,11 @@ public struct IskraRootView: View {
                             Task { await handleIntents(session) }
                             return
                         }
-                        guard let link = Self.matrixLink(in: url) else { return }
+                    }
+                    // Taken from the root's `incomingLink`, which is where a link lands first.
+                    .onChange(of: incomingLink, initial: true) { _, link in
+                        guard let link else { return }
+                        incomingLink = nil
                         openedLink = OpenedLink(link: link)
                     }
                     .sheet(item: $openedLink) { opened in
@@ -437,6 +447,20 @@ public struct IskraRootView: View {
             }
         }
         .animation(.smooth, value: isSignedIn)
+        // A link to a person or a room is received here, above every phase, and not inside the
+        // signed-in screen: the camera's Universal Link arrives as the app launches, before that
+        // screen exists, and a handler that is not there yet is a link nobody hears. A Universal
+        // Link is also delivered as a web user activity, which not every launch path turns into
+        // `onOpenURL`, so both are listened to. The Live Activity's request is the signed-in
+        // screen's own and is left to it.
+        .onOpenURL { url in
+            guard ChatDirectory.OpenRequest(url: url) == nil, let link = Self.matrixLink(in: url) else { return }
+            incomingLink = link
+        }
+        .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+            guard let url = activity.webpageURL, let link = Self.matrixLink(in: url) else { return }
+            incomingLink = link
+        }
         // The demo switch, flipped in settings, from inside the very session it replaces.
         .onChange(of: mockBackend) { _, _ in
             Task { await switchBackend() }
