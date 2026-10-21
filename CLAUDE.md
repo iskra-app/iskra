@@ -16,6 +16,12 @@ file.
 SDK call each remaining piece hangs off. It is kept current — a finished item is ticked there in
 the same commit that finishes it.
 
+This repository is the reference for the other two clients, checked out next to it:
+`iskra-app/iskra-android` and `iskra-app/iskra-web`. They carry commits from `dev` over with their
+own `/port-from-ios` skill (same screen and behaviour, their own design) and mark each with an
+`iOS-Commit` trailer; `/fanout` (`.claude/skills/fanout/`) hands a commit or range to both, one
+session per repository.
+
 ## Commands
 
 ```sh
