@@ -707,6 +707,10 @@ struct SwipeToReply: ViewModifier {
                 // opposite of the one it moves toward.
                 .background(alignment: dragsToward == .leading ? .trailing : .leading) { hint }
                 .simultaneousGesture(gesture)
+                #if os(macOS)
+                .onHover { isHovered = $0; hoverChanged() }
+                .onDisappear { stopListening() }
+                #endif
                 .sensoryFeedback(.impact(weight: .light), trigger: haptic)
                 .animation(.spring(response: 0.3, dampingFraction: 0.7), value: dragOffset)
         } else {
@@ -725,6 +729,87 @@ struct SwipeToReply: ViewModifier {
             .scaleEffect(isArmed ? 1.1 : 0.9)
     }
 
+    /// Moves the row by a drag's horizontal travel, toward the centre only, and arms the reply once
+    /// it is far enough — the finger's drag on the phone and two fingers on a Mac's trackpad alike.
+    private func follow(_ travel: CGFloat) {
+        let directed = dragsToward == .leading ? min(0, travel) : max(0, travel)
+        // Rubber-band: it gives, then resists, so it never flies to the edge.
+        let capped = max(-Self.threshold * 1.6, min(Self.threshold * 1.6, directed))
+        dragOffset = capped * 0.7
+
+        let passed = abs(dragOffset) >= Self.threshold
+        if passed != isArmed {
+            isArmed = passed
+            if passed { haptic += 1 }
+        }
+    }
+
+    private func finish() {
+        if isArmed { onReply() }
+        isArmed = false
+        dragOffset = 0
+        isScrolling = nil
+    }
+
+    #if os(macOS)
+    /// The pointer is over this message, and so a two-finger swipe on the trackpad is about it.
+    @State private var isHovered = false
+    @State private var scrollMonitor: Any?
+
+    /// How far two fingers have travelled sideways in the swipe under way.
+    @State private var swipeTravel: CGFloat = 0
+
+    /// Two fingers on a trackpad are scrolling as far as AppKit is concerned, and no SwiftUI gesture
+    /// hears them — so the message under the pointer listens for scrolling while the pointer is on
+    /// it, and keeps listening until a swipe it took has ended, however far the row moved from under
+    /// the pointer meanwhile. Vertical swipes and the momentum after one pass straight through to the
+    /// conversation; a sideways one is this message's, the same rule the finger follows on the phone.
+    private func hoverChanged() {
+        if isHovered {
+            guard scrollMonitor == nil else { return }
+            scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
+                takes(event) ? nil : event
+            }
+        } else if isScrolling == nil {
+            stopListening()
+        }
+    }
+
+    /// Whether the event was this message's to take.
+    private func takes(_ event: NSEvent) -> Bool {
+        // A mouse wheel has no phases, and a swipe that is already over is coasting.
+        guard event.hasPreciseScrollingDeltas, event.momentumPhase.isEmpty else { return false }
+
+        if event.phase.contains(.began) {
+            swipeTravel = 0
+            isScrolling = nil
+        }
+        if event.phase.contains(.ended) || event.phase.contains(.cancelled) {
+            let wasOurs = isScrolling == false
+            finish()
+            if !isHovered { stopListening() }
+            return wasOurs
+        }
+        guard event.phase.contains(.changed) || event.phase.contains(.began) else { return false }
+
+        if isScrolling == nil {
+            guard event.scrollingDeltaX != 0 || event.scrollingDeltaY != 0 else { return false }
+            isScrolling = abs(event.scrollingDeltaY) >= abs(event.scrollingDeltaX)
+        }
+        guard isScrolling == false else { return false }
+        // `scrollingDelta` already follows the user's choice of natural scrolling, so the message
+        // moves the way content under those fingers would.
+        swipeTravel += event.scrollingDeltaX
+        follow(swipeTravel)
+        return true
+    }
+
+    private func stopListening() {
+        if let scrollMonitor { NSEvent.removeMonitor(scrollMonitor) }
+        scrollMonitor = nil
+    }
+    #endif
+
     private var gesture: some Gesture {
         DragGesture(minimumDistance: 18)
             .onChanged { value in
@@ -736,24 +821,9 @@ struct SwipeToReply: ViewModifier {
                     isScrolling = abs(value.translation.height) >= abs(value.translation.width)
                 }
                 guard isScrolling == false else { return }
-                let directed = dragsToward == .leading ? min(0, value.translation.width)
-                                                       : max(0, value.translation.width)
-                // Rubber-band: it gives, then resists, so it never flies to the edge.
-                let capped = max(-Self.threshold * 1.6, min(Self.threshold * 1.6, directed))
-                dragOffset = capped * 0.7
-
-                let passed = abs(dragOffset) >= Self.threshold
-                if passed != isArmed {
-                    isArmed = passed
-                    if passed { haptic += 1 }
-                }
+                follow(value.translation.width)
             }
-            .onEnded { _ in
-                if isArmed { onReply() }
-                isArmed = false
-                dragOffset = 0
-                isScrolling = nil
-            }
+            .onEnded { _ in finish() }
     }
 }
 
