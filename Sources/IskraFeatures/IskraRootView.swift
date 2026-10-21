@@ -948,9 +948,13 @@ public struct IskraRootView: View {
                         // than reusing one room's state for another's messages.
                         .id(roomID)
                 } else {
-                    ContentUnavailableView(String(app: Strings.Room.noRoomSelectedTitle),
-                                           systemImage: "bubble.left.and.bubble.right",
-                                           description: Text(Strings.Room.noRoomSelectedMessage))
+                    // The spark and nothing else, as on the web: an empty column needs no
+                    // instructions — the list is right beside it. The words stay for VoiceOver.
+                    BlinkingSpark()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .accessibilityElement()
+                        .accessibilityLabel(Text(Strings.Room.noRoomSelectedTitle))
+                        .accessibilityHint(Text(Strings.Room.noRoomSelectedMessage))
                 }
             }
         }

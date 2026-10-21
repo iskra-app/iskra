@@ -214,6 +214,10 @@ public enum Theme {
         /// something on it. Most of the way through the opening spring's response, which is when
         /// the glass is nearly its full size.
         public static let menuFills: Duration = .milliseconds(150)
+        /// How often the spark on an empty screen blinks, and how long its eyes stay shut —
+        /// `BlinkingSpark`, and the web client's watermark, which keeps the same rhythm.
+        public static let blinkEvery: Duration = .seconds(3)
+        public static let blinkShut: Duration = .milliseconds(150)
 
         /// What is on the glass appearing, once it is there — quick, it is only being shown.
         public static let menuContentShows: Animation = .easeOut(duration: 0.15)
@@ -649,6 +653,8 @@ public enum Theme {
         /// The distance between two sparks of the rainbow watermark — `HoloWatermark`. Small enough
         /// to read as a texture and not as a pattern of separate pictures.
         public static let watermarkStep: CGFloat = 16
+        /// The spark on an empty screen — `BlinkingSpark`; the web client's `--size-watermark`.
+        public static let watermark: CGFloat = 128
         /// A chat's face in the share sheet's grid — four to a row on a phone, Telegram's size.
         public static let shareFace: CGFloat = 60
         /// How wide a poll's bubble is. Fixed, not hugging its words: the bars are a comparison,
