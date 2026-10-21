@@ -515,6 +515,11 @@ public enum Theme {
         /// viewer, where the chat is still there but is no longer something to read. Dark enough
         /// that the white header and footer stay legible over whatever colours the chat had.
         public static let viewer: Double = 0.65
+
+        /// How much of the blur is laid over what is behind the photograph. Neither platform lets a
+        /// material's radius be chosen, so a lighter blur is the blurred layer let partly through:
+        /// at 1 the chat is gone, lower and its shapes stay faintly there behind the picture.
+        public static let viewerBlur: Double = 0.6
     }
 
     public enum Tint {

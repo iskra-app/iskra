@@ -187,9 +187,11 @@ private struct GalleryBackdrop: View {
         ZStack {
             #if os(macOS)
             BehindWindowBlur()
+                .opacity(Theme.Backdrop.viewerBlur)
             Color.black.opacity(Theme.Backdrop.viewer)
             #else
             Rectangle().fill(.ultraThinMaterial)
+                .opacity(Theme.Backdrop.viewerBlur)
             Color.black.opacity(model.isZoomed ? 1 : Theme.Backdrop.viewer)
             #endif
         }
@@ -501,18 +503,70 @@ private struct MacZoomableImage: View {
             }
     }
 
+    /// Whether the two-finger swipe under way is a pull to close the viewer — decided on its first
+    /// movement, as on the phone — and how far it has pulled.
+    @State private var isFlicking: Bool?
+    @State private var flick: CGFloat = 0
+
+    private static let flickDistance: CGFloat = 120
+
     private func listenForScrolling() {
         guard scrollMonitor == nil else { return }
         scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
-            guard zoom > 1 else { return event }
-            // `scrollingDelta` already follows the user's choice of natural scrolling, so the
-            // picture moves the way a page under the same fingers would.
-            let scale: CGFloat = event.hasPreciseScrollingDeltas ? 1 : 10
-            pan = clamped(CGSize(width: pan.width + event.scrollingDeltaX * scale,
-                                 height: pan.height + event.scrollingDeltaY * scale))
-            committedPan = pan
-            return nil
+            scrolled(event) ? nil : event
         }
+    }
+
+    /// Two fingers on the trackpad: zoomed, they move the picture about; at its normal size, up or
+    /// down they pull it away — the phone's flick, and far enough closes the viewer — and sideways
+    /// they are left to the pager, which turns the page.
+    private func scrolled(_ event: NSEvent) -> Bool {
+        // `scrollingDelta` already follows the user's choice of natural scrolling, so the picture
+        // moves the way a page under the same fingers would.
+        let scale: CGFloat = event.hasPreciseScrollingDeltas ? 1 : 10
+        let dx = event.scrollingDeltaX * scale
+        let dy = event.scrollingDeltaY * scale
+
+        if zoom > 1 {
+            pan = clamped(CGSize(width: pan.width + dx, height: pan.height + dy))
+            committedPan = pan
+            return true
+        }
+
+        // A mouse wheel has no gesture to pull with.
+        guard event.hasPreciseScrollingDeltas else { return false }
+        // The coasting after a pull is the pull's; after a page turn, the pager's.
+        if !event.momentumPhase.isEmpty { return isFlicking == true }
+
+        if event.phase.contains(.began) {
+            isFlicking = nil
+            flick = 0
+        }
+        if event.phase.contains(.ended) || event.phase.contains(.cancelled) {
+            let wasFlick = isFlicking == true
+            if wasFlick {
+                if abs(flick) > Self.flickDistance {
+                    model.wantsDismiss = true
+                } else {
+                    withAnimation(.smooth) {
+                        flick = 0
+                        pan = .zero
+                        model.dismissProgress = 0
+                    }
+                }
+            }
+            return wasFlick
+        }
+
+        if isFlicking == nil {
+            guard dx != 0 || dy != 0 else { return false }
+            isFlicking = abs(dy) > abs(dx)
+        }
+        guard isFlicking == true else { return false }
+        flick += dy
+        pan = CGSize(width: 0, height: flick)
+        model.dismissProgress = min(1, abs(flick) / 300)
+        return true
     }
 
     private func stopListening() {
