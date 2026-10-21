@@ -33,7 +33,13 @@ struct RoomInfoView: View {
     /// Opening the in-chat search from the info screen.
     var onSearch: () -> Void
 
+    #if os(iOS)
+    /// Not on a Mac, where this screen is the root of the info column beside the conversation: a
+    /// view there that reads `dismiss` and pushes screens of its own is the shape that spins
+    /// `NSHostingView.layout()` forever (see `SettingsView.onClose`). Leaving takes the column away
+    /// with the room anyway.
     @Environment(\.dismiss) private var dismiss
+    #endif
 
     /// Offline, this screen is a *description* of the room rather than a way to change it. Every
     /// control on it — the name, the topic, the picture, who is in it, whether it is open, and the
@@ -136,7 +142,7 @@ struct RoomInfoView: View {
             guard !Task.isCancelled else { return }
             sorted = result
         }
-        .sheet(item: $openedMedia) { opened in
+        .mediaViewer(item: $openedMedia) { opened in
             MediaPager(items: photos, startIndex: opened.value)
         }
         .sheet(isPresented: $isShowingCode) {
@@ -210,7 +216,9 @@ struct RoomInfoView: View {
         // cleared above, or an iPhone would be left staring at the empty detail column.
         .onChange(of: details.hasLeft) { _, hasLeft in
             guard hasLeft else { return }
+            #if os(iOS)
             dismiss()
+            #endif
             onLeave()
         }
     }

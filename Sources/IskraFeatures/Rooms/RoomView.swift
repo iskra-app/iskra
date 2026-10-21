@@ -316,6 +316,11 @@ public struct RoomView: View {
     @State private var details: RoomDetailsStore?
     @State private var isShowingDetails = false
 
+    #if os(macOS)
+    /// The window, widened by the info column while it is open — see `WindowWidening`.
+    @State private var widening = WindowWidening()
+    #endif
+
     /// The person whose page is open, pushed over the room — see `openProfile(_:)`.
     @State private var profileUserID: String?
 
@@ -554,10 +559,38 @@ public struct RoomView: View {
         timeline.hasLoaded && !timeline.rows.isEmpty
     }
 
+    /// The chat's info: pushed over the conversation on the phone, a column beside it on a Mac.
+    @ViewBuilder
+    private var roomInfo: some View {
+        if let details {
+            // Leaving the room from the info screen is still leaving the room — and it was the
+            // one way out that tore nothing down. `onDisappear` below declines to clean up when
+            // the room is merely covered by a pushed screen, and at the moment "Leave" takes
+            // effect the info screen *is* still pushed, so the guard held and the whole teardown
+            // was skipped: the draft unsaved, the listeners running, "typing…" left standing in
+            // a room the user had just walked out of, and a locked voice recording still
+            // listening. So it is done here, explicitly, before the room goes.
+            RoomInfoView(details: details, timeline: timeline, onLeave: {
+                tearDown()
+                onLeave()
+            }, onSearch: {
+                isShowingDetails = false
+                openRoomSearch()
+            })
+        }
+    }
+
     /// The room-info screen, built on the first press and kept, so going back and forth
     /// does not reload the member list each time.
     private func openDetails() {
         if details == nil { details = makeDetails() }
+        #if os(macOS)
+        // A column beside the conversation, and the header is its switch: pressed again, it closes.
+        if isShowingDetails {
+            isShowingDetails = false
+            return
+        }
+        #endif
         isShowingDetails = true
     }
 
@@ -1365,24 +1398,27 @@ public struct RoomView: View {
             }
             .listSheetSize()
         }
-        .navigationDestination(isPresented: $isShowingDetails) {
-            if let details {
-                // Leaving the room from the info screen is still leaving the room — and it was the
-                // one way out that tore nothing down. `onDisappear` below declines to clean up when
-                // the room is merely covered by a pushed screen, and at the moment "Leave" takes
-                // effect the info screen *is* still pushed, so the guard held and the whole teardown
-                // was skipped: the draft unsaved, the listeners running, "typing…" left standing in
-                // a room the user had just walked out of, and a locked voice recording still
-                // listening. So it is done here, explicitly, before the room goes.
-                RoomInfoView(details: details, timeline: timeline, onLeave: {
-                    tearDown()
-                    onLeave()
-                }, onSearch: {
-                    isShowingDetails = false
-                    openRoomSearch()
-                })
-            }
+        #if os(macOS)
+        // On a Mac the chat's info is a column on the right, beside the conversation rather than
+        // over it — the web client's — with a stack of its own for what it opens. The window grows
+        // by the column's width, so the conversation keeps the width it had.
+        .inspector(isPresented: $isShowingDetails) {
+            NavigationStack { roomInfo }
+                .inspectorColumnWidth(min: Theme.Size.sidebarMinimum,
+                                      ideal: Theme.Size.sidebarIdeal,
+                                      max: Theme.Size.sidebarMaximum)
         }
+        .onChange(of: isShowingDetails) { _, isShowing in
+            if isShowing { widening.widen(by: Theme.Size.sidebarIdeal) } else { widening.restore() }
+        }
+        // Back from a screen pushed over the room, with the column still open: the window gave its
+        // width back when the room went under (`onDisappear`), and takes it again now.
+        .onAppear {
+            if isShowingDetails { widening.widen(by: Theme.Size.sidebarIdeal) }
+        }
+        #else
+        .navigationDestination(isPresented: $isShowingDetails) { roomInfo }
+        #endif
         .navigationDestination(item: $openedThread) { thread in
             RoomView(timeline: thread.store,
                      makeDetails: makeDetails,
@@ -1562,7 +1598,14 @@ public struct RoomView: View {
         // is in the room. The flags are the honest signal — we know when we are pushing, because
         // we are the ones who pushed.
         .onDisappear {
+            #if os(macOS)
+            // The info column covers nothing: a room that goes with it open is really going — to
+            // another chat, say — and the window gives back the width it took for the column.
+            widening.restore()
+            guard !isShowingPinned, profileUserID == nil, !isCoveredByMedia else { return }
+            #else
             guard !isShowingDetails, !isShowingPinned, profileUserID == nil, !isCoveredByMedia else { return }
+            #endif
             tearDown()
         }
         .environment(\.coversRoom) { isCoveredByMedia = $0 }
