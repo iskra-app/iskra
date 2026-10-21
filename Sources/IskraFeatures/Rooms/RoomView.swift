@@ -353,6 +353,11 @@ public struct RoomView: View {
     /// The width the messages have to live in. See `EnvironmentValues.timelineWidth`.
     @State private var timelineWidth: CGFloat = 0
 
+    /// A window being resized by hand — see where the two sizes are measured.
+    @State private var isLiveResizing = false
+    @State private var measuredWidth: CGFloat = 0
+    @State private var measuredSize: CGSize = .zero
+
     /// What the picture height limit is taken from — see `EnvironmentValues.timelineHeight`.
     @State private var timelineSize: CGSize = .zero
 
@@ -597,6 +602,30 @@ public struct RoomView: View {
         isShowingDetails = show
     }
 
+    #if os(macOS)
+    /// The window's info column — see `InfoColumn`.
+    @Environment(\.infoColumn) private var infoColumn
+
+    /// Who this room is to the column, so that a room on its way out does not empty the column the
+    /// next one has just filled.
+    @State private var columnOwner = UUID()
+
+    /// Puts this room's info in the window's column and opens it, or closes it — closing is the
+    /// user's choice, and the column remembers it for the next chat.
+    private func syncInfoColumn(_ show: Bool) {
+        guard let infoColumn else { return }
+        guard show, let details else {
+            infoColumn.isOpen = false
+            return
+        }
+        infoColumn.attach(AnyView(RoomInfoColumn(details: details,
+                                                 onEdit: { isEditingDetails = true },
+                                                 onClose: { showDetails(false) }) { roomInfo }),
+                          owner: columnOwner)
+        infoColumn.isOpen = true
+    }
+    #endif
+
     private func openRoomSearch() {
         roomSearch = timeline.makeSearch()
     }
@@ -800,6 +829,8 @@ public struct RoomView: View {
             .onGeometryChange(for: CGFloat.self) { proxy in
                 proxy.size.width - Theme.Spacing.normal * 2
             } action: { width in
+                measuredWidth = width
+                guard !isLiveResizing else { return }
                 timelineWidth = width
             }
             .environment(\.timelineWidth, timelineWidth)
@@ -807,10 +838,26 @@ public struct RoomView: View {
             // width. The keyboard only ever makes it shorter, so it does not move this; a turn of
             // the phone or a window resized changes the width, and starts it again.
             .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
+                measuredSize = size
+                guard !isLiveResizing else { return }
                 if size.width != timelineSize.width || size.height > timelineSize.height {
                     timelineSize = size
                 }
             }
+            #if os(macOS)
+            // Both sizes above are handed to every message, and a window being dragged wider changes
+            // them on every frame: every bubble in the conversation was laid out again, many times a
+            // second, and the drag stuttered. While the edge is held they keep the size the drag
+            // started at; the messages settle once, when it is let go.
+            .onReceive(NotificationCenter.default.publisher(for: NSWindow.willStartLiveResizeNotification)) { _ in
+                isLiveResizing = true
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSWindow.didEndLiveResizeNotification)) { _ in
+                isLiveResizing = false
+                timelineWidth = measuredWidth
+                timelineSize = measuredSize
+            }
+            #endif
             .environment(\.timelineHeight, timelineSize.height)
             // Where a message of ours starts its journey to its bubble — see `ComposerTravel`.
             .environment(\.composerTextOrigin, composerTextOrigin)
@@ -1403,20 +1450,20 @@ public struct RoomView: View {
         }
         #if os(macOS)
         // On a Mac the chat's info is a column on the right, beside the conversation rather than
-        // over it — the web client's — with a stack of its own for what it opens.
-        .inspector(isPresented: $isShowingDetails) {
-            NavigationStack { roomInfo }
-                .toolbar {
-                    if let details {
-                        RoomInfoColumnToolbar(details: details,
-                                              isShown: isShowingDetails,
-                                              onEdit: { isEditingDetails = true },
-                                              onClose: { showDetails(false) })
-                    }
-                }
-                .inspectorColumnWidth(min: Theme.Size.infoColumnMinimum,
-                                      ideal: Theme.Size.infoColumnIdeal,
-                                      max: Theme.Size.infoColumnMaximum)
+        // over it — the web client's. The column is the window's (`InfoColumn`); this room fills it
+        // while it is on screen, and opens it by itself when the user left it open.
+        .onChange(of: isShowingDetails) { _, isShowing in syncInfoColumn(isShowing) }
+        .onChange(of: infoColumn?.isOpen) { _, isOpen in
+            // Closed from the column's side — its own button, or dragged shut.
+            if isOpen == false, isShowingDetails { isShowingDetails = false }
+        }
+        .onAppear {
+            if isShowingDetails {
+                syncInfoColumn(true)
+            } else if infoColumn?.isOpen == true {
+                if details == nil { details = makeDetails() }
+                isShowingDetails = details != nil
+            }
         }
         // No title bar over a conversation: the window's band and its title go, and the header and
         // the conversation run up into the space they took.
@@ -1606,7 +1653,9 @@ public struct RoomView: View {
         .onDisappear {
             #if os(macOS)
             // The info column covers nothing: a room that goes with it open is really going — to
-            // another chat, say.
+            // another chat, say. Its info leaves the column with it; the column stays open for the
+            // next one.
+            infoColumn?.detach(owner: columnOwner)
             guard !isShowingPinned, profileUserID == nil, !isCoveredByMedia else { return }
             #else
             guard !isShowingDetails, !isShowingPinned, profileUserID == nil, !isCoveredByMedia else { return }

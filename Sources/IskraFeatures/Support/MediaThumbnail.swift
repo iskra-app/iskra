@@ -70,8 +70,8 @@ extension Image {
 /// not download a hundred photos. The full-size version is fetched when the user taps.
 ///
 /// In an encrypted room the SDK decrypts as it downloads, so what arrives here is
-/// plaintext. It is handed straight to the view and never written to a cache of our
-/// own — the SDK's own encrypted store is the only cache.
+/// plaintext. It is never written to disk by us — the SDK's own encrypted store is the only
+/// cache of the bytes; what is kept is the decoded picture, in memory (`decoded`).
 struct MediaThumbnail: View {
     let attachment: Attachment
     /// Longest edge to ask the server for.
@@ -128,9 +128,34 @@ struct MediaThumbnail: View {
         return cache
     }()
 
+    /// Pictures already decoded, by media and size, in memory only — never on disk; the SDK's
+    /// encrypted store is still the only cache of the bytes.
+    ///
+    /// A row the list rebuilds — a window resized, a long scroll back — is a fresh view with empty
+    /// state, and it asked the SDK again and showed the placeholder until the answer came: every
+    /// picture on screen flickered through "loading" during a resize. Kept here, a rebuilt row has
+    /// its picture on the first frame.
+    @MainActor private static let decoded: NSCache<NSString, DecodedPicture> = {
+        let cache = NSCache<NSString, DecodedPicture>()
+        cache.countLimit = 300
+        return cache
+    }()
+
+    private final class DecodedPicture {
+        let image: Image
+        init(image: Image) { self.image = image }
+    }
+
+    private var cacheKey: NSString { "\(attachment.mediaID)|\(size)" as NSString }
+
+    /// The picture in state, or the one decoded for an earlier copy of this row.
+    private var shown: Image? {
+        image ?? Self.decoded.object(forKey: cacheKey)?.image
+    }
+
     var body: some View {
         Group {
-            if let image {
+            if let image = shown {
                 image
                     .resizable()
                     .scaledToFill()
@@ -145,12 +170,21 @@ struct MediaThumbnail: View {
         // Keyed on the bytes *and* on being allowed to fetch them, so the tap that allows it is
         // also what starts it. The media ID, not the filename: every sticker is called "sticker".
         .task(id: "\(attachment.mediaID)|\(mayFetch)") {
-            guard image == nil, mayFetch, let loader else { return }
+            guard image == nil else { return }
+            if let cached = Self.decoded.object(forKey: cacheKey)?.image {
+                image = cached
+                onLoad(cached)
+                return
+            }
+            guard mayFetch, let loader else { return }
             do {
                 let data = try await loader.thumbnail(for: attachment, size: size)
                 image = Image(mediaData: data)
                 failed = (image == nil)
-                if let image { onLoad(image) }
+                if let image {
+                    Self.decoded.setObject(DecodedPicture(image: image), forKey: cacheKey)
+                    onLoad(image)
+                }
             } catch {
                 // A thumbnail that will not load is not worth an alert. The bubble
                 // stays, with a quiet marker, and the message is still readable.

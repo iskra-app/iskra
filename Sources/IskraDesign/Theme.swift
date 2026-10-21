@@ -994,6 +994,10 @@ public enum Theme {
         public static let infoColumnIdeal: CGFloat = 360
         public static let infoColumnMaximum: CGFloat = 440
 
+        /// The Mac's About window: the About screen at the width of a phone's, tall enough for the
+        /// version, the build and the links without scrolling.
+        public static let aboutWindow = CGSize(width: 420, height: 640)
+
         /// The list of things you can do to a message — see `MessageMenu`.
         ///
         /// Narrow on purpose, and narrower than the screen by a long way: it is a column of

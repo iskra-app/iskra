@@ -912,6 +912,11 @@ public struct IskraRootView: View {
         #endif
     }
 
+    #if os(macOS)
+    /// The chat's info, as a column on the right of the window — see `InfoColumn`.
+    @State private var infoColumn = InfoColumn()
+    #endif
+
     private func conversations(_ session: UserSession) -> some View {
         NavigationSplitView {
             // Settings is pushed onto this column's own navigation stack, so the push,
@@ -967,6 +972,10 @@ public struct IskraRootView: View {
                         .accessibilityHint(Text(Strings.Room.noRoomSelectedMessage))
                 }
             }
+            #if os(macOS)
+            // From outside the stack — see `InfoColumn`.
+            .infoColumn(infoColumn)
+            #endif
         }
         // Said once, here, and read by both columns. The room list and the room are in different
         // branches of the tree and both have to know, and the session is the only thing that is
