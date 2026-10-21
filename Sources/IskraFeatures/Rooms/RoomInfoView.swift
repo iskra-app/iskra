@@ -34,8 +34,13 @@ struct RoomInfoView: View {
     var onSearch: () -> Void
 
     /// Closing the info, where it is a column beside the conversation (a Mac) rather than a screen
-    /// with a back button. Its button sits in the column, with the pencil beside it.
+    /// with a back button. Its button sits in the toolbar over the column, with the pencil beside it.
     var onClose: (() -> Void)?
+
+    /// Whether the column is open. The inspector keeps this view alive after it closes, and with it
+    /// whatever it put in the toolbar — the pencil stayed in the title bar over a closed column — so
+    /// the column's buttons are there only while this says so.
+    var isShown = true
 
     #if os(iOS)
     /// Not on a Mac, where this screen is the root of the info column beside the conversation: a
@@ -84,12 +89,13 @@ struct RoomInfoView: View {
     private let timeline: TimelineStore?
 
     init(details: RoomDetailsStore, timeline: TimelineStore? = nil, onLeave: @escaping () -> Void,
-         onSearch: @escaping () -> Void, onClose: (() -> Void)? = nil) {
+         onSearch: @escaping () -> Void, onClose: (() -> Void)? = nil, isShown: Bool = true) {
         _details = State(initialValue: details)
         self.timeline = timeline
         self.onLeave = onLeave
         self.onSearch = onSearch
         self.onClose = onClose
+        self.isShown = isShown
     }
 
     /// A one-to-one chat has no name, no description and no picture of its own — all three
@@ -161,18 +167,27 @@ struct RoomInfoView: View {
                             link: link)
             }
         }
-        #if os(macOS)
-        // In the column itself, not in the window's toolbar: a toolbar item put there by the column
-        // stayed in the title bar after the column had closed.
-        .safeAreaInset(edge: .top, spacing: 0) { columnBar }
-        .softScrollEdge(for: .top)
-        #else
         .toolbar {
+            #if os(macOS)
+            // Over the column, in the toolbar, drawn like the room list's buttons on the left.
+            if isShown {
+                ToolbarItemGroup(placement: .primaryAction) {
+                    if canEdit { editButton }
+                    if let onClose {
+                        Button(action: onClose) {
+                            Image(systemName: "xmark")
+                                .font(.body.weight(.medium))
+                        }
+                        .accessibilityLabel(Text(Strings.Room.Manage.closeInfo))
+                    }
+                }
+            }
+            #else
             if canEdit {
                 ToolbarItem(placement: .primaryAction) { editButton }
             }
+            #endif
         }
-        #endif
         .navigationDestination(isPresented: $isEditing) {
             RoomEditView(details: details)
         }
@@ -237,34 +252,6 @@ struct RoomInfoView: View {
         // See `editingNeedsNetwork`.
         .disabled(isOffline && editingNeedsNetwork)
     }
-
-    #if os(macOS)
-    /// The pencil on the left and the way out on the right, along the top of the column: two round
-    /// glass buttons over the content, with nothing behind them — the navigation layer, floating, as
-    /// the phone's are over the portrait.
-    private var columnBar: some View {
-        HStack {
-            if canEdit {
-                editButton
-                    .navigationGlassButton()
-                    .buttonBorderShape(.circle)
-            }
-            Spacer()
-            if let onClose {
-                Button(action: onClose) {
-                    Image(systemName: "xmark")
-                        .font(.body.weight(.medium))
-                }
-                .navigationGlassButton()
-                .buttonBorderShape(.circle)
-                .accessibilityLabel(Text(Strings.Room.Manage.closeInfo))
-            }
-        }
-        .controlSize(.large)
-        .padding(.horizontal, Theme.Spacing.normal)
-        .padding(.vertical, Theme.Spacing.close)
-    }
-    #endif
 
     // MARK: - The person, in a personal chat
 

@@ -988,6 +988,12 @@ public enum Theme {
         public static let sidebarIdeal: CGFloat = 320
         public static let sidebarMaximum: CGFloat = 400
 
+        /// The chat's info, as a column on the right of a Mac window. A little wider than the room
+        /// list on the left: it holds a portrait and a form, not a column of names.
+        public static let infoColumnMinimum: CGFloat = 300
+        public static let infoColumnIdeal: CGFloat = 360
+        public static let infoColumnMaximum: CGFloat = 440
+
         /// The list of things you can do to a message — see `MessageMenu`.
         ///
         /// Narrow on purpose, and narrower than the screen by a long way: it is a column of

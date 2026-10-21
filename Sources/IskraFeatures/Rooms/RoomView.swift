@@ -578,7 +578,7 @@ public struct RoomView: View {
                 openRoomSearch()
             }, onClose: {
                 showDetails(false)
-            })
+            }, isShown: isShowingDetails)
         }
     }
 
@@ -599,7 +599,7 @@ public struct RoomView: View {
     /// width, and there is one layout, not one per frame of two animations running side by side.
     private func showDetails(_ show: Bool) {
         #if os(macOS)
-        if show { widening.widen(by: Theme.Size.sidebarIdeal) } else { widening.restore() }
+        if show { widening.widen(by: Theme.Size.infoColumnIdeal) } else { widening.restore() }
         var instant = Transaction()
         instant.disablesAnimations = true
         withTransaction(instant) { isShowingDetails = show }
@@ -1418,21 +1418,21 @@ public struct RoomView: View {
         // by the column's width, so the conversation keeps the width it had.
         .inspector(isPresented: $isShowingDetails) {
             NavigationStack { roomInfo }
-                .inspectorColumnWidth(min: Theme.Size.sidebarMinimum,
-                                      ideal: Theme.Size.sidebarIdeal,
-                                      max: Theme.Size.sidebarMaximum)
+                .inspectorColumnWidth(min: Theme.Size.infoColumnMinimum,
+                                      ideal: Theme.Size.infoColumnIdeal,
+                                      max: Theme.Size.infoColumnMaximum)
         }
         // No title bar over a conversation: the window's band and its title go, and the header and
         // the conversation run up into the space they took.
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .toolbar(removing: .title)
         .onChange(of: isShowingDetails) { _, isShowing in
-            if isShowing { widening.widen(by: Theme.Size.sidebarIdeal) } else { widening.restore() }
+            if isShowing { widening.widen(by: Theme.Size.infoColumnIdeal) } else { widening.restore() }
         }
         // Back from a screen pushed over the room, with the column still open: the window gave its
         // width back when the room went under (`onDisappear`), and takes it again now.
         .onAppear {
-            if isShowingDetails { widening.widen(by: Theme.Size.sidebarIdeal) }
+            if isShowingDetails { widening.widen(by: Theme.Size.infoColumnIdeal) }
         }
         #else
         .navigationDestination(isPresented: $isShowingDetails) { roomInfo }
