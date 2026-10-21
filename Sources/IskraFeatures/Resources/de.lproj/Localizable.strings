@@ -855,6 +855,7 @@
 "picture.change" = "Ändern";
 "picture.remove" = "Entfernen";
 "room.manage.edit" = "Bearbeiten";
+"room.manage.closeInfo" = "Chat-Infos ausblenden";
 "room.manage.editTitle" = "Chat bearbeiten";
 "room.manage.nameHeader" = "Name";
 "room.manage.deleteChat" = "Chat löschen";

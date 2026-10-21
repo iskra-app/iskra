@@ -1,7 +1,6 @@
 #if os(macOS)
 import AppKit
 import SwiftUI
-import IskraDesign
 
 /// The window made wider by a sidebar's width while the sidebar is open, and narrower by the same
 /// when it closes — so opening the chat's info beside the conversation adds a column to the window
@@ -50,11 +49,11 @@ struct WindowWidening {
         Self.animate(window, to: frame)
     }
 
+    /// At once, not animated. The window's own animation lays the whole conversation out again on
+    /// every frame of it, and a long chat made that a couple of frames a second; done at once, in
+    /// the same step that opens the column, it is one layout and nothing to watch.
     private static func animate(_ window: NSWindow, to frame: NSRect) {
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = Theme.Timing.chrome
-            window.animator().setFrame(frame, display: true)
-        }
+        window.setFrame(frame, display: true)
     }
 }
 #endif

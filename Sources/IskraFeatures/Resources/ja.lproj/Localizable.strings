@@ -855,6 +855,7 @@
 "picture.change" = "変更";
 "picture.remove" = "削除";
 "room.manage.edit" = "編集";
+"room.manage.closeInfo" = "チャット情報を隠す";
 "room.manage.editTitle" = "チャットを編集";
 "room.manage.nameHeader" = "名前";
 "room.manage.deleteChat" = "チャットを削除";

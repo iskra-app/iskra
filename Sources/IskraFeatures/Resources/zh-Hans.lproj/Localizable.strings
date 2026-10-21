@@ -855,6 +855,7 @@
 "picture.change" = "更换";
 "picture.remove" = "移除";
 "room.manage.edit" = "编辑";
+"room.manage.closeInfo" = "隐藏聊天信息";
 "room.manage.editTitle" = "编辑聊天";
 "room.manage.nameHeader" = "名称";
 "room.manage.deleteChat" = "删除聊天";

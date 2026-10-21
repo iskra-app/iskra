@@ -333,7 +333,7 @@ public struct RoomView: View {
         if details == nil { details = makeDetails() }
         guard details != nil else { return }
         if timeline.isOneToOne, userID == timeline.directCounterpartID {
-            isShowingDetails = true
+            showDetails(true)
         } else {
             profileUserID = userID
         }
@@ -574,8 +574,10 @@ public struct RoomView: View {
                 tearDown()
                 onLeave()
             }, onSearch: {
-                isShowingDetails = false
+                showDetails(false)
                 openRoomSearch()
+            }, onClose: {
+                showDetails(false)
             })
         }
     }
@@ -586,12 +588,24 @@ public struct RoomView: View {
         if details == nil { details = makeDetails() }
         #if os(macOS)
         // A column beside the conversation, and the header is its switch: pressed again, it closes.
-        if isShowingDetails {
-            isShowingDetails = false
-            return
-        }
+        showDetails(!isShowingDetails)
+        #else
+        showDetails(true)
         #endif
-        isShowingDetails = true
+    }
+
+    /// Opens or closes the info. On a Mac the window is widened or narrowed *first*, at once, and
+    /// the column appears in the same step without a slide — so the conversation never changes
+    /// width, and there is one layout, not one per frame of two animations running side by side.
+    private func showDetails(_ show: Bool) {
+        #if os(macOS)
+        if show { widening.widen(by: Theme.Size.sidebarIdeal) } else { widening.restore() }
+        var instant = Transaction()
+        instant.disablesAnimations = true
+        withTransaction(instant) { isShowingDetails = show }
+        #else
+        isShowingDetails = show
+        #endif
     }
 
     private func openRoomSearch() {
@@ -1672,7 +1686,7 @@ public struct RoomView: View {
         // Anything pushed over the room goes first, and all of it at once: the info screen takes
         // whatever was pushed over *it* along when it goes.
         if isShowingDetails || isShowingPinned || profileUserID != nil || openedThread != nil {
-            isShowingDetails = false
+            showDetails(false)
             isShowingPinned = false
             profileUserID = nil
             openedThread = nil

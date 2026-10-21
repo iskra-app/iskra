@@ -33,6 +33,10 @@ struct RoomInfoView: View {
     /// Opening the in-chat search from the info screen.
     var onSearch: () -> Void
 
+    /// Closing the info, where it is a column beside the conversation (a Mac) rather than a screen
+    /// with a back button. Its button sits in the column, with the pencil beside it.
+    var onClose: (() -> Void)?
+
     #if os(iOS)
     /// Not on a Mac, where this screen is the root of the info column beside the conversation: a
     /// view there that reads `dismiss` and pushes screens of its own is the shape that spins
@@ -79,11 +83,13 @@ struct RoomInfoView: View {
     /// Optional so the info screen still stands on its own where there is no timeline behind it.
     private let timeline: TimelineStore?
 
-    init(details: RoomDetailsStore, timeline: TimelineStore? = nil, onLeave: @escaping () -> Void, onSearch: @escaping () -> Void) {
+    init(details: RoomDetailsStore, timeline: TimelineStore? = nil, onLeave: @escaping () -> Void,
+         onSearch: @escaping () -> Void, onClose: (() -> Void)? = nil) {
         _details = State(initialValue: details)
         self.timeline = timeline
         self.onLeave = onLeave
         self.onSearch = onSearch
+        self.onClose = onClose
     }
 
     /// A one-to-one chat has no name, no description and no picture of its own — all three
@@ -155,21 +161,17 @@ struct RoomInfoView: View {
                             link: link)
             }
         }
+        #if os(macOS)
+        // In the column itself, not in the window's toolbar: a toolbar item put there by the column
+        // stayed in the title bar after the column had closed.
+        .safeAreaInset(edge: .top, spacing: 0) { columnBar }
+        #else
         .toolbar {
             if canEdit {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        isEditing = true
-                    } label: {
-                        Image(systemName: "pencil")
-                            .font(.body.weight(.medium))
-                    }
-                    .accessibilityLabel(Text(Strings.Room.Manage.edit))
-                    // See `editingNeedsNetwork`.
-                    .disabled(isOffline && editingNeedsNetwork)
-                }
+                ToolbarItem(placement: .primaryAction) { editButton }
             }
         }
+        #endif
         .navigationDestination(isPresented: $isEditing) {
             RoomEditView(details: details)
         }
@@ -222,6 +224,39 @@ struct RoomInfoView: View {
             onLeave()
         }
     }
+
+    private var editButton: some View {
+        Button {
+            isEditing = true
+        } label: {
+            Image(systemName: "pencil")
+                .font(.body.weight(.medium))
+        }
+        .accessibilityLabel(Text(Strings.Room.Manage.edit))
+        // See `editingNeedsNetwork`.
+        .disabled(isOffline && editingNeedsNetwork)
+    }
+
+    #if os(macOS)
+    /// The pencil on the left and the way out on the right, along the top of the column.
+    private var columnBar: some View {
+        HStack {
+            if canEdit { editButton }
+            Spacer()
+            if let onClose {
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .font(.body.weight(.medium))
+                }
+                .accessibilityLabel(Text(Strings.Room.Manage.closeInfo))
+            }
+        }
+        .buttonStyle(.borderless)
+        .padding(.horizontal, Theme.Spacing.roomy)
+        .padding(.vertical, Theme.Spacing.close)
+        .background(.bar)
+    }
+    #endif
 
     // MARK: - The person, in a personal chat
 

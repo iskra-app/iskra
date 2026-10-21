@@ -855,6 +855,7 @@
 "picture.change" = "Changer";
 "picture.remove" = "Supprimer";
 "room.manage.edit" = "Modifier";
+"room.manage.closeInfo" = "Masquer les infos du chat";
 "room.manage.editTitle" = "Modifier la discussion";
 "room.manage.nameHeader" = "Nom";
 "room.manage.deleteChat" = "Supprimer la discussion";

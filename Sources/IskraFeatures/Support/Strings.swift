@@ -882,6 +882,7 @@ public enum Strings {
             /// The pencil above the chat's portrait, and the screen behind it. Shown only to
             /// somebody the room lets change something — see `RoomInfoView.canEdit`.
             public static let edit = LocalizedStringResource("room.manage.edit", bundle: bundle)
+            public static let closeInfo = LocalizedStringResource("room.manage.closeInfo", bundle: bundle)
             public static let editTitle = LocalizedStringResource("room.manage.editTitle", bundle: bundle)
             /// Over the name field on that screen, where `room.about` already labels the one below it.
             public static let nameHeader = LocalizedStringResource("room.manage.nameHeader", bundle: bundle)

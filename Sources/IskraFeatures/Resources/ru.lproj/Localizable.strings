@@ -852,6 +852,7 @@
 "picture.change" = "Изменить";
 "picture.remove" = "Удалить";
 "room.manage.edit" = "Изменить";
+"room.manage.closeInfo" = "Скрыть информацию о чате";
 "room.manage.editTitle" = "Изменить чат";
 "room.manage.nameHeader" = "Название";
 "room.manage.deleteChat" = "Удалить чат";
