@@ -50,12 +50,18 @@ extension View {
     /// Red, on the Mac as well, for a button that does something that cannot be taken back.
     ///
     /// The phone paints a `.destructive` button red by itself, and a `.bordered` one by its
-    /// `.tint(.red)`; the Mac does neither — its push and bordered buttons take no tint and no
-    /// colour from a role — so what was red on the phone was grey on the Mac. The words are
-    /// coloured instead, which every Mac button honours.
+    /// `.tint(.red)`; the Mac does neither from the role. Both are set here: the words red, and the
+    /// tint red — because in a *key* window a Mac button draws its title in the tint, and the tint at
+    /// the root of this app is `.primary`, so the red words came out white whenever the window was
+    /// active and red only when it was not.
+    @ViewBuilder
     public func destructiveTint(_ isDestructive: Bool = true) -> some View {
         #if os(macOS)
-        foregroundStyle(isDestructive ? AnyShapeStyle(.red) : AnyShapeStyle(.foreground))
+        if isDestructive {
+            foregroundStyle(.red).tint(.red)
+        } else {
+            self
+        }
         #else
         self
         #endif

@@ -519,7 +519,7 @@ public enum Theme {
         /// How much of the blur is laid over what is behind the photograph. Neither platform lets a
         /// material's radius be chosen, so a lighter blur is the blurred layer let partly through:
         /// at 1 the chat is gone, lower and its shapes stay faintly there behind the picture.
-        public static let viewerBlur: Double = 0.8
+        public static let viewerBlur: Double = 1
     }
 
     public enum Tint {
