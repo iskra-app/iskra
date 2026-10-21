@@ -120,6 +120,10 @@ struct AccountRow: View {
                     .accessibilityLabel(Text(Strings.Accounts.unread(unread)))
             }
         }
+        // The whole row is the button, not just the words and the face drawn on it: a `.plain`
+        // button on a Mac takes clicks only where something is painted, and the spacer is not.
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(.rect)
         .accessibilityElement(children: .combine)
         .accessibilityHint(Text(Strings.Accounts.switchHint))
     }
