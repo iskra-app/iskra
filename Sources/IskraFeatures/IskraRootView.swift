@@ -973,12 +973,11 @@ public struct IskraRootView: View {
                 }
             }
             #if os(macOS)
-            // One minimum for the chat and for the empty column alike — see
-            // `Theme.Size.conversationMinimum`.
-            .frame(minWidth: Theme.Size.conversationMinimum.width,
-                   minHeight: Theme.Size.conversationMinimum.height)
-            // From outside the stack — see `InfoColumn`.
+            // From outside the stack — see `InfoColumn`. The minimum goes outside it too, and
+            // counts the column when it is open — see `InfoColumn.minimumWidth`.
             .infoColumn(infoColumn)
+            .frame(minWidth: infoColumn.minimumWidth,
+                   minHeight: Theme.Size.conversationMinimum.height)
             #endif
         }
         // Said once, here, and read by both columns. The room list and the room are in different

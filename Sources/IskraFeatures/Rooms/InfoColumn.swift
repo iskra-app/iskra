@@ -32,6 +32,18 @@ final class InfoColumn {
     /// Open, and with something in it.
     var isPresented: Bool { isOpen && content != nil }
 
+    /// The least the conversation's half of the window may be: the conversation's minimum — the
+    /// same with a chat in it or none (`Theme.Size.conversationMinimum`) — and the column's, when
+    /// it is open.
+    ///
+    /// The column has to be counted. With only the conversation's minimum, dragging the room list
+    /// wider squeezed this half below the two together; SwiftUI folded the column away for want
+    /// of room, which lowered the minimum, which gave the room back, which brought the column back
+    /// — and AppKit, asked to settle the window's constraints again on every pass, ended the app.
+    var minimumWidth: CGFloat {
+        Theme.Size.conversationMinimum.width + (isPresented ? Theme.Size.infoColumnMinimum : 0)
+    }
+
     /// How wide the conversation's half of the window is, measured at its root. Read only at the
     /// moment the column opens, so not observed: a window being resized would otherwise touch
     /// every view that looks at the column.
