@@ -1,3 +1,6 @@
+// Debug only: the demo is for looking at screens during development, and a release build carries
+// none of it — no server to switch on, no flag to start it by. See CLAUDE.md, "The demo server".
+#if DEBUG
 import CoreGraphics
 import Foundation
 import ImageIO
@@ -126,3 +129,4 @@ enum MockMedia {
         return CGColor(srgbRed: red + floor, green: green + floor, blue: blue + floor, alpha: alpha)
     }
 }
+#endif

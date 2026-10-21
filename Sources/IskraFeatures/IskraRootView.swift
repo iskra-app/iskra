@@ -154,10 +154,12 @@ public struct IskraRootView: View {
         BetaFeatures.adoptFaceFlags()
 
         // `Iskra --mock-backend`: straight into the demo, for a device with nobody signed in —
-        // where the switch, being in settings, cannot be reached.
+        // where the switch, being in settings, cannot be reached. Debug builds only, like the demo.
+        #if DEBUG
         if CommandLine.arguments.contains(BetaFeatures.mockBackendArgument) {
             UserDefaults.standard.set(true, forKey: BetaFeatures.mockBackendKey)
         }
+        #endif
     }
 
     public var body: some View {
@@ -1005,6 +1007,8 @@ public struct IskraRootView: View {
 
         // The demo, when the switch says so. It is restored *instead of* the real session and never
         // on top of it: the Keychain is not read, so nothing of the real account is even opened.
+        // A release build has no demo, and a switch left on by a debug build is simply ignored.
+        #if DEBUG
         if mockBackend {
             do {
                 let session = try await authentication.startDemoSession()
@@ -1018,6 +1022,7 @@ public struct IskraRootView: View {
                 mockBackend = false
             }
         }
+        #endif
 
         // The account on screen last, and then everybody else in the order they were added: one
         // account that will not open is not a reason to hide the others behind a sign-in screen.

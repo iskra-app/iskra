@@ -1,3 +1,6 @@
+// Debug only: the demo is for looking at screens during development, and a release build carries
+// none of it — no server to switch on, no flag to start it by. See CLAUDE.md, "The demo server".
+#if DEBUG
 import Foundation
 import Synchronization
 
@@ -704,3 +707,4 @@ private extension ProxiedResponse {
     static let unknownToken = error("M_UNKNOWN_TOKEN", "Unknown access token", status: 401)
     static let badJSON = error("M_BAD_JSON", "Could not read that", status: 400)
 }
+#endif

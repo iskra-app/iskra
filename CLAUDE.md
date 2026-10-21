@@ -145,6 +145,12 @@ for it. The server's memory lasts one launch.
 The switch is behind sign-in, so `Iskra --mock-backend` turns it on from the command line for a
 device with nobody signed in — `./device.sh -- --mock-backend`. It stays on until turned off.
 
+**Both in-app servers are Debug only.** `MockBackend/`, `SignInMockServer` and `MockSignIn` are
+under `#if DEBUG`, and so are the two switches in Beta and the `--mock-backend` flag; a release
+build — TestFlight and the App Store alike — has none of them, and a switch left on by a debug
+build is ignored. `MockSignIn` keeps a release stub that answers "not requested", so the call
+sites need no `#if` of their own.
+
 ### The sign-in server
 
 The demo server skips the sign-in screen; this one is for it. `Iskra --mock-signin` opens the

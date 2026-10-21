@@ -1,3 +1,6 @@
+// Debug only: the demo is for looking at screens during development, and a release build carries
+// none of it — no server to switch on, no flag to start it by. See CLAUDE.md, "The demo server".
+#if DEBUG
 import Foundation
 
 /// A Matrix homeserver that lives inside the app, for looking at every screen without an account.
@@ -1202,3 +1205,4 @@ public actor MockHomeserver: HTTPUpstream {
                             ?? Data())
     }
 }
+#endif

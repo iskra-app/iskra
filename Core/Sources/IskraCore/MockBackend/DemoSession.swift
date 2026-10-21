@@ -1,3 +1,6 @@
+// Debug only: the demo is for looking at screens during development, and a release build carries
+// none of it — no server to switch on, no flag to start it by. See CLAUDE.md, "The demo server".
+#if DEBUG
 import Foundation
 import MatrixRustSDK
 
@@ -92,3 +95,4 @@ extension AuthenticationService {
                                  storageLocations: [.session: data, .cache: cache, .search: search])
     }
 }
+#endif

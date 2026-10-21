@@ -85,6 +85,7 @@ struct BetaView: View {
                 }
             }
 
+            #if DEBUG
             // Flipping it takes the whole app with it — `IskraRootView` watches the same key and
             // swaps the session underneath this screen, so the switch is the last thing touched
             // in the account it was touched in. No confirmation: nothing is lost either way.
@@ -96,6 +97,7 @@ struct BetaView: View {
             } footer: {
                 Text(Strings.Beta.mockBackendHelp)
             }
+            #endif
 
             if let homeserver {
                 Section {
@@ -113,11 +115,13 @@ struct BetaView: View {
             }
 
             Section {
+                #if DEBUG
                 Button {
                     Task { demoServer = await MockSignIn.start().map(DemoServer.init) }
                 } label: {
                     Label(Strings.Beta.demoSignIn, systemImage: "person.badge.key")
                 }
+                #endif
                 Toggle(isOn: $showsEventSource) {
                     Label(Strings.Beta.showsSource, systemImage: "curlybraces")
                 }
@@ -131,8 +135,12 @@ struct BetaView: View {
                     Text(Strings.Beta.developers)
                 }
             } footer: {
+                #if DEBUG
                 Text(Strings.Beta.demoSignInHelp) + Text(verbatim: "\n\n") + Text(Strings.Beta.showsSourceHelp)
                     + Text(verbatim: "\n\n") + Text(Strings.Beta.showsAllEventsHelp)
+                #else
+                Text(Strings.Beta.showsSourceHelp) + Text(verbatim: "\n\n") + Text(Strings.Beta.showsAllEventsHelp)
+                #endif
             }
         }
         .formStyle(.grouped)
