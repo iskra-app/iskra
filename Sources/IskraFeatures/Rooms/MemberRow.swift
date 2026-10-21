@@ -165,7 +165,6 @@ extension View {
     func memberProfiles(_ opened: Binding<String?>, details: RoomDetailsStore) -> some View {
         navigationDestination(item: opened) { userID in
             RoomMemberProfile(details: details, userID: userID)
-                .escapeKey { opened.wrappedValue = nil }
         }
     }
 }

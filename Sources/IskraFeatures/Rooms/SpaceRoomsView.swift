@@ -56,7 +56,6 @@ struct SpaceRoomsView: View {
         .overlay { state }
         .navigationDestination(item: $openedChildSpace) { child in
             SpaceRoomsView(childSpace: child, session: session, onOpenRoom: onOpenRoom)
-                .escapeKey { openedChildSpace = nil }
         }
         .task {
             let store = session.space(forRoomID: spaceID)

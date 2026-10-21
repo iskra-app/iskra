@@ -12,6 +12,12 @@ import IskraDesign
 /// pass, the choice invalidated the layout — and the window spun in `NSHostingView.layout()` until
 /// it was force-quit. The sample showed the room and its info screen rebuilt in a loop.
 ///
+/// **Only on the root of a column, never on a pushed screen.** Hung on the screens pushed through
+/// `navigationDestination` — the info screen, the edit screen over it — the modifier (whatever it
+/// did inside: a hidden button once, a registration here now) put the window into a layout loop
+/// on macOS 26, the room and its info screen rebuilt forever; found by bisecting builds. So each
+/// column's root closes what is pushed over it: `RoomView.escape`, and the room list's.
+///
 /// **The way out is always handed in, never `@Environment(\.dismiss)`.** Half of these screens sit
 /// in the sidebar column's stack, where reading `dismiss` hangs macOS 26 (see `SettingsView.onClose`
 /// and CLAUDE.md) — so the screen that pushed one owns the flag that pushed it, and clearing that
@@ -20,6 +26,13 @@ import IskraDesign
 extension View {
     func escapeKey(_ action: @escaping () -> Void) -> some View {
         modifier(EscapeKey(action: action))
+    }
+
+    /// The same, or nothing at all — not even the modifier — when there is no action: for a view
+    /// that is sometimes the root of its column and sometimes pushed (a room, and a thread).
+    @ViewBuilder
+    func escapeKeyIfAny(_ action: (() -> Void)?) -> some View {
+        if let action { modifier(EscapeKey(action: action)) } else { self }
     }
 
     /// The window's one Escape — set once, at the root. See `EscapeStack`.

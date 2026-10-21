@@ -144,7 +144,6 @@ struct SecurityView: View {
                     ConnectionView(session: session)
                 }
             }
-            .escapeKey { self.page = nil }
         }
         // Neither store is stopped here any more, and neither is started here. Both belong to the
         // session and outlive this screen — `load()` is called once, when the session starts. Tearing

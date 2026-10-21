@@ -550,7 +550,10 @@ clear. A new screen pushed with a `NavigationLink` is a screen Escape cannot lea
 `.cancelAction` key equivalent in the window, at the root** (`EscapeStack`): a screen covered by a
 push stays in a Mac window, and a hidden Escape button per screen was three at once on the chat's
 edit screen — AppKit re-chose between them on every layout pass and the window hung in
-`NSHostingView.layout()`. Never add a `.keyboardShortcut(.cancelAction)` to a pushed screen.
+`NSHostingView.layout()`. Never add a `.keyboardShortcut(.cancelAction)` to a pushed screen — and
+never `.escapeKey` either: any modifier of that kind on a screen pushed through
+`navigationDestination` looped the layout too (found by bisecting builds). Escape lives on the two
+columns' roots, which close what is pushed over them (`RoomView.escape`, the room list's).
 And a screen that is itself pushed by `navigationDestination(isPresented:)` in the *detail* stack
 does not declare destinations of its own: `RoomEditView` did (the rules, the banned list) and the
 window spun in layout, rebuilding the room and its info screen forever. Its rows are plain

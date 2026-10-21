@@ -321,11 +321,8 @@ struct SettingsView: View {
         // once per character typed when the name was still a field up here.
         .navigationDestination(item: $page) { page in
             pageView(page)
-                .escapeKey { self.page = nil }
         }
-        // Escape, on a Mac: back to the chat list, as the chevron in the corner does. Only in the
-        // sidebar — on a phone this is a push the system already knows how to undo.
-        .escapeKey { if showsBackButton { onClose() } }        .toolbar {
+        .toolbar {
             // The one thing on this screen that is *yours* rather than the app's, so it gets the
             // corner. It is a pencil and not the word "Edit" because the corner opposite already
             // holds a back chevron on Mac, and two words facing each other across a title bar read

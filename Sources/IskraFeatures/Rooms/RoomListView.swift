@@ -296,7 +296,6 @@ public struct RoomListView: View {
                 selectedRoomID = roomID
                 openedSpace = nil
             }
-            .escapeKey { openedSpace = nil }
         }
         .navigationDestination(isPresented: $isShowingArchive) {
             // Beside the archive on iPad and Mac: the chat goes to the detail column, as from the main
@@ -313,8 +312,6 @@ public struct RoomListView: View {
                             }
                         },
                         pushed: isSidebar ? nil : $archivedRoomID)
-            // Escape puts the archive away — see `escapeKey`.
-            .escapeKey { isShowingArchive = false }
         }
         .navigationDestination(isPresented: $isShowingSettings) {
             // In a sidebar the system pushes without giving the pushed screen a way back,
@@ -339,6 +336,16 @@ public struct RoomListView: View {
             openedSpace = nil
         }
         #endif
+        // Escape, on a Mac, for the whole column: back to the list from wherever it went —
+        // settings and any page in it, a space, the archive. Here, on the column's root, and on no
+        // pushed screen: a modifier on a pushed screen put the window into a layout loop on
+        // macOS 26. See `escapeKey`.
+        .escapeKey {
+            isShowingSettings = false
+            openedSpace = nil
+            isShowingArchive = false
+            isArchiveInline = false
+        }
         // A sheet, not a push: creating a chat is a question with a Cancel, and the answer
         // to it replaces what is *behind* this column — so it is a thing you put down, not
         // a place you go back from.
@@ -632,7 +639,6 @@ public struct RoomListView: View {
         }
         .buttonStyle(.plain)
         .listRowSeparator(.hidden, edges: .top)
-        .escapeKey { isArchiveInline = false }
 
         ForEach(session.roomList.archivedRooms, id: \.id) { row(for: $0).sidebarRowInsets() }
     }

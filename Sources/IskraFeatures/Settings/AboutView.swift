@@ -96,11 +96,9 @@ struct AboutView: View {
         // can be the sidebar's, see CLAUDE.md.
         .navigationDestination(isPresented: $isShowingBeta) {
             BetaView(homeserver: homeserver)
-                .escapeKey { isShowingBeta = false }
         }
         .navigationDestination(isPresented: $isShowingLicences) {
             LicensesView()
-                .escapeKey { isShowingLicences = false }
         }
     }
 

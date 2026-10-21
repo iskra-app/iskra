@@ -1369,7 +1369,6 @@ public struct RoomView: View {
                     isShowingDetails = false
                     openRoomSearch()
                 })
-                .escapeKey { isShowingDetails = false }
             }
         }
         .navigationDestination(item: $openedThread) { thread in
@@ -1381,7 +1380,6 @@ public struct RoomView: View {
         .navigationDestination(isPresented: $isShowingPinned) {
             if let pinned {
                 PinnedMessagesView(pinned: pinned, isOneToOne: timeline.isOneToOne)
-                    .escapeKey { isShowingPinned = false }
             }
         }
         // A person's page, from a name in a grey line or a face beside a message — Telegram's. The
@@ -1389,7 +1387,6 @@ public struct RoomView: View {
         .navigationDestination(item: $profileUserID) { userID in
             if let details {
                 RoomMemberProfile(details: details, userID: userID)
-                    .escapeKey { profileUserID = nil }
             }
         }
         .photosPicker(isPresented: $isChoosingPhoto,
@@ -1497,8 +1494,10 @@ public struct RoomView: View {
             Task { await timeline.markAsRead() }
         }
         // Escape closes the conversation, the way it closes anything else on a Mac — after the
-        // menu, the reply or the edit, if one is open. See `escape` and `escapeKey`.
-        .escapeKey(escape)
+        // menu, the reply or the edit, and after whatever is pushed over it. Only the room at the
+        // root of the column registers it: a thread is itself pushed, and a modifier on a pushed
+        // screen put the window into a layout loop on macOS 26 (see `escapeKey`).
+        .escapeKeyIfAny(rootEscape)
         // Put the app away mid-recording, and the recording does not survive it — the question is
         // only whether the app admits that.
         //
@@ -1608,8 +1607,21 @@ public struct RoomView: View {
 
     /// Escape, on a Mac: the innermost thing that is open closes first. A message menu, then an
     /// answer or an edit being written, and only then the conversation itself.
+    /// `escape`, for the room at the root of its column — nil for a thread, which is pushed.
+    private var rootEscape: (() -> Void)? {
+        guard timeline.threadRootID == nil else { return nil }
+        return { escape() }
+    }
+
     private func escape() {
-        if let messageMenu, messageMenu.presentation != nil {
+        // Anything pushed over the room goes first, and all of it at once: the info screen takes
+        // whatever was pushed over *it* along when it goes.
+        if isShowingDetails || isShowingPinned || profileUserID != nil || openedThread != nil {
+            isShowingDetails = false
+            isShowingPinned = false
+            profileUserID = nil
+            openedThread = nil
+        } else if let messageMenu, messageMenu.presentation != nil {
             messageMenu.dismiss()
         } else if composerContext != nil {
             withAnimation(.smooth(duration: Theme.Timing.chrome)) { composerContext = nil }

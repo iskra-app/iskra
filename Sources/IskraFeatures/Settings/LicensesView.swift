@@ -37,7 +37,6 @@ struct LicensesView: View {
         // Neither screen reads `dismiss` — this stack can be the sidebar's, see CLAUDE.md.
         .navigationDestination(item: $opened) { licence in
             LicenceTextView(licence: licence)
-                .escapeKey { opened = nil }
         }
     }
 
