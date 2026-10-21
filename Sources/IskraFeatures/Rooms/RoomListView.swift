@@ -289,6 +289,7 @@ public struct RoomListView: View {
                 selectedRoomID = roomID
                 openedSpace = nil
             }
+            .escapeKey { openedSpace = nil }
         }
         .navigationDestination(isPresented: $isShowingArchive) {
             // Beside the archive on iPad and Mac: the chat goes to the detail column, as from the main
@@ -305,19 +306,9 @@ public struct RoomListView: View {
                             }
                         },
                         pushed: isSidebar ? nil : $archivedRoomID)
-            #if os(macOS)
-            // Escape puts the archive away, as it closes anything else on a Mac. A key equivalent,
-            // like the conversation's own (`RoomView`), and switched off while a conversation is
-            // open beside it: then the first Escape closes the chat and the second the archive,
-            // rather than the two shortcuts fighting over one key.
-            .background {
-                Button("") { isShowingArchive = false }
-                    .keyboardShortcut(.cancelAction)
-                    .disabled(selectedRoomID != nil)
-                    .opacity(0)
-                    .accessibilityHidden(true)
-            }
-            #endif
+            // Escape puts the archive away — after the conversation beside it, if one is open: see
+            // `escapeYieldsToChat`, set on this whole column below.
+            .escapeKey { isShowingArchive = false }
         }
         .navigationDestination(isPresented: $isShowingSettings) {
             // In a sidebar the system pushes without giving the pushed screen a way back,
@@ -331,6 +322,8 @@ public struct RoomListView: View {
                          // reason why is worth the line: see `SettingsView.onClose`.
                          onClose: { isShowingSettings = false })
         }
+        // Escape, on a Mac, closes the conversation beside this column before anything in it.
+        .environment(\.escapeYieldsToChat, isSidebar && selectedRoomID != nil)
         // A sheet, not a push: creating a chat is a question with a Cancel, and the answer
         // to it replaces what is *behind* this column — so it is a thing you put down, not
         // a place you go back from.

@@ -28,6 +28,9 @@ struct RoomEditView: View {
     @Environment(\.isOffline) private var isOffline
 
     @State private var draftName = ""
+    /// The two lists this screen pushes, by flags so that Escape can take them back (`escapeKey`).
+    @State private var isShowingRules = false
+    @State private var isShowingBanned = false
     @State private var draftTopic = ""
 
     /// What to call the person at the other end of a personal chat. Kept apart from `draftName`,
@@ -132,9 +135,7 @@ struct RoomEditView: View {
             // it is two lists, not a field.
             if isRoom, details.permissions.canChangeRoles {
                 Section {
-                    NavigationLink {
-                        RoomRulesView(details: details)
-                    } label: {
+                    PushRow { isShowingRules = true } label: {
                         Label {
                             Text(Strings.Room.Rules.title)
                         } icon: {
@@ -148,9 +149,7 @@ struct RoomEditView: View {
             // and only when there is somebody on it.
             if isRoom, details.permissions.canBan, !details.banned.isEmpty {
                 Section {
-                    NavigationLink {
-                        BannedMembersView(details: details)
-                    } label: {
+                    PushRow { isShowingBanned = true } label: {
                         LabeledContent {
                             Text(details.banned.count, format: .number)
                         } label: {
@@ -172,6 +171,14 @@ struct RoomEditView: View {
             }
         }
         .formStyle(.grouped)
+        .navigationDestination(isPresented: $isShowingRules) {
+            RoomRulesView(details: details)
+                .escapeKey { isShowingRules = false }
+        }
+        .navigationDestination(isPresented: $isShowingBanned) {
+            BannedMembersView(details: details)
+                .escapeKey { isShowingBanned = false }
+        }
         .profileScreen()
         // The fields follow the room, except while somebody is typing in them — a name that
         // arrives from a sync must not overwrite the one being written.

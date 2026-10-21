@@ -530,6 +530,13 @@ by whoever owns the flag that opened the screen. A sheet's `dismiss` is fine; a 
 stack. Narrowed by bisection under `sample`: a single `@Environment(\.dismiss)` added to an
 otherwise empty pushed `Form` is enough to reproduce it.
 
+**Escape is "Back" on a Mac, and it needs the same handed-down way out** (`escapeKey`,
+`IskraFeatures/Support/EscapeKey.swift`). Every pushed screen is pushed by a flag its parent owns
+— `navigationDestination(isPresented:)` / `(item:)` — and gets `.escapeKey { flag = nil }` there;
+a row that pushes is a `PushRow`, not a `NavigationLink`, because a link keeps no flag anybody can
+clear. A new screen pushed with a `NavigationLink` is a screen Escape cannot leave. The sidebar
+yields Escape to an open conversation (`escapeYieldsToChat`).
+
 **Sizes come from `Theme`.** Every spacing, radius and size is a named constant in
 `IskraDesign/Theme.swift`, all multiples of 4, corners `.continuous`. A view that hard-codes
 `.padding(12)` is a bug waiting to drift.

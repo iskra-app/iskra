@@ -166,6 +166,7 @@ struct RoomInfoView: View {
         }
         .navigationDestination(isPresented: $isEditing) {
             RoomEditView(details: details)
+                .escapeKey { isEditing = false }
         }
         .memberProfiles($openedMember, details: details)
         // The subscription this screen took out on the room goes with the screen. It follows the

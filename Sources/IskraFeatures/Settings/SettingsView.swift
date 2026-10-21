@@ -52,14 +52,25 @@ struct SettingsView: View {
     /// Another account, swiped to be signed out of and waiting for the answer to "are you sure".
     @State private var accountToSignOut: AccountRecord?
 
-    /// The one place this screen can go that is worth building lazily — see the
-    /// `navigationDestination` below.
-    private enum Destination: Hashable {
+    /// Every page this screen pushes, built on the push — see the `navigationDestination` below.
+    /// Held in a flag, `page`, rather than pushed by `NavigationLink`s, because this screen sits in
+    /// the sidebar's stack, where the only safe way back is a flag its owner clears: that is what
+    /// Escape does on a Mac (`escapeKey`). `dismiss` is not an option here — see `onClose`.
+    private enum Page: Hashable {
         case profile
+        case appearance
+        case reactions
+        case chats
+        case folders
         case notifications
         case security
+        case media
         case storage
+        case about
     }
+
+    /// The page pushed over this screen, if any.
+    @State private var page: Page?
 
     /// Whether this screen has to draw its own way out.
     ///
@@ -194,8 +205,8 @@ struct SettingsView: View {
             }
 
             Section {
-                NavigationLink {
-                    AppearanceView()
+                PushRow {
+                    page = .appearance
                 } label: {
                     Label(Strings.Settings.appearance, systemImage: "paintbrush")
                 }
@@ -203,33 +214,28 @@ struct SettingsView: View {
                 // Next to appearance rather than inside it. What the double tap sends is not a
                 // decision about how a conversation *looks* — it is what a gesture does — and it
                 // is a word people arrive at settings already looking for. See `ReactionsView`.
-                NavigationLink {
-                    ReactionsView()
+                PushRow {
+                    page = .reactions
                 } label: {
                     Label(Strings.Settings.reactions, systemImage: "face.smiling")
                 }
 
-                // Value-based, like the two below and for the same reason: `notificationRules()`
-                // builds a store holding an SDK `NotificationSettings` with a listener
-                // registration behind it, and a `NavigationLink` with a destination *closure*
-                // builds its destination eagerly on every pass of this body. See
-                // `navigationDestination`, which is where it is actually made.
                 // How conversations behave rather than how they look: the grey lines, the Return
                 // key, the share sheet's account. See `ChatSettingsView`.
-                NavigationLink {
-                    ChatSettingsView()
+                PushRow {
+                    page = .chats
                 } label: {
                     Label(Strings.Settings.chats, systemImage: "bubble.left.and.bubble.right")
                 }
 
                 // Folders of chats, as tabs over the list — see `FoldersView`.
-                NavigationLink {
-                    FoldersView(folders: session.folders, roomList: session.roomList)
+                PushRow {
+                    page = .folders
                 } label: {
                     Label(Strings.Folders.title, systemImage: "folder")
                 }
 
-                NavigationLink(value: Destination.notifications) {
+                PushRow { page = .notifications } label: {
                     Label(Strings.Settings.notifications, systemImage: "bell")
                 }
 
@@ -237,27 +243,27 @@ struct SettingsView: View {
                 // margin: a padlock is a picture of encryption, and this screen is no longer only
                 // about encryption. It took the devices, the blocked list and the privacy
                 // switches too — see `SecurityView`.
-                NavigationLink(value: Destination.security) {
+                PushRow { page = .security } label: {
                     Label(Strings.Settings.security, systemImage: "lock.shield")
                 }
 
                 // Before storage: both are about the bytes photos and videos cost, and this one is
                 // the question people come to settings with — "why did it send so big".
-                NavigationLink {
-                    MediaSettingsView()
+                PushRow {
+                    page = .media
                 } label: {
                     Label(Strings.Settings.media, systemImage: "photo.on.rectangle")
                 }
 
-                NavigationLink(value: Destination.storage) {
+                PushRow { page = .storage } label: {
                     Label(Strings.Settings.storage, systemImage: "internaldrive")
                 }
 
                 // Last, because it is the one row that changes nothing. It is also the only place
                 // the version is shown, and the only way to the beta features — three taps on the
                 // spark there. See `AboutView`.
-                NavigationLink {
-                    AboutView(homeserver: session.homeserverURL.absoluteString)
+                PushRow {
+                    page = .about
                 } label: {
                     Label(Strings.Settings.about, systemImage: "info.circle")
                 }
@@ -295,35 +301,22 @@ struct SettingsView: View {
         }
         .tint(accent.color)
         .profileScreen()
-        // Value-based, because a `NavigationLink` with a destination *closure* builds that
-        // destination eagerly, on every pass of this `body`. `session.storage()` allocates a store
-        // and takes the room list with it, so the link-with-a-closure version minted and threw one
-        // away every time anything on this screen changed — and when the name was still a field up
-        // here, that was once per character typed. This closure runs when the row is pushed.
-        .navigationDestination(for: Destination.self) { destination in
-            switch destination {
-            case .profile:
-                ProfileEditView(session: session)
-            case .notifications:
-                NotificationsView(rules: session.notificationRules())
-            case .security:
-                SecurityView(session: session,
-                             recovery: session.recovery,
-                             verification: session.verification)
-            case .storage:
-                // Built here, on the push, for the same reason as the encryption screen above:
-                // a `NavigationLink` with a destination closure builds it on every pass of this
-                // body, and this body re-runs whenever anything on the screen moves.
-                StorageView(storage: session.storage(), onCleared: onClearedCache)
-            }
+        // Built on the push, never on a pass of this body — see `pageView`. A `NavigationLink`
+        // with a destination closure built `session.storage()` every time anything here changed,
+        // once per character typed when the name was still a field up here.
+        .navigationDestination(item: $page) { page in
+            pageView(page)
+                .escapeKey { self.page = nil }
         }
-        .toolbar {
+        // Escape, on a Mac: back to the chat list, as the chevron in the corner does. Only in the
+        // sidebar — on a phone this is a push the system already knows how to undo.
+        .escapeKey { if showsBackButton { onClose() } }        .toolbar {
             // The one thing on this screen that is *yours* rather than the app's, so it gets the
             // corner. It is a pencil and not the word "Edit" because the corner opposite already
             // holds a back chevron on Mac, and two words facing each other across a title bar read
             // as a dialog rather than as a screen.
             ToolbarItem(placement: .primaryAction) {
-                NavigationLink(value: Destination.profile) {
+                Button { page = .profile } label: {
                     Image(systemName: "pencil")
                         .font(.body.weight(.medium))
                 }
@@ -342,6 +335,37 @@ struct SettingsView: View {
                     .accessibilityLabel(Text(Strings.Settings.back))
                 }
             }
+        }
+    }
+
+    /// What each page is. Built here, on the push: `notificationRules()` builds a store with an
+    /// SDK listener behind it and `session.storage()` takes the room list with it, and a
+    /// `NavigationLink` with a destination closure built them on every pass of this body.
+    @ViewBuilder
+    private func pageView(_ page: Page) -> some View {
+        switch page {
+        case .profile:
+            ProfileEditView(session: session)
+        case .appearance:
+            AppearanceView()
+        case .reactions:
+            ReactionsView()
+        case .chats:
+            ChatSettingsView()
+        case .folders:
+            FoldersView(folders: session.folders, roomList: session.roomList)
+        case .media:
+            MediaSettingsView()
+        case .about:
+            AboutView(homeserver: session.homeserverURL.absoluteString)
+        case .notifications:
+            NotificationsView(rules: session.notificationRules())
+        case .security:
+            SecurityView(session: session,
+                         recovery: session.recovery,
+                         verification: session.verification)
+        case .storage:
+            StorageView(storage: session.storage(), onCleared: onClearedCache)
         }
     }
 

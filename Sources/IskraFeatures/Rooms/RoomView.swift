@@ -1364,6 +1364,7 @@ public struct RoomView: View {
                     isShowingDetails = false
                     openRoomSearch()
                 })
+                .escapeKey { isShowingDetails = false }
             }
         }
         .navigationDestination(item: $openedThread) { thread in
@@ -1375,6 +1376,7 @@ public struct RoomView: View {
         .navigationDestination(isPresented: $isShowingPinned) {
             if let pinned {
                 PinnedMessagesView(pinned: pinned, isOneToOne: timeline.isOneToOne)
+                    .escapeKey { isShowingPinned = false }
             }
         }
         // A person's page, from a name in a grey line or a face beside a message — Telegram's. The
@@ -1382,6 +1384,7 @@ public struct RoomView: View {
         .navigationDestination(item: $profileUserID) { userID in
             if let details {
                 RoomMemberProfile(details: details, userID: userID)
+                    .escapeKey { profileUserID = nil }
             }
         }
         .photosPicker(isPresented: $isChoosingPhoto,
@@ -1500,17 +1503,9 @@ public struct RoomView: View {
             guard isAtNewest else { return }
             Task { await timeline.markAsRead() }
         }
-        #if os(macOS)
-        // Escape closes the conversation, the way it closes anything else on a Mac. A key
-        // equivalent rather than `onExitCommand`, because the latter only reaches a view that
-        // holds focus — and the focus is in the composer, which keeps Escape for itself.
-        .background {
-            Button("", action: escape)
-                .keyboardShortcut(.cancelAction)
-                .opacity(0)
-                .accessibilityHidden(true)
-        }
-        #endif
+        // Escape closes the conversation, the way it closes anything else on a Mac — after the
+        // menu, the reply or the edit, if one is open. See `escape` and `escapeKey`.
+        .escapeKey(escape)
         // Put the app away mid-recording, and the recording does not survive it — the question is
         // only whether the app admits that.
         //

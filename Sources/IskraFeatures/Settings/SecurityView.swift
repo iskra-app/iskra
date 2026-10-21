@@ -43,11 +43,15 @@ struct SecurityView: View {
     @AppStorage(PrivacySettings.hidesPresenceKey) private var hidesPresence = PrivacySettings.hidesPresenceByDefault
     @AppStorage(PrivacySettings.hidesTypingKey) private var hidesTyping = PrivacySettings.hidesTypingByDefault
 
-    /// The device list, built on the push and not on every pass of this body — see `SettingsView`'s
-    /// destinations, which is where it lived before.
-    private enum Destination: Hashable {
+    /// The page pushed over this screen — a flag rather than a `NavigationLink`, so Escape can take
+    /// it back (`escapeKey`): this screen can sit in the sidebar's stack, where `dismiss` is out.
+    private enum Page: Hashable {
         case devices
+        case blocked
+        case connection
     }
+
+    @State private var page: Page?
 
     /// The session's, not this screen's — a plain `let`, exactly like `verification` below.
     ///
@@ -127,13 +131,20 @@ struct SecurityView: View {
         .onChange(of: hidesPresence) {
             Task { await session.applyPresence() }
         }
-        .navigationDestination(for: Destination.self) { destination in
-            switch destination {
-            case .devices:
-                if let devices = session.accountDevices() {
-                    DevicesView(store: DevicesStore(source: devices))
+        .navigationDestination(item: $page) { page in
+            Group {
+                switch page {
+                case .devices:
+                    if let devices = session.accountDevices() {
+                        DevicesView(store: DevicesStore(source: devices))
+                    }
+                case .blocked:
+                    BlockedUsersView(store: session.blocked)
+                case .connection:
+                    ConnectionView(session: session)
                 }
             }
+            .escapeKey { self.page = nil }
         }
         // Neither store is stopped here any more, and neither is started here. Both belong to the
         // session and outlive this screen — `load()` is called once, when the session starts. Tearing
@@ -287,14 +298,12 @@ struct SecurityView: View {
     private var people: some View {
         Section {
             if session.deviceID != nil {
-                NavigationLink(value: Destination.devices) {
+                PushRow { page = .devices } label: {
                     Label(Strings.Devices.title, systemImage: "laptopcomputer.and.iphone")
                 }
             }
 
-            NavigationLink {
-                BlockedUsersView(store: session.blocked)
-            } label: {
+            PushRow { page = .blocked } label: {
                 Label(Strings.Settings.blocked, systemImage: "hand.raised")
             }
 
@@ -371,9 +380,7 @@ struct SecurityView: View {
     /// A row under the devices and the blocked, in their group: all three are about who stands
     /// between you and the people you talk to.
     private var bridge: some View {
-        NavigationLink {
-            ConnectionView(session: session)
-        } label: {
+        PushRow { page = .connection } label: {
             Label(
                 Strings.Settings.connection,
                 systemImage: "point.3.filled.connected.trianglepath.dotted"

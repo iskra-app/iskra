@@ -19,6 +19,8 @@ struct AboutView: View {
     /// Whether the beta features are pushed — by three taps on the spark, which is the only way
     /// to them. See `BetaView`.
     @State private var isShowingBeta = false
+    /// The licences, pushed by a flag so Escape can take them back — see `escapeKey`.
+    @State private var isShowingLicences = false
 
     var body: some View {
         Form {
@@ -71,12 +73,9 @@ struct AboutView: View {
                     }
                 }
 
-                // A closure destination is fine here: `LicensesView` holds nothing but constants,
-                // so building it eagerly costs nothing. And it must not read `dismiss` — this
-                // screen is itself pushed onto the settings stack. See CLAUDE.md.
-                NavigationLink {
-                    LicensesView()
-                } label: {
+                // `LicensesView` must not read `dismiss` — this screen is itself pushed onto the
+                // settings stack. See CLAUDE.md.
+                PushRow { isShowingLicences = true } label: {
                     Text(Strings.About.licences)
                 }
             } footer: {
@@ -97,6 +96,11 @@ struct AboutView: View {
         // can be the sidebar's, see CLAUDE.md.
         .navigationDestination(isPresented: $isShowingBeta) {
             BetaView(homeserver: homeserver)
+                .escapeKey { isShowingBeta = false }
+        }
+        .navigationDestination(isPresented: $isShowingLicences) {
+            LicensesView()
+                .escapeKey { isShowingLicences = false }
         }
     }
 

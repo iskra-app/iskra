@@ -12,13 +12,15 @@ import IskraDesign
 struct LicensesView: View {
     @Environment(\.accent) private var accent
 
+    /// The licence whose text is pushed over this screen — a flag, so Escape can take it back
+    /// (`escapeKey`).
+    @State private var opened: Licence?
+
     var body: some View {
         Form {
             Section {
                 row(.iskra)
-                NavigationLink {
-                    LicenceTextView(licence: .iskraStorePermission)
-                } label: {
+                PushRow { opened = .iskraStorePermission } label: {
                     Text(Strings.Licences.storePermission)
                 }
             }
@@ -32,15 +34,15 @@ struct LicensesView: View {
         .formStyle(.grouped)
         .tint(accent.color)
         .navigationTitle(Text(Strings.About.licences))
+        // Neither screen reads `dismiss` — this stack can be the sidebar's, see CLAUDE.md.
+        .navigationDestination(item: $opened) { licence in
+            LicenceTextView(licence: licence)
+                .escapeKey { opened = nil }
+        }
     }
 
-    // A closure destination is fine: `LicenceTextView` reads its file when it is drawn, not when
-    // it is built. And neither screen reads `dismiss` — this stack can be the sidebar's, see
-    // CLAUDE.md.
     private func row(_ licence: Licence) -> some View {
-        NavigationLink {
-            LicenceTextView(licence: licence)
-        } label: {
+        PushRow { opened = licence } label: {
             LabeledContent {
                 EmptyView()
             } label: {
@@ -57,7 +59,7 @@ struct LicensesView: View {
 /// Names and licence names are not translated — "Apache 2.0" and "MIT" are what the licences
 /// are called in every language, and the project names are proper nouns. The texts are not
 /// translated either: only the English text of a licence is the licence.
-struct Licence: Identifiable {
+struct Licence: Identifiable, Hashable {
     let name: String
     let kind: String
     /// The resource's name in `Resources/`, without its extension.
