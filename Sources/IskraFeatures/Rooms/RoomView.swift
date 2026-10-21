@@ -430,11 +430,8 @@ public struct RoomView: View {
     @State private var highlighted: String?
     @State private var lighting: Task<Void, Never>?
 
-    /// Trustworthy *here*, unlike in the sidebar. `RoomView` fills the split view's detail
-    /// column, so the size class it reads is the width of the space it actually draws in —
-    /// and how much room the title bar has is precisely the question the header's shape
-    /// turns on. See `RoomListView.isSidebar` for the case where this reasoning goes wrong.
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    /// The window's shape, from the root — see `isCompact` for why not this column's size class.
+    @Environment(\.windowIsCompact) private var windowIsCompact
 
     /// Whether the app is still the thing the user is looking at.
     ///
@@ -523,11 +520,18 @@ public struct RoomView: View {
 
     /// A phone-shaped title bar: an iPhone, or an iPad window squeezed narrow enough to be
     /// one. Never the Mac, which has no size class worth asking.
+    ///
+    /// The *window's* size class, handed down from the root (`windowIsCompact`), not this view's
+    /// own. The whole toolbar is built from this answer — the name and the subtitle in the middle
+    /// on a phone, the header at the leading edge otherwise — and inside the split view's column
+    /// the size class is not steady while a push is animating: for a few frames of opening a chat
+    /// on an iPhone it was not `.compact`, the title was swapped out for the iPad's header and
+    /// removed, and the bar stood empty until the push was over.
     private var isCompact: Bool {
         #if os(macOS)
         false
         #else
-        horizontalSizeClass == .compact
+        windowIsCompact
         #endif
     }
 
@@ -2733,4 +2737,10 @@ extension View {
 private struct PresenceWatch: Equatable {
     let counterpart: String?
     let hidesOwn: Bool
+}
+
+extension EnvironmentValues {
+    /// Whether the window is phone-shaped — set once at the root, from the one view outside the
+    /// split view, whose size class is the window's. See `RoomView.isCompact`.
+    @Entry var windowIsCompact = false
 }

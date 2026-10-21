@@ -962,6 +962,9 @@ public struct IskraRootView: View {
         // branches of the tree and both have to know, and the session is the only thing that is
         // above both of them. See `OfflineBanner`.
         .environment(\.isOffline, session.roomList.isUnreachable)
+        // The window's shape, read here because only a view outside the split view sees it —
+        // a column reports its own, and not steadily while a push animates. See `RoomView.isCompact`.
+        .environment(\.windowIsCompact, !isSidebar)
         .environment(\.isUpdating, session.roomList.isUpdating)
     }
 
