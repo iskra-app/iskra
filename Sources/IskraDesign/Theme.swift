@@ -988,25 +988,29 @@ public enum Theme {
         public static let sidebarIdeal: CGFloat = 320
         public static let sidebarMaximum: CGFloat = 400
 
-        /// The chat's info, as a column on the right of a Mac window. A little wider than the room
-        /// list on the left: it holds a portrait and a form, not a column of names.
-        public static let infoColumnMinimum: CGFloat = 300
-        public static let infoColumnIdeal: CGFloat = 360
-        public static let infoColumnMaximum: CGFloat = 440
+        /// The two side columns of a Mac window — the room list on the left and the chat's info on
+        /// the right — fixed, and the same. Fixed, so a window resized gives and takes width from the
+        /// conversation alone, and the same, so the conversation sits between two columns that match.
+        public static let sideColumn: CGFloat = 350
+
+        /// The least a Mac window may be: both side columns and the narrowest a conversation may be
+        /// between them — so the info column can always be opened, however narrow the window is.
+        public static let windowMinimum: CGFloat = 2 * sideColumn + conversationMinimum.width
 
         /// The Mac's About window: the About screen at the width of a phone's, tall enough for the
         /// version, the build and the links without scrolling.
         public static let aboutWindow = CGSize(width: 420, height: 640)
 
-        /// The least a chat may be squeezed to on a Mac — and the empty column too, so that a
-        /// window with no chat open is exactly as narrow as one with a chat, and picking a chat never
-        /// pushes the window wider. Squeezed with nothing to hold it, a chat became a column of one
-        /// word a line.
+        /// The least a conversation may be squeezed to on a Mac, with the info column open beside
+        /// it. With the column shut, the conversation takes the column's width as well, so the
+        /// window never shrinks below `windowMinimum` whichever is showing — see
+        /// `InfoColumn.conversationMinimumWidth`. Squeezed with nothing to hold it, a chat became a
+        /// column of one word a line.
         ///
         /// Put on the chat and on the empty column's spark, never on the column around them: there,
         /// it was re-measured from the chat on every frame of a resize, and AppKit ended the app
         /// (`Iskra --probe-resize` reproduces it).
-        public static let conversationMinimum = CGSize(width: 420, height: 420)
+        public static let conversationMinimum = CGSize(width: 450, height: 420)
 
         /// The list of things you can do to a message — see `MessageMenu`.
         ///

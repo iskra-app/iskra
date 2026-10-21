@@ -32,6 +32,21 @@ final class InfoColumn {
     /// Open, and with something in it.
     var isPresented: Bool { isOpen && content != nil }
 
+    /// The minimum frame to put on the chat, so that the window's least width comes out as
+    /// `Theme.Size.windowMinimum` with the column open and shut alike.
+    ///
+    /// Shut, the chat takes the column's width too. Open, it is asked for a column's width *less*
+    /// than it will get: SwiftUI counts an inspector on a split view twice in the window's least
+    /// width — once in the conversation column's minimum and again as itself (measured with
+    /// `Iskra --probe-resize`) — and the chat's own minimum is where that second count is paid
+    /// for. Asked for the full `conversationMinimum` there, the window needed a column more than it
+    /// has, and the column could not open in the narrowest window.
+    var conversationMinimumWidth: CGFloat {
+        isPresented
+            ? Theme.Size.conversationMinimum.width - Theme.Size.sideColumn
+            : Theme.Size.windowMinimum - Theme.Size.sideColumn
+    }
+
     /// Opens the column — first making room for it, if the window has none.
     ///
     /// The column takes its width out of the conversation and leaves the window as it is. But a
@@ -44,12 +59,9 @@ final class InfoColumn {
     }
 
     private func makeRoom() {
-        // The window's least width as it stands — the column still shut — is what the room list
-        // and the chat need, and the column needs *twice* its width on top of that: SwiftUI counts
-        // an inspector on a split view once in the conversation column's minimum and again as
-        // itself. Measured, not guessed — `Iskra --probe-resize open` at two column widths moved
-        // the window's least width by twice the difference. Short of that, the column was folded
-        // away for want of room and back again until AppKit ended the app.
+        // The window is never narrower than `windowMinimum`, which has room for the column — but a
+        // window saved narrower by an earlier build is, and a column opened into it was folded away
+        // for want of room and back again until AppKit ended the app.
         //
         // The key window, or the main one — or, in an app that is not active, the first one on
         // screen.
@@ -57,7 +69,7 @@ final class InfoColumn {
                 ?? NSApp.windows.first(where: { $0.isVisible && $0.canBecomeMain }),
               !window.styleMask.contains(.fullScreen),
               let screen = window.screen?.visibleFrame else { return }
-        let needed = window.minSize.width + 2 * Theme.Size.infoColumnIdeal
+        let needed = Theme.Size.windowMinimum
         guard window.frame.width < needed else { return }
         var frame = window.frame
         frame.size.width = min(screen.width, needed)
@@ -119,9 +131,7 @@ extension View {
         inspector(isPresented: Binding(get: { column.isPresented },
                                        set: { if !$0 { column.isOpen = false } })) {
             column.content
-                .inspectorColumnWidth(min: Theme.Size.infoColumnMinimum,
-                                      ideal: Theme.Size.infoColumnIdeal,
-                                      max: Theme.Size.infoColumnMaximum)
+                .inspectorColumnWidth(Theme.Size.sideColumn)
         }
         .environment(\.infoColumn, column)
     }

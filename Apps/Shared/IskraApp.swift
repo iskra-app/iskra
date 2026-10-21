@@ -2,6 +2,7 @@ import SwiftUI
 import UserNotifications
 import IskraCore
 import IskraFeatures
+import IskraDesign
 
 /// The app shell, shared by iPhone, iPad and Mac.
 ///
@@ -118,7 +119,8 @@ struct IskraApp: App {
         // A messenger is a content window, not a document: one window, resizable,
         // with the sidebar doing the navigating.
         .windowResizability(.contentMinSize)
-        .defaultSize(width: 1000, height: 700)
+        // As wide as it can be narrow: both side columns and the narrowest conversation between them.
+        .defaultSize(width: Theme.Size.windowMinimum, height: 700)
         .commands { AboutCommand() }
         #endif
     }

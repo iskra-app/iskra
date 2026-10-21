@@ -282,7 +282,7 @@ public extension Color {
         #elseif canImport(AppKit)
         Color(nsColor: NSColor(name: nil) { appearance in
             appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-                ? NSColor(srgbRed: 0x1C / 255, green: 0x1C / 255, blue: 0x1E / 255, alpha: 1)
+                ? NSColor(srgbRed: 0x16 / 255, green: 0x16 / 255, blue: 0x18 / 255, alpha: 1)
                 : .white
         })
         #else
@@ -290,8 +290,8 @@ public extension Color {
         #endif
     }
 
-    /// A card on that page — the phone's grouped cell: white, and in the dark the same grey as the
-    /// conversation (`page`), well above the near-black of the side columns. On a Mac the form's own plates are a translucent darkening of whatever is under
+    /// A card on that page — the phone's grouped cell: white, and in the dark a grey a step above
+    /// the conversation (`page`) and well above the near-black of the side columns. On a Mac the form's own plates are a translucent darkening of whatever is under
     /// them, so on a grey page they came out greyer than the page: the phone's arrangement upside
     /// down. Painted per row instead (`GroupedRowsFormStyle`).
     static var groupedCard: Color {

@@ -142,10 +142,12 @@ open -n -W --stdout /tmp/probe.log --stderr /tmp/probe.log .build/xcode/Build/Pr
 ```
 
 Two things it found. A minimum frame on the whole conversation column starts the loop; the
-minimum is on the chat and on the empty column's spark instead (`Theme.Size.conversationMinimum`).
-And SwiftUI counts an inspector on a split view *twice* in the window's least width — so the info
-column needs twice its width of room before it opens (`InfoColumn.makeRoom`), or it is folded
-away for want of room and back again until the app is ended.
+minimum is on the chat and on the empty column's spark instead. And SwiftUI counts an inspector on
+a split view *twice* in the window's least width; a window too narrow for that folds the info
+column away and back until the app is ended. Both side columns are a fixed `Theme.Size.sideColumn`,
+the window's least width is `Theme.Size.windowMinimum` with the column open or shut, and the chat's
+minimum frame pays for the second count (`InfoColumn.conversationMinimumWidth`). The probe prints
+the window's least width in every mode — it should be `windowMinimum` in all of them.
 
 ### The demo server
 

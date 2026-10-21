@@ -944,9 +944,23 @@ public struct IskraRootView: View {
                 // `SettingsView` — see `SettingsView.onClose`. The width stays because a
                 // column that resizes itself when you open settings is its own small bug.
                 // See `Theme.Size.sidebar*`.
+                #if os(macOS)
+                // On a Mac, one width and no dragging it — see `Theme.Size.sideColumn`.
+                .navigationSplitViewColumnWidth(Theme.Size.sideColumn)
+                #else
                 .navigationSplitViewColumnWidth(min: Theme.Size.sidebarMinimum,
                                                 ideal: Theme.Size.sidebarIdeal,
                                                 max: Theme.Size.sidebarMaximum)
+                #endif
+                #if os(macOS)
+                // A hairline in the conversation's colour down the list's edge, so the two read as
+                // two surfaces with a seam between them rather than as one sheet with a shadow.
+                .overlay(alignment: .trailing) {
+                    Color.page
+                        .frame(width: 1)
+                        .ignoresSafeArea()
+                }
+                #endif
         } detail: {
             // The stack is load-bearing, and its absence fails in a way that looks like
             // nothing at all: a `navigationDestination` declared inside a split view's
@@ -971,7 +985,7 @@ public struct IskraRootView: View {
                         // A chat stops somewhere: squeezed with nothing to hold it, it became a
                         // column of one word a line. On the chat and not on the column around it —
                         // see `Theme.Size.conversationMinimum`.
-                        .frame(minWidth: Theme.Size.conversationMinimum.width)
+                        .frame(minWidth: infoColumn.conversationMinimumWidth)
                         #endif
                         // Rebuilds the view when the user picks a different room, rather
                         // than reusing one room's state for another's messages.
@@ -985,7 +999,7 @@ public struct IskraRootView: View {
                         // `Theme.Size.conversationMinimum`. On the spark and not on the column: a
                         // minimum put on the whole column was re-measured from the chat inside it
                         // on every frame of a resize, and AppKit ended the app for it.
-                        .frame(minWidth: Theme.Size.conversationMinimum.width,
+                        .frame(minWidth: Theme.Size.windowMinimum - Theme.Size.sideColumn,
                                maxWidth: .infinity,
                                minHeight: Theme.Size.conversationMinimum.height,
                                maxHeight: .infinity)
@@ -995,6 +1009,11 @@ public struct IskraRootView: View {
                         .accessibilityElement()
                         .accessibilityLabel(Text(Strings.Room.noRoomSelectedTitle))
                         .accessibilityHint(Text(Strings.Room.noRoomSelectedMessage))
+                        #if os(macOS)
+                        // No title bar over the empty column either, as over a conversation.
+                        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+                        .toolbar(removing: .title)
+                        #endif
                 }
             }
             #if os(macOS)
