@@ -219,6 +219,9 @@ public struct RoomListView: View {
         .toolbar {
             if hasSidebarChrome {
                 ToolbarItem(placement: .primaryAction) { newConversationMenu }
+                // Two buttons, not one capsule holding both: starting a chat and opening settings
+                // are different acts.
+                toolbarGlassGap(placement: .primaryAction)
                 ToolbarItem(placement: .primaryAction) { settingsButton }
             } else {
                 ToolbarItem(placement: .principal) { RoomListTitle(status: listStatus) }
@@ -715,6 +718,9 @@ private extension View {
                 // stand on its own material.
                 .scrollContentBackground(.hidden)
                 .background(Color.groupedPage)
+                // A step in from the column's edges, so a chat — and the capsule that marks the open
+                // one — does not run into the window's frame and the divider.
+                .contentMargins(.horizontal, Theme.Spacing.close, for: .scrollContent)
                 #endif
         }
     }
