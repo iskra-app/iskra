@@ -49,6 +49,10 @@ public struct RoomListView: View {
     @State private var searchText = ""
     @State private var isShowingSettings = false
     @State private var isShowingArchive = false
+    /// On a Mac the archive is not a screen but a mode of this list, as on the web: the archived
+    /// chats take the list's place, under a row that leads back. Pushed, it went into the
+    /// conversation's column — a destination declared in a split view's sidebar lands beside it.
+    @State private var isArchiveInline = false
 
     /// The chat opened from the archive on a phone — see `ArchiveView.pushed`.
     @State private var archivedRoomID: String?
@@ -151,6 +155,8 @@ public struct RoomListView: View {
         List(selection: selection) {
             if isSearching {
                 searchResults
+            } else if isArchiveInline {
+                archiveInline
             } else if isNativeSidebar {
                 // The same conversations, filed into sections, because that is what a sidebar on
                 // a Mac is — see `sectionedRooms` and `isNativeSidebar`.
@@ -591,7 +597,11 @@ public struct RoomListView: View {
     private var archiveEntry: some View {
         if !session.roomList.archivedRooms.isEmpty {
             Button {
+                #if os(macOS)
+                if isSidebar { isArchiveInline = true } else { isShowingArchive = true }
+                #else
                 isShowingArchive = true
+                #endif
             } label: {
                 Label(String(app: Strings.RoomList.Archive.title),
                       systemImage: "archivebox")
@@ -608,6 +618,26 @@ public struct RoomListView: View {
             // a line under an edge that already exists.
             .listRowSeparator(.hidden, edges: .top)
         }
+    }
+
+    /// The archive in the list's place — see `isArchiveInline`. A row back at the top, then the
+    /// archived chats as the same rows the list draws, selected into the conversation's column.
+    @ViewBuilder
+    private var archiveInline: some View {
+        Button {
+            isArchiveInline = false
+        } label: {
+            Label(String(app: Strings.RoomList.Archive.title), systemImage: "chevron.backward")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .listRowSeparator(.hidden, edges: .top)
+        .escapeKey { isArchiveInline = false }
+
+        ForEach(session.roomList.archivedRooms, id: \.id) { row(for: $0).sidebarRowInsets() }
     }
 
     @ViewBuilder
@@ -887,10 +917,12 @@ struct RoomRow: View {
         // and with the faces enlarged the column of them was reading as a list of *cards* with the
         // conversations a long way apart. Set here rather than at the `List`, so the invitation
         // rows — which carry two buttons and genuinely want the room — keep the system's.
-        .listRowInsets(EdgeInsets(top: Theme.Spacing.normal,
-                                  leading: Theme.Spacing.roomy,
-                                  bottom: Theme.Spacing.normal,
-                                  trailing: Theme.Spacing.roomy))
+        // In the Mac's sidebar, next to nothing: the sidebar draws its own margin round a row, and
+        // ours on top of it left a band of empty space either side of every chat.
+        .listRowInsets(compact
+                       ? EdgeInsets(top: Theme.Spacing.tight, leading: 0, bottom: Theme.Spacing.tight, trailing: 0)
+                       : EdgeInsets(top: Theme.Spacing.normal, leading: Theme.Spacing.roomy,
+                                    bottom: Theme.Spacing.normal, trailing: Theme.Spacing.roomy))
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
     }
