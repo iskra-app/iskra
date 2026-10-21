@@ -1208,26 +1208,17 @@ struct PictureBubble: View {
         // off the conversation, and it now takes in the blurred frame and the caption as well
         // as the photograph — which is the point of their being one bubble at all.
         .contentShape(BubbleShape())
-        // A cover on the phone and a sheet on the Mac. The Mac has no `fullScreenCover`, and would
-        // not want one: a picture there belongs in a window over the conversation rather than on
-        // top of the entire app. On the phone it is the opposite — a photograph in a sheet is a
-        // photograph with the room showing above it and a card's corners cut out of it, which is
-        // not what looking at a picture is anywhere else on the platform.
-        #if os(iOS)
-        .fullScreenCover(item: $opened) { opened in
+        // A cover over the whole app on the phone, and a full-screen space of its own on the Mac:
+        // a photograph in a sheet is a photograph with the room showing above it and a card's
+        // corners cut out of it, which is not what looking at a picture is anywhere else.
+        .mediaViewer(item: $opened) { opened in
             MediaPager(items: opened.items, startIndex: opened.index)
-                // A sheet dressed as nothing at all: the viewer draws its own black, and the
-                // system's card behind it would be a grey rectangle showing at the corners.
-                .presentationBackground(.black)
         }
+        #if os(iOS)
         // A cover makes the room underneath "disappear" as far as SwiftUI is concerned, and the
         // room used to take that for the reader leaving: the draft saved, the timeline stopped,
         // and — worse — a latch left set so that the *real* way out later did none of it.
         .onChange(of: opened != nil) { _, isOpen in coversRoom(isOpen) }
-        #else
-        .sheet(item: $opened) { opened in
-            MediaPager(items: opened.items, startIndex: opened.index)
-        }
         #endif
     }
 

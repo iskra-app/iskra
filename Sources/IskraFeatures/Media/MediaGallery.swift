@@ -31,13 +31,22 @@ import Photos
 struct MediaPager: View {
     let items: [MediaItem]
 
+    /// The way out, when it is not `dismiss`: on the Mac the viewer is a window of its own
+    /// (`MacMediaViewer`), and a window's `dismiss` closes nothing.
+    var onClose: (() -> Void)?
+
     @State private var model: GalleryModel
     @Environment(\.dismiss) private var dismiss
 
-    init(items: [MediaItem], startIndex: Int) {
+    init(items: [MediaItem], startIndex: Int, onClose: (() -> Void)? = nil) {
         self.items = items
+        self.onClose = onClose
         let start = items.indices.contains(startIndex) ? startIndex : 0
         _model = State(initialValue: GalleryModel(currentID: items.isEmpty ? nil : items[start].id))
+    }
+
+    private func close() {
+        if let onClose { onClose() } else { dismiss() }
     }
 
     private var currentIndex: Int {
@@ -50,9 +59,7 @@ struct MediaPager: View {
 
     var body: some View {
         ZStack {
-            Color.black
-                .opacity(model.backdropOpacity)
-                .ignoresSafeArea()
+            GalleryBackdrop()
 
             pager
         }
@@ -62,7 +69,7 @@ struct MediaPager: View {
         .overlay(alignment: .top) {
             if let current {
                 GalleryHeader(item: current, position: currentIndex + 1, total: items.count,
-                              onClose: { dismiss() })
+                              onClose: close)
                     .opacity(model.chromeOpacity)
                     .allowsHitTesting(model.isChromeVisible)
             }
@@ -77,7 +84,7 @@ struct MediaPager: View {
         .animation(.smooth(duration: Theme.Timing.chrome), value: model.isChromeVisible)
         .environment(model)
         .onChange(of: model.wantsDismiss) { _, wants in
-            if wants { dismiss() }
+            if wants { close() }
         }
         #if os(macOS)
         // The arrow keys page, as they do in Quick Look.
@@ -165,6 +172,52 @@ final class GalleryModel {
     }
 }
 
+/// What the photograph floats over: whatever was behind the viewer, blurred past reading and taken
+/// down dark — Instagram's viewer rather than a black page.
+///
+/// On the phone that is the conversation, under a cover with a clear background, and a flick down
+/// fades all of this and shows it sharp again. Zoomed in, the phone goes black: a photograph looked
+/// at closely has nothing to gain from colours around its edge. On the Mac it is everything on the
+/// screen under the overlay (`MacMediaViewer`), blurred by the window server, and it stays blurred
+/// however far the picture is zoomed.
+private struct GalleryBackdrop: View {
+    @Environment(GalleryModel.self) private var model
+
+    var body: some View {
+        ZStack {
+            #if os(macOS)
+            BehindWindowBlur()
+            Color.black.opacity(Theme.Backdrop.viewer)
+            #else
+            Rectangle().fill(.ultraThinMaterial)
+            Color.black.opacity(model.isZoomed ? 1 : Theme.Backdrop.viewer)
+            #endif
+        }
+        .environment(\.colorScheme, .dark)
+        .opacity(model.backdropOpacity)
+        .animation(.smooth(duration: Theme.Timing.chrome), value: model.isZoomed)
+        .ignoresSafeArea()
+        .allowsHitTesting(false)
+    }
+}
+
+#if os(macOS)
+/// The windows behind this one, blurred. SwiftUI's materials blur only what is inside the window,
+/// and the overlay has nothing inside it but the photograph.
+private struct BehindWindowBlur: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = .fullScreenUI
+        view.blendingMode = .behindWindow
+        view.state = .active
+        view.appearance = NSAppearance(named: .darkAqua)
+        return view
+    }
+
+    func updateNSView(_ view: NSVisualEffectView, context: Context) {}
+}
+#endif
+
 // MARK: - A page
 
 /// One photo or video. The thumbnail the chat already holds is drawn at once and the full file
@@ -226,6 +279,8 @@ private struct GalleryPage: View {
         if picture == nil && model.players[item.id] == nil && !failed {
             MediaThumbnail(attachment: item.attachment, size: 800)
                 .aspectRatio(item.attachment.aspectRatio ?? 1, contentMode: .fit)
+                // The same margin the full picture will have, so it does not jump when it lands.
+                .padding(item.isVideo ? 0 : Theme.Size.galleryInset)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .overlay {
                     if item.isVideo {
@@ -241,6 +296,7 @@ private struct GalleryPage: View {
         ZoomableImage(image: picture,
                       maximumZoom: Self.maximumZoom,
                       doubleTapZoom: Self.doubleTapZoom,
+                      inset: Theme.Size.galleryInset,
                       onDismissProgress: { model.dismissProgress = $0 },
                       onDismiss: { model.wantsDismiss = true },
                       onSingleTap: { model.isChromeVisible.toggle() },
@@ -254,7 +310,8 @@ private struct GalleryPage: View {
     }
     #else
     private func zoomable(_ picture: NSImage) -> some View {
-        MacZoomableImage(image: picture, maximumZoom: Self.maximumZoom, doubleTapZoom: Self.doubleTapZoom)
+        MacZoomableImage(image: picture, maximumZoom: Self.maximumZoom, doubleTapZoom: Self.doubleTapZoom,
+                         isCurrent: isCurrent)
     }
     #endif
 
@@ -366,26 +423,34 @@ private struct GalleryPlayButton: View {
 }
 
 #if os(macOS)
-/// A photograph on the Mac: pinch and scroll on a trackpad, a double click to zoom. There is no
-/// `UIScrollView` here to do it, and a Mac does not close a window by throwing its contents away,
-/// so there is no flick either.
+/// A photograph on the Mac: pinch on a trackpad, a double click to zoom, and — zoomed — a drag or
+/// two fingers on the trackpad to move it about. There is no `UIScrollView` here to do it, and a
+/// Mac does not close a window by throwing its contents away, so there is no flick either.
 private struct MacZoomableImage: View {
     let image: NSImage
     let maximumZoom: CGFloat
     let doubleTapZoom: CGFloat
+    let isCurrent: Bool
 
     @Environment(GalleryModel.self) private var model
     @State private var zoom: CGFloat = 1
     @State private var committedZoom: CGFloat = 1
     @State private var pan: CGSize = .zero
     @State private var committedPan: CGSize = .zero
+    @State private var size: CGSize = .zero
+    @State private var scrollMonitor: Any?
 
     var body: some View {
         Image(nsImage: image)
             .resizable()
             .scaledToFit()
+            // A little short of the window's edges, as on the phone.
+            .padding(Theme.Size.galleryInset)
             .scaleEffect(zoom)
             .offset(pan)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .contentShape(.rect)
+            .onGeometryChange(for: CGSize.self) { $0.size } action: { size = $0 }
             .gesture(magnification.simultaneously(with: drag))
             .onTapGesture(count: 2) {
                 withAnimation(.smooth(duration: 0.25)) {
@@ -398,15 +463,24 @@ private struct MacZoomableImage: View {
                 model.isZoomed = zoom > 1
             }
             .onTapGesture { model.isChromeVisible.toggle() }
+            // Two fingers on a trackpad arrive as scrolling, which no SwiftUI gesture hears — so it
+            // is listened for here, on the page in front, and only taken while the picture is
+            // zoomed: unzoomed, the same swipe sideways turns the page.
+            .onChange(of: isCurrent, initial: true) { _, current in
+                if current { listenForScrolling() } else { stopListening() }
+            }
+            .onDisappear { stopListening() }
     }
 
     private var magnification: some Gesture {
         MagnifyGesture()
             .onChanged { value in
                 zoom = min(maximumZoom, max(1, committedZoom * value.magnification))
+                pan = clamped(pan)
             }
             .onEnded { _ in
                 committedZoom = zoom
+                committedPan = pan
                 model.isZoomed = zoom > 1
                 if zoom <= 1 {
                     withAnimation(.smooth) { pan = .zero; committedPan = .zero }
@@ -418,13 +492,45 @@ private struct MacZoomableImage: View {
         DragGesture()
             .onChanged { value in
                 guard zoom > 1 else { return }
-                pan = CGSize(width: committedPan.width + value.translation.width,
-                             height: committedPan.height + value.translation.height)
+                pan = clamped(CGSize(width: committedPan.width + value.translation.width,
+                                     height: committedPan.height + value.translation.height))
             }
             .onEnded { _ in
                 guard zoom > 1 else { return }
                 committedPan = pan
             }
+    }
+
+    private func listenForScrolling() {
+        guard scrollMonitor == nil else { return }
+        scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
+            guard zoom > 1 else { return event }
+            // `scrollingDelta` already follows the user's choice of natural scrolling, so the
+            // picture moves the way a page under the same fingers would.
+            let scale: CGFloat = event.hasPreciseScrollingDeltas ? 1 : 10
+            pan = clamped(CGSize(width: pan.width + event.scrollingDeltaX * scale,
+                                 height: pan.height + event.scrollingDeltaY * scale))
+            committedPan = pan
+            return nil
+        }
+    }
+
+    private func stopListening() {
+        if let scrollMonitor { NSEvent.removeMonitor(scrollMonitor) }
+        scrollMonitor = nil
+    }
+
+    /// As far as the magnified picture reaches past the window and no further, so it cannot be
+    /// pushed off into the dark and lost.
+    private func clamped(_ offset: CGSize) -> CGSize {
+        let room = CGRect(origin: .zero, size: size)
+            .insetBy(dx: Theme.Size.galleryInset, dy: Theme.Size.galleryInset)
+        guard room.width > 0, room.height > 0 else { return offset }
+        let fitted = AVMakeRect(aspectRatio: image.size, insideRect: room).size
+        let reachX = max(0, (fitted.width * zoom - size.width) / 2)
+        let reachY = max(0, (fitted.height * zoom - size.height) / 2)
+        return CGSize(width: min(reachX, max(-reachX, offset.width)),
+                      height: min(reachY, max(-reachY, offset.height)))
     }
 }
 #endif
@@ -477,7 +583,8 @@ private struct GalleryHeader: View {
 }
 
 /// Caption, a video's controls, the actions, and the strip — from the top down, as Telegram stacks
-/// them.
+/// them. On the phone the strip sits in the middle of the row of actions, between share and save,
+/// with the caption right above it — Instagram's foot of the screen rather than Telegram's.
 private struct GalleryFooter: View {
     let items: [MediaItem]
     let current: MediaItem
@@ -485,35 +592,52 @@ private struct GalleryFooter: View {
 
     var body: some View {
         VStack(spacing: Theme.Spacing.normal) {
-            if let caption = current.attachment.caption, !caption.isEmpty {
-                ScrollView {
-                    Text(caption)
-                        .font(.callout)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .frame(maxHeight: 96)
-                .scrollBounceBehavior(.basedOnSize)
-                .padding(.horizontal, Theme.Spacing.roomy)
+            #if os(iOS)
+            videoControls
+            caption
+            GalleryActions(item: current, file: model.currentFile) {
+                if items.count > 1 { thumbnails } else { Color.clear.frame(height: 0) }
             }
-
-            if let player = model.currentPlayer {
-                GalleryVideoControls(player: player)
-                    .id(current.id)
-                    .padding(.horizontal, Theme.Spacing.roomy)
-            }
-
-            if items.count > 1 {
-                GalleryThumbnails(items: items, currentID: current.id) { id in
-                    withAnimation(.smooth) { model.turn(to: id) }
-                }
-            }
-
-            GalleryActions(item: current, file: model.currentFile)
+            #else
+            caption
+            videoControls
+            if items.count > 1 { thumbnails }
+            GalleryActions(item: current, file: model.currentFile) { Spacer() }
+            #endif
         }
         .padding(.top, Theme.Spacing.generous)
         .padding(.bottom, Theme.Spacing.close)
         .foregroundStyle(.white)
         .background { GalleryScrim(edge: .bottom) }
+    }
+
+    @ViewBuilder
+    private var caption: some View {
+        if let caption = current.attachment.caption, !caption.isEmpty {
+            ScrollView {
+                Text(caption)
+                    .font(.callout)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxHeight: 96)
+            .scrollBounceBehavior(.basedOnSize)
+            .padding(.horizontal, Theme.Spacing.roomy)
+        }
+    }
+
+    @ViewBuilder
+    private var videoControls: some View {
+        if let player = model.currentPlayer {
+            GalleryVideoControls(player: player)
+                .id(current.id)
+                .padding(.horizontal, Theme.Spacing.roomy)
+        }
+    }
+
+    private var thumbnails: some View {
+        GalleryThumbnails(items: items, currentID: current.id) { id in
+            withAnimation(.smooth) { model.turn(to: id) }
+        }
     }
 }
 
@@ -656,6 +780,8 @@ private struct GalleryThumbnails: View {
                 .padding(.horizontal, Theme.Spacing.roomy)
             }
             .scrollIndicators(.hidden)
+            // In the middle when they fit, rather than piled up against the leading edge.
+            .defaultScrollAnchor(.center, for: .alignment)
             .frame(height: Theme.Size.galleryThumbnail.height)
             .animation(.smooth(duration: Theme.Timing.chrome), value: currentID)
             .onChange(of: currentID, initial: true) { _, id in
@@ -665,44 +791,55 @@ private struct GalleryThumbnails: View {
     }
 }
 
-/// Share and save — the things you do with the picture in front. Only once its file is here: a
-/// share sheet handed a file still on its way gives the other app an empty URL.
-private struct GalleryActions: View {
+/// Share and save — the things you do with the picture in front — with whatever goes between them.
+/// Only once its file is here: a share sheet handed a file still on its way gives the other app an
+/// empty URL. The buttons keep their places while they wait, so what is between them stays put.
+private struct GalleryActions<Center: View>: View {
     let item: MediaItem
     let file: MediaFile?
+    @ViewBuilder let center: Center
 
     private enum SaveState { case idle, saved, failed }
     @State private var saveState: SaveState = .idle
 
     var body: some View {
-        HStack {
-            if let file {
-                ShareLink(item: file.url) {
-                    Image(systemName: "square.and.arrow.up")
-                        .font(.title3)
-                        .frame(width: Theme.Size.minimumTapTarget, height: Theme.Size.minimumTapTarget)
-                        .contentShape(.circle)
+        HStack(spacing: Theme.Spacing.close) {
+            Group {
+                if let file {
+                    ShareLink(item: file.url) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.title3)
+                            .frame(width: Theme.Size.minimumTapTarget, height: Theme.Size.minimumTapTarget)
+                            .contentShape(.circle)
+                    }
+                    .accessibilityLabel(Text(Strings.Message.Media.share))
                 }
-                .accessibilityLabel(Text(Strings.Message.Media.share))
-
-                Spacer()
-
-                #if os(iOS)
-                Button {
-                    Task { await save(file) }
-                } label: {
-                    Image(systemName: saveIcon)
-                        .font(.title3)
-                        .frame(width: Theme.Size.minimumTapTarget, height: Theme.Size.minimumTapTarget)
-                        .contentShape(.circle)
-                }
-                .disabled(saveState != .idle)
-                .accessibilityLabel(Text(Strings.Message.Media.save))
-                #endif
             }
+            .frame(width: Theme.Size.minimumTapTarget)
+
+            center
+                .frame(maxWidth: .infinity)
+
+            #if os(iOS)
+            Group {
+                if let file {
+                    Button {
+                        Task { await save(file) }
+                    } label: {
+                        Image(systemName: saveIcon)
+                            .font(.title3)
+                            .frame(width: Theme.Size.minimumTapTarget, height: Theme.Size.minimumTapTarget)
+                            .contentShape(.circle)
+                    }
+                    .disabled(saveState != .idle)
+                    .accessibilityLabel(Text(Strings.Message.Media.save))
+                }
+            }
+            .frame(width: Theme.Size.minimumTapTarget)
+            #endif
         }
         .buttonStyle(.plain)
-        .frame(height: Theme.Size.minimumTapTarget)
+        .frame(minHeight: Theme.Size.minimumTapTarget)
         .padding(.horizontal, Theme.Spacing.normal)
         // A new picture in front can be saved again.
         .onChange(of: item.id) { saveState = .idle }

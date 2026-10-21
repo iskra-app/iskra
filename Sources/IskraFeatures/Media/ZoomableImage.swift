@@ -37,6 +37,9 @@ struct ZoomableImage: UIViewRepresentable {
     let maximumZoom: CGFloat
     let doubleTapZoom: CGFloat
 
+    /// How far in from the screen's edges the picture sits at 1×. Zoomed, it is not held to it.
+    let inset: CGFloat
+
     /// How far the flick-to-close has come, 0 to 1. Drives the backdrop and the chrome, which fade
     /// as the photograph leaves rather than after it has gone.
     let onDismissProgress: (CGFloat) -> Void
@@ -143,8 +146,10 @@ struct ZoomableImage: UIViewRepresentable {
                 // The picture at 1× is the picture fitted to the screen, so every zoom scale after
                 // that is a multiple of "as big as it goes without being cropped" — which is what
                 // makes the minimum scale mean something and the rubber band stop in the right place.
+                // A little short of the edges, so it floats over what is behind it.
                 let fitted = AVMakeRect(aspectRatio: image.size,
-                                        insideRect: CGRect(origin: .zero, size: bounds))
+                                        insideRect: CGRect(origin: .zero, size: bounds)
+                                            .insetBy(dx: parent.inset, dy: parent.inset))
                 scroll.zoomScale = 1
                 // Bounds, not frame: the zooming view carries the scroll view's transform, and a
                 // frame set through a transform is undefined.

@@ -510,6 +510,11 @@ public enum Theme {
         /// between the menu and the conversation (there is no blur there, see
         /// `MessageMenuOverlay.scrim`), it has to do all of that work by itself.
         public static let menuScrim: Double = 0.4
+
+        /// How dark the conversation goes behind an open photograph, under its blur — Instagram's
+        /// viewer, where the chat is still there but is no longer something to read. Dark enough
+        /// that the white header and footer stay legible over whatever colours the chat had.
+        public static let viewer: Double = 0.65
     }
 
     public enum Tint {
@@ -791,6 +796,11 @@ public enum Theme {
         /// The black between two pages of the media viewer while one slides over the next —
         /// Telegram's gallery leaves a gap, so two photographs never touch edge to edge.
         public static let galleryPageGap: CGFloat = 20
+
+        /// How far a photograph sits in from the edges of the viewer before it is zoomed — Instagram's
+        /// picture, which floats over the blurred conversation rather than touching the screen's
+        /// sides. Zoomed in, it is the screen's again.
+        public static let galleryInset: CGFloat = 16
 
         /// The strip of little pictures along the foot of the viewer: a tile, and the wider one
         /// the current picture gets, so the strip says where in the room you are.

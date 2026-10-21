@@ -59,16 +59,9 @@ struct ProfileHeader: View {
                 .onTapGesture {
                     if let picture { opened = picture }
                 }
-            #if os(iOS)
-            .fullScreenCover(item: $opened) { item in
-                MediaPager(items: [item], startIndex: 0)
-                    .presentationBackground(.black)
-            }
-            #else
-            .sheet(item: $opened) { item in
+            .mediaViewer(item: $opened) { item in
                 MediaPager(items: [item], startIndex: 0)
             }
-            #endif
 
             VStack(spacing: Theme.Spacing.tight) {
                 // A size up from the `.title2` a heading in a form would get, because this is not
