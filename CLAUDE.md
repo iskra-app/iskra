@@ -130,9 +130,13 @@ xcrun simctl launch --console booted wtf.iskra --probe-bridge
 forth from code, then puts the window back and quits: "survived N steps", or a crash report. It
 exists for the layout loops AppKit ends an app over (`_postWindowNeedsUpdateConstraints`), which
 only happen with a real chat on screen and a window being resized. It prints the window's least
-width too. Words after it: `empty` (no chat), `closed` / `open` (the info column shut or open —
+size too. Words after it: `empty` (no chat), `closed` / `open` (the info column shut or open —
 the user's choice is put back on the way out), `narrow` (open the chat in the narrowest window
-instead of a wide one), `toolbar` (where each toolbar item stands against the columns, and quit).
+instead of a wide one), `toolbar` (where each toolbar item stands against the columns, and quit),
+`toggle` (shut the open column and open it again: the window's width must not move), `switch`
+(with the column open, go to the second chat: the column must stay open and hold *its* info),
+`settings` (open settings and print the least size there), `heights` (each view's fitting height
+on the way up to the window), `snapshot` / `cache` (a picture of the window, as base64).
 
 Launch it through `open`, not by running the binary: started straight from a terminal, macOS
 sometimes makes no window at all, and a probe with no window waits for ever.
@@ -146,8 +150,13 @@ minimum is on the chat and on the empty column's spark instead. And SwiftUI coun
 a split view *twice* in the window's least width; a window too narrow for that folds the info
 column away and back until the app is ended. Both side columns are a fixed `Theme.Size.sideColumn`,
 the window's least width is `Theme.Size.windowMinimum` with the column open or shut, and the chat's
-minimum frame pays for the second count (`InfoColumn.conversationMinimumWidth`). The probe prints
-the window's least width in every mode — it should be `windowMinimum` in all of them.
+minimum frame pays for the second count (`InfoColumn.conversationMinimumWidth`). Everything else
+the conversation's column shows — settings and its pages, a thread — is pushed past the chat's
+frame, so the same least width is also the column's own (`navigationSplitViewColumnWidth(min:)`).
+The height has the same trap three times over: the window's title band is counted by both split
+views and by the window, so the room list asks for `Theme.Size.columnMinimumHeight`, not the
+height wanted. The probe prints the window's least size in every mode — it should be
+`windowMinimum` × `windowMinimumHeight` in all of them.
 
 ### The demo server
 

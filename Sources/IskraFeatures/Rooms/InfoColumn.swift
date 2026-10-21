@@ -30,7 +30,9 @@ final class InfoColumn {
 
     /// What the column shows: the open chat's info, built by that chat.
     private(set) var content: AnyView?
-    private var owner: UUID?
+    /// Whose `content` is — also its identity in the column, so that the next chat's info is a new
+    /// view rather than the last one's state under a new room (see `infoColumn(_:)`).
+    private(set) var owner: UUID?
 
     /// Open, and with something in it.
     var isPresented: Bool { isOpen && content != nil }
@@ -116,11 +118,19 @@ final class InfoColumn {
     /// Takes the content away if it is still this owner's — a chat that goes after the next one
     /// arrived must not empty the column the next one just filled. The column stays as open or as
     /// closed as the user left it.
+    ///
+    /// Emptied a turn later, not at once. Going from one chat to the next, the old one may leave
+    /// before the new one arrives, and for that moment the column had nothing in it: the inspector
+    /// shut, said so through its binding, and the user's "open" was forgotten — the column closed
+    /// on every change of chat. A turn later the next chat has already filled it.
     func detach(owner: UUID) {
         guard self.owner == owner else { return }
-        content = nil
-        self.owner = nil
-        settleMinimum()
+        Task { @MainActor in
+            guard self.owner == owner else { return }
+            content = nil
+            self.owner = nil
+            settleMinimum()
+        }
     }
 }
 
@@ -156,9 +166,15 @@ extension EnvironmentValues {
 extension View {
     /// Hangs the info column on the conversation's half of the window — from outside its stack.
     func infoColumn(_ column: InfoColumn) -> some View {
+        // Shut from the column's side only while it has something in it: a column that went shut
+        // because it was emptied is not the user closing it.
         inspector(isPresented: Binding(get: { column.isPresented },
-                                       set: { if !$0 { column.isOpen = false } })) {
+                                       set: { if !$0, column.content != nil { column.isOpen = false } })) {
             column.content
+                // One chat's info and the next's are the same type in the same place, and SwiftUI
+                // kept the first one's state — its stack, its store — under the second: the column
+                // stayed open on the previous chat.
+                .id(column.owner)
                 .inspectorColumnWidth(Theme.Size.sideColumn)
         }
         .environment(\.infoColumn, column)

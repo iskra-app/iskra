@@ -18,6 +18,24 @@ import SwiftUI
 public struct GroupedRowsFormStyle: FormStyle {
     public func makeBody(configuration: Configuration) -> some View {
         #if os(macOS)
+        MacGroupedForm(configuration: configuration)
+        #else
+        Form(configuration)
+            .formStyle(.grouped)
+        #endif
+    }
+}
+
+#if os(macOS)
+/// The Mac's grouped form, with its cards no wider than `Theme.Size.formCardMaximum`.
+///
+/// A frame round the form, and the page under it to the column's edges. Not the scroll view's side
+/// margins worked out from its width: a margin is part of a view's least width, so the window's
+/// least width rose with the window — to 1712 points after one wide moment.
+private struct MacGroupedForm: View {
+    let configuration: FormStyleConfiguration
+
+    var body: some View {
         Form {
             configuration.content
                 .labelStyle(RowLabelStyle())
@@ -28,17 +46,14 @@ public struct GroupedRowsFormStyle: FormStyle {
                 .listRowBackground(Color.groupedCard)
         }
         .formStyle(.grouped)
-        // The phone's grouped page under the form, not the window's grey — see `Color.groupedPage`.
         .scrollContentBackground(.hidden)
+        .frame(maxWidth: Theme.Size.formCardMaximum)
+        .frame(maxWidth: .infinity)
+        // The phone's grouped page under the form, not the window's grey — see `Color.groupedPage`.
         .background(Color.groupedPage)
-        #else
-        Form(configuration)
-            .formStyle(.grouped)
-        #endif
     }
 }
 
-#if os(macOS)
 /// A form's own buttons as the Mac draws them, except that a `.destructive` one is red — as it is on
 /// the phone, where the role alone does it and the Mac's push button ignores it. A button that
 /// chose a style of its own keeps it: that style is nearer to it than this one.

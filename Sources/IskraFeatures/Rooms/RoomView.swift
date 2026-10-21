@@ -1471,6 +1471,9 @@ public struct RoomView: View {
             } else if infoColumn?.isOpen == true {
                 if details == nil { details = makeDetails() }
                 isShowingDetails = details != nil
+                // Filled now rather than from `onChange` a pass later, so that the column is never
+                // without a chat between the last one leaving and this one arriving.
+                if isShowingDetails { syncInfoColumn(true) }
             }
         }
         // No title bar over a conversation: the window's band and its title go, and the header and

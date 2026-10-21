@@ -48,7 +48,19 @@ enum ResizeProbe {
             print("resize probe: no window")
             leave(1)
         }
-        print("resize probe: empty, least width \(window.minSize.width), content \(window.contentMinSize.width)")
+        // `heights`: every view taller than 300 points with its fitting height, from the window's
+        // content down — which is where the title band was found counted three times
+        // (`Theme.Size.columnMinimumHeight`).
+        if CommandLine.arguments.contains("heights") {
+            func walk(_ v: NSView, _ depth: Int) {
+                guard depth < 14 else { return }
+                let f = v.fittingSize
+                if f.height > 300 { print("heights probe: \(String(repeating: " ", count: depth))\(type(of: v)) fitting \(Int(f.width))×\(Int(f.height)) frame \(Int(v.frame.height))") }
+                v.subviews.forEach { walk($0, depth + 1) }
+            }
+            walk(window.contentView!, 0)
+        }
+        print("resize probe: empty, least \(Int(window.minSize.width))×\(Int(window.minSize.height)), content \(Int(window.contentMinSize.width))×\(Int(window.contentMinSize.height))")
         // Wide enough for anything before a chat opens, so that measuring the column cannot start the
         // very loop that is being measured.
         // `narrow`: the opposite — as narrow as the window goes before the chat opens, which is
@@ -63,7 +75,7 @@ enum ResizeProbe {
             try? await Task.sleep(for: .seconds(3))
             if CommandLine.arguments.contains("closed") { column.isOpen = false }
             try? await Task.sleep(for: .seconds(1))
-            print("resize probe: chat, least width \(window.minSize.width), content \(window.contentMinSize.width)")
+            print("resize probe: chat, least \(Int(window.minSize.width))×\(Int(window.minSize.height)), content \(Int(window.contentMinSize.width))×\(Int(window.contentMinSize.height))")
         }
         // `toggle`: shut the open column and open it again, and say what the window's width did —
         // it must not move.
@@ -77,6 +89,33 @@ enum ResizeProbe {
             try? await Task.sleep(for: .seconds(2))
             print("toggle probe: reopened, window \(Int(window.frame.width)), presented \(column.isPresented)")
             leave(0)
+        }
+        // `settings`: the room list opens settings by itself a moment after launch (`RoomListView`);
+        // say where it went and what the window's least size is with it there.
+        if CommandLine.arguments.contains("settings") {
+            try? await Task.sleep(for: .seconds(6))
+            for split in splitViews(in: window.contentView) {
+                print("settings probe: columns \(split.arrangedSubviews.map { Int($0.frame.width) })")
+            }
+            print("settings probe: least \(Int(window.minSize.width))×\(Int(window.minSize.height)), content \(Int(window.contentMinSize.width))×\(Int(window.contentMinSize.height))")
+            snapshot(window)
+            leave(0)
+        }
+        // `switch`: with the column open, go to the second chat and say whether the column stayed
+        // open and whose info it holds now — it must be the second chat's.
+        if CommandLine.arguments.contains("switch") {
+            let firstOwner = column.owner
+            print("switch probe: first, open \(column.isOpen), presented \(column.isPresented)")
+            guard rooms().count > 1 else {
+                print("switch probe: only one room")
+                leave(1)
+            }
+            open(rooms()[1].id)
+            try? await Task.sleep(for: .seconds(2))
+            let moved = column.owner != nil && column.owner != firstOwner
+            print("switch probe: second, open \(column.isOpen), presented \(column.isPresented), new info \(moved)")
+            if CommandLine.arguments.contains("cache") { snapshot(window) }
+            leave(column.isPresented && moved ? 0 : 1)
         }
         if CommandLine.arguments.contains("snapshot") {
             try? await Task.sleep(for: .seconds(2))

@@ -997,6 +997,12 @@ public enum Theme {
         /// between them — so the info column can always be opened, however narrow the window is.
         public static let windowMinimum: CGFloat = 2 * sideColumn + conversationMinimum.width
 
+        /// The widest a form may be on a Mac — settings and every page under it — with the form's own
+        /// margin of 20 either side, so its cards come out about 470. The Mac's own grouped form
+        /// stops at about 700, which in a window's wide column read as a page of banners rather
+        /// than of settings; this is two thirds of it.
+        public static let formCardMaximum: CGFloat = 508
+
         /// The Mac's About window: the About screen at the width of a phone's, tall enough for the
         /// version, the build and the links without scrolling.
         public static let aboutWindow = CGSize(width: 420, height: 640)
@@ -1010,7 +1016,18 @@ public enum Theme {
         /// Put on the chat and on the empty column's spark, never on the column around them: there,
         /// it was re-measured from the chat on every frame of a resize, and AppKit ended the app
         /// (`Iskra --probe-resize` reproduces it).
-        public static let conversationMinimum = CGSize(width: 420, height: 500)
+        public static let conversationMinimum = CGSize(width: 420, height: 450)
+
+        /// The least height a Mac window may be.
+        public static let windowMinimumHeight: CGFloat = 450
+
+        /// The least height to put on the room list so that the window comes out
+        /// `windowMinimumHeight`. The window's title band (52 points) is counted three times on
+        /// the way up — by the split view round the columns, again by the one the info column hangs
+        /// on, and once more by the window itself (measured with `Iskra --probe-resize heights`) —
+        /// so a list asked for 450 held the window at 606. The same double count as the width's,
+        /// paid for the same way: see `InfoColumn.conversationMinimumWidth`.
+        public static let columnMinimumHeight: CGFloat = windowMinimumHeight - 3 * 52
 
         /// The list of things you can do to a message — see `MessageMenu`.
         ///

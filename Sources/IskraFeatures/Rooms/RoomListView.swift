@@ -339,6 +339,14 @@ public struct RoomListView: View {
             openedSpace = nil
         }
         #endif
+        #if DEBUG && os(macOS)
+        // `Iskra --probe-resize settings`: the window measured with settings open.
+        .task {
+            guard ResizeProbe.isRequested, CommandLine.arguments.contains("settings") else { return }
+            try? await Task.sleep(for: .seconds(4))
+            isShowingSettings = true
+        }
+        #endif
         // Escape, on a Mac, for the whole column: back to the list from wherever it went —
         // settings and any page in it, a space, the archive. Here, on the column's root, and on no
         // pushed screen: a modifier on a pushed screen put the window into a layout loop on
@@ -785,6 +793,12 @@ struct RoomRow: View {
     /// it and stay one height whatever the messages say.
     var compact = false
 
+    #if os(macOS)
+    private static let compactLeading = Theme.Spacing.close
+    #else
+    private static let compactLeading: CGFloat = 0
+    #endif
+
     /// For the pin, which is the one coloured thing on this row. See `body`.
     @Environment(\.accent) private var accent
     @Environment(\.colorScheme) private var colorScheme
@@ -936,8 +950,11 @@ struct RoomRow: View {
         // rows — which carry two buttons and genuinely want the room — keep the system's.
         // In the Mac's sidebar, next to nothing: the sidebar draws its own margin round a row, and
         // ours on top of it left a band of empty space either side of every chat.
+        // On a Mac, a step in on the face's side too, so that with the list's own margin it stands
+        // twice as far from the column's edge as the margin alone put it.
         .listRowInsets(compact
-                       ? EdgeInsets(top: Theme.Spacing.close, leading: 0, bottom: Theme.Spacing.close, trailing: 0)
+                       ? EdgeInsets(top: Theme.Spacing.close, leading: Self.compactLeading,
+                                    bottom: Theme.Spacing.close, trailing: 0)
                        : EdgeInsets(top: Theme.Spacing.normal, leading: Theme.Spacing.roomy,
                                     bottom: Theme.Spacing.normal, trailing: Theme.Spacing.roomy))
         .accessibilityElement(children: .combine)

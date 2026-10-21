@@ -947,17 +947,21 @@ public struct IskraRootView: View {
                 #if os(macOS)
                 // On a Mac, one width and no dragging it — see `Theme.Size.sideColumn`.
                 .navigationSplitViewColumnWidth(Theme.Size.sideColumn)
+                // The window's least height, held by the list, which is always there — whatever the
+                // other column shows (a chat, settings, a thread). See `Theme.Size.columnMinimumHeight`.
+                .frame(minHeight: Theme.Size.columnMinimumHeight)
                 #else
                 .navigationSplitViewColumnWidth(min: Theme.Size.sidebarMinimum,
                                                 ideal: Theme.Size.sidebarIdeal,
                                                 max: Theme.Size.sidebarMaximum)
                 #endif
                 #if os(macOS)
-                // A hairline in the conversation's colour down the list's edge, so the two read as
-                // two surfaces with a seam between them rather than as one sheet with a shadow.
+                // The seam between the list and the conversation: the same line as between two chats
+                // in the list — its colour and its thickness — so the window has one kind of rule.
                 .overlay(alignment: .trailing) {
-                    Color.page
-                        .frame(width: 1)
+                    Rectangle()
+                        .fill(.separator)
+                        .frame(width: Theme.Border.hairline)
                         .ignoresSafeArea()
                 }
                 #endif
@@ -985,8 +989,7 @@ public struct IskraRootView: View {
                         // A chat stops somewhere: squeezed with nothing to hold it, it became a
                         // column of one word a line. On the chat and not on the column around it —
                         // see `Theme.Size.conversationMinimum`.
-                        .frame(minWidth: infoColumn.conversationMinimumWidth,
-                               minHeight: Theme.Size.conversationMinimum.height)
+                        .frame(minWidth: infoColumn.conversationMinimumWidth)
                         #endif
                         // Rebuilds the view when the user picks a different room, rather
                         // than reusing one room's state for another's messages.
@@ -1002,7 +1005,6 @@ public struct IskraRootView: View {
                         // on every frame of a resize, and AppKit ended the app for it.
                         .frame(minWidth: Theme.Size.windowMinimum - Theme.Size.sideColumn,
                                maxWidth: .infinity,
-                               minHeight: Theme.Size.conversationMinimum.height,
                                maxHeight: .infinity)
                         #else
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -1021,6 +1023,13 @@ public struct IskraRootView: View {
             // The phone's page under the conversation and under the empty column — see `Color.page`.
             // A chat with no wallpaper is transparent, and stood on the window's grey.
             .background(Color.page)
+            // The same least width as a chat's for whatever else this column shows — settings and
+            // its pages, a thread, the pinned list. They are pushed here, past the chat's own
+            // minimum, and with settings open the window went down to 500 points by 216. As the
+            // column's width, not a frame round its content: see `Theme.Size.conversationMinimum`.
+            // The ideal is the least as well, so that it never asks for more room than that.
+            .navigationSplitViewColumnWidth(min: infoColumn.conversationMinimumWidth,
+                                            ideal: infoColumn.conversationMinimumWidth)
             #endif
         }
         #if os(macOS)
