@@ -222,6 +222,7 @@ struct MessageMenuOverlay: View {
     /// given the height `MessageMenuLayout` allows and *scrolls* in it, at full size. It used to
     /// be scaled down to fit instead, and a scaled page of text is a page of text too small to
     /// read; the long message is often the very one somebody opened the menu to copy a piece of.
+    /// A picture is the exception, and is scaled after all — see `MessageMenuPresentation.isPicture`.
     @ViewBuilder
     private func lifted(_ presentation: MessageMenuPresentation,
                         layout: MessageMenuLayout) -> some View {
@@ -241,7 +242,18 @@ struct MessageMenuOverlay: View {
             .frame(width: width, height: presentation.anchor.height + 1, alignment: alignment)
 
         Group {
-            if layout.contentHeight < presentation.anchor.height {
+            if layout.contentHeight < presentation.anchor.height, presentation.isPicture {
+                // A picture is made smaller instead — see `MessageMenuPresentation.isPicture`.
+                // Laid out at its own size first and only then scaled, so nothing inside it is
+                // asked to fit a box it was never drawn in; and scaled from the edge it hangs
+                // from, so it stays under the menu's own edge.
+                let scale = layout.contentHeight / (presentation.anchor.height + 1)
+                let corner: UnitPoint = presentation.isOwn ? .topTrailing : .topLeading
+                message
+                    .scaleEffect(scale, anchor: corner)
+                    .frame(width: width * scale, height: layout.contentHeight,
+                           alignment: presentation.isOwn ? .topTrailing : .topLeading)
+            } else if layout.contentHeight < presentation.anchor.height {
                 ScrollView(.vertical) { message }
                     .scrollIndicators(.visible)
                     .frame(width: width, height: layout.contentHeight, alignment: .top)

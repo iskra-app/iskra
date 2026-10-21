@@ -164,6 +164,18 @@ struct MessageMenuPresentation: Identifiable {
     /// on playing and a picture is a picture rather than a photograph of one.
     let content: AnyView
 
+    /// Whether the message is a picture — a photo, a video, a sticker, a round video, a map —
+    /// and so is *scaled* to fit when the menu has less height for it than it had in the
+    /// conversation, rather than scrolled inside that height.
+    ///
+    /// Scrolling is right for words: a shrunken page of text is unreadable, and reading it is
+    /// often why the menu was opened. A picture is the other way round — a smaller photo is still
+    /// the whole photo, and a photo cut off at the bottom of a box that scrolls is not. And there
+    /// is a second reason, which is how the bug looked: a picture is sized against its container
+    /// (`containerRelativeFrame`), and inside the scroll view that container is the scroll view,
+    /// so the photo came up at half the window's height in a bubble still the size of the old one.
+    var isPicture = false
+
     let sections: [MessageMenuSection]
 
     let onReaction: (String) -> Void
@@ -484,5 +496,15 @@ private struct MessageMenuLayer: ViewModifier {
             .environment(\.messageMenu, presenter)
             .coordinateSpace(.named(MessageMenu.space))
             .overlay { MessageMenuOverlay(presenter: presenter) }
+    }
+}
+
+extension Message {
+    /// See `MessageMenuPresentation.isPicture`.
+    var isPicture: Bool {
+        switch kind {
+        case .image, .sticker, .video, .videoNote, .location: true
+        default: false
+        }
     }
 }

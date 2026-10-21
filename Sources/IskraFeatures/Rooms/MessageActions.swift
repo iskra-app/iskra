@@ -318,6 +318,7 @@ struct MessageActions<Content: View>: View {
             canReact: message.canReact && !isOffline,
             mine: Set(message.reactions.filter(\.isMine).map(\.key)),
             content: AnyView(lifted),
+            isPicture: message.isPicture,
             sections: sections,
             onReaction: handlers.onToggleReaction))
     }

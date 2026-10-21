@@ -156,8 +156,8 @@ struct MessageMenuLayoutTests {
     /// On a narrow window the list is the window's width less its margins, not its own idea of
     /// how wide a menu should be.
     @Test func aNarrowWindowNarrowsTheMenu() throws {
-        let narrow = CGRect(x: 0, y: 0, width: 240, height: 600)
-        let layout = resolve(anchor: CGRect(x: 16, y: 200, width: 180, height: 44), region: narrow)
+        let narrow = CGRect(x: 0, y: 0, width: 200, height: 600)
+        let layout = resolve(anchor: CGRect(x: 16, y: 200, width: 140, height: 44), region: narrow)
 
         #expect(layout.width == narrow.width - MessageMenu.margin * 2)
     }
