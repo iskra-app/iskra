@@ -76,6 +76,8 @@ public struct IskraRootView: View {
     /// each column gets the size class its own width earns, so the sidebar reports
     /// `.compact` on a full-screen iPad. See `RoomListView.isSidebar`.
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    /// See the `\.locale` set at the bottom of `body`.
+    @AppStorage(AppLanguage.key) private var language = ""
 
     /// Whether the app is in front. Read here rather than in a screen, because the sync loop belongs
     /// to the session and not to any one of them — see the `.onChange` below.
@@ -583,6 +585,10 @@ public struct IskraRootView: View {
         }
         #endif
         .environment(\.accent, accent)
+        // The language picked on a Mac, at once: `Text` resolves in the environment's locale, and
+        // `language` (stored, observed) is what runs this body again when it changes. See
+        // `AppLanguage`.
+        .environment(\.locale, AppLanguage.locale)
         // And light or dark, if the user asked for either. Applied at the root, above everything,
         // because a colour scheme is not a property of a screen — a sheet or a media viewer left
         // out of it would be the one place the app changed its mind about what time of day it is.

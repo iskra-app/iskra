@@ -166,8 +166,8 @@ public struct PushRegistration: Sendable {
             "aps": [
                 "mutable-content": 1,
                 "alert": [
-                    "title": String(localized: CoreStrings.Push.hiddenTitle),
-                    "body": String(localized: CoreStrings.Push.hiddenBody)
+                    "title": AppLanguage.resolve(CoreStrings.Push.hiddenTitle),
+                    "body": AppLanguage.resolve(CoreStrings.Push.hiddenBody)
                 ]
             ]
         ]

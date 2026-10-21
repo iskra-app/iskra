@@ -501,6 +501,12 @@ Three ways this fails silently, all guarded by `LocalizationTests`:
 
 Russian plurals (one/few/many) need `Localizable.stringsdict`; `.strings` cannot express them.
 
+**A string resolved in code goes through `String(app:)` (features) or `AppLanguage.resolve`
+(Core), never `String(localized:)`.** On a Mac the language can be picked in Settings and is
+applied at once: `Text` follows the root's `\.locale`, but `String(localized:)` takes
+`Locale.current`, which is fixed for the life of the process — so a string resolved that way stays
+in the old language until a relaunch, and only on the Mac, where nobody tests it.
+
 **Liquid Glass is confined to the navigation layer.** Toolbars, composer, floating controls. Never on
 content, never on glass. There is deliberately no general `.glass()` modifier — only
 `.navigationGlass()` and `.primaryActionGlass(tint:)` in `IskraDesign/Glass.swift`. Message bubbles

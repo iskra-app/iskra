@@ -178,7 +178,7 @@ private struct AppointSheet: View {
                                 titleVisibility: .visible,
                                 presenting: chosen) { member in
                 ForEach(roles(member), id: \.self) { role in
-                    Button(String(localized: RoomRoleName.full(role))) {
+                    Button(String(app: RoomRoleName.full(role))) {
                         appoint(member, role)
                         dismiss()
                     }

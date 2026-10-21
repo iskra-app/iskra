@@ -1922,6 +1922,13 @@ public enum Strings {
         /// The last row, and the only one that changes nothing — see `Strings.About`.
         public static let about = LocalizedStringResource("settings.about", bundle: bundle)
 
+        /// The app's language — a list of its own on a Mac, the app's page in the system Settings
+        /// on iPhone and iPad. See `LanguageView` and `AppLanguage`.
+        public static let language = LocalizedStringResource("settings.language", bundle: bundle)
+        public static let languageSystem = LocalizedStringResource("settings.language.system", bundle: bundle)
+        /// Under the list: what does not change until the app is started again.
+        public static let languageHelp = LocalizedStringResource("settings.language.help", bundle: bundle)
+
         public static let storage = LocalizedStringResource("settings.storage", bundle: bundle)
         /// What happens to a photo or a video before it is sent — see `Strings.Media`.
         public static let media = LocalizedStringResource("settings.media", bundle: bundle)
@@ -2229,9 +2236,10 @@ public enum Strings {
 }
 
 extension String {
-    /// Resolves a feature string for the current locale.
+    /// Resolves a feature string in the app's language — the system's, or the one picked in
+    /// Settings on a Mac. See `AppLanguage`: never `String(localized:)` directly.
     init(app resource: LocalizedStringResource) {
-        self.init(localized: resource)
+        self = AppLanguage.resolve(resource)
     }
 
 }

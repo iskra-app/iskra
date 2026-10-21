@@ -329,7 +329,7 @@ public struct SignInView: View {
         // the moment it is for: something has gone wrong, the screen has not changed shape, and
         // the user is waiting to be told.
         .onAppear {
-            AccessibilityNotification.Announcement(String(localized: problem)).post()
+            AccessibilityNotification.Announcement(String(app: problem)).post()
         }
     }
 

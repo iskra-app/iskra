@@ -53,7 +53,7 @@ enum PushMapper {
                                           eventID: eventID,
                                           title: roomName,
                                           sender: nil,
-                                          body: String(localized: CoreStrings.Push.invite(
+                                          body: AppLanguage.resolve(CoreStrings.Push.invite(
                                               senderName.isEmpty ? sender : senderName)),
                                           isNoisy: isNoisy,
                                           personName: senderName.isEmpty ? sender : senderName,

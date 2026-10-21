@@ -2703,11 +2703,11 @@ struct DayDividerView: View {
                       now: Date = .now,
                       calendar: Calendar = .current) -> String {
         if calendar.isDate(date, inSameDayAs: now) {
-            return String(localized: Strings.Room.today)
+            return String(app: Strings.Room.today)
         }
         if let yesterday = calendar.date(byAdding: .day, value: -1, to: now),
            calendar.isDate(date, inSameDayAs: yesterday) {
-            return String(localized: Strings.Room.yesterday)
+            return String(app: Strings.Room.yesterday)
         }
         let sameYear = calendar.isDate(date, equalTo: now, toGranularity: .year)
         return date.formatted(sameYear ? .dateTime.day().month(.wide)

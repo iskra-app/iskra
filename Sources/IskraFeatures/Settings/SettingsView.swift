@@ -67,6 +67,7 @@ struct SettingsView: View {
         case media
         case storage
         case about
+        case language
     }
 
     /// The page pushed over this screen, if any.
@@ -209,6 +210,20 @@ struct SettingsView: View {
                     page = .appearance
                 } label: {
                     Label(Strings.Settings.appearance, systemImage: "paintbrush")
+                }
+
+                // A list of its own on a Mac; on iPhone and iPad the app's page in the system
+                // Settings, where iOS keeps the language of every app. See `LanguageView`.
+                PushRow {
+                    #if os(macOS)
+                    page = .language
+                    #else
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                    #endif
+                } label: {
+                    Label(Strings.Settings.language, systemImage: "globe")
                 }
 
                 // Next to appearance rather than inside it. What the double tap sends is not a
@@ -358,6 +373,8 @@ struct SettingsView: View {
             MediaSettingsView()
         case .about:
             AboutView(homeserver: session.homeserverURL.absoluteString)
+        case .language:
+            LanguageView()
         case .notifications:
             NotificationsView(rules: session.notificationRules())
         case .security:

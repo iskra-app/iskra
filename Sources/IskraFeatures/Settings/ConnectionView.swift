@@ -44,7 +44,7 @@ struct ConnectionView: View {
             }
 
             Section {
-                TextField(String(localized: Strings.Connection.addressPrompt),
+                TextField(String(app: Strings.Connection.addressPrompt),
                           text: $address.animation(.smooth(duration: Theme.Timing.reaction)),
                           axis: .vertical)
                     .textContentType(.none)
@@ -77,7 +77,7 @@ struct ConnectionView: View {
             }
 
             Section {
-                TextField(String(localized: Strings.Connection.relaysPrompt), text: $relays, axis: .vertical)
+                TextField(String(app: Strings.Connection.relaysPrompt), text: $relays, axis: .vertical)
                     .autocorrectionDisabled()
                     #if os(iOS)
                     .textInputAutocapitalization(.never)
@@ -109,7 +109,7 @@ struct ConnectionView: View {
             }
 
             Section {
-                LabeledContent(String(localized: Strings.Connection.status)) {
+                LabeledContent(String(app: Strings.Connection.status)) {
                     Text(describe(status))
                         .foregroundStyle(.secondary)
                 }

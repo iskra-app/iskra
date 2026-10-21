@@ -311,6 +311,9 @@
 
 /* The last row of settings, the way through to the About screen. */
 "settings.about" = "关于 Iskra";
+"settings.language" = "语言";
+"settings.language.system" = "跟随系统";
+"settings.language.help" = "菜单和系统窗口将在重启后切换。";
 
 /* The app's name under the icon on the About screen. Not translated — it is what the app is
    called in both languages. */

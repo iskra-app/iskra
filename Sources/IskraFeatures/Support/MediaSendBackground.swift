@@ -263,10 +263,10 @@ final class MediaSendBackground {
 
     static func title(of what: MediaSendJobs.What) -> String {
         switch what {
-        case .video: String(localized: CoreStrings.LiveActivity.sendingVideo)
-        case .photos(1): String(localized: CoreStrings.LiveActivity.sendingPhoto)
-        case .photos, .media: String(localized: CoreStrings.LiveActivity.sendingAlbum)
-        case .file: String(localized: CoreStrings.LiveActivity.sendingFile)
+        case .video: String(app: CoreStrings.LiveActivity.sendingVideo)
+        case .photos(1): String(app: CoreStrings.LiveActivity.sendingPhoto)
+        case .photos, .media: String(app: CoreStrings.LiveActivity.sendingAlbum)
+        case .file: String(app: CoreStrings.LiveActivity.sendingFile)
         }
     }
 }

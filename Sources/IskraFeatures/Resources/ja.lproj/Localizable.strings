@@ -311,6 +311,9 @@
 
 /* The last row of settings, the way through to the About screen. */
 "settings.about" = "Iskraについて";
+"settings.language" = "言語";
+"settings.language.system" = "システムと同じ";
+"settings.language.help" = "メニューとシステムのウインドウは再起動後に切り替わります。";
 
 /* The app's name under the icon on the About screen. Not translated — it is what the app is
    called in both languages. */

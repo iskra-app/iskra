@@ -311,6 +311,9 @@
 
 /* The last row of settings, the way through to the About screen. */
 "settings.about" = "À propos d’Iskra";
+"settings.language" = "Langue";
+"settings.language.system" = "Comme le système";
+"settings.language.help" = "Les menus et les fenêtres du système changent au redémarrage.";
 
 /* The app's name under the icon on the About screen. Not translated — it is what the app is
    called in both languages. */

@@ -52,7 +52,7 @@ extension Message {
         // and VoiceOver never lands on it. The reason therefore has to be said here, or a
         // blind user would be the only one who cannot find out why nothing was delivered.
         if case let .failed(failure)? = delivery {
-            return "\(who): \(what). \(String(app: Strings.Message.Delivery.failed)). \(String(localized: failure.explanation))"
+            return "\(who): \(what). \(String(app: Strings.Message.Delivery.failed)). \(String(app: failure.explanation))"
         }
         return "\(who): \(what)"
     }

@@ -33,7 +33,7 @@ enum RoomTimestamp {
 
         if let yesterday = calendar.date(byAdding: .day, value: -1, to: now),
            calendar.isDate(date, inSameDayAs: yesterday) {
-            return String(localized: Strings.Room.yesterday)
+            return String(app: Strings.Room.yesterday)
         }
 
         // Six days, not seven. At seven, "вторник" could mean this Tuesday or the one before it,
