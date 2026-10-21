@@ -551,6 +551,10 @@ clear. A new screen pushed with a `NavigationLink` is a screen Escape cannot lea
 push stays in a Mac window, and a hidden Escape button per screen was three at once on the chat's
 edit screen — AppKit re-chose between them on every layout pass and the window hung in
 `NSHostingView.layout()`. Never add a `.keyboardShortcut(.cancelAction)` to a pushed screen.
+And a screen that is itself pushed by `navigationDestination(isPresented:)` in the *detail* stack
+does not declare destinations of its own: `RoomEditView` did (the rules, the banned list) and the
+window spun in layout, rebuilding the room and its info screen forever. Its rows are plain
+`NavigationLink`s, and Escape does not reach those two lists.
 
 **Sizes come from `Theme`.** Every spacing, radius and size is a named constant in
 `IskraDesign/Theme.swift`, all multiples of 4, corners `.continuous`. A view that hard-codes
