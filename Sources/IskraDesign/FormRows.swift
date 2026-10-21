@@ -22,6 +22,10 @@ public struct GroupedRowsFormStyle: FormStyle {
             configuration.content
                 .labelStyle(RowLabelStyle())
                 .buttonStyle(RoleColouredButtonStyle())
+                // White cards on the grey page, as on the phone — see `Color.groupedCard`. A row
+                // that asks for no card (a portrait, a bare control) keeps asking: its own setting
+                // is nearer to it than this one.
+                .listRowBackground(Color.groupedCard)
         }
         .formStyle(.grouped)
         // The phone's grouped page under the form, not the window's grey — see `Color.groupedPage`.

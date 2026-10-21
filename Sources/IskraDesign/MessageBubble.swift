@@ -273,17 +273,34 @@ public extension Color {
     /// one resolves through the environment's `backgroundStyle`, and the whole point of the page
     /// under a lifted bubble is that it is opaque whatever the environment around it says.
     ///
-    /// On a Mac it is the phone's page, not the window's: white, and in the dark a near-black —
-    /// not the phone's pure black, which on a window beside other windows read as a hole, and not
-    /// the window's own grey either, which made the Mac app a different app from the one on the
-    /// phone.
+    /// On a Mac: white, and in the dark a grey — the conversation is the lightest thing in the
+    /// window, between two side columns that stand on `groupedPage`, darker in the dark and greyer
+    /// in the light. The phone's pure black read on a Mac as a hole in the window.
     static var page: Color {
         #if canImport(UIKit)
         Color(uiColor: .systemBackground)
         #elseif canImport(AppKit)
         Color(nsColor: NSColor(name: nil) { appearance in
             appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-                ? NSColor(srgbRed: 0x18 / 255, green: 0x18 / 255, blue: 0x1A / 255, alpha: 1)
+                ? NSColor(srgbRed: 0x1C / 255, green: 0x1C / 255, blue: 0x1E / 255, alpha: 1)
+                : .white
+        })
+        #else
+        .white
+        #endif
+    }
+
+    /// A card on that page — the phone's grouped cell: white, and in the dark the same grey as the
+    /// conversation (`page`), well above the near-black of the side columns. On a Mac the form's own plates are a translucent darkening of whatever is under
+    /// them, so on a grey page they came out greyer than the page: the phone's arrangement upside
+    /// down. Painted per row instead (`GroupedRowsFormStyle`).
+    static var groupedCard: Color {
+        #if canImport(UIKit)
+        Color(uiColor: .secondarySystemGroupedBackground)
+        #elseif canImport(AppKit)
+        Color(nsColor: NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+                ? NSColor(srgbRed: 0x1C / 255, green: 0x1C / 255, blue: 0x1E / 255, alpha: 1)
                 : .white
         })
         #else
@@ -292,15 +309,16 @@ public extension Color {
     }
 
     /// The page a form stands on — the phone's grouped background: a light grey under white cards,
-    /// and in the dark a shade below `page`, so the cards stand off it as they do on the phone. On a
-    /// Mac, where forms otherwise sit on the window's grey.
+    /// and in the dark a near-black, so the cards stand off it as they do on the phone. On a Mac it
+    /// is also the side columns' page — the room list and the chat's info — so that they read as
+    /// columns beside the conversation rather than as more of it.
     static var groupedPage: Color {
         #if canImport(UIKit)
         Color(uiColor: .systemGroupedBackground)
         #elseif canImport(AppKit)
         Color(nsColor: NSColor(name: nil) { appearance in
             appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-                ? NSColor(srgbRed: 0x12 / 255, green: 0x12 / 255, blue: 0x14 / 255, alpha: 1)
+                ? NSColor(srgbRed: 0x11 / 255, green: 0x11 / 255, blue: 0x11 / 255, alpha: 1)
                 : NSColor(srgbRed: 0xF2 / 255, green: 0xF2 / 255, blue: 0xF7 / 255, alpha: 1)
         })
         #else

@@ -709,10 +709,12 @@ private extension View {
         } else {
             listStyle(.plain)
                 #if os(macOS)
-                // The phone's page under the list — see `Color.page`. Not under the native sidebar,
-                // which is meant to stand on its own material.
+                // The side columns stand on the grouped page and the conversation on the plain one
+                // (`Color.groupedPage`, `Color.page`), so the window reads as a chat between two
+                // columns rather than as one sheet. Not under the native sidebar, which is meant to
+                // stand on its own material.
                 .scrollContentBackground(.hidden)
-                .background(Color.page)
+                .background(Color.groupedPage)
                 #endif
         }
     }

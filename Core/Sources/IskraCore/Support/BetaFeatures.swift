@@ -21,18 +21,17 @@ public enum BetaFeatures {
     /// plain list — see `RoomListView`.
     public static let nativeSidebarKey = "beta.nativeSidebar"
 
-    /// And it is on unless somebody turns it off.
+    /// Off unless somebody turns it on.
     ///
-    /// A beta feature nobody has seen is a beta feature nobody has an opinion about: off by
-    /// default, this one would have lived its whole life behind a switch on a screen most people
-    /// never open, and the thing it is being tried out *for* — whether the Mac's own sidebar is
-    /// better than the app's list — would never have been answered. So the Mac opens with it on,
-    /// and the switch is the way back rather than the way in.
+    /// It was on by default for a while, so that the question it is being tried out for — whether
+    /// the Mac's own sidebar is better than the app's list — got answered. It was: the app's list,
+    /// which stands on the same page as the rest of the app (`Color.groupedPage`), where the
+    /// sidebar material made the Mac app a different app from the one on the phone.
     ///
     /// Spelled out here rather than written into the two `@AppStorage` declarations that read it,
     /// because a default that disagrees with itself between the screen that sets it and the screen
     /// that obeys it is a bug nothing catches: the toggle would simply show the wrong position.
-    public static let nativeSidebarByDefault = true
+    public static let nativeSidebarByDefault = false
 
     /// Whether a person with no picture of their own is drawn as a generated creature rather
     /// than as their initials — see `Blobatar`, `Avatar`, and `CommunicationNotification`, which
