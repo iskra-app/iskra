@@ -47,6 +47,18 @@ public struct RoomView: View {
     /// message — and only the screen can see both ends.
     @State private var composerContext: ComposerContext?
 
+    /// What the composer held when an edit filled it with the message being changed: the user's own
+    /// half-written words, and the reply they belonged to. An edit borrows the box; when it ends —
+    /// sent, cancelled, Escape — the box is handed back as it was, not left empty and not left
+    /// holding the old message.
+    @State private var beforeEditing: ComposerSnapshot?
+
+    private struct ComposerSnapshot {
+        let draft: String
+        let mentions: [ComposerMention]
+        let context: ComposerContext?
+    }
+
     /// Builds a thread's timeline from its root's event ID — see `UserSession.threadTimeline`. Nil
     /// inside a thread, which is the same screen on a different timeline.
     private let makeThread: ((String) -> TimelineStore?)?
@@ -1624,7 +1636,7 @@ public struct RoomView: View {
         } else if let messageMenu, messageMenu.presentation != nil {
             messageMenu.dismiss()
         } else if composerContext != nil {
-            withAnimation(.smooth(duration: Theme.Timing.chrome)) { composerContext = nil }
+            withAnimation(.smooth(duration: Theme.Timing.chrome)) { cancelContext() }
         } else {
             onClose()
         }
@@ -1664,7 +1676,7 @@ public struct RoomView: View {
         // editing "Привет", changing your mind, and leaving put a second "Привет" in the
         // conversation the next time the send button was pressed.
         let isEditing = composerContext?.isEditing == true
-        let unsent = isEditing ? "" : draft
+        let unsent = isEditing ? (beforeEditing?.draft ?? "") : draft
         let timeline = timeline
         Task { await timeline.saveDraft(unsent) }
 
@@ -2516,6 +2528,8 @@ public struct RoomView: View {
     }
 
     private func startReplying(to message: Message) {
+        // Out of an edit first, so the old message does not become the start of the answer.
+        if composerContext?.isEditing == true { endEditing() }
         composerContext = .replying(message)
     }
 
@@ -2525,6 +2539,11 @@ public struct RoomView: View {
     private func startEditing(_ message: Message) {
         // An album is its first picture, and so is its caption — see `Album`.
         guard let text = message.editingText else { return }
+        // Kept from before the *first* edit: going from one edit straight to another must not
+        // keep the first message's words as the user's own.
+        if composerContext?.isEditing != true {
+            beforeEditing = ComposerSnapshot(draft: draft, mentions: draftMentions, context: composerContext)
+        }
         composerContext = .editing(message)
         let (words, mentions) = ComposerMentions.unlinked(text)
         draft = words
@@ -2543,17 +2562,26 @@ public struct RoomView: View {
 
     /// Backs out of a reply or an edit.
     ///
-    /// An abandoned *edit* takes its draft with it, and this is the one place the draft is
-    /// thrown away. It has to be: the box was filled with the old message by the app, not by
-    /// the user, and leaving those words behind would mean cancelling an edit and finding the
-    /// message you were editing sitting in the composer, ready to be sent again as a new one.
-    /// An abandoned reply keeps the draft, because every word in it is the user's own.
+    /// An abandoned *edit* gives the composer back as it was before the edit began (`endEditing`).
+    /// The box was filled with the old message by the app, not by the user, and leaving those words
+    /// behind would mean cancelling an edit and finding the message you were editing sitting in the
+    /// composer, ready to be sent again as a new one. An abandoned reply keeps the draft, because
+    /// every word in it is the user's own.
     private func cancelContext() {
-        if case .editing = composerContext {
-            draft = ""
-            draftMentions = []
+        if composerContext?.isEditing == true {
+            endEditing()
+        } else {
+            composerContext = nil
         }
-        composerContext = nil
+    }
+
+    /// The composer as it was before the edit — its words and the reply they were — or empty, if
+    /// there is no record of it.
+    private func endEditing() {
+        draft = beforeEditing?.draft ?? ""
+        draftMentions = beforeEditing?.mentions ?? []
+        composerContext = beforeEditing?.context
+        beforeEditing = nil
     }
 
     private func togglePin(_ message: Message) async {
@@ -2606,9 +2634,13 @@ public struct RoomView: View {
         // screen in that state; the keyboard's Return still is.
         guard hasText || !images.isEmpty || context?.isEditing == true else { return }
 
-        draft = ""
-        draftMentions = []
-        composerContext = nil
+        if context?.isEditing == true {
+            endEditing()
+        } else {
+            draft = ""
+            draftMentions = []
+            composerContext = nil
+        }
         if !images.isEmpty { attachments = [] }
 
         Task {
