@@ -69,6 +69,20 @@ struct IskraApp: App {
         }
 
         #endif
+
+        #if os(macOS)
+        // One copy of the app at a time. A second one — Xcode's build beside `run.sh`'s, the same
+        // bundle ID twice — shares the store, the Keychain and the refresh token with the first, and
+        // the two refreshing it in turn is how accounts used to vanish. So the second one hands over
+        // to the first and goes. See `AppEnvironment.processName`.
+        let me = ProcessInfo.processInfo.processIdentifier
+        if let bundleID = Bundle.main.bundleIdentifier,
+           let other = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+               .first(where: { $0.processIdentifier != me }) {
+            other.activate()
+            exit(0)
+        }
+        #endif
     }
 
     #if os(iOS)

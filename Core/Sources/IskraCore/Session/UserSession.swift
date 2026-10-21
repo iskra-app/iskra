@@ -272,7 +272,14 @@ public final class UserSession {
 
         // Before the sync loop, not after: the token can be refused by the very first request the
         // loop makes, and a delegate registered afterwards would miss it.
-        authErrorHandle = try? client.setDelegate(delegate: AuthErrors { [weak self] in
+        authErrorHandle = try? client.setDelegate(delegate: AuthErrors { [weak self] isSoftLogout in
+            // A soft logout is the server asking for the password again, not the account ending:
+            // the keys and the history are still good. Deleting them over it is unrecoverable, and
+            // a token refused by a race between two processes looks exactly like one.
+            guard !isSoftLogout else {
+                Log.session.error("the server asked to sign in again (soft logout); the account is kept")
+                return
+            }
             Task { @MainActor [weak self] in
                 await self?.endedElsewhere()
             }
@@ -962,14 +969,14 @@ public final class UserSession {
 /// as Boris"), and Iskra has neither. Treating both as "you are signed out" is the honest
 /// simplification: the alternative is a store kept for a flow that does not exist.
 private final class AuthErrors: ClientDelegate {
-    private let onAuthError: @Sendable () -> Void
+    private let onAuthError: @Sendable (Bool) -> Void
 
-    init(onAuthError: @escaping @Sendable () -> Void) {
+    init(onAuthError: @escaping @Sendable (Bool) -> Void) {
         self.onAuthError = onAuthError
     }
 
     func didReceiveAuthError(isSoftLogout: Bool) {
-        onAuthError()
+        onAuthError(isSoftLogout)
     }
 
     /// The SDK's own note says an embedder that does not run background jobs may leave this empty.

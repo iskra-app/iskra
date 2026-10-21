@@ -143,8 +143,15 @@ public struct AppEnvironment: Sendable {
     /// `Bundle.main` is the *extension's* bundle. The app says `wtf.iskra`; the extension
     /// says `wtf.iskra.NotificationService`. (This is the same fact that makes
     /// `AppIdentifierPrefix` load-bearing in the extension's own Info.plist — see `CLAUDE.md`.)
+    ///
+    /// And the process ID after it. Two copies of the *app* are two holders too — on a Mac that is
+    /// a build from Xcode beside one from `run.sh`, which the system starts side by side without a
+    /// word — and with one name between them each took the lock for its own. Both then refreshed
+    /// the same single-use refresh token, the loser was told the token was unknown, and its
+    /// "session ended elsewhere" deleted the account: every account, one by one, and the settings
+    /// with the last of them. That is what "after a while the Mac forgets everything" was.
     public static var processName: String {
-        Bundle.main.bundleIdentifier ?? "wtf.iskra"
+        "\(Bundle.main.bundleIdentifier ?? "wtf.iskra")#\(ProcessInfo.processInfo.processIdentifier)"
     }
 
     /// The Keychain access group, or nil to use the app's own keychain.

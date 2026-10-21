@@ -370,6 +370,12 @@ await the operation it gave up on, and a task group would: a group waits for its
 stuck in Rust and deaf to cancellation would still hold the caller past the deadline — which is the
 hang, not a hypothetical. `TimeoutTests` pins exactly that.
 
+**One copy of the app on a Mac, and a lock holder per process** (`AppEnvironment.processName` is
+the bundle ID *and* the PID; `IskraApp.init` hands a second copy over to the first and exits). Two
+copies under one holder name both took the SDK's cross-process lock, both refreshed the one
+single-use refresh token, and the loser's "session ended elsewhere" deleted the account — every
+account in turn, and the settings with the last. A soft logout never deletes anything.
+
 **The SDK logs nothing until asked.** `SDKLogging.start()` (called from `IskraApp.init`) is what makes
 a stall on a real device visible at all — there is no debugger attached to a signed build on a phone.
 The level stops at `.info` on purpose: `.debug` and `.trace` make the SDK log request and response
