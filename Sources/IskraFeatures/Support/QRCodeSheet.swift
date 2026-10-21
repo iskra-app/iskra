@@ -1,11 +1,14 @@
 import SwiftUI
 import IskraCore
 import IskraDesign
+#if os(iOS)
+import CoreMotion
+#endif
 
 /// A face, a name and a code to point a camera at — yours from settings, a person's or a public
 /// room's from its info screen. A white card held up to the viewer, after Threads' invitation:
-/// it sways a little by itself, turns under a finger to show the spark on its back, and a rainbow
-/// comes up across it as it tilts.
+/// it holds its place as the phone turns (on a Mac, it sways a little by itself), turns under a
+/// finger to show the spark on its back, and a rainbow comes up across it as it tilts.
 ///
 /// What the code holds is an `s.iskra.wtf` link, not the bare ID — see `MatrixLink`, which is
 /// where that choice is argued. The ID is written under the code as well, for the person standing next
@@ -206,7 +209,8 @@ struct QRCardFront: View {
 }
 
 /// The back: the spark, flat and in outline, grey on the same white — a mark on the back of a
-/// card, quieter than anything on its face.
+/// card, quieter than anything on its face. Larger than the card and off to the left, so the card's
+/// edges cut it: printed across the card, not set in the middle of it.
 struct QRCardBack: View {
     let holo: Holo
 
@@ -216,6 +220,7 @@ struct QRCardBack: View {
                 SparkGlyph()
                     .stroke(Color(white: 0.6), lineWidth: 3)
                     .frame(width: Theme.Size.qrCardSpark, height: Theme.Size.qrCardSpark)
+                    .offset(x: -Theme.Size.qrCardSparkShift)
             }
             .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.qrCard, style: .continuous))
     }
@@ -231,14 +236,18 @@ private struct QRCardGround: View {
     }
 }
 
-/// The card in the hand: it sways a little on its own, turns under a finger, and comes to rest
-/// face on — front or back, whichever it was let go nearer to. A tap turns it over.
+/// The card in the hand: on a phone it holds its place in the air as the phone turns — turn the
+/// phone right and the card turns left — and on a Mac, or anywhere without the sensor, it sways a
+/// little on its own. It turns under a finger and comes to rest face on, front or back, whichever
+/// it was let go nearer to. A tap turns it over.
 ///
-/// The angle is an animatable value of `TurnedCard` and the sway is not, so a spring back to rest
-/// and the sway can run at once without one cancelling the other. The sway starts from nothing
-/// each time the card is let go, so it never jumps; and with Reduce Motion on, there is none — the
-/// root's `respectsReduceMotion` only takes the animation out of a transaction, and a
-/// `TimelineView` would go on turning the card regardless.
+/// The angle is an animatable value of `TurnedCard` and the sway or the phone's turn is not, so a
+/// spring back to rest and either of those can run at once without one cancelling the other. While
+/// a finger has the card, the phone's turn is not followed; it comes back a moment after the card
+/// has settled, measured from wherever the phone is then, and eases in from nothing as the sway
+/// does — so the card never jumps. With Reduce Motion on, there is neither: the root's
+/// `respectsReduceMotion` only takes the animation out of a transaction, and a `TimelineView`
+/// would go on turning the card regardless.
 private struct SpinningCard<Front: View, Back: View>: View {
     @ViewBuilder let front: (Holo) -> Front
     @ViewBuilder let back: (Holo) -> Back
@@ -250,28 +259,68 @@ private struct SpinningCard<Front: View, Back: View>: View {
     @State private var dragYaw: Double = 0
     @State private var pitch: Double = 0
     @State private var isDragging = false
-    /// When the sway last started, so that it starts from zero.
+    /// When the sway last started, so that it starts from zero — and, on a phone, when the card was
+    /// last let go, which is what the phone's turn waits out before it is followed again.
     @State private var swayStart = Date()
+    /// The first time the phone's turn is followed it is not waited for: there is nothing to wait out.
+    @State private var settledOnce = false
+    #if os(iOS)
+    @State private var motion = CardMotion()
+    #endif
 
     var body: some View {
         TimelineView(.animation(paused: isDragging || reduceMotion)) { context in
-            let sway = swaying ? Self.sway(since: swayStart, now: context.date) : (yaw: 0, pitch: 0)
+            let drift = swaying ? drift(at: context.date) : (yaw: 0, pitch: 0)
             TurnedCard(yaw: yaw + dragYaw, pitch: pitch,
-                       swayYaw: sway.yaw, swayPitch: sway.pitch,
+                       swayYaw: drift.yaw, swayPitch: drift.pitch,
                        front: front, back: back)
         }
         .contentShape(Rectangle())
         .gesture(drag)
         .onTapGesture {
-            swayStart = .now
+            letGo()
             withAnimation(settle) { yaw += 180 }
         }
+        #if os(iOS)
+        .onAppear { if !reduceMotion { motion.start() } }
+        .onDisappear { motion.stop() }
+        .onChange(of: reduceMotion) { _, reduced in reduced ? motion.stop() : motion.start() }
+        #endif
     }
 
     private var swaying: Bool { !isDragging && !reduceMotion }
 
     private var settle: Animation? {
         reduceMotion ? nil : .spring(duration: 0.7, bounce: 0.3)
+    }
+
+    /// What turns the card besides a finger: the phone's own turn where there is a sensor to tell
+    /// it, the sway where there is not.
+    private func drift(at now: Date) -> (yaw: Double, pitch: Double) {
+        #if os(iOS)
+        if motion.isAvailable {
+            let since = settledOnce ? now.timeIntervalSince(swayStart) - Self.motionPause : 1
+            guard since > 0 else { return (0, 0) }
+            let turn = motion.turn()
+            let ease = min(1, since / 0.6)
+            return (yaw: turn.yaw * ease, pitch: turn.pitch * ease)
+        }
+        #endif
+        return Self.sway(since: swayStart, now: now)
+    }
+
+    /// How long after the card is let go the phone's turn is followed again — long enough for the
+    /// spring to settle, so the two do not tug at the card together.
+    private static var motionPause: TimeInterval { 1 }
+
+    /// The card has just been put down: the sway starts again from nothing, and the phone's turn,
+    /// once it is followed again, is measured from wherever the phone is by then.
+    private func letGo() {
+        swayStart = .now
+        settledOnce = true
+        #if os(iOS)
+        motion.rest()
+        #endif
     }
 
     /// A slow figure of eight, coming up over the first second and a half after a rest.
@@ -285,9 +334,9 @@ private struct SpinningCard<Front: View, Back: View>: View {
         DragGesture(minimumDistance: 4)
             .onChanged { value in
                 if !isDragging {
-                    // Whatever the sway had turned the card to becomes where the finger picks it up.
-                    let sway = Self.sway(since: swayStart, now: .now)
-                    yaw += reduceMotion ? 0 : sway.yaw
+                    // Whatever the sway or the phone had turned the card to becomes where the
+                    // finger picks it up.
+                    yaw += reduceMotion ? 0 : drift(at: .now).yaw
                     isDragging = true
                 }
                 dragYaw = value.translation.width * 0.5
@@ -298,7 +347,7 @@ private struct SpinningCard<Front: View, Back: View>: View {
                 yaw += dragYaw
                 dragYaw = 0
                 isDragging = false
-                swayStart = .now
+                letGo()
                 withAnimation(settle) {
                     yaw = (thrown / 180).rounded() * 180
                     pitch = 0
@@ -306,6 +355,54 @@ private struct SpinningCard<Front: View, Back: View>: View {
             }
     }
 }
+
+#if os(iOS)
+/// The phone's turn since a moment of rest, as the card's answer to it: the other way, and no
+/// further than `limit`. Read on every frame the card draws rather than pushed from a queue — the
+/// card is drawn every frame anyway, and nothing has to cross from a sensor thread.
+///
+/// `deviceMotion` asks for no permission: it is the activity and pedometer APIs that do.
+@MainActor
+private final class CardMotion {
+    private let manager = CMMotionManager()
+    /// Where the phone was when the card was last at rest; the turn is measured from here.
+    private var reference: CMAttitude?
+
+    /// How far the card turns at most, in degrees, however far the phone does.
+    private static let limit: Double = 20
+
+    var isAvailable: Bool { manager.isDeviceMotionAvailable }
+
+    func start() {
+        guard isAvailable, !manager.isDeviceMotionActive else { return }
+        manager.deviceMotionUpdateInterval = 1.0 / 60
+        manager.startDeviceMotionUpdates()
+    }
+
+    func stop() {
+        manager.stopDeviceMotionUpdates()
+        reference = nil
+    }
+
+    /// Forget where the phone was: the next reading is the new rest.
+    func rest() { reference = nil }
+
+    /// In degrees: `yaw` about the card's vertical, from the phone turning left or right in the
+    /// hand; `pitch` about its horizontal, from the phone tipping towards or away.
+    func turn() -> (yaw: Double, pitch: Double) {
+        guard let attitude = manager.deviceMotion?.attitude.copy() as? CMAttitude else { return (0, 0) }
+        guard let reference else {
+            reference = attitude
+            return (0, 0)
+        }
+        attitude.multiply(byInverseOf: reference)
+        func degrees(_ radians: Double) -> Double {
+            min(Self.limit, max(-Self.limit, radians * 180 / .pi))
+        }
+        return (yaw: -degrees(attitude.roll), pitch: -degrees(attitude.pitch))
+    }
+}
+#endif
 
 /// The card at an angle. `Animatable`, so that which side is showing is decided from the angle as
 /// it is in the middle of a turn, not from where the turn will end.

@@ -641,8 +641,11 @@ public enum Theme {
         public static let qrCardWidth: CGFloat = 320
         /// The face at the top of the card.
         public static let qrCardFace: CGFloat = 72
-        /// The spark on the back of the card.
-        public static let qrCardSpark: CGFloat = 160
+        /// The spark on the back of the card — wider than the card itself, so that its rays run
+        /// off the edges and it reads as a mark printed across the card, not a badge placed on it.
+        public static let qrCardSpark: CGFloat = 448
+        /// How far left of centre that spark sits: about a third of the card's width.
+        public static let qrCardSparkShift: CGFloat = 96
         /// The distance between two sparks of the rainbow watermark — `HoloWatermark`. Small enough
         /// to read as a texture and not as a pattern of separate pictures.
         public static let watermarkStep: CGFloat = 16
