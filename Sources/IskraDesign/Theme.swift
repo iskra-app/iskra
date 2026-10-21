@@ -998,16 +998,15 @@ public enum Theme {
         /// version, the build and the links without scrolling.
         public static let aboutWindow = CGSize(width: 420, height: 640)
 
-        /// The empty conversation column's minimum on a Mac — chosen so that a window with no chat
-        /// open is exactly as narrow as one with a chat is allowed to be, and picking a chat never
-        /// pushes the window wider.
+        /// The least a chat may be squeezed to on a Mac — and the empty column too, so that a
+        /// window with no chat open is exactly as narrow as one with a chat, and picking a chat never
+        /// pushes the window wider. Squeezed with nothing to hold it, a chat became a column of one
+        /// word a line.
         ///
-        /// Not the chat's width: a chat's minimum is its own (its header, toolbar and composer), and
-        /// the window adds more around a column's minimum than the column itself. So this number
-        /// was found by measurement, with `Iskra --probe-resize empty` against `--probe-resize
-        /// closed` until the two printed the same least width. Measure again if the chat's toolbar
-        /// changes.
-        public static let conversationMinimum = CGSize(width: 188, height: 420)
+        /// Put on the chat and on the empty column's spark, never on the column around them: there,
+        /// it was re-measured from the chat on every frame of a resize, and AppKit ended the app
+        /// (`Iskra --probe-resize` reproduces it).
+        public static let conversationMinimum = CGSize(width: 420, height: 420)
 
         /// The list of things you can do to a message — see `MessageMenu`.
         ///

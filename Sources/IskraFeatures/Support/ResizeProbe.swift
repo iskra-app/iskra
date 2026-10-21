@@ -48,8 +48,10 @@ enum ResizeProbe {
         print("resize probe: empty, least width \(window.minSize.width), content \(window.contentMinSize.width)")
         // Wide enough for anything before a chat opens, so that measuring the column cannot start the
         // very loop that is being measured.
+        // `narrow`: the opposite — as narrow as the window goes before the chat opens, which is
+        // what opening the column into a small window looks like.
         var wide = window.frame
-        wide.size.width = max(wide.width, 2000)
+        wide.size.width = CommandLine.arguments.contains("narrow") ? 0 : max(wide.width, 2000)
         window.setFrame(wide, display: true)
         try? await Task.sleep(for: .milliseconds(500))
         // `empty` leaves the column with no chat in it.

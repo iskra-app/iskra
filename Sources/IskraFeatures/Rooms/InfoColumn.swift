@@ -39,17 +39,25 @@ final class InfoColumn {
     /// itself, animated, in jerks, a frame at a time. So in that one case the window is widened
     /// here first, at once and by exactly what is missing, and the column then opens into it.
     func open() {
-        if !isOpen { makeRoom() }
+        makeRoom()
         isOpen = true
     }
 
     private func makeRoom() {
         // The window's least width as it stands — the column still shut — is what the room list
-        // and the chat need; the column needs its own width on top of that.
-        guard let window = NSApp.keyWindow ?? NSApp.mainWindow,
+        // and the chat need, and the column needs *twice* its width on top of that: SwiftUI counts
+        // an inspector on a split view once in the conversation column's minimum and again as
+        // itself. Measured, not guessed — `Iskra --probe-resize open` at two column widths moved
+        // the window's least width by twice the difference. Short of that, the column was folded
+        // away for want of room and back again until AppKit ended the app.
+        //
+        // The key window, or the main one — or, in an app that is not active, the first one on
+        // screen.
+        guard let window = NSApp.keyWindow ?? NSApp.mainWindow
+                ?? NSApp.windows.first(where: { $0.isVisible && $0.canBecomeMain }),
               !window.styleMask.contains(.fullScreen),
               let screen = window.screen?.visibleFrame else { return }
-        let needed = window.minSize.width + Theme.Size.infoColumnIdeal
+        let needed = window.minSize.width + 2 * Theme.Size.infoColumnIdeal
         guard window.frame.width < needed else { return }
         var frame = window.frame
         frame.size.width = min(screen.width, needed)
@@ -58,7 +66,10 @@ final class InfoColumn {
         window.setFrame(frame, display: true)
     }
 
+    /// With the column already open — left open, and the app launched again — it is the content
+    /// that presents it, so the room is made here first.
     func attach(_ content: AnyView, owner: UUID) {
+        if isOpen { makeRoom() }
         self.content = content
         self.owner = owner
     }

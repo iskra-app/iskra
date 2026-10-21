@@ -130,13 +130,22 @@ xcrun simctl launch --console booted wtf.iskra --probe-bridge
 forth from code, then puts the window back and quits: "survived N steps", or a crash report. It
 exists for the layout loops AppKit ends an app over (`_postWindowNeedsUpdateConstraints`), which
 only happen with a real chat on screen and a window being resized. It prints the window's least
-width too — `empty` measures with no chat open, `closed` with the info column shut — which is how
-`Theme.Size.conversationMinimum` was found. A minimum frame put on the whole conversation column
-is the known way to start that loop; it is why the minimum sits on the empty column's spark.
+width too. Words after it: `empty` (no chat), `closed` / `open` (the info column shut or open —
+the user's choice is put back on the way out), `narrow` (open the chat in the narrowest window
+instead of a wide one), `toolbar` (where each toolbar item stands against the columns, and quit).
+
+Launch it through `open`, not by running the binary: started straight from a terminal, macOS
+sometimes makes no window at all, and a probe with no window waits for ever.
 
 ```sh
-.build/xcode/Build/Products/Debug/Iskra.app/Contents/MacOS/Iskra --probe-resize
+open -n -W --stdout /tmp/probe.log --stderr /tmp/probe.log .build/xcode/Build/Products/Debug/Iskra.app --args --probe-resize open narrow
 ```
+
+Two things it found. A minimum frame on the whole conversation column starts the loop; the
+minimum is on the chat and on the empty column's spark instead (`Theme.Size.conversationMinimum`).
+And SwiftUI counts an inspector on a split view *twice* in the window's least width — so the info
+column needs twice its width of room before it opens (`InfoColumn.makeRoom`), or it is folded
+away for want of room and back again until the app is ended.
 
 ### The demo server
 
