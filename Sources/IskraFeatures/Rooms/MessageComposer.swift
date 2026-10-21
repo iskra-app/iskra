@@ -382,7 +382,8 @@ struct MessageComposer: View {
                                 .padding(.vertical, Theme.Spacing.normal)
                                 .frame(minHeight: control)
                                 // Return or ⌘-Return, by Settings → Chats — see `ComposerReturnKey`.
-                                .composerReturnKey(text: $draft, selection: $selection, send: onSend,
+                                .composerReturnKey(text: $draft, selection: $selection, isFocused: isFocused,
+                                                   send: onSend,
                                                    editLast: onEditLast)
 
                             if offersStickers, let onChooseSticker {
