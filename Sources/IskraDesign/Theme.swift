@@ -561,6 +561,10 @@ public enum Theme {
         /// of its own, so the sheet has to, or it opens with nothing between its title and Cancel.
         public static let listSheetWidth: CGFloat = 440
         public static let listSheetHeight: CGFloat = 520
+        /// The sticker picker on a Mac: a popover over the composer, like the reaction picker, not a
+        /// sheet the size of the window.
+        public static let stickerPopoverWidth: CGFloat = 360
+        public static let stickerPopoverHeight: CGFloat = 420
 
         /// The height of the unread badge in the chat list, and the width of the "@" beside it —
         /// one number, so the circle and the capsule stand exactly level.

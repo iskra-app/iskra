@@ -1416,21 +1416,9 @@ public struct RoomView: View {
         #else
         .sheet(item: $editingPhoto) { photoEditor($0) }
         #endif
-        .sheet(isPresented: $isChoosingSticker) {
-            StickerPicker(roomID: timeline.roomID) { sticker in
-                // Read now, before `cancelContext` clears it: the sticker answers what was being
-                // answered when the sheet was opened.
-                let reply = replyID
-                cancelContext()
-                Task {
-                    await timeline.send(sticker: sticker, replyingTo: reply)
-                    if timeline.failure == nil { await stickers?.used(sticker) }
-                }
-            }
-            // Here as well as on the room: an alert hung on a screen *under* a sheet is never
-            // shown, and adding a sticker from the sheet is one of the two ways to need it.
-            .failureAlert(stickerFailure)
-        }
+        #if os(iOS)
+        .sheet(isPresented: $isChoosingSticker) { stickerPicker }
+        #endif
         .sheet(isPresented: $isCreatingPoll) {
             PollComposer { draft in
                 await timeline.send(poll: draft)
@@ -1773,10 +1761,36 @@ public struct RoomView: View {
     /// row of the conversation with it, was rebuilt twenty times a second. That was the stutter at
     /// the start of every recording and the stiffness all the way through it. Read inside
     /// `VoiceScope`, they rebuild the composer and nothing else.
+
     private var composer: some View {
         VoiceScope(voice: voice) { recording in
             composer(voice: recording)
         }
+        #if os(macOS)
+        .popover(isPresented: $isChoosingSticker, arrowEdge: .top) {
+            stickerPicker
+                .frame(width: Theme.Size.stickerPopoverWidth, height: Theme.Size.stickerPopoverHeight)
+        }
+        #endif
+    }
+
+
+    /// The stickers, to send one into this room — a sheet on a phone, and on a Mac a popover over
+    /// the composer, the size of the reaction picker's rather than a window's worth of sheet.
+    private var stickerPicker: some View {
+        StickerPicker(roomID: timeline.roomID) { sticker in
+            // Read now, before `cancelContext` clears it: the sticker answers what was being
+            // answered when the sheet was opened.
+            let reply = replyID
+            cancelContext()
+            Task {
+                await timeline.send(sticker: sticker, replyingTo: reply)
+                if timeline.failure == nil { await stickers?.used(sticker) }
+            }
+        }
+        // Here as well as on the room: an alert hung on a screen *under* a sheet is never
+        // shown, and adding a sticker from the sheet is one of the two ways to need it.
+        .failureAlert(stickerFailure)
     }
 
     private func composer(voice recording: VoiceRecording?) -> some View {
