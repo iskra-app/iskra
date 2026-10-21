@@ -714,16 +714,13 @@ struct RoomRow: View {
     /// `RoomListStore.typingRoomIDs`.
     var isTyping = false
 
-    /// Whether this row is standing in the Mac's own sidebar, where it has to be shorter.
+    /// Whether this row is standing in the Mac's own sidebar, where it has to be denser: the same
+    /// row as on a phone, with a smaller face (`roomAvatarCompact`, Telegram's size on a Mac) and
+    /// less air between the name and the message.
     ///
-    /// One line of the last message instead of two, and no space reserved for the second. In the
-    /// app's own list the reserved line is load-bearing — see `lineLimit` below — but a sidebar is
-    /// a narrow column read down its length, and a band of empty space under every message is
-    /// exactly the padding that makes a list of eight conversations look like a list of five.
-    ///
-    /// The rows stay the same height as each other regardless, which is what the reserved line was
-    /// protecting: with one line of preview the tallest thing in the row is the face beside it, and
-    /// a face is the same size in every row there is.
+    /// Two lines reserved, as in the app's own list — see `lineLimit` below — because at this size
+    /// the name and two lines are about as tall as the face, so the rows cost nothing in height for
+    /// it and stay one height whatever the messages say.
     var compact = false
 
     /// For the pin, which is the one coloured thing on this row. See `body`.
@@ -736,12 +733,13 @@ struct RoomRow: View {
             // name is even read — see `AvatarShape`.
             // A space is a shelf of rooms rather than somebody to look at, so it gets no
             // creature — only the square and its initials.
-            RoomAvatar(name: room.name, url: room.avatarURL, size: Theme.Size.roomAvatar,
+            RoomAvatar(name: room.name, url: room.avatarURL,
+                       size: compact ? Theme.Size.roomAvatarCompact : Theme.Size.roomAvatar,
                        shape: room.isSpace ? .roundedSquare : .circle,
                        seed: room.isSpace ? nil : room.avatarSeed,
                        faces: room.faces)
 
-            VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+            VStack(alignment: .leading, spacing: compact ? Theme.Spacing.withinRun : Theme.Spacing.tight) {
                 HStack(spacing: Theme.Spacing.tight) {
                     Text(room.name)
                         .font(.body.weight(.semibold))
@@ -767,10 +765,7 @@ struct RoomRow: View {
                     // the row's one piece of *status*, which is what being pinned is. Same shape
                     // the swipe action uses, so the gesture and its result say the same word.
                     if room.isPinned {
-                        Image(systemName: "pin.fill")
-                            .font(.caption)
-                            .foregroundStyle(accent.color)
-                            .accessibilityLabel(Text(Strings.RoomList.pinned))
+                        pin
                     }
 
                     // How far your own last message has got, beside its time — Telegram's place
@@ -807,10 +802,7 @@ struct RoomRow: View {
                         // which it is not. A steady row is what lets the faces beside them scan as
                         // a column at all.
                         //
-                        // In the sidebar one line, and nothing reserved — see `compact`. The rows
-                        // are still all one height there, because the face is then the tallest
-                        // thing in them.
-                        .lineLimit(compact ? 1 : 2, reservesSpace: !compact)
+                        .lineLimit(2, reservesSpace: true)
 
                     Spacer(minLength: 0)
 
@@ -886,6 +878,16 @@ struct RoomRow: View {
                                   trailing: Theme.Spacing.roomy))
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
+    }
+
+    /// Pinned chats wear a pin, tinted rather than grey — the row's one piece of *status*, which is
+    /// what being pinned is. Same shape the swipe action uses, so the gesture and its result say the
+    /// same word.
+    private var pin: some View {
+        Image(systemName: "pin.fill")
+            .font(.caption)
+            .foregroundStyle(accent.color)
+            .accessibilityLabel(Text(Strings.RoomList.pinned))
     }
 
     /// The last message, with the icon of what it is in front of it when it is an attachment —

@@ -551,6 +551,10 @@ public enum Theme {
         /// how a conversation is found: the eye goes down the column of faces, not down the column
         /// of names, and at 40pt it was doing that work at the size of a footnote.
         public static let roomAvatar: CGFloat = 56
+        /// The same face in the Mac's own sidebar, which is a narrow column read down its length:
+        /// Telegram's size there, and what lets two lines of the last message sit beside it without
+        /// the row growing past the face.
+        public static let roomAvatarCompact: CGFloat = 48
 
         /// The height of the unread badge in the chat list, and the width of the "@" beside it —
         /// one number, so the circle and the capsule stand exactly level.
