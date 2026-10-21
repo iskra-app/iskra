@@ -721,7 +721,10 @@ enum TimelineMapper {
                 MessageReaction(key: reaction.key,
                                 count: reaction.senders.count,
                                 isMine: reaction.senders.contains { $0.senderId == ownUserID },
-                                senders: reaction.senders.sorted { $0.timestamp < $1.timestamp }.map(\.senderId))
+                                senders: reaction.senders.sorted { $0.timestamp < $1.timestamp }.map(\.senderId),
+                                reactedAt: Dictionary(reaction.senders.map {
+                                    ($0.senderId, MessagePreview.date(from: $0.timestamp))
+                                }, uniquingKeysWith: { first, _ in first }))
             }
     }
 

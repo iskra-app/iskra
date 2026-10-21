@@ -1017,6 +1017,15 @@ public enum Strings {
             public static func reactors(_ count: Int) -> LocalizedStringResource {
                 LocalizedStringResource("message.menu.reactors", defaultValue: "\(count) reactions", bundle: bundle)
             }
+            /// How many have read a message in a group — the line that opens the same list, with the
+            /// people who read it in it. See `TimelineStore.readerIDs(of:)`.
+            public static func seen(_ count: Int) -> LocalizedStringResource {
+                LocalizedStringResource("message.menu.seen", defaultValue: "\(count) seen", bundle: bundle)
+            }
+            /// Both at once: "12 прочитали · 3 реакции".
+            public static func seenAndReacted(_ seen: String, _ reacted: String) -> LocalizedStringResource {
+                LocalizedStringResource("message.menu.seenAndReacted", defaultValue: "\(seen) · \(reacted)", bundle: bundle)
+            }
             /// The "everybody" tab in that list, with the total.
             public static func reactorsAll(_ count: Int) -> LocalizedStringResource {
                 LocalizedStringResource("message.menu.reactorsAll", defaultValue: "All · \(count)", bundle: bundle)

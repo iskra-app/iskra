@@ -1251,6 +1251,7 @@
 
 /* Who reacted: the "everybody" tab. */
 "message.menu.reactorsAll" = "All · %lld";
+"message.menu.seenAndReacted" = "%1$@ · %2$@";
 
 /* Media viewer: the counter and video skipping. */
 "message.media.counter" = "%lld of %lld";

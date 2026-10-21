@@ -1247,6 +1247,7 @@
 
 /* Кто поставил реакции: вкладка «все». */
 "message.menu.reactorsAll" = "Все · %lld";
+"message.menu.seenAndReacted" = "%1$@ · %2$@";
 
 /* Просмотрщик медиа: счётчик и перемотка видео. */
 "message.media.counter" = "%lld из %lld";

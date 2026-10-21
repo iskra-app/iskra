@@ -295,7 +295,8 @@ struct MessageRow: View {
         // Drawn after the bubble and therefore over it — which is the whole point, and is
         // only true because this comes second in the stack.
         .zIndex(1)
-        .reactorsSheet($reactorsRequest, reactions: message.reactions, load: handlers.loadReactors)
+        .reactorsSheet($reactorsRequest, reactions: message.reactions, load: handlers.loadReactors,
+                       loadReaders: handlers.loadReaders)
     }
 
     /// Two different things, added together, and worth keeping apart in the head.

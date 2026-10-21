@@ -234,7 +234,8 @@ struct CompactMessageRow: View {
                 .transition(.scale(scale: 0.3).combined(with: .opacity))
             }
         }
-        .reactorsSheet($reactorsRequest, reactions: message.reactions, load: handlers.loadReactors)
+        .reactorsSheet($reactorsRequest, reactions: message.reactions, load: handlers.loadReactors,
+                       loadReaders: handlers.loadReaders)
     }
 
     /// How big a video note goes while it plays.

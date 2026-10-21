@@ -232,7 +232,7 @@ struct MessageActions<Content: View>: View {
             }
             .sheet(isPresented: $isShowingReactors) {
                 if let load = handlers.loadReactors {
-                    ReactorsSheet(reactions: message.reactions, load: load)
+                    ReactorsSheet(reactions: message.reactions, load: load, loadReaders: handlers.loadReaders)
                 }
             }
             .sheet(item: $source) { source in
@@ -391,14 +391,28 @@ struct MessageActions<Content: View>: View {
             .filter { !$0.actions.isEmpty }
     }
 
-    /// "5 reactions", above everything else in a group: who left what is the one question a pill
-    /// of numbers cannot answer. Not in a personal chat, where there are two people and the pill
-    /// already says which of them it was — `loadReactors` is nil there.
+    /// "12 seen · 5 reactions", above everything else in a group: who read it and who left what
+    /// are the questions a pill of numbers and a pair of ticks cannot answer. One line for both,
+    /// opening one list, as Telegram's does. Not in a personal chat, where there are two people and
+    /// the ticks and the pill already say it — `loadReactors` is nil there.
     private var reacted: [MessageMenuAction] {
-        let count = message.reactions.reduce(0) { $0 + $1.count }
-        guard handlers.loadReactors != nil, count > 0 else { return [] }
-        return [MessageMenuAction(title: Strings.Message.Menu.reactors(count),
-                                  systemImage: "face.smiling",
+        guard handlers.loadReactors != nil else { return [] }
+        let reactions = message.reactions.reduce(0) { $0 + $1.count }
+        let seen = handlers.countReaders?() ?? 0
+        let title: LocalizedStringResource
+        switch (seen > 0, reactions > 0) {
+        case (true, true):
+            title = Strings.Message.Menu.seenAndReacted(String(app: Strings.Message.Menu.seen(seen)),
+                                                        String(app: Strings.Message.Menu.reactors(reactions)))
+        case (true, false):
+            title = Strings.Message.Menu.seen(seen)
+        case (false, true):
+            title = Strings.Message.Menu.reactors(reactions)
+        case (false, false):
+            return []
+        }
+        return [MessageMenuAction(title: title,
+                                  systemImage: seen > 0 ? "checkmark.message" : "face.smiling",
                                   perform: { isShowingReactors = true })]
     }
 

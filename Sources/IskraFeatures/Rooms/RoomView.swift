@@ -2318,7 +2318,9 @@ public struct RoomView: View {
             },
             loadSource: showsEventSource ? { timeline.sourceJSON(of: message.id) } : nil,
             canDeleteOthers: timeline.canDeleteOthers,
-            loadReactors: timeline.isOneToOne ? nil : { await timeline.reactors(of: message.id) }
+            loadReactors: timeline.isOneToOne ? nil : { await timeline.reactors(of: message.id) },
+            countReaders: timeline.isOneToOne ? nil : { timeline.readerIDs(of: message.id).count },
+            loadReaders: timeline.isOneToOne ? nil : { await timeline.readers(of: message.id) }
         )
     }
 

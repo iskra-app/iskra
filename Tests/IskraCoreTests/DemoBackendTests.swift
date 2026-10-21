@@ -687,6 +687,44 @@ struct DemoBackendTests {
                 "\(String(describing: row()?.lastMessage))")
     }
 
+    /// "Who read it" in a group: everybody whose receipt is on the message or past it, but the one
+    /// who sent it — with a time only for the receipt on the message itself. See `Reader.readAt`.
+    @Test("who read a message in a group, and when only where a receipt says so")
+    func readersOfAMessage() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(component: "iskra-readers-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let client = try await DemoBackend.makeClient(data: root.appending(component: "data"),
+                                                      cache: root.appending(component: "cache"),
+                                                      search: root.appending(component: "search"))
+        let session = UserSession(client: client, authentication: AuthenticationService(), sessionID: "demo", isDemo: true)
+        try await session.start()
+        defer { Task { await session.close() } }
+
+        let roomID = "!family:iskra.demo"
+        let me = "@sasha:iskra.demo"
+        let mama = "@mama:iskra.demo"
+        let papa = "@papa:iskra.demo"
+        #expect(await eventually { session.roomList.rooms.contains { $0.id == roomID } })
+        let family = try #require(session.timeline(forRoomID: roomID))
+        try await family.start()
+        #expect(await eventually { family.hasLoaded })
+
+        let mine = await MockHomeserver.shared.append(roomID, sender: me, type: "m.room.message",
+                                                      content: ["msgtype": "m.text", "body": "Кто заберёт торт?"])
+        let later = await MockHomeserver.shared.append(roomID, sender: me, type: "m.room.message",
+                                                       content: ["msgtype": "m.text", "body": "Он в холодильнике"])
+        await MockHomeserver.shared.read(roomID, by: mama, upTo: mine)
+        await MockHomeserver.shared.read(roomID, by: papa, upTo: later)
+
+        let readers = { Dictionary(family.readerIDs(of: mine).map { ($0.userID, $0.readAt) },
+                                   uniquingKeysWith: { first, _ in first }) }
+        #expect(await eventually { Set(readers().keys) == [mama, papa] }, "\(readers())")
+        #expect(readers()[mama] != nil && readers()[mama]! != nil, "mama's receipt is on this message")
+        #expect(readers()[papa] != nil && readers()[papa]! == nil, "papa read further: no time for this one")
+        #expect(family.readerIDs(of: later).map(\.userID) == [papa])
+    }
+
     private func eventually(seconds: Double = 15, _ condition: () -> Bool) async -> Bool {
         let deadline = Date().addingTimeInterval(seconds)
         while Date() < deadline {

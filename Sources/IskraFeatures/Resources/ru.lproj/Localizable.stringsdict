@@ -102,6 +102,26 @@
 				<string>%lld непрочитанных</string>
 		</dict>
 	</dict>
+	<key>message.menu.seen</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld прочитал</string>
+			<key>few</key>
+			<string>%lld прочитали</string>
+			<key>many</key>
+			<string>%lld прочитали</string>
+			<key>other</key>
+			<string>%lld прочитали</string>
+		</dict>
+	</dict>
 	<key>message.menu.reactors</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

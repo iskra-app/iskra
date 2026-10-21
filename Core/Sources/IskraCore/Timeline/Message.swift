@@ -213,15 +213,41 @@ public struct MessageReaction: Sendable, Identifiable, Equatable {
     /// IDs only: names are the room's to give, and are asked for when somebody opens the list
     /// (`TimelineStore.reactors(of:)`), not for every pill in every row.
     public let senders: [String]
+    /// When each of them did, for the "who reacted" list — the server's clock on their reaction.
+    public let reactedAt: [String: Date]
 
-    public init(key: String, count: Int, isMine: Bool, senders: [String] = []) {
+    public init(key: String, count: Int, isMine: Bool, senders: [String] = [], reactedAt: [String: Date] = [:]) {
         self.key = key
         self.count = count
         self.isMine = isMine
         self.senders = senders
+        self.reactedAt = reactedAt
     }
 
     public var id: String { key }
+}
+
+/// Somebody who has read a message — a line in a group's "who read it" list, beside the reactions.
+///
+/// `readAt` only when it is known *for this message*: a Matrix receipt sits on the last event a
+/// person has read, so for somebody whose receipt is on this very message it is the moment they
+/// read it, and for somebody who has read further it is the moment they read something later —
+/// which says when they had read this one by, not when they read it. That case is left without a
+/// time rather than given a wrong one.
+public struct Reader: Sendable, Identifiable, Equatable {
+    public let userID: String
+    public let name: String
+    public let avatarURL: String?
+    public let readAt: Date?
+
+    public var id: String { userID }
+
+    public init(userID: String, name: String, avatarURL: String?, readAt: Date?) {
+        self.userID = userID
+        self.name = name
+        self.avatarURL = avatarURL
+        self.readAt = readAt
+    }
 }
 
 /// One person's reaction, named — a line in the "who reacted" list.
@@ -230,14 +256,16 @@ public struct Reactor: Sendable, Identifiable, Equatable {
     public let userID: String
     public let name: String
     public let avatarURL: String?
+    public let reactedAt: Date?
 
     public var id: String { key + "|" + userID }
 
-    public init(key: String, userID: String, name: String, avatarURL: String?) {
+    public init(key: String, userID: String, name: String, avatarURL: String?, reactedAt: Date? = nil) {
         self.key = key
         self.userID = userID
         self.name = name
         self.avatarURL = avatarURL
+        self.reactedAt = reactedAt
     }
 }
 
