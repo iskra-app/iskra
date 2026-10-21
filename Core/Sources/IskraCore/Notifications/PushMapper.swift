@@ -70,19 +70,25 @@ enum PushMapper {
             let localName = LocalNames.name(for: roomID, account: account ?? LocalNames.currentAccount)
             let who = attribution(roomName: roomName,
                                   senderName: senderName,
+                                  senderID: event.senderId(),
                                   isDirect: room.isDm,
                                   localName: localName)
+            // A group speaks as the room, and who said it goes into the words — the second line a
+            // banner has on iPhone is not drawn there at all, so it cannot be where the name goes.
+            let isGroup = who.sender != nil
             return .show(PushNotification(roomID: roomID,
                                           eventID: eventID,
                                           title: who.title,
                                           sender: who.sender,
-                                          body: body,
+                                          body: who.sender.map { AppLanguage.resolve(CoreStrings.Push.groupLine($0, body)) } ?? body,
                                           isNoisy: isNoisy,
                                           personName: speaker(senderName: senderName,
                                                               senderID: event.senderId(),
                                                               localName: localName),
                                           personID: event.senderId(),
-                                          avatarURL: Self.picture(for: item)))
+                                          avatarURL: isGroup ? item.senderInfo.avatarUrl : Self.picture(for: item),
+                                          isGroup: isGroup,
+                                          roomAvatarURL: isGroup ? room.avatarUrl : nil))
         }
     }
 
@@ -118,8 +124,13 @@ enum PushMapper {
     /// Account)" with "Matrix.org (Official Account)" written underneath. So the rule is not
     /// "is this a DM"; it is *never say the same name twice*, which is the thing a person
     /// actually sees, and `isDm` is only one way of arriving at it.
+    ///
+    /// And a group stays a group when its sender has no display name: then the Matrix ID is the
+    /// name (`senderID`). Falling back to the room there is what made a message in a group arrive as
+    /// if the room itself were a person writing to you.
     static func attribution(roomName: String,
                             senderName: String,
+                            senderID: String? = nil,
                             isDirect: Bool,
                             localName: String? = nil) -> (title: String, sender: String?) {
         // The name this device was told to use wins outright, and takes the second line with it.
@@ -130,10 +141,11 @@ enum PushMapper {
 
         // A nameless sender falls back to the room, because a blank second line and a
         // duplicated one are the two ways this goes wrong.
-        guard !senderName.isEmpty else { return (roomName, nil) }
+        let name = senderName.isEmpty && !isDirect ? (senderID ?? "") : senderName
+        guard !name.isEmpty else { return (roomName, nil) }
 
-        let title = isDirect ? senderName : roomName
-        return (title, senderName == title ? nil : senderName)
+        let title = isDirect ? name : roomName
+        return (title, name == title ? nil : name)
     }
 
     /// The name iOS puts at the top of the banner — which is **not** `title`, and that is the whole

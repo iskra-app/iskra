@@ -153,6 +153,7 @@
 
 /* Pushes. A message speaks for itself — there is nothing to translate but the invitation. */
 "push.invite" = "%@ vous invite dans la discussion";
+"push.groupLine" = "%1$@: %2$@";
 "push.hiddenTitle" = "Iskra";
 "push.hiddenBody" = "Nouveau message";
 

@@ -53,6 +53,18 @@ public struct PushNotification: Sendable, Equatable {
     /// arrived late because it waited for a picture is not.
     public let avatar: Data?
 
+    /// A room with people in it, rather than a chat with one person: then the notification comes
+    /// *from the room* — its name on top, its picture in the circle — and who spoke is written into
+    /// the text, "Аня: …". Decided by the mapper, from the room, not from whether there happens to
+    /// be a name for a second line (`sender`), which is what used to make a group arrive looking
+    /// like a personal message whenever its sender had no display name.
+    public let isGroup: Bool
+
+    /// The room's picture, for a group — an `mxc://` URL, fetched by `PushDecoder` into
+    /// `roomAvatar`, as `avatarURL` is into `avatar`.
+    public let roomAvatarURL: String?
+    public let roomAvatar: Data?
+
     public init(roomID: String,
                 eventID: String,
                 title: String,
@@ -62,7 +74,10 @@ public struct PushNotification: Sendable, Equatable {
                 personName: String? = nil,
                 personID: String? = nil,
                 avatarURL: String? = nil,
-                avatar: Data? = nil) {
+                avatar: Data? = nil,
+                isGroup: Bool = false,
+                roomAvatarURL: String? = nil,
+                roomAvatar: Data? = nil) {
         self.roomID = roomID
         self.eventID = eventID
         self.title = title
@@ -73,21 +88,34 @@ public struct PushNotification: Sendable, Equatable {
         self.personID = personID
         self.avatarURL = avatarURL
         self.avatar = avatar
+        self.isGroup = isGroup
+        self.roomAvatarURL = roomAvatarURL
+        self.roomAvatar = roomAvatar
     }
 
     /// The same notification with its picture in it. Written this way so that the fetch lives in
     /// `PushDecoder`, where the client is, and the mapper stays a pure function of an SDK value.
     public func withAvatar(_ avatar: Data?) -> PushNotification {
-        PushNotification(roomID: roomID,
-                         eventID: eventID,
-                         title: title,
-                         sender: sender,
-                         body: body,
-                         isNoisy: isNoisy,
-                         personName: personName,
-                         personID: personID,
-                         avatarURL: avatarURL,
-                         avatar: avatar)
+        PushNotification(roomID: roomID, eventID: eventID, title: title, sender: sender, body: body,
+                         isNoisy: isNoisy, personName: personName, personID: personID,
+                         avatarURL: avatarURL, avatar: avatar,
+                         isGroup: isGroup, roomAvatarURL: roomAvatarURL, roomAvatar: roomAvatar)
+    }
+
+    /// The same notification with the room's picture in it — see `withAvatar`.
+    public func withRoomAvatar(_ roomAvatar: Data?) -> PushNotification {
+        PushNotification(roomID: roomID, eventID: eventID, title: title, sender: sender, body: body,
+                         isNoisy: isNoisy, personName: personName, personID: personID,
+                         avatarURL: avatarURL, avatar: avatar,
+                         isGroup: isGroup, roomAvatarURL: roomAvatarURL, roomAvatar: roomAvatar)
+    }
+
+    /// The same notification under another title — the account's name added to it.
+    public func titled(_ title: String) -> PushNotification {
+        PushNotification(roomID: roomID, eventID: eventID, title: title, sender: sender, body: body,
+                         isNoisy: isNoisy, personName: personName, personID: personID,
+                         avatarURL: avatarURL, avatar: avatar,
+                         isGroup: isGroup, roomAvatarURL: roomAvatarURL, roomAvatar: roomAvatar)
     }
 }
 

@@ -24,6 +24,13 @@ enum PushFace {
     /// user has not asked for generated faces, and iOS's own grey placeholder is the answer they
     /// chose.
     static func applied(to notification: PushNotification) -> PushNotification {
+        // A group's circle is the room's, and a room with no picture gets its own creature, seeded
+        // by its ID as `RoomAvatar` seeds it on screen.
+        var notification = notification
+        if notification.isGroup, notification.roomAvatar == nil,
+           BetaFeatures.drawsGeneratedFace(hasPicture: false) {
+            notification = notification.withRoomAvatar(BlobatarImage.pngData(for: notification.roomID))
+        }
         guard let seed = notification.personID,
               BetaFeatures.drawsGeneratedFace(hasPicture: notification.avatar != nil)
         else { return notification }
