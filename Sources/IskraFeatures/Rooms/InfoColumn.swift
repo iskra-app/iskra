@@ -22,7 +22,10 @@ final class InfoColumn {
 
     /// Whether the user left the column open. Remembered across chats and launches.
     var isOpen: Bool = UserDefaults.standard.bool(forKey: InfoColumn.openKey) {
-        didSet { UserDefaults.standard.set(isOpen, forKey: Self.openKey) }
+        didSet {
+            UserDefaults.standard.set(isOpen, forKey: Self.openKey)
+            settleMinimum()
+        }
     }
 
     /// What the column shows: the open chat's info, built by that chat.
@@ -41,10 +44,33 @@ final class InfoColumn {
     /// `Iskra --probe-resize`) — and the chat's own minimum is where that second count is paid
     /// for. Asked for the full `conversationMinimum` there, the window needed a column more than it
     /// has, and the column could not open in the narrowest window.
+    ///
+    /// The narrow minimum goes on with the column and comes off only once it has gone. Taken off at
+    /// the same moment, the chat asked for its full width while the column was still being counted
+    /// — twice — and SwiftUI stretched the window to fit both — to two screens wide — and left it there
+    /// (`Iskra --probe-resize open narrow toggle`).
     var conversationMinimumWidth: CGFloat {
-        isPresented
+        paysForColumn
             ? Theme.Size.conversationMinimum.width - Theme.Size.sideColumn
             : Theme.Size.windowMinimum - Theme.Size.sideColumn
+    }
+
+    /// Whether the chat's minimum is the narrow one — see `conversationMinimumWidth`.
+    private var paysForColumn = false
+
+    /// How long the column is given to go before the chat takes its width back.
+    private static let columnGone: Duration = .milliseconds(600)
+
+    private func settleMinimum() {
+        if isPresented {
+            paysForColumn = true
+            return
+        }
+        guard paysForColumn else { return }
+        Task { @MainActor in
+            try? await Task.sleep(for: Self.columnGone)
+            if !isPresented { paysForColumn = false }
+        }
     }
 
     /// Opens the column — first making room for it, if the window has none.
@@ -84,6 +110,7 @@ final class InfoColumn {
         if isOpen { makeRoom() }
         self.content = content
         self.owner = owner
+        settleMinimum()
     }
 
     /// Takes the content away if it is still this owner's — a chat that goes after the next one
@@ -93,6 +120,7 @@ final class InfoColumn {
         guard self.owner == owner else { return }
         content = nil
         self.owner = nil
+        settleMinimum()
     }
 }
 

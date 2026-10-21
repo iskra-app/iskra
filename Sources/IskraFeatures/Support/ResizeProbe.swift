@@ -65,6 +65,19 @@ enum ResizeProbe {
             try? await Task.sleep(for: .seconds(1))
             print("resize probe: chat, least width \(window.minSize.width), content \(window.contentMinSize.width)")
         }
+        // `toggle`: shut the open column and open it again, and say what the window's width did —
+        // it must not move.
+        if CommandLine.arguments.contains("toggle") {
+            try? await Task.sleep(for: .seconds(1))
+            print("toggle probe: open, window \(Int(window.frame.width)), presented \(column.isPresented)")
+            column.isOpen = false
+            try? await Task.sleep(for: .seconds(2))
+            print("toggle probe: closed, window \(Int(window.frame.width))")
+            column.open()
+            try? await Task.sleep(for: .seconds(2))
+            print("toggle probe: reopened, window \(Int(window.frame.width)), presented \(column.isPresented)")
+            leave(0)
+        }
         if CommandLine.arguments.contains("snapshot") {
             try? await Task.sleep(for: .seconds(2))
             snapshot(window)

@@ -991,7 +991,7 @@ public enum Theme {
         /// The two side columns of a Mac window — the room list on the left and the chat's info on
         /// the right — fixed, and the same. Fixed, so a window resized gives and takes width from the
         /// conversation alone, and the same, so the conversation sits between two columns that match.
-        public static let sideColumn: CGFloat = 350
+        public static let sideColumn: CGFloat = 320
 
         /// The least a Mac window may be: both side columns and the narrowest a conversation may be
         /// between them — so the info column can always be opened, however narrow the window is.
@@ -1010,7 +1010,7 @@ public enum Theme {
         /// Put on the chat and on the empty column's spark, never on the column around them: there,
         /// it was re-measured from the chat on every frame of a resize, and AppKit ended the app
         /// (`Iskra --probe-resize` reproduces it).
-        public static let conversationMinimum = CGSize(width: 450, height: 420)
+        public static let conversationMinimum = CGSize(width: 420, height: 420)
 
         /// The list of things you can do to a message — see `MessageMenu`.
         ///
