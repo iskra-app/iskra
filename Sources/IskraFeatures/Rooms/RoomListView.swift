@@ -324,6 +324,17 @@ public struct RoomListView: View {
         }
         // Escape, on a Mac, closes the conversation beside this column before anything in it.
         .environment(\.escapeYieldsToChat, isSidebar && selectedRoomID != nil)
+        #if os(macOS)
+        // Opening a chat on a Mac puts away whatever the sidebar had open — settings, a space —
+        // and leaves the list and the conversation: you went there to talk, not to come back to
+        // the settings page you passed through. The archive stays, because a chat opened from it
+        // is opened beside it.
+        .onChange(of: selectedRoomID) { _, roomID in
+            guard roomID != nil else { return }
+            isShowingSettings = false
+            openedSpace = nil
+        }
+        #endif
         // A sheet, not a push: creating a chat is a question with a Cancel, and the answer
         // to it replaces what is *behind* this column — so it is a thing you put down, not
         // a place you go back from.
@@ -377,6 +388,15 @@ public struct RoomListView: View {
     /// exists on one of them. `isSidebar`, because a sidebar that is the whole screen is not a
     /// sidebar — and this is why the flag is checked here rather than switched on globally.
     /// And the preference, because it is an experiment somebody opted into.
+    /// The denser row — on every Mac sidebar, the app's own list as well as the system's look.
+    private var isCompactRow: Bool {
+        #if os(macOS)
+        isSidebar
+        #else
+        isNativeSidebar
+        #endif
+    }
+
     private var isNativeSidebar: Bool {
         BetaFeatures.hasAnything && isSidebar && prefersNativeSidebar
     }
@@ -474,7 +494,7 @@ public struct RoomListView: View {
                     } label: {
                         RoomRow(room: room,
                                 isTyping: session.roomList.typingRoomIDs.contains(room.id),
-                                compact: isNativeSidebar)
+                                compact: isCompactRow)
                     }
                     .buttonStyle(.plain)
                     .roomListSwipeActions(room: room,
@@ -483,7 +503,7 @@ public struct RoomListView: View {
                 } else {
                     RoomRow(room: room,
                                 isTyping: session.roomList.typingRoomIDs.contains(room.id),
-                                compact: isNativeSidebar)
+                                compact: isCompactRow)
                         .tag(room.id)
                         .roomListSwipeActions(room: room,
                                               roomList: session.roomList,
@@ -512,9 +532,9 @@ public struct RoomListView: View {
         let all = listedRooms
         let invitations = all.filter(\.isInvitation)
         let spaces = all.filter { $0.isSpace && !$0.isInvitation }
+        // Pinned chats first, in the one list, with the pin on their row — as on a phone. A shelf
+        // of their own under a heading split one list of conversations into two for no gain.
         let chats = all.filter { !$0.isSpace && !$0.isInvitation }
-        let pinned = chats.filter(\.isPinned)
-        let unpinned = chats.filter { !$0.isPinned }
 
         // At the top, where the plain list and Telegram both keep it. It used to sit at the
         // bottom here, on the theory that a Mac sidebar files the shelf you rarely open under
@@ -534,18 +554,12 @@ public struct RoomListView: View {
             section(spaces, titled: Strings.RoomList.Sidebar.spaces)
         }
 
-        // Pinned conversations get a heading of their own rather than a pin drawn on a row in one
-        // long list. That is the difference the sidebar is for: on a phone the pin is a mark on a
-        // chat, here it is a shelf the chat is kept on.
-        if !pinned.isEmpty {
-            section(pinned, titled: Strings.RoomList.Sidebar.pinned)
-        }
-
         // Unheaded when it is the only thing on screen. A lone "Chats" over every conversation
         // there is names nothing — there is nothing it tells them apart from — so the heading
         // appears the moment something else does.
-        let isAlone = invitations.isEmpty && spaces.isEmpty && pinned.isEmpty
-        section(unpinned, titled: isAlone ? nil : Strings.RoomList.Sidebar.chats)
+        let isAlone = invitations.isEmpty && spaces.isEmpty
+        section(chats.filter(\.isPinned) + chats.filter { !$0.isPinned },
+                titled: isAlone ? nil : Strings.RoomList.Sidebar.chats)
 
     }
 

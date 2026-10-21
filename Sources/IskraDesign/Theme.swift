@@ -216,7 +216,7 @@ public enum Theme {
         public static let menuFills: Duration = .milliseconds(150)
         /// How often the spark on an empty screen blinks, and how long its eyes stay shut —
         /// `BlinkingSpark`, and the web client's watermark, which keeps the same rhythm.
-        public static let blinkEvery: Duration = .seconds(3)
+        public static let blinkEvery: Duration = .seconds(4)
         public static let blinkShut: Duration = .milliseconds(150)
 
         /// What is on the glass appearing, once it is there — quick, it is only being shown.

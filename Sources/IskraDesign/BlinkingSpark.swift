@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The spark on an empty place — the detail column with no chat open — blinking: every three
+/// The spark on an empty place — the detail column with no chat open — blinking: every four
 /// seconds its eyes close for a moment. The same mark and the same blink as the web client's.
 ///
 /// A blink is a change of picture, not a movement, but it is still something happening on its own
