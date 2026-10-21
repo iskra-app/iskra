@@ -94,6 +94,14 @@ struct IskraApp: App {
     #endif
 
     var body: some Scene {
+        mainWindow
+        #if os(macOS)
+        // "About Iskra" in the application menu opens the app's own About screen — see `AboutWindow`.
+        AboutWindow()
+        #endif
+    }
+
+    private var mainWindow: some Scene {
         WindowGroup {
             IskraRootView()
             // The one probe that cannot run from `init` above: it asks UIKit questions UIKit
@@ -111,6 +119,7 @@ struct IskraApp: App {
         // with the sidebar doing the navigating.
         .windowResizability(.contentMinSize)
         .defaultSize(width: 1000, height: 700)
+        .commands { AboutCommand() }
         #endif
     }
 }
