@@ -128,19 +128,9 @@ struct RoomInfoView: View {
             // come apart.
             settings
 
-            Section {
-                Button(role: .destructive) {
-                    isConfirmingLeave = true
-                } label: {
-                    Text(isRoom ? Strings.Room.Manage.leave : Strings.Room.Manage.deleteChat)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                }
-                // Leaving is `room.leave()`, straight to the server. Offline it would fail, and it is
-                // the one action here where failing quietly would be alarming: a person who pressed
-                // "Leave", saw nothing happen, and came back to find themselves still in the room has
-                // no way to know whether they left or not.
-                .disabled(isOffline)
-            }
+            #if os(iOS)
+            Section { leaveButton }
+            #endif
 
             contents
         }
@@ -435,10 +425,47 @@ struct RoomInfoView: View {
     /// a room's attachments to ask, so the only place the app can count photographs is in the
     /// messages it already holds. "Load earlier" at the bottom of each tab is the same pagination
     /// the conversation uses, and it fills these lists as it goes.
+    private var leaveButton: some View {
+        Button(role: .destructive) {
+            isConfirmingLeave = true
+        } label: {
+            Text(isRoom ? Strings.Room.Manage.leave : Strings.Room.Manage.deleteChat)
+                .frame(maxWidth: .infinity, alignment: .center)
+        }
+        // Leaving is `room.leave()`, straight to the server. Offline it would fail, and it is
+        // the one action here where failing quietly would be alarming: a person who pressed
+        // "Leave", saw nothing happen, and came back to find themselves still in the room has
+        // no way to know whether they left or not.
+        .disabled(isOffline)
+    }
+
     @ViewBuilder
     private var contents: some View {
         let tabs = availableTabs
 
+        #if os(macOS)
+        // On a Mac a section is a plate whatever its row asks for — `listRowBackground` does not
+        // reach it — and a plate around one button, or around a segmented control that is a surface
+        // already, is a box with nothing to group. A section's *header* is drawn on the page, so the
+        // two single things go there, above the list they lead into.
+        if tabs.isEmpty {
+            Section { leaveButton }
+        } else {
+            Section {
+                tabContent
+            } header: {
+                VStack(alignment: .leading, spacing: Theme.Spacing.generous) {
+                    leaveButton
+                        .textCase(nil)
+                    RoomContentPicker(tabs: tabs, selection: Binding(get: { openTab },
+                                                                    set: { tab = $0 }))
+                        .textCase(nil)
+                    Text(openTab.title)
+                }
+            }
+            .edgeToEdge(openTab == .media)
+        }
+        #else
         if !tabs.isEmpty {
             // The switch is on the page, and what it switches is in a card under it.
             //
@@ -472,6 +499,7 @@ struct RoomInfoView: View {
             // tiles to a row came out as three small stamps with a margin either side.
             .edgeToEdge(openTab == .media)
         }
+        #endif
     }
 
     /// The tabs worth drawing, in a fixed order — the order they are declared in, so a chat that
@@ -625,10 +653,14 @@ struct RoomInfoColumnToolbar: ToolbarContent {
 
     var body: some ToolbarContent {
         if isShown {
-            ToolbarItemGroup(placement: .primaryAction) {
-                if details.offersEditing {
+            // Two buttons, not one capsule holding both: editing and leaving are different acts.
+            if details.offersEditing {
+                ToolbarItem(placement: .primaryAction) {
                     RoomInfoEditButton(details: details, action: onEdit)
                 }
+                toolbarGlassGap(placement: .primaryAction)
+            }
+            ToolbarItem(placement: .primaryAction) {
                 Button(action: onClose) {
                     Image(systemName: "xmark")
                         .font(.body.weight(.medium))

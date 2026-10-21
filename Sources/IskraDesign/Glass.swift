@@ -154,6 +154,24 @@ public extension ToolbarContent {
     }
 }
 
+/// A gap between two toolbar items, so that each gets a capsule of glass of its own instead of
+/// sharing one. Before glass there is no capsule to split, and so no gap.
+@MainActor
+public func toolbarGlassGap(placement: ToolbarItemPlacement) -> some ToolbarContent {
+    ToolbarGlassGap(placement: placement)
+}
+
+struct ToolbarGlassGap: ToolbarContent {
+    let placement: ToolbarItemPlacement
+
+    @ToolbarContentBuilder
+    var body: some ToolbarContent {
+        if #available(iOS 26, macOS 26, *) {
+            ToolbarSpacer(.fixed, placement: placement)
+        }
+    }
+}
+
 /// The `if #available` lives in a type the other modules cannot see, and that is the point of it.
 /// Written inline in the public function above, a Release build's cross-module optimisation
 /// copied the body into `IskraFeatures`, where it named the opaque type of SwiftUI's
