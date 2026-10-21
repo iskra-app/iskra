@@ -1820,7 +1820,8 @@ public struct RoomView: View {
                         onEditAttachment: editPhoto,
                         onPasteImage: { Task { await pasteImages() } },
                         mentions: $draftMentions,
-                        loadMentionCandidates: timeline.isOneToOne ? nil : { await timeline.mentionCandidates() })
+                        loadMentionCandidates: timeline.isOneToOne ? nil : { await timeline.mentionCandidates() },
+                        onEditLast: editLastMessage)
     }
 
     /// What the room looks like while a picture is held over it: an outline, and a sentence saying
@@ -2500,6 +2501,16 @@ public struct RoomView: View {
         let (words, mentions) = ComposerMentions.unlinked(text)
         draft = words
         draftMentions = mentions
+    }
+
+    /// ↑ in an empty composer on a Mac: the newest message of yours that can still be edited.
+    /// Not while answering or already editing — ↑ then is just a key.
+    private func editLastMessage() -> Bool {
+        guard composerContext == nil,
+              let last = timeline.rows.reversed().lazy.compactMap(\.message).first(where: \.isOwn),
+              last.canEdit else { return false }
+        startEditing(last)
+        return true
     }
 
     /// Backs out of a reply or an edit.

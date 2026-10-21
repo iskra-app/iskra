@@ -54,10 +54,13 @@ enum ComposerReturnKey {
 extension View {
     /// The Return key in the composer's field, by the setting above. `send` is the composer's own
     /// send; `text` and `selection` are the field's, for putting a newline where the cursor is.
+    ///
+    /// `editLast`, on a Mac, is ↑ in an empty field — see `MessageComposer.onEditLast`.
     func composerReturnKey(text: Binding<String>,
                            selection: Binding<TextSelection?>,
-                           send: @escaping () -> Void) -> some View {
-        modifier(ComposerReturnKeyModifier(text: text, selection: selection, send: send))
+                           send: @escaping () -> Void,
+                           editLast: (() -> Bool)? = nil) -> some View {
+        modifier(ComposerReturnKeyModifier(text: text, selection: selection, send: send, editLast: editLast))
     }
 }
 
@@ -65,6 +68,7 @@ private struct ComposerReturnKeyModifier: ViewModifier {
     @Binding var text: String
     @Binding var selection: TextSelection?
     let send: () -> Void
+    let editLast: (() -> Bool)?
 
     @AppStorage(ComposerReturnKey.sendsWithCommandReturnKey)
     private var stored = ComposerReturnKey.sendsWithCommandReturnByDefault
@@ -87,6 +91,11 @@ private struct ComposerReturnKeyModifier: ViewModifier {
             }
             // Return, unmodified, in the "Return sends" mode: the field's own submit.
             .onSubmit { if !commandSends { send() } }
+            // Only in an empty field: with words in it, ↑ is the cursor going up a line.
+            .onKeyPress(.upArrow, phases: .down) { press in
+                guard press.modifiers.isEmpty, text.isEmpty, let editLast, editLast() else { return .ignored }
+                return .handled
+            }
         #else
         content
             .onChange(of: text) { old, new in

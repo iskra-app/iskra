@@ -210,8 +210,10 @@ struct MessageComposer: View {
          mentions: Binding<[ComposerMention]> = .constant([]),
          loadMentionCandidates: (() async -> [RoomMemberSummary])? = nil,
          isAttaching: Bool = false,
-         locking: LockGesture = LockGesture()) {
+         locking: LockGesture = LockGesture(),
+         onEditLast: (() -> Bool)? = nil) {
         _draft = draft
+        self.onEditLast = onEditLast
         self.context = context
         self.onCancelContext = onCancelContext
         self.onTextOrigin = onTextOrigin
@@ -241,6 +243,10 @@ struct MessageComposer: View {
         _isAttaching = State(initialValue: isAttaching)
         _locking = State(initialValue: locking)
     }
+
+    /// ↑ in an empty field, on a Mac: edit the last message you sent, as in Telegram and Slack.
+    /// Answers whether there was one; with none, the key goes on to the field as usual.
+    private let onEditLast: (() -> Bool)?
 
     @FocusState private var isFocused: Bool
 
@@ -376,7 +382,8 @@ struct MessageComposer: View {
                                 .padding(.vertical, Theme.Spacing.normal)
                                 .frame(minHeight: control)
                                 // Return or ⌘-Return, by Settings → Chats — see `ComposerReturnKey`.
-                                .composerReturnKey(text: $draft, selection: $selection, send: onSend)
+                                .composerReturnKey(text: $draft, selection: $selection, send: onSend,
+                                                   editLast: onEditLast)
 
                             if offersStickers, let onChooseSticker {
                                 stickerButton(onChooseSticker)
@@ -436,6 +443,12 @@ struct MessageComposer: View {
             .onChange(of: context == nil) { _, isPlainDraft in
                 if !isPlainDraft { isFocused = true }
             }
+            #if os(macOS)
+            // A chat opened on a Mac is a chat about to be written in: the cursor is in the field
+            // already, as in every desktop messenger. Not on iPhone or iPad, where focus is the
+            // keyboard coming up over the conversation somebody opened to read.
+            .task { isFocused = true }
+            #endif
             .padding(.horizontal, Theme.Spacing.normal)
             .padding(.vertical, Theme.Spacing.close)
             // How tall the composer actually is right now — one line, or five. Measured,
