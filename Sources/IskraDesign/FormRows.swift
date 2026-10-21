@@ -24,6 +24,9 @@ public struct GroupedRowsFormStyle: FormStyle {
                 .buttonStyle(RoleColouredButtonStyle())
         }
         .formStyle(.grouped)
+        // The phone's grouped page under the form, not the window's grey — see `Color.groupedPage`.
+        .scrollContentBackground(.hidden)
+        .background(Color.groupedPage)
         #else
         Form(configuration)
             .formStyle(.grouped)

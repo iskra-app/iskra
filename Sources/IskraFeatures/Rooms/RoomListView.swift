@@ -708,6 +708,12 @@ private extension View {
             listStyle(.sidebar)
         } else {
             listStyle(.plain)
+                #if os(macOS)
+                // The phone's page under the list — see `Color.page`. Not under the native sidebar,
+                // which is meant to stand on its own material.
+                .scrollContentBackground(.hidden)
+                .background(Color.page)
+                #endif
         }
     }
 

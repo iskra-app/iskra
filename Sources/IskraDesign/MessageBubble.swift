@@ -272,11 +272,32 @@ public extension Color {
     /// background, named as a colour rather than reached through `ShapeStyle.background`. That
     /// one resolves through the environment's `backgroundStyle`, and the whole point of the page
     /// under a lifted bubble is that it is opaque whatever the environment around it says.
+    ///
+    /// On a Mac it is the phone's page, not the window's: white, and black in the dark — the
+    /// window's own grey made the Mac app a different app from the one on the phone.
     static var page: Color {
         #if canImport(UIKit)
         Color(uiColor: .systemBackground)
         #elseif canImport(AppKit)
-        Color(nsColor: .windowBackgroundColor)
+        Color(nsColor: NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? .black : .white
+        })
+        #else
+        .white
+        #endif
+    }
+
+    /// The page a form stands on — the phone's grouped background: a light grey under white cards,
+    /// and black in the dark. On a Mac, where forms otherwise sit on the window's grey.
+    static var groupedPage: Color {
+        #if canImport(UIKit)
+        Color(uiColor: .systemGroupedBackground)
+        #elseif canImport(AppKit)
+        Color(nsColor: NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+                ? .black
+                : NSColor(srgbRed: 0xF2 / 255, green: 0xF2 / 255, blue: 0xF7 / 255, alpha: 1)
+        })
         #else
         .white
         #endif

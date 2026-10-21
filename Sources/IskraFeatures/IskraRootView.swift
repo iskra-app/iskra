@@ -997,6 +997,11 @@ public struct IskraRootView: View {
                         .accessibilityHint(Text(Strings.Room.noRoomSelectedMessage))
                 }
             }
+            #if os(macOS)
+            // The phone's page under the conversation and under the empty column — see `Color.page`.
+            // A chat with no wallpaper is transparent, and stood on the window's grey.
+            .background(Color.page)
+            #endif
         }
         #if os(macOS)
         // On the split view itself — see `InfoColumn`.

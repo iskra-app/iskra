@@ -22,6 +22,9 @@ enum ResizeProbe {
         // Unbuffered: piped, stdout is held back in a buffer, and a crash takes the buffer with it —
         // which is exactly when knowing how far it got matters.
         setvbuf(stdout, nil, _IONBF, 0)
+        // `light` / `dark`: the app in that appearance, whatever the system's is.
+        if CommandLine.arguments.contains("light") { NSApp.appearance = NSAppearance(named: .aqua) }
+        if CommandLine.arguments.contains("dark") { NSApp.appearance = NSAppearance(named: .darkAqua) }
         // `closed` measures with the info column shut, `open` with it open; whatever the user left
         // is put back before every way out — `exit` runs no `defer`.
         let wasOpen = CommandLine.arguments.contains("open") ? true : column.isOpen
@@ -61,6 +64,11 @@ enum ResizeProbe {
             if CommandLine.arguments.contains("closed") { column.isOpen = false }
             try? await Task.sleep(for: .seconds(1))
             print("resize probe: chat, least width \(window.minSize.width), content \(window.contentMinSize.width)")
+        }
+        if CommandLine.arguments.contains("snapshot") {
+            try? await Task.sleep(for: .seconds(2))
+            snapshot(window)
+            leave(0)
         }
         if CommandLine.arguments.contains("toolbar") {
             try? await Task.sleep(for: .seconds(2))
@@ -151,6 +159,43 @@ enum ResizeProbe {
     private static func buttons(in view: NSView) -> [NSView] {
         let own: [NSView] = (view is NSButton || view.accessibilityRole() == .button) && view.frame.height < 60 ? [view] : []
         return own + view.subviews.flatMap { buttons(in: $0) }
+    }
+
+    /// `snapshot`: the window as drawn, to a PNG in the temporary directory — a picture of the
+    /// screen for whoever cannot see it, and nothing a screen-recording permission is needed for.
+    private static func snapshot(_ window: NSWindow) {
+        guard let view = window.contentView?.superview ?? window.contentView, let layer = view.layer else {
+            print("snapshot probe: no layer")
+            return
+        }
+        // `cache`: AppKit's own drawing of the view tree, which reaches the lists that a layer
+        // render leaves blank.
+        if CommandLine.arguments.contains("cache"),
+           let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) {
+            view.cacheDisplay(in: view.bounds, to: rep)
+            if let jpeg = rep.representation(using: .jpeg, properties: [.compressionFactor: 0.6]) {
+                print("snapshot probe: BEGIN")
+                print(jpeg.base64EncodedString())
+                print("snapshot probe: END")
+            }
+            return
+        }
+        let scale = window.backingScaleFactor
+        let size = view.bounds.size
+        guard let context = CGContext(data: nil, width: Int(size.width * scale), height: Int(size.height * scale),
+                                      bitsPerComponent: 8, bytesPerRow: 0,
+                                      space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return }
+        context.scaleBy(x: scale, y: scale)
+        layer.presentation()?.render(in: context) ?? layer.render(in: context)
+        guard let image = context.makeImage() else { return }
+        // Out through the console, as base64: the sandbox keeps the app's own files from whoever
+        // is reading the console.
+        let rep = NSBitmapImageRep(cgImage: image)
+        guard let jpeg = rep.representation(using: .jpeg, properties: [.compressionFactor: 0.6]) else { return }
+        print("snapshot probe: BEGIN")
+        print(jpeg.base64EncodedString())
+        print("snapshot probe: END")
     }
 
     private static func splitViews(in view: NSView?) -> [NSSplitView] {
