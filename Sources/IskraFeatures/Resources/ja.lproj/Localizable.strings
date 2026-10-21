@@ -1485,3 +1485,9 @@
 "photoEditor.yellow" = "黄";
 "photoEditor.green" = "緑";
 "photoEditor.blue" = "青";
+
+/* Avatar crop */
+"avatarCrop.title" = "移動と拡大";
+"avatarCrop.zoom" = "拡大率";
+"avatarCrop.cancel" = "キャンセル";
+"avatarCrop.done" = "完了";

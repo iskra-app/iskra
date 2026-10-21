@@ -1485,3 +1485,9 @@
 "photoEditor.yellow" = "Yellow";
 "photoEditor.green" = "Green";
 "photoEditor.blue" = "Blue";
+
+/* Avatar crop */
+"avatarCrop.title" = "Move and zoom";
+"avatarCrop.zoom" = "Zoom";
+"avatarCrop.cancel" = "Cancel";
+"avatarCrop.done" = "Done";

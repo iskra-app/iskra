@@ -2233,6 +2233,15 @@ public enum Strings {
         public static let roomUnknown = LocalizedStringResource("qr.roomUnknown", bundle: bundle)
         public static let inviteOnlyRoom = LocalizedStringResource("qr.inviteOnlyRoom", bundle: bundle)
     }
+
+    /// The square a new avatar is cut from — see `AvatarCropper`.
+    public enum AvatarCrop {
+        public static let title = LocalizedStringResource("avatarCrop.title", bundle: bundle)
+        /// The slider under the picture on a Mac, which has no pinch on a mouse.
+        public static let zoom = LocalizedStringResource("avatarCrop.zoom", bundle: bundle)
+        public static let cancel = LocalizedStringResource("avatarCrop.cancel", bundle: bundle)
+        public static let done = LocalizedStringResource("avatarCrop.done", bundle: bundle)
+    }
 }
 
 extension String {

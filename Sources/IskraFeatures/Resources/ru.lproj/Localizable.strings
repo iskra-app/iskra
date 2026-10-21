@@ -1481,3 +1481,9 @@
 "photoEditor.yellow" = "Жёлтый";
 "photoEditor.green" = "Зелёный";
 "photoEditor.blue" = "Синий";
+
+/* Avatar crop */
+"avatarCrop.title" = "Переместите и приблизьте";
+"avatarCrop.zoom" = "Масштаб";
+"avatarCrop.cancel" = "Отмена";
+"avatarCrop.done" = "Готово";

@@ -25,6 +25,8 @@ struct ProfileEditView: View {
 
     @State private var isChoosingPicture = false
     @State private var pickedPicture: PhotosPickerItem?
+    /// The picked picture, being cut into the face — see `AvatarCropper`.
+    @State private var cropping: AvatarCropRequest?
 
     /// A change the server would not make — or a picture the photo library would not hand over,
     /// which never reached the server at all.
@@ -89,7 +91,16 @@ struct ProfileEditView: View {
         .photosPicker(isPresented: $isChoosingPicture, selection: $pickedPicture, matching: .images)
         .onChange(of: pickedPicture) { _, item in
             guard let item else { return }
-            Task { await setPicture(item) }
+            Task { await choosePicture(item) }
+        }
+        // Cut to a square before it goes anywhere — see `AvatarCropper`.
+        .sheet(item: $cropping) { request in
+            AvatarCropper(image: request.image,
+                          onCancel: { cropping = nil },
+                          onDone: { data in
+                              cropping = nil
+                              Task { await setPicture(data) }
+                          })
         }
         .failureAlert($failure)
     }
@@ -123,14 +134,17 @@ struct ProfileEditView: View {
         }
     }
 
-    private func setPicture(_ item: PhotosPickerItem) async {
+    private func choosePicture(_ item: PhotosPickerItem) async {
         pickedPicture = nil
 
-        guard let data = await imageData(from: item) else {
+        guard let data = await imageData(from: item), let image = AvatarCrop.image(from: data) else {
             failure = .picture
             return
         }
+        cropping = AvatarCropRequest(image: image)
+    }
 
+    private func setPicture(_ data: Data) async {
         do {
             try await session.setPicture(data, filename: "avatar.jpg")
         } catch {

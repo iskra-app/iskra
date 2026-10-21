@@ -555,6 +555,8 @@ public enum Theme {
         /// Telegram's size there, and what lets two lines of the last message sit beside it without
         /// the row growing past the face.
         public static let roomAvatarCompact: CGFloat = 48
+        /// The smallest the avatar cropper's window is on a Mac — `AvatarCropper`.
+        public static let avatarCropper: CGFloat = 480
 
         /// The height of the unread badge in the chat list, and the width of the "@" beside it —
         /// one number, so the circle and the capsule stand exactly level.

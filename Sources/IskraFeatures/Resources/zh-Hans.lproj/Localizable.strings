@@ -1485,3 +1485,9 @@
 "photoEditor.yellow" = "黄色";
 "photoEditor.green" = "绿色";
 "photoEditor.blue" = "蓝色";
+
+/* Avatar crop */
+"avatarCrop.title" = "移动和缩放";
+"avatarCrop.zoom" = "缩放";
+"avatarCrop.cancel" = "取消";
+"avatarCrop.done" = "完成";
