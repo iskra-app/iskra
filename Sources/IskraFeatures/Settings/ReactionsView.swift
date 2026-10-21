@@ -76,7 +76,7 @@ struct ReactionsView: View {
             // The other thing people send instead of words — the screen is "Stickers & reactions".
             StickerSettingsSections()
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .navigationTitle(Text(Strings.Settings.reactions))
         .toolbarTitleDisplayMode(.inline)
         .sheet(isPresented: $isPickingEmoji) { picker }

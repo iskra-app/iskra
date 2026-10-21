@@ -66,7 +66,7 @@ struct RoomRulesView: View {
                 }
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .navigationTitle(String(app: Strings.Room.Rules.title))
         #if !os(macOS)
         .navigationBarTitleDisplayMode(.inline)

@@ -69,7 +69,7 @@ struct ProfileEditView: View {
                 Text(Strings.Account.usernameFixed)
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .profileScreen()
         .onChange(of: session.displayName, initial: true) { _, name in
             guard !isNaming else { return }

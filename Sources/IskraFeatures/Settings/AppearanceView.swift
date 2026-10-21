@@ -115,7 +115,7 @@ struct AppearanceView: View {
                 Text(Strings.Appearance.wallpaper)
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .photosPicker(isPresented: $isChoosingWallpaper,
                       selection: $pickedWallpaper,
                       matching: .images)

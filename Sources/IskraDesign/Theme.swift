@@ -678,6 +678,9 @@ public enum Theme {
         public static let pollBar: CGFloat = 4
         /// Nothing tappable is ever smaller than this. Apple's floor, and ours.
         public static let minimumTapTarget: CGFloat = 44
+        /// The column a symbol stands in at the start of a form row on a Mac (`FormRows.swift`):
+        /// as wide as the widest symbol the rows use, so every title starts at the same place.
+        public static let rowIcon: CGFloat = 20
 
         /// A colour to choose the app's accent from, on the appearance screen. A full tap
         /// target: a swatch is a button, and a colour you have to aim at is a colour you

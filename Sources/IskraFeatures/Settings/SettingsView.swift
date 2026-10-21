@@ -308,7 +308,7 @@ struct SettingsView: View {
                 .disabled(isSigningOut)
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .sheet(isPresented: $isShowingCode) {
             QRCodeSheet(name: session.displayName, subtitle: session.userID,
                         avatarURL: session.avatarURL, seed: session.userID,

@@ -560,7 +560,7 @@ private struct RoomLinkView: View {
                 }
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .profileScreen()
         .failureAlert($failure)
         .task {

@@ -31,7 +31,7 @@ struct LicensesView: View {
                 Text(Strings.Licences.builtOn)
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .tint(accent.color)
         .navigationTitle(Text(Strings.About.licences))
         // Neither screen reads `dismiss` — this stack can be the sidebar's, see CLAUDE.md.

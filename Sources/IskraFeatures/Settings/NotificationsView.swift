@@ -56,7 +56,7 @@ struct NotificationsView: View {
                 everythingElse
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .navigationTitle(Text(Strings.Notifications.title))
         .toolbarTitleDisplayMode(.inline)
         .task {

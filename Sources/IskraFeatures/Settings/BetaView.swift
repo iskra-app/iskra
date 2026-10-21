@@ -143,7 +143,7 @@ struct BetaView: View {
                 #endif
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .navigationTitle(Text(Strings.Beta.title))
         #if os(iOS)
         .fullScreenCover(item: $demoServer) { server in demoSignIn(server.address) }

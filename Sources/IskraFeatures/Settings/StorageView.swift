@@ -107,7 +107,7 @@ struct StorageView: View {
                 .disabled(storage.isClearing || storage.searchIndexBytes == 0)
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .navigationTitle(Text(Strings.Storage.title))
         .toolbarTitleDisplayMode(.inline)
         // Measured when the screen opens, and again after a clear — the SDK writes to these

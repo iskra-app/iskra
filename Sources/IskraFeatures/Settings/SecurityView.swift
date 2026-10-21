@@ -125,7 +125,7 @@ struct SecurityView: View {
                 }
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .navigationTitle(Text(Strings.Settings.security))
         .toolbarTitleDisplayMode(.inline)
         .onChange(of: hidesPresence) {

@@ -22,7 +22,7 @@ struct LanguageView: View {
                 Text(Strings.Settings.languageHelp)
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .navigationTitle(Text(Strings.Settings.language))
     }
 

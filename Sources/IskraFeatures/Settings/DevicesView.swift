@@ -99,7 +99,7 @@ struct DevicesView: View {
                 }
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .tint(accent.color)
         .animation(.smooth(duration: Theme.Timing.chrome), value: store.devices.map(\.id))
         .navigationTitle(Text(Strings.Devices.title))

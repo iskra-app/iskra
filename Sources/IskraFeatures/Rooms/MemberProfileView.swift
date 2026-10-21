@@ -159,7 +159,7 @@ struct MemberProfileView: View {
                 }
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .profileScreen()
         .failureAlert($failure)
         .sheet(isPresented: $isShowingCode) {

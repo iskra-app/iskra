@@ -161,6 +161,7 @@ struct ConnectionView: View {
                 Text(Strings.Connection.sees)
             }
         }
+        .formStyle(.groupedRows)
         .navigationTitle(Text(Strings.Connection.title))
         .task {
             status = await session.tunnelStatus()

@@ -124,7 +124,7 @@ struct RoomInfoView: View {
 
             contents
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .profileScreen()
         .task { await details.load() }
         // Keyed on the rows themselves: an unchanged array compares by its buffer, so a redraw that

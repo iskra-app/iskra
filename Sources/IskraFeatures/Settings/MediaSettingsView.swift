@@ -61,7 +61,7 @@ struct MediaSettingsView: View {
                 }
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .navigationTitle(Text(Strings.Media.title))
     }
 }

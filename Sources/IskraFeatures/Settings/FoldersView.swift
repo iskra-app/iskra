@@ -108,7 +108,7 @@ struct FoldersView: View {
                 }
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .navigationTitle(String(app: Strings.Folders.title))
         #if os(macOS)
         .toolbar {
@@ -204,7 +204,7 @@ struct FolderEditor: View {
                     }
                 }
             }
-            .formStyle(.grouped)
+            .formStyle(.groupedRows)
             .navigationTitle(String(app: isNew ? Strings.Folders.new : Strings.Folders.edit))
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
@@ -357,7 +357,7 @@ struct FolderMembershipSheet: View {
                     Text(Strings.Folders.membershipFooter)
                 }
             }
-            .formStyle(.grouped)
+            .formStyle(.groupedRows)
             .navigationTitle(room.name)
             .toolbarTitleDisplayMode(.inline)
             .toolbar {

@@ -88,7 +88,7 @@ struct AboutView: View {
                 }
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .tint(accent.color)
         .navigationTitle(Text(Strings.About.title))
         // Bound to a flag rather than a value, because nothing on this screen is a row that leads

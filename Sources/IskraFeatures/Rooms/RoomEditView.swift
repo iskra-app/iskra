@@ -177,7 +177,7 @@ struct RoomEditView: View {
                 }
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .profileScreen()
         // The fields follow the room, except while somebody is typing in them — a name that
         // arrives from a sync must not overwrite the one being written.
