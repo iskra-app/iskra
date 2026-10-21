@@ -21,11 +21,43 @@ public struct GroupedRowsFormStyle: FormStyle {
         Form {
             configuration.content
                 .labelStyle(RowLabelStyle())
+                .buttonStyle(RoleColouredButtonStyle())
         }
         .formStyle(.grouped)
         #else
         Form(configuration)
             .formStyle(.grouped)
+        #endif
+    }
+}
+
+#if os(macOS)
+/// A form's own buttons as the Mac draws them, except that a `.destructive` one is red — as it is on
+/// the phone, where the role alone does it and the Mac's push button ignores it. A button that
+/// chose a style of its own keeps it: that style is nearer to it than this one.
+private struct RoleColouredButtonStyle: PrimitiveButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        Button(role: configuration.role, action: configuration.trigger) {
+            configuration.label
+        }
+        .buttonStyle(.automatic)
+        .destructiveTint(configuration.role == .destructive)
+    }
+}
+#endif
+
+extension View {
+    /// Red, on the Mac as well, for a button that does something that cannot be taken back.
+    ///
+    /// The phone paints a `.destructive` button red by itself, and a `.bordered` one by its
+    /// `.tint(.red)`; the Mac does neither — its push and bordered buttons take no tint and no
+    /// colour from a role — so what was red on the phone was grey on the Mac. The words are
+    /// coloured instead, which every Mac button honours.
+    public func destructiveTint(_ isDestructive: Bool = true) -> some View {
+        #if os(macOS)
+        foregroundStyle(isDestructive ? AnyShapeStyle(.red) : AnyShapeStyle(.foreground))
+        #else
+        self
         #endif
     }
 }

@@ -648,6 +648,7 @@ struct SendFailureReason: View {
                 }
                 .buttonStyle(.bordered)
                 .tint(.red)
+                .destructiveTint()
             }
             .padding(.top, Theme.Spacing.tight)
         }

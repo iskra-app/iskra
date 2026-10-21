@@ -55,6 +55,7 @@ struct NewSignInBanner: View {
                 }
                 .buttonStyle(.bordered)
                 .tint(.red)
+                .destructiveTint()
             }
             .controlSize(.regular)
         }
