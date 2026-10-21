@@ -32,23 +32,6 @@ final class InfoColumn {
     /// Open, and with something in it.
     var isPresented: Bool { isOpen && content != nil }
 
-    /// The least the conversation's half of the window may be: the conversation's minimum — the
-    /// same with a chat in it or none (`Theme.Size.conversationMinimum`) — and the column's, when
-    /// it is open.
-    ///
-    /// The column has to be counted. With only the conversation's minimum, dragging the room list
-    /// wider squeezed this half below the two together; SwiftUI folded the column away for want
-    /// of room, which lowered the minimum, which gave the room back, which brought the column back
-    /// — and AppKit, asked to settle the window's constraints again on every pass, ended the app.
-    var minimumWidth: CGFloat {
-        Theme.Size.conversationMinimum.width + (isPresented ? Theme.Size.infoColumnMinimum : 0)
-    }
-
-    /// How wide the conversation's half of the window is, measured at its root. Read only at the
-    /// moment the column opens, so not observed: a window being resized would otherwise touch
-    /// every view that looks at the column.
-    @ObservationIgnored var conversationWidth: CGFloat = 0
-
     /// Opens the column — first making room for it, if the window has none.
     ///
     /// The column takes its width out of the conversation and leaves the window as it is. But a
@@ -61,14 +44,15 @@ final class InfoColumn {
     }
 
     private func makeRoom() {
-        let needed = Theme.Size.conversationMinimum.width + Theme.Size.infoColumnIdeal
-        let missing = needed - conversationWidth
-        guard conversationWidth > 0, missing > 0,
-              let window = NSApp.keyWindow ?? NSApp.mainWindow,
+        // The window's least width as it stands — the column still shut — is what the room list
+        // and the chat need; the column needs its own width on top of that.
+        guard let window = NSApp.keyWindow ?? NSApp.mainWindow,
               !window.styleMask.contains(.fullScreen),
               let screen = window.screen?.visibleFrame else { return }
+        let needed = window.minSize.width + Theme.Size.infoColumnIdeal
+        guard window.frame.width < needed else { return }
         var frame = window.frame
-        frame.size.width = min(screen.width, frame.width + missing)
+        frame.size.width = min(screen.width, needed)
         // Past the screen's right edge, the window moves left by as much as it has to.
         frame.origin.x -= max(0, frame.maxX - screen.maxX)
         window.setFrame(frame, display: true)
@@ -121,8 +105,7 @@ extension EnvironmentValues {
 extension View {
     /// Hangs the info column on the conversation's half of the window — from outside its stack.
     func infoColumn(_ column: InfoColumn) -> some View {
-        onGeometryChange(for: CGFloat.self) { $0.size.width } action: { column.conversationWidth = $0 }
-        .inspector(isPresented: Binding(get: { column.isPresented },
+        inspector(isPresented: Binding(get: { column.isPresented },
                                        set: { if !$0 { column.isOpen = false } })) {
             column.content
                 .inspectorColumnWidth(min: Theme.Size.infoColumnMinimum,

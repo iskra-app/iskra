@@ -196,6 +196,14 @@ public struct IskraRootView: View {
 
             case let .signedIn(session):
                 conversations(session)
+                    #if DEBUG && os(macOS)
+                    .task {
+                        guard ResizeProbe.isRequested else { return }
+                        await ResizeProbe.run(rooms: { session.roomList.rooms },
+                                              open: { selectedRoomID = $0 },
+                                              column: infoColumn)
+                    }
+                    #endif
                     // The message menu, above every screen the signed-in app has — see
                     // `MessageMenu`. It lifts a message out of the conversation and darkens
                     // everything else, and "everything else" is the toolbar above the timeline
@@ -966,18 +974,26 @@ public struct IskraRootView: View {
                     // The spark and nothing else, as on the web: an empty column needs no
                     // instructions — the list is right beside it. The words stay for VoiceOver.
                     BlinkingSpark()
+                        #if os(macOS)
+                        // As narrow as a chat can be and no narrower — see
+                        // `Theme.Size.conversationMinimum`. On the spark and not on the column: a
+                        // minimum put on the whole column was re-measured from the chat inside it
+                        // on every frame of a resize, and AppKit ended the app for it.
+                        .frame(minWidth: Theme.Size.conversationMinimum.width,
+                               maxWidth: .infinity,
+                               minHeight: Theme.Size.conversationMinimum.height,
+                               maxHeight: .infinity)
+                        #else
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        #endif
                         .accessibilityElement()
                         .accessibilityLabel(Text(Strings.Room.noRoomSelectedTitle))
                         .accessibilityHint(Text(Strings.Room.noRoomSelectedMessage))
                 }
             }
             #if os(macOS)
-            // From outside the stack — see `InfoColumn`. The minimum goes outside it too, and
-            // counts the column when it is open — see `InfoColumn.minimumWidth`.
+            // From outside the stack — see `InfoColumn`.
             .infoColumn(infoColumn)
-            .frame(minWidth: infoColumn.minimumWidth,
-                   minHeight: Theme.Size.conversationMinimum.height)
             #endif
         }
         // Said once, here, and read by both columns. The room list and the room are in different

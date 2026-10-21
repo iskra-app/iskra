@@ -126,6 +126,18 @@ xcrun simctl launch --console booted wtf.iskra --probe-bridge
 ./device.sh -- --probe-bridge npub1… matrix.org
 ```
 
+`Iskra --probe-resize` (Mac, Debug) opens the first chat and drags the window's width back and
+forth from code, then puts the window back and quits: "survived N steps", or a crash report. It
+exists for the layout loops AppKit ends an app over (`_postWindowNeedsUpdateConstraints`), which
+only happen with a real chat on screen and a window being resized. It prints the window's least
+width too — `empty` measures with no chat open, `closed` with the info column shut — which is how
+`Theme.Size.conversationMinimum` was found. A minimum frame put on the whole conversation column
+is the known way to start that loop; it is why the minimum sits on the empty column's spark.
+
+```sh
+.build/xcode/Build/Products/Debug/Iskra.app/Contents/MacOS/Iskra --probe-resize
+```
+
 ### The demo server
 
 Settings → Beta features → **Demo server** (`BetaFeatures.mockBackendKey`) swaps the real account

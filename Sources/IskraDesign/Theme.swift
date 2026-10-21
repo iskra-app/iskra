@@ -998,10 +998,16 @@ public enum Theme {
         /// version, the build and the links without scrolling.
         public static let aboutWindow = CGSize(width: 420, height: 640)
 
-        /// The least the conversation's half of a Mac window will shrink to — the same whether a
-        /// chat is open in it or nothing is, so that picking a chat never pushes the window wider and
-        /// closing one never lets it fold up to a sliver around the spark.
-        public static let conversationMinimum = CGSize(width: 420, height: 420)
+        /// The empty conversation column's minimum on a Mac — chosen so that a window with no chat
+        /// open is exactly as narrow as one with a chat is allowed to be, and picking a chat never
+        /// pushes the window wider.
+        ///
+        /// Not the chat's width: a chat's minimum is its own (its header, toolbar and composer), and
+        /// the window adds more around a column's minimum than the column itself. So this number
+        /// was found by measurement, with `Iskra --probe-resize empty` against `--probe-resize
+        /// closed` until the two printed the same least width. Measure again if the chat's toolbar
+        /// changes.
+        public static let conversationMinimum = CGSize(width: 188, height: 420)
 
         /// The list of things you can do to a message — see `MessageMenu`.
         ///
