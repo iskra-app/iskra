@@ -273,14 +273,18 @@ public extension Color {
     /// one resolves through the environment's `backgroundStyle`, and the whole point of the page
     /// under a lifted bubble is that it is opaque whatever the environment around it says.
     ///
-    /// On a Mac it is the phone's page, not the window's: white, and black in the dark — the
-    /// window's own grey made the Mac app a different app from the one on the phone.
+    /// On a Mac it is the phone's page, not the window's: white, and in the dark a near-black —
+    /// not the phone's pure black, which on a window beside other windows read as a hole, and not
+    /// the window's own grey either, which made the Mac app a different app from the one on the
+    /// phone.
     static var page: Color {
         #if canImport(UIKit)
         Color(uiColor: .systemBackground)
         #elseif canImport(AppKit)
         Color(nsColor: NSColor(name: nil) { appearance in
-            appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? .black : .white
+            appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+                ? NSColor(srgbRed: 0x18 / 255, green: 0x18 / 255, blue: 0x1A / 255, alpha: 1)
+                : .white
         })
         #else
         .white
@@ -288,14 +292,15 @@ public extension Color {
     }
 
     /// The page a form stands on — the phone's grouped background: a light grey under white cards,
-    /// and black in the dark. On a Mac, where forms otherwise sit on the window's grey.
+    /// and in the dark a shade below `page`, so the cards stand off it as they do on the phone. On a
+    /// Mac, where forms otherwise sit on the window's grey.
     static var groupedPage: Color {
         #if canImport(UIKit)
         Color(uiColor: .systemGroupedBackground)
         #elseif canImport(AppKit)
         Color(nsColor: NSColor(name: nil) { appearance in
             appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-                ? .black
+                ? NSColor(srgbRed: 0x12 / 255, green: 0x12 / 255, blue: 0x14 / 255, alpha: 1)
                 : NSColor(srgbRed: 0xF2 / 255, green: 0xF2 / 255, blue: 0xF7 / 255, alpha: 1)
         })
         #else
