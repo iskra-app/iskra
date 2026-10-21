@@ -313,8 +313,7 @@ public struct RoomListView: View {
                             }
                         },
                         pushed: isSidebar ? nil : $archivedRoomID)
-            // Escape puts the archive away — after the conversation beside it, if one is open: see
-            // `escapeYieldsToChat`, set on this whole column below.
+            // Escape puts the archive away — see `escapeKey`.
             .escapeKey { isShowingArchive = false }
         }
         .navigationDestination(isPresented: $isShowingSettings) {
@@ -329,8 +328,6 @@ public struct RoomListView: View {
                          // reason why is worth the line: see `SettingsView.onClose`.
                          onClose: { isShowingSettings = false })
         }
-        // Escape, on a Mac, closes the conversation beside this column before anything in it.
-        .environment(\.escapeYieldsToChat, isSidebar && selectedRoomID != nil)
         #if os(macOS)
         // Opening a chat on a Mac puts away whatever the sidebar had open — settings, a space —
         // and leaves the list and the conversation: you went there to talk, not to come back to

@@ -78,6 +78,8 @@ public struct IskraRootView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     /// See the `\.locale` set at the bottom of `body`.
     @AppStorage(AppLanguage.key) private var language = ""
+    /// What Escape does on a Mac, for the whole window — see `EscapeStack`.
+    @State private var escapeStack = EscapeStack()
 
     /// Whether the app is in front. Read here rather than in a screen, because the sync loop belongs
     /// to the session and not to any one of them — see the `.onChange` below.
@@ -595,6 +597,8 @@ public struct IskraRootView: View {
         .preferredColorScheme(appearance.colorScheme)
         // Reduce Motion, for the whole app at once — see `respectsReduceMotion`.
         .respectsReduceMotion()
+        // The window's one Escape key — see `EscapeStack`.
+        .escapeKeyRoot(escapeStack)
     }
 
     private var isSignedIn: Bool {

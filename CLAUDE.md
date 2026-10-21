@@ -546,8 +546,11 @@ otherwise empty pushed `Form` is enough to reproduce it.
 `IskraFeatures/Support/EscapeKey.swift`). Every pushed screen is pushed by a flag its parent owns
 — `navigationDestination(isPresented:)` / `(item:)` — and gets `.escapeKey { flag = nil }` there;
 a row that pushes is a `PushRow`, not a `NavigationLink`, because a link keeps no flag anybody can
-clear. A new screen pushed with a `NavigationLink` is a screen Escape cannot leave. The sidebar
-yields Escape to an open conversation (`escapeYieldsToChat`).
+clear. A new screen pushed with a `NavigationLink` is a screen Escape cannot leave. **There is one
+`.cancelAction` key equivalent in the window, at the root** (`EscapeStack`): a screen covered by a
+push stays in a Mac window, and a hidden Escape button per screen was three at once on the chat's
+edit screen — AppKit re-chose between them on every layout pass and the window hung in
+`NSHostingView.layout()`. Never add a `.keyboardShortcut(.cancelAction)` to a pushed screen.
 
 **Sizes come from `Theme`.** Every spacing, radius and size is a named constant in
 `IskraDesign/Theme.swift`, all multiples of 4, corners `.continuous`. A view that hard-codes
