@@ -49,6 +49,19 @@ private struct EscapeKey: ViewModifier {
     }
 }
 
+extension View {
+    /// A Mac sheet that is mostly a list: a `List` asks for no size of its own, and a sheet is as
+    /// small as its content lets it be — so without this it opens with nothing between its title
+    /// and its buttons. Nothing on iPhone or iPad, where a sheet has the screen's size.
+    func listSheetSize() -> some View {
+        #if os(macOS)
+        frame(minWidth: Theme.Size.listSheetWidth, minHeight: Theme.Size.listSheetHeight)
+        #else
+        self
+        #endif
+    }
+}
+
 /// A row that pushes a screen, drawn as a `NavigationLink` row is — the words, and a chevron at the
 /// end — but a button underneath, so that the screen it opens is pushed by a flag its owner holds
 /// and can clear. See `escapeKey`.

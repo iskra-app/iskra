@@ -557,6 +557,10 @@ public enum Theme {
         public static let roomAvatarCompact: CGFloat = 48
         /// The smallest the avatar cropper's window is on a Mac — `AvatarCropper`.
         public static let avatarCropper: CGFloat = 480
+        /// A Mac sheet that is mostly a list — "New chat", "who reacted": a `List` asks for no size
+        /// of its own, so the sheet has to, or it opens with nothing between its title and Cancel.
+        public static let listSheetWidth: CGFloat = 440
+        public static let listSheetHeight: CGFloat = 520
 
         /// The height of the unread badge in the chat list, and the width of the "@" beside it —
         /// one number, so the circle and the capsule stand exactly level.

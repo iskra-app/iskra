@@ -131,6 +131,10 @@ struct ReactorsSheet: View {
         #if os(iOS)
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+        #else
+        // A Mac sheet is as small as its content lets it be, and a `List` asks for nothing — the
+        // sheet was the tabs and Done with no people between them.
+        .frame(minWidth: Theme.Size.listSheetWidth, minHeight: Theme.Size.listSheetHeight)
         #endif
     }
 

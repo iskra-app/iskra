@@ -91,6 +91,11 @@ struct NewChatView: View {
                 }
             }
         }
+        #if os(macOS)
+        // A Mac sheet is as small as its content lets it be, and a `List` asks for nothing: the
+        // sheet came up as a title, a search field and Cancel, with the list squeezed to nothing.
+        .frame(minWidth: Theme.Size.listSheetWidth, minHeight: Theme.Size.listSheetHeight)
+        #endif
     }
 
     // MARK: - The list with nothing typed

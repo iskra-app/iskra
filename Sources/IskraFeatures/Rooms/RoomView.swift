@@ -1351,6 +1351,7 @@ public struct RoomView: View {
                 // scroll to it and light it.
                 jumpTarget = eventID
             }
+            .listSheetSize()
         }
         .navigationDestination(isPresented: $isShowingDetails) {
             if let details {

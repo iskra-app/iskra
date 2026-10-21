@@ -184,6 +184,7 @@ struct RoomInfoView: View {
         .sheet(isPresented: $isInviting) {
             if let personalChats {
                 InviteView(details: details, people: personalChats)
+                    .listSheetSize()
             }
         }
         // Two questions, because there are two acts. Leaving a room is leaving a group of people,

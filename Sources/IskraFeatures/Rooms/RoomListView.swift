@@ -181,6 +181,7 @@ public struct RoomListView: View {
                         }
                     }
             }
+            .listSheetSize()
         }
         // A chat that has just been written in rises to the top the way Telegram's does — it slides
         // up past the ones it overtakes, rather than vanishing from its row and reappearing at the
