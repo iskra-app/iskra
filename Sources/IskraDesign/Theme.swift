@@ -998,6 +998,11 @@ public enum Theme {
         /// version, the build and the links without scrolling.
         public static let aboutWindow = CGSize(width: 420, height: 640)
 
+        /// The least the conversation's half of a Mac window will shrink to — the same whether a
+        /// chat is open in it or nothing is, so that picking a chat never pushes the window wider and
+        /// closing one never lets it fold up to a sliver around the spark.
+        public static let conversationMinimum = CGSize(width: 420, height: 420)
+
         /// The list of things you can do to a message — see `MessageMenu`.
         ///
         /// Narrow on purpose, and narrower than the screen by a long way: it is a column of

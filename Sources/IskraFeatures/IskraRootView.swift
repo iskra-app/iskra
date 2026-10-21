@@ -973,6 +973,10 @@ public struct IskraRootView: View {
                 }
             }
             #if os(macOS)
+            // One minimum for the chat and for the empty column alike — see
+            // `Theme.Size.conversationMinimum`.
+            .frame(minWidth: Theme.Size.conversationMinimum.width,
+                   minHeight: Theme.Size.conversationMinimum.height)
             // From outside the stack — see `InfoColumn`.
             .infoColumn(infoColumn)
             #endif
