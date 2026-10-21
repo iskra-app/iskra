@@ -232,9 +232,13 @@ struct MessageMenuOverlay: View {
         // squeezed to 240 and re-wrapped narrower than the one in the conversation. A fixed frame
         // offers its own width whatever it is offered; a message wider than the column overhangs
         // it on the side away from its anchored edge, which is where it hung in the conversation.
+        //
+        // And the height it had in the list, fixed too. Asked for its *ideal* height instead
+        // (`fixedSize`), a photo answered with less than it is drawn at — it fills the frame it is
+        // given, and has no height of its own to ask for — and came up flattened and cut. The row
+        // already measured the true height; the point more is the same allowance as the width's.
         let message = presentation.content
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(width: width, alignment: alignment)
+            .frame(width: width, height: presentation.anchor.height + 1, alignment: alignment)
 
         Group {
             if layout.contentHeight < presentation.anchor.height {

@@ -973,7 +973,13 @@ public enum Theme {
         /// menu and starts reading as a page. The verbs are one word each — the widest of them
         /// is "Переслать" — so the width is set by the shape a menu should be and not by the
         /// text, which has room to spare at this size in both languages.
+        /// Narrower on a Mac, where the menu is pointed at rather than touched and the text is
+        /// smaller — the phone's size there looked like a sheet, not a menu.
+        #if os(macOS)
+        public static let menuWidth: CGFloat = 200
+        #else
         public static let menuWidth: CGFloat = 240
+        #endif
 
         /// One line of that list.
         ///
@@ -982,7 +988,12 @@ public enum Theme {
         /// screen — and what the four extra points actually bought was distance between verbs
         /// that belong together. The air a menu needs is *around* the list, at its top and its
         /// bottom and its sides, and that is where it is now spent.
+        /// A pointer needs no 44-point target: on a Mac a row is the height of a menu item there.
+        #if os(macOS)
+        public static let menuRow: CGFloat = 32
+        #else
         public static let menuRow: CGFloat = 44
+        #endif
 
         /// The icon column down the leading edge of the menu. Wide enough that a pin, a trash
         /// can and a bent arrow all sit on the same vertical line — they are drawn at different
