@@ -1422,6 +1422,10 @@ public struct RoomView: View {
                                       ideal: Theme.Size.sidebarIdeal,
                                       max: Theme.Size.sidebarMaximum)
         }
+        // No title bar over a conversation: the window's band and its title go, and the header and
+        // the conversation run up into the space they took.
+        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+        .toolbar(removing: .title)
         .onChange(of: isShowingDetails) { _, isShowing in
             if isShowing { widening.widen(by: Theme.Size.sidebarIdeal) } else { widening.restore() }
         }

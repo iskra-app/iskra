@@ -165,6 +165,7 @@ struct RoomInfoView: View {
         // In the column itself, not in the window's toolbar: a toolbar item put there by the column
         // stayed in the title bar after the column had closed.
         .safeAreaInset(edge: .top, spacing: 0) { columnBar }
+        .softScrollEdge(for: .top)
         #else
         .toolbar {
             if canEdit {
@@ -238,23 +239,30 @@ struct RoomInfoView: View {
     }
 
     #if os(macOS)
-    /// The pencil on the left and the way out on the right, along the top of the column.
+    /// The pencil on the left and the way out on the right, along the top of the column: two round
+    /// glass buttons over the content, with nothing behind them — the navigation layer, floating, as
+    /// the phone's are over the portrait.
     private var columnBar: some View {
         HStack {
-            if canEdit { editButton }
+            if canEdit {
+                editButton
+                    .navigationGlassButton()
+                    .buttonBorderShape(.circle)
+            }
             Spacer()
             if let onClose {
                 Button(action: onClose) {
                     Image(systemName: "xmark")
                         .font(.body.weight(.medium))
                 }
+                .navigationGlassButton()
+                .buttonBorderShape(.circle)
                 .accessibilityLabel(Text(Strings.Room.Manage.closeInfo))
             }
         }
-        .buttonStyle(.borderless)
-        .padding(.horizontal, Theme.Spacing.roomy)
+        .controlSize(.large)
+        .padding(.horizontal, Theme.Spacing.normal)
         .padding(.vertical, Theme.Spacing.close)
-        .background(.bar)
     }
     #endif
 
