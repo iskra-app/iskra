@@ -170,6 +170,16 @@ public enum AccentTheme: String, CaseIterable, Identifiable, Sendable {
         default: foreground
         }
     }
+
+    /// `onBubble` as a plain colour, for what can only be given one — the links in a message's
+    /// words, which an `AttributedString` paints and a `.tint` reaches only on some platforms.
+    public var onBubbleColor: Color {
+        switch self {
+        case .yellow: .black
+        case .mono: .primary
+        default: .white
+        }
+    }
 }
 
 public extension EnvironmentValues {

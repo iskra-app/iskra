@@ -291,7 +291,7 @@ struct MessageContent: View {
     /// Overriding `openURL` is what turns a tapped link into a question instead of a jump.
     private func messageText(_ body: String, from source: Message? = nil) -> some View {
         Text(paintedBody(body, from: source ?? message))
-            .tint(accent.color)
+            .tint(linkColor)
             .environment(\.openURL, OpenURLAction { url in
                 // The finger coming off a hold that opened the menu is not a tap on the link it
                 // happened to be resting on — see `MessageTaps.wasSpentByPress`.
@@ -314,6 +314,11 @@ struct MessageContent: View {
             })
     }
 
+    /// What a link is drawn in: the accent, except on a bubble that is the accent already.
+    private var linkColor: Color {
+        style == .own ? accent.onBubbleColor : accent.color
+    }
+
     /// `source` is the message the words belong to — this one, or the picture of an album that
     /// carries its caption, whose HTML and mentions are its own.
     private func paintedBody(_ body: String, from source: Message) -> AttributedString {
@@ -330,11 +335,14 @@ struct MessageContent: View {
             return (run.range, run.iskra.mentionIsSelf ?? false)
         }
         // Links underlined, as well as tinted. Colour alone is a promise the reader has to know the
-        // code for — and in a bubble already filled with the accent, the tinted words were very
-        // nearly the colour of the bubble around them.
+        // code for. In your own bubble, already filled with the accent, they are not tinted at all
+        // but drawn in the bubble's own ink: the accent on the accent was very nearly the colour of
+        // the bubble around it. Painted into the string as well as tinted, because a Mac draws a
+        // link in its own blue and does not ask `.tint`.
         let linkRanges = attributed.runs.compactMap { run in run.link == nil ? nil : run.range }
         for range in linkRanges {
             attributed[range].underlineStyle = .single
+            attributed[range].foregroundColor = linkColor
         }
 
         for (range, isSelf) in mentionRuns {
