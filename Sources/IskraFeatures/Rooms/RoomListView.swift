@@ -740,9 +740,9 @@ private extension View {
     /// reads as having been cropped by it, and four points is the least that keeps the two curves
     /// apart. The rest of the row's breathing room is the sidebar's own margin, further out.
     func sidebarRowInsets() -> some View {
-        listRowInsets(EdgeInsets(top: Theme.Spacing.sidebarRow,
+        listRowInsets(EdgeInsets(top: Theme.Spacing.close,
                                  leading: Theme.Spacing.tight,
-                                 bottom: Theme.Spacing.sidebarRow,
+                                 bottom: Theme.Spacing.close,
                                  trailing: Theme.Spacing.tight))
     }
 }
@@ -917,7 +917,7 @@ struct RoomRow: View {
         // In the Mac's sidebar, next to nothing: the sidebar draws its own margin round a row, and
         // ours on top of it left a band of empty space either side of every chat.
         .listRowInsets(compact
-                       ? EdgeInsets(top: Theme.Spacing.tight, leading: 0, bottom: Theme.Spacing.tight, trailing: 0)
+                       ? EdgeInsets(top: Theme.Spacing.close, leading: 0, bottom: Theme.Spacing.close, trailing: 0)
                        : EdgeInsets(top: Theme.Spacing.normal, leading: Theme.Spacing.roomy,
                                     bottom: Theme.Spacing.normal, trailing: Theme.Spacing.roomy))
         .accessibilityElement(children: .combine)

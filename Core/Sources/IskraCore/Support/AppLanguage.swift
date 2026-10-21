@@ -15,7 +15,8 @@ import Foundation
 ///   language through.
 /// - What the system draws itself — its own alerts, menus, the share sheet — reads
 ///   `AppleLanguages`, once, at launch. So the choice is also written there, and those catch up on
-///   the next launch; nothing else has to wait for one.
+///   the next launch; nothing else has to wait for one. Going back to "As in the system" is the
+///   one choice that waits for a relaunch entirely.
 public enum AppLanguage {
     /// In `UserDefaults.standard`: the app's own preference, never the App Group's — the
     /// notification extension speaks the system's language, as it always has.
@@ -43,33 +44,34 @@ public enum AppLanguage {
 
     /// The locale strings are resolved in: the chosen language with the system's region — so a
     /// Russian interface on an English Mac in Germany still writes dates the German way — or, with
-    /// nothing chosen, the system's own.
+    /// nothing chosen, the system's own. Built once per choice, not on every call: it is read for
+    /// every string the screen resolves.
     public static var locale: Locale {
-        guard let language = chosen ?? systemLanguageIfOverridden else { return .current }
+        guard let chosen else { return .current }
+        if let cached = cachedLocale, cached.language == chosen { return cached.locale }
         var components = Locale.Components(locale: .current)
-        components.languageComponents = Locale.Language.Components(identifier: language)
-        return Locale(components: components)
+        components.languageComponents = Locale.Language.Components(identifier: chosen)
+        let locale = Locale(components: components)
+        cachedLocale = (chosen, locale)
+        return locale
     }
 
-    /// The system's language, read past this app's own `AppleLanguages` — needed only in the
-    /// launch in which somebody switched back to "As in the system": `Locale.current` still
-    /// speaks the language they just switched away from until the app is started again. Nil when
-    /// there is nothing to read past.
-    private static var systemLanguageIfOverridden: String? {
-        #if os(macOS)
-        guard Locale.current.language.languageCode != nil,
-              let global = CFPreferencesCopyValue("AppleLanguages" as CFString,
-                                                  kCFPreferencesAnyApplication,
-                                                  kCFPreferencesCurrentUser,
-                                                  kCFPreferencesAnyHost) as? [String] else { return nil }
-        return Bundle.preferredLocalizations(from: supported, forPreferences: global).first
-        #else
-        return nil
-        #endif
-    }
+    nonisolated(unsafe) private static var cachedLocale: (language: String, locale: Locale)?
+
+    /// The language this process started in — what `AppleLanguages` said at launch, and so what
+    /// `String(localized:)` already speaks without being told.
+    private static let launchLanguage = Bundle.main.preferredLocalizations.first
 
     /// A string in the app's language — see the type's comment for why not `String(localized:)`.
+    ///
+    /// The locale goes on the resource **only** when it has to: when somebody has picked a
+    /// language other than the one the app started in, and only until the next launch, which
+    /// starts in it. A resource with a locale of its own is looked up the slow way — Foundation
+    /// reads and parses the whole `.strings` file again for every single string — and with it on
+    /// every resource, each row of a conversation spent seconds on its labels, and a Mac window
+    /// over a long chat stopped answering altogether.
     public static func resolve(_ resource: LocalizedStringResource) -> String {
+        guard let chosen, chosen != launchLanguage else { return String(localized: resource) }
         var resource = resource
         resource.locale = locale
         return String(localized: resource)
