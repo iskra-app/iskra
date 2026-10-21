@@ -79,23 +79,37 @@ enum ResizeProbe {
         await frame()
         let narrowest = window.minSize.width
         var steps = 0
+        var worst: Double = 0
+        let clock = ContinuousClock()
+        let began = clock.now
+        // Said the way a hand on the edge says it, so what listens for a live resize hears one.
+        NotificationCenter.default.post(name: NSWindow.willStartLiveResizeNotification, object: window)
         for pass in 0..<passes {
             print("resize probe: pass \(pass + 1)")
             var width = original.width
             // Narrower to the least the window allows, then wider, then back.
             while width > narrowest {
                 width -= step
+                let stepStart = clock.now
                 resize(window, to: width, from: original); steps += 1
+                window.displayIfNeeded()
+                worst = max(worst, (clock.now - stepStart) / .milliseconds(1))
                 await frame()
             }
             while width < original.width + reach {
                 width += step
+                let stepStart = clock.now
                 resize(window, to: width, from: original); steps += 1
+                window.displayIfNeeded()
+                worst = max(worst, (clock.now - stepStart) / .milliseconds(1))
                 await frame()
             }
         }
         window.setFrame(original, display: true)
         try? await Task.sleep(for: .milliseconds(500))
+        NotificationCenter.default.post(name: NSWindow.didEndLiveResizeNotification, object: window)
+        let total = (clock.now - began) / .milliseconds(1) - Double(steps) * 16
+        print("resize probe: layout \(Int(total / Double(max(steps, 1)))) ms a step on average, worst \(Int(worst)) ms")
         print("resize probe: survived \(steps) steps")
         leave(0)
     }
