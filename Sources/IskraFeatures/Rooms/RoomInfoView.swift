@@ -33,14 +33,6 @@ struct RoomInfoView: View {
     /// Opening the in-chat search from the info screen.
     var onSearch: () -> Void
 
-    /// Closing the info, where it is a column beside the conversation (a Mac) rather than a screen
-    /// with a back button. Its button sits in the toolbar over the column, with the pencil beside it.
-    var onClose: (() -> Void)?
-
-    /// Whether the column is open. The inspector keeps this view alive after it closes, and with it
-    /// whatever it put in the toolbar — the pencil stayed in the title bar over a closed column — so
-    /// the column's buttons are there only while this says so.
-    var isShown = true
 
     #if os(iOS)
     /// Not on a Mac, where this screen is the root of the info column beside the conversation: a
@@ -64,7 +56,18 @@ struct RoomInfoView: View {
     /// Whether the editing screen is up. Held here rather than driven by a `NavigationLink`
     /// because `onDisappear` needs to know: pushing a screen takes this one off the display, and
     /// this one's `onDisappear` is what cancels the room subscription.
-    @State private var isEditing = false
+    @State private var ownEditing = false
+
+    /// Handed in where the pencil lives outside this view — the toolbar over the Mac's column, which
+    /// has to be declared at the column's root (`RoomInfoColumnToolbar`), not here.
+    private var editingBinding: Binding<Bool>?
+
+    private var isEditing: Bool {
+        get { editingBinding?.wrappedValue ?? ownEditing }
+        nonmutating set {
+            if let editingBinding { editingBinding.wrappedValue = newValue } else { ownEditing = newValue }
+        }
+    }
 
     /// Which of the room's contents is on show. Not persisted: the tab somebody left open in one
     /// chat is no kind of prediction about the next one.
@@ -89,13 +92,12 @@ struct RoomInfoView: View {
     private let timeline: TimelineStore?
 
     init(details: RoomDetailsStore, timeline: TimelineStore? = nil, onLeave: @escaping () -> Void,
-         onSearch: @escaping () -> Void, onClose: (() -> Void)? = nil, isShown: Bool = true) {
+         onSearch: @escaping () -> Void, isEditing: Binding<Bool>? = nil) {
         _details = State(initialValue: details)
         self.timeline = timeline
         self.onLeave = onLeave
         self.onSearch = onSearch
-        self.onClose = onClose
-        self.isShown = isShown
+        self.editingBinding = isEditing
     }
 
     /// A one-to-one chat has no name, no description and no picture of its own — all three
@@ -105,7 +107,7 @@ struct RoomInfoView: View {
     /// Asked of what the room *is*, not of how many people are in it today: invite somebody
     /// into a personal chat and the name, the description and the picture still belong to the
     /// person it was started with, so the screen goes on leaving them alone.
-    private var isRoom: Bool { details.kind != .direct }
+    private var isRoom: Bool { details.isRoom }
 
     var body: some View {
         Form {
@@ -167,28 +169,15 @@ struct RoomInfoView: View {
                             link: link)
             }
         }
+        #if os(iOS)
+        // On a Mac the pencil is over the column instead — see `RoomInfoColumnToolbar`.
         .toolbar {
-            #if os(macOS)
-            // Over the column, in the toolbar, drawn like the room list's buttons on the left.
-            if isShown {
-                ToolbarItemGroup(placement: .primaryAction) {
-                    if canEdit { editButton }
-                    if let onClose {
-                        Button(action: onClose) {
-                            Image(systemName: "xmark")
-                                .font(.body.weight(.medium))
-                        }
-                        .accessibilityLabel(Text(Strings.Room.Manage.closeInfo))
-                    }
-                }
-            }
-            #else
             if canEdit {
                 ToolbarItem(placement: .primaryAction) { editButton }
             }
-            #endif
         }
-        .navigationDestination(isPresented: $isEditing) {
+        #endif
+        .navigationDestination(isPresented: Binding(get: { isEditing }, set: { isEditing = $0 })) {
             RoomEditView(details: details)
         }
         .memberProfiles($openedMember, details: details)
@@ -242,15 +231,7 @@ struct RoomInfoView: View {
     }
 
     private var editButton: some View {
-        Button {
-            isEditing = true
-        } label: {
-            Image(systemName: "pencil")
-                .font(.body.weight(.medium))
-        }
-        .accessibilityLabel(Text(Strings.Room.Manage.edit))
-        // See `editingNeedsNetwork`.
-        .disabled(isOffline && editingNeedsNetwork)
+        RoomInfoEditButton(details: details) { isEditing = true }
     }
 
     // MARK: - The person, in a personal chat
@@ -412,25 +393,7 @@ struct RoomInfoView: View {
     /// call the person, on this device. The room's own name, description and picture are not on
     /// offer there and never were: all three belong to the person you are talking to, and Matrix
     /// would happily let you rename them in a way they can read.
-    private var canEdit: Bool {
-        guard isRoom else { return true }
-        return details.permissions.canRename
-            || details.permissions.canChangeTopic
-            || details.permissions.canChangePicture
-            || details.permissions.canChangeVisibility
-            || details.permissions.canChangeRoles
-            || details.permissions.canChangeHistory
-            || details.permissions.canChangeAddress
-            || (details.permissions.canBan && !details.banned.isEmpty)
-    }
-
-    /// Whether the pencil needs the network to be worth pressing.
-    ///
-    /// Everything behind it in a room is a call straight to the server, so offline the door is shut
-    /// rather than opened onto a screen of disabled fields — the strip at the top has already said
-    /// why. A personal chat's nickname is written to this device and nowhere else, so there is
-    /// nothing for the network to refuse and the pencil stays live.
-    private var editingNeedsNetwork: Bool { isRoom }
+    private var canEdit: Bool { details.offersEditing }
 
     // MARK: - What it is for, and what it does to your phone
 
@@ -605,3 +568,74 @@ struct RoomInfoView: View {
         }
     }
 }
+
+extension RoomDetailsStore {
+    /// Anything but a personal chat.
+    var isRoom: Bool { kind != .direct }
+
+    /// Whether the pencil is offered: somebody the room lets change something. A personal chat is
+    /// always editable — what is changed there is your own name for the person.
+    var offersEditing: Bool {
+        guard isRoom else { return true }
+        return permissions.canRename
+            || permissions.canChangeTopic
+            || permissions.canChangePicture
+            || permissions.canChangeVisibility
+            || permissions.canChangeRoles
+            || permissions.canChangeHistory
+            || permissions.canChangeAddress
+            || (permissions.canBan && !banned.isEmpty)
+    }
+}
+
+/// The pencil, wherever it is put.
+private struct RoomInfoEditButton: View {
+    let details: RoomDetailsStore
+    let action: () -> Void
+
+    @Environment(\.isOffline) private var isOffline
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "pencil")
+                .font(.body.weight(.medium))
+        }
+        .accessibilityLabel(Text(Strings.Room.Manage.edit))
+        // Everything behind it in a room is a call straight to the server, so offline the door is
+        // shut rather than opened onto a screen of disabled fields — the strip at the top has
+        // already said why. A personal chat's nickname is written to this device and nowhere else,
+        // so there is nothing for the network to refuse and the pencil stays live.
+        .disabled(isOffline && details.isRoom)
+    }
+}
+
+#if os(macOS)
+/// The pencil and the way out, over the chat's info where it is a column on the right of a Mac
+/// window, drawn as the room list's buttons are on the left.
+///
+/// Declared on the column's root and nowhere deeper: items put there by the info screen inside the
+/// column's own stack landed in the conversation's half of the toolbar, beside the chat's header.
+/// And only while the column is open — the inspector keeps its content alive after it closes, and
+/// a pencil was left in the title bar over nothing.
+struct RoomInfoColumnToolbar: ToolbarContent {
+    let details: RoomDetailsStore
+    let isShown: Bool
+    let onEdit: () -> Void
+    let onClose: () -> Void
+
+    var body: some ToolbarContent {
+        if isShown {
+            ToolbarItemGroup(placement: .primaryAction) {
+                if details.offersEditing {
+                    RoomInfoEditButton(details: details, action: onEdit)
+                }
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .font(.body.weight(.medium))
+                }
+                .accessibilityLabel(Text(Strings.Room.Manage.closeInfo))
+            }
+        }
+    }
+}
+#endif

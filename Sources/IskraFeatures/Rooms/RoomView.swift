@@ -316,10 +316,9 @@ public struct RoomView: View {
     @State private var details: RoomDetailsStore?
     @State private var isShowingDetails = false
 
-    #if os(macOS)
-    /// The window, widened by the info column while it is open — see `WindowWidening`.
-    @State private var widening = WindowWidening()
-    #endif
+    /// The info's editing screen — held here, because on a Mac the pencil that opens it is over the
+    /// info column, in a toolbar declared at the column's root (`RoomInfoColumnToolbar`).
+    @State private var isEditingDetails = false
 
     /// The person whose page is open, pushed over the room — see `openProfile(_:)`.
     @State private var profileUserID: String?
@@ -576,9 +575,7 @@ public struct RoomView: View {
             }, onSearch: {
                 showDetails(false)
                 openRoomSearch()
-            }, onClose: {
-                showDetails(false)
-            }, isShown: isShowingDetails)
+            }, isEditing: $isEditingDetails)
         }
     }
 
@@ -594,18 +591,10 @@ public struct RoomView: View {
         #endif
     }
 
-    /// Opens or closes the info. On a Mac the window is widened or narrowed *first*, at once, and
-    /// the column appears in the same step without a slide — so the conversation never changes
-    /// width, and there is one layout, not one per frame of two animations running side by side.
+    /// Opens or closes the info: a push on the phone, a column on the Mac, which takes its width out
+    /// of the conversation and leaves the window the size it was.
     private func showDetails(_ show: Bool) {
-        #if os(macOS)
-        if show { widening.widen(by: Theme.Size.infoColumnIdeal) } else { widening.restore() }
-        var instant = Transaction()
-        instant.disablesAnimations = true
-        withTransaction(instant) { isShowingDetails = show }
-        #else
         isShowingDetails = show
-        #endif
     }
 
     private func openRoomSearch() {
@@ -1414,10 +1403,17 @@ public struct RoomView: View {
         }
         #if os(macOS)
         // On a Mac the chat's info is a column on the right, beside the conversation rather than
-        // over it — the web client's — with a stack of its own for what it opens. The window grows
-        // by the column's width, so the conversation keeps the width it had.
+        // over it — the web client's — with a stack of its own for what it opens.
         .inspector(isPresented: $isShowingDetails) {
             NavigationStack { roomInfo }
+                .toolbar {
+                    if let details {
+                        RoomInfoColumnToolbar(details: details,
+                                              isShown: isShowingDetails,
+                                              onEdit: { isEditingDetails = true },
+                                              onClose: { showDetails(false) })
+                    }
+                }
                 .inspectorColumnWidth(min: Theme.Size.infoColumnMinimum,
                                       ideal: Theme.Size.infoColumnIdeal,
                                       max: Theme.Size.infoColumnMaximum)
@@ -1426,14 +1422,6 @@ public struct RoomView: View {
         // the conversation run up into the space they took.
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .toolbar(removing: .title)
-        .onChange(of: isShowingDetails) { _, isShowing in
-            if isShowing { widening.widen(by: Theme.Size.infoColumnIdeal) } else { widening.restore() }
-        }
-        // Back from a screen pushed over the room, with the column still open: the window gave its
-        // width back when the room went under (`onDisappear`), and takes it again now.
-        .onAppear {
-            if isShowingDetails { widening.widen(by: Theme.Size.infoColumnIdeal) }
-        }
         #else
         .navigationDestination(isPresented: $isShowingDetails) { roomInfo }
         #endif
@@ -1618,8 +1606,7 @@ public struct RoomView: View {
         .onDisappear {
             #if os(macOS)
             // The info column covers nothing: a room that goes with it open is really going — to
-            // another chat, say — and the window gives back the width it took for the column.
-            widening.restore()
+            // another chat, say.
             guard !isShowingPinned, profileUserID == nil, !isCoveredByMedia else { return }
             #else
             guard !isShowingDetails, !isShowingPinned, profileUserID == nil, !isCoveredByMedia else { return }
