@@ -574,15 +574,16 @@ private struct MacZoomableImage: View {
         scrollMonitor = nil
     }
 
-    /// As far as the magnified picture reaches past the window and no further, so it cannot be
-    /// pushed off into the dark and lost.
+    /// Past the window's edges, so a corner of the magnified picture can be brought to the middle of
+    /// the screen rather than stopping against its side — but no further than the edge reaching the
+    /// middle, so the picture cannot be pushed off into the dark and lost.
     private func clamped(_ offset: CGSize) -> CGSize {
         let room = CGRect(origin: .zero, size: size)
             .insetBy(dx: Theme.Size.galleryInset, dy: Theme.Size.galleryInset)
         guard room.width > 0, room.height > 0 else { return offset }
         let fitted = AVMakeRect(aspectRatio: image.size, insideRect: room).size
-        let reachX = max(0, (fitted.width * zoom - size.width) / 2)
-        let reachY = max(0, (fitted.height * zoom - size.height) / 2)
+        let reachX = max(0, (fitted.width * zoom - size.width) / 2) + size.width / 2
+        let reachY = max(0, (fitted.height * zoom - size.height) / 2) + size.height / 2
         return CGSize(width: min(reachX, max(-reachX, offset.width)),
                       height: min(reachY, max(-reachY, offset.height)))
     }
