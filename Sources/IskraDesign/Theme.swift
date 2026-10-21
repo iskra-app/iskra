@@ -1010,7 +1010,7 @@ public enum Theme {
         /// Put on the chat and on the empty column's spark, never on the column around them: there,
         /// it was re-measured from the chat on every frame of a resize, and AppKit ended the app
         /// (`Iskra --probe-resize` reproduces it).
-        public static let conversationMinimum = CGSize(width: 420, height: 420)
+        public static let conversationMinimum = CGSize(width: 420, height: 500)
 
         /// The list of things you can do to a message — see `MessageMenu`.
         ///

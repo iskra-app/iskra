@@ -985,7 +985,8 @@ public struct IskraRootView: View {
                         // A chat stops somewhere: squeezed with nothing to hold it, it became a
                         // column of one word a line. On the chat and not on the column around it —
                         // see `Theme.Size.conversationMinimum`.
-                        .frame(minWidth: infoColumn.conversationMinimumWidth)
+                        .frame(minWidth: infoColumn.conversationMinimumWidth,
+                               minHeight: Theme.Size.conversationMinimum.height)
                         #endif
                         // Rebuilds the view when the user picks a different room, rather
                         // than reusing one room's state for another's messages.
