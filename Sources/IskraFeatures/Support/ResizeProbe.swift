@@ -19,12 +19,17 @@ enum ResizeProbe {
     private static let reach: CGFloat = 600
 
     static func run(rooms: () -> [RoomSummary], open: (String) -> Void, column: InfoColumn) async {
+        // Unbuffered: piped, stdout is held back in a buffer, and a crash takes the buffer with it —
+        // which is exactly when knowing how far it got matters.
+        setvbuf(stdout, nil, _IONBF, 0)
         // `closed` measures with the info column shut, `open` with it open; whatever the user left
         // is put back before every way out — `exit` runs no `defer`.
         let wasOpen = CommandLine.arguments.contains("open") ? true : column.isOpen
         if CommandLine.arguments.contains("open") { column.isOpen = true }
         func leave(_ code: Int32) -> Never {
             column.isOpen = wasOpen
+            // Written to disk before the process goes, or the user's choice is lost with it.
+            UserDefaults.standard.synchronize()
             fflush(stdout)
             exit(code)
         }
@@ -41,6 +46,12 @@ enum ResizeProbe {
             leave(1)
         }
         print("resize probe: empty, least width \(window.minSize.width), content \(window.contentMinSize.width)")
+        // Wide enough for anything before a chat opens, so that measuring the column cannot start the
+        // very loop that is being measured.
+        var wide = window.frame
+        wide.size.width = max(wide.width, 2000)
+        window.setFrame(wide, display: true)
+        try? await Task.sleep(for: .milliseconds(500))
         // `empty` leaves the column with no chat in it.
         if !CommandLine.arguments.contains("empty") {
             open(first.id)
