@@ -355,8 +355,16 @@ public struct RoomView: View {
 
     /// A window being resized by hand — see where the two sizes are measured.
     @State private var isLiveResizing = false
-    @State private var measuredWidth: CGFloat = 0
-    @State private var measuredSize: CGSize = .zero
+
+    /// The sizes measured during a resize, kept where writing them redraws nothing. In `@State`
+    /// they were written on every frame of the drag — and every write ran this whole screen's body
+    /// again, which is the very redrawing that holding the sizes back was meant to stop.
+    @State private var measured = MeasuredSizes()
+
+    private final class MeasuredSizes {
+        var width: CGFloat = 0
+        var size: CGSize = .zero
+    }
 
     /// What the picture height limit is taken from — see `EnvironmentValues.timelineHeight`.
     @State private var timelineSize: CGSize = .zero
@@ -622,7 +630,7 @@ public struct RoomView: View {
                                                  onEdit: { isEditingDetails = true },
                                                  onClose: { showDetails(false) }) { roomInfo }),
                           owner: columnOwner)
-        infoColumn.isOpen = true
+        infoColumn.open()
     }
     #endif
 
@@ -829,7 +837,7 @@ public struct RoomView: View {
             .onGeometryChange(for: CGFloat.self) { proxy in
                 proxy.size.width - Theme.Spacing.normal * 2
             } action: { width in
-                measuredWidth = width
+                measured.width = width
                 guard !isLiveResizing else { return }
                 timelineWidth = width
             }
@@ -838,7 +846,7 @@ public struct RoomView: View {
             // width. The keyboard only ever makes it shorter, so it does not move this; a turn of
             // the phone or a window resized changes the width, and starts it again.
             .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
-                measuredSize = size
+                measured.size = size
                 guard !isLiveResizing else { return }
                 if size.width != timelineSize.width || size.height > timelineSize.height {
                     timelineSize = size
@@ -854,8 +862,8 @@ public struct RoomView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: NSWindow.didEndLiveResizeNotification)) { _ in
                 isLiveResizing = false
-                timelineWidth = measuredWidth
-                timelineSize = measuredSize
+                timelineWidth = measured.width
+                timelineSize = measured.size
             }
             #endif
             .environment(\.timelineHeight, timelineSize.height)

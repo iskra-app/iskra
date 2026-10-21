@@ -65,6 +65,17 @@ struct Avatar: View {
 
     @State private var image: Image?
 
+    /// The face in state, or — before the task has run — the one already in `AvatarCache`.
+    ///
+    /// Read on the first frame and not left to the task, which runs a frame later: a row the
+    /// timeline rebuilt (a window being resized, a scroll back) drew its initials for that frame
+    /// and then the face, and every avatar on screen flickered.
+    private var shown: Image? {
+        if let image { return image }
+        guard let url else { return nil }
+        return AvatarCache.shared.image(for: url)
+    }
+
     /// What is actually drawn, as opposed to what the caller asked for.
     private var diameter: CGFloat { size * textScale }
 
@@ -77,7 +88,7 @@ struct Avatar: View {
     /// actually set — which is a thing to ask for and never a default, and is also the only way
     /// to see this feature at all in an account where everybody has a face already.
     private var drawsBlobatar: Bool {
-        Self.drawsBlobatar(enabled: blobatarEnabled, forced: forceBlobatar, seed: seed, hasPicture: image != nil)
+        Self.drawsBlobatar(enabled: blobatarEnabled, forced: forceBlobatar, seed: seed, hasPicture: shown != nil)
     }
 
     /// The same decision, for a face drawn somewhere a `.task` never runs — the QR card, which is
@@ -97,7 +108,7 @@ struct Avatar: View {
             .overlay {
                 if drawsBlobatar, let seed {
                     BlobatarView(seed: seed)
-                } else if let image {
+                } else if let image = shown {
                     image
                         .resizable()
                         .scaledToFill()
@@ -110,7 +121,7 @@ struct Avatar: View {
             }
             // The picture arrives late by definition, and swapping it in on the spot makes a
             // room list twitch as it syncs. It fades instead.
-            .animation(.smooth(duration: Theme.Timing.reaction), value: image == nil)
+            .animation(.smooth(duration: Theme.Timing.reaction), value: shown == nil)
             // The flag is part of the identity of this request, not just of how it is drawn:
             // turning it on has to *stop* the fetch, not merely cover up what it returned.
             .task(id: "\(forceBlobatar)\u{0}\(url ?? "")") { await load() }

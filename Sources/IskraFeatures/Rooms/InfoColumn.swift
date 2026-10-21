@@ -32,6 +32,36 @@ final class InfoColumn {
     /// Open, and with something in it.
     var isPresented: Bool { isOpen && content != nil }
 
+    /// How wide the conversation's half of the window is, measured at its root. Read only at the
+    /// moment the column opens, so not observed: a window being resized would otherwise touch
+    /// every view that looks at the column.
+    @ObservationIgnored var conversationWidth: CGFloat = 0
+
+    /// Opens the column — first making room for it, if the window has none.
+    ///
+    /// The column takes its width out of the conversation and leaves the window as it is. But a
+    /// window already at its narrowest has no width to give, and then SwiftUI widened the window
+    /// itself, animated, in jerks, a frame at a time. So in that one case the window is widened
+    /// here first, at once and by exactly what is missing, and the column then opens into it.
+    func open() {
+        if !isOpen { makeRoom() }
+        isOpen = true
+    }
+
+    private func makeRoom() {
+        let needed = Theme.Size.conversationMinimum.width + Theme.Size.infoColumnIdeal
+        let missing = needed - conversationWidth
+        guard conversationWidth > 0, missing > 0,
+              let window = NSApp.keyWindow ?? NSApp.mainWindow,
+              !window.styleMask.contains(.fullScreen),
+              let screen = window.screen?.visibleFrame else { return }
+        var frame = window.frame
+        frame.size.width = min(screen.width, frame.width + missing)
+        // Past the screen's right edge, the window moves left by as much as it has to.
+        frame.origin.x -= max(0, frame.maxX - screen.maxX)
+        window.setFrame(frame, display: true)
+    }
+
     func attach(_ content: AnyView, owner: UUID) {
         self.content = content
         self.owner = owner
@@ -79,7 +109,8 @@ extension EnvironmentValues {
 extension View {
     /// Hangs the info column on the conversation's half of the window — from outside its stack.
     func infoColumn(_ column: InfoColumn) -> some View {
-        inspector(isPresented: Binding(get: { column.isPresented },
+        onGeometryChange(for: CGFloat.self) { $0.size.width } action: { column.conversationWidth = $0 }
+        .inspector(isPresented: Binding(get: { column.isPresented },
                                        set: { if !$0 { column.isOpen = false } })) {
             column.content
                 .inspectorColumnWidth(min: Theme.Size.infoColumnMinimum,
