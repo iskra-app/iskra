@@ -396,6 +396,10 @@ public final class UserSession {
         }
 
         let store = TimelineStore(room: room, ownUserID: userID)
+        if let summary = roomList.rooms.first(where: { $0.id == roomID })
+            ?? roomList.archivedRooms.first(where: { $0.id == roomID }) {
+            store.prefill(from: summary)
+        }
         store.uploadMedia = { [client] mimeType, data in
             try await client.uploadMedia(mimeType: mimeType, data: data, progressWatcher: nil)
         }

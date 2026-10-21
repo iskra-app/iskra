@@ -558,6 +558,24 @@ public final class TimelineStore {
         case firstPageUnavailable
     }
 
+    /// The header, filled in from the chat list's row before the room itself has been read.
+    ///
+    /// A chat not yet opened since launch has no `RoomInfo` until `start()` has fetched it, and
+    /// that takes longer than the push onto the screen: on an iPhone the title and the subtitle
+    /// were blank for the whole slide in and appeared only when it ended. The row already knows
+    /// the name, the picture and what kind of chat it is, so the header starts from those and
+    /// `adopt` replaces them with the room's own answer when it comes.
+    func prefill(from summary: RoomSummary) {
+        guard roomName.isEmpty else { return }
+        roomName = summary.name
+        kind = summary.kind
+        isOneToOne = summary.kind == .direct
+        privacy = summary.privacy
+        roomAvatarURL = summary.avatarURL
+        roomAvatarSeed = summary.avatarSeed
+        roomFaces = summary.faces
+    }
+
     /// Everything the header and the pinned strip read, taken from the room as it now is.
     private func adopt(_ info: RoomInfo) {
         privacy = PrivacyStatus(info.encryptionState)
