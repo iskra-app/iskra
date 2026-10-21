@@ -641,8 +641,8 @@ private struct RoomInfoEditButton: View {
 /// The pencil and the way out, over the chat's info where it is a column on the right of a Mac
 /// window, drawn as the room list's buttons are on the left.
 ///
-/// Declared on the column's root and nowhere deeper: items put there by the info screen inside the
-/// column's own stack landed in the conversation's half of the toolbar, beside the chat's header.
+/// Over the column only because the column hangs on the split view itself (`InfoColumn`): hung on
+/// the conversation's half, the toolbar knew nothing of it and put these beside the chat's header.
 /// And only while the column is open — the inspector keeps its content alive after it closes, and
 /// a pencil was left in the title bar over nothing.
 struct RoomInfoColumnToolbar: ToolbarContent {
@@ -653,19 +653,20 @@ struct RoomInfoColumnToolbar: ToolbarContent {
 
     var body: some ToolbarContent {
         if isShown {
-            // Two buttons, not one capsule holding both: editing and leaving are different acts.
-            if details.offersEditing {
-                ToolbarItem(placement: .primaryAction) {
-                    RoomInfoEditButton(details: details, action: onEdit)
-                }
-                toolbarGlassGap(placement: .primaryAction)
-            }
+            // Two buttons, not one capsule holding both: leaving and editing are different acts.
+            // The way out at the column's leading edge, the pencil at its trailing one.
             ToolbarItem(placement: .primaryAction) {
                 Button(action: onClose) {
                     Image(systemName: "xmark")
                         .font(.body.weight(.medium))
                 }
                 .accessibilityLabel(Text(Strings.Room.Manage.closeInfo))
+            }
+            if details.offersEditing {
+                toolbarGlassGap(placement: .primaryAction, flexible: true)
+                ToolbarItem(placement: .primaryAction) {
+                    RoomInfoEditButton(details: details, action: onEdit)
+                }
             }
         }
     }

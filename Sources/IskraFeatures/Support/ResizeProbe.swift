@@ -19,20 +19,26 @@ enum ResizeProbe {
     private static let reach: CGFloat = 600
 
     static func run(rooms: () -> [RoomSummary], open: (String) -> Void, column: InfoColumn) async {
-        // `closed` measures with the info column shut; whatever the user left is put back.
-        let wasOpen = column.isOpen
-        defer { column.isOpen = wasOpen }
+        // `closed` measures with the info column shut, `open` with it open; whatever the user left
+        // is put back before every way out — `exit` runs no `defer`.
+        let wasOpen = CommandLine.arguments.contains("open") ? true : column.isOpen
+        if CommandLine.arguments.contains("open") { column.isOpen = true }
+        func leave(_ code: Int32) -> Never {
+            column.isOpen = wasOpen
+            fflush(stdout)
+            exit(code)
+        }
         print("resize probe: waiting for the room list")
         for _ in 0..<60 where rooms().isEmpty {
             try? await Task.sleep(for: .milliseconds(250))
         }
         guard let first = rooms().first else {
             print("resize probe: no rooms")
-            exit(1)
+            leave(1)
         }
         guard let window = NSApp.windows.first(where: { $0.isVisible && $0.canBecomeMain }) else {
             print("resize probe: no window")
-            exit(1)
+            leave(1)
         }
         print("resize probe: empty, least width \(window.minSize.width), content \(window.contentMinSize.width)")
         // `empty` leaves the column with no chat in it.
@@ -42,6 +48,11 @@ enum ResizeProbe {
             if CommandLine.arguments.contains("closed") { column.isOpen = false }
             try? await Task.sleep(for: .seconds(1))
             print("resize probe: chat, least width \(window.minSize.width), content \(window.contentMinSize.width)")
+        }
+        if CommandLine.arguments.contains("toolbar") {
+            try? await Task.sleep(for: .seconds(2))
+            reportToolbar(of: window)
+            leave(0)
         }
         let original = window.frame
         // At its narrowest, how wide each column is — which of them holds the window open.
@@ -73,8 +84,7 @@ enum ResizeProbe {
         window.setFrame(original, display: true)
         try? await Task.sleep(for: .milliseconds(500))
         print("resize probe: survived \(steps) steps")
-        column.isOpen = wasOpen
-        exit(0)
+        leave(0)
     }
 
     private static func resize(_ window: NSWindow, to width: CGFloat, from original: NSRect) {
@@ -82,6 +92,38 @@ enum ResizeProbe {
         frame.size.width = width
         frame.origin.x = original.origin.x
         window.setFrame(frame, display: true)
+    }
+
+    /// `toolbar`: where each toolbar button stands, against where the columns are — whether the
+    /// info column's buttons are over the column or over the conversation.
+    private static func reportToolbar(of window: NSWindow) {
+        for split in splitViews(in: window.contentView) {
+            let edges = split.arrangedSubviews.map { view in
+                let frame = view.convert(view.bounds, to: nil)
+                return "\(Int(frame.minX))…\(Int(frame.maxX))"
+            }
+            print("toolbar probe: columns \(edges)")
+        }
+        print("toolbar probe: window \(Int(window.frame.width)), \(splitViews(in: window.contentView).count) split views")
+        for item in window.toolbar?.items ?? [] {
+            var place = "no view"
+            if let view = item.view, view.window != nil {
+                let frame = view.convert(view.bounds, to: nil)
+                place = "\(Int(frame.minX))…\(Int(frame.maxX))"
+            }
+            print("toolbar probe: item \(item.itemIdentifier.rawValue) [\(item.label)] \(place)")
+        }
+        guard let frameView = window.contentView?.superview else { return }
+        for button in buttons(in: frameView) {
+            let frame = button.convert(button.bounds, to: nil)
+            let name = button.accessibilityLabel() ?? button.toolTip ?? (button as? NSButton)?.title ?? "?"
+            print("toolbar probe: button \(name) at \(Int(frame.minX))…\(Int(frame.maxX)), y \(Int(frame.minY))")
+        }
+    }
+
+    private static func buttons(in view: NSView) -> [NSView] {
+        let own: [NSView] = (view is NSButton || view.accessibilityRole() == .button) && view.frame.height < 60 ? [view] : []
+        return own + view.subviews.flatMap { buttons(in: $0) }
     }
 
     private static func splitViews(in view: NSView?) -> [NSSplitView] {

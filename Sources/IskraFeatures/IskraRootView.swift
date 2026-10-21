@@ -991,11 +991,11 @@ public struct IskraRootView: View {
                         .accessibilityHint(Text(Strings.Room.noRoomSelectedMessage))
                 }
             }
-            #if os(macOS)
-            // From outside the stack — see `InfoColumn`.
-            .infoColumn(infoColumn)
-            #endif
         }
+        #if os(macOS)
+        // On the split view itself — see `InfoColumn`.
+        .infoColumn(infoColumn)
+        #endif
         // Said once, here, and read by both columns. The room list and the room are in different
         // branches of the tree and both have to know, and the session is the only thing that is
         // above both of them. See `OfflineBanner`.

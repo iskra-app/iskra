@@ -155,19 +155,23 @@ public extension ToolbarContent {
 }
 
 /// A gap between two toolbar items, so that each gets a capsule of glass of its own instead of
-/// sharing one. Before glass there is no capsule to split, and so no gap.
+/// sharing one — `flexible` to push them to either end of the bar. Before glass there is no capsule
+/// to split, and a flexible gap is the toolbar's own flexible space.
 @MainActor
-public func toolbarGlassGap(placement: ToolbarItemPlacement) -> some ToolbarContent {
-    ToolbarGlassGap(placement: placement)
+public func toolbarGlassGap(placement: ToolbarItemPlacement, flexible: Bool = false) -> some ToolbarContent {
+    ToolbarGlassGap(placement: placement, flexible: flexible)
 }
 
 struct ToolbarGlassGap: ToolbarContent {
     let placement: ToolbarItemPlacement
+    let flexible: Bool
 
     @ToolbarContentBuilder
     var body: some ToolbarContent {
         if #available(iOS 26, macOS 26, *) {
-            ToolbarSpacer(.fixed, placement: placement)
+            ToolbarSpacer(flexible ? .flexible : .fixed, placement: placement)
+        } else if flexible {
+            ToolbarItem(placement: placement) { Spacer() }
         }
     }
 }
