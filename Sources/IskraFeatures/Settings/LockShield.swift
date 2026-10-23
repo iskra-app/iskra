@@ -49,6 +49,15 @@ private struct LockShieldModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
+            #if os(macOS)
+            // And under the shield, inside the window itself: a window's own picture is drawn
+            // without its child windows — the Dock's thumbnail of a minimised window, a screenshot
+            // of that one window, a window shared on a call — and in that picture the conversation
+            // would be there in full. Unanimated, for the same reason the cover is.
+            .overlay {
+                if appLock.isLocked || cover { ShieldBackground().transition(.identity) }
+            }
+            #endif
             .onAppear(perform: update)
             .onChange(of: appLock.isLocked) { update() }
             .onChange(of: cover) { update() }
@@ -211,7 +220,10 @@ private final class ShieldWindows {
     private func observe() {
         let center = NotificationCenter.default
         for name in [NSWindow.didBecomeKeyNotification, NSWindow.didBecomeMainNotification,
-                     NSWindow.didDeminiaturizeNotification, NSApplication.didBecomeActiveNotification] {
+                     NSWindow.didDeminiaturizeNotification, NSApplication.didBecomeActiveNotification,
+                     // A window that comes on screen without taking the keyboard: the viewer
+                     // reappearing as the app returns, anything ordered in from behind.
+                     NSWindow.didChangeOcclusionStateNotification] {
             observers.append(center.addObserver(forName: name, object: nil, queue: .main) { note in
                 guard !(note.object is ShieldWindow) else { return }
                 MainActor.assumeIsolated { ShieldWindows.shared.cover() }
