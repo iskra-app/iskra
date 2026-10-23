@@ -175,6 +175,14 @@ extension View {
                 // kept the first one's state — its stack, its store — under the second: the column
                 // stayed open on the previous chat.
                 .id(column.owner)
+                // The seam between the conversation and this column: the same line as on the
+                // list's side of it (`IskraRootView`), so the window has one kind of rule.
+                .overlay(alignment: .leading) {
+                    Rectangle()
+                        .fill(.separator)
+                        .frame(width: Theme.Border.hairline)
+                        .ignoresSafeArea()
+                }
                 .inspectorColumnWidth(Theme.Size.sideColumn)
         }
         .environment(\.infoColumn, column)

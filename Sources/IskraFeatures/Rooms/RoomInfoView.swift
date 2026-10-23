@@ -460,7 +460,6 @@ struct RoomInfoView: View {
                     RoomContentPicker(tabs: tabs, selection: Binding(get: { openTab },
                                                                     set: { tab = $0 }))
                         .textCase(nil)
-                    Text(openTab.title)
                 }
             }
             .edgeToEdge(openTab == .media)
@@ -475,9 +474,8 @@ struct RoomInfoView: View {
             // piece of furniture on this screen that Apple draws in full — and the plate under it
             // was the app putting a table under a table.
             //
-            // Nothing is lost by separating them, because the card below now carries the name of
-            // the open tab as its heading: the two are joined by the word rather than by the
-            // plate, which is the stronger join anyway.
+            // The card carries no heading of its own: the name of the open tab is already the
+            // highlighted segment right above it, and saying it twice was a title for a title.
             //
             // The binding reads `openTab`, not `tab`. They differ exactly when the tab last pressed
             // is not available — a personal chat opening on `.members`, which it does not have —
@@ -491,8 +489,6 @@ struct RoomInfoView: View {
 
             Section {
                 tabContent
-            } header: {
-                Text(openTab.title)
             }
             // The grid of pictures runs from one edge of the screen to the other, Telegram's
             // contact sheet — not inside the inset card every other section sits in, where three

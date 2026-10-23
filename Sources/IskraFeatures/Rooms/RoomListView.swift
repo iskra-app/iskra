@@ -220,8 +220,13 @@ public struct RoomListView: View {
             if hasSidebarChrome {
                 ToolbarItem(placement: .primaryAction) { newConversationMenu }
                 // Two buttons, not one capsule holding both: starting a chat and opening settings
-                // are different acts.
+                // are different acts. On a Mac settings stands at the column's far edge, as far from
+                // "new chat" as the column allows; on an iPad the two sit side by side.
+                #if os(macOS)
+                toolbarGlassGap(placement: .primaryAction, flexible: true)
+                #else
                 toolbarGlassGap(placement: .primaryAction)
+                #endif
                 ToolbarItem(placement: .primaryAction) { settingsButton }
             } else {
                 ToolbarItem(placement: .principal) { RoomListTitle(status: listStatus) }

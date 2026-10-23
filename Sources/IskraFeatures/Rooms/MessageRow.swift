@@ -102,13 +102,18 @@ struct MessageRow: View {
         // Zero spacing, because the emoji do not sit *below* the bubble — they climb back
         // onto it. See `reactions`.
         VStack(alignment: message.isOwn ? .trailing : .leading, spacing: 0) {
-            swipeableBubbleRow
+            bubbleRow
 
             if !message.reactions.isEmpty {
                 reactions
                     .transition(.reactionsAppear)
             }
         }
+        // The swipe takes the emoji with it. They sit on the bubble's foot, and a bubble pulled
+        // out from under its own reactions left them hanging in the air where it had been.
+        .swipeToReply(message,
+                      dragsToward: message.isOwn ? .leading : .trailing,
+                      onReply: handlers.onReply)
         .padding(.top, opensDay ? 0
                                 : message.isContinuation ? Theme.Spacing.withinRun
                                                          : Theme.Spacing.betweenSenders)
@@ -151,18 +156,6 @@ struct MessageRow: View {
     }
 
     // MARK: - The bubble, and what can be done to it
-
-    /// The bubble, wrapped so it can be dragged toward the centre to reply — see `SwipeToReply`.
-    ///
-    /// The direction is always "toward the middle of the screen", never a side the user has to
-    /// remember: your own messages sit on the right and give to the leading edge; everyone else's
-    /// sit on the left and give to the trailing one.
-    private var swipeableBubbleRow: some View {
-        bubbleRow
-            .swipeToReply(message,
-                          dragsToward: message.isOwn ? .leading : .trailing,
-                          onReply: handlers.onReply)
-    }
 
     /// One sentence for VoiceOver, unless there is a button inside the message that flattening
     /// would swallow — see `Message.hasPressableContent`.

@@ -526,7 +526,7 @@
 
 /* The Appearance screen: light or dark. "System" is the ordinary case and the default; the
    other two are for people whose phone is light while their messages ought to be dark. */
-"appearance.theme" = "Design";
+"appearance.themeAndColors" = "Design und Farben";
 "appearance.mode.system" = "Wie im System";
 "appearance.mode.light" = "Hell";
 "appearance.mode.dark" = "Dunkel";
@@ -536,7 +536,6 @@
 
 /* The Appearance screen: the colour the app is painted in. The seven colours of the
    rainbow, and a mono theme with no colour at all. */
-"appearance.accent" = "App-Farbe";
 "appearance.avatars" = "Avatare";
 
 /* The switch under the swatches. Washes the chosen colour across the whole interface — every

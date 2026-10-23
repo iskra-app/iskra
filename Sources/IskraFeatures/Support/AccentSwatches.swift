@@ -18,7 +18,7 @@ struct AccentSwatches: View {
     /// Sized by the swatch, not by a column count. Eight circles are a comfortable row on a Mac
     /// and a wrapped pair of rows on a phone, and neither has to be spelled out.
     private var columns: [GridItem] {
-        [GridItem(.adaptive(minimum: Theme.Size.swatch), spacing: Theme.Spacing.roomy)]
+        [GridItem(.adaptive(minimum: Theme.Size.accentSwatch), spacing: Theme.Spacing.roomy)]
     }
 
     var body: some View {
@@ -29,13 +29,20 @@ struct AccentSwatches: View {
         }
     }
 
+    /// The tick, scaled with the circle it sits in.
+    #if os(macOS)
+    private static let tick: Font = .caption2
+    #else
+    private static let tick: Font = .body
+    #endif
+
     private func swatch(_ theme: AccentTheme) -> some View {
         Button {
             withAnimation(.smooth(duration: Theme.Timing.reaction)) { accent = theme }
         } label: {
             Circle()
                 .fill(theme.color)
-                .frame(width: Theme.Size.swatch, height: Theme.Size.swatch)
+                .frame(width: Theme.Size.accentSwatch, height: Theme.Size.accentSwatch)
                 .overlay {
                     // The tick is drawn in whatever stays legible on the colour it lands on
                     // — which is the same question the app answers for the text in a bubble,
@@ -43,7 +50,7 @@ struct AccentSwatches: View {
                     // thing that keeps it visible at all.
                     if theme == accent {
                         Image(systemName: "checkmark")
-                            .font(.body.weight(.bold))
+                            .font(Self.tick.weight(.bold))
                             .foregroundStyle(theme.foreground)
                     }
                 }

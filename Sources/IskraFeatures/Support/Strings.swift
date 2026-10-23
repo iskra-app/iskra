@@ -2117,7 +2117,9 @@ public enum Strings {
 
     /// Choosing what the app is painted in.
     public enum Appearance {
-        public static let theme = LocalizedStringResource("appearance.theme", bundle: bundle)
+        /// The one heading over light-or-dark, the colour and the wash: three answers to "what is
+        /// the app painted in", kept in one card.
+        public static let themeAndColors = LocalizedStringResource("appearance.themeAndColors", bundle: bundle)
         /// The heading over the faces picker — the same question the first run asks.
         public static let avatars = LocalizedStringResource("appearance.avatars", bundle: bundle)
 
@@ -2133,8 +2135,6 @@ public enum Strings {
 
         /// The switch that turns the plain column on or off — see `MessageLayout.compact`.
         public static let compact = LocalizedStringResource("appearance.compact", bundle: bundle)
-
-        public static let accent = LocalizedStringResource("appearance.accent", bundle: bundle)
 
         /// The switch that washes the accent across the whole interface — see
         /// `AccentTheme.tintsInterfaceKey`.

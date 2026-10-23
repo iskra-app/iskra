@@ -76,11 +76,7 @@ struct AppearanceView: View {
                     EmptyView()
                 }
                 .pickerStyle(.segmented)
-            } header: {
-                Text(Strings.Appearance.theme)
-            }
 
-            Section {
                 // The same grid the first run asks the same question with — see `AccentSwatches`.
                 AccentSwatches(accent: $accent)
                     .padding(.vertical, Theme.Spacing.close)
@@ -90,7 +86,7 @@ struct AppearanceView: View {
                 }
                 .accentControl()
             } header: {
-                Text(Strings.Appearance.accent)
+                Text(Strings.Appearance.themeAndColors)
             }
 
             // iPhone and iPad only, and not drawn at all where the device forbids it.

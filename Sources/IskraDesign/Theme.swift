@@ -697,6 +697,14 @@ public enum Theme {
         /// pick by accident.
         public static let swatch: CGFloat = 44
 
+        /// The accent's circles in particular. On a Mac they are half the size: a pointer needs no
+        /// fingertip of room, and eight 44-point discs in a settings card read as buttons shouting.
+        #if os(macOS)
+        public static let accentSwatch: CGFloat = 24
+        #else
+        public static let accentSwatch: CGFloat = swatch
+        #endif
+
         /// A wallpaper to choose from, on the same screen. Not a swatch: a background is judged
         /// as a *screen*, so the tile is the shape of one — tall, in roughly the proportion of a
         /// phone — and big enough that a gradient reads as a gradient rather than as a smudge.

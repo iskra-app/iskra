@@ -29,11 +29,22 @@ public struct GroupedRowsFormStyle: FormStyle {
 #if os(macOS)
 /// The Mac's grouped form, with its cards no wider than `Theme.Size.formCardMaximum`.
 ///
-/// A frame round the form, and the page under it to the column's edges. Not the scroll view's side
-/// margins worked out from its width: a margin is part of a view's least width, so the window's
-/// least width rose with the window — to 1712 points after one wide moment.
+/// The form runs to the column's edges and its *content* is held in by side margins worked out from
+/// its width. A frame round the form, which is what it was, drew the scroll edge under the toolbar
+/// only as wide as the cards — a dark band hanging in the middle of the title bar.
+///
+/// A margin is part of a view's least width, and on its own it made the window's least width rise
+/// with the window — to 1712 points after one wide moment. The `minWidth: 0` frame outside it is
+/// what stops that: the column, not the margin, decides how narrow the page can go.
 private struct MacGroupedForm: View {
     let configuration: FormStyleConfiguration
+
+    /// The width the page was last given, from which the margins are worked out.
+    @State private var width: CGFloat = 0
+
+    private var margin: CGFloat {
+        max(0, (width - Theme.Size.formCardMaximum) / 2)
+    }
 
     var body: some View {
         Form {
@@ -47,8 +58,9 @@ private struct MacGroupedForm: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
-        .frame(maxWidth: Theme.Size.formCardMaximum)
-        .frame(maxWidth: .infinity)
+        .contentMargins(.horizontal, margin, for: .scrollContent)
+        .frame(minWidth: 0, maxWidth: .infinity)
+        .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { width = $0 }
         // The phone's grouped page under the form, not the window's grey — see `Color.groupedPage`.
         .background(Color.groupedPage)
     }
