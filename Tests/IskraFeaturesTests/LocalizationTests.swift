@@ -146,8 +146,8 @@ struct LocalizationTests {
         // "Emoji", not "pictures". They are emoji, everybody calls them emoji, and inventing a
         // gentler word for them only makes the reader wonder what they are being protected from.
         (Strings.Verification.compare,
-         en: "Your other device is showing the same seven emoji. Check that they match — and that they are in the same order.",
-         ru: "На другом устройстве сейчас те же семь эмодзи. Проверьте, что они совпадают, — и в том же порядке."),
+         en: "Your other device is showing the same seven emoji. Check that they match and that they are in the same order.",
+         ru: "На другом устройстве сейчас те же семь эмодзи. Проверьте, что они совпадают и идут в том же порядке."),
         (Strings.Verification.match, en: "They match", ru: "Совпадают"),
         (Strings.Verification.noMatch, en: "They don’t match", ru: "Не совпадают"),
         (Strings.RoomList.Invite.accept, en: "Join", ru: "Войти"),

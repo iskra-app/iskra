@@ -167,7 +167,7 @@
 
 "beta.nativeSidebar" = "Barre latérale native";
 
-"beta.nativeSidebarHelp" = "La liste des discussions devient une barre latérale macOS ordinaire : discussions regroupées en sections, recherche en haut, lignes plus serrées. Comme Mail et Notes, et moins comme un téléphone.";
+"beta.nativeSidebarHelp" = "La liste des discussions devient une barre latérale macOS ordinaire : discussions regroupées en sections, recherche en haut, lignes plus serrées. Ça ressemble à Mail et Notes, pas à un téléphone.";
 
 "beta.blobatar" = "Des bestioles au lieu des initiales";
 
@@ -222,14 +222,14 @@
    said here rather than only in the status: this is what somebody is looking at. */
 "connection.address" = "Adresse du pont";
 "connection.addressPrompt" = "npub1… ou 64 caractères hex";
-"connection.addressFooter" = "Un pont affiche son adresse au démarrage — la ligne « bridge address for Iskra: npub1… ».";
+"connection.addressFooter" = "Un pont affiche son adresse au démarrage, dans la ligne « bridge address for Iskra: npub1… ».";
 "connection.addressBad" = "Cela ne ressemble pas à une clé de pont";
 "connection.addressSecret" = "C’est une clé secrète. Il faut ici la clé publique, celle qui commence par npub.";
 "connection.defaultBridge" = "Revenir au pont d’Iskra";
 
 "connection.relays" = "Relais";
 "connection.relaysPrompt" = "wss://relay.snort.social, wss://nostr.wine";
-"connection.relaysFooter" = "C’est là que l’app et le pont se retrouvent. En mettre plusieurs n’est pas une roue de secours : la requête part vers tous à la fois et la réponse revient du plus rapide. Laissez vide pour les trois par défaut.";
+"connection.relaysFooter" = "C’est là que l’app et le pont se retrouvent. La requête part vers tous à la fois et la réponse revient du plus rapide, donc un seul ne suffit pas. Laissez vide pour les trois par défaut.";
 
 "connection.myKey" = "Clé de cet appareil";
 "connection.myKeyFooter" = "Si le pont est fermé, ajoutez cette clé à son ALLOWED_PUBKEYS, sinon il ne vous entendra pas du tout.";
@@ -238,7 +238,7 @@
 
 "connection.check" = "Vérifier le pont";
 "connection.checking" = "Vérification…";
-"connection.checkOK" = "Le pont a répondu, le serveur est là — %lld ms";
+"connection.checkOK" = "Le pont a répondu, le serveur est là : %lld ms";
 "connection.checkNoRelay" = "Aucun relais ne répond";
 "connection.checkSilent" = "Le pont ne répond pas. Est-il lancé, et est-ce la bonne clé ?";
 "connection.checkFailed" = "Échec : %@";
@@ -258,7 +258,7 @@
 "connection.unfinishedBody" = "Chaque requête fait le détour par un relais et coûte 200 à 350 ms : la connexion et la première ouverture des discussions sont donc nettement plus lentes qu’en direct, une seconde là où c’était instantané. Les nouveaux messages arrivent en revanche presque aussi vite qu’en direct. Les grosses pièces jointes passent aussi, mais mieux vaut les éviter sur des relais publics : pour les médias, donnez au pont un relais à lui.";
 
 "connection.sees" = "Ce que voit le pont";
-"connection.seesBody" = "Seulement à quel serveur vous vous connectez, quand, et combien d’octets. L’application chiffre elle-même la connexion au serveur : votre jeton, vos salons et vos messages — même dans les discussions non chiffrées — restent invisibles pour le pont. Votre adresse IP est vue par les relais, pas par le pont.";
+"connection.seesBody" = "Seulement à quel serveur vous vous connectez, quand, et combien d’octets. L’application chiffre elle-même la connexion au serveur : votre jeton, vos salons et vos messages restent invisibles pour le pont, même dans les discussions non chiffrées. Votre adresse IP est vue par les relais, pas par le pont.";
 
 /* App lock by Face ID / device passcode. */
 "settings.lock" = "Verrouillage de l’app";
@@ -401,7 +401,7 @@
    anything about signing in: the account is fine and the messages are on the device. */
 "session.offlineTitle" = "Pas de connexion";
 
-"session.offlineMessage" = "Vos conversations sont là, sur cet appareil. Nous n’arrivons simplement pas à joindre le serveur pour l’instant : vérifiez votre réseau.";
+"session.offlineMessage" = "Vos conversations sont sur cet appareil. Le serveur est injoignable pour l’instant, vérifiez votre réseau.";
 
 "session.tryAgain" = "Réessayer";
 
@@ -473,7 +473,7 @@
    messages are there, we just can't show them. */
 "room.loadFailedTitle" = "Impossible d’ouvrir la discussion";
 
-"room.loadFailedMessage" = "Les messages n’ont pas disparu : nous n’avons simplement pas pu les charger. Vérifiez la connexion.";
+"room.loadFailedMessage" = "Les messages sont toujours là, mais ils n’ont pas pu se charger. Vérifiez la connexion.";
 
 "room.tryAgain" = "Réessayer";
 
@@ -1229,7 +1229,7 @@
 /* Settings → Privacy. */
 "privacy.title" = "Confidentialité";
 "privacy.hidePresence" = "Masquer la dernière connexion";
-"privacy.hidePresenceHelp" = "Les autres ne verront pas quand vous étiez en ligne pour la dernière fois — et vous ne verrez pas la leur.";
+"privacy.hidePresenceHelp" = "Les autres ne verront pas quand vous étiez en ligne pour la dernière fois, et vous ne verrez pas la leur.";
 "privacy.hideTyping" = "Masquer « écrit… »";
 "privacy.hideTypingHelp" = "Les autres ne verront pas quand vous écrivez.";
 
@@ -1312,7 +1312,7 @@
 "qr.scanHint" = "Pointez l’appareil photo vers le code QR d’une personne ou d’un salon";
 "qr.notMatrix" = "Ce n’est pas un lien Matrix";
 "qr.choosePicture" = "Choisir une image";
-"qr.noCamera" = "Pas d’accès à l’appareil photo. Autorisez-le dans Réglages — ou choisissez une image du code.";
+"qr.noCamera" = "Pas d’accès à l’appareil photo. Autorisez-le dans Réglages ou choisissez une image du code.";
 "qr.nothingFound" = "Il n’y a pas de code QR sur cette image";
 "qr.joinRoom" = "Rejoindre le salon";
 "qr.openRoom" = "Ouvrir";
@@ -1388,7 +1388,7 @@
 /* Chat folders (stage 9) */
 "folders.all" = "Tous";
 "folders.title" = "Dossiers";
-"folders.explanation" = "Les dossiers rassemblent les discussions selon des règles — personnelles, groupes, non lues — et apparaissent en onglets au-dessus de la liste. Ils sont identiques sur tous vos appareils.";
+"folders.explanation" = "Les dossiers rassemblent les discussions selon des règles (personnelles, groupes, non lues) et apparaissent en onglets au-dessus de la liste. Ils sont identiques sur tous vos appareils.";
 "folders.new" = "Nouveau dossier";
 "folders.suggested" = "Vous pouvez commencer par ceux-ci";
 "folders.add" = "Ajouter";
@@ -1413,7 +1413,7 @@
 "folders.cancel" = "Annuler";
 "folders.delete" = "Supprimer le dossier";
 "folders.deleteQuestion" = "Supprimer le dossier « %@ » ?";
-"folders.deleteHelp" = "Les discussions restent où elles sont — seul l’onglet disparaît.";
+"folders.deleteHelp" = "Les discussions restent où elles sont, seul l’onglet disparaît.";
 "folders.addToFolder" = "Dans un dossier";
 "folders.membershipTitle" = "Dossiers";
 "folders.membershipFooter" = "Cochée, la discussion est dans le dossier même hors de ses règles. Décochée, jamais.";
@@ -1431,11 +1431,11 @@
 /* Beta: for developers */
 "beta.developers" = "Pour les développeurs";
 "beta.showsSource" = "JSON du message dans le menu";
-"beta.showsSourceHelp" = "Le menu d’un message propose « Voir le JSON » — l’événement tel que le serveur l’a envoyé. Utile quand un message s’affiche mal.";
+"beta.showsSourceHelp" = "Le menu d’un message propose « Voir le JSON » : l’événement tel que le serveur l’a envoyé. Utile quand un message s’affiche mal.";
 "beta.homeserver" = "Serveur";
-"beta.homeserverHelp" = "L’adresse à laquelle l’app parle vraiment — trouvée à partir du nom du compte, pas forcément celle saisie à la connexion. Un pont ne la change pas : il ne fait que porter la connexion.";
+"beta.homeserverHelp" = "L’adresse à laquelle l’app parle vraiment, trouvée à partir du nom du compte et pas forcément celle saisie à la connexion. Un pont ne la change pas : il ne fait que porter la connexion.";
 "beta.showsAllEvents" = "Tous les événements du chat";
-"beta.showsAllEventsHelp" = "Le chat affiche aussi les événements que l’app laisse d’habitude de côté — droits, règles d’accès, appels, changements de photo, tout ce qui n’a pas pu être lu — en ligne grise avec le type et l’expéditeur.";
+"beta.showsAllEventsHelp" = "Le chat affiche aussi les événements que l’app laisse d’habitude de côté (droits, règles d’accès, appels, changements de photo, tout ce qui n’a pas pu être lu), en ligne grise avec le type et l’expéditeur.";
 "beta.viewSource" = "Voir le JSON";
 "beta.noSource" = "Ce message n’a pas encore d’événement sur le serveur.";
 "beta.demoSignIn" = "Connexion de démonstration";
@@ -1464,7 +1464,7 @@
 "message.transcript.show" = "Transcrire";
 "message.transcript.hide" = "Masquer le texte";
 "message.transcript.notAllowed" = "La reconnaissance vocale n’est pas autorisée. Vous pouvez l’autoriser dans Réglages.";
-"message.transcript.unavailable" = "Cet appareil ne reconnaît pas votre langue hors ligne — et Iskra n’enverra pas la voix à un serveur.";
+"message.transcript.unavailable" = "Cet appareil ne reconnaît pas votre langue hors ligne, et Iskra n’enverra pas la voix à un serveur.";
 "message.transcript.nothingHeard" = "Aucun mot n’est audible.";
 "message.transcript.failed" = "La transcription a échoué. Réessayez.";
 

@@ -167,7 +167,7 @@
 
 "beta.nativeSidebar" = "Barra lateral nativa";
 
-"beta.nativeSidebarHelp" = "La lista de chats se convierte en una barra lateral normal de macOS: chats agrupados en secciones, búsqueda arriba y filas más juntas. Como Mail y Notas, y menos como un teléfono.";
+"beta.nativeSidebarHelp" = "La lista de chats se convierte en una barra lateral normal de macOS: chats agrupados en secciones, búsqueda arriba y filas más juntas. Se parece a Mail y Notas, no a un teléfono.";
 
 "beta.blobatar" = "Criaturas en vez de iniciales";
 
@@ -229,7 +229,7 @@
 
 "connection.relays" = "Relays";
 "connection.relaysPrompt" = "wss://relay.snort.social, wss://nostr.wine";
-"connection.relaysFooter" = "Aquí es donde la app y el puente se encuentran. Varios no son una rueda de repuesto: la petición va a todos a la vez y la respuesta llega del que fue más rápido. Déjelo vacío para usar los tres predeterminados.";
+"connection.relaysFooter" = "Aquí es donde la app y el puente se encuentran. La petición va a todos a la vez y la respuesta llega del que fue más rápido, así que con uno no basta. Déjelo vacío para usar los tres predeterminados.";
 
 "connection.myKey" = "Clave de este dispositivo";
 "connection.myKeyFooter" = "Si el puente es cerrado, añada esta clave a su ALLOWED_PUBKEYS; si no, no le oirá en absoluto.";
@@ -258,7 +258,7 @@
 "connection.unfinishedBody" = "Cada petición da un rodeo por un relay y cuesta 200–350 ms, así que iniciar sesión y abrir los chats por primera vez es bastante más lento que con una conexión directa: un segundo donde antes era instantáneo. Los mensajes nuevos, en cambio, llegan casi tan rápido como en directo. Los adjuntos grandes también llegan, pero es mejor no pasarlos por relays públicos: para los archivos multimedia, dele al puente un relay propio.";
 
 "connection.sees" = "Qué ve el puente";
-"connection.seesBody" = "Solo a qué servidor se conecta, cuándo y cuántos bytes. La conexión con el servidor la cifra la propia aplicación, así que su token, sus salas y sus mensajes —incluso en chats sin cifrar— quedan ocultos para el puente. Su dirección IP la ven los relays, no el puente.";
+"connection.seesBody" = "Solo a qué servidor se conecta, cuándo y cuántos bytes. La conexión con el servidor la cifra la propia aplicación, así que su token, sus salas y sus mensajes quedan ocultos para el puente, incluso en chats sin cifrar. Su dirección IP la ven los relays, no el puente.";
 
 /* App lock by Face ID / device passcode. */
 "settings.lock" = "Bloqueo de la app";
@@ -401,7 +401,7 @@
    anything about signing in: the account is fine and the messages are on the device. */
 "session.offlineTitle" = "Sin conexión";
 
-"session.offlineMessage" = "Sus conversaciones están aquí, en este dispositivo. Solo que ahora no podemos conectar con el servidor: compruebe su red.";
+"session.offlineMessage" = "Sus conversaciones están en este dispositivo. Ahora mismo no se puede conectar con el servidor; compruebe su red.";
 
 "session.tryAgain" = "Reintentar";
 
@@ -473,7 +473,7 @@
    messages are there, we just can't show them. */
 "room.loadFailedTitle" = "No se ha podido abrir el chat";
 
-"room.loadFailedMessage" = "Los mensajes no se han perdido: solo que no hemos podido cargarlos. Compruebe la conexión.";
+"room.loadFailedMessage" = "Los mensajes siguen ahí, pero no se pudieron cargar. Compruebe la conexión.";
 
 "room.tryAgain" = "Reintentar";
 
@@ -897,7 +897,7 @@
 "encryption.newKeyHelp" = "El código anterior dejará de funcionar. Conviene hacerlo si ha acabado donde no debía.";
 
 "encryption.saveKey" = "Guarde su código";
-"encryption.saveKeyHelp" = "Lo mostramos una vez y nunca más. Apúntelo o guárdelo en un gestor de contraseñas: sin él, sus mensajes antiguos no vuelven.";
+"encryption.saveKeyHelp" = "Lo mostramos solo una vez. Apúntelo o guárdelo en un gestor de contraseñas: sin él, sus mensajes antiguos no vuelven.";
 "encryption.copyKey" = "Copiar el código";
 "encryption.keyCopied" = "Copiado";
 "encryption.saved" = "He guardado el código";
@@ -1040,7 +1040,7 @@
 /* The strip in the chat list. It stays until the reason is gone: the code is shown once, and
    somebody who didn’t save it finds out six months later — unless they’re reminded. */
 "recovery.banner.locked" = "Sus mensajes antiguos están bloqueados";
-"recovery.save.warning" = "Si pierde este código y no tiene otro dispositivo, nadie podrá recuperar sus mensajes antiguos: ni nosotros ni el servidor. Se quedarán cifrados para siempre.";
+"recovery.save.warning" = "Si pierde este código y no tiene otro dispositivo, nadie podrá recuperar sus mensajes antiguos, ni nosotros ni el servidor. Se quedarán cifrados para siempre.";
 "recovery.save.confirm" = "He apuntado el código en un lugar seguro";
 "recovery.lost.noAccess" = "No tengo acceso a ese dispositivo";
 "recovery.banner.hint" = "Abre la configuración de recuperación";
@@ -1388,7 +1388,7 @@
 /* Chat folders (stage 9) */
 "folders.all" = "Todos";
 "folders.title" = "Carpetas";
-"folders.explanation" = "Las carpetas reúnen chats según reglas —personales, grupos, sin leer— y aparecen como pestañas sobre la lista. Son las mismas en todos sus dispositivos.";
+"folders.explanation" = "Las carpetas reúnen chats según reglas (personales, grupos, sin leer) y aparecen como pestañas sobre la lista. Son las mismas en todos sus dispositivos.";
 "folders.new" = "Nueva carpeta";
 "folders.suggested" = "Puede empezar con estas";
 "folders.add" = "Añadir";
@@ -1435,7 +1435,7 @@
 "beta.homeserver" = "Servidor";
 "beta.homeserverHelp" = "La dirección con la que la app habla de verdad: se averigua a partir del nombre de la cuenta, no es necesariamente la que se escribió al entrar. Un puente no la cambia; solo lleva la conexión.";
 "beta.showsAllEvents" = "Todos los eventos del chat";
-"beta.showsAllEventsHelp" = "El chat mostrará también los eventos que la app suele omitir —permisos, reglas de acceso, llamadas, cambios de foto, todo lo que no se pudo leer— como una línea gris con el tipo y el remitente.";
+"beta.showsAllEventsHelp" = "El chat mostrará también los eventos que la app suele omitir (permisos, reglas de acceso, llamadas, cambios de foto, todo lo que no se pudo leer) como una línea gris con el tipo y el remitente.";
 "beta.viewSource" = "Ver JSON";
 "beta.noSource" = "Este mensaje aún no tiene evento en el servidor.";
 "beta.demoSignIn" = "Inicio de sesión de demostración";

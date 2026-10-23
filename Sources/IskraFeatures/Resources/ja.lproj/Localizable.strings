@@ -167,7 +167,7 @@
 
 "beta.nativeSidebar" = "ネイティブのサイドバー";
 
-"beta.nativeSidebarHelp" = "チャット一覧が普通の macOS のサイドバーになります。チャットはセクションにまとまり、検索は上に、行の間隔は詰まります。メールやメモのように、スマホらしさは控えめに。";
+"beta.nativeSidebarHelp" = "チャット一覧が普通の macOS のサイドバーになります。チャットはセクションにまとまり、検索は上に、行の間隔は詰まります。見た目はスマホよりメールやメモに近くなります。";
 
 "beta.blobatar" = "イニシャルの代わりにキャラクター";
 
@@ -229,7 +229,7 @@
 
 "connection.relays" = "リレー";
 "connection.relaysPrompt" = "wss://relay.snort.social, wss://nostr.wine";
-"connection.relaysFooter" = "アプリとブリッジはここで互いを見つけます。複数あるのは予備ではありません。リクエストは全部に同時に送られ、いちばん速かったところから返事が来ます。空欄ならデフォルトの 3 つを使います。";
+"connection.relaysFooter" = "アプリとブリッジはここで互いを見つけます。リクエストは全部に同時に送られ、いちばん速かったところから返事が来るので、1 つでは足りません。空欄ならデフォルトの 3 つを使います。";
 
 "connection.myKey" = "このデバイスの鍵";
 "connection.myKeyFooter" = "ブリッジが非公開なら、この鍵をその ALLOWED_PUBKEYS に追加してください。そうしないと、まったく応答しません。";
@@ -238,7 +238,7 @@
 
 "connection.check" = "ブリッジを確認";
 "connection.checking" = "確認中…";
-"connection.checkOK" = "ブリッジが応答し、サーバーもつながっています — %lld ms";
+"connection.checkOK" = "ブリッジが応答し、サーバーもつながっています。%lld ms";
 "connection.checkNoRelay" = "応答するリレーがありません";
 "connection.checkSilent" = "ブリッジが応答しません。起動していますか？鍵は正しいですか？";
 "connection.checkFailed" = "うまくいきませんでした: %@";
@@ -401,7 +401,7 @@
    anything about signing in: the account is fine and the messages are on the device. */
 "session.offlineTitle" = "接続がありません";
 
-"session.offlineMessage" = "会話はこのデバイスにちゃんとあります。今はサーバーにつながらないだけです。ネットワークを確認してください。";
+"session.offlineMessage" = "会話はこのデバイスにあります。今はサーバーにつながらないので、ネットワークを確認してください。";
 
 "session.tryAgain" = "再試行";
 
@@ -473,7 +473,7 @@
    messages are there, we just can't show them. */
 "room.loadFailedTitle" = "チャットを開けませんでした";
 
-"room.loadFailedMessage" = "メッセージが消えたわけではありません。読み込めなかっただけです。接続を確認してください。";
+"room.loadFailedMessage" = "メッセージは残っていますが、読み込めませんでした。接続を確認してください。";
 
 "room.tryAgain" = "再試行";
 

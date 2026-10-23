@@ -100,7 +100,7 @@
 /* Shown when pinning or unpinning was refused. */
 "timeline.pinFailed" = "The pinned messages couldn’t be changed. You may not be allowed to.";
 "timeline.reportFailed" = "The report didn’t go through. Try again.";
-"timeline.pollFailed" = "That didn’t work — the poll is as it was. Try again.";
+"timeline.pollFailed" = "That didn’t work, and the poll is as it was. Try again.";
 "timeline.pollEndedBody" = "The poll has ended";
 
 /* The grey lines across a conversation: people coming and going, the room changing. */
@@ -127,13 +127,13 @@
 "roomAction.topicFailed" = "The description didn’t change. You may not be allowed to.";
 "roomAction.pictureFailed" = "The picture didn’t change. You may not be allowed to.";
 "roomAction.visibilityFailed" = "Who can join this chat couldn’t be changed.";
-"roomAction.inviteFailed" = "The invitation didn’t go through. Check the address — it looks like @name:server.";
+"roomAction.inviteFailed" = "The invitation didn’t go through. Check the address: it looks like @name:server.";
 "roomAction.removeFailed" = "They couldn’t be removed. They are still in the chat.";
 "roomAction.banFailed" = "They couldn’t be blocked. They are still in the chat.";
 "roomAction.roleFailed" = "The role didn’t change. You may not be allowed to.";
 "roomAction.rulesFailed" = "The permission didn’t change. You may not be allowed to.";
 "roomAction.leaveFailed" = "You couldn’t leave the chat. Try again.";
-"roomAction.createFailed" = "The chat wasn’t created. The server may not have answered — try again.";
+"roomAction.createFailed" = "The chat wasn’t created. The server may not have answered, so try again.";
 "roomAction.joinAddressInvalid" = "A room address looks like #name:server or !id:server.";
 "roomAction.joinFailed" = "Couldn’t join the room. It may not exist, may be closed, or the server didn’t answer.";
 "roomAction.alertsFailed" = "This chat’s notifications didn’t change. Try again.";
@@ -141,13 +141,13 @@
 /* The account: name, picture and encryption. */
 "account.nameFailed" = "Your name didn’t change. Try again.";
 "account.pictureFailed" = "Your picture didn’t change. Try again.";
-"account.protectFailed" = "Your messages couldn’t be protected. Try again — the keys to your old messages are still where they were.";
+"account.protectFailed" = "Your messages couldn’t be protected. Try again: the keys to your old messages are still where they were.";
 "account.newKeyFailed" = "The new code wasn’t created. The old one still works.";
 "account.restoreFailed" = "That code didn’t fit. Check you copied all of it, spaces and all.";
-"account.staleCodeFailed" = "The code is put together correctly — and still does not fit this account. That happens when a recovery code has been created again: the previous one stops working for good.";
+"account.staleCodeFailed" = "The code is put together correctly and still does not fit this account. That happens when a recovery code has been created again: the previous one stops working for good.";
 
 /* The reset failed — the rare case where failure is the good news: nothing was lost. */
-"account.startOverFailed" = "Couldn’t start again. Try again — for now, everything is as it was.";
+"account.startOverFailed" = "Couldn’t start again. Try again: for now, everything is as it was.";
 "account.blockFailed" = "Couldn’t block them. Try again.";
 "account.unblockFailed" = "Couldn’t unblock them. Try again.";
 
@@ -163,8 +163,8 @@
 /* The Share extension. */
 "share.title" = "Send to…";
 "share.cancel" = "Cancel";
-"share.empty" = "Open Iskra and sign in first — then your chats will show up here.";
-"share.willSendOnOpen" = "It goes right away — Iskra opens to send it.";
+"share.empty" = "Open Iskra and sign in first, and your chats will show up here.";
+"share.willSendOnOpen" = "It goes right away: Iskra opens to send it.";
 "share.comment" = "Add a comment…";
 "share.send" = "Send";
 "share.locked" = "Iskra is locked";
@@ -174,11 +174,11 @@
 
 /* Room invitations. */
 "roomAction.acceptInviteFailed" = "You couldn’t join the chat. The invitation may have been withdrawn.";
-"roomAction.declineInviteFailed" = "The invitation wasn’t declined. It is still there — try again.";
+"roomAction.declineInviteFailed" = "The invitation wasn’t declined. It is still there, so try again.";
 
 /* Organising the list: pin, archive, mark read, report. */
-"roomAction.pinFailed" = "The chat wasn’t pinned. It slid back — try again.";
-"roomAction.archiveFailed" = "The chat wasn’t archived. It is still in the list — try again.";
+"roomAction.pinFailed" = "The chat wasn’t pinned. It slid back, so try again.";
+"roomAction.archiveFailed" = "The chat wasn’t archived. It is still in the list, so try again.";
 "roomAction.readFailed" = "The read state wouldn’t change.";
 "roomAction.reportFailed" = "The report didn’t go through. Try again.";
 
@@ -188,8 +188,8 @@
 
 /* Account-wide notification rules — see `NotificationRulesStore`. These are not settings on this
    phone but push rules on the server: they apply to every device at once. */
-"notificationRules.directFailed" = "The rule for personal chats wouldn’t change. The switch went back — try again.";
-"notificationRules.groupFailed" = "The rule for groups wouldn’t change. The switch went back — try again.";
+"notificationRules.directFailed" = "The rule for personal chats wouldn’t change. The switch went back, so try again.";
+"notificationRules.groupFailed" = "The rule for groups wouldn’t change. The switch went back, so try again.";
 "notificationRules.mentionFailed" = "The rule for mentions wouldn’t change. Try again.";
 "notificationRules.roomMentionFailed" = "The rule for @room wouldn’t change. Try again.";
 "notificationRules.invitationFailed" = "The rule for invitations wouldn’t change. Try again.";
@@ -213,24 +213,24 @@
 "liveLocation.startFailed" = "Live location couldn’t be started. Try again.";
 "liveLocation.denied" = "Iskra isn’t allowed to use your location. You can allow it in Settings.";
 
-"liveLocation.stopFailed" = "No more points are being sent, but the server didn’t hear it stop — others may see it as live until it runs out.";
+"liveLocation.stopFailed" = "No more points are being sent, but the server didn’t hear it stop, so others may see it as live until it runs out.";
 
 /* Widget and Live Activities — see Apps/Widgets */
 "widget.favourites.name" = "Favourite chats";
 "widget.favourites.description" = "The people you write to most. Tap a face to open the chat.";
 "widget.locked" = "Iskra is locked";
-"widget.empty" = "Open Iskra and sign in — then your chats will show up here.";
+"widget.empty" = "Open Iskra and sign in, and your chats will show up here.";
 
 "liveActivity.location.sharing" = "Sharing your location";
 "liveActivity.location.finding" = "Finding you…";
 "liveActivity.location.stop" = "Stop";
 "liveActivity.location.ended" = "Sharing has ended";
-"liveActivity.location.stopFailed" = "The server didn’t hear it stop — others may see it as live until it runs out.";
+"liveActivity.location.stopFailed" = "The server didn’t hear it stop, so others may see it as live until it runs out.";
 "liveActivity.media.sendingVideo" = "Sending a video";
 "liveActivity.media.sendingPhoto" = "Sending a photo";
 "liveActivity.media.sendingAlbum" = "Sending an album";
 "liveActivity.media.sendingFile" = "Sending a file";
 "liveActivity.media.preparing" = "Preparing…";
 "liveActivity.media.sent" = "Sent";
-"liveActivity.media.failed" = "Not sent — tap to open the chat";
+"liveActivity.media.failed" = "Not sent. Tap to open the chat";
 "liveActivity.media.waiting" = "Will carry on when you open Iskra";
