@@ -59,7 +59,9 @@ xcrun simctl install booted .build/xcode/Build/Products/Debug-iphonesimulator/Is
 xcrun simctl launch booted wtf.iskra
 ```
 
-`./release.sh` builds a Release Mac app signed with Developer ID and zips it into `.build/mac-release/` — the build to send somebody to try (`NOTARY_PROFILE=… ./release.sh` notarizes it too). `./run.sh` wraps the two above (`mac`, `ios`, or both). **A real iPhone is `./device.sh`**, which
+`./release.sh` builds a Release Mac app signed with Developer ID and zips it into `.build/mac-release/` — the build to send somebody to try (`NOTARY_PROFILE=… ./release.sh` notarizes it too). `./testflight.sh [ios|mac|both] [--upload]` archives the App Store builds (Mac App Store signing, not
+Developer ID) and exports them to `.build/testflight/`; only `--upload` sends anything to App Store
+Connect, after a y/N question. `./run.sh` wraps the two above (`mac`, `ios`, or both). **A real iPhone is `./device.sh`**, which
 builds the tip of `dev` — from its own detached worktree in `.build/dev-src`, so whatever is
 uncommitted in the working tree neither affects the build nor gets touched by it — signs it,
 installs it with `devicectl` and launches it with `--console`. `--here` builds the working tree

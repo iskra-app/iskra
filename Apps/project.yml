@@ -252,6 +252,10 @@ targets:
       path: iOS/Info.plist
       properties:
         CFBundleDisplayName: Iskra
+        # Export compliance, answered once here instead of on every upload in App Store Connect.
+        # The app does use encryption — the SDK's Matrix E2EE, NIP-44 for the bridge — but only
+        # standard, published algorithms, which is the exemption; `false` here is that claim.
+        ITSAppUsesNonExemptEncryption: false
         # Both are what `AppVersion` reads, and both must be written as build-setting
         # references — see the note on MARKETING_VERSION above.
         CFBundleShortVersionString: $(MARKETING_VERSION)
@@ -564,6 +568,10 @@ targets:
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [en, ru, de, es, fr, ja, zh-Hans]
         LSMinimumSystemVersion: "15.0"
+        # The Mac App Store (and so TestFlight for Mac) refuses an upload with no category.
+        LSApplicationCategoryType: public.app-category.social-networking
+        # Same export-compliance answer as the iOS app; see there.
+        ITSAppUsesNonExemptEncryption: false
         NSCameraUsageDescription: Iskra uses the camera so you can record video messages and scan QR codes.
         NSMicrophoneUsageDescription: Iskra uses the microphone so you can record voice messages.
         NSLocationWhenInUseUsageDescription: Iskra uses your location only when you ask it to — to put a map on the place you are, or to share where you are with a chat for as long as you choose.
@@ -595,6 +603,10 @@ targets:
         # data-protection keychain work on macOS.
         com.apple.security.app-sandbox: true
         com.apple.security.network.client: true
+        # Listening, even on 127.0.0.1: the bridge (`LocalConnectProxy`) and the in-app demo and
+        # sign-in servers are loopback listeners, and the sandbox answers `bind` without this with
+        # EPERM — "POSIX error: Operation not permitted" on the sign-in screen, whatever the network.
+        com.apple.security.network.server: true
         com.apple.security.device.camera: true
         com.apple.security.device.audio-input: true
         # Read-only, and only when the user picks a file to send.
