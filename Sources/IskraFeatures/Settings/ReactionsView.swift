@@ -11,8 +11,8 @@ import IskraDesign
 ///
 /// The choice is any emoji, not one of six. It used to be one of six — the same six the menu bar
 /// offers — and the restriction had no reason behind it beyond the type the setting happened to
-/// be stored as: somebody whose reaction is 🔥 had to settle for one of somebody else's. So the
-/// row of six is still here, because it is one tap and it is what most people want, and behind
+/// be stored as: somebody whose reaction is 🔥 had to settle for one of somebody else's. So a
+/// row of five of them is still here, because it is one tap and it is what most people want, and behind
 /// the "+" at the end of it is the whole catalogue — the *same* `EmojiPanel` the context menu
 /// opens, so this screen can never offer a reaction a message cannot be given.
 ///
@@ -36,32 +36,30 @@ struct ReactionsView: View {
     /// `@AppStorage`, because the environment is what the rest of the app is actually painted in.
     @Environment(\.accent) private var accent
 
-    /// Sized by the emoji, not by a column count — the six shortcuts and the "+" are one
-    /// comfortable row on a Mac and a wrapped pair of rows on a phone, and neither has to be
-    /// spelled out.
+    /// Sized by the emoji, not by a column count — the five shortcuts and the "+" are one
+    /// row on a Mac and on a phone, and neither has to be spelled out.
     private var columns: [GridItem] {
         [GridItem(.adaptive(minimum: Theme.Size.swatch), spacing: Theme.Spacing.roomy)]
     }
 
-    /// The emoji in force, when it is not one of the six.
+    /// The emoji across the row: the first five of `QuickReaction`, and the "+" after them makes
+    /// six — one row on a phone, where the six and a "+" wrapped the "+" onto a line of its own.
     ///
-    /// Without this the screen would show six unlit circles to somebody who has chosen 🔥 —
-    /// a setting with no visible value, on the screen that exists to show it. It joins the row
-    /// at the end, lit, where the "+" that put it there was.
-    private var chosenBeyondTheSix: String? {
-        QuickReaction.keys.contains(reaction) ? nil : reaction
+    /// When the emoji in force is not one of the five it takes the fifth place, lit. Without that
+    /// the screen would show five unlit circles to somebody who has chosen 🔥 — a setting with no
+    /// visible value, on the screen that exists to show it — and adding it as a seventh would
+    /// wrap the row again.
+    private var row: [String] {
+        let shortcuts = Array(QuickReaction.keys.prefix(5))
+        return shortcuts.contains(reaction) ? shortcuts : shortcuts.dropLast() + [reaction]
     }
 
     var body: some View {
         Form {
             Section {
                 LazyVGrid(columns: columns, spacing: Theme.Spacing.roomy) {
-                    ForEach(QuickReaction.allCases) { candidate in
-                        swatch(candidate.key)
-                    }
-
-                    if let chosen = chosenBeyondTheSix {
-                        swatch(chosen)
+                    ForEach(row, id: \.self) { emoji in
+                        swatch(emoji)
                     }
 
                     more
@@ -107,7 +105,7 @@ struct ReactionsView: View {
         .accessibilityAddTraits(emoji == reaction ? [.isButton, .isSelected] : .isButton)
     }
 
-    /// Everything that is not one of the six. The same plus sign, in the same place, as the one
+    /// Everything that is not one of the five. The same plus sign, in the same place, as the one
     /// on the bar above a lifted message — it opens the same picker, and that is the point of it
     /// looking identical.
     private var more: some View {
