@@ -282,7 +282,7 @@ public extension Color {
         #elseif canImport(AppKit)
         Color(nsColor: NSColor(name: nil) { appearance in
             appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-                ? NSColor(srgbRed: 0x16 / 255, green: 0x16 / 255, blue: 0x18 / 255, alpha: 1)
+                ? NSColor(srgbRed: 0x16 / 255, green: 0x16 / 255, blue: 0x16 / 255, alpha: 1)
                 : .white
         })
         #else
