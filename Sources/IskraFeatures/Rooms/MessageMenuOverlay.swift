@@ -11,11 +11,11 @@ import IskraDesign
 struct MessageMenuOverlay: View {
     let presenter: MessageMenuPresenter
 
-    /// Whether the "+" has been pressed and the six have become all of them.
+    /// Whether the "+" has been pressed and the five have become all of them.
     ///
     /// Kept here rather than in the presentation, because it is a fact about this *opening* of
     /// the menu and not about the message — closing and reopening on the same bubble starts
-    /// again with the six, which is what anybody would expect.
+    /// again with the five, which is what anybody would expect.
     @State private var isPickingEmoji = false
 
     /// The emoji this person has reached for lately, at the top of the panel — see `RecentEmoji`.
@@ -445,11 +445,11 @@ private struct MessageMenuRowStyle: ButtonStyle {
     }
 }
 
-// MARK: - The six
+// MARK: - The five
 
 /// The bar of quick reactions over the lifted message.
 ///
-/// The same six as the double tap chooses from — see `QuickReaction`, which is the one list —
+/// The same five as the double tap chooses from — see `QuickReaction`, which is the one list —
 /// and a "+" at the end for everything else. Capsule, glass, floating: the navigation layer
 /// doing exactly what the material is for.
 struct ReactionBar: View {
@@ -487,7 +487,7 @@ struct ReactionBar: View {
 
     private static var cells: CGFloat { CGFloat(QuickReaction.allCases.count + 1) }
 
-    /// Seven full cells and the capsule's padding: the width the bar asks for when the screen
+    /// Six full cells and the capsule's padding: the width the bar asks for when the screen
     /// has the room. It used to be stretched to the emoji panel's 360 points, which spread the
     /// six across the capsule with a thumb's width of nothing between each pair — a row of
     /// separate buttons rather than one strip. Hugging its cells, the gap between two emoji is
@@ -496,9 +496,9 @@ struct ReactionBar: View {
         cells * Theme.Size.reactionCell + Theme.Spacing.close * 2
     }
 
-    /// Seven things in the width of the bar: six emoji and the "+".
+    /// Six things in the width of the bar: five emoji and the "+".
     ///
-    /// Worked out rather than fixed, because on the narrowest screen seven 44-point circles
+    /// Worked out rather than fixed, because on the narrowest screen six 44-point circles
     /// come to more than there is — and an `HStack` handed more than it has room for does not
     /// shrink politely, it draws past the capsule it is inside and out over the conversation.
     private var cell: CGFloat {

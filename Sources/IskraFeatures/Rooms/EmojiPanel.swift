@@ -97,13 +97,14 @@ struct EmojiPanel: View {
             ScrollView {
                     LazyVStack(alignment: .leading, spacing: Theme.Spacing.close) {
                         if !recent.isEmpty {
-                            // Six across, whatever the panel's width, so the twelve most recent
-                            // land as two tidy rows under the six on the bar outside — the same
-                            // emoji in the same places, which is the whole reason to keep them.
+                            // As many across as the bar outside has cells — the five and its
+                            // "+" — whatever the panel's width, so the twelve most recent land as
+                            // two tidy rows on the same columns, which is the whole reason to keep
+                            // them.
                             section(id: "recent",
                                     title: Strings.Reactions.recent,
                                     emoji: recent,
-                                    across: QuickReaction.allCases.count)
+                                    across: QuickReaction.allCases.count + 1)
                         }
 
                         ForEach(EmojiCatalog.categories) { category in
@@ -176,7 +177,7 @@ struct EmojiPanel: View {
         var y: CGFloat = 0
         if !recent.isEmpty {
             if id == "recent" { return 0 }
-            y += height(rows: recent.count, across: QuickReaction.allCases.count)
+            y += height(rows: recent.count, across: QuickReaction.allCases.count + 1)
         }
         for category in EmojiCatalog.categories {
             if category.id == id { return y }

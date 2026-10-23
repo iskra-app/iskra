@@ -21,7 +21,7 @@ import IskraDesign
 struct ReactionsView: View {
     /// What a double tap on a message leaves behind — see `QuickReaction`.
     ///
-    /// A `String`, and any emoji at all. The six in `QuickReaction` are the shortcuts.
+    /// A `String`, and any emoji at all. The five in `QuickReaction` are the shortcuts.
     @AppStorage(QuickReaction.storageKey) private var reaction = QuickReaction.defaultKey
 
     /// The emoji reached for lately, shown at the top of the picker. The same list the menu
@@ -42,15 +42,15 @@ struct ReactionsView: View {
         [GridItem(.adaptive(minimum: Theme.Size.swatch), spacing: Theme.Spacing.roomy)]
     }
 
-    /// The emoji across the row: the first five of `QuickReaction`, and the "+" after them makes
-    /// six — one row on a phone, where the six and a "+" wrapped the "+" onto a line of its own.
+    /// The emoji across the row: the five of `QuickReaction`, and the "+" after them makes six —
+    /// one row on a phone, where six and a "+" wrapped the "+" onto a line of its own.
     ///
     /// When the emoji in force is not one of the five it takes the fifth place, lit. Without that
     /// the screen would show five unlit circles to somebody who has chosen 🔥 — a setting with no
     /// visible value, on the screen that exists to show it — and adding it as a seventh would
     /// wrap the row again.
     private var row: [String] {
-        let shortcuts = Array(QuickReaction.keys.prefix(5))
+        let shortcuts = QuickReaction.keys
         return shortcuts.contains(reaction) ? shortcuts : shortcuts.dropLast() + [reaction]
     }
 
