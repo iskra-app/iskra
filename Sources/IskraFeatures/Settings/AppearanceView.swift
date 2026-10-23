@@ -173,13 +173,16 @@ struct AppearanceView: View {
                 bubble(Strings.Appearance.previewFollowUp, isOwn: false)
 
             case .compact:
-                line(Strings.Appearance.previewAsk, from: Strings.Appearance.previewSender)
-                line(Strings.Appearance.previewAnswer, from: Strings.Message.Spoken.you)
-                line(Strings.Appearance.previewReply, from: Strings.Appearance.previewSender)
+                line(Strings.Appearance.previewAsk, from: Strings.Appearance.previewSender,
+                     seed: Self.previewSenderSeed)
+                line(Strings.Appearance.previewAnswer, from: Strings.Message.Spoken.you,
+                     seed: Self.previewOwnSeed)
+                line(Strings.Appearance.previewReply, from: Strings.Appearance.previewSender,
+                     seed: Self.previewSenderSeed)
                 // No name: the fourth line is the second from the same person, and a run carries
                 // one header. This is the whole of what the layout does, so the preview has to
                 // have a run in it to show.
-                line(Strings.Appearance.previewFollowUp, from: nil)
+                line(Strings.Appearance.previewFollowUp, from: nil, seed: nil)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -232,20 +235,45 @@ struct AppearanceView: View {
     /// menu with it, so a long press on a conversation that never happened would offer to delete
     /// a message that does not exist. What is being shown here is the shape, and the shape is
     /// four lines and two names.
+    ///
+    /// With the face beside the name, as the real row has it: without it the sketch showed a
+    /// column of text the reader's rooms would never look like. The face is drawn from a made-up
+    /// seed per person — nobody real is in this conversation — and a line under the same
+    /// person's header gets an empty column of the face's width, so the run lines up as it does
+    /// in a room.
     @ViewBuilder
-    private func line(_ text: LocalizedStringResource, from sender: LocalizedStringResource?) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-            if let sender {
-                Text(sender)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
+    private func line(_ text: LocalizedStringResource, from sender: LocalizedStringResource?,
+                      seed: String?) -> some View {
+        HStack(alignment: .top, spacing: Theme.Spacing.close) {
+            if let sender, let seed {
+                Avatar(name: String(app: sender), url: nil,
+                       size: Theme.Size.avatarSmall, seed: seed)
+            } else {
+                Color.clear.frame(width: avatarSize, height: 0)
             }
 
-            Text(text)
-                .font(.callout)
+            VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                if let sender {
+                    Text(sender)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
+
+                Text(text)
+                    .font(.callout)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
+
+    /// The seeds the preview's two faces are drawn from — fixed, so the faces do not change
+    /// from one visit to the next, and not anybody's Matrix ID.
+    private static let previewSenderSeed = "@preview-sender:iskra.wtf"
+    private static let previewOwnSeed = "@preview-you:iskra.wtf"
+
+    /// The width of the face in the compact preview, grown with the text as `Avatar` grows it,
+    /// so that the empty column under a run is exactly as wide as the face over it.
+    @ScaledSize(Theme.Size.avatarSmall) private var avatarSize
 
     /// The wallpapers, in a row you scroll: nothing, six gradients, and your own photograph.
     ///
