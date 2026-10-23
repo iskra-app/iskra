@@ -314,6 +314,10 @@
 "settings.language" = "言語";
 "settings.language.system" = "システムと同じ";
 "settings.language.help" = "メニューとシステムのウインドウは再起動後に切り替わります。";
+"settings.language.restartTitle" = "Iskraを再起動しますか？";
+"settings.language.restartMessage" = "メニューとシステムのウインドウは、再起動後に新しい言語に切り替わります。";
+"settings.language.restart" = "再起動";
+"settings.language.restartLater" = "後で";
 
 /* The app's name under the icon on the About screen. Not translated — it is what the app is
    called in both languages. */

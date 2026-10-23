@@ -13,6 +13,10 @@ struct LanguageView: View {
     /// also tells the system.
     @AppStorage(AppLanguage.key) private var stored = ""
 
+    /// Whether "Restart now?" is up — asked after every change, since the menus take a language
+    /// only at launch.
+    @State private var isOfferingRestart = false
+
     var body: some View {
         Form {
             Section {
@@ -24,11 +28,21 @@ struct LanguageView: View {
         }
         .formStyle(.groupedRows)
         .navigationTitle(Text(Strings.Settings.language))
+        #if os(macOS)
+        .alert(Text(Strings.Settings.languageRestartTitle), isPresented: $isOfferingRestart) {
+            Button(String(app: Strings.Settings.languageRestart)) { Relaunch.now() }
+            Button(String(app: Strings.Settings.languageRestartLater), role: .cancel) {}
+        } message: {
+            Text(Strings.Settings.languageRestartMessage)
+        }
+        #endif
     }
 
     private func row(_ code: String?) -> some View {
         Button {
+            guard AppLanguage.chosen != code else { return }
             AppLanguage.chosen = code
+            isOfferingRestart = true
         } label: {
             HStack {
                 if let code {

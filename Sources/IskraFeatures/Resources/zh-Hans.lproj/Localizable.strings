@@ -314,6 +314,10 @@
 "settings.language" = "语言";
 "settings.language.system" = "跟随系统";
 "settings.language.help" = "菜单和系统窗口将在重启后切换。";
+"settings.language.restartTitle" = "重新启动 Iskra？";
+"settings.language.restartMessage" = "菜单和系统窗口将在重新启动后切换为新语言。";
+"settings.language.restart" = "重新启动";
+"settings.language.restartLater" = "稍后";
 
 /* The app's name under the icon on the About screen. Not translated — it is what the app is
    called in both languages. */

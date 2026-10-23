@@ -283,6 +283,10 @@
 "settings.language" = "Язык";
 "settings.language.system" = "Как в системе";
 "settings.language.help" = "Меню и системные окна переключатся после перезапуска.";
+"settings.language.restartTitle" = "Перезапустить Iskra?";
+"settings.language.restartMessage" = "Меню и системные окна переключатся на новый язык после перезапуска.";
+"settings.language.restart" = "Перезапустить";
+"settings.language.restartLater" = "Позже";
 
 /* Имя приложения под иконкой на экране «Об Iskra». Не переводится: так приложение называется
    на обоих языках. */

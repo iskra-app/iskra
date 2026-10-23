@@ -314,6 +314,10 @@
 "settings.language" = "Sprache";
 "settings.language.system" = "Wie im System";
 "settings.language.help" = "Menüs und Systemfenster wechseln nach einem Neustart.";
+"settings.language.restartTitle" = "Iskra neu starten?";
+"settings.language.restartMessage" = "Menüs und Systemfenster wechseln nach einem Neustart in die neue Sprache.";
+"settings.language.restart" = "Neu starten";
+"settings.language.restartLater" = "Später";
 
 /* The app's name under the icon on the About screen. Not translated — it is what the app is
    called in both languages. */

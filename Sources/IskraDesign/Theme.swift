@@ -78,6 +78,10 @@ public enum Theme {
         /// of its fade. Not nothing: faded all the way out, the edges read as two solid bands
         /// cut across the room rather than as messages passing underneath. See `RoomView`.
         public static let timelineFadeFloor: Double = 0.3
+        /// The words of a form's button on a Mac while it is held down, and while it cannot be
+        /// pressed at all. See `FormRows`.
+        public static let rowPressed: Double = 0.6
+        public static let rowDisabled: Double = 0.4
     }
 
     public enum Spacing {
@@ -660,7 +664,13 @@ public enum Theme {
         public static let uploadRing: CGFloat = 48
         /// One of the round glass buttons under a person's portrait — `ProfileActionTile`. A size a
         /// thumb lands on without aiming, with the word under it rather than inside.
+        /// On a Mac, a third smaller: a pointer needs no thumb's room, and at the phone's size four
+        /// of them under a name in a 320-point column read as the page's headline.
+        #if os(macOS)
+        public static let profileAction: CGFloat = 36
+        #else
         public static let profileAction: CGFloat = 56
+        #endif
         /// The QR code on its own screen — `QRCodeSheet`. Large enough for a camera across a table,
         /// small enough to leave the name and the face above it on a small phone.
         public static let qrCode: CGFloat = 240

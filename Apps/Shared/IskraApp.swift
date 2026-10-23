@@ -76,6 +76,8 @@ struct IskraApp: App {
         // bundle ID twice — shares the store, the Keychain and the refresh token with the first, and
         // the two refreshing it in turn is how accounts used to vanish. So the second one hands over
         // to the first and goes. See `AppEnvironment.processName`.
+        // Unless it is a relaunch, whose new copy waits for the old one to quit first.
+        Relaunch.waitForPredecessor()
         let me = ProcessInfo.processInfo.processIdentifier
         if let bundleID = Bundle.main.bundleIdentifier,
            let other = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)

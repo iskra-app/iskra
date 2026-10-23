@@ -314,6 +314,10 @@
 "settings.language" = "Language";
 "settings.language.system" = "Same as system";
 "settings.language.help" = "Menus and system windows switch after a restart.";
+"settings.language.restartTitle" = "Restart Iskra?";
+"settings.language.restartMessage" = "Menus and system windows switch to the new language after a restart.";
+"settings.language.restart" = "Restart";
+"settings.language.restartLater" = "Later";
 
 /* The app's name under the icon on the About screen. Not translated — it is what the app is
    called in both languages. */

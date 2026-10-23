@@ -33,6 +33,13 @@ struct ProfileActionTileLabel: View {
     @Environment(\.accent) private var accent
     @Environment(\.isEnabled) private var isEnabled
 
+    /// The symbol, scaled with its circle — see `Theme.Size.profileAction`.
+    #if os(macOS)
+    private static let symbol: Font = .body
+    #else
+    private static let symbol: Font = .title3
+    #endif
+
     var body: some View {
         VStack(spacing: Theme.Spacing.tight) {
             ZStack {
@@ -40,7 +47,7 @@ struct ProfileActionTileLabel: View {
                     ProgressView()
                 } else {
                     Image(systemName: systemImage)
-                        .font(.title3.weight(.medium))
+                        .font(Self.symbol.weight(.medium))
                         .foregroundStyle(accent.color)
                         .contentTransition(.symbolEffect(.replace))
                 }

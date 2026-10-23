@@ -314,6 +314,10 @@
 "settings.language" = "Langue";
 "settings.language.system" = "Comme le système";
 "settings.language.help" = "Les menus et les fenêtres du système changent au redémarrage.";
+"settings.language.restartTitle" = "Redémarrer Iskra ?";
+"settings.language.restartMessage" = "Les menus et les fenêtres du système passeront à la nouvelle langue après un redémarrage.";
+"settings.language.restart" = "Redémarrer";
+"settings.language.restartLater" = "Plus tard";
 
 /* The app's name under the icon on the About screen. Not translated — it is what the app is
    called in both languages. */

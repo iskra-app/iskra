@@ -1938,6 +1938,12 @@ public enum Strings {
         public static let languageSystem = LocalizedStringResource("settings.language.system", bundle: bundle)
         /// Under the list: what does not change until the app is started again.
         public static let languageHelp = LocalizedStringResource("settings.language.help", bundle: bundle)
+        /// Asked on a Mac after the language changes: the menus and the system's windows take it
+        /// only at launch.
+        public static let languageRestartTitle = LocalizedStringResource("settings.language.restartTitle", bundle: bundle)
+        public static let languageRestartMessage = LocalizedStringResource("settings.language.restartMessage", bundle: bundle)
+        public static let languageRestart = LocalizedStringResource("settings.language.restart", bundle: bundle)
+        public static let languageRestartLater = LocalizedStringResource("settings.language.restartLater", bundle: bundle)
 
         public static let storage = LocalizedStringResource("settings.storage", bundle: bundle)
         /// What happens to a photo or a video before it is sent — see `Strings.Media`.

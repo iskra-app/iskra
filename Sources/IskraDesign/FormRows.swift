@@ -66,16 +66,32 @@ private struct MacGroupedForm: View {
     }
 }
 
-/// A form's own buttons as the Mac draws them, except that a `.destructive` one is red — as it is on
-/// the phone, where the role alone does it and the Mac's push button ignores it. A button that
+/// A form's buttons as rows: the words on the card itself, and the whole width of the card to press.
+///
+/// The Mac's push button drew a small plate of its own on the card — a box inside a box, and a target
+/// no wider than its words. The words keep their colour: the label's own, or red for a `.destructive`
+/// one, as on the phone, where the role alone does it and the Mac's button ignores it. A button that
 /// chose a style of its own keeps it: that style is nearer to it than this one.
 private struct RoleColouredButtonStyle: PrimitiveButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         Button(role: configuration.role, action: configuration.trigger) {
             configuration.label
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(.rect)
         }
-        .buttonStyle(.automatic)
+        .buttonStyle(RowButtonStyle())
         .destructiveTint(configuration.role == .destructive)
+    }
+}
+
+/// No plate, and a press shown by the words dimming — as a row in the sidebar answers one.
+private struct RowButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(!isEnabled ? Theme.Opacity.rowDisabled
+                     : configuration.isPressed ? Theme.Opacity.rowPressed : 1)
     }
 }
 #endif
