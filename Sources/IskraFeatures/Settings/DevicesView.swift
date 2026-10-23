@@ -117,7 +117,7 @@ struct DevicesView: View {
             Button(role: .cancel) {} label: { Text(Strings.Devices.cancel) }
         }
         .endingSessions(store)
-        .sheet(item: $inspecting) { device in
+        .pageSheet(item: $inspecting) { device in
             DeviceDetailSheet(device: device, store: store)
         }
     }

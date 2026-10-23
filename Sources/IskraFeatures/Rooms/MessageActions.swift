@@ -222,20 +222,20 @@ struct MessageActions<Content: View>: View {
             } message: {
                 Text(Strings.Poll.endConfirmMessage)
             }
-            .sheet(isPresented: $isReporting) {
+            .pageSheet(isPresented: $isReporting) {
                 ReportSheet(onReport: handlers.onReport)
             }
-            .sheet(isPresented: $isForwarding) {
+            .pageSheet(isPresented: $isForwarding) {
                 if let forwarding {
                     ForwardPicker(message: message, forwarding: forwarding)
                 }
             }
-            .sheet(isPresented: $isShowingReactors) {
+            .pageSheet(isPresented: $isShowingReactors) {
                 if let load = handlers.loadReactors {
                     ReactorsSheet(reactions: message.reactions, load: load, loadReaders: handlers.loadReaders)
                 }
             }
-            .sheet(item: $source) { source in
+            .pageSheet(item: $source) { source in
                 EventSourceSheet(json: source.json)
             }
     }

@@ -111,7 +111,7 @@ struct RecoverySetupView: View {
         // The picture-comparison sheet, exactly the one the settings screen puts up and exactly the
         // one that answers an incoming request at the root. It was written to work in both directions
         // and it does; there is no second copy of it here.
-        .sheet(isPresented: $isConfirming) {
+        .pageSheet(isPresented: $isConfirming) {
             VerificationSheet(verification: model.verification) {
                 isConfirming = false
                 model.verification.reset()

@@ -94,7 +94,7 @@ struct ProfileEditView: View {
             Task { await choosePicture(item) }
         }
         // Cut to a square before it goes anywhere — see `AvatarCropper`.
-        .sheet(item: $cropping) { request in
+        .pageSheet(item: $cropping) { request in
             AvatarCropper(image: request.image,
                           onCancel: { cropping = nil },
                           onDone: { data in

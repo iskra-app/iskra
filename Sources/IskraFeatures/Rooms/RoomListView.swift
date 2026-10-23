@@ -178,7 +178,7 @@ public struct RoomListView: View {
                            onEdit: { isEditingFolders = true })
             }
         }
-        .sheet(isPresented: $isEditingFolders) {
+        .pageSheet(isPresented: $isEditingFolders) {
             NavigationStack {
                 FoldersView(folders: session.folders, roomList: session.roomList)
                     .toolbar {
@@ -261,7 +261,7 @@ public struct RoomListView: View {
         // because it is the same kind of interruption, and somebody in the account who should not
         // be is worth it. See `NewSignInBanner`.
         .newSignIns(for: session)
-        .sheet(isPresented: $isFixingRecovery) {
+        .pageSheet(isPresented: $isFixingRecovery) {
             // With a way out, unlike the copy of this the root puts up after signing in. There it is
             // a gate; here it is a sheet somebody opened out of curiosity about a banner, and a
             // curious person must be allowed to leave. The banner does not go anywhere — it will ask
@@ -365,7 +365,7 @@ public struct RoomListView: View {
         // A sheet, not a push: creating a chat is a question with a Cancel, and the answer
         // to it replaces what is *behind* this column — so it is a thing you put down, not
         // a place you go back from.
-        .sheet(isPresented: $isStartingChat) {
+        .pageSheet(isPresented: $isStartingChat) {
             NewChatView(session: session) { roomID in
                 // Openable already: creating and joining both wait for the SDK to have the
                 // room, so selecting it here does not race the sync that will put it in the

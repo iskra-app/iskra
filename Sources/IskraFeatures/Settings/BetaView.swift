@@ -148,7 +148,7 @@ struct BetaView: View {
         #if os(iOS)
         .fullScreenCover(item: $demoServer) { server in demoSignIn(server.address) }
         #else
-        .sheet(item: $demoServer) { server in
+        .pageSheet(item: $demoServer) { server in
             demoSignIn(server.address)
                 .frame(minWidth: Theme.Size.signInColumn, minHeight: Theme.Size.signInColumn * 4 / 3)
         }

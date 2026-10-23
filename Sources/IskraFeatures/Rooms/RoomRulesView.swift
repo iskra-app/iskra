@@ -72,7 +72,7 @@ struct RoomRulesView: View {
         .navigationBarTitleDisplayMode(.inline)
         #endif
         .memberProfiles($openedMember, details: details)
-        .sheet(isPresented: $isAppointing) {
+        .pageSheet(isPresented: $isAppointing) {
             AppointSheet(candidates: candidates,
                          roles: appointableRoles(for:),
                          appoint: { member, role in Task { await details.setRole(role, for: member) } })

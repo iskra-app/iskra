@@ -26,6 +26,12 @@ public struct GroupedRowsFormStyle: FormStyle {
     }
 }
 
+extension EnvironmentValues {
+    /// The page a grouped form stands on, on a Mac: the settings page (`Color.groupedPage`), or the
+    /// chat's in a sheet, which stands on the chat's page whole.
+    @Entry public var formPage: Color = .groupedPage
+}
+
 #if os(macOS)
 /// The Mac's grouped form, with its cards no wider than `Theme.Size.formCardMaximum`.
 ///
@@ -38,6 +44,9 @@ public struct GroupedRowsFormStyle: FormStyle {
 /// what stops that: the column, not the margin, decides how narrow the page can go.
 private struct MacGroupedForm: View {
     let configuration: FormStyleConfiguration
+
+    /// What the form stands on — the settings page, unless it is in a sheet.
+    @Environment(\.formPage) private var page
 
     /// The width the page was last given, from which the margins are worked out.
     @State private var width: CGFloat = 0
@@ -62,7 +71,8 @@ private struct MacGroupedForm: View {
         .frame(minWidth: 0, maxWidth: .infinity)
         .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { width = $0 }
         // The phone's grouped page under the form, not the window's grey — see `Color.groupedPage`.
-        .background(Color.groupedPage)
+        // Or, in a sheet, the chat's — see `formPage`.
+        .background(page)
     }
 }
 

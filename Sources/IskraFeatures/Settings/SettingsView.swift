@@ -309,7 +309,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.groupedRows)
-        .sheet(isPresented: $isShowingCode) {
+        .pageSheet(isPresented: $isShowingCode) {
             QRCodeSheet(name: session.displayName, subtitle: session.userID,
                         avatarURL: session.avatarURL, seed: session.userID,
                         link: .user(session.userID))

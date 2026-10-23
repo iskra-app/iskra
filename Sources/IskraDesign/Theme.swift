@@ -701,6 +701,9 @@ public enum Theme {
         /// The column a symbol stands in at the start of a form row on a Mac (`FormRows.swift`):
         /// as wide as the widest symbol the rows use, so every title starts at the same place.
         public static let rowIcon: CGFloat = 20
+        /// The same column beside the larger words of the "New chat" sheet's actions on a Mac — wide
+        /// enough for `person.3`, the widest symbol there, at that size.
+        public static let actionRowIcon: CGFloat = 32
 
         /// A colour to choose the app's accent from, on the appearance screen. A full tap
         /// target: a swatch is a button, and a colour you have to aim at is a colour you

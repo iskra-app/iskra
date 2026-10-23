@@ -228,7 +228,7 @@ struct RoomEditView: View {
         }
         // Cut to a square before it goes anywhere — see `AvatarCropper`. A space's face is a
         // rounded square, and the outline in the cropper says so.
-        .sheet(item: $cropping) { request in
+        .pageSheet(item: $cropping) { request in
             AvatarCropper(image: request.image,
                           shape: details.kind == .space ? .roundedSquare : .circle,
                           onCancel: { cropping = nil },

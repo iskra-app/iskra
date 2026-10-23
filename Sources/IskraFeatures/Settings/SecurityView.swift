@@ -149,7 +149,7 @@ struct SecurityView: View {
         // session and outlive this screen — `load()` is called once, when the session starts. Tearing
         // either down on the way out would unhook a listener the rest of the app is reading: the
         // banner in the room list watches the same recovery state this screen does.
-        .sheet(isPresented: $isVerifying) {
+        .pageSheet(isPresented: $isVerifying) {
             VerificationSheet(verification: verification) {
                 isVerifying = false
                 verification.reset()
@@ -174,7 +174,7 @@ struct SecurityView: View {
         } message: {
             Text(Strings.Recovery.newMessage)
         }
-        .sheet(item: $freshCode) { code in
+        .pageSheet(item: $freshCode) { code in
             // No "skip" here, unlike the setup flow: nobody arrives on this sheet by accident. They
             // pressed a button that says "make me a new code", and there is nothing to nag them
             // about afterwards that they have not just done on purpose.

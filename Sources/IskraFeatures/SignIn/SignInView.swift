@@ -69,10 +69,10 @@ public struct SignInView: View {
         .animation(.smooth, value: model.step)
         .animation(.smooth, value: model.problem)
         .animation(.smooth, value: model.canTryBridge)
-        .sheet(isPresented: $isPickingServer) {
+        .pageSheet(isPresented: $isPickingServer) {
             ServerPickerView { model.address = $0 }
         }
-        .sheet(isPresented: $isReadingAboutMatrix) {
+        .pageSheet(isPresented: $isReadingAboutMatrix) {
             AboutMatrixView()
         }
     }

@@ -112,7 +112,7 @@ private struct NewSignIns: ViewModifier {
                 }
             }
             .animation(.smooth(duration: Theme.Timing.chrome), value: store?.sessions.map(\.id))
-            .sheet(item: $denying) { denial in
+            .pageSheet(item: $denying) { denial in
                 DeviceDetailSheet(device: denial.device, store: denial.devices) {
                     store?.ended(denial.device.id)
                 }

@@ -149,7 +149,7 @@ struct RoomInfoView: View {
         .mediaViewer(item: $openedMedia) { opened in
             MediaPager(items: photos, startIndex: opened.value)
         }
-        .sheet(isPresented: $isShowingCode) {
+        .pageSheet(isPresented: $isShowingCode) {
             if let link {
                 QRCodeSheet(name: details.name,
                             subtitle: details.counterpartID ?? details.canonicalAlias ?? details.roomID,
@@ -183,7 +183,7 @@ struct RoomInfoView: View {
             details.stop()
         }
         // The people to invite are chosen from the same list "New chat" opens on — see `InviteView`.
-        .sheet(isPresented: $isInviting) {
+        .pageSheet(isPresented: $isInviting) {
             if let personalChats {
                 InviteView(details: details, people: personalChats)
                     .listSheetSize()

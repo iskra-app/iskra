@@ -131,7 +131,7 @@ struct FoldersView: View {
             }
         }
         #endif
-        .sheet(item: $editing) { folder in
+        .pageSheet(item: $editing) { folder in
             FolderEditor(folder: folder,
                          isNew: !folders.folders.contains { $0.id == folder.id },
                          rooms: roomList.rooms + roomList.archivedRooms,
@@ -220,7 +220,7 @@ struct FolderEditor: View {
                     .disabled(!folder.isMeaningful)
                 }
             }
-            .sheet(item: $choosing) { side in
+            .pageSheet(item: $choosing) { side in
                 ChatChooser(rooms: rooms.filter { !$0.isInvitation },
                             chosen: Set(side == .included ? folder.included : folder.excluded)) { chosen in
                     let ordered = rooms.map(\.id).filter(chosen.contains)

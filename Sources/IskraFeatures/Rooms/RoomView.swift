@@ -1447,7 +1447,7 @@ public struct RoomView: View {
                 .outsideToolbarGlass()
             }
         }
-        .sheet(item: $roomSearch) { search in
+        .pageSheet(item: $roomSearch) { search in
             RoomSearchView(store: search) { eventID in
                 roomSearch = nil
                 // The same road a reply takes: paginate back until the message is loaded, then
@@ -1523,18 +1523,18 @@ public struct RoomView: View {
         .fullScreenCover(item: $editingPhoto) { photoEditor($0) }
         .onChange(of: editingPhoto != nil) { _, isOpen in isCoveredByMedia = isOpen }
         #else
-        .sheet(item: $editingPhoto) { photoEditor($0) }
+        .pageSheet(item: $editingPhoto) { photoEditor($0) }
         #endif
         #if os(iOS)
-        .sheet(isPresented: $isChoosingSticker) { stickerPicker }
+        .pageSheet(isPresented: $isChoosingSticker) { stickerPicker }
         #endif
-        .sheet(isPresented: $isCreatingPoll) {
+        .pageSheet(isPresented: $isCreatingPoll) {
             PollComposer { draft in
                 await timeline.send(poll: draft)
             }
         }
         .failureAlert(Binding(get: { liveLocation?.failure }, set: { liveLocation?.failure = $0 }))
-        .sheet(isPresented: $isChoosingLocation) {
+        .pageSheet(isPresented: $isChoosingLocation) {
             LocationPicker(onPick: { location in
                 await timeline.send(location: location, replyingTo: replyID)
                 cancelContext()
@@ -2121,7 +2121,7 @@ public struct RoomView: View {
             } message: {
                 Text(Strings.Message.Selection.deleteMessage)
             }
-            .sheet(isPresented: $isForwardingSelection, onDismiss: endSelection) {
+            .pageSheet(isPresented: $isForwardingSelection, onDismiss: endSelection) {
                 if let forwarding {
                     ForwardPicker(messages: chosen, forwarding: forwarding)
                 }

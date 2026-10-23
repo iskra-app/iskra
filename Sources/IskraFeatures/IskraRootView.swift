@@ -273,7 +273,7 @@ public struct IskraRootView: View {
                         incomingLink = nil
                         openedLink = OpenedLink(link: link)
                     }
-                    .sheet(item: $openedLink) { opened in
+                    .pageSheet(item: $openedLink) { opened in
                         NavigationStack {
                             MatrixLinkView(session: session, link: opened.link) { roomID in
                                 selectedRoomID = roomID
@@ -345,7 +345,7 @@ public struct IskraRootView: View {
                     // The sheet answers for itself: it cannot be swiped away while the question is
                     // on it, and it takes itself down when the store has nothing left to say. See
                     // `VerificationSheet`.
-                    .sheet(isPresented: Binding(get: { session.verification.incoming != nil },
+                    .pageSheet(isPresented: Binding(get: { session.verification.incoming != nil },
                                                 set: { if !$0 { session.verification.reset() } })) {
                         VerificationSheet(verification: session.verification,
                                           onDone: { session.verification.reset() },
@@ -499,7 +499,7 @@ public struct IskraRootView: View {
         }
         // "Add account": the sign-in screen over the app, with the account underneath still open
         // until the new one is in.
-        .sheet(isPresented: Binding(get: { switcher.isAddingAccount },
+        .pageSheet(isPresented: Binding(get: { switcher.isAddingAccount },
                                     set: { switcher.isAddingAccount = $0 }),
                onDismiss: { Task { await authentication.cancelSignIn() } },
                content: {

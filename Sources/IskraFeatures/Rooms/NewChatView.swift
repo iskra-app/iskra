@@ -54,7 +54,23 @@ struct NewChatView: View {
                         prompt: Text(Strings.RoomList.New.searchPrompt))
             .textInputAutocapitalization(.never)
             #else
-            .searchable(text: $query, prompt: Text(Strings.RoomList.New.searchPrompt))
+            // Under the title and over the list, as on the phone — not `.searchable`, which on a Mac
+            // puts the field in the toolbar's corner, over the title's head.
+            //
+            // The title over it, in the middle, as on the phone. In the toolbar a Mac sheet sets
+            // its title down after the room it keeps for a back button, and a sheet with nothing to
+            // go back to had its name standing a little way in from the edge for no visible reason.
+            .safeAreaInset(edge: .top, spacing: 0) {
+                VStack(spacing: Theme.Spacing.normal) {
+                    Text(Strings.RoomList.newChat)
+                        .font(.headline)
+                        .accessibilityAddTraits(.isHeader)
+                    SheetSearchField(text: $query, prompt: Strings.RoomList.New.searchPrompt)
+                }
+                .padding(.horizontal, Theme.Spacing.roomy)
+                .padding(.top, Theme.Spacing.roomy)
+                .padding(.bottom, Theme.Spacing.close)
+            }
             #endif
             .autocorrectionDisabled()
             .scrollDismissesKeyboard(.immediately)
@@ -68,6 +84,10 @@ struct NewChatView: View {
                     Button(String(app: Strings.Room.Manage.cancel)) { dismiss() }
                 }
             }
+            #if os(macOS)
+            // The title is drawn over the search field instead — see above.
+            .toolbar(removing: .title)
+            #endif
             .navigationDestination(for: Destination.self) { destination in
                 switch destination {
                 case .scan:
@@ -305,14 +325,69 @@ private struct ActionRow: View {
     let systemImage: String
 
     var body: some View {
+        #if os(macOS)
+        // By hand rather than a `Label`: a Mac list lays a label's symbol out at its own width,
+        // and `person.3`, the widest, pushed its words past the others'. One column for the
+        // symbols, so the words start in one place.
+        //
+        // And larger than a Mac list's own line of small print — the phone's row, near enough:
+        // these are the three things the sheet is for.
+        HStack(spacing: Theme.Spacing.normal) {
+            Image(systemName: systemImage)
+                .foregroundStyle(.tint)
+                .frame(width: Theme.Size.actionRowIcon)
+            Text(title)
+        }
+        .font(.title3)
+        .padding(.vertical, Theme.Spacing.close)
+        #else
         Label {
             Text(title)
         } icon: {
             Image(systemName: systemImage)
                 .foregroundStyle(.tint)
         }
+        #endif
     }
 }
+
+#if os(macOS)
+/// The search field the phone draws under a title, drawn by hand for a Mac sheet.
+private struct SheetSearchField: View {
+    @Binding var text: String
+    let prompt: LocalizedStringResource
+
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.close) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+            TextField(text: $text, prompt: Text(prompt)) {
+                Text(prompt)
+            }
+            .textFieldStyle(.plain)
+            .focused($isFocused)
+            if !text.isEmpty {
+                Button {
+                    text = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text(Strings.Room.Manage.cancel))
+            }
+        }
+        .font(.title3)
+        .padding(.horizontal, Theme.Spacing.normal)
+        .padding(.vertical, Theme.Spacing.close)
+        .background(.fill.tertiary, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
+        // Typing straight away, as the toolbar's field let you.
+        .onAppear { isFocused = true }
+    }
+}
+#endif
 
 /// A person: their face, their name, and a grey line under it.
 struct PersonRow: View {

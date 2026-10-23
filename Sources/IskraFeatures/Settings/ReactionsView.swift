@@ -79,7 +79,7 @@ struct ReactionsView: View {
         .formStyle(.groupedRows)
         .navigationTitle(Text(Strings.Settings.reactions))
         .toolbarTitleDisplayMode(.inline)
-        .sheet(isPresented: $isPickingEmoji) { picker }
+        .pageSheet(isPresented: $isPickingEmoji) { picker }
     }
 
     /// One emoji, pressable, lit when it is the one in force.

@@ -162,7 +162,7 @@ struct MemberProfileView: View {
         .formStyle(.groupedRows)
         .profileScreen()
         .failureAlert($failure)
-        .sheet(isPresented: $isShowingCode) {
+        .pageSheet(isPresented: $isShowingCode) {
             QRCodeSheet(name: member.name, subtitle: member.id, avatarURL: member.avatarURL,
                         seed: member.id, link: .user(member.id))
         }
