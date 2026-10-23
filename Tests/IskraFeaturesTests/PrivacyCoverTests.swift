@@ -25,4 +25,10 @@ struct PrivacyCoverTests {
         #expect(PrivacyCover.isNeeded(lockEnabled: true, phase: .inactive))
         #expect(PrivacyCover.isNeeded(lockEnabled: true, phase: .background))
     }
+
+    @Test("on a Mac, another app in front covers the window, whatever the scene says")
+    func anotherAppCovers() {
+        #expect(PrivacyCover.isNeeded(lockEnabled: true, phase: .active, appIsActive: false))
+        #expect(!PrivacyCover.isNeeded(lockEnabled: false, phase: .active, appIsActive: false))
+    }
 }
