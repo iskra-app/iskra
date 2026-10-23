@@ -22,19 +22,22 @@ struct AccentSwatches: View {
     }
 
     var body: some View {
+        #if os(macOS)
+        // One row of dots, at the end of a settings line that names it — the way every other
+        // setting on a Mac is laid out.
+        HStack(spacing: Theme.Spacing.normal) {
+            ForEach(AccentTheme.allCases) { theme in
+                swatch(theme)
+            }
+        }
+        #else
         LazyVGrid(columns: columns, spacing: Theme.Spacing.roomy) {
             ForEach(AccentTheme.allCases) { theme in
                 swatch(theme)
             }
         }
+        #endif
     }
-
-    /// The tick, scaled with the circle it sits in.
-    #if os(macOS)
-    private static let tick: Font = .caption2
-    #else
-    private static let tick: Font = .body
-    #endif
 
     private func swatch(_ theme: AccentTheme) -> some View {
         Button {
@@ -48,11 +51,14 @@ struct AccentSwatches: View {
                     // — which is the same question the app answers for the text in a bubble,
                     // and is answered in the same place. On the mono theme that is the one
                     // thing that keeps it visible at all.
+                    // Not on a Mac, where the dot is too small to hold one: the ring says it.
+                    #if !os(macOS)
                     if theme == accent {
                         Image(systemName: "checkmark")
-                            .font(Self.tick.weight(.bold))
+                            .font(.body.weight(.bold))
                             .foregroundStyle(theme.foreground)
                     }
+                    #endif
                 }
                 // A ring around the chosen one, set off the swatch so it reads as a ring and
                 // not as a border the colour happens to have. Without it the mono swatch —

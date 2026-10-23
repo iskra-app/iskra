@@ -2120,6 +2120,9 @@ public enum Strings {
         /// The one heading over light-or-dark, the colour and the wash: three answers to "what is
         /// the app painted in", kept in one card.
         public static let themeAndColors = LocalizedStringResource("appearance.themeAndColors", bundle: bundle)
+        /// The names of the two lines under it on a Mac, where a setting is named on its left.
+        public static let theme = LocalizedStringResource("appearance.theme", bundle: bundle)
+        public static let accent = LocalizedStringResource("appearance.accent", bundle: bundle)
         /// The heading over the faces picker — the same question the first run asks.
         public static let avatars = LocalizedStringResource("appearance.avatars", bundle: bundle)
 

@@ -84,5 +84,11 @@ private final class BandView: NSView {
 
     /// Clicks go through to whatever is under the band — it is paint, not a control.
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    /// Not a handle to drag the window by. A view that is not opaque says it is one by default,
+    /// and the window server takes a press in such a region for itself, before the app sees it:
+    /// with the band over the whole bar, nothing on it could be pressed — the toolbar's buttons
+    /// and the traffic lights alike — though `hitTest` above found every one of them.
+    override var mouseDownCanMoveWindow: Bool { false }
 }
 #endif

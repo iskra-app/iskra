@@ -527,6 +527,8 @@
 /* The Appearance screen: light or dark. "System" is the ordinary case and the default; the
    other two are for people whose phone is light while their messages ought to be dark. */
 "appearance.themeAndColors" = "Thème et couleurs";
+"appearance.theme" = "Thème";
+"appearance.accent" = "Couleur d’accent";
 "appearance.mode.system" = "Comme le système";
 "appearance.mode.light" = "Clair";
 "appearance.mode.dark" = "Sombre";

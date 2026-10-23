@@ -73,13 +73,28 @@ struct AppearanceView: View {
                         Text(Strings.Appearance.mode(mode)).tag(mode)
                     }
                 } label: {
+                    // On a Mac a setting is a line: its name on the left, the control on the
+                    // right, as "Compact view" above it is. On the phone the control is the line.
+                    #if os(macOS)
+                    Text(Strings.Appearance.theme)
+                    #else
                     EmptyView()
+                    #endif
                 }
                 .pickerStyle(.segmented)
 
-                // The same grid the first run asks the same question with — see `AccentSwatches`.
+                // See `AccentSwatches`: a grid on the phone, a row of dots at the end of a named
+                // line on a Mac.
+                #if os(macOS)
+                LabeledContent {
+                    AccentSwatches(accent: $accent)
+                } label: {
+                    Text(Strings.Appearance.accent)
+                }
+                #else
                 AccentSwatches(accent: $accent)
                     .padding(.vertical, Theme.Spacing.close)
+                #endif
 
                 Toggle(isOn: $tintsInterface.animation(.smooth(duration: Theme.Timing.reaction))) {
                     Text(Strings.Appearance.tintInterface)

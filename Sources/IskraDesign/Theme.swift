@@ -697,10 +697,11 @@ public enum Theme {
         /// pick by accident.
         public static let swatch: CGFloat = 44
 
-        /// The accent's circles in particular. On a Mac they are half the size: a pointer needs no
-        /// fingertip of room, and eight 44-point discs in a settings card read as buttons shouting.
+        /// The accent's circles in particular. On a Mac they are a row of dots at the end of a
+        /// settings line: a pointer needs no fingertip of room, and eight 44-point discs in a
+        /// settings card read as buttons shouting.
         #if os(macOS)
-        public static let accentSwatch: CGFloat = 24
+        public static let accentSwatch: CGFloat = 16
         #else
         public static let accentSwatch: CGFloat = swatch
         #endif
