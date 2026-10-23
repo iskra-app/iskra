@@ -83,6 +83,10 @@ struct IskraApp: App {
             other.activate()
             exit(0)
         }
+
+        // And one window in it — see `SingleWindowCommands`. Tabs are windows too: the "+" on the
+        // tab bar opened a second one past the menu.
+        NSWindow.allowsAutomaticWindowTabbing = false
         #endif
     }
 
@@ -121,7 +125,10 @@ struct IskraApp: App {
         .windowResizability(.contentMinSize)
         // As wide as it can be narrow: both side columns and the narrowest conversation between them.
         .defaultSize(width: Theme.Size.windowMinimum, height: 700)
-        .commands { AboutCommand() }
+        .commands {
+            AboutCommand()
+            SingleWindowCommands()
+        }
         #endif
     }
 }

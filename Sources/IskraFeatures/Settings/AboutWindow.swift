@@ -41,6 +41,19 @@ public struct AboutCommand: Commands {
     }
 }
 
+/// No "New Window" in the File menu, and no ⌘N for it.
+///
+/// Two windows are two copies of the whole app in one process — two room lists, two timelines on
+/// one room, two composers with the same draft — and nothing in it was built to be open twice. A
+/// messenger is one window, as Telegram's is on a Mac.
+public struct SingleWindowCommands: Commands {
+    public init() {}
+
+    public var body: some Commands {
+        CommandGroup(replacing: .newItem) {}
+    }
+}
+
 private struct AboutWindowContent: View {
     @AppStorage(AccentTheme.storageKey) private var accent: AccentTheme = .default
     @AppStorage(AppearanceMode.storageKey) private var appearance: AppearanceMode = .default
