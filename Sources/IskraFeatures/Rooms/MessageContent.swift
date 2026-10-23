@@ -222,10 +222,18 @@ struct MessageContent: View {
     /// its own, "yes, and it's at six" is not a sentence — so it travels with the words rather
     /// than floating over them. The bubble grows to hold it, which is exactly right: an answer
     /// carrying its question is a bigger thing than a bare line of text.
+    ///
+    /// The words sit closer under a quote than under "Forwarded from": the quote is a block with
+    /// its own edge, and a full line's gap under it pulled the answer away from its question.
     private func bubble(@ViewBuilder _ inner: () -> some View) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.close) {
-            forwarded
-            quote
+        VStack(alignment: .leading,
+               spacing: message.replyTo != nil ? Theme.Spacing.tight : Theme.Spacing.close) {
+            if message.forwardedFrom != nil || message.replyTo != nil {
+                VStack(alignment: .leading, spacing: Theme.Spacing.close) {
+                    forwarded
+                    quote
+                }
+            }
 
             inner()
                 .font(.body)
