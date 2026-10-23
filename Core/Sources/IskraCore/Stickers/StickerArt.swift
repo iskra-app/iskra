@@ -1,6 +1,6 @@
 import Foundation
 
-/// The stickers the app comes with — "Искорки": the pink spark with burgundy eyes, twelve moods.
+/// The stickers the app comes with — "Искорки": the pink spark with burgundy eyes, ten moods.
 ///
 /// Shipped as PNGs in `Resources/Stickers` (512 on a side, transparent, nothing in them but the
 /// picture), drawn by hand rather than in code. The same pictures stand in the demo's packs
@@ -11,7 +11,7 @@ import Foundation
 /// change to a picture is a change of what everybody already has — bump `version`, and every
 /// account uploads the set again on the next opening of the sheet.
 enum StickerArt: String, CaseIterable, Sendable {
-    case hello, joy, love, curious, surprise, sleepy, sad, grumpy, loading, unlocked, bypass, connected
+    case hello, joy, love, curious, surprise, sleepy, sad, grumpy, loading, unlocked
 
     /// Which set of pictures this is. Stored next to the uploaded set, and a set made by an older
     /// one is uploaded again. 1 was the faces drawn in Core Graphics.
@@ -30,8 +30,6 @@ enum StickerArt: String, CaseIterable, Sendable {
         case .grumpy: "😒"
         case .loading: "⏳"
         case .unlocked: "🔓"
-        case .bypass: "🏃"
-        case .connected: "📶"
         }
     }
 
