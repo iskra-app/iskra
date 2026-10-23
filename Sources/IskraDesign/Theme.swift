@@ -99,6 +99,10 @@ public enum Theme {
         public static let betweenSenders: CGFloat = 12
         /// Between two messages from the same person.
         public static let withinRun: CGFloat = 2
+        /// Between two messages from the same person in the compact column. Bubbles have their
+        /// own edges to tell two messages apart; plain lines have only the gap, and at
+        /// `withinRun` two messages read as one message on two lines.
+        public static let withinCompactRun: CGFloat = 8
         /// Between the pictures of an album — a hairline of the bubble showing through, as in
         /// Telegram, so the set reads as one thing made of several. See `AlbumMosaic`.
         public static let albumGap: CGFloat = 2
