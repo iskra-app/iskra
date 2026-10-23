@@ -90,6 +90,11 @@ public enum Theme {
         public static let normal: CGFloat = 12
         public static let roomy: CGFloat = 16
         public static let generous: CGFloat = 24
+        /// How far a Mac form's cell stands its row in from the cell's top and bottom. Not ours and
+        /// not a multiple of 4: it is the system's, measured, and it is how far a row's card is
+        /// painted past the row (`CardSection`) — any less leaves a grey line either side of each
+        /// separator, any more paints over the separator.
+        public static let formRowInset: CGFloat = 10
         /// Between two messages from different people.
         public static let betweenSenders: CGFloat = 12
         /// Between two messages from the same person.

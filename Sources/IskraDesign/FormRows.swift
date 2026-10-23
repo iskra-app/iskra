@@ -56,16 +56,19 @@ private struct MacGroupedForm: View {
     }
 
     var body: some View {
-        Form {
-            configuration.content
+        // Taken apart into sections *outside* the form. Inside it, a Mac form hands every section
+        // without a header a spacer as its header, and handed back as one, that spacer is a header
+        // with a header's margins: every gap between cards grew by forty points.
+        Group(sections: configuration.content) { sections in
+            Form {
+                ForEach(sections) { section in
+                    CardSection(section: section)
+                }
                 .labelStyle(RowLabelStyle())
                 .buttonStyle(RoleColouredButtonStyle())
-                // White cards on the grey page, as on the phone — see `Color.groupedCard`. A row
-                // that asks for no card (a portrait, a bare control) keeps asking: its own setting
-                // is nearer to it than this one.
-                .listRowBackground(Color.groupedCard)
+            }
+            .formStyle(.grouped)
         }
-        .formStyle(.grouped)
         .scrollContentBackground(.hidden)
         .contentMargins(.horizontal, margin, for: .scrollContent)
         .frame(minWidth: 0, maxWidth: .infinity)
@@ -73,6 +76,47 @@ private struct MacGroupedForm: View {
         // The phone's grouped page under the form, not the window's grey — see `Color.groupedPage`.
         // Or, in a sheet, the chat's — see `formPage`.
         .background(page)
+    }
+}
+
+/// One section of the form, its rows on a white card — see `Color.groupedCard`.
+///
+/// A Mac form draws its own plate under every section, a 3% darkening of the page, and nothing
+/// public recolours it: `listRowBackground`, which is what this was, is ignored there, and so are
+/// `listRowInsets` and `backgroundStyle`. The plate came out a step *darker* than the grey page
+/// round it. What the form does do is clip each row to the plate — corners and all, separators
+/// left on top — so every row is painted white well past its own edges and the plate trims it:
+/// sideways as far as the card goes, upwards and downwards by the cell's own inset, which is what
+/// meets the row next to it without covering the separator between them.
+///
+/// Only the rows: a header or a footer stands on the page, and a section with neither is given
+/// neither, because even an empty header takes a header's height. And only in the light: in the dark
+/// the plate is a lightening of the near-black page, a step above it as it should be.
+private struct CardSection: View {
+    let section: SectionConfiguration
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        switch (section.header.isEmpty, section.footer.isEmpty) {
+        case (true, true):
+            Section { rows }
+        case (false, true):
+            Section { rows } header: { section.header }
+        case (true, false):
+            Section { rows } footer: { section.footer }
+        case (false, false):
+            Section { rows } header: { section.header } footer: { section.footer }
+        }
+    }
+
+    private var rows: some View {
+        section.content.background {
+            (colorScheme == .light ? Color.groupedCard : .clear)
+                .padding(.horizontal, -Theme.Size.formCardMaximum)
+                .padding(.vertical, -Theme.Spacing.formRowInset)
+                .allowsHitTesting(false)
+        }
     }
 }
 
