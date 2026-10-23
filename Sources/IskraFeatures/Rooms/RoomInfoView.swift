@@ -444,23 +444,23 @@ struct RoomInfoView: View {
         let tabs = availableTabs
 
         #if os(macOS)
+        // Leaving — or deleting a personal chat — is a card of its own, as every other button on
+        // this screen is. It stood in the tabs' section header once, and a header draws its words
+        // in the header's bold and with no card under them: "Leave the chat" in a group looked like
+        // a different kind of thing from "Delete chat" in a personal one.
+        Section { leaveButton }
+
         // On a Mac a section is a plate whatever its row asks for — `listRowBackground` does not
-        // reach it — and a plate around one button, or around a segmented control that is a surface
-        // already, is a box with nothing to group. A section's *header* is drawn on the page, so the
-        // two single things go there, above the list they lead into.
-        if tabs.isEmpty {
-            Section { leaveButton }
-        } else {
+        // reach it — and a plate around a segmented control, which is a surface already, is a box
+        // with nothing to group. A section's *header* is drawn on the page, so the control goes
+        // there, above the list it leads into.
+        if !tabs.isEmpty {
             Section {
                 tabContent
             } header: {
-                VStack(alignment: .leading, spacing: Theme.Spacing.generous) {
-                    leaveButton
-                        .textCase(nil)
-                    RoomContentPicker(tabs: tabs, selection: Binding(get: { openTab },
-                                                                    set: { tab = $0 }))
-                        .textCase(nil)
-                }
+                RoomContentPicker(tabs: tabs, selection: Binding(get: { openTab },
+                                                                set: { tab = $0 }))
+                    .textCase(nil)
             }
             .edgeToEdge(openTab == .media)
         }

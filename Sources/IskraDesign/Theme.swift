@@ -664,10 +664,10 @@ public enum Theme {
         public static let uploadRing: CGFloat = 48
         /// One of the round glass buttons under a person's portrait — `ProfileActionTile`. A size a
         /// thumb lands on without aiming, with the word under it rather than inside.
-        /// On a Mac, a third smaller: a pointer needs no thumb's room, and at the phone's size four
-        /// of them under a name in a 320-point column read as the page's headline.
+        /// On a Mac, smaller: a pointer needs no thumb's room, and at the phone's size four of them
+        /// under a name in a 320-point column read as the page's headline.
         #if os(macOS)
-        public static let profileAction: CGFloat = 36
+        public static let profileAction: CGFloat = 40
         #else
         public static let profileAction: CGFloat = 56
         #endif
