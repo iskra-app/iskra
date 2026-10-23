@@ -56,16 +56,27 @@ private struct MacGroupedForm: View {
     }
 
     var body: some View {
-        // Taken apart into sections *outside* the form. Inside it, a Mac form hands every section
-        // without a header a spacer as its header, and handed back as one, that spacer is a header
-        // with a header's margins: every gap between cards grew by forty points.
-        Group(sections: configuration.content) { sections in
+        // Taken apart twice. Inside the form is where the rows have to be made: a row made outside
+        // it is not a form's row — a toggle is a checkbox, a picker loses its place at the edge,
+        // a button its role. But inside it, a Mac form hands every section without a header a
+        // spacer *as* its header, and handed back as one, that spacer is a header with a header's
+        // margins: every gap between cards grew by forty points. So which sections have a header
+        // or a footer is asked outside, where nobody has added one, and the two lists go section
+        // by section.
+        Group(sections: configuration.content) { outside in
+            let shapes = outside.map { SectionShape(header: !$0.header.isEmpty, footer: !$0.footer.isEmpty) }
             Form {
-                ForEach(sections) { section in
-                    CardSection(section: section)
+                // The styles go on the content itself, before it is taken apart: a row keeps the
+                // environment of the place it was taken apart in, and a style put on what holds
+                // the pieces reached none of them — the buttons came back grey plates, not red.
+                Group(sections: configuration.content
+                    .labelStyle(RowLabelStyle())
+                    .buttonStyle(RoleColouredButtonStyle())) { inside in
+                    ForEach(Array(inside.enumerated()), id: \.element.id) { index, section in
+                        CardSection(section: section,
+                                    shape: index < shapes.count ? shapes[index] : SectionShape(header: true, footer: true))
+                    }
                 }
-                .labelStyle(RowLabelStyle())
-                .buttonStyle(RoleColouredButtonStyle())
             }
             .formStyle(.grouped)
         }
@@ -77,6 +88,12 @@ private struct MacGroupedForm: View {
         // Or, in a sheet, the chat's — see `formPage`.
         .background(page)
     }
+}
+
+/// Whether a section was written with a header and a footer — see `MacGroupedForm.body`.
+private struct SectionShape {
+    let header: Bool
+    let footer: Bool
 }
 
 /// One section of the form, its rows on a white card — see `Color.groupedCard`.
@@ -94,18 +111,19 @@ private struct MacGroupedForm: View {
 /// the plate is a lightening of the near-black page, a step above it as it should be.
 private struct CardSection: View {
     let section: SectionConfiguration
+    let shape: SectionShape
 
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        switch (section.header.isEmpty, section.footer.isEmpty) {
-        case (true, true):
-            Section { rows }
-        case (false, true):
-            Section { rows } header: { section.header }
-        case (true, false):
-            Section { rows } footer: { section.footer }
+        switch (shape.header, shape.footer) {
         case (false, false):
+            Section { rows }
+        case (true, false):
+            Section { rows } header: { section.header }
+        case (false, true):
+            Section { rows } footer: { section.footer }
+        case (true, true):
             Section { rows } header: { section.header } footer: { section.footer }
         }
     }
