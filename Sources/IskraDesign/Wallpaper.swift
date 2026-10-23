@@ -33,8 +33,9 @@ public enum Wallpaper: String, CaseIterable, Identifiable, Sendable {
     /// Where the choice is kept, read by every room and written by the appearance screen.
     public static let storageKey = "appearance.wallpaper"
 
-    /// How far down the wallpaper is taken, 0 to `maximumDimming`. A separate key because it is a
-    /// separate question: which picture, and how loudly.
+    /// How far the wallpaper is taken back, 0 to `maximumDimming` — towards black in the dark
+    /// theme and towards white in the light one (`WallpaperBackdrop`). A separate key because it is
+    /// a separate question: which picture, and how loudly.
     public static let dimmingKey = "appearance.wallpaperDimming"
 
     /// Enough to take a bright photograph down to something a grey bubble reads on, and not so far
@@ -77,11 +78,16 @@ public enum Wallpaper: String, CaseIterable, Identifiable, Sendable {
         return 0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue)
     }
 
-    /// Whether words on this wallpaper should be light. Measured after the dimmer, which only
-    /// ever darkens. The threshold is where white and black text have the same contrast (WCAG):
-    /// below it white reads better, above it black does.
-    public static func isDark(luminance: Double, dimming: Double) -> Bool {
-        luminance * (1 - dimming) < 0.179
+    /// Whether words on this wallpaper should be light. Measured after the veil, which darkens in
+    /// the dark theme and lightens in the light one (`lightens`). The threshold is where white and
+    /// black text have the same contrast (WCAG): below it white reads better, above it black does.
+    ///
+    /// The white veil is blended in sRGB and this blends luminance, which is linear — so it counts a
+    /// lightened picture a little brighter than it is. Near the threshold that tips towards dark
+    /// words on a picture that is getting paler, which is the side to err on.
+    public static func isDark(luminance: Double, dimming: Double, lightens: Bool = false) -> Bool {
+        let veiled = lightens ? luminance * (1 - dimming) + dimming : luminance * (1 - dimming)
+        return veiled < 0.179
     }
 
     /// The two colours, top to bottom.
@@ -117,6 +123,9 @@ public struct WallpaperBackdrop: View {
     let photo: Image?
     let dimming: Double
 
+    /// Which way the veil goes — see the overlay below.
+    @Environment(\.colorScheme) private var scheme
+
     public init(wallpaper: Wallpaper, photo: Image?, dimming: Double) {
         self.wallpaper = wallpaper
         self.photo = photo
@@ -143,12 +152,13 @@ public struct WallpaperBackdrop: View {
                 LinearGradient(colors: wallpaper.colors, startPoint: .top, endPoint: .bottom)
             }
         }
-        // The dimmer, over the picture and under the conversation. Black rather than a scheme-aware
-        // veil: "затемнение" is one direction, and a wallpaper the user finds too loud is never too
-        // loud in the direction of *brighter*.
+        // The veil, over the picture and under the conversation: black in the dark theme, white in
+        // the light one. A wallpaper is taken back towards the page it stands in for — a light app
+        // with its picture darkened was a dark room in the middle of a white one, and the bubbles
+        // and chrome tuned for a light page sat on it like stickers.
         .overlay {
             if wallpaper.isSet {
-                Color.black.opacity(dimming)
+                (scheme == .light ? Color.white : Color.black).opacity(dimming)
             }
         }
         .clipped()

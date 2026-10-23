@@ -2152,6 +2152,8 @@ public enum Strings {
         /// What lies behind a conversation — see `Wallpaper`.
         public static let wallpaper = LocalizedStringResource("appearance.wallpaper", bundle: bundle)
         public static let wallpaperDimming = LocalizedStringResource("appearance.wallpaperDimming", bundle: bundle)
+        /// The same slider in the light theme, where it takes the wallpaper towards white.
+        public static let wallpaperLightening = LocalizedStringResource("appearance.wallpaperLightening", bundle: bundle)
         public static let wallpaperChoose = LocalizedStringResource("appearance.wallpaperChoose", bundle: bundle)
 
         /// The name of a wallpaper, which is the only thing a picture can be read out as. A

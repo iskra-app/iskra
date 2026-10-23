@@ -209,7 +209,7 @@ struct AppearanceView: View {
         // Told, so the bubbles inside it draw the way they will in a room. The whole point of the
         // card is that it does not lie about this.
         .environment(\.hasWallpaper, wallpaper.isSet)
-        .environment(\.wallpaperIsDark, wallpapers.isDark(wallpaper, dimming: dimming))
+        .environment(\.wallpaperIsDark, wallpapers.isDark(wallpaper, dimming: dimming, scheme: scheme))
         // The picture is read off the disk once per launch, and this screen can be the first thing
         // to want it — somebody who has a wallpaper and opens Appearance before opening a room.
         .task { await wallpapers.load() }
@@ -359,7 +359,8 @@ struct AppearanceView: View {
             .contentShape(.rect)
     }
 
-    /// How far down the wallpaper is taken.
+    /// How far the wallpaper is taken back — darkened in the dark theme, lightened in the light
+    /// one, and named for which (see `WallpaperBackdrop`).
     ///
     /// Shown only when there is a wallpaper, because a dimmer over nothing dims nothing — and the
     /// tiles above it darken as it moves, so the setting is read off the pictures rather than off
@@ -367,7 +368,8 @@ struct AppearanceView: View {
     private var dimmer: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
             HStack {
-                Text(Strings.Appearance.wallpaperDimming)
+                Text(scheme == .light ? Strings.Appearance.wallpaperLightening
+                                      : Strings.Appearance.wallpaperDimming)
                 Spacer()
                 Text(dimming.formatted(.percent.precision(.fractionLength(0))))
                     .font(.callout.monospacedDigit())

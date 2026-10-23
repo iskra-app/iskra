@@ -112,13 +112,15 @@ final class WallpaperStore {
         luminance = Self.measure(data)
     }
 
-    /// Whether this wallpaper, at this dimming, is dark enough for light words — see
-    /// `Wallpaper.isDark`. A photograph not yet measured counts as dark: it is dimmed by default,
-    /// and white with a halo is the safer guess over a picture nobody has looked at yet.
-    func isDark(_ wallpaper: Wallpaper, dimming: Double) -> Bool {
+    /// Whether this wallpaper, under this veil, is dark enough for light words — see
+    /// `Wallpaper.isDark`. A photograph not yet measured counts as dark under a darkening veil and
+    /// as light under a lightening one: that is where the veil is taking it, and the guess over a
+    /// picture nobody has looked at yet should go the same way.
+    func isDark(_ wallpaper: Wallpaper, dimming: Double, scheme: ColorScheme) -> Bool {
+        let lightens = scheme == .light
         let luminance = wallpaper == .photo ? self.luminance : wallpaper.luminance
-        guard let luminance else { return true }
-        return Wallpaper.isDark(luminance: luminance, dimming: dimming)
+        guard let luminance else { return !lightens }
+        return Wallpaper.isDark(luminance: luminance, dimming: dimming, lightens: lightens)
     }
 
     /// Forgets it — signing out, or choosing a different wallpaper after having used one's own.
@@ -158,11 +160,13 @@ extension View {
 private struct ChatWallpaperBackground: ViewModifier {
     @AppStorage(Wallpaper.storageKey) private var wallpaper: Wallpaper = .default
     @AppStorage(Wallpaper.dimmingKey) private var dimming: Double = Wallpaper.defaultDimming
+    @Environment(\.colorScheme) private var scheme
 
     func body(content: Content) -> some View {
         content
             .environment(\.hasWallpaper, wallpaper.isSet)
-            .environment(\.wallpaperIsDark, WallpaperStore.shared.isDark(wallpaper, dimming: dimming))
+            .environment(\.wallpaperIsDark,
+                         WallpaperStore.shared.isDark(wallpaper, dimming: dimming, scheme: scheme))
             .background { ChatWallpaper() }
     }
 }

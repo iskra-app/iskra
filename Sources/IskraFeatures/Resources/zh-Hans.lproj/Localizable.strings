@@ -574,6 +574,7 @@
 
 /* The slider under the wallpapers: how far to take the picture down so that messages read on it. */
 "appearance.wallpaperDimming" = "调暗";
+"appearance.wallpaperLightening" = "调亮";
 
 /* The button under the slider — swap your photograph for a different one. */
 "appearance.wallpaperChoose" = "选择其他照片";
