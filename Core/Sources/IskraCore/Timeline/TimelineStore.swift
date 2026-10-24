@@ -139,6 +139,8 @@ public final class TimelineStore {
     private var typingStopper: Task<Void, Never>?
 
     private let room: Room
+    /// Who runs a search within the room (`makeSearch`) — the session's client; `nil` where there is none.
+    private let searchClient: Client?
     private let ownUserID: String
     private var timeline: Timeline?
 
@@ -245,8 +247,9 @@ public final class TimelineStore {
         ThreadSettings.usesThreads(kind: kind, memberCount: memberCount)
     }
 
-    init(room: Room, ownUserID: String, threadRootID: String? = nil) {
+    init(room: Room, ownUserID: String, threadRootID: String? = nil, searchClient: Client? = nil) {
         self.room = room
+        self.searchClient = searchClient
         self.ownUserID = ownUserID
         self.roomID = room.id()
         self.threadRootID = threadRootID
@@ -1553,7 +1556,7 @@ public final class TimelineStore {
     /// holds — so the search screen does not have to go back to the session for a handle it is
     /// standing next to. See `RoomSearchStore`.
     public func makeSearch() -> RoomSearchStore {
-        RoomSearchStore(room: room)
+        RoomSearchStore(room: room, client: searchClient)
     }
 
     // MARK: - Forwarding

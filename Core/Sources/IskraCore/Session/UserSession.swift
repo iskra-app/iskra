@@ -395,7 +395,7 @@ public final class UserSession {
             return nil
         }
 
-        let store = TimelineStore(room: room, ownUserID: userID)
+        let store = TimelineStore(room: room, ownUserID: userID, searchClient: client)
         if let summary = roomList.rooms.first(where: { $0.id == roomID })
             ?? roomList.archivedRooms.first(where: { $0.id == roomID }) {
             store.prefill(from: summary)
@@ -438,7 +438,7 @@ public final class UserSession {
         guard let room = roomList.room(withID: roomID) ?? (try? client.getRoom(roomId: roomID)) else {
             return nil
         }
-        let store = TimelineStore(room: room, ownUserID: userID, threadRootID: rootEventID)
+        let store = TimelineStore(room: room, ownUserID: userID, threadRootID: rootEventID, searchClient: client)
         store.mediaJobs = mediaJobs
         store.uploadMedia = { [client] mimeType, data in
             try await client.uploadMedia(mimeType: mimeType, data: data, progressWatcher: nil)
@@ -515,13 +515,13 @@ public final class UserSession {
     }
 
     /// Searching within one conversation, made when its search is opened. Separate from the global
-    /// `search` store: this one runs the room-scoped `Room.searchMessages`, so it needs the room
-    /// handle the same way a timeline does.
+    /// `search` store: it keeps only this room's hits, so it needs the room handle the same way a
+    /// timeline does.
     public func roomSearch(forRoomID roomID: String) -> RoomSearchStore? {
         guard let room = roomList.room(withID: roomID) ?? (try? client.getRoom(roomId: roomID)) else {
             return nil
         }
-        return RoomSearchStore(room: room)
+        return RoomSearchStore(room: room, client: client)
     }
 
     /// Forwards a message into another room. Opens (or reuses) the destination's timeline just long

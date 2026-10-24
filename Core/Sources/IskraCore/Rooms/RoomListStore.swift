@@ -1192,7 +1192,7 @@ public final class RoomListStore {
         switch answer.latest {
         case let .remote(timestamp, senderID, isOwn, profile, content):
             if !isOwn {
-                if case let .ready(displayName, _, _) = profile, let displayName, !displayName.isEmpty {
+                if case let .ready(displayName, _, _, _, _) = profile, let displayName, !displayName.isEmpty {
                     sender = displayName
                 } else {
                     sender = senderID

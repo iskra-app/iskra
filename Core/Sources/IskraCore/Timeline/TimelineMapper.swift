@@ -892,7 +892,7 @@ enum TimelineMapper {
     // MARK: - Sender and delivery
 
     private static func profile(from details: ProfileDetails, fallback userID: String) -> (name: String, avatar: String?) {
-        if case let .ready(displayName, _, avatarURL) = details {
+        if case let .ready(displayName, _, avatarURL, _, _) = details {
             return (displayName ?? userID, avatarURL)
         }
         // Before the profile loads, the user ID is the honest thing to show.

@@ -14,7 +14,7 @@ setPusher» (сделано); таблица сравнения с element-x (C1
 про незакоммиченную работу.
 
 **Таргеты.**
-- SPM: `IskraCore` (MatrixRustSDK 26.06.06 + secp256k1; без SwiftUI) · `IskraDesign` (только
+- SPM: `IskraCore` (MatrixRustSDK 26.08.11 + secp256k1; без SwiftUI) · `IskraDesign` (только
   SwiftUI, без зависимостей) · `IskraFeatures` (оба). Тесты: `IskraCoreTests`, `IskraDesignTests`
   (золотая фикстура blobatar), `IskraFeaturesTests`.
 - Xcode (`Apps/project.yml` → xcodegen): Iskra (iOS) встраивает `IskraNotificationService`
