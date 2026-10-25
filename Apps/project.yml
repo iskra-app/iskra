@@ -141,7 +141,7 @@ targets:
       - path: ../icons/iskra-garnet.icon
         type: file
         buildPhase: resources
-      - path: ../icons/iskra-pine.icon
+      - path: ../icons/iskra-brat.icon
         type: file
         buildPhase: resources
       - path: ../icons/iskra-rio-de-janeiro.icon
@@ -192,7 +192,7 @@ targets:
         # and this is the whole of what makes `setAlternateIconName` able to find them:
         # an icon listed in `sources` is merely compiled, and an icon named here is
         # *registered*, which is a different thing and the one that matters.
-        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: iskra-chrome iskra-garnet iskra-pine iskra-rio-de-janeiro iskra-black-white iskra-retro iskra-letters
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: iskra-chrome iskra-garnet iskra-brat iskra-rio-de-janeiro iskra-black-white iskra-retro iskra-letters
         # And this is what keeps their artwork in the bundle. Without it actool ships only
         # the icon the app launches with, and every alternate resolves to nothing: the
         # call succeeds, the icon does not change, and there is nothing in any log.

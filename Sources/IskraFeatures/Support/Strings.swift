@@ -2111,7 +2111,7 @@ public enum Strings {
             case .spark: LocalizedStringResource("appIcon.spark", bundle: bundle)
             case .chrome: LocalizedStringResource("appIcon.chrome", bundle: bundle)
             case .garnet: LocalizedStringResource("appIcon.garnet", bundle: bundle)
-            case .pine: LocalizedStringResource("appIcon.pine", bundle: bundle)
+            case .brat: LocalizedStringResource("appIcon.brat", bundle: bundle)
             case .rio: LocalizedStringResource("appIcon.rio", bundle: bundle)
             case .blackWhite: LocalizedStringResource("appIcon.blackWhite", bundle: bundle)
             case .retro: LocalizedStringResource("appIcon.retro", bundle: bundle)
