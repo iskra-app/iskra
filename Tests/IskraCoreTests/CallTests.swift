@@ -67,6 +67,37 @@ struct CallTests {
         #expect(ElementCallDiscovery.widgetURL(inWellKnown: Data(document.utf8)) == nil)
     }
 
+    // MARK: - The LiveKit focus in .well-known
+
+    @Test("A LiveKit focus in rtc_foci counts, next to Element's placeholder entry")
+    func findsLiveKitFocus() {
+        // nope.chat's document, as served on 2026-10-28: Synapse there answers the SDK's
+        // `rtc/transports` with 404, and this list is the only place the focus is announced.
+        let document = """
+        {
+          "m.homeserver": { "base_url": "https://nope.chat" },
+          "org.matrix.msc4143.rtc_foci": [
+            { "type": "livekit", "livekit_service_url": "https://nope.chat/livekit/jwt" },
+            { "type": "nextgen_new_foci_type", "props_for_nextgen_foci": "val" }
+          ]
+        }
+        """
+
+        #expect(ElementCallDiscovery.hasLiveKitFocus(inWellKnown: Data(document.utf8)))
+    }
+
+    @Test("No focus, a focus of another kind, or one on plain http is no focus")
+    func refusesOtherFoci() {
+        let none = #"{ "m.homeserver": { "base_url": "https://example.org" } }"#
+        let otherKind = #"{ "org.matrix.msc4143.rtc_foci": [ { "type": "nextgen_new_foci_type" } ] }"#
+        let plainHTTP = #"{ "org.matrix.msc4143.rtc_foci": [ { "type": "livekit", "livekit_service_url": "http://example.org/jwt" } ] }"#
+
+        #expect(!ElementCallDiscovery.hasLiveKitFocus(inWellKnown: Data(none.utf8)))
+        #expect(!ElementCallDiscovery.hasLiveKitFocus(inWellKnown: Data(otherKind.utf8)))
+        #expect(!ElementCallDiscovery.hasLiveKitFocus(inWellKnown: Data(plainHTTP.utf8)))
+        #expect(!ElementCallDiscovery.hasLiveKitFocus(inWellKnown: Data("not json".utf8)))
+    }
+
     // MARK: - The address somebody typed
 
     @Test("An address typed by hand is held to the same rule as the server's")

@@ -10,7 +10,8 @@ public struct CallAvailability: Sendable, Equatable {
     /// The Element Call deployment this server points its users at, from `.well-known`.
     public let widgetURL: URL?
 
-    /// `Client.isLivekitRtcSupported()` — the homeserver knows a LiveKit focus.
+    /// The homeserver knows a LiveKit focus: `Client.isLivekitRtcSupported()`, or the
+    /// `org.matrix.msc4143.rtc_foci` list in `.well-known` — see `ElementCallDiscovery.Answer`.
     public let serverCarriesCalls: Bool
 
     public init(widgetURL: URL?, serverCarriesCalls: Bool) {
@@ -72,16 +73,38 @@ public struct ElementCallDiscovery: Sendable {
         self.fetch = fetch
     }
 
+    /// What a server's `.well-known` says about calls.
+    public struct Answer: Sendable, Equatable {
+        /// `io.element.call.widget_url`: where the call is drawn from.
+        public var widgetURL: URL?
+
+        /// Whether `org.matrix.msc4143.rtc_foci` lists a LiveKit focus: where the media goes.
+        ///
+        /// Asked here as well as of the SDK, and either answer is enough. From 26.08 the SDK's
+        /// `isLivekitRtcSupported()` asks the newer `GET …/msc4143/rtc/transports` endpoint, and a
+        /// Synapse that announces its focus the older way — in this very file, which is also where
+        /// Element Call itself looks for it — answers that endpoint 404. Trusting the SDK alone took
+        /// the call button away from `nope.chat`, a server whose calls work in Element.
+        public var hasLiveKitFocus: Bool
+
+        public static let nothing = Answer(widgetURL: nil, hasLiveKitFocus: false)
+    }
+
     /// The Element Call address this server names, or nil where it names none.
+    public func widgetURL(forServerName serverName: String) async -> URL? {
+        await calls(forServerName: serverName).widgetURL
+    }
+
+    /// Everything `.well-known` says about calls — see `Answer`.
     ///
     /// Never throws. Every way this can fail — no such file, a server that is down, JSON that is
     /// not what we expected — means the same thing to the caller, and it is not an error: it is a
     /// server that does not do calls, which is most of them.
-    public func widgetURL(forServerName serverName: String) async -> URL? {
+    public func calls(forServerName serverName: String) async -> Answer {
         guard let base = TunnelSettings.upstreamURL(from: serverName),
               let target = URL(string: "/.well-known/matrix/client", relativeTo: base)
         else {
-            return nil
+            return .nothing
         }
 
         do {
@@ -91,11 +114,12 @@ public struct ElementCallDiscovery: Sendable {
             let (data, status) = try await withTimeout(.seconds(10)) {
                 try await fetch(target)
             }
-            guard status == 200 else { return nil }
-            return Self.widgetURL(inWellKnown: data)
+            guard status == 200 else { return .nothing }
+            return Answer(widgetURL: Self.widgetURL(inWellKnown: data),
+                          hasLiveKitFocus: Self.hasLiveKitFocus(inWellKnown: data))
         } catch {
             Log.calls.error("could not read .well-known: \(Log.describe(error), privacy: .public)")
-            return nil
+            return .nothing
         }
     }
 
@@ -120,6 +144,29 @@ public struct ElementCallDiscovery: Sendable {
         }
 
         return url
+    }
+
+    /// Whether `org.matrix.msc4143.rtc_foci` names a LiveKit focus with an `https` service URL.
+    ///
+    /// Only `livekit` counts, because that is the one kind Element Call speaks; the list commonly
+    /// carries a placeholder entry copied from Element's own example, and it is ignored, not
+    /// rejected. The same `https`-or-nothing rule as the widget: the service hands out the tokens
+    /// that let somebody into the call.
+    public static func hasLiveKitFocus(inWellKnown data: Data) -> Bool {
+        guard let document = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let foci = document["org.matrix.msc4143.rtc_foci"] as? [[String: Any]]
+        else {
+            return false
+        }
+        return foci.contains { focus in
+            guard focus["type"] as? String == "livekit",
+                  let address = focus["livekit_service_url"] as? String,
+                  let url = URL(string: address)
+            else {
+                return false
+            }
+            return url.scheme?.lowercased() == "https"
+        }
     }
 
     /// Straight out to the server name over TLS. See the note about the bridge above.

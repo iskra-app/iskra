@@ -9,14 +9,17 @@ import MatrixRustSDK
 public extension UserSession {
     /// Settles whether this account can call at all. Called once from `start()`.
     ///
-    /// Two questions, and both have to say yes. The homeserver is asked whether it knows a LiveKit
-    /// focus — that is where the audio would go — and `.well-known` is asked which Element Call
-    /// deployment it points its users at, because that is what draws the call.
+    /// Two questions, and both have to say yes. Is there a LiveKit focus — that is where the audio
+    /// would go — asked of the SDK and of `.well-known`, either answer enough (see
+    /// `ElementCallDiscovery.Answer.hasLiveKitFocus` for why the SDK alone is not); and which
+    /// Element Call deployment the server points its users at, because that is what draws the call.
     ///
     /// Nothing here throws and nothing is shown if it fails. A server that does not do calls is
     /// the normal case, not an error, and the way the app says so is that there is no call button.
     func loadCallAvailability(discovery: ElementCallDiscovery = ElementCallDiscovery()) async {
-        let carries = (try? await client.isLivekitRtcSupported()) ?? false
+        let sdkSaysSo = (try? await client.isLivekitRtcSupported()) ?? false
+        let wellKnown = await discovery.calls(forServerName: serverName)
+        let carries = sdkSaysSo || wellKnown.hasLiveKitFocus
 
         // Something typed by hand wins, and it is the only thing that may: see
         // `BetaFeatures.elementCallURL`. It is not a fallback for a server that stayed silent —
@@ -25,7 +28,7 @@ public extension UserSession {
         if let typed = BetaFeatures.elementCallURL() {
             widget = typed
         } else {
-            widget = await discovery.widgetURL(forServerName: serverName)
+            widget = wellKnown.widgetURL
         }
 
         let availability = CallAvailability(widgetURL: widget, serverCarriesCalls: carries)
