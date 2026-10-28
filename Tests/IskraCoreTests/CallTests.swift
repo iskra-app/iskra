@@ -228,7 +228,7 @@ struct CallTests {
     /// A defaults suite of this test's own, so that running the suite cannot write into the
     /// preferences of whoever is running it.
     private static func scratchDefaults() -> UserDefaults {
-        let suite = "moscow.swag.iskra.tests.calls.\(UUID().uuidString)"
+        let suite = "wtf.iskra.tests.calls.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defaults.removePersistentDomain(forName: suite)
         return defaults

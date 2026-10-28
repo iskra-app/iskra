@@ -83,7 +83,7 @@ enum SignInProbe {
                 print("     This is where the sign-in dies before the browser ever opens. The usual")
                 print("     cause is the redirect URI: an authentication service will refuse a")
                 print("     private-use scheme that is not the reverse-DNS of the client's own")
-                print("     domain — client_uri https://iskra.swag.moscow permits moscow.swag.iskra:,")
+                print("     domain — client_uri https://iskra.wtf permits wtf.iskra:,")
                 print("     and nothing else. See AppEnvironment.oauthRedirectURI.")
                 exit(1)
             }

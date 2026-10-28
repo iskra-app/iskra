@@ -107,6 +107,6 @@ enum CallProbe {
     /// The signed-in session, or nil. Shared by both call probes.
     static func restoredSession() async -> UserSession? {
         let authentication = AuthenticationService()
-        return (try? await authentication.restorePreviousSession()) ?? nil
+        return (try? await authentication.restoreSession()) ?? nil
     }
 }

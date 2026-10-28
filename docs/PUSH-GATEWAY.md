@@ -20,7 +20,7 @@
 
 Homeserver не ходит в APNs напрямую. Он отправляет пуш в **push gateway**, а тот уже — в APNs
 сертификатом/ключом *приложения*. Публичный шлюз matrix.org (`matrix.org/_matrix/push/v1/notify`)
-принимает только зарегистрированные у них app id — то есть элементовские. Под `moscow.swag.iskra`
+принимает только зарегистрированные у них app id — то есть элементовские. Под `wtf.iskra`
 он пуш не отправит, и это не настраивается с нашей стороны: это их конфиг.
 
 Значит, нужен свой [Sygnal](https://github.com/matrix-org/sygnal).
@@ -55,21 +55,21 @@ log:
       level: INFO
 
 apps:
-  moscow.swag.iskra.dev:
+  wtf.iskra.dev:
     type: apns
     keyfile: /keys/AuthKey_XXXXXXXXXX.p8
     key_id: XXXXXXXXXX
     team_id: 936RH3UPR3
-    topic: moscow.swag.iskra          # = bundle id приложения
+    topic: wtf.iskra          # = bundle id приложения
     platform: sandbox                 # под aps-environment: development
     push_type: alert
     convert_device_token_to_hex: false   # мы уже шлём hex; см. ниже
-  moscow.swag.iskra:
+  wtf.iskra:
     type: apns
     keyfile: /keys/AuthKey_XXXXXXXXXX.p8
     key_id: XXXXXXXXXX
     team_id: 936RH3UPR3
-    topic: moscow.swag.iskra
+    topic: wtf.iskra
     platform: production              # под TestFlight и App Store
     push_type: alert
     convert_device_token_to_hex: false
@@ -80,7 +80,7 @@ apps:
 одинаковый у обоих входов: bundle id один.
 
 А вот имя входа — разное, и приложение уже это знает: `PushRegistration.appID` — это
-`moscow.swag.iskra.dev` в `#if DEBUG` и `moscow.swag.iskra` иначе. Токен dev-сборки живёт в
+`wtf.iskra.dev` в `#if DEBUG` и `wtf.iskra` иначе. Токен dev-сборки живёт в
 **sandbox**-APNs, токен из TestFlight — в **production**, и это два непересекающихся мира. Шлюз
 держит один ключ и по имени входа понимает, в какую дверь стучать. Один вход на оба случая — это
 пуши, которые работают всю разработку и умирают на первой выкладке, не сказав ни слова: токен
@@ -103,7 +103,7 @@ location /_matrix/push/ {
 
 ### По шагам, на сервере
 
-Ниже — всё подряд, от ключа Apple до живого шлюза, на домене `push.iskra.swag.moscow`. Если Sygnal
+Ниже — всё подряд, от ключа Apple до живого шлюза, на домене `push.iskra.wtf`. Если Sygnal
 вешается на домен, где уже что-то работает, — это просто ещё один `location`, и шаг с сертификатом
 пропускается.
 
@@ -121,10 +121,10 @@ Register → Download.
 **2. Положить ключ на сервер.**
 
 ```sh
-ssh you@push.iskra.swag.moscow
+ssh you@push.iskra.wtf
 sudo mkdir -p /opt/sygnal/keys
 # с ноутбука, в другом окне:
-scp ~/Downloads/AuthKey_XXXXXXXXXX.p8 you@push.iskra.swag.moscow:/tmp/
+scp ~/Downloads/AuthKey_XXXXXXXXXX.p8 you@push.iskra.wtf:/tmp/
 # обратно на сервере:
 sudo mv /tmp/AuthKey_XXXXXXXXXX.p8 /opt/sygnal/keys/
 sudo chmod 600 /opt/sygnal/keys/AuthKey_XXXXXXXXXX.p8
@@ -135,7 +135,7 @@ sudo chmod 600 /opt/sygnal/keys/AuthKey_XXXXXXXXXX.p8
 
 **3. `sygnal.yaml`** — в `/opt/sygnal/sygnal.yaml`, содержимое из раздела выше. Проверьте три
 строки глазами: `keyfile` совпадает с реальным именем файла, `key_id` — с тем, что в имени, а
-`topic` — это `moscow.swag.iskra` и в dev-входе тоже.
+`topic` — это `wtf.iskra` и в dev-входе тоже.
 
 **4. `docker-compose.yml`** — в `/opt/sygnal/docker-compose.yml`:
 
@@ -194,7 +194,7 @@ sudo systemctl enable docker  # если нет
 В логе должно быть, что он слушает порт, и **не** должно быть ничего про `.p8`. Жалоба на ключ на
 старте — это либо путь, либо права, и дальше идти незачем.
 
-**5. DNS и сертификат.** Сначала `A`-запись `push.iskra.swag.moscow` на IP сервера — certbot
+**5. DNS и сертификат.** Сначала `A`-запись `push.iskra.wtf` на IP сервера — certbot
 проверяет владение доменом, ходя на него же, так что без записи он не выдаст ничего.
 
 Перед тем как звать certbot, нужен `server`-блок, который отвечает на 80-м: он и пишет туда TLS, а
@@ -204,7 +204,7 @@ sudo systemctl enable docker  # если нет
 server {
     listen 80;
     listen [::]:80;
-    server_name push.iskra.swag.moscow;
+    server_name push.iskra.wtf;
     root /var/www/html;
 }
 ```
@@ -213,7 +213,7 @@ server {
 sudo ln -s /etc/nginx/sites-available/sygnal /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
 sudo apt install certbot python3-certbot-nginx
-sudo certbot --nginx -d push.iskra.swag.moscow
+sudo certbot --nginx -d push.iskra.wtf
 ```
 
 Certbot допишет TLS в этот блок и заведёт обновление по таймеру. Самоподписанный сертификат не
@@ -228,7 +228,7 @@ Certbot допишет TLS в этот блок и заведёт обновле
 server {
     listen 80;
     listen [::]:80;
-    server_name push.iskra.swag.moscow;
+    server_name push.iskra.wtf;
 
     # Certbot обновляет сертификат по этому пути, и редирект не должен его съесть.
     location /.well-known/acme-challenge/ {
@@ -245,10 +245,10 @@ server {
     # а в Ubuntu 20.04 nginx 1.18, и конфиг с ней просто не пройдёт `nginx -t`.
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
-    server_name push.iskra.swag.moscow;
+    server_name push.iskra.wtf;
 
-    ssl_certificate     /etc/letsencrypt/live/push.iskra.swag.moscow/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/push.iskra.swag.moscow/privkey.pem;
+    ssl_certificate     /etc/letsencrypt/live/push.iskra.wtf/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/push.iskra.wtf/privkey.pem;
     include             /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
 
@@ -286,7 +286,7 @@ sudo nginx -t && sudo systemctl reload nginx
 **7. Проверить снаружи** — командой из репозитория, не с сервера:
 
 ```sh
-curl -si -X POST https://push.iskra.swag.moscow/_matrix/push/v1/notify \
+curl -si -X POST https://push.iskra.wtf/_matrix/push/v1/notify \
   -H 'Content-Type: application/json' \
   -d '{"notification":{"devices":[]}}'
 ```
@@ -306,22 +306,22 @@ curl -si -X POST https://push.iskra.swag.moscow/_matrix/push/v1/notify \
 - ошибка сертификата — шаг 5 не доделан.
 
 **8. И только теперь — одна строка в Swift.** `PushRegistration.gatewayURL` из `nil` в
-`"https://push.iskra.swag.moscow/_matrix/push/v1/notify"`. Дальше — проверка на устройстве, пункт 3.
+`"https://push.iskra.wtf/_matrix/push/v1/notify"`. Дальше — проверка на устройстве, пункт 3.
 
 Полная форма того же запроса, с настоящим устройством, — для отладки уже после шага 8: `pushkey`
 здесь device token, а взять его можно только с устройства.
 
 ```sh
-curl -X POST https://push.iskra.swag.moscow/_matrix/push/v1/notify \
+curl -X POST https://push.iskra.wtf/_matrix/push/v1/notify \
   -H 'Content-Type: application/json' \
-  -d '{"notification":{"devices":[{"app_id":"moscow.swag.iskra.dev","pushkey":"<device token>"}]}}'
+  -d '{"notification":{"devices":[{"app_id":"wtf.iskra.dev","pushkey":"<device token>"}]}}'
 ```
 
 Ею отделяется «шлюз не доставляет» от «homeserver не зовёт шлюз»: если этот curl доводит пуш до
 экрана, а сообщение в комнате — нет, виноват не шлюз.
 
 Тонкость про `aps-environment`: в `Apps/project.yml` он `development`, и именно поэтому сборка из
-Xcode ходит во вход `moscow.swag.iskra.dev` с `platform: sandbox`. Это разведено выше и больше
+Xcode ходит во вход `wtf.iskra.dev` с `platform: sandbox`. Это разведено выше и больше
 руками не настраивается.
 
 ## 2. `setPusher`
@@ -329,7 +329,19 @@ Xcode ходит во вход `moscow.swag.iskra.dev` с `platform: sandbox`. �
 Это уже написано — здесь только чтобы не искать. `PushPermission` спрашивает разрешение после
 первого входа, `PushDelegate` ловит device token, `PushRegistration.register` зовёт
 `Client.setPusher` с `format: .eventIdOnly` (запрет шлюзу, APNs и Apple нести хоть какой-то текст
-сообщения), `append: false` (не удваиваться), и снимает pusher при выходе.
+сообщения), `append: true`, и снимает pusher при выходе.
+
+**`append: true` — из-за второго аккаунта.** Сервер различает pusher'ы по app id, pushkey *и
+пользователю*, так что свой собственный pusher обновляется на месте при любом значении. `false`
+добавляет к этому одно: удаляет pusher'ы *других* пользователей с тем же app id и pushkey. Два
+аккаунта на одном телефоне на одном сервере делят и то и другое — с `false` вход во второй молча
+выключал уведомления первому.
+
+**Чей это пуш.** В `default_payload` рядом с `aps` лежит `iskra_account` — случайный session ID
+аккаунта (`PushRegistration.accountKey`), не Matrix ID: ни шлюз, ни Apple не узнают, кто вошёл на
+этом телефоне. Sygnal кладёт `default_payload` в пуш как есть, и расширение по нему выбирает, чьё
+хранилище открывать. Пуш от pusher'а, зарегистрированного до этого поля, метки не несёт — тогда
+`PushDecoder` пробует аккаунт на экране, потом остальные, пока событие не найдётся.
 
 Остаётся ровно одна строка: `PushRegistration.gatewayURL` — сейчас `nil`, станет
 `https://<домен>/_matrix/push/v1/notify`. Пока она `nil`, всё остальное работает и на последнем
@@ -396,7 +408,7 @@ Xcode ходит во вход `moscow.swag.iskra.dev` с `platform: sandbox`. �
   первым — а `platform` стоял правильно. Длина токена в логе различает их за секунду, и смотреть
   надо на неё.
 - `400 BadTopic` / `DeviceTokenNotForTopic` — не совпал `topic`. Он равен **bundle id**
-  (`moscow.swag.iskra`) у обоих входов, а не имени входа.
+  (`wtf.iskra`) у обоих входов, а не имени входа.
 - `403 InvalidProviderToken` — не тот `.p8`, `key_id` или `team_id`.
 - `410 Unregistered` — приложение с телефона удалено; сервер узнает об этом и снимет pusher сам.
 
@@ -474,18 +486,18 @@ class Tweaks:
 Две новых, рядом с теми двумя, что уже есть:
 
 ```yaml
-  moscow.swag.iskra.voip.dev:
+  wtf.iskra.voip.dev:
     type: iskra_ring.RingPushkin      # наш подкласс sygnal.apnspushkin.ApnsPushkin
     keyfile: /keys/AuthKey_XXXXXXXXXX.p8
     key_id: XXXXXXXXXX
     team_id: 936RH3UPR3
-    topic: moscow.swag.iskra.voip     # bundle id + ".voip" — это и есть весь VoIP-переключатель
+    topic: wtf.iskra.voip     # bundle id + ".voip" — это и есть весь VoIP-переключатель
     platform: sandbox
     push_type: voip
     convert_device_token_to_hex: false
 ```
 
-и `moscow.swag.iskra.voip` с `platform: production`. Тот же `.p8`-ключ, что и у обычных записей:
+и `wtf.iskra.voip` с `platform: production`. Тот же `.p8`-ключ, что и у обычных записей:
 отдельный VoIP-сертификат нужен только при авторизации сертификатом, а не токеном.
 
 `RingPushkin` (`Gateway/iskra_ring.py` в репозитории) — подкласс `ApnsPushkin`, который молча
@@ -581,9 +593,9 @@ post() {
     http://127.0.0.1:5400/_matrix/push/v1/notify; echo
 }
 
-post moscow.swag.iskra.voip.dev ''                               # → {"rejected": []}
-post moscow.swag.iskra.voip.dev ',"tweaks":{"sound":"iskra.ring"}'  # → rejected: [000…0]
-post moscow.swag.iskra.dev ''                                    # → rejected: [000…0]
+post wtf.iskra.voip.dev ''                               # → {"rejected": []}
+post wtf.iskra.voip.dev ',"tweaks":{"sound":"iskra.ring"}'  # → rejected: [000…0]
+post wtf.iskra.dev ''                                    # → rejected: [000…0]
 ```
 
 Что каждый ответ значит:
@@ -624,13 +636,13 @@ sudo docker logs --tail=50 sygnal | grep -iE 'iskra|pushkin|ringing|Traceback'
 
 ```sh
 # устройство: есть ли токен и какие pusher'ы висят на аккаунте
-xcrun devicectl device process launch --console --device <id> moscow.swag.iskra --probe-voip-token
+xcrun devicectl device process launch --console --device <id> wtf.iskra --probe-voip-token
 
 # устройство: рисует ли CallKit экран вообще
-xcrun devicectl device process launch --console --device <id> moscow.swag.iskra --probe-callkit
+xcrun devicectl device process launch --console --device <id> wtf.iskra --probe-callkit
 
 # где угодно, включая симулятор: расшифровывается ли звонок и что увидел бы CallKit
-xcrun simctl launch --console booted moscow.swag.iskra --probe-ring '!room:server' '$event'
+xcrun simctl launch --console booted wtf.iskra --probe-ring '!room:server' '$event'
 ```
 
 Первые две — только устройство: в симуляторе APNs нет, а `CXProvider` принимает звонки и не рисует

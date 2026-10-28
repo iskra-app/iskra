@@ -41,9 +41,21 @@ public struct RoomListView: View {
     /// preference and not a fact about the layout: `isSidebar` above is the layout.
     @AppStorage(BetaFeatures.nativeSidebarKey) private var prefersNativeSidebar = BetaFeatures.nativeSidebarByDefault
 
+    /// The grey lines Settings → Chats leaves out — the last line of a row follows them, as the
+    /// chat does. See `RoomListStore.serviceEventSettingsChanged`.
+    @AppStorage(ServiceEventSettings.hidesNameChangesKey) private var hidesNameChanges = false
+    @AppStorage(ServiceEventSettings.hidesMembershipChangesKey) private var hidesMembershipChanges = false
+
     @State private var searchText = ""
     @State private var isShowingSettings = false
     @State private var isShowingArchive = false
+    /// On a Mac the archive is not a screen but a mode of this list, as on the web: the archived
+    /// chats take the list's place, under a row that leads back. Pushed, it went into the
+    /// conversation's column — a destination declared in a split view's sidebar lands beside it.
+    @State private var isArchiveInline = false
+
+    /// The chat opened from the archive on a phone — see `ArchiveView.pushed`.
+    @State private var archivedRoomID: String?
 
     /// The space whose rooms are being shown, when one has been tapped.
     @State private var openedSpace: RoomSummary?
@@ -59,12 +71,71 @@ public struct RoomListView: View {
     /// *now*. See `OfflineBanner`, which is what explains all this on screen.
     @Environment(\.isOffline) private var isOffline
 
+    /// Whether the list has been on the screen long enough for its changes to be animated — see the
+    /// `.animation` on the list.
+    @State private var hasSettledList = false
+
+    /// What the title says instead of "Chats", when it says anything else — see `RoomListStatus`.
+    private var listStatus: RoomListStatus? {
+        RoomListStatus(isOffline: isOffline, isUpdating: session.roomList.isUpdating)
+    }
+
+    /// The look inside a chat that a long press on its row opens — see `ChatPeek`.
+    @Environment(\.chatPeek) private var chatPeek
+
     /// The recovery flow, when the banner has been tapped. The banner has one reason to exist now —
     /// the history is locked — so there is nothing to carry into the flow but the fact of the tap.
     @State private var isFixingRecovery = false
 
     /// Which of the two things the "+" was pressed for, and nil when it was not.
-    @State private var creating: NewConversationView.Kind?
+    @State private var isStartingChat = false
+
+    /// The folder whose tab is open — "" for "All". Per device, as Telegram's is: which tab you
+    /// were looking at is not a fact about the account.
+    @AppStorage("roomList.folder") private var folderID = ""
+    @State private var isEditingFolders = false
+
+    /// Where the rows stand in their arrival from another folder: 0 is home, ±1 is a whole
+    /// `Theme.Size.folderSlide` to the side the new tab is on, and faded out.
+    ///
+    /// The rows move, not the list: offset the `List` itself and its background goes with it,
+    /// leaving a strip of window down one side. And they are not swapped by a transition, which
+    /// would hold two lists of rows on screen at once — the rebuild is the expensive part of a
+    /// switch (see `FolderTabs.shown`), and this costs nothing on top of it: the new rows are put
+    /// to the side in the same update that builds them, and slid home on the next frame.
+    @State private var folderArrival: CGFloat = 0
+
+    /// The tab strip's selection, set the way a tap sets it — with the rows sent off to the side
+    /// they will come back from.
+    private var folderSelection: Binding<String> {
+        Binding(get: { folderID }, set: { id in
+            guard id != folderID else { return }
+            let order = [""] + session.folders.folders.map(\.id)
+            let from = order.firstIndex(of: folderID) ?? 0
+            let to = order.firstIndex(of: id) ?? 0
+            var instant = Transaction()
+            instant.disablesAnimations = true
+            withTransaction(instant) {
+                folderArrival = to > from ? 1 : -1
+                folderID = id
+            }
+            Task { @MainActor in
+                await Task.yield()
+                withAnimation(Theme.Timing.folderSwitches) { folderArrival = 0 }
+            }
+        })
+    }
+
+    /// The open folder, while it still exists — one deleted on another device falls back to "All".
+    private var activeFolder: ChatFolder? {
+        folderID.isEmpty ? nil : session.folders.folders.first { $0.id == folderID }
+    }
+
+    /// The list as the open tab sees it — every chat, or the folder's, in the list's own order.
+    private var listedRooms: [RoomSummary] {
+        guard let activeFolder else { return session.roomList.rooms }
+        return activeFolder.rooms(from: session.roomList.rooms, archived: session.roomList.archivedRooms)
+    }
 
     public init(session: UserSession,
                 selectedRoomID: Binding<String?>,
@@ -81,36 +152,88 @@ public struct RoomListView: View {
     }
 
     public var body: some View {
-        List(selection: $selectedRoomID) {
+        List(selection: selection) {
             if isSearching {
                 searchResults
+            } else if isArchiveInline {
+                archiveInline
             } else if isNativeSidebar {
                 // The same conversations, filed into sections, because that is what a sidebar on
                 // a Mac is — see `sectionedRooms` and `isNativeSidebar`.
                 sectionedRooms
             } else {
-                archiveEntry
+                if activeFolder == nil { archiveEntry.arrivingFromFolder(folderArrival) }
                 rooms
             }
         }
         .roomListStyle(nativeSidebar: isNativeSidebar)
+        // The folders, right over the list — under the banners, which are about the account and
+        // not about which chats are showing.
+        .safeAreaInset(edge: .top) {
+            if !session.folders.folders.isEmpty, !isSearching {
+                FolderTabs(folders: session.folders.folders,
+                           rooms: session.roomList.rooms,
+                           archived: session.roomList.archivedRooms,
+                           selection: folderSelection,
+                           onEdit: { isEditingFolders = true })
+            }
+        }
+        .pageSheet(isPresented: $isEditingFolders) {
+            NavigationStack {
+                FoldersView(folders: session.folders, roomList: session.roomList)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button(String(app: Strings.Folders.done)) { isEditingFolders = false }
+                        }
+                    }
+            }
+            .listSheetSize()
+        }
+        // A chat that has just been written in rises to the top the way Telegram's does — it slides
+        // up past the ones it overtakes, rather than vanishing from its row and reappearing at the
+        // top while every row in between jumps down one. Scoped to the *order* of the list, so a
+        // preview or a badge changing in place is not caught by it; and not until the list has been
+        // on the screen a moment, so the first conversations do not fly in at launch.
+        .animation(hasSettledList ? .smooth(duration: Theme.Timing.chrome * 1.5) : nil,
+                   value: session.roomList.rooms.map(\.id))
+        .onChange(of: hidesNameChanges) { session.roomList.serviceEventSettingsChanged() }
+        .onChange(of: hidesMembershipChanges) { session.roomList.serviceEventSettingsChanged() }
+        .onChange(of: session.roomList.rooms.isEmpty, initial: true) { _, isEmpty in
+            guard !isEmpty, !hasSettledList else { return }
+            Task {
+                try? await Task.sleep(for: Theme.Timing.timelineSettles)
+                hasSettledList = true
+            }
+        }
         // An invitation that would not be accepted or declined. The same apology every other
         // refusal in the app gets — see `FailureAlert`.
         .failureAlert(Bindable(session.roomList).failure)
-        .navigationTitle(Text(Strings.RoomList.title))
+        // "Waiting for network…" or "Updating…" in place of the title while the list is not simply
+        // current — Telegram's. In the bar's middle with a spinner on iPhone; in a sidebar, where
+        // the title is plain text, the words alone. See `RoomListStatus`.
+        .navigationTitle(Text(listStatus?.title ?? Strings.RoomList.title))
         // A small title, centred, in the bar itself — not the large scrolling headline
         // SwiftUI would otherwise give this screen. `toolbarTitleDisplayMode` says that
         // on iOS and on the Mac; `navigationBarTitleDisplayMode` would only say it on iOS.
         .toolbarTitleDisplayMode(.inline)
         .toolbar {
-            if isSidebar {
+            if hasSidebarChrome {
                 ToolbarItem(placement: .primaryAction) { newConversationMenu }
+                // Two buttons, not one capsule holding both: starting a chat and opening settings
+                // are different acts. On a Mac settings stands at the column's far edge, as far from
+                // "new chat" as the column allows; on an iPad the two sit side by side.
+                #if os(macOS)
+                toolbarGlassGap(placement: .primaryAction, flexible: true)
+                #else
+                toolbarGlassGap(placement: .primaryAction)
+                #endif
                 ToolbarItem(placement: .primaryAction) { settingsButton }
             } else {
+                ToolbarItem(placement: .principal) { RoomListTitle(status: listStatus) }
                 ToolbarItem(placement: .navigation) { newConversationMenu }
                 // Its own glass, not the bar's — see `accountButton`.
                 ToolbarItem(placement: .primaryAction) { accountButton }
-                    .sharedBackgroundVisibility(.hidden)
+                    .outsideToolbarGlass()
             }
         }
         // Nothing to remove on iPhone — a collapsed split view never shows the toggle —
@@ -123,6 +246,8 @@ public struct RoomListView: View {
         // sidebar *look* without the system's assumption about what a sidebar is for.
         .toolbar(removing: .sidebarToggle)
         .roomListSearch(text: $searchText, nativeSidebar: isNativeSidebar)
+        // Scrolling the results puts the keyboard away — it covers half of them otherwise.
+        .scrollDismissesKeyboard(.immediately)
         // And the same reasoning at the other end. The banner is in the way *on purpose* — it is
         // about messages the user cannot read, or a code that is one lost phone away from mattering
         // very much — but being in the way is not the same as sitting on top of the first
@@ -132,7 +257,11 @@ public struct RoomListView: View {
                 isFixingRecovery = true
             }
         }
-        .sheet(isPresented: $isFixingRecovery) {
+        // A session this device has not seen before — "was this you?". Under the recovery banner,
+        // because it is the same kind of interruption, and somebody in the account who should not
+        // be is worth it. See `NewSignInBanner`.
+        .newSignIns(for: session)
+        .pageSheet(isPresented: $isFixingRecovery) {
             // With a way out, unlike the copy of this the root puts up after signing in. There it is
             // a gate; here it is a sheet somebody opened out of curiosity about a banner, and a
             // curious person must be allowed to leave. The banner does not go anywhere — it will ask
@@ -142,9 +271,11 @@ public struct RoomListView: View {
                               onDone: { isFixingRecovery = false })
         }
         // And the same again at the top when the network is gone — see `OfflineBanner`, which is an
-        // inset for exactly the reason the search field is one.
+        // inset for exactly the reason the search field is one. On every device, iPhone included:
+        // the title's "Waiting for network…" is a word in the bar, and the strip is the thing that
+        // cannot be missed.
         .offlineBanner()
-        .overlay { emptyState }
+        .overlay { emptyState.arrivingFromFolder(folderArrival) }
         // A real destination on this column's stack, not a view swapped in behind a
         // hand-rolled transition. That is what buys the stock push, the back button and
         // the swipe back — none of which is worth reimplementing, and all of which is
@@ -175,13 +306,20 @@ public struct RoomListView: View {
             }
         }
         .navigationDestination(isPresented: $isShowingArchive) {
-            ArchiveView(session: session) { roomID in
-                // Opening a chat from the archive drops back to the main column and selects it —
-                // the detail follows the selection, and the archive is a place you came from, not
-                // one you stay in to read.
-                selectedRoomID = roomID
-                isShowingArchive = false
-            }
+            // Beside the archive on iPad and Mac: the chat goes to the detail column, as from the main
+            // list. On a phone the archive pushes the chat itself (`pushed`). Selecting it there —
+            // which is what this did — asks the collapsed split view to show its detail column, and
+            // it does that by unwinding the sidebar's stack, archive and all: no slide in, and Back
+            // landed in the main list.
+            ArchiveView(session: session,
+                        onOpen: { roomID in
+                            if isSidebar {
+                                selectedRoomID = roomID
+                            } else {
+                                archivedRoomID = roomID
+                            }
+                        },
+                        pushed: isSidebar ? nil : $archivedRoomID)
         }
         .navigationDestination(isPresented: $isShowingSettings) {
             // In a sidebar the system pushes without giving the pushed screen a way back,
@@ -195,15 +333,45 @@ public struct RoomListView: View {
                          // reason why is worth the line: see `SettingsView.onClose`.
                          onClose: { isShowingSettings = false })
         }
+        #if os(macOS)
+        // Opening a chat on a Mac puts away whatever the sidebar had open — settings, a space —
+        // and leaves the list and the conversation: you went there to talk, not to come back to
+        // the settings page you passed through. The archive stays, because a chat opened from it
+        // is opened beside it.
+        .onChange(of: selectedRoomID) { _, roomID in
+            guard roomID != nil else { return }
+            isShowingSettings = false
+            openedSpace = nil
+        }
+        #endif
+        #if DEBUG && os(macOS)
+        // `Iskra --probe-resize settings`: the window measured with settings open.
+        .task {
+            guard ResizeProbe.isRequested, CommandLine.arguments.contains("settings") else { return }
+            try? await Task.sleep(for: .seconds(4))
+            isShowingSettings = true
+        }
+        #endif
+        // Escape, on a Mac, for the whole column: back to the list from wherever it went —
+        // settings and any page in it, a space, the archive. Here, on the column's root, and on no
+        // pushed screen: a modifier on a pushed screen put the window into a layout loop on
+        // macOS 26. See `escapeKey`.
+        .escapeKey {
+            isShowingSettings = false
+            openedSpace = nil
+            isShowingArchive = false
+            isArchiveInline = false
+        }
         // A sheet, not a push: creating a chat is a question with a Cancel, and the answer
         // to it replaces what is *behind* this column — so it is a thing you put down, not
         // a place you go back from.
-        .sheet(item: $creating) { kind in
-            NewConversationView(kind: kind, session: session) { roomID in
-                // Openable already: `createRoom` does not come back until the SDK has the
-                // room, so selecting it here does not race the sync that will put it in
-                // the list a moment later. See `UserSession.timeline(forRoomID:)`.
+        .pageSheet(isPresented: $isStartingChat) {
+            NewChatView(session: session) { roomID in
+                // Openable already: creating and joining both wait for the SDK to have the
+                // room, so selecting it here does not race the sync that will put it in the
+                // list a moment later. See `UserSession.timeline(forRoomID:)`.
                 selectedRoomID = roomID
+                isStartingChat = false
             }
         }
         .onChange(of: searchText) { _, query in
@@ -211,8 +379,34 @@ public struct RoomListView: View {
         }
     }
 
+    /// The selection, less the one tap that is not a choice: the finger that held a row for a peek,
+    /// coming back up off it. See `ChatPeekPresenter.isPeeking(at:)` — let through, it would open
+    /// the chat under the card and read the very messages the peek promised to leave alone.
+    private var selection: Binding<String?> {
+        Binding(get: { selectedRoomID },
+                set: { roomID in
+                    if let roomID, chatPeek?.isPeeking(at: roomID) == true { return }
+                    selectedRoomID = roomID
+                })
+    }
+
     private var isSearching: Bool {
         !searchText.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    /// Whether the bar carries the sidebar's buttons — "+" beside the gear — or the phone's: "+" at
+    /// the left, the face at the right.
+    ///
+    /// Never the sidebar's on an iPhone, whatever the size class says. An iPhone is `.regular`
+    /// wide in landscape on the big models, and for a moment whenever the system draws the app
+    /// sideways for the app switcher — and the list, told it was a sidebar, moved its "+" over to
+    /// the right beside a gear the phone never shows, and left it there when it came back.
+    private var hasSidebarChrome: Bool {
+        #if os(iOS)
+        isSidebar && UIDevice.current.userInterfaceIdiom != .phone
+        #else
+        isSidebar
+        #endif
     }
 
     /// Whether this list is drawn as the Mac's own sidebar.
@@ -221,37 +415,33 @@ public struct RoomListView: View {
     /// exists on one of them. `isSidebar`, because a sidebar that is the whole screen is not a
     /// sidebar — and this is why the flag is checked here rather than switched on globally.
     /// And the preference, because it is an experiment somebody opted into.
+    /// The denser row — on every Mac sidebar, the app's own list as well as the system's look.
+    private var isCompactRow: Bool {
+        #if os(macOS)
+        isSidebar
+        #else
+        isNativeSidebar
+        #endif
+    }
+
     private var isNativeSidebar: Bool {
         BetaFeatures.hasAnything && isSidebar && prefersNativeSidebar
     }
 
     // MARK: - Chrome
 
-    /// The "+": top-left on iPhone, beside the gear on iPad and Mac.
+    /// The "+": top-left on iPhone, beside the gear on iPad and Mac. Opens "New chat".
     private var newConversationMenu: some View {
-        Menu {
-            Button {
-                creating = .directChat
-            } label: {
-                Label(Strings.RoomList.newChat, systemImage: "person")
-            }
-
-            Button {
-                creating = .room
-            } label: {
-                Label(Strings.RoomList.newRoom, systemImage: "person.3")
-            }
+        Button {
+            isStartingChat = true
         } label: {
             Image(systemName: "plus")
                 .font(.body.weight(.medium))
         }
-        .menuIndicator(.hidden)
         .accessibilityLabel(Text(Strings.RoomList.newConversation))
-        // Making a room is a conversation with the server, and offline there is nobody to have it
-        // with: `client.createRoom` is a plain network call with no queue behind it. Left enabled, it
-        // would take somebody through the whole New Chat screen — a name, a topic, a person to invite
-        // — and refuse at the last press. The button that cannot work says so before it is pressed.
-        .disabled(isOffline)
+        // Not disabled offline any more, though making a room still needs the server: the screen
+        // behind it is also the list of everybody you already write to, and opening one of those
+        // conversations needs nothing but the local store.
     }
 
     /// The user's own face, top right — the iPhone's way into settings, and the twin of the
@@ -273,6 +463,7 @@ public struct RoomListView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text(Strings.Account.settings))
+        .accountMenu()
     }
 
     /// A gear, top right, on iPad and Mac. A face reads as *you* — a fine thing to tap on a
@@ -287,15 +478,17 @@ public struct RoomListView: View {
                 .font(.body.weight(.medium))
         }
         .accessibilityLabel(Text(Strings.Account.settings))
+        .accountMenu()
     }
 
     // MARK: - Content
 
     @ViewBuilder
     private var rooms: some View {
-        let rooms = session.roomList.rooms
+        let rooms = listedRooms
         ForEach(Array(rooms.enumerated()), id: \.element.id) { index, room in
             row(for: room)
+                .arrivingFromFolder(folderArrival)
                 .separatorsBetweenRowsOnly(isFirst: index == 0, isLast: index == rooms.count - 1)
         }
     }
@@ -326,20 +519,29 @@ public struct RoomListView: View {
                     Button {
                         openedSpace = room
                     } label: {
-                        RoomRow(room: room, compact: isNativeSidebar)
+                        RoomRow(room: room,
+                                isTyping: session.roomList.typingRoomIDs.contains(room.id),
+                                compact: isCompactRow)
                     }
                     .buttonStyle(.plain)
                     .roomListSwipeActions(room: room,
                                           roomList: session.roomList,
                                           onLeave: { roomToLeave = room })
                 } else {
-                    RoomRow(room: room, compact: isNativeSidebar)
+                    RoomRow(room: room,
+                                isTyping: session.roomList.typingRoomIDs.contains(room.id),
+                                compact: isCompactRow)
                         .tag(room.id)
                         .roomListSwipeActions(room: room,
                                               roomList: session.roomList,
                                               onLeave: { roomToLeave = room })
+                        .chatPeek(room, session: session) { selectedRoomID = room.id }
                 }
         }
+        // What the row says is read off the chat itself while it is on the screen — the deleted
+        // message, the grey line, the eye on a message read. See `RoomPeek`.
+        .onAppear { session.roomList.rowAppeared(room.id) }
+        .onDisappear { session.roomList.rowDisappeared(room.id) }
     }
 
     /// The conversations filed into sections, for the native sidebar only.
@@ -354,14 +556,23 @@ public struct RoomListView: View {
     /// never a re-sort: the busiest conversation is still at the top of the one it belongs to.
     @ViewBuilder
     private var sectionedRooms: some View {
-        let all = session.roomList.rooms
+        let all = listedRooms
         let invitations = all.filter(\.isInvitation)
         let spaces = all.filter { $0.isSpace && !$0.isInvitation }
+        // Pinned chats first, in the one list, with the pin on their row — as on a phone. A shelf
+        // of their own under a heading split one list of conversations into two for no gain.
         let chats = all.filter { !$0.isSpace && !$0.isInvitation }
-        let pinned = chats.filter(\.isPinned)
-        let unpinned = chats.filter { !$0.isPinned }
 
-        // First, because it is a question waiting for an answer rather than a place to read.
+        // At the top, where the plain list and Telegram both keep it. It used to sit at the
+        // bottom here, on the theory that a Mac sidebar files the shelf you rarely open under
+        // everything you do — and under a few hundred chats that put it where nobody would ever
+        // scroll to find it.
+        if !session.roomList.archivedRooms.isEmpty, activeFolder == nil {
+            Section { archiveEntry.sidebarRowInsets() }
+        }
+
+        // Then invitations, because they are a question waiting for an answer rather than a place
+        // to read.
         if !invitations.isEmpty {
             section(invitations, titled: Strings.RoomList.Sidebar.invitations)
         }
@@ -370,25 +581,13 @@ public struct RoomListView: View {
             section(spaces, titled: Strings.RoomList.Sidebar.spaces)
         }
 
-        // Pinned conversations get a heading of their own rather than a pin drawn on a row in one
-        // long list. That is the difference the sidebar is for: on a phone the pin is a mark on a
-        // chat, here it is a shelf the chat is kept on.
-        if !pinned.isEmpty {
-            section(pinned, titled: Strings.RoomList.Sidebar.pinned)
-        }
-
         // Unheaded when it is the only thing on screen. A lone "Chats" over every conversation
         // there is names nothing — there is nothing it tells them apart from — so the heading
         // appears the moment something else does.
-        let isAlone = invitations.isEmpty && spaces.isEmpty && pinned.isEmpty
-        section(unpinned, titled: isAlone ? nil : Strings.RoomList.Sidebar.chats)
+        let isAlone = invitations.isEmpty && spaces.isEmpty
+        section(chats.filter(\.isPinned) + chats.filter { !$0.isPinned },
+                titled: isAlone ? nil : Strings.RoomList.Sidebar.chats)
 
-        // Last rather than first. In the plain list the archive is a quiet row at the top, where
-        // Telegram keeps it; a Mac sidebar puts the shelf you rarely open at the bottom, under
-        // everything you do.
-        if !session.roomList.archivedRooms.isEmpty {
-            Section { archiveEntry.sidebarRowInsets() }
-        }
     }
 
     /// One heading and the conversations under it — or, with no title, the conversations alone.
@@ -416,18 +615,48 @@ public struct RoomListView: View {
     /// shelf that is usually empty.
     @ViewBuilder
     private var archiveEntry: some View {
-        let archived = session.roomList.archivedRooms
-        if !archived.isEmpty {
+        if !session.roomList.archivedRooms.isEmpty {
             Button {
+                #if os(macOS)
+                if isSidebar { isArchiveInline = true } else { isShowingArchive = true }
+                #else
                 isShowingArchive = true
+                #endif
             } label: {
-                Label(String(app: Strings.RoomList.Archive.entry(archived.count)),
+                Label(String(app: Strings.RoomList.Archive.title),
                       systemImage: "archivebox")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.secondary)
+                    // The whole width of the row is the button, not only the words in it: a row
+                    // that looks like a row and answers only where its label happens to end is
+                    // a row people tap twice.
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(.rect)
             }
             .buttonStyle(.plain)
+            // Nothing drawn above it. It is the first thing under the title, and a rule there is
+            // a line under an edge that already exists.
+            .listRowSeparator(.hidden, edges: .top)
         }
+    }
+
+    /// The archive in the list's place — see `isArchiveInline`. A row back at the top, then the
+    /// archived chats as the same rows the list draws, selected into the conversation's column.
+    @ViewBuilder
+    private var archiveInline: some View {
+        Button {
+            isArchiveInline = false
+        } label: {
+            Label(String(app: Strings.RoomList.Archive.title), systemImage: "chevron.backward")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .listRowSeparator(.hidden, edges: .top)
+
+        ForEach(session.roomList.archivedRooms, id: \.id) { row(for: $0).sidebarRowInsets() }
     }
 
     @ViewBuilder
@@ -461,9 +690,13 @@ public struct RoomListView: View {
     private var emptyState: some View {
         if isSearching, session.search.foundNothing, !session.search.isSearching {
             ContentUnavailableView.search(text: searchText)
+        } else if !isSearching, activeFolder != nil, listedRooms.isEmpty, !session.roomList.rooms.isEmpty {
+            ContentUnavailableView(String(app: Strings.Folders.emptyTitle),
+                                   systemImage: "folder",
+                                   description: Text(Strings.Folders.emptyMessage))
         } else if !isSearching, session.roomList.rooms.isEmpty {
             if session.roomList.isLoadingInitialRooms {
-                ProgressView { Text(Strings.RoomList.loading) }
+                RoomListSkeleton()
             } else {
                 ContentUnavailableView(String(app: Strings.RoomList.emptyTitle),
                                        systemImage: "bubble.left.and.bubble.right",
@@ -491,6 +724,17 @@ private extension View {
             listStyle(.sidebar)
         } else {
             listStyle(.plain)
+                #if os(macOS)
+                // The side columns stand on the grouped page and the conversation on the plain one
+                // (`Color.groupedPage`, `Color.page`), so the window reads as a chat between two
+                // columns rather than as one sheet. Not under the native sidebar, which is meant to
+                // stand on its own material.
+                .scrollContentBackground(.hidden)
+                .background(Color.groupedPage)
+                // A step in from the column's edges, so a chat — and the capsule that marks the open
+                // one — does not run into the window's frame and the divider.
+                .contentMargins(.horizontal, Theme.Spacing.close, for: .scrollContent)
+                #endif
         }
     }
 
@@ -529,25 +773,10 @@ private extension View {
     /// reads as having been cropped by it, and four points is the least that keeps the two curves
     /// apart. The rest of the row's breathing room is the sidebar's own margin, further out.
     func sidebarRowInsets() -> some View {
-        listRowInsets(EdgeInsets(top: Theme.Spacing.sidebarRow,
+        listRowInsets(EdgeInsets(top: Theme.Spacing.close,
                                  leading: Theme.Spacing.tight,
-                                 bottom: Theme.Spacing.sidebarRow,
+                                 bottom: Theme.Spacing.close,
                                  trailing: Theme.Spacing.tight))
-    }
-
-    /// A separator between one row and the next, and nowhere else.
-    ///
-    /// A plain `List` also draws one *above* the first row and *below* the last, which is a
-    /// hairline hanging under the toolbar and another floating beneath the final chat — lines
-    /// that divide a conversation from nothing. Only the interior ones say anything, so the
-    /// two outer edges are switched off at the ends of the list.
-    ///
-    /// The edges are hidden only on the rows that own them, rather than hiding `.top`
-    /// everywhere and keeping `.bottom`: between two rows the two edges are the same line, and
-    /// asking for it to be hidden from either side is enough to lose it.
-    func separatorsBetweenRowsOnly(isFirst: Bool, isLast: Bool) -> some View {
-        listRowSeparator(isFirst ? .hidden : .automatic, edges: .top)
-            .listRowSeparator(isLast ? .hidden : .automatic, edges: .bottom)
     }
 }
 
@@ -556,20 +785,28 @@ private extension View {
 struct RoomRow: View {
     let room: RoomSummary
 
-    /// Whether this row is standing in the Mac's own sidebar, where it has to be shorter.
+    /// Somebody in the room is writing — said instead of the last message. See
+    /// `RoomListStore.typingRoomIDs`.
+    var isTyping = false
+
+    /// Whether this row is standing in the Mac's own sidebar, where it has to be denser: the same
+    /// row as on a phone, with a smaller face (`roomAvatarCompact`, Telegram's size on a Mac) and
+    /// less air between the name and the message.
     ///
-    /// One line of the last message instead of two, and no space reserved for the second. In the
-    /// app's own list the reserved line is load-bearing — see `lineLimit` below — but a sidebar is
-    /// a narrow column read down its length, and a band of empty space under every message is
-    /// exactly the padding that makes a list of eight conversations look like a list of five.
-    ///
-    /// The rows stay the same height as each other regardless, which is what the reserved line was
-    /// protecting: with one line of preview the tallest thing in the row is the face beside it, and
-    /// a face is the same size in every row there is.
+    /// Two lines reserved, as in the app's own list — see `lineLimit` below — because at this size
+    /// the name and two lines are about as tall as the face, so the rows cost nothing in height for
+    /// it and stay one height whatever the messages say.
     var compact = false
+
+    #if os(macOS)
+    private static let compactLeading = Theme.Spacing.close
+    #else
+    private static let compactLeading: CGFloat = 0
+    #endif
 
     /// For the pin, which is the one coloured thing on this row. See `body`.
     @Environment(\.accent) private var accent
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         HStack(spacing: Theme.Spacing.normal) {
@@ -577,12 +814,13 @@ struct RoomRow: View {
             // name is even read — see `AvatarShape`.
             // A space is a shelf of rooms rather than somebody to look at, so it gets no
             // creature — only the square and its initials.
-            RoomAvatar(name: room.name, url: room.avatarURL, size: Theme.Size.roomAvatar,
+            RoomAvatar(name: room.name, url: room.avatarURL,
+                       size: compact ? Theme.Size.roomAvatarCompact : Theme.Size.roomAvatar,
                        shape: room.isSpace ? .roundedSquare : .circle,
                        seed: room.isSpace ? nil : room.avatarSeed,
                        faces: room.faces)
 
-            VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+            VStack(alignment: .leading, spacing: compact ? Theme.Spacing.withinRun : Theme.Spacing.tight) {
                 HStack(spacing: Theme.Spacing.tight) {
                     Text(room.name)
                         .font(.body.weight(.semibold))
@@ -608,10 +846,13 @@ struct RoomRow: View {
                     // the row's one piece of *status*, which is what being pinned is. Same shape
                     // the swipe action uses, so the gesture and its result say the same word.
                     if room.isPinned {
-                        Image(systemName: "pin.fill")
-                            .font(.caption)
-                            .foregroundStyle(accent.color)
-                            .accessibilityLabel(Text(Strings.RoomList.pinned))
+                        pin
+                    }
+
+                    // How far your own last message has got, beside its time — Telegram's place
+                    // for it. The same marks the conversation draws (`DeliveryTick`).
+                    if let mark = room.lastMessageMark, !isTyping {
+                        lastMessageMark(mark)
                     }
 
                     if let date = room.lastActivity {
@@ -627,13 +868,14 @@ struct RoomRow: View {
                 // it would drift down beside a long message and sit level with the middle of a
                 // sentence rather than with the row it belongs to.
                 HStack(alignment: .top, spacing: Theme.Spacing.close) {
-                    // A call in this room takes the preview's place while it lasts. It is the
-                    // one thing about a room that is true *now* rather than true of its past,
-                    // and a row that reads "ага, понял" while three people are talking in there
-                    // is a row telling you the least useful of the two facts it knows.
-                    Text(room.hasActiveCall ? String(app: Strings.Call.ongoing) : (room.lastMessage ?? " "))
+                    // "печатает…" in place of the last message while somebody is writing, and "Идёт
+                    // звонок" while a call is on, both in the accent — the moments the preview is
+                    // news rather than history.
+                    preview
                         .font(.subheadline)
-                        .foregroundStyle(room.hasActiveCall ? accent.color : .secondary)
+                        .foregroundStyle(isLive ? AnyShapeStyle(accent.color) : AnyShapeStyle(.secondary))
+                        .contentTransition(.opacity)
+                        .animation(.smooth(duration: Theme.Timing.chrome), value: isLive)
                         // Two lines, and the space for both is kept even when only one is used.
                         //
                         // Without `reservesSpace` a list of chats has rows of two different
@@ -642,47 +884,64 @@ struct RoomRow: View {
                         // which it is not. A steady row is what lets the faces beside them scan as
                         // a column at all.
                         //
-                        // In the sidebar one line, and nothing reserved — see `compact`. The rows
-                        // are still all one height there, because the face is then the tallest
-                        // thing in them.
-                        .lineLimit(compact ? 1 : 2, reservesSpace: !compact)
+                        .lineLimit(2, reservesSpace: true)
 
                     Spacer(minLength: 0)
 
-                    if room.hasUnread {
-                        // A count, not a sentence — but still formatted for the locale
-                        // rather than interpolated, so the digits are the right ones.
-                        //
-                        // Three badges and three colours — see `UnreadEmphasis`, which is where
-                        // the *choice* between them is made, out of reach of anything that knows
-                        // what a colour is.
-                        //
-                        // The middle one was grey until now, and the argument for that was real:
-                        // an accent badge on every unread chat made the list the loudest screen in
-                        // the app and left red with nothing to stand out against. What was wrong
-                        // with it was not the loudness but that grey meant nothing — it was simply
-                        // the default, so it said only "unread", which the badge's existence had
-                        // already said. Grey now belongs to muted rooms and to nothing else, which
-                        // is a thing worth saying, and the accent carries the ordinary case. Red
-                        // still reads against both, because there are only ever a few mentions in
-                        // a list and never a row of them.
-                        //
-                        // A number when there is one to show, and a dot when there is not.
-                        // A muted room counts no notifications and still has new messages in
-                        // it, and a room flagged unread by hand has none at all — both used to
-                        // draw a badge with **0** written in it.
-                        Group {
-                            if room.hasUnreadCount {
-                                Text(room.unreadCount, format: .number)
-                                    .font(.caption.weight(.semibold).monospacedDigit())
-                                    .foregroundStyle(badgeInk)
-                                    .padding(.horizontal, 7)
-                                    .padding(.vertical, 2)
-                            } else {
-                                Circle().fill(.clear).frame(width: 10, height: 10)
+                    if room.hasUnread || room.hasUnreadReactions {
+                        HStack(spacing: Theme.Spacing.tight) {
+                            // Somebody reacted. A heart of its own, and never a number on the
+                            // badge — a reaction is an answer to something already read, and
+                            // counting it as a message sent people into chats that had nothing
+                            // new in them. Telegram's mark, in Telegram's red.
+                            if room.hasUnreadReactions {
+                                Image(systemName: "heart.fill")
+                                    .font(.system(size: Theme.Size.unreadBadge * 0.5, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: Theme.Size.unreadBadge, height: Theme.Size.unreadBadge)
+                                    .background(room.isMuted ? Color.gray : Color.red, in: Circle())
                             }
+
+                            // Somebody named you, or answered you. It used to turn the whole badge
+                            // red, and red in a list of chats reads as an *error* — so it is its
+                            // own mark now, an "@" beside the count, in the same colour as the
+                            // count. What it says is who the messages are for, not how alarmed
+                            // to be about them.
+                            if room.isMentioned {
+                                Image(systemName: "at")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(accent.foreground(in: colorScheme))
+                                    .frame(width: Theme.Size.unreadBadge, height: Theme.Size.unreadBadge)
+                                    .background(mentionFill, in: Circle())
+                            }
+
+                            // A count, not a sentence — but still formatted for the locale
+                            // rather than interpolated, so the digits are the right ones.
+                            //
+                            // Two colours — see `UnreadEmphasis`. The accent for a chat that
+                            // notifies you, grey for one you silenced: grey is a thing worth
+                            // saying, and the accent carries the ordinary case. On the mono theme
+                            // the accent is the foreground itself — black in the light, white in
+                            // the dark — with the page's colour written on it.
+                            //
+                            // A number when there is one to show, and a dot when there is not.
+                            // A muted room counts no notifications and still has new messages in
+                            // it, and a room flagged unread by hand has none at all — both used to
+                            // draw a badge with **0** written in it.
+                            Group {
+                                if room.hasUnreadCount {
+                                    Text(room.unreadNotifyingMessages, format: .number)
+                                        .font(.caption.weight(.semibold).monospacedDigit())
+                                        .foregroundStyle(badgeInk)
+                                        .padding(.horizontal, 7)
+                                        .frame(minWidth: Theme.Size.unreadBadge,
+                                               minHeight: Theme.Size.unreadBadge)
+                                } else if room.hasUnread && !room.isMentioned {
+                                    Circle().fill(.clear).frame(width: Theme.Size.unreadDot, height: Theme.Size.unreadDot)
+                                }
+                            }
+                            .background(room.hasUnread ? badgeFill : AnyShapeStyle(.clear), in: Capsule())
                         }
-                        .background(badgeFill, in: Capsule())
                     }
                 }
             }
@@ -695,12 +954,103 @@ struct RoomRow: View {
         // and with the faces enlarged the column of them was reading as a list of *cards* with the
         // conversations a long way apart. Set here rather than at the `List`, so the invitation
         // rows — which carry two buttons and genuinely want the room — keep the system's.
-        .listRowInsets(EdgeInsets(top: Theme.Spacing.normal,
-                                  leading: Theme.Spacing.roomy,
-                                  bottom: Theme.Spacing.normal,
-                                  trailing: Theme.Spacing.roomy))
+        // In the Mac's sidebar, next to nothing: the sidebar draws its own margin round a row, and
+        // ours on top of it left a band of empty space either side of every chat.
+        // On a Mac, a step in on the face's side too, so that with the list's own margin it stands
+        // twice as far from the column's edge as the margin alone put it.
+        .listRowInsets(compact
+                       ? EdgeInsets(top: Theme.Spacing.close, leading: Self.compactLeading,
+                                    bottom: Theme.Spacing.close, trailing: 0)
+                       : EdgeInsets(top: Theme.Spacing.normal, leading: Theme.Spacing.roomy,
+                                    bottom: Theme.Spacing.normal, trailing: Theme.Spacing.roomy))
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
+    }
+
+    /// Pinned chats wear a pin, tinted rather than grey — the row's one piece of *status*, which is
+    /// what being pinned is. Same shape the swipe action uses, so the gesture and its result say the
+    /// same word.
+    private var pin: some View {
+        Image(systemName: "pin.fill")
+            .font(.caption)
+            .foregroundStyle(accent.color)
+            .accessibilityLabel(Text(Strings.RoomList.pinned))
+    }
+
+    /// Whether the preview is saying something happening now — see `preview`.
+    private var isLive: Bool { isTyping || room.hasActiveCall }
+
+    /// The last message, with the icon of what it is in front of it when it is an attachment —
+    /// a photo, a voice message, a sticker. Part of the same `Text`, so the two lines wrap as one.
+    private var preview: Text {
+        if isTyping { return Text(Strings.Room.typing) }
+        // A call in this room takes the preview's place while it lasts. It is the one thing about a
+        // room that is true *now* rather than true of its past, and a row that reads "ага, понял"
+        // while three people are talking in there tells you the less useful of the two facts.
+        if room.hasActiveCall { return Text(Strings.Call.ongoing) }
+        // A draft is what you came back for, so it stands where the last message would — all of it
+        // in italics, the label and the words alike, so it cannot be mistaken for something sent.
+        if let draft = room.draft {
+            return Text(Strings.RoomList.draft(Self.oneLine(draft))).italic()
+        }
+        var words = Text(room.lastMessage ?? " ")
+        if let symbol = room.lastMessageKind.map(Self.symbol(for:)) {
+            words = Text(Image(systemName: symbol)) + Text(verbatim: " ") + words
+        }
+        // In a group, who said it, on a line of its own over the words — Telegram's. Not in a
+        // personal chat, where it can only be the one person the row is named after.
+        if let sender = room.lastSender, room.kind == .group, !compact {
+            return Text(verbatim: sender).foregroundStyle(.primary) + Text(verbatim: "\n") + words
+        }
+        if let sender = room.lastSender, room.kind == .group {
+            return Text(verbatim: "\(sender): ").foregroundStyle(.primary) + words
+        }
+        return words
+    }
+
+    /// A draft's lines run together: the row has two lines of its own to give, and a draft that
+    /// begins with a blank line would spend one of them on nothing.
+    static func oneLine(_ text: String) -> String {
+        text.split(whereSeparator: \.isNewline).joined(separator: " ")
+    }
+
+    static func symbol(for kind: PreviewKind) -> String {
+        switch kind {
+        case .photo: "photo"
+        case .video: "video"
+        case .videoNote: "video.circle"
+        case .voice: "mic"
+        case .audio: "music.note"
+        case .file: "doc"
+        case .location: "mappin.and.ellipse"
+        case .sticker: "face.smiling"
+        case .poll: "chart.bar"
+        }
+    }
+
+    @ViewBuilder
+    private func lastMessageMark(_ mark: LastMessageMark) -> some View {
+        Group {
+            switch mark {
+            case .sending:
+                Image(systemName: "clock")
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel(Text(Strings.Message.Delivery.sending))
+            case .sent:
+                Image(systemName: "checkmark")
+                    .foregroundStyle(accent.color)
+                    .accessibilityLabel(Text(Strings.Message.Delivery.sent))
+            case .read:
+                Image(systemName: "eye.fill")
+                    .foregroundStyle(accent.color)
+                    .accessibilityLabel(Text(Strings.Message.Delivery.read))
+            case .failed:
+                Image(systemName: "exclamationmark.circle.fill")
+                    .foregroundStyle(.red)
+                    .accessibilityLabel(Text(Strings.Message.Delivery.failed))
+            }
+        }
+        .font(.caption)
     }
 
     /// One sentence, so VoiceOver reads a row as a thought rather than as a pile of
@@ -713,12 +1063,14 @@ struct RoomRow: View {
         if room.isPinned {
             parts.append(String(app: Strings.RoomList.pinned))
         }
-        // The same substitution the row makes on screen — see above. VoiceOver reading out a
+        // The same substitution the row makes on screen — see `preview`. VoiceOver reading out a
         // stale message while the row says a call is happening would be the two disagreeing.
         if room.hasActiveCall {
             parts.append(String(app: Strings.Call.ongoing))
+        } else if let draft = room.draft {
+            parts.append(String(app: Strings.RoomList.draft(Self.oneLine(draft))))
         } else if let message = room.lastMessage {
-            parts.append(message)
+            parts.append(room.kind == .group ? room.lastSender.map { "\($0): \(message)" } ?? message : message)
         }
 
         // Both, when both are true, and that is the fix rather than a flourish. These used to be
@@ -727,7 +1079,7 @@ struct RoomRow: View {
         // "1 mention". The badge and the voice were reading different numbers off the same row,
         // and the one you could not see was the one leaving twelve messages out.
         if room.hasUnreadCount {
-            parts.append(String(app: Strings.RoomList.unread(room.unreadCount)))
+            parts.append(String(app: Strings.RoomList.unread(room.unreadNotifyingMessages)))
         } else if room.hasUnread {
             // Unread with nothing to count — a muted room, or one flagged by hand. "0 unread"
             // is what the counted sentence would have said, and it is the opposite of true.
@@ -736,40 +1088,38 @@ struct RoomRow: View {
         if room.isMentioned {
             parts.append(String(app: Strings.RoomList.mentions(room.mentionCount)))
         }
+        if room.hasUnreadReactions {
+            parts.append(String(app: Strings.RoomList.reactions(room.unreadReactionCount)))
+        }
         return parts.joined(separator: ", ")
     }
 
-    /// What the badge is filled with.
+    /// What the badge is filled with: the accent itself — `.primary` on the mono theme, which is
+    /// the black-and-white pair — or a solid grey for a room the user silenced.
     ///
-    /// `accent.bubble(onWallpaper: false)` rather than `accent.color`, and for the one case where
-    /// the two differ: on the colourless theme there is no colour to fill anything with, and that
-    /// pair is already the app's answer to "the accent, as a surface" — sixteen percent of the
-    /// foreground. Using `color` would paint a mono badge in `.primary`, which is a solid black
-    /// slab in the light with black digits on it. Same reasoning, and the same pair, as a message
-    /// bubble; see `AccentTheme.bubble(onWallpaper:)`.
+    /// A solid grey, not a translucency of the foreground: a muted room is almost always the dot
+    /// case, and nine percent of the foreground ten points across is a smudge.
     private var badgeFill: AnyShapeStyle {
         switch room.unreadEmphasis {
-        case .mention: AnyShapeStyle(Color.red)
-        case .ordinary: accent.bubble(onWallpaper: false)
-        // A solid grey, built the way the red one is: a fixed colour with white on it, the same in
-        // both appearances. Not a translucency of the foreground, which is what the ordinary badge
-        // was until now and what mono's still is — and that is the reason. A muted room is *always*
-        // the dot case, because it counts no notifications and so has no number to show, and a dot
-        // is ten points across. Nine percent of the foreground at that size is a smudge; on the
-        // colourless theme, where the ordinary badge is itself a grey translucency, it would also
-        // have been the same smudge as the thing it is meant to be distinguished from.
+        case .ordinary: AnyShapeStyle(accent.color)
         case .muted: AnyShapeStyle(Color.gray)
         }
     }
 
     /// And what is written on it. The pair to `badgeFill`: each fill comes with the one thing that
-    /// stays readable on it.
+    /// stays readable on it — `foreground(in:)` rather than `foreground`, because on mono the
+    /// latter is `.background`, which resolves against whatever it happens to be drawn into.
     private var badgeInk: AnyShapeStyle {
         switch room.unreadEmphasis {
-        case .mention: AnyShapeStyle(.white)
-        case .ordinary: accent.onBubble
+        case .ordinary: accent.foreground(in: colorScheme)
         case .muted: AnyShapeStyle(.white)
         }
+    }
+
+    /// The "@" is always the accent, even in a silenced room: Matrix lets a mention through a
+    /// muted room's own rule, and so does this.
+    private var mentionFill: AnyShapeStyle {
+        AnyShapeStyle(accent.color)
     }
 }
 
@@ -874,3 +1224,28 @@ private struct InviteRow: View {
 // `Avatar` used to live here, and it never loaded anything: it drew initials and dropped the
 // URL on the floor, so there was not a single face anywhere in the app. It is now its own
 // view in `Support/Avatar.swift`, and it fetches.
+
+extension View {
+    /// A separator between one row and the next, and nowhere else.
+    ///
+    /// A plain `List` also draws one *above* the first row and *below* the last, which is a
+    /// hairline hanging under the toolbar and another floating beneath the final chat — lines
+    /// that divide a conversation from nothing. Only the interior ones say anything, so the
+    /// two outer edges are switched off at the ends of the list.
+    ///
+    /// The edges are hidden only on the rows that own them, rather than hiding `.top`
+    /// everywhere and keeping `.bottom`: between two rows the two edges are the same line, and
+    /// asking for it to be hidden from either side is enough to lose it.
+    func separatorsBetweenRowsOnly(isFirst: Bool, isLast: Bool) -> some View {
+        listRowSeparator(isFirst ? .hidden : .automatic, edges: .top)
+            .listRowSeparator(isLast ? .hidden : .automatic, edges: .bottom)
+    }
+}
+
+private extension View {
+    /// A row of the chat list part of the way in from another folder — see `folderArrival`.
+    func arrivingFromFolder(_ arrival: CGFloat) -> some View {
+        offset(x: arrival * Theme.Size.folderSlide)
+            .opacity(1 - abs(arrival))
+    }
+}

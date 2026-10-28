@@ -18,15 +18,25 @@ struct AccentSwatches: View {
     /// Sized by the swatch, not by a column count. Eight circles are a comfortable row on a Mac
     /// and a wrapped pair of rows on a phone, and neither has to be spelled out.
     private var columns: [GridItem] {
-        [GridItem(.adaptive(minimum: Theme.Size.swatch), spacing: Theme.Spacing.roomy)]
+        [GridItem(.adaptive(minimum: Theme.Size.accentSwatch), spacing: Theme.Spacing.roomy)]
     }
 
     var body: some View {
+        #if os(macOS)
+        // One row of dots, at the end of a settings line that names it — the way every other
+        // setting on a Mac is laid out.
+        HStack(spacing: Theme.Spacing.normal) {
+            ForEach(AccentTheme.allCases) { theme in
+                swatch(theme)
+            }
+        }
+        #else
         LazyVGrid(columns: columns, spacing: Theme.Spacing.roomy) {
             ForEach(AccentTheme.allCases) { theme in
                 swatch(theme)
             }
         }
+        #endif
     }
 
     private func swatch(_ theme: AccentTheme) -> some View {
@@ -35,17 +45,20 @@ struct AccentSwatches: View {
         } label: {
             Circle()
                 .fill(theme.color)
-                .frame(width: Theme.Size.swatch, height: Theme.Size.swatch)
+                .frame(width: Theme.Size.accentSwatch, height: Theme.Size.accentSwatch)
                 .overlay {
                     // The tick is drawn in whatever stays legible on the colour it lands on
                     // — which is the same question the app answers for the text in a bubble,
                     // and is answered in the same place. On the mono theme that is the one
                     // thing that keeps it visible at all.
+                    // Not on a Mac, where the dot is too small to hold one: the ring says it.
+                    #if !os(macOS)
                     if theme == accent {
                         Image(systemName: "checkmark")
                             .font(.body.weight(.bold))
                             .foregroundStyle(theme.foreground)
                     }
+                    #endif
                 }
                 // A ring around the chosen one, set off the swatch so it reads as a ring and
                 // not as a border the colour happens to have. Without it the mono swatch —

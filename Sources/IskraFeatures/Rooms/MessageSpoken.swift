@@ -42,6 +42,7 @@ extension Message {
         case .audio: String(app: Strings.Message.Spoken.sentAudio)
         case .file: String(app: Strings.Message.Spoken.sentFile)
         case .location: String(app: Strings.Message.Spoken.sentLocation)
+        case let .poll(poll): String(app: Strings.Message.Spoken.sentPoll(poll.question))
         case .unreadable: String(app: Strings.Message.Spoken.sentUnreadable)
         case .deleted: String(app: Strings.Message.Spoken.deletedMessage)
         case .unsupported: String(app: Strings.Message.Spoken.sentUnsupported)
@@ -51,7 +52,7 @@ extension Message {
         // and VoiceOver never lands on it. The reason therefore has to be said here, or a
         // blind user would be the only one who cannot find out why nothing was delivered.
         if case let .failed(failure)? = delivery {
-            return "\(who): \(what). \(String(app: Strings.Message.Delivery.failed)). \(String(localized: failure.explanation))"
+            return "\(who): \(what). \(String(app: Strings.Message.Delivery.failed)). \(String(app: failure.explanation))"
         }
         return "\(who): \(what)"
     }

@@ -65,6 +65,10 @@ struct MessageBubble: ViewModifier {
     /// hierarchical fill and an opaque one — see `EnvironmentValues.hasWallpaper`.
     @Environment(\.hasWallpaper) private var hasWallpaper
 
+    /// Whether this bubble has been lifted off the page it was drawn on — see
+    /// `EnvironmentValues.bubbleIsLifted`.
+    @Environment(\.bubbleIsLifted) private var isLifted
+
     /// Wider than the padding above and below, so the words sit in the middle of the
     /// bubble rather than pressed against its rounded sides — the corners eat into
     /// the left and right edges in a way they do not eat into the top and bottom.
@@ -72,6 +76,18 @@ struct MessageBubble: ViewModifier {
     /// either one moves.
     private var horizontal: CGFloat { style == .plain ? 0 : Theme.Spacing.roomy }
     private var vertical: CGFloat { style == .plain ? 0 : Theme.Spacing.normal }
+
+    /// One line of body text, as tall as Dynamic Type makes it — what a one-line bubble's height
+    /// is made of, and so what its narrowest width has to match.
+    @ScaledMetric(relativeTo: .body) private var lineHeight: CGFloat = Theme.Size.bodyLine
+
+    /// Never narrower than tall. "ок" in a bubble two letters wide came out as a thin upright
+    /// pill; at least as wide as a line is high, the shortest message is a circle — Telegram's —
+    /// and the words sit in the middle of it.
+    private var minimumContentWidth: CGFloat {
+        guard style != .plain else { return 0 }
+        return max(0, lineHeight + vertical * 2 - horizontal * 2)
+    }
 
     private var fill: AnyShapeStyle {
         switch style {
@@ -85,10 +101,13 @@ struct MessageBubble: ViewModifier {
         let shape = BubbleShape()
 
         return content
+            .frame(minWidth: minimumContentWidth)
             .padding(.horizontal, horizontal)
             .padding(.vertical, vertical)
             .foregroundStyle(style == .own ? accent.onBubble : AnyShapeStyle(.primary))
             .background(fill, in: shape)
+            // The page, under the fill, when there is no page — see `bubbleIsLifted`.
+            .background(isLifted && style != .plain ? Color.page : Color.clear, in: shape)
             // Lets a long-press menu and drag preview take the bubble's shape rather
             // than a rectangle around it.
             //
@@ -102,6 +121,33 @@ struct MessageBubble: ViewModifier {
             .contentShape(shape)
             .padding(.horizontal, style == .plain ? -Theme.Spacing.roomy : 0)
             .padding(.vertical, style == .plain ? -Theme.Spacing.normal : 0)
+    }
+}
+
+/// A message's fill and ink without its padding — for a bubble that lays out its own insides, as an
+/// album does (`AlbumBubble`): the pictures go to within a hairline of the edge, and the caption
+/// under them is padded by hand to sit where a text message's words would.
+struct BubbleFill: ViewModifier {
+    let style: BubbleStyle
+
+    @Environment(\.accent) private var accent
+    @Environment(\.hasWallpaper) private var hasWallpaper
+    @Environment(\.bubbleIsLifted) private var isLifted
+
+    private var fill: AnyShapeStyle {
+        switch style {
+        case .own: accent.bubble(onWallpaper: hasWallpaper)
+        case .incoming: AnyShapeStyle(hasWallpaper ? Color.incomingBubbleOnWallpaper : Color.incomingBubble)
+        case .plain: AnyShapeStyle(.clear)
+        }
+    }
+
+    func body(content: Content) -> some View {
+        let shape = BubbleShape()
+        return content
+            .foregroundStyle(style == .own ? accent.onBubble : AnyShapeStyle(.primary))
+            .background(fill, in: shape)
+            .background(isLifted && style != .plain ? Color.page : Color.clear, in: shape)
     }
 }
 
@@ -142,6 +188,11 @@ struct PictureBorder: ViewModifier {
 }
 
 public extension View {
+    /// The bubble's colours and nothing else — see `BubbleFill`.
+    func bubbleFill(_ style: BubbleStyle) -> some View {
+        modifier(BubbleFill(style: style))
+    }
+
     /// Draws the edge of the bubble a picture stands in for. See `PictureBorder`.
     func pictureBorder(_ style: BubbleStyle) -> some View {
         modifier(PictureBorder(style: style))
@@ -200,5 +251,78 @@ public extension View {
             .contentShape(shape)
             .padding(.horizontal, isPlain ? -Theme.Spacing.roomy : 0)
             .padding(.vertical, isPlain ? -Theme.Spacing.normal : 0)
+    }
+}
+
+public extension EnvironmentValues {
+    /// Whether the bubble being drawn has been picked up off the conversation — the copy the
+    /// message menu lifts over a darkened, blurred room.
+    ///
+    /// A bubble's fill is not a colour, it is a *tint*: five percent of the foreground for
+    /// somebody else's message, sixteen for your own on the colourless theme. On the page that is
+    /// a grey; lifted over the menu's curtain it is five percent of the curtain, and the bubble
+    /// that was grey a moment ago is suddenly see-through. So a lifted bubble carries the page
+    /// with it, underneath the tint, and comes out exactly the colour it was. Over a wallpaper the
+    /// fills are opaque already and the page underneath them changes nothing.
+    @Entry var bubbleIsLifted: Bool = false
+}
+
+public extension Color {
+    /// The page a conversation is drawn on when it has no wallpaper — the system's own
+    /// background, named as a colour rather than reached through `ShapeStyle.background`. That
+    /// one resolves through the environment's `backgroundStyle`, and the whole point of the page
+    /// under a lifted bubble is that it is opaque whatever the environment around it says.
+    ///
+    /// On a Mac: white, and in the dark a grey — the conversation is the lightest thing in the
+    /// window, between two side columns that stand on `groupedPage`, darker in the dark and greyer
+    /// in the light. The phone's pure black read on a Mac as a hole in the window.
+    static var page: Color {
+        #if canImport(UIKit)
+        Color(uiColor: .systemBackground)
+        #elseif canImport(AppKit)
+        Color(nsColor: NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+                ? NSColor(srgbRed: 0x16 / 255, green: 0x16 / 255, blue: 0x16 / 255, alpha: 1)
+                : .white
+        })
+        #else
+        .white
+        #endif
+    }
+
+    /// A card on that page — the phone's grouped cell: white, and in the dark a grey a step above
+    /// the conversation (`page`) and well above the near-black of the side columns. On a Mac the form's own plates are a translucent darkening of whatever is under
+    /// them, so on a grey page they came out greyer than the page: the phone's arrangement upside
+    /// down. Painted per row instead (`GroupedRowsFormStyle`).
+    static var groupedCard: Color {
+        #if canImport(UIKit)
+        Color(uiColor: .secondarySystemGroupedBackground)
+        #elseif canImport(AppKit)
+        Color(nsColor: NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+                ? NSColor(srgbRed: 0x1C / 255, green: 0x1C / 255, blue: 0x1E / 255, alpha: 1)
+                : .white
+        })
+        #else
+        .white
+        #endif
+    }
+
+    /// The page a form stands on — the phone's grouped background: a light grey under white cards,
+    /// and in the dark a near-black, so the cards stand off it as they do on the phone. On a Mac it
+    /// is also the side columns' page — the room list and the chat's info — so that they read as
+    /// columns beside the conversation rather than as more of it.
+    static var groupedPage: Color {
+        #if canImport(UIKit)
+        Color(uiColor: .systemGroupedBackground)
+        #elseif canImport(AppKit)
+        Color(nsColor: NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+                ? NSColor(srgbRed: 0x11 / 255, green: 0x11 / 255, blue: 0x11 / 255, alpha: 1)
+                : NSColor(srgbRed: 0xF2 / 255, green: 0xF2 / 255, blue: 0xF7 / 255, alpha: 1)
+        })
+        #else
+        .white
+        #endif
     }
 }

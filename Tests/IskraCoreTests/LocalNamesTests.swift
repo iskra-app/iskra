@@ -13,51 +13,51 @@ import Testing
 struct LocalNamesTests {
     /// A throwaway defaults, one per test, for the same reason `ChatDirectoryTests` has one: these
     /// run in parallel, and the real App Group is the user's own.
-    private func freshDefaults(_ name: String) -> UserDefaults {
+    private func freshDefaults(_ name: String) throws -> UserDefaults {
         let suite = "iskra.tests.localNames.\(name)"
-        let defaults = UserDefaults(suiteName: suite)!
+        let defaults = try #require(UserDefaults(suiteName: suite))
         defaults.removePersistentDomain(forName: suite)
         return defaults
     }
 
     @Test("a name given is a name given back")
-    func roundTrips() {
-        let defaults = freshDefaults("roundTrip")
-        LocalNames.set("Мама", for: "!a", in: defaults)
+    func roundTrips() throws {
+        let defaults = try freshDefaults("roundTrip")
+        LocalNames.set("Мама", for: "!a", account: "test", in: defaults)
 
-        #expect(LocalNames.name(for: "!a", in: defaults) == "Мама")
-        #expect(LocalNames.name(for: "!b", in: defaults) == nil)
+        #expect(LocalNames.name(for: "!a", account: "test", in: defaults) == "Мама")
+        #expect(LocalNames.name(for: "!b", account: "test", in: defaults) == nil)
     }
 
     /// Emptying the field is how the real name comes back — so a blank must not be stored as a
     /// name, or the header would go silently empty and there would be no way to type it out of.
     @Test("a blank name is an absence, not a name")
-    func blankIsAbsence() {
-        let defaults = freshDefaults("blank")
-        LocalNames.set("Мама", for: "!a", in: defaults)
+    func blankIsAbsence() throws {
+        let defaults = try freshDefaults("blank")
+        LocalNames.set("Мама", for: "!a", account: "test", in: defaults)
 
-        LocalNames.set("   ", for: "!a", in: defaults)
-        #expect(LocalNames.name(for: "!a", in: defaults) == nil)
+        LocalNames.set("   ", for: "!a", account: "test", in: defaults)
+        #expect(LocalNames.name(for: "!a", account: "test", in: defaults) == nil)
 
-        LocalNames.set("Мама", for: "!a", in: defaults)
-        LocalNames.set(nil, for: "!a", in: defaults)
-        #expect(LocalNames.name(for: "!a", in: defaults) == nil)
+        LocalNames.set("Мама", for: "!a", account: "test", in: defaults)
+        LocalNames.set(nil, for: "!a", account: "test", in: defaults)
+        #expect(LocalNames.name(for: "!a", account: "test", in: defaults) == nil)
     }
 
     /// A stray space at the end of what was typed is not a different name, and storing one would
     /// make an invisible difference to a visible thing.
     @Test("the surrounding whitespace is not part of the name")
-    func trims() {
-        let defaults = freshDefaults("trim")
-        LocalNames.set("  Аня ", for: "!a", in: defaults)
-        #expect(LocalNames.name(for: "!a", in: defaults) == "Аня")
+    func trims() throws {
+        let defaults = try freshDefaults("trim")
+        LocalNames.set("  Аня ", for: "!a", account: "test", in: defaults)
+        #expect(LocalNames.name(for: "!a", account: "test", in: defaults) == "Аня")
     }
 
     /// The rebuild of the chat list hangs off this notification, so an edit that changes nothing
     /// must not send one — leaving a field untouched would otherwise cost a pass over every room.
     @Test("only a real change is announced")
-    func announcesOnlyRealChanges() {
-        let defaults = freshDefaults("announce")
+    func announcesOnlyRealChanges() throws {
+        let defaults = try freshDefaults("announce")
         // A room ID of this suite's own, counted under a lock: the notification centre is the
         // process's, every test in this file posts to it, and they all run at once.
         let roomID = "!announce:test"
@@ -71,12 +71,12 @@ struct LocalNamesTests {
         }
         defer { NotificationCenter.default.removeObserver(token) }
 
-        LocalNames.set("Мама", for: roomID, in: defaults)
-        LocalNames.set("Мама", for: roomID, in: defaults)
-        LocalNames.set("Мама ", for: roomID, in: defaults)
+        LocalNames.set("Мама", for: roomID, account: "test", in: defaults)
+        LocalNames.set("Мама", for: roomID, account: "test", in: defaults)
+        LocalNames.set("Мама ", for: roomID, account: "test", in: defaults)
         #expect(announcements.value == 1)
 
-        LocalNames.set(nil, for: roomID, in: defaults)
+        LocalNames.set(nil, for: roomID, account: "test", in: defaults)
         #expect(announcements.value == 2)
     }
 
@@ -96,15 +96,15 @@ struct LocalNamesTests {
     /// are keyed by room ID, so a name left behind would reattach itself to the same room under a
     /// different account — somebody else's nickname for whoever is in it.
     @Test("signing out forgets every one of them")
-    func forgetsEverything() {
-        let defaults = freshDefaults("forget")
-        LocalNames.set("Мама", for: "!a", in: defaults)
-        LocalNames.set("Аня", for: "!b", in: defaults)
+    func forgetsEverything() throws {
+        let defaults = try freshDefaults("forget")
+        LocalNames.set("Мама", for: "!a", account: "test", in: defaults)
+        LocalNames.set("Аня", for: "!b", account: "test", in: defaults)
 
-        LocalNames.forget(in: defaults)
+        LocalNames.forget(account: "test", in: defaults)
 
-        #expect(LocalNames.name(for: "!a", in: defaults) == nil)
-        #expect(LocalNames.name(for: "!b", in: defaults) == nil)
+        #expect(LocalNames.name(for: "!a", account: "test", in: defaults) == nil)
+        #expect(LocalNames.name(for: "!b", account: "test", in: defaults) == nil)
     }
 
     /// The lock screen is the one place a nickname is most wanted and most easily forgotten: the
@@ -113,7 +113,7 @@ struct LocalNamesTests {
     /// *is* the chat — printing «Мама» over `anna_1987` would undo the rename on the one screen
     /// the user cannot open to fix it.
     @Test("a renamed chat is renamed on the lock screen too")
-    func pushUsesTheLocalName() {
+    func pushUsesTheLocalName() throws {
         let renamed = PushMapper.attribution(roomName: "anna_1987",
                                              senderName: "anna_1987",
                                              isDirect: true,
@@ -133,7 +133,7 @@ struct LocalNamesTests {
     /// `INPerson.displayName`, and that was being built straight from the server's display name.
     /// The nickname has to travel on both, which is what `speaker` is for.
     @Test("the nickname is the name on the banner, not just in the title")
-    func pushPersonUsesTheLocalName() {
+    func pushPersonUsesTheLocalName() throws {
         #expect(PushMapper.speaker(senderName: "anna_1987",
                                    senderID: "@anna:matrix.org",
                                    localName: "Мама") == "Мама")

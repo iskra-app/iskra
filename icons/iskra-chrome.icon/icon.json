@@ -1,0 +1,40 @@
+{
+  "fill" : {
+    "automatic-gradient" : "srgb:0.08054,0.12128,0.14549,1.00000"
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "fill" : {
+            "solid" : "srgb:0.84702,0.88263,0.93474,1.00000"
+          },
+          "glass" : true,
+          "image-name" : "Subtract2.svg",
+          "name" : "Subtract2",
+          "position" : {
+            "scale" : 1.12,
+            "translation-in-points" : [
+              0,
+              0
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}

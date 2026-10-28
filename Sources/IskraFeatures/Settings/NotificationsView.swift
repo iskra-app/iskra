@@ -56,7 +56,7 @@ struct NotificationsView: View {
                 everythingElse
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .navigationTitle(Text(Strings.Notifications.title))
         .toolbarTitleDisplayMode(.inline)
         .task {
@@ -134,8 +134,6 @@ struct NotificationsView: View {
                    isOn: rules.roomMentions) { await rules.setRoomMentions($0) }
         } header: {
             Text(Strings.Notifications.mentions)
-        } footer: {
-            Text(Strings.Notifications.mentionsFooter)
         }
     }
 

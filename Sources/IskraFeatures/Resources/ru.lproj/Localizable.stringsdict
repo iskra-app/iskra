@@ -2,6 +2,26 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>roomList.reactions</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+				<key>one</key>
+				<string>%lld новая реакция</string>
+				<key>few</key>
+				<string>%lld новые реакции</string>
+				<key>many</key>
+				<string>%lld новых реакций</string>
+				<key>other</key>
+				<string>%lld новых реакций</string>
+		</dict>
+	</dict>
 	<key>roomList.mentions</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -80,6 +100,146 @@
 				<string>%lld непрочитанных</string>
 				<key>other</key>
 				<string>%lld непрочитанных</string>
+		</dict>
+	</dict>
+	<key>message.menu.seen</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld прочитал</string>
+			<key>few</key>
+			<string>%lld прочитали</string>
+			<key>many</key>
+			<string>%lld прочитали</string>
+			<key>other</key>
+			<string>%lld прочитали</string>
+		</dict>
+	</dict>
+	<key>message.menu.reactors</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+				<key>one</key>
+				<string>%lld реакция</string>
+				<key>few</key>
+				<string>%lld реакции</string>
+				<key>many</key>
+				<string>%lld реакций</string>
+				<key>other</key>
+				<string>%lld реакции</string>
+		</dict>
+	</dict>
+	<key>stickers.settings.count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+				<key>one</key>
+				<string>%lld стикер</string>
+				<key>few</key>
+				<string>%lld стикера</string>
+				<key>many</key>
+				<string>%lld стикеров</string>
+				<key>other</key>
+				<string>%lld стикера</string>
+		</dict>
+	</dict>
+	<key>poll.voters</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+				<key>one</key>
+				<string>%lld голос</string>
+				<key>few</key>
+				<string>%lld голоса</string>
+				<key>many</key>
+				<string>%lld голосов</string>
+				<key>other</key>
+				<string>%lld голоса</string>
+		</dict>
+	</dict>
+	<key>thread.replies</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+				<key>one</key>
+				<string>%lld ответ</string>
+				<key>few</key>
+				<string>%lld ответа</string>
+				<key>many</key>
+				<string>%lld ответов</string>
+				<key>other</key>
+				<string>%lld ответа</string>
+		</dict>
+	</dict>
+	<key>location.liveForMinutes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+				<key>one</key>
+				<string>%lld минуту</string>
+				<key>few</key>
+				<string>%lld минуты</string>
+				<key>many</key>
+				<string>%lld минут</string>
+				<key>other</key>
+				<string>%lld минуты</string>
+		</dict>
+	</dict>
+	<key>location.liveForHours</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+				<key>one</key>
+				<string>%lld час</string>
+				<key>few</key>
+				<string>%lld часа</string>
+				<key>many</key>
+				<string>%lld часов</string>
+				<key>other</key>
+				<string>%lld часа</string>
 		</dict>
 	</dict>
 </dict>

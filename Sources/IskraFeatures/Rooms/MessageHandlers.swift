@@ -1,4 +1,5 @@
 import Foundation
+import IskraCore
 
 /// Everything a row can ask the conversation to do, in one parcel.
 ///
@@ -24,6 +25,10 @@ struct MessageHandlers {
     /// Starts the room's send queue again, for the one message shape that can ask for it:
     /// a failure the SDK called recoverable.
     var onRetry: () -> Void = {}
+
+    /// Sends it past a verification that no longer holds, having been told — see
+    /// `TimelineStore.sendAnyway`. Offered only where `SendFailure.canSendAnyway`.
+    var onSendAnyway: () -> Void = {}
 
     /// Adds an emoji, or takes it back if it is already ours. One callback for both,
     /// because a reaction is a toggle — see `TimelineStore.toggleReaction`.
@@ -54,4 +59,34 @@ struct MessageHandlers {
     /// Reports this message to the moderators, carrying the user's reason. Only `RoomView`
     /// holds the store that can send it, so the reason is handed upward.
     var onReport: (String) -> Void = { _ in }
+
+    /// Answers a poll with the whole new choice, or closes one this account started.
+    var onVote: ([String]) -> Void = { _ in }
+    var onEndPoll: () -> Void = {}
+
+    /// Opens the thread under this message — its answers, and a composer that answers into it.
+    /// Nil inside a thread, where there is no thread under a thread, and wherever no room can open one.
+    var onOpenThread: (() -> Void)?
+
+    /// Starts choosing several messages, with this one already chosen — see `MessageSelection`.
+    /// Nil where there is nothing to do with a choice: a pinned list, a search result, a peek.
+    var onSelect: (() -> Void)?
+
+    /// The event's JSON, for the developer's "View JSON" — nil unless that is switched on in Beta.
+    var loadSource: (() -> String?)?
+
+    /// Whether the room lets this account delete other people's messages — see
+    /// `TimelineStore.canDeleteOthers`. A fact rather than a closure, but it travels with the acts
+    /// it unlocks, to both rows and the menu alike.
+    var canDeleteOthers = false
+
+    /// Who reacted, named — for the "N reactions" line in a group's menu. Nil in a personal chat,
+    /// and nil means the line is not offered. See `ReactorsSheet`.
+    var loadReactors: (() async -> [Reactor])?
+
+    /// Who has read the message — counted for the same line in a group's menu, and listed under
+    /// "All" in the same sheet, as Telegram does. Nil in a personal chat, where the ticks say it.
+    /// See `TimelineStore.readerIDs(of:)`.
+    var countReaders: (() -> Int)?
+    var loadReaders: (() async -> [Reader])?
 }

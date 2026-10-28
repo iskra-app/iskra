@@ -90,9 +90,13 @@ struct PrivacyCover: View {
     /// been taken. Waiting for `.background` would cover an app nobody was looking at any more and
     /// leave the one moment that mattered uncovered.
     ///
+    /// On a Mac the phase is not enough: a window left behind when somebody switches to another
+    /// app stays on screen, readable by whoever is looking, and its scene often still says
+    /// `.active`. So there the cover is also up whenever Iskra is not the app in front.
+    ///
     /// A pure function so `PrivacyCoverTests` can ask it the question directly; a cover is one of
     /// those things nobody notices is broken until a screenshot proves it.
-    static func isNeeded(lockEnabled: Bool, phase: ScenePhase) -> Bool {
-        lockEnabled && phase != .active
+    static func isNeeded(lockEnabled: Bool, phase: ScenePhase, appIsActive: Bool = true) -> Bool {
+        lockEnabled && (phase != .active || !appIsActive)
     }
 }

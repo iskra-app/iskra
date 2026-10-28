@@ -15,6 +15,9 @@ struct MessageRow: View {
     /// where each one is explained.
     var handlers = MessageHandlers()
 
+    /// The "who reacted" list a held pill has opened — see `ReactionPill.onShowReactors`.
+    @State private var reactorsRequest: ReactorsRequest?
+
     /// Whether this message is currently pinned, which is the whole of what the menu item
     /// needs to know to say the right word.
     var isPinned: Bool = false
@@ -35,7 +38,11 @@ struct MessageRow: View {
     /// arrival — it is the whole room twitching. What this exists for is the one message that
     /// lands in a conversation somebody is already reading: their own, going out, and the answer
     /// coming back. `RoomView` knows which of the two is happening and says so.
-    var arrivesAnimated: Bool = true
+    ///
+    /// False unless said otherwise. An arriving row starts with no height and claims it as it lands
+    /// (`MessageArrival`), so a row built anywhere that never runs the landing — a snapshot, a
+    /// preview — would be built flat. A row arrives only when somebody who knows says it does.
+    var arrivesAnimated: Bool = false
 
     /// Whether the conversation has just jumped *to* this message, and it is briefly lit so that
     /// the eye can find it.
@@ -48,6 +55,9 @@ struct MessageRow: View {
 
     /// The wash that lights a message the conversation has just jumped to.
     @Environment(\.accent) private var accent
+
+    /// Where a pressed face goes — the sender's page. See `EnvironmentValues.openProfile`.
+    @Environment(\.openProfile) private var openProfile
 
     /// How wide the conversation is, measured by `RoomView` and handed down. A playing video
     /// note grows to fill it.
@@ -92,12 +102,18 @@ struct MessageRow: View {
         // Zero spacing, because the emoji do not sit *below* the bubble — they climb back
         // onto it. See `reactions`.
         VStack(alignment: message.isOwn ? .trailing : .leading, spacing: 0) {
-            swipeableBubbleRow
+            bubbleRow
 
             if !message.reactions.isEmpty {
                 reactions
+                    .transition(.reactionsAppear)
             }
         }
+        // The swipe takes the emoji with it. They sit on the bubble's foot, and a bubble pulled
+        // out from under its own reactions left them hanging in the air where it had been.
+        .swipeToReply(message,
+                      dragsToward: message.isOwn ? .leading : .trailing,
+                      onReply: handlers.onReply)
         .padding(.top, opensDay ? 0
                                 : message.isContinuation ? Theme.Spacing.withinRun
                                                          : Theme.Spacing.betweenSenders)
@@ -118,61 +134,28 @@ struct MessageRow: View {
         // that snapped on and off would be over before the eye arrived from the quote it was
         // pressed on. It fades out on its own — see `RoomView`, which is what puts the light out.
         .animation(.smooth(duration: Theme.Timing.reaction * 2), value: isHighlighted)
-        // Reactions arrive from other people, unannounced, while you are reading. Popping
-        // one into existence under a message moves every message below it by a row with no
-        // warning; growing it in says what happened. One `value:` for the whole row, so a
-        // pill that only changes its count animates too.
-        .animation(.smooth(duration: Theme.Timing.reaction), value: message.reactions)
-        // A redaction does not remove the message; it replaces what it was with the fact
-        // that it is gone. So the bubble does not disappear, it *becomes* the grey line —
-        // a paragraph of text, or a photo, shrinking down to five italic words. Without
-        // this the swap is instantaneous and the conversation below it jumps up by however
-        // tall the message used to be, which reads as a glitch rather than as a deletion.
-        .animation(.smooth(duration: Theme.Timing.deletion), value: message.kind)
-        // And when the row really does leave — a message thrown out of the send queue,
-        // which never reached anyone and leaves no trace behind it — it shrinks away
-        // instead of blinking out. The animation that drives this belongs to the list, not
-        // to the row: see `RoomView`.
-        .transition(.asymmetric(insertion: arrival,
-                                removal: .scale(scale: 0.85).combined(with: .opacity)))
-    }
-
-    /// A message coming in: it grows out of the side of the screen it belongs to rather than
-    /// fading up in place.
-    ///
-    /// `.scale` and not `.move`, and the difference is not taste. A scale is drawn, not laid out —
-    /// the row takes its full height the instant it exists and only its *picture* grows — so the
-    /// conversation is exactly as tall during the animation as it is after it. A transition that
-    /// changed the height over a third of a second would grow the content in a dozen steps, and
-    /// every one of them is a size change the scroll view answers: the reader standing halfway up
-    /// a busy room would watch it drift under them while a message they cannot see arrives below.
-    /// See the `held` metrics in `RoomView`, which exist to correct exactly that.
-    ///
-    /// The anchor is the corner the message comes from — yours from the composer on the right,
-    /// theirs from the left — which is what makes it read as a message being *put* there.
-    private var arrival: AnyTransition {
-        guard arrivesAnimated else { return .identity }
-
-        return .scale(scale: 0.86, anchor: message.isOwn ? .bottomTrailing : .bottomLeading)
-            .combined(with: .opacity)
-            // Its own animation, overriding the scope around the list. That one is the deletion's
-            // and is deliberately slower — see `Theme.Timing.arrival`.
-            .animation(Theme.Timing.arrival)
+        // The one exception: the emoji under a message. They change the row's *height*, and a
+        // row that jumps taller by a line of pills shoves every message below it at once — the
+        // same shove the reader sees as the conversation twitching. So the pills grow in and out
+        // and the row's height follows them. Scoped to the set of emoji and nothing else, so a
+        // tick or an edit landing in the same pass is not caught by it.
+        .animation(.smooth(duration: Theme.Timing.reaction), value: message.reactions.map(\.key))
+        // And the row's height with them, which the line above cannot do: an implicit animation
+        // moves what is inside the row, and the list around it still jumped by a line of pills.
+        .animatesHeight(when: message.reactions.map(\.key))
+        // Nothing else about a message is animated *from here*, and that is the rule rather than
+        // an omission. A message arrives once; after that it only ever *changes* — an edit
+        // rewrites it, a redaction replaces it with the grey line. Those are facts becoming true,
+        // and a fact that eases into place asks the eye to watch a row the reader had finished
+        // with. The one small exception carries its own scope: the delivery mark turns over in
+        // place, clock to tick to eye, as Telegram's does — see `DeliveryTick`.
+        //
+        // The arrival, which is the one thing that does move, is `arrives` below. It is not a
+        // `.transition`, and that is the point of it.
+        .arrives(arrivesAnimated, outgoing: message.isOwn)
     }
 
     // MARK: - The bubble, and what can be done to it
-
-    /// The bubble, wrapped so it can be dragged toward the centre to reply — see `SwipeToReply`.
-    ///
-    /// The direction is always "toward the middle of the screen", never a side the user has to
-    /// remember: your own messages sit on the right and give to the leading edge; everyone else's
-    /// sit on the left and give to the trailing one.
-    private var swipeableBubbleRow: some View {
-        bubbleRow
-            .swipeToReply(message,
-                          dragsToward: message.isOwn ? .leading : .trailing,
-                          onReply: handlers.onReply)
-    }
 
     /// One sentence for VoiceOver, unless there is a button inside the message that flattening
     /// would swallow — see `Message.hasPressableContent`.
@@ -199,14 +182,22 @@ struct MessageRow: View {
                 timestamp
             }
 
-            // Only the first message in a run carries an avatar; the rest are indented
-            // to line up under it.
+            // Only the last message in a run carries an avatar, at the foot of it — Telegram's:
+            // the name opens the run and the face closes it, so the two are never on one bubble
+            // unless the run is one message long. The rest keep an empty column of the same
+            // width, so the whole run stands on one edge. The row is bottom-aligned, which is
+            // what puts the face level with the bubble's last line rather than its first.
             if showsSender {
-                if message.isContinuation {
+                if message.isContinued {
                     Color.clear.frame(width: avatarSize)
                 } else {
+                    // Pressing a face goes to the person — Telegram's. A button only where a room
+                    // is there to open the page; in a peek it is a picture.
                     Avatar(name: message.senderName, url: message.senderAvatarURL,
                            size: Theme.Size.avatarSmall, seed: message.senderID)
+                        .contentShape(.circle)
+                        .onTapGesture { openProfile?(message.senderID) }
+                        .accessibilityAddTraits(openProfile == nil ? [] : .isButton)
                 }
             }
 
@@ -216,6 +207,7 @@ struct MessageRow: View {
                         .font(.caption.weight(.medium))
                         .foregroundStyle(.secondary)
                         .padding(.leading, Theme.Spacing.close)
+                        .onTapGesture { openProfile?(message.senderID) }
                 }
 
                 if case let .failed(failure)? = message.delivery {
@@ -228,11 +220,17 @@ struct MessageRow: View {
                     HStack(alignment: .center, spacing: Theme.Spacing.close) {
                         SendFailureBadge(failure: failure,
                                          onRetry: handlers.onRetry,
+                                         onSendAnyway: handlers.onSendAnyway,
                                          onDiscard: handlers.onDiscard)
                         actionableContent
                     }
                 } else {
                     actionableContent
+                }
+
+                // The answers kept under it, a press away — see `ThreadLine`.
+                if let thread = message.thread, let open = handlers.onOpenThread {
+                    ThreadLine(thread: thread, onOpen: open)
                 }
             }
 
@@ -250,10 +248,14 @@ struct MessageRow: View {
         MessageContent(message: message,
                        style: style,
                        playingDiameter: playingDiameter,
-                       onOpenReply: handlers.onOpenReply)
+                       onOpenReply: handlers.onOpenReply,
+                       onVote: handlers.onVote)
+            .uploadProgress(of: message, onCancel: handlers.onDiscard)
+            // One of ours comes across from where it was typed — Telegram's send. See
+            // `ComposerTravel`. On the bubble rather than the row, which spans the screen.
+            .travelsFromComposer(arrivesAnimated && message.isOwn)
             .messageActions(message, isPinned: isPinned, handlers: handlers)
     }
-
 
     // MARK: - Reactions
 
@@ -269,7 +271,10 @@ struct MessageRow: View {
         FlowLayout(spacing: Theme.Spacing.tight,
                    alignment: message.isOwn ? .trailing : .leading) {
             ForEach(message.reactions) { reaction in
-                ReactionPill(reaction: reaction) {
+                ReactionPill(reaction: reaction,
+                             onShowReactors: handlers.loadReactors == nil ? nil : {
+                                 reactorsRequest = ReactorsRequest(filter: reaction.key)
+                             }) {
                     handlers.onToggleReaction(reaction.key)
                 }
                 // Each pill grows from nothing rather than fading in on the spot, so an
@@ -283,6 +288,8 @@ struct MessageRow: View {
         // Drawn after the bubble and therefore over it — which is the whole point, and is
         // only true because this comes second in the stack.
         .zIndex(1)
+        .reactorsSheet($reactorsRequest, reactions: message.reactions, load: handlers.loadReactors,
+                       loadReaders: handlers.loadReaders)
     }
 
     /// Two different things, added together, and worth keeping apart in the head.
@@ -374,12 +381,38 @@ struct MessageRow: View {
 /// the navigation layer — see `IskraDesign/Glass.swift`.
 struct ReactionPill: View {
     let reaction: MessageReaction
+    /// Who left it, and who else left what — a hold on the pill, as in Signal. Nil where nobody can
+    /// be asked (`MessageHandlers.loadReactors`), and then a hold does nothing.
+    var onShowReactors: (() -> Void)?
     let onToggle: () -> Void
 
     @Environment(\.accent) private var accent
 
+    /// A tap and a hold, and not a `Button`: a button takes the whole touch for itself, and a hold
+    /// on one ends in its action as soon as the finger lifts — the reaction toggled under the list
+    /// that was opened to look at it.
     var body: some View {
-        Button(action: onToggle) {
+        pill
+            .onTapGesture(perform: onToggle)
+            .onLongPressGesture {
+                guard let onShowReactors else { return }
+                holds += 1
+                onShowReactors()
+            }
+            .sensoryFeedback(.impact(weight: .medium), trigger: holds)
+            .accessibilityAction(.default, onToggle)
+            .accessibilityActions {
+                if let onShowReactors {
+                    Button(action: onShowReactors) { Text(Strings.Message.Menu.reactors(reaction.count)) }
+                }
+            }
+    }
+
+    /// Counts holds that opened the list, only so the phone can answer each one.
+    @State private var holds = 0
+
+    private var pill: some View {
+        Group {
             HStack(spacing: Theme.Spacing.tight) {
                 Text(reaction.key)
                     .font(.caption)
@@ -407,7 +440,7 @@ struct ReactionPill: View {
             }
             .contentShape(.capsule)
         }
-        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(Strings.Message.Menu.reaction(reaction.key, reaction.count)))
         // What pressing it will do, which is the one thing the pill's appearance cannot
         // say out loud.
@@ -430,28 +463,44 @@ struct DeliveryTick: View {
 
     var body: some View {
         Group {
-            switch status {
-            case .sending:
-                Image(systemName: "clock")
-            case .sent:
-                Image(systemName: "checkmark")
-            case .read where !carriesReadMark:
-                // Read, and the eye below it already said so. Nothing to add.
-                EmptyView()
-            case .read:
-                // A glance, not a second tick: "sent" and "read" as one checkmark and two, or a
-                // checkmark and a ringed checkmark, are the same small mark twice and the eye is
-                // the difference read at a distance.
-                Image(systemName: "eye.fill")
-            case .failed:
-                // Never drawn: `MessageRow` sends failures to `SendFailureBadge`. Progress
-                // is worth a whisper; a message that never left is not.
-                EmptyView()
+            if let symbol {
+                // One image whose symbol changes, rather than a different image per state, so the
+                // change can be *seen*: the clock turns into the tick, and the tick into the eye,
+                // the way Telegram's status turns over in place when a message lands and when it is
+                // read. A different view per state could only blink.
+                Image(systemName: symbol)
+                    .contentTransition(.symbolEffect(.replace))
+                    .transition(.scale(scale: 0.5).combined(with: .opacity))
             }
         }
         .font(.caption2)
-        .foregroundStyle(.secondary)
+        // Grey on the app's page; on a wallpaper, ink chosen against it — see `onWallpaperInk`.
+        .onWallpaperInk()
+        // Scoped to the mark and to the symbol it shows, and to nothing else in the row: the rest of
+        // a message that is merely changing still changes at once (see `MessageRow`).
+        .animation(.smooth(duration: Theme.Timing.chrome), value: symbol)
         .accessibilityLabel(Text(label))
+    }
+
+    private var symbol: String? {
+        switch status {
+        case .sending:
+            "clock"
+        case .sent:
+            "checkmark"
+        case .read where !carriesReadMark:
+            // Read, and the eye below it already said so. Nothing to add.
+            nil
+        case .read:
+            // A glance, not a second tick: "sent" and "read" as one checkmark and two, or a
+            // checkmark and a ringed checkmark, are the same small mark twice and the eye is
+            // the difference read at a distance.
+            "eye.fill"
+        case .failed:
+            // Never drawn: `MessageRow` sends failures to `SendFailureBadge`. Progress
+            // is worth a whisper; a message that never left is not.
+            nil
+        }
     }
 
     private var label: LocalizedStringResource {
@@ -476,6 +525,9 @@ struct SendFailureBadge: View {
     /// Sends this one message again. Only ever offered where that can work — see
     /// `SendFailure.canRetry`.
     let onRetry: () -> Void
+
+    /// Sends it past a verification that no longer holds — see `SendFailure.canSendAnyway`.
+    var onSendAnyway: () -> Void = {}
 
     /// Throws the message away. Always offered, because it always works.
     let onDiscard: () -> Void
@@ -508,13 +560,16 @@ struct SendFailureBadge: View {
         }
         .buttonStyle(.plain)
         .popover(isPresented: $isShowingReason) {
-            SendFailureReason(failure: failure) {
+            SendFailureReason(failure: failure, onRetry: {
                 isShowingReason = false
                 onRetry()
-            } onDiscard: {
+            }, onSendAnyway: {
+                isShowingReason = false
+                onSendAnyway()
+            }, onDiscard: {
                 isShowingReason = false
                 onDiscard()
-            }
+            })
             // Without this an iPhone turns the popover into a half-height sheet, which is
             // a whole ceremony for one sentence.
             .presentationCompactAdaptation(.popover)
@@ -535,6 +590,7 @@ struct SendFailureBadge: View {
 struct SendFailureReason: View {
     let failure: SendFailure
     let onRetry: () -> Void
+    var onSendAnyway: () -> Void = {}
     let onDiscard: () -> Void
 
     var body: some View {
@@ -563,6 +619,17 @@ struct SendFailureReason: View {
                     .buttonStyle(.primaryAction)
                 }
 
+                // In place of "Send again" where sending again would stop on the same thing: a
+                // person the user verified no longer checks out. The sentence above says what
+                // pressing this means; the button only says what it does.
+                if failure.canSendAnyway {
+                    Button(action: onSendAnyway) {
+                        Label(Strings.Message.Delivery.sendAnyway, systemImage: "paperplane")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.primaryAction)
+                }
+
                 // Always offered, and on the failures above it is the only thing here: a
                 // message the queue can never get out is otherwise stuck to the timeline for
                 // good, retried on every launch, with a red badge that says so and no way to
@@ -574,6 +641,7 @@ struct SendFailureReason: View {
                 }
                 .buttonStyle(.bordered)
                 .tint(.red)
+                .destructiveTint()
             }
             .padding(.top, Theme.Spacing.tight)
         }
@@ -612,7 +680,7 @@ struct VideoNoteView: View {
             if let player = playback.player {
                 VideoSurface(player: player)
             } else {
-                MediaThumbnail(attachment: attachment, size: 400)
+                MediaThumbnail(attachment: attachment, size: 400, obeysAutoDownload: true)
             }
         }
         // It grows while it plays and settles back when it ends. The frame is animated, not
@@ -699,6 +767,114 @@ struct VideoNoteView: View {
     }
 }
 
+/// A music file, or any sound that is not a voice message: played in the bubble, the way a voice
+/// message is, and not opened as a document somewhere else.
+///
+/// A round play button, the track's name, and a bar that fills as it plays — draggable, because a
+/// song, unlike a voice message, is a thing people skip about in. The time under it counts up
+/// while playing and shows the whole length otherwise.
+struct AudioFileView: View {
+    let attachment: Attachment
+
+    @Environment(\.mediaLoader) private var loader
+    @Environment(\.accent) private var accent
+
+    @State private var playback = AudioPlayback()
+
+    /// Where the finger is on the bar while it drags, so the bar follows it rather than the
+    /// player, which only catches up when the finger comes up.
+    @State private var scrubbing: Double?
+
+    private var title: String {
+        let name = (attachment.filename as NSString).deletingPathExtension
+        return name.isEmpty ? attachment.filename : name
+    }
+
+    private var length: TimeInterval? { attachment.duration ?? playback.duration }
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.normal) {
+            Button {
+                Task { await playback.toggle(attachment, using: loader) }
+            } label: {
+                Group {
+                    if playback.isLoading {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill")
+                            .font(.body.weight(.semibold))
+                            .contentTransition(.symbolEffect(.replace))
+                    }
+                }
+                .frame(width: Theme.Size.minimumTapTarget, height: Theme.Size.minimumTapTarget)
+                .background(Circle().fill(.primary.opacity(0.12)))
+                .contentShape(.circle)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(playback.isPlaying ? Strings.Message.Media.pause
+                                                        : Strings.Message.Media.play))
+
+            VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                Text(title)
+                    .font(.subheadline.weight(.medium))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+
+                bar
+
+                time
+                    .font(.caption.monospacedDigit())
+                    .opacity(0.7)
+            }
+            .frame(minWidth: Theme.Size.audioTrack, alignment: .leading)
+        }
+        .onDisappear { playback.stop() }
+    }
+
+    private var shown: Double { scrubbing ?? playback.progress }
+
+    private var bar: some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                Capsule().opacity(0.25)
+                Capsule().frame(width: proxy.size.width * shown)
+            }
+            .frame(height: Theme.Size.waveformBar * 2)
+            .frame(maxHeight: .infinity)
+            .contentShape(.rect)
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        guard playback.duration != nil else { return }
+                        scrubbing = min(max(value.location.x / max(proxy.size.width, 1), 0), 1)
+                    }
+                    .onEnded { _ in
+                        if let scrubbing { playback.seek(to: scrubbing) }
+                        scrubbing = nil
+                    }
+            )
+        }
+        .frame(height: Theme.Size.audioScrubber)
+        .animation(.linear(duration: 0.05), value: playback.progress)
+        .accessibilityHidden(true)
+    }
+
+    @ViewBuilder
+    private var time: some View {
+        if let length {
+            if playback.isPlaying || shown > 0 {
+                // Two clock readings and a slash — numbers, not words, so nothing to translate.
+                let pattern = Duration.TimeFormatStyle(pattern: .minuteSecond)
+                Text(verbatim: Duration.seconds(length * shown).formatted(pattern)
+                     + " / " + Duration.seconds(length).formatted(pattern))
+            } else {
+                Text(Duration.seconds(length), format: .time(pattern: .minuteSecond))
+            }
+        }
+    }
+}
+
 /// A voice message: a play button, the shape of the sound, and how far through it is.
 ///
 /// The waveform is the sender's own — computed on their device and sent with the message — so
@@ -715,6 +891,16 @@ struct VoiceMessageView: View {
 
     @State private var playback = AudioPlayback()
 
+    /// The words, once asked for — see `VoiceTranscriber`, which keeps them in memory only.
+    @State private var transcript: Transcript = .hidden
+
+    private enum Transcript: Equatable {
+        case hidden
+        case working
+        case shown(String)
+        case failed(VoiceTranscriber.Failure)
+    }
+
     /// Forty bars, whatever the sender sent. A voice message is a bubble in a conversation, and
     /// a hundred-and-twenty two-point bars in one is a barcode.
     private var bars: [Float] {
@@ -722,6 +908,88 @@ struct VoiceMessageView: View {
     }
 
     var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.close) {
+            player
+            transcriptText
+        }
+        .animation(.smooth(duration: Theme.Timing.chrome), value: transcript)
+        // The bytes are plaintext on disk while this is playing. Scroll it away and they go.
+        .onDisappear { playback.stop() }
+    }
+
+    @ViewBuilder
+    private var transcriptText: some View {
+        switch transcript {
+        case .hidden, .working:
+            EmptyView()
+        case let .shown(text):
+            Text(verbatim: text)
+                .font(.body)
+                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+        case let .failed(failure):
+            Text(Self.explanation(of: failure))
+                .font(.footnote)
+                .opacity(0.7)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private static func explanation(of failure: VoiceTranscriber.Failure) -> LocalizedStringResource {
+        switch failure {
+        case .notAllowed: Strings.Message.Transcript.notAllowed
+        case .unavailable: Strings.Message.Transcript.unavailable
+        case .nothingHeard: Strings.Message.Transcript.nothingHeard
+        case .failed: Strings.Message.Transcript.failed
+        }
+    }
+
+    /// Words, or not: pressed once it transcribes (or shows what it already did), pressed again it
+    /// folds them away.
+    private var transcribeButton: some View {
+        Button {
+            switch transcript {
+            case .shown, .failed:
+                transcript = .hidden
+            case .working:
+                break
+            case .hidden:
+                if let known = VoiceTranscriber.shared.cached(attachment) {
+                    transcript = .shown(known)
+                    return
+                }
+                guard let loader else { return }
+                transcript = .working
+                Task {
+                    do {
+                        transcript = .shown(try await VoiceTranscriber.shared.transcribe(attachment, using: loader))
+                    } catch {
+                        transcript = .failed(error as? VoiceTranscriber.Failure ?? .failed)
+                    }
+                }
+            }
+        } label: {
+            Group {
+                if transcript == .working {
+                    ProgressView().controlSize(.mini)
+                } else {
+                    Image(systemName: isShowingWords ? "text.bubble.fill" : "text.bubble")
+                        .font(.footnote.weight(.semibold))
+                }
+            }
+            .frame(width: Theme.Size.voiceButton, height: Theme.Size.voiceButton)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(isShowingWords ? Strings.Message.Transcript.hide : Strings.Message.Transcript.show))
+    }
+
+    private var isShowingWords: Bool {
+        if case .shown = transcript { return true }
+        return false
+    }
+
+    private var player: some View {
         HStack(spacing: Theme.Spacing.close) {
             Button {
                 Task { await playback.toggle(attachment, using: loader) }
@@ -769,9 +1037,9 @@ struct VoiceMessageView: View {
                 Text(Duration.seconds(duration), format: .time(pattern: .minuteSecond))
                     .font(.caption.monospacedDigit())
             }
+
+            transcribeButton
         }
-        // The bytes are plaintext on disk while this is playing. Scroll it away and they go.
-        .onDisappear { playback.stop() }
     }
 
     private func hasPlayed(_ index: Int) -> Bool {
@@ -797,6 +1065,9 @@ struct VoiceMessageView: View {
 struct StickerView: View {
     let attachment: Attachment
 
+    /// The longest edge. The timeline's size unless the sticker sheet or its tabs ask for less.
+    var side: CGFloat = Theme.Size.sticker
+
     @Environment(\.mediaLoader) private var loader
 
     @State private var image: Image?
@@ -808,11 +1079,11 @@ struct StickerView: View {
     /// sent no dimensions is assumed square, which is what almost all of them are.
     private var size: CGSize {
         let ratio = CGFloat(attachment.aspectRatio ?? 1)
-        guard ratio > 0 else { return CGSize(width: Theme.Size.sticker, height: Theme.Size.sticker) }
+        guard ratio > 0 else { return CGSize(width: side, height: side) }
 
         return ratio >= 1
-            ? CGSize(width: Theme.Size.sticker, height: Theme.Size.sticker / ratio)
-            : CGSize(width: Theme.Size.sticker * ratio, height: Theme.Size.sticker)
+            ? CGSize(width: side, height: side / ratio)
+            : CGSize(width: side * ratio, height: side)
     }
 
     var body: some View {
@@ -850,6 +1121,9 @@ struct StickerView: View {
 /// is the right shape *before* the picture arrives and the timeline does not jump
 /// around as things load.
 struct PictureBubble: View {
+    /// The conversation's height with the keyboard down — see `EnvironmentValues.timelineHeight`.
+    @Environment(\.timelineHeight) private var timelineHeight
+
     let attachment: Attachment
 
     /// Which message this is, so that the viewer it opens can find this picture among the room's
@@ -864,9 +1138,13 @@ struct PictureBubble: View {
     /// Who sent it and when — carried through the bubble to the viewer, which puts them at the
     /// top of the screen. A photo opened full-screen has none of what the timeline was saying
     /// around it: no side of the conversation, no name above it, no clock beside it. See
-    /// `MediaViewer`.
+    /// `MediaPager`.
     let sender: String
     let timestamp: Date
+
+    /// The caption, painted by `MessageContent` with its links and mentions live. Nil draws the
+    /// attachment's plain caption, for the places that have no painter to hand.
+    var caption: AnyView?
 
     /// The photograph, once it has arrived, kept so the bubble can be made out of it. See
     /// `backdrop`.
@@ -882,6 +1160,9 @@ struct PictureBubble: View {
 
     /// The room's pictures, asked for at the moment one is opened — see `RoomMediaSource`.
     @Environment(\.roomMedia) private var roomMedia
+
+    /// Tells the room the viewer is over it — see `EnvironmentValues.coversRoom`.
+    @Environment(\.coversRoom) private var coversRoom
 
     /// What the viewer was opened on: the whole run of the room's media, and which of them the
     /// finger landed on.
@@ -899,16 +1180,18 @@ struct PictureBubble: View {
         VStack(alignment: .leading, spacing: 0) {
             picture
 
-            if let caption = attachment.caption {
-                Text(caption)
+            if let plain = attachment.caption {
+                Group {
+                    if let caption { caption } else { Text(plain) }
+                }
                     .font(.body)
                     // White, because what is behind it is a darkened photograph and not the
                     // bubble fill the rest of the app writes on. `.primary` here would be
                     // black text on somebody's night sky in the light appearance, and it
                     // would be unreadable exactly half the time — which is worse than always.
                     .foregroundStyle(.white)
-                    .padding(.top, Theme.Spacing.close)
-                    .padding(.horizontal, Theme.Spacing.tight)
+                    .padding(.horizontal, Theme.Spacing.captionHorizontal)
+                    .padding(.vertical, Theme.Spacing.captionVertical)
             }
         }
         .padding(Theme.Spacing.tight)
@@ -919,22 +1202,17 @@ struct PictureBubble: View {
         // off the conversation, and it now takes in the blurred frame and the caption as well
         // as the photograph — which is the point of their being one bubble at all.
         .contentShape(BubbleShape())
-        // A cover on the phone and a sheet on the Mac. The Mac has no `fullScreenCover`, and would
-        // not want one: a picture there belongs in a window over the conversation rather than on
-        // top of the entire app. On the phone it is the opposite — a photograph in a sheet is a
-        // photograph with the room showing above it and a card's corners cut out of it, which is
-        // not what looking at a picture is anywhere else on the platform.
+        // A cover over the whole app on the phone, and a full-screen space of its own on the Mac:
+        // a photograph in a sheet is a photograph with the room showing above it and a card's
+        // corners cut out of it, which is not what looking at a picture is anywhere else.
+        .mediaViewer(item: $opened) { opened in
+            MediaPager(items: opened.items, startIndex: opened.index)
+        }
         #if os(iOS)
-        .fullScreenCover(item: $opened) { opened in
-            MediaPager(items: opened.items, startIndex: opened.index)
-                // A sheet dressed as nothing at all: the viewer draws its own black, and the
-                // system's card behind it would be a grey rectangle showing at the corners.
-                .presentationBackground(.black)
-        }
-        #else
-        .sheet(item: $opened) { opened in
-            MediaPager(items: opened.items, startIndex: opened.index)
-        }
+        // A cover makes the room underneath "disappear" as far as SwiftUI is concerned, and the
+        // room used to take that for the reader leaving: the draft saved, the timeline stopped,
+        // and — worse — a latch left set so that the *real* way out later did none of it.
+        .onChange(of: opened != nil) { _, isOpen in coversRoom(isOpen) }
         #endif
     }
 
@@ -963,7 +1241,7 @@ struct PictureBubble: View {
     /// The picture itself, sharp, sitting on the blur of itself. It keeps the image it fetched,
     /// which is the one `backdrop` blurs — see there.
     private var picture: some View {
-        MediaThumbnail(attachment: attachment, onLoad: { loaded = $0 })
+        MediaThumbnail(attachment: attachment, onLoad: { loaded = $0 }, obeysAutoDownload: true)
             .aspectRatio(aspectRatio, contentMode: .fit)
             .frame(maxWidth: Theme.Size.picture)
                 // Half the *timeline's* height, not half the screen's: on a Mac the window
@@ -977,7 +1255,8 @@ struct PictureBubble: View {
                 // picture in it.
                 .containerRelativeFrame(.vertical) { height, _ in
                     min(Theme.Size.picture / aspectRatio,
-                        height * Theme.Size.pictureHeightFraction)
+                        (timelineHeight > 0 ? timelineHeight : height) * Theme.Size.pictureHeightFraction,
+                        Theme.Size.pictureMaxHeight)
                 }
                 .overlay {
                     if isPlayable {
@@ -1039,5 +1318,47 @@ struct PictureBubble: View {
                 // It is scenery. Every press in this bubble belongs to the picture on top of it.
                 .allowsHitTesting(false)
         }
+    }
+}
+
+extension AnyTransition {
+    /// The row of emoji under a message coming and going: it grows from the edge of the bubble
+    /// and fades, while the row's height eases open or shut behind it — see `MessageRow.body`.
+    static var reactionsAppear: AnyTransition {
+        .scale(scale: 0.6, anchor: .top).combined(with: .opacity)
+    }
+}
+
+/// Animates a view's height when `trigger` changes, and only then — so a reaction coming or going
+/// opens or closes the row smoothly and pushes its neighbours along with it, while a photo landing
+/// or an edit changes the height at once, as before.
+///
+/// The natural height is measured inside, unconstrained, and the frame is set outside it, so the
+/// measurement never depends on the frame it sets.
+private struct AnimatesHeight<Trigger: Equatable>: ViewModifier {
+    let trigger: Trigger
+
+    @State private var height: CGFloat?
+    @State private var measuredFor: Trigger?
+
+    func body(content: Content) -> some View {
+        content
+            .fixedSize(horizontal: false, vertical: true)
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { natural in
+                if let measuredFor, measuredFor != trigger, height != nil {
+                    withAnimation(.smooth(duration: Theme.Timing.reaction)) { height = natural }
+                } else {
+                    height = natural
+                }
+                measuredFor = trigger
+            }
+            .frame(height: height, alignment: .top)
+    }
+}
+
+extension View {
+    /// See `AnimatesHeight`.
+    func animatesHeight<Trigger: Equatable>(when trigger: Trigger) -> some View {
+        modifier(AnimatesHeight(trigger: trigger))
     }
 }

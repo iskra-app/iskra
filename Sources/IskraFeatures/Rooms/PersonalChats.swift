@@ -34,6 +34,17 @@ public final class PersonalChats {
     public func open(with userID: String) async -> String? {
         try? await session.openDirectChat(with: userID)
     }
+
+    /// Everybody this account has a personal chat with — the list "New chat" opens on, for the
+    /// screens that pick people to bring somewhere else. See `InviteView`.
+    var contacts: [NewChatView.Contact] { NewChatView.contacts(in: session) }
+
+    /// The homeserver's user directory — see `UserSession.searchPeople`.
+    func searchPeople(_ term: String) async throws -> [PersonProfile] {
+        try await session.searchPeople(term)
+    }
+
+    var ownUserID: String { session.userID }
 }
 
 public extension EnvironmentValues {

@@ -73,25 +73,48 @@ struct AppearanceView: View {
                         Text(Strings.Appearance.mode(mode)).tag(mode)
                     }
                 } label: {
+                    // On a Mac a setting is a line: its name on the left, the control on the
+                    // right, as "Compact view" above it is. On the phone the control is the line.
+                    #if os(macOS)
+                    Text(Strings.Appearance.theme)
+                    #else
                     EmptyView()
+                    #endif
                 }
                 .pickerStyle(.segmented)
-            } header: {
-                Text(Strings.Appearance.theme)
-            }
 
-            Section {
-                // The same grid the first run asks the same question with — see `AccentSwatches`.
+                // See `AccentSwatches`: a grid on the phone, a row of dots at the end of a named
+                // line on a Mac.
+                #if os(macOS)
+                LabeledContent {
+                    AccentSwatches(accent: $accent)
+                } label: {
+                    Text(Strings.Appearance.accent)
+                }
+                #else
                 AccentSwatches(accent: $accent)
                     .padding(.vertical, Theme.Spacing.close)
+                #endif
 
                 Toggle(isOn: $tintsInterface.animation(.smooth(duration: Theme.Timing.reaction))) {
                     Text(Strings.Appearance.tintInterface)
                 }
                 .accentControl()
             } header: {
-                Text(Strings.Appearance.accent)
+                Text(Strings.Appearance.themeAndColors)
             }
+
+            // iPhone and iPad only, and not drawn at all where the device forbids it.
+            // `setAlternateIconName` is UIKit's and AppKit has no equivalent — see `HomeIcon`.
+            #if os(iOS)
+            if HomeIcons.areSupported {
+                Section {
+                    HomeIconPicker()
+                } header: {
+                    Text(Strings.Settings.appIcon)
+                }
+            }
+            #endif
 
             Section {
                 wallpaperRow
@@ -101,11 +124,9 @@ struct AppearanceView: View {
                 }
             } header: {
                 Text(Strings.Appearance.wallpaper)
-            } footer: {
-                Text(Strings.Appearance.wallpaperFooter)
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .photosPicker(isPresented: $isChoosingWallpaper,
                       selection: $pickedWallpaper,
                       matching: .images)
@@ -152,16 +173,46 @@ struct AppearanceView: View {
                 bubble(Strings.Appearance.previewFollowUp, isOwn: false)
 
             case .compact:
-                line(Strings.Appearance.previewAsk, from: Strings.Appearance.previewSender)
-                line(Strings.Appearance.previewAnswer, from: Strings.Message.Spoken.you)
-                line(Strings.Appearance.previewReply, from: Strings.Appearance.previewSender)
+                line(Strings.Appearance.previewAsk, from: Strings.Appearance.previewSender,
+                     seed: Self.previewSenderSeed)
+                line(Strings.Appearance.previewAnswer, from: Strings.Message.Spoken.you,
+                     seed: Self.previewOwnSeed)
+                line(Strings.Appearance.previewReply, from: Strings.Appearance.previewSender,
+                     seed: Self.previewSenderSeed)
                 // No name: the fourth line is the second from the same person, and a run carries
                 // one header. This is the whole of what the layout does, so the preview has to
                 // have a run in it to show.
-                line(Strings.Appearance.previewFollowUp, from: nil)
+                line(Strings.Appearance.previewFollowUp, from: nil, seed: nil)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(Theme.Spacing.normal)
+        // Standing on the wallpaper, because that is where a conversation stands.
+        //
+        // The preview exists to answer "what will this look like to live in", and until now it
+        // answered it on the app's own page while the rooms it stands for were on a photograph.
+        // That is not a small difference: over a wallpaper a bubble stops being a percentage of
+        // the foreground colour and takes an opaque fill instead — see `EnvironmentValues
+        // .hasWallpaper` — so the accent the swatches above are choosing is a *different colour*
+        // in the two cases, and the one being shown was the one the user would not get.
+        //
+        // It also makes the row below it worth looking at: the dimmer is a slider about
+        // legibility, and legibility is a question about words on a picture, which is the thing
+        // this card now is.
+        .background {
+            // Sized and clipped here, not trusted to fill: the backdrop ignores the safe area,
+            // which is what a wallpaper wants and exactly what a card inside a form must not do.
+            // The same care the tiles take — see `tile(_:)`.
+            WallpaperBackdrop(wallpaper: wallpaper, photo: wallpapers.photo, dimming: dimming)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.picture, style: .continuous))
+        // Told, so the bubbles inside it draw the way they will in a room. The whole point of the
+        // card is that it does not lie about this.
+        .environment(\.hasWallpaper, wallpaper.isSet)
+        .environment(\.wallpaperIsDark, wallpapers.isDark(wallpaper, dimming: dimming, scheme: scheme))
+        // The picture is read off the disk once per launch, and this screen can be the first thing
+        // to want it — somebody who has a wallpaper and opens Appearance before opening a room.
+        .task { await wallpapers.load() }
         .padding(.vertical, Theme.Spacing.close)
         // One thing, read as one thing. Four bubbles apiece would have VoiceOver walk somebody
         // through a fake conversation on the way to the colours they came for.
@@ -184,20 +235,45 @@ struct AppearanceView: View {
     /// menu with it, so a long press on a conversation that never happened would offer to delete
     /// a message that does not exist. What is being shown here is the shape, and the shape is
     /// four lines and two names.
+    ///
+    /// With the face beside the name, as the real row has it: without it the sketch showed a
+    /// column of text the reader's rooms would never look like. The face is drawn from a made-up
+    /// seed per person — nobody real is in this conversation — and a line under the same
+    /// person's header gets an empty column of the face's width, so the run lines up as it does
+    /// in a room.
     @ViewBuilder
-    private func line(_ text: LocalizedStringResource, from sender: LocalizedStringResource?) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-            if let sender {
-                Text(sender)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
+    private func line(_ text: LocalizedStringResource, from sender: LocalizedStringResource?,
+                      seed: String?) -> some View {
+        HStack(alignment: .top, spacing: Theme.Spacing.close) {
+            if let sender, let seed {
+                Avatar(name: String(app: sender), url: nil,
+                       size: Theme.Size.avatarSmall, seed: seed)
+            } else {
+                Color.clear.frame(width: avatarSize, height: 0)
             }
 
-            Text(text)
-                .font(.callout)
+            VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                if let sender {
+                    Text(sender)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
+
+                Text(text)
+                    .font(.callout)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
+
+    /// The seeds the preview's two faces are drawn from — fixed, so the faces do not change
+    /// from one visit to the next, and not anybody's Matrix ID.
+    private static let previewSenderSeed = "@preview-sender:iskra.wtf"
+    private static let previewOwnSeed = "@preview-you:iskra.wtf"
+
+    /// The width of the face in the compact preview, grown with the text as `Avatar` grows it,
+    /// so that the empty column under a run is exactly as wide as the face over it.
+    @ScaledSize(Theme.Size.avatarSmall) private var avatarSize
 
     /// The wallpapers, in a row you scroll: nothing, six gradients, and your own photograph.
     ///
@@ -283,7 +359,8 @@ struct AppearanceView: View {
             .contentShape(.rect)
     }
 
-    /// How far down the wallpaper is taken.
+    /// How far the wallpaper is taken back — darkened in the dark theme, lightened in the light
+    /// one, and named for which (see `WallpaperBackdrop`).
     ///
     /// Shown only when there is a wallpaper, because a dimmer over nothing dims nothing — and the
     /// tiles above it darken as it moves, so the setting is read off the pictures rather than off
@@ -291,7 +368,8 @@ struct AppearanceView: View {
     private var dimmer: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
             HStack {
-                Text(Strings.Appearance.wallpaperDimming)
+                Text(scheme == .light ? Strings.Appearance.wallpaperLightening
+                                      : Strings.Appearance.wallpaperDimming)
                 Spacer()
                 Text(dimming.formatted(.percent.precision(.fractionLength(0))))
                     .font(.callout.monospacedDigit())

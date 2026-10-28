@@ -13,6 +13,12 @@ import SwiftUI
 /// drawn as nothing. A hard-coded height would be right at the default Dynamic Type size and wrong
 /// at every other one.
 ///
+/// **It does not carry its own transition.** How it comes and goes belongs to whoever inserts it,
+/// because a transition is only ever played by the animated transaction that put the view there —
+/// see `RoomView`, where the bubble rises and fades on `AnyTransition.arrival`, the same rise a
+/// message lands with. A transition declared here would be silently ignored anywhere that scope
+/// is missing, which is exactly how it used to fail.
+///
 /// The dots pulse in a staggered wave, iMessage's timing: a gentle rise and fall, never a hard
 /// blink. It is driven by a repeating animation on a single `@State` flag, **not** by
 /// `TimelineView(.animation)` — and that difference is load-bearing. `TimelineView(.animation)`
@@ -23,15 +29,6 @@ import SwiftUI
 /// observer nothing.
 public struct TypingBubble: View {
     public init() {}
-
-    @State private var pulsing = false
-
-    private let dot = Theme.Spacing.close          // 8
-    private let spacing = Theme.Spacing.tight      // 4
-
-    /// One full pulse, and how far each dot lags the one before it.
-    private let period = 0.6
-    private let stagger = 0.18
 
     public var body: some View {
         HStack(spacing: 0) {
@@ -46,29 +43,52 @@ public struct TypingBubble: View {
                 .frame(width: 0)
                 .hidden()
 
-            HStack(spacing: spacing) {
-                ForEach(0..<3, id: \.self) { index in
-                    Circle()
-                        .fill(.secondary)
-                        .frame(width: dot, height: dot)
-                        // Opacity and scale are render transforms — they do not change the bubble's
-                        // layout size, so the scroll view's content height stays put frame to frame.
-                        .opacity(pulsing ? 1 : 0.35)
-                        .scaleEffect(pulsing ? 1.0 : 0.8)
-                        .animation(
-                            .easeInOut(duration: period)
-                                .repeatForever(autoreverses: true)
-                                .delay(Double(index) * stagger),
-                            value: pulsing
-                        )
-                }
-            }
+            TypingDots()
         }
         .messageBubble(.incoming)
-        .onAppear { pulsing = true }
         // Decorative: VoiceOver hears "typing" from the room's header subtitle, which names *who*.
         // Two announcements of the same fact — one of them wordless dots — is one too many.
         .accessibilityHidden(true)
-        .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+}
+
+/// The three pulsing dots on their own — inside `TypingBubble`, and, smaller and with words beside
+/// them, at the foot of the compact timeline, which has no bubbles to put them in.
+public struct TypingDots: View {
+    private let dot: CGFloat
+    private let spacing: CGFloat
+
+    /// The default is the bubble's: 8-point dots, 4 apart.
+    public init(dot: CGFloat = Theme.Spacing.close, spacing: CGFloat = Theme.Spacing.tight) {
+        self.dot = dot
+        self.spacing = spacing
+    }
+
+    @State private var pulsing = false
+
+    /// One full pulse, and how far each dot lags the one before it.
+    private let period = 0.6
+    private let stagger = 0.18
+
+    public var body: some View {
+        HStack(spacing: spacing) {
+            ForEach(0..<3, id: \.self) { index in
+                Circle()
+                    .fill(.secondary)
+                    .frame(width: dot, height: dot)
+                    // Opacity and scale are render transforms — they do not change the bubble's
+                    // layout size, so the scroll view's content height stays put frame to frame.
+                    .opacity(pulsing ? 1 : 0.35)
+                    .scaleEffect(pulsing ? 1.0 : 0.8)
+                    .animation(
+                        .easeInOut(duration: period)
+                            .repeatForever(autoreverses: true)
+                            .delay(Double(index) * stagger),
+                        value: pulsing
+                    )
+            }
+        }
+        .onAppear { pulsing = true }
+        .accessibilityHidden(true)
     }
 }

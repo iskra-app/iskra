@@ -27,6 +27,7 @@ struct MessageRowLayoutTests {
                          at minute: Int,
                          delivery: DeliveryStatus? = nil,
                          isContinuation: Bool = false,
+                         isContinued: Bool = false,
                          reactions: [MessageReaction] = [],
                          kind: MessageKind? = nil,
                          deletedAt: Date? = nil) -> Message {
@@ -42,6 +43,7 @@ struct MessageRowLayoutTests {
                 reactions: reactions,
                 deletedAt: deletedAt,
                 isContinuation: isContinuation)
+            .continued(isContinued)
     }
 
     /// A one-line message must come out a capsule and a wrapped one a rounded rectangle,
@@ -52,7 +54,7 @@ struct MessageRowLayoutTests {
     /// under it — and under your own they line up with its right.
     private var conversation: [Message] {
         [
-            message("Hey", isOwn: false, at: 0),
+            message("Hey", isOwn: false, at: 0, isContinued: true),
             message("Are you around this evening? I wanted to show you the thing we were talking about.",
                     isOwn: false, at: 1, isContinuation: true,
                     reactions: [MessageReaction(key: "👍", count: 2, isMine: true),
@@ -112,6 +114,72 @@ struct MessageRowLayoutTests {
         #endif
     }
 
+    /// The words drawn straight onto the conversation — the date, the time beside a bubble — over
+    /// a dark picture in the light appearance, which is where grey text used to disappear.
+    @Test("words on a wallpaper stand on something")
+    func wordsOnAWallpaper() throws {
+        let view = VStack(spacing: 0) {
+            DayDividerView(date: Date(timeIntervalSince1970: 1_770_000_000))
+            HStack {
+                MessageMarks(message: message("Как тебе?", isOwn: false, at: 1))
+                Spacer()
+                MessageMarks(message: message("Отлично", isOwn: true, at: 2, delivery: .sent))
+            }
+            .padding()
+        }
+        .frame(width: 390)
+        .padding(.vertical)
+        .background(LinearGradient(colors: [.black, .indigo], startPoint: .top, endPoint: .bottom))
+        .environment(\.hasWallpaper, true)
+        .environment(\.timelineWidth, 390)
+        .environment(\.colorScheme, .light)
+
+        let renderer = ImageRenderer(content: view)
+        renderer.scale = 2
+
+        #if os(macOS)
+        let image = try #require(renderer.nsImage, "the wallpaper rows failed to render at all")
+        #expect(image.size.height > 100)
+
+        guard let directory = outputDirectory else { return }
+        let tiff = try #require(image.tiffRepresentation)
+        let bitmap = try #require(NSBitmapImageRep(data: tiff))
+        let png = try #require(bitmap.representation(using: .png, properties: [:]))
+        try png.write(to: directory.appending(component: "wallpaper-plates.png"))
+        #endif
+    }
+
+    /// Both identity banners, in Russian, at a phone's width — the longer language, where a title
+    /// that ran out of room would be cut first. And the popover for a message stopped on trust,
+    /// which offers "Send anyway" and not "Send again".
+    @Test("the identity banners and Send anyway fit a phone, in Russian")
+    func identityBanners() throws {
+        let changed = IdentityChange(userID: "@anya:iskra.demo", name: "Аня Смирнова", kind: .changed)
+        let serious = IdentityChange(userID: "@anya:iskra.demo", name: "Аня Смирнова", kind: .changedAfterVerification)
+        let view = VStack(spacing: Theme.Spacing.roomy) {
+            IdentityChangeBanner(change: changed, onAcknowledge: {})
+            IdentityChangeBanner(change: serious, onAcknowledge: {})
+            SendFailureReason(failure: .identityChanged, onRetry: {}, onDiscard: {})
+        }
+        .frame(width: 390)
+        .background(.background)
+        .environment(\.locale, Locale(identifier: "ru"))
+
+        let renderer = ImageRenderer(content: view)
+        renderer.scale = 2
+
+        #if os(macOS)
+        let image = try #require(renderer.nsImage, "the banners failed to render at all")
+        #expect(image.size.height > 200)
+
+        guard let directory = outputDirectory else { return }
+        let tiff = try #require(image.tiffRepresentation)
+        let bitmap = try #require(NSBitmapImageRep(data: tiff))
+        let png = try #require(bitmap.representation(using: .png, properties: [:]))
+        try png.write(to: directory.appending(component: "identity-banners.png"))
+        #endif
+    }
+
     /// The same conversation, drawn as the plain column instead — see `CompactMessageRow`.
     ///
     /// The fixture earns its keep unchanged: the second message is a continuation, so the run
@@ -154,7 +222,7 @@ struct MessageRowLayoutTests {
     func aRunIsShorterWithoutBubbles() throws {
         let run = (0..<5).map {
             message("Same person, still talking, line \($0)",
-                    isOwn: false, at: $0, isContinuation: $0 > 0)
+                    isOwn: false, at: $0, isContinuation: $0 > 0, isContinued: $0 < 4)
         }
 
         let bubbles = try #require(rendered(run) { MessageRow(message: $0, isOneToOne: false) })
@@ -198,7 +266,7 @@ struct MessageRowLayoutTests {
     /// that — how far a bubble may run before the far edge pushes back — would be tested at a
     /// width the app never uses. See `MessageRow.emptyColumn`.
     private func rendered(_ messages: [Message],
-                       @ViewBuilder row: @escaping (Message) -> some View) -> NSImage? {
+                          @ViewBuilder row: @escaping (Message) -> some View) -> NSImage? {
         let view = VStack(spacing: 0) {
             ForEach(messages) { message in
                 row(message)
@@ -214,4 +282,12 @@ struct MessageRowLayoutTests {
         return renderer.nsImage
     }
     #endif
+}
+
+private extension Message {
+    func continued(_ isContinued: Bool) -> Message {
+        var copy = self
+        copy.isContinued = isContinued
+        return copy
+    }
 }

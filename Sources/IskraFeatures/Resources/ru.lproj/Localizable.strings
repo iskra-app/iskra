@@ -9,6 +9,9 @@
 
 "message.deleted" = "Сообщение удалено";
 
+/* VoiceOver: the cross in the ring over a photo or file that is still uploading. */
+"message.delivery.cancelUpload" = "Отменить отправку";
+
 /* Names the red badge beside a message. Deliberately does not promise a retry: most of
    these failures wait on the user, and the reason that follows says so. */
 "message.delivery.failed" = "Не отправлено";
@@ -55,7 +58,7 @@
 "message.spoken.you" = "Вы";
 
 /* Shown in place of a message this device has no key for. Must not mention keys or decryption. */
-"message.unreadable" = "Это сообщение отправили до того, как вы присоединились, поэтому его не показать.";
+"message.unreadable" = "Это сообщение не открыть: на этом устройстве нет ключа к нему.";
 
 "message.unsupported" = "Iskra пока не умеет показывать такое сообщение.";
 
@@ -63,6 +66,8 @@
 "room.attach" = "Добавить фото или файл";
 
 "room.composerPlaceholder" = "Сообщение";
+"room.captionPlaceholder" = "Подпись";
+"room.mentionSuggestions" = "Кого упомянуть";
 
 /* Плашка вместо поля ввода, когда в чат нельзя писать. */
 "room.readOnly" = "В этот чат нельзя отправлять сообщения";
@@ -82,13 +87,16 @@
 
 "roomList.emptyTitle" = "Чатов пока нет";
 
-"roomList.loading" = "Загружаем ваши сообщения…";
+/* Заголовок списка чатов вместо «Чаты», пока список догоняет сервер и пока нет сети — как в Telegram. */
+"roomList.updating" = "Обновление…";
+"roomList.waitingForNetwork" = "Ожидание сети…";
 
 /* Accessibility label for the lock icon. The only place encryption is named, and it is named as privacy. */
 "roomList.privateChat" = "Защищённый чат";
 
 /* Accessibility label for the pin icon on a pinned chat. */
 "roomList.pinned" = "Закреплённый чат";
+"roomList.draft" = "Черновик: %@";
 "roomList.hasUnread" = "Есть непрочитанные";
 
 "roomList.searchPrompt" = "Поиск по сообщениям";
@@ -131,14 +139,10 @@
 "settings.appearance" = "Внешний вид";
 
 /* Строка настроек, ведущая к выбору эмодзи для двойного касания. Одно слово: его и ищут. */
-"settings.reactions" = "Реакции";
+"settings.reactions" = "Стикеры и реакции";
 
 /* Строка настроек, ведущая к выбору иконки приложения. Только на iPhone и iPad. */
 "settings.appIcon" = "Иконка";
-
-/* Подпись под шестью иконками. Предупреждает о системном окне: оно появится в любом случае,
-   и лучше, чтобы его ждали. */
-"appIcon.help" = "Иконка на домашнем экране. Система один раз скажет, что она сменилась, — так и должно быть. В переключателе приложений и в поиске она обновится чуть позже.";
 
 /* Когда система отказала: так бывает, если иконки запрещены профилем управления. */
 "appIcon.failed" = "Не удалось сменить иконку. Похоже, на этом устройстве это запрещено.";
@@ -146,14 +150,13 @@
 
 /* Названия иконок. Вещи, а не цвета: «тёмно-серая» — это описание, а имя можно назвать вслух. */
 "appIcon.spark" = "Искра";
-"appIcon.coal" = "Уголь";
-"appIcon.frost" = "Иней";
+"appIcon.chrome" = "Хром";
 "appIcon.garnet" = "Гранат";
-"appIcon.pine" = "Хвоя";
-"appIcon.paper" = "Бумага";
-/* The settings row that leads to the unfinished things. See `BetaFeatures`. */
-"settings.beta" = "Бета-функции";
-
+"appIcon.brat" = "Brat";
+"appIcon.rio" = "Рио-де-Жанейро";
+"appIcon.blackWhite" = "Ч/б";
+"appIcon.retro" = "Ретро";
+"appIcon.letters" = "Буквы";
 "beta.title" = "Бета-функции";
 
 /* Said once at the top of the screen, so that every switch below it is read as an offer
@@ -162,25 +165,41 @@
 
 "beta.nativeSidebar" = "Родная боковая панель";
 
-"beta.nativeSidebarHelp" = "Список чатов становится обычной боковой панелью macOS: чаты собраны в разделы, поиск стоит сверху, строки прижаты друг к другу плотнее. Похоже на Почту и Заметки — и меньше похоже на телефон.";
+"beta.nativeSidebarHelp" = "Список чатов становится обычной боковой панелью macOS: чаты собраны в разделы, поиск стоит сверху, строки прижаты друг к другу плотнее. Выглядит как в Почте и Заметках, а не как на телефоне.";
 
-"beta.blobatar" = "Существа вместо инициалов";
+"beta.blobatar" = "Мордочки вместо инициалов";
 
 /* Says the two things a person actually wants to know before flipping it: that the face
    belongs to that person and will not change, and that nothing left the device to draw it. */
-"beta.blobatarHelp" = "У кого нет аватарки, тому приложение нарисует существо: у каждого своё и всегда одно и то же. Рисуется прямо на устройстве — никуда ничего не уходит. А у групп вместо буквы соберётся кружок из тех, кто в них состоит.";
+"beta.blobatarHelp" = "У кого нет аватарки, тому приложение нарисует мордочку: у каждого свою и всегда одну и ту же. Рисуется прямо на устройстве, ничего никуда не уходит. А у групп вместо буквы соберётся кружок из тех, кто в них состоит.";
 
 "beta.blobatarForce" = "Даже вместо аватарок";
 
 /* Стоит под первой галочкой и появляется только вместе с ней. Второе предложение —
    не мелочь: это единственный способ увидеть существ в живом аккаунте, где аватарка
    есть почти у всех, и заодно ответ на вопрос «а картинки всё равно качаются?». */
-"beta.blobatarForceHelp" = "Существо достаётся всем подряд — и тем, кто аватарку поставил. Их картинки при этом не загружаются вовсе.";
+"beta.blobatarForceHelp" = "Мордочка достаётся всем подряд, даже тем, кто поставил аватарку. Их картинки при этом не загружаются вовсе.";
+
+"beta.mockBackend" = "Демо-сервер";
+
+/* Главное здесь — последнее предложение: человек, который это включает, первым делом
+   боится потерять свой настоящий аккаунт. */
+"beta.mockBackendHelp" = "Вместо вашего аккаунта будет выдуманный, с чатами, фотографиями, голосовыми и даже приглашением. Сервер живёт прямо в приложении и в сеть не ходит. Ваш аккаунт никуда не денется: выключите, и вы снова в нём.";
 
 
 
 
 "settings.storage" = "Хранилище";
+
+/* Фото и видео: что происходит с ними перед отправкой. */
+"settings.media" = "Фото и видео";
+"media.title" = "Фото и видео";
+"media.stripMetadata" = "Отправлять без метаданных";
+"media.compress" = "Сжимать фото и видео";
+"media.compression" = "Степень сжатия";
+"media.compression.strong" = "Сильное (540p)";
+"media.compression.balanced" = "Среднее (720p)";
+"media.compression.light" = "Лёгкое (1080p)";
 
 "settings.connection" = "Соединение";
 
@@ -191,16 +210,53 @@
 
 "connection.status" = "Состояние";
 "connection.statusDirect" = "Напрямую";
-"connection.statusLocal" = "Через локальный слой";
+"connection.statusConnecting" = "Через мост, relay: %lld. Мост пока не ответил";
+"connection.statusBlind" = "Через мост, relay: %lld. Мост не видит ваших сообщений";
 "connection.statusFailed" = "Не удалось включить";
+"connection.pending" = "Новые настройки заработают, как только вы уйдёте с этого экрана: приложение переподключится само.";
+"connection.applyNow" = "Переподключиться сейчас";
 
-/* Пока транспорта нет, переключатель обхода не даёт — и честнее сказать это прямо, чем
-   дать человеку решить, что он защищён. */
-"connection.unfinished" = "Ещё не готово";
-"connection.unfinishedBody" = "Сам мост уже работает, но приложение пока не умеет с ним разговаривать. Сейчас переключатель проводит трафик через локальный слой, а дальше он всё равно идёт к серверу напрямую — обхода блокировок это пока не даёт.";
+/* Адрес моста. Поле пустое — переключатель ничего не меняет, и об этом сказано прямо здесь,
+   а не только в состоянии: человек смотрит на поле, когда заполняет его. */
+"connection.address" = "Адрес моста";
+"connection.addressPrompt" = "npub1… или 64 знака hex";
+"connection.addressFooter" = "Мост печатает свой адрес при запуске, в строке «bridge address for Iskra: npub1…».";
+"connection.addressBad" = "Не похоже на ключ моста";
+"connection.addressSecret" = "Это секретный ключ. Нужен публичный, он начинается с npub.";
+"connection.defaultBridge" = "Вернуть мост Iskra";
+
+"connection.relays" = "Relay";
+"connection.relaysPrompt" = "wss://relay.snort.social, wss://nostr.wine";
+"connection.relaysFooter" = "Через них приложение и мост находят друг друга. Запрос уходит сразу на все, а ответ приходит с самого быстрого, поэтому одного мало. Если пусто, возьмутся три по умолчанию.";
+
+"connection.myKey" = "Ключ этого устройства";
+"connection.myKeyFooter" = "Если мост закрытый, впишите этот ключ ему в ALLOWED_PUBKEYS — иначе он вас просто не услышит.";
+"connection.copy" = "Скопировать";
+"connection.copied" = "Скопировано";
+
+"connection.check" = "Проверить мост";
+"connection.checking" = "Проверяю…";
+"connection.checkOK" = "Мост ответил, сервер на месте: %lld мс";
+"connection.checkNoRelay" = "Ни один relay не отвечает";
+"connection.checkSilent" = "Мост молчит. Он запущен, и ключ тот самый?";
+"connection.checkFailed" = "Не вышло: %@";
+"bridge.refusal.notAllowed" = "Мост не пускает к этому серверу: его нет в списке моста";
+"bridge.refusal.notMatrix" = "Мост не признал этот сервер Matrix-сервером";
+"bridge.refusal.badPort" = "Мост ходит только на порт 443, а этот сервер использует другой";
+"bridge.refusal.notPublic" = "Сервер в частной сети, а открытый мост туда не ходит";
+"bridge.refusal.noSuchHost" = "Мост не нашёл такого сервера";
+"bridge.refusal.unreachable" = "Мост не смог подключиться к серверу";
+"bridge.refusal.busy" = "Мост перегружен. Попробуйте через минуту";
+"bridge.refusal.disagreement" = "Приложение и мост не поняли друг друга. Обновите приложение или мост";
+"bridge.refusal.broke" = "Мост оборвал соединение: %@";
+
+/* Не «что не доделано», а чего ждать: цифры взяты из замера целой сессии через мост
+   (the README of iskra-app/iskra-bridge), и человек, который включил мост, должен знать их заранее. */
+"connection.unfinished" = "Чего ждать";
+"connection.unfinishedBody" = "Каждый запрос идёт кругом через relay и стоит 200–350 мс, поэтому вход и первое открытие чатов заметно медленнее прямого соединения: секунда там, где было мгновенно. А новые сообщения приходят почти так же быстро, как напрямую. Большие вложения тоже доедут, но гонять их через публичные relay не стоит: для медиа мосту лучше дать свой relay.";
 
 "connection.sees" = "Что видит мост";
-"connection.seesBody" = "Мост разбирает запросы к серверу, а значит видит ваш токен, в каких вы комнатах и тексты сообщений в незашифрованных чатах. Зашифрованную переписку он прочитать не может. Поэтому мост стоит поднимать свой, а не пользоваться чужим.";
+"connection.seesBody" = "Только к какому серверу вы подключаетесь, когда и сколько байт. Соединение с сервером шифрует само приложение, поэтому ваш токен, комнаты и сообщения мосту не видны, даже в незашифрованных чатах. Ваш IP видят relay, а не мост.";
 
 /* Блокировка приложения по Face ID / коду устройства. */
 "settings.lock" = "Код-пароль";
@@ -217,52 +273,58 @@
 "lock.unlock" = "Разблокировать";
 "lock.reason" = "Разблокировать Iskra";
 
-"settings.blocked" = "Заблокированные";
+"settings.blocked" = "Заблокированные пользователи";
 "settings.blockedEmptyTitle" = "Никто не заблокирован";
 "settings.blockedEmptyMessage" = "Заблокированные люди появятся здесь. Их сообщения вы не увидите.";
 "settings.unblock" = "Разблокировать";
 
-/* Explains why the settings above it are greyed out. Says what will happen, not what is missing. */
-"settings.moreSoon" = "Остальные настройки скоро появятся.";
-
 /* Последняя строка настроек — путь на экран «Об Iskra». */
 "settings.about" = "Об Iskra";
+"settings.language" = "Язык";
+"settings.language.system" = "Как в системе";
+"settings.language.help" = "Меню и системные окна переключатся после перезапуска.";
+"settings.language.restartTitle" = "Перезапустить Iskra?";
+"settings.language.restartMessage" = "Меню и системные окна переключатся на новый язык после перезапуска.";
+"settings.language.restart" = "Перезапустить";
+"settings.language.restartLater" = "Позже";
 
-/* Приложение о себе — в самом низу экрана, под кнопкой выхода. Имя не переводится: так
-   приложение называется на обоих языках. Номер версии и номер сборки стоят рядом, потому
-   что поодиночке они мало что говорят. */
+/* Имя приложения под иконкой на экране «Об Iskra». Не переводится: так приложение называется
+   на обоих языках. */
 "settings.appName" = "Iskra App";
-"settings.version" = "Версия %1$@ (%2$@)";
 
-/* Экран «Об Iskra», последняя строка в настройках. Здесь приложение рассказывает о себе:
-   что это такое, какая это сборка и на чьей работе всё держится. Раздел с благодарностями
-   обязателен не из вежливости: лицензия Apache 2.0 путешествует вместе с программой, и
-   человек должен иметь возможность прочитать об этом в самом приложении. */
+/* Экран «Об Iskra», последняя строка в настройках: что это за приложение, какая это сборка
+   и на чьей работе всё держится. */
 "about.title" = "Об Iskra";
-"about.tagline" = "Мессенджер Matrix для iPhone, iPad и Mac. Написан на Swift — это настоящее приложение, а не сайт в обёртке.";
+"about.tagline" = "Клиент Matrix для iPhone, iPad и Mac на Swift с открытым исходным кодом.";
 
-/* Те же два числа, что и в подвале настроек, но строкой, которую можно выделить и скопировать. */
+/* Три строки, которые можно выделить и скопировать. Сборка — номер и коммит в скобках,
+   устройство — модель и система в скобках. */
 "about.version" = "Версия";
+"about.build" = "Сборка";
 "about.device" = "Устройство";
-"about.system" = "Система";
 
-/* Кнопка и её подпись: иначе номер сборки переписывают в письмо руками и ошибаются в цифре. */
-"about.copy" = "Скопировать данные о сборке";
-"about.copied" = "Скопировано";
-"about.copyHelp" = "Пригодится, если что-то сломалось: вставьте это в письмо, и не придётся переписывать цифры вручную.";
-
-/* Страница приложения. Отдельной строкой над благодарностями: она про саму Iskra,
-   а не про то, из чего Iskra собрана. Адрес виден прямо под названием — по ссылке,
-   у которой не видно, куда она ведёт, никто не переходит. */
+/* Страница приложения. Адрес виден прямо под названием — по ссылке, у которой не видно,
+   куда она ведёт, никто не переходит. */
 "about.website" = "Сайт Iskra";
+"about.sourceCode" = "Исходный код";
 
-/* Благодарности. Каждая строка — ссылка наружу, чтобы имя вело куда-то. */
-"about.builtOn" = "На чём всё держится";
-"about.sdk" = "matrix-rust-sdk";
-"about.sdkLicence" = "Лицензия Apache 2.0";
-"about.protocol" = "Matrix";
-"about.protocolExplained" = "Открытый протокол, на котором работают эти чаты";
-"about.cryptography" = "Всё шифрование — из matrix-rust-sdk. Своего здесь не написано ни строчки, и это к лучшему.";
+/* Строка, ведущая к списку лицензий, и заголовок этого экрана. Лицензии здесь не из
+   вежливости: Apache 2.0 и MIT путешествуют вместе с программой, и человек должен иметь
+   возможность прочитать о них в самом приложении. */
+"about.licences" = "Лицензии";
+
+/* The GPL's "appropriate legal notices", under the links on the About screen: who holds the
+   copyright, that the app is free software under the GPL, and that it comes with no warranty.
+   The name stays in Latin letters, as it is in the licence. */
+"about.copyright" = "© 2026 Boris Zhuravlev и участники проекта Iskra";
+"about.freeSoftware" = "Iskra — свободная программа: её можно распространять и изменять на условиях GNU GPL версии 3. Никаких гарантий к ней не прилагается.";
+
+/* On the licences screen: the heading over the projects Iskra is made from, the row that opens
+   the extra permission that lets the GPL'd app be published in app stores, and the link from a
+   licence's text to the project it belongs to. */
+"licences.builtOn" = "На чём построена Iskra";
+"licences.storePermission" = "Разрешение для магазинов приложений";
+"licences.projectPage" = "Страница проекта";
 
 /* Экран «Хранилище»: сколько места занимает приложение, чем именно и что из этого можно
    выбросить. У каждого вида данных есть не только название, но и фраза о том, чего стоит
@@ -272,13 +334,13 @@
 "storage.measuring" = "Считаем…";
 
 "storage.session" = "Ключи и комнаты";
-"storage.session.explained" = "Ключи шифрования, состояние комнат и сообщения, которые ещё не ушли. Это не удаляется: без ключей телефон не прочитает старую переписку.";
+"storage.session.explained" = "Ключи шифрования. Без них старая переписка не откроется.";
 
 "storage.cache" = "Сообщения и медиа";
-"storage.cache.explained" = "Скачанные сообщения, фото и файлы. Скачаются снова, когда понадобятся.";
+"storage.cache.explained" = "Скачанное. Загрузится снова, когда понадобится.";
 
 "storage.search" = "Поисковый индекс";
-"storage.search.explained" = "Копия сообщений, по которой ищет поиск: он работает на устройстве, запрос не уходит на сервер. Очищается вместе с кэшем.";
+"storage.search.explained" = "Чтобы искать по сообщениям прямо на устройстве.";
 
 "storage.clear" = "Очистить кэш";
 "storage.clearing" = "Очищаем…";
@@ -290,7 +352,7 @@
 
 "storage.search.clear" = "Очистить поисковый индекс";
 "storage.search.confirm.title" = "Очистить поисковый индекс?";
-"storage.search.confirm.body" = "Приложение перезагрузится. Поиск какое-то время будет находить не всё — индекс соберётся заново, пока вы читаете переписку. Сами сообщения и фото останутся на месте.";
+"storage.search.confirm.body" = "Приложение перезагрузится. Поиск какое-то время будет находить не всё: индекс соберётся заново, пока вы читаете переписку. Сами сообщения и фото останутся на месте.";
 "storage.search.failed" = "Не удалось очистить индекс. Попробуйте ещё раз.";
 
 /* Экран выбора реакции для двойного касания. Заголовок и подпись под шестью эмодзи. */
@@ -324,6 +386,11 @@
 "signIn.problem.storageUnavailable" = "Iskra не смогла подготовить защищённое хранилище на этом устройстве, поэтому безопасно войти не получится.";
 
 "signIn.problem.unreachable" = "Не удалось связаться с этим адресом. Проверьте соединение и попробуйте снова.";
+"signIn.problem.bridgeUnavailable" = "Мост не включился, а напрямую Iskra не пойдёт, пока мост включён. Проверьте адрес моста и relay в настройках соединения.";
+/* Under "couldn't reach the server", when the bridge is off: the bridge as a second route. */
+"signIn.bridgeOffer" = "Если напрямую соединиться не получается, попробуйте через мост.";
+/* The button under it: switches the bridge on and looks the server up again. */
+"signIn.tryThroughBridge" = "Включить мост и попробовать снова";
 
 "signIn.problem.unsupportedMethod" = "Этот сервис использует способ входа, который Iskra пока не поддерживает.";
 
@@ -331,7 +398,7 @@
    anything about signing in: the account is fine and the messages are on the device. */
 "session.offlineTitle" = "Нет соединения";
 
-"session.offlineMessage" = "Ваши переписки на месте, на этом устройстве. Мы просто не можем сейчас связаться с сервером — проверьте сеть.";
+"session.offlineMessage" = "Ваши переписки на этом устройстве. Сейчас не получается связаться с сервером, проверьте сеть.";
 
 "session.tryAgain" = "Повторить";
 
@@ -355,18 +422,33 @@
 
 "signIn.tagline" = "Личная переписка на ваших условиях.";
 
-"signIn.title" = "Добро пожаловать в Iskra";
+"signIn.title" = "Iskra";
 
 "signIn.username" = "Имя пользователя";
 
 /* The question that replaces asking for a 'homeserver URL'. */
 "signIn.whereIsAccount" = "Где ваш аккаунт?";
 
-"signIn.whereIsAccountHelp" = "Если вам дали адрес — введите его. Если нет, большинству подойдёт matrix.org.";
+"signIn.whereIsAccountHelp" = "Введите адрес сервера, на котором у вас аккаунт или где вы хотите его создать.";
 
 "room.attachPhoto" = "Фото или видео";
 
 "room.attachFile" = "Файл";
+
+/* The choice under the "+" that appears when a photo or video has been copied. */
+"room.pasteImage" = "Вставить фото или видео";
+
+/* Read aloud for a photo waiting in the composer to be sent. */
+"room.attachedPhoto" = "Фото к сообщению";
+
+/* Read aloud for a video waiting in the composer to be sent. */
+"room.attachedVideo" = "Видео к сообщению";
+
+/* The cross on a photo or video waiting in the composer. */
+"room.removeAttachment" = "Убрать из сообщения";
+
+/* Over the room while a photo or video is dragged over it. */
+"room.dropToAttach" = "Отпустите, чтобы прикрепить";
 
 "videoNote.title" = "Видеосообщение";
 
@@ -383,13 +465,13 @@
 /* A conversation with no messages in it. Not a problem — an invitation. */
 "room.emptyTitle" = "Здесь пока пусто";
 
-"room.emptyMessage" = "Напишите первое сообщение — с него всё и начнётся.";
+"room.emptyMessage" = "Напишите первое сообщение, с него всё и начнётся.";
 
 /* The chat could not be opened at all. Must not be confused with an empty chat: the
    messages are there, we just can't show them. */
 "room.loadFailedTitle" = "Не удалось открыть чат";
 
-"room.loadFailedMessage" = "Сообщения никуда не делись — мы просто не смогли их загрузить. Проверьте соединение.";
+"room.loadFailedMessage" = "Сообщения на месте, но загрузить их не получилось. Проверьте соединение.";
 
 "room.tryAgain" = "Попробовать снова";
 
@@ -421,6 +503,9 @@
 
 /* Accessibility hints on a reaction. Say what pressing it will do — the pill itself can't. */
 "message.menu.addReaction" = "Поставить реакцию";
+"message.menu.addQuick" = "Поставить %@";
+"message.menu.removeQuick" = "Убрать %@";
+"message.menu.moreReactions" = "Другие реакции";
 
 "message.menu.removeReaction" = "Убрать свою реакцию";
 
@@ -443,17 +528,19 @@
 
 /* Экран «Внешний вид»: светло или темно. «Как в системе» — обычный случай и значение
    по умолчанию; остальные два для тех, у кого телефон светлый, а переписка должна быть тёмной. */
+"appearance.themeAndColors" = "Тема и цвета";
 "appearance.theme" = "Тема";
+"appearance.accent" = "Акцентный цвет";
 "appearance.mode.system" = "Как в системе";
-"appearance.mode.light" = "Светлое";
-"appearance.mode.dark" = "Тёмное";
+"appearance.mode.light" = "Светлая";
+"appearance.mode.dark" = "Тёмная";
 
 /* Переключатель, который включает или выключает плотную ленту строками. */
 "appearance.compact" = "Компактный вид";
 
 /* Экран «Внешний вид»: выбор цвета, которым покрашено приложение. Семь цветов радуги
    и чёрно-белая тема без цвета вовсе. */
-"appearance.accent" = "Цвет приложения";
+"appearance.avatars" = "Аватарки";
 
 /* Переключатель под кружками. Заливает выбранным цветом весь интерфейс — фон всех экранов,
    текст, сами сообщения. По умолчанию выключен: цвет, которым покрашено всё, не выделяет уже
@@ -481,12 +568,10 @@
 /* Экран «Внешний вид»: что лежит за перепиской. Ничего, шесть градиентов или своё фото. */
 "appearance.wallpaper" = "Обои";
 
-/* Под рядом с обоями. Объясняет две вещи разом: обои одни на все чаты, и фотография остаётся
-   на этом устройстве — её никто не увидит, кроме вас. */
-"appearance.wallpaperFooter" = "Обои общие для всех переписок. Ваша фотография остаётся на этом устройстве и никуда не отправляется.";
 
 /* Ползунок под обоями: насколько притушить картинку, чтобы на ней читались сообщения. */
 "appearance.wallpaperDimming" = "Затемнение";
+"appearance.wallpaperLightening" = "Осветление";
 
 /* Кнопка под ползунком — заменить свою фотографию на другую. */
 "appearance.wallpaperChoose" = "Выбрать другое фото";
@@ -511,7 +596,7 @@
 
 /* Фото выбрали, но прочитать его не удалось — это отказ ещё до отправки, и говорить
    про сервер здесь было бы враньём. Частая причина — снимок лежит в iCloud и не скачан. */
-"room.attachmentUnreadable" = "Не удалось прочитать это фото. Бывает, если оно ещё не скачано из iCloud — откройте его в «Фото» и попробуйте снова.";
+"room.attachmentUnreadable" = "Не удалось прочитать это фото. Бывает, если оно ещё не скачано из iCloud. Откройте его в «Фото» и попробуйте снова.";
 
 /* Ссылка в сообщении: спрашиваем, прежде чем открыть. Заголовок диалога — сам адрес. */
 "message.link.open" = "Открыть";
@@ -523,11 +608,13 @@
 "message.forward.title" = "Переслать в…";
 "message.forward.prompt" = "Поиск чата";
 "message.forward.cancel" = "Отмена";
+"message.forward.comment" = "Добавить комментарий…";
+"message.forward.send" = "Отправить";
 "message.menu.block" = "Заблокировать";
 "message.menu.blockConfirm" = "Заблокировать %@?";
 "message.menu.blockConfirmMessage" = "Вы перестанете получать сообщения этого человека. Разблокировать можно в настройках.";
 "message.report.title" = "Пожаловаться на сообщение";
-"message.report.explanation" = "Жалоба уйдёт модераторам сервера. Можно коротко описать, что не так — а можно и без этого.";
+"message.report.explanation" = "Жалоба уйдёт модераторам сервера. Можно коротко описать, что не так, а можно и без этого.";
 "message.report.reasonPrompt" = "Что случилось? (необязательно)";
 "message.report.submit" = "Отправить";
 "message.report.cancel" = "Отмена";
@@ -570,7 +657,6 @@
 "room.sharedMedia" = "Медиа и файлы";
 "room.sharedMediaEmptyTitle" = "Здесь пока нет медиа";
 "room.sharedMediaEmptyMessage" = "Фото, видео и файлы из этого чата появятся здесь.";
-"room.galleryLoadEarlier" = "Показать более раннее";
 
 /* Пространства и их содержимое. */
 "room.spaceLabel" = "Пространство";
@@ -597,33 +683,81 @@
 "voice.needsMicrophone" = "Разрешите доступ к микрофону, чтобы записывать голосовые";
 
 /* Sending a place. */
+/* The sticker sheet's title, and the composer button that opens it. */
+"stickers.title" = "Стикеры";
+"stickers.open" = "Стикеры";
+"stickers.close" = "Закрыть";
+
+/* The row of stickers sent last. */
+"stickers.recent" = "Недавние";
+
+/* The account's own sticker pack — the one stickers are added to. */
+"stickers.mine" = "Мои стикеры";
+
+/* A room's sticker pack that has no name of its own. */
+"stickers.roomPack" = "Стикеры чата";
+
+/* The sticker pack the app comes with: round faces, a heart and a star. */
+"stickers.builtIn" = "Искорки";
+
+/* The sticker sheet with nothing in it. */
+"stickers.empty.title" = "Пока нет стикеров";
+"stickers.empty.message" = "Понравился стикер в чате? Нажмите на него, подержите и выберите «Добавить в мои стикеры».";
+
+/* In a sticker's menu: put it into, or take it out of, the account's own pack. */
+"stickers.add" = "Добавить в мои стикеры";
+"stickers.remove" = "Убрать из моих стикеров";
+
 "location.title" = "Геопозиция";
 "location.send" = "Отправить";
 "location.cancel" = "Отмена";
 "location.myLocation" = "Я здесь";
 "location.attach" = "Геопозиция";
 "message.spoken.sentLocation" = "геопозиция";
+"poll.kind" = "Опрос";
+"poll.kindAnonymous" = "Анонимный опрос";
+"poll.ended" = "Опрос завершён";
+"poll.multiple" = "можно выбрать несколько";
+"poll.noVotes" = "Пока никто не голосовал";
+"poll.hiddenUntilEnd" = "результаты — после завершения";
+"poll.end" = "Завершить опрос";
+"poll.endConfirmTitle" = "Завершить опрос?";
+"poll.endConfirmMessage" = "Голосовать больше будет нельзя, а результаты увидят все.";
+"poll.attach" = "Опрос";
+"poll.newTitle" = "Новый опрос";
+"poll.question" = "Вопрос";
+"poll.questionPlaceholder" = "О чём спросить?";
+"poll.answers" = "Варианты ответа";
+"poll.answerPlaceholder" = "Вариант";
+"poll.addAnswer" = "Добавить вариант";
+"poll.removeAnswer" = "Убрать вариант";
+"poll.settings" = "Настройки";
+"poll.allowMultiple" = "Несколько ответов";
+"poll.anonymous" = "Результаты после завершения";
+"poll.anonymousFooter" = "Пока опрос идёт, никто не видит, как голосуют другие. Завершить его можете только вы.";
+"poll.send" = "Отправить";
+"poll.cancel" = "Отмена";
+"poll.chosen" = "ваш ответ";
+"message.spoken.sentPoll" = "опрос «%@»";
 
 /* Управление комнатой. Показывается только тем, кому комната это разрешает. */
 "room.manage.namePlaceholder" = "Название чата";
 "room.manage.topicPlaceholder" = "О чём этот чат";
-"room.manage.changePicture" = "Выбрать фото";
-"room.manage.removePicture" = "Убрать фото";
 "room.manage.openToAnyone" = "Открытый чат";
 "room.manage.openToAnyoneHelp" = "Войти сможет любой, кто найдёт чат. Иначе — только по приглашению.";
 "room.manage.invite" = "Пригласить";
-"room.manage.inviteTitle" = "Кого пригласить?";
-"room.manage.inviteHelp" = "Адрес в Matrix выглядит как @имя:сервер.";
-"room.manage.invitePlaceholder" = "@имя:сервер";
+"room.invite.inviteCount" = "Пригласить (%lld)";
+"room.invite.chosen" = "Выбранные";
+"room.invite.alreadyHere" = "Уже в комнате";
+"room.invite.byAddress" = "Пригласить по этому адресу";
 "room.manage.role" = "Роль";
 "room.manage.roleHeader" = "Что может в чате";
-"room.manage.roleQuestion" = "Что может %@?";
 "room.manage.member" = "Участник";
 "room.manage.write" = "Написать";
 "room.manage.goToChat" = "Перейти в чат";
 "room.manage.remove" = "Исключить";
-"room.manage.block" = "Заблокировать";
-"room.manage.blockQuestion" = "Заблокировать %@?";
+"room.manage.block" = "Заблокировать в чате";
+"room.manage.blockQuestion" = "Заблокировать %@ в этом чате?";
 "room.manage.blockHelp" = "Человек выйдет из чата и не сможет вернуться, пока вы не снимете блокировку.";
 "room.manage.leave" = "Выйти из чата";
 "room.manage.leaveQuestion" = "Выйти из чата?";
@@ -632,13 +766,50 @@
 /* Why everything on the room-settings screen is greyed out. Shown only while offline. Must say
    what still works — reading and writing — rather than only what does not. */
 "room.manage.offline" = "Без сети чат можно читать и писать в него, но не менять.";
+"room.rules.title" = "Роли и разрешения";
+"room.rules.staffHeader" = "Управляют чатом";
+"room.rules.staffFooter" = "Чтобы сменить роль, проведите по человеку влево или откройте его страницу.";
+"room.rules.rulesHeader" = "Кто может";
+"room.rules.rulesFooter" = "«Модераторы» — это модераторы и администраторы.";
+"room.rules.sendMessages" = "Писать сообщения";
+"room.rules.invite" = "Приглашать людей";
+"room.rules.remove" = "Удалять участников";
+"room.rules.ban" = "Блокировать";
+"room.rules.deleteOthers" = "Удалять чужие сообщения";
+"room.rules.rename" = "Менять название";
+"room.rules.changeTopic" = "Менять описание";
+"room.rules.changePicture" = "Менять фото";
+"room.rules.everyone" = "Все";
+"room.rules.moderators" = "Модераторы";
+"room.rules.administrators" = "Администраторы";
+"room.manage.chooseRole" = "Выберите роль";
+"room.rules.addStaff" = "Добавить";
+"room.rules.appointTitle" = "Назначить";
+"room.rules.nobodyToAppoint" = "Больше назначить некого.";
+"room.rules.demote" = "Снять роль";
 "room.manage.cancel" = "Отмена";
 "problem.title" = "Не получилось";
 
 /* Экран «новый чат» и «новая комната». */
 "roomList.new.create" = "Создать";
-"roomList.new.start" = "Начать";
 "roomList.new.openMeansUnencrypted" = "Открытую комнату читает каждый, кто в неё зашёл, поэтому шифрования в ней нет. В закрытой — есть.";
+"roomList.new.searchPrompt" = "Поиск по пользователям";
+"roomList.new.createRoom" = "Создать комнату";
+"roomList.new.publicRooms" = "Публичные комнаты";
+"roomList.new.joinByAddress" = "Присоединиться по адресу";
+"roomList.new.yourChats" = "Ваши собеседники";
+"roomList.new.onServer" = "На сервере";
+"roomList.new.writeTo" = "Написать по этому адресу";
+"roomList.new.nobodyFound" = "Никого не нашлось";
+"roomList.new.searchFailed" = "Сервер не ответил на поиск";
+"roomList.new.roomsPrompt" = "Поиск комнат";
+"roomList.new.inviteOnly" = "Только по приглашению";
+"roomList.new.noRooms" = "Комнат не нашлось";
+"roomList.new.directoryFailed" = "Каталог не открылся.";
+"roomList.new.retry" = "Ещё раз";
+"roomList.new.join" = "Войти";
+"roomList.new.addressPlaceholder" = "#комната:сервер";
+"roomList.new.addressHelp" = "Адрес комнаты выглядит как #название:сервер. Подойдёт и её ID — он начинается с «!».";
 
 /* Свайпы по строке чата, и их дублёры для VoiceOver. */
 "roomList.swipe.markRead" = "Прочитано";
@@ -649,15 +820,22 @@
 "roomList.swipe.unarchive" = "Из архива";
 "roomList.swipe.delete" = "Удалить";
 "roomList.swipe.leaveConfirmTitle" = "Выйти из чата?";
-"roomList.swipe.leaveConfirmMessage" = "Вы выйдете из комнаты и больше не будете получать сообщения. Удалить чат целиком в Matrix нельзя — можно только выйти самому.";
+"roomList.swipe.leaveConfirmMessage" = "Вы выйдете из комнаты и больше не будете получать сообщения. Удалить чат целиком в Matrix нельзя, можно только выйти самому.";
 "roomList.swipe.leaveConfirm" = "Выйти";
 "roomList.swipe.cancel" = "Отмена";
 
+/* Предпросмотр чата по долгому нажатию в списке: заглянуть, не отмечая прочитанным. */
+"roomList.peek.peek" = "Подглядеть";
+"roomList.peek.open" = "Открыть чат";
+"roomList.peek.markRead" = "Отметить прочитанным";
+"roomList.peek.markUnread" = "Отметить непрочитанным";
+"roomList.peek.staysUnread" = "Вы только подглядываете, чат не отметится прочитанным";
+"roomList.peek.close" = "Закрыть предпросмотр";
+
 /* Архив: полка для отложенных чатов и дорога обратно к ним. */
 "roomList.archive.title" = "Архив";
-"roomList.archive.entry" = "Архив (%lld)";
 "roomList.archive.emptyTitle" = "В архиве пусто";
-"roomList.archive.emptyMessage" = "Смахните чат влево и уберите его в архив — он не будет мешать в общем списке, но и никуда не денется.";
+"roomList.archive.emptyMessage" = "Смахните чат влево, и он уйдёт в архив: не будет мешать в общем списке, но и не пропадёт.";
 
 /* Насколько громко комната может вас перебивать. */
 "room.manage.alerts" = "Уведомления";
@@ -667,18 +845,25 @@
 
 /* Профиль: имя и фото. */
 "account.namePlaceholder" = "Ваше имя";
-"account.changePicture" = "Изменить фото";
-"account.removePicture" = "Удалить фото";
 "account.edit" = "Изменить";
 "account.editTitle" = "Ваш профиль";
 "account.nameHeader" = "Имя";
-"account.editOffline" = "Без сети профиль не поменять — приложение просто не дозвонится до сервера.";
+"account.editOffline" = "Без сети профиль не поменять: приложение не дозвонится до сервера.";
+"account.nameChangeNotice" = "Когда вы смените имя, об этом узнают все собеседники: в каждом общем чате появится сообщение.";
+"account.usernameHeader" = "Имя пользователя";
+"account.usernameFixed" = "Имя пользователя выбирается один раз, при регистрации. Сменить его нельзя ни здесь, ни где-либо ещё.";
+
+/* Меню на фото, которое можно поменять: в профиле и в чате. */
+"picture.edit" = "Изменить фото";
+"picture.change" = "Изменить";
+"picture.remove" = "Удалить";
 "room.manage.edit" = "Изменить";
+"room.manage.closeInfo" = "Скрыть информацию о чате";
 "room.manage.editTitle" = "Изменить чат";
 "room.manage.nameHeader" = "Название";
 "room.manage.deleteChat" = "Удалить чат";
 "room.manage.deleteChatQuestion" = "Удалить чат?";
-"room.manage.deleteChatHelp" = "Переписка исчезнет с этого устройства. Собеседника об этом не предупредят, и если он напишет снова, чат вернётся — но уже пустым.";
+"room.manage.deleteChatHelp" = "Переписка исчезнет с этого устройства. Собеседника об этом не предупредят, и если он напишет снова, чат вернётся, но пустым.";
 "room.tabs.members" = "Участники";
 "room.tabs.media" = "Фото и видео";
 "room.tabs.voice" = "Голосовые";
@@ -688,7 +873,7 @@
 "room.tabs.label" = "Что внутри";
 "room.localName.header" = "Имя на этом устройстве";
 "room.localName.help" = "Это имя видите только вы и только на этом устройстве. Собеседник о нём не узнает, на других ваших устройствах имя останется прежним, а при выходе из аккаунта оно забудется.";
-"room.localName.reset" = "Вернуть настоящее имя";
+"room.localName.reset" = "Вернуть «%@»";
 
 /* Шифрование: доступно ли будет прочитать переписку на новом устройстве. */
 "encryption.title" = "Шифрование";
@@ -697,7 +882,7 @@
 "encryption.onHelp" = "Ваша переписка лежит на сервере в резервной копии, зашифрованная. С кодом восстановления вы прочитаете её на любом новом устройстве.";
 
 "encryption.off" = "Переписка не защищена";
-"encryption.offHelp" = "Если это устройство потеряется, старые сообщения не прочитает никто — и вы тоже. Защитите переписку, и мы дадим код, который её вернёт.";
+"encryption.offHelp" = "Если это устройство потеряется, старые сообщения не прочитает никто, и вы тоже. Защитите переписку, и мы дадим код, который её вернёт.";
 "encryption.protect" = "Защитить переписку";
 
 "encryption.keyNeeded" = "Нужен код восстановления";
@@ -705,27 +890,19 @@
 "encryption.keyPlaceholder" = "Код восстановления";
 "encryption.restore" = "Восстановить переписку";
 
-"encryption.newKey" = "Создать новый код";
+"encryption.newKey" = "Создать новый код восстановления";
 "encryption.newKeyHelp" = "Старый код перестанет работать. Стоит это сделать, если он попал не в те руки.";
 
 "encryption.saveKey" = "Сохраните код";
-"encryption.saveKeyHelp" = "Мы показываем его один раз и больше не покажем никогда. Запишите его или положите в менеджер паролей: без него старую переписку не вернуть.";
+"encryption.saveKeyHelp" = "Код показывается один раз. Запишите его или положите в менеджер паролей: без него старую переписку не вернуть.";
 "encryption.copyKey" = "Скопировать код";
 "encryption.keyCopied" = "Скопировано";
-"encryption.saved" = "Я сохранил код";
+"encryption.saved" = "Код сохранён";
 
-"encryption.thisDevice" = "Это устройство";
-"encryption.deviceVerified" = "Проверено";
 "encryption.deviceUnverified" = "Новое устройство";
-/* Две подписи под «этим устройством», и какая из них правдива — решает сервер.
-   Первая — когда раздел «Мои устройства» есть. Вторая — когда его нет, потому что
-   сессия получена не через браузер и страницы аккаунта у сервера для нас не существует.
-   Отправлять человека в раздел, которого он не найдёт, — хуже, чем не отправлять никуда. */
-"encryption.otherDevicesHere" = "Остальные ваши устройства — в разделе «Мои устройства».";
-"encryption.otherDevices" = "Другие ваши устройства Iskra не показывает. Завершить сеанс на чужом устройстве можно на сайте вашего сервера.";
 
-/* Плашка внизу комнаты, когда новое сообщение пришло, а ты читаешь выше. */
-"room.jumpToNewest" = "Новые сообщения";
+/* Полоса поперёк переписки: отсюда начинается то, что ты ещё не читал. */
+"room.unreadMessages" = "Непрочитанные сообщения";
 
 /* Приглашение в комнату: кто позвал и два ответа. */
 "roomList.invite.from" = "%@ приглашает вас";
@@ -738,9 +915,8 @@
 "room.typingBy" = "%@ печатает…";
 
 "room.scrollToBottom" = "Вниз, к последнему сообщению";
-"room.loadEarlier" = "Показать, что было раньше";
 
-/* Stands where the "show earlier" button would be, when the older messages could not be fetched —
+/* Stands at the top of the conversation when the older messages could not be fetched —
    offline, this is where the cached history runs out. Explains; does not promise. */
 "room.earlierUnavailable" = "Что было раньше, покажем, когда вернётся связь";
 "appearance.previewAsk" = "Какой цвет выбрал?";
@@ -761,7 +937,7 @@
    Человеку, которого выкинуло на экран входа без объяснений, первым делом кажется, что
    приложение потеряло его аккаунт. Поэтому здесь названа причина, а не просто факт. */
 "session.ended.title" = "Вход больше не действует";
-"session.ended.message" = "Сервер перестал принимать этот сеанс. Скорее всего, вы завершили его с другого устройства. Войдите снова — переписка никуда не делась.";
+"session.ended.message" = "Сервер перестал принимать этот сеанс. Скорее всего, вы завершили его с другого устройства. Войдите снова, переписка на месте.";
 
 /* Названия медиа-пузырей для VoiceOver. Фото и кружок открываются жестом-тапом, а тап в дереве
    доступности не существует вовсе — без имени и действия нажимать было буквально нечего. */
@@ -775,24 +951,24 @@
    одинаковое ли на них. Это и есть вся суть, и она объяснима без единого термина. */
 "verification.verify" = "Подтвердить это устройство";
 "verification.title" = "Подтверждение";
-"verification.why" = "Пока устройство не подтверждено, аккаунт не знает, что это правда вы, — и старая переписка сюда не приедет. Подтвердить можно с телефона или компьютера, где вы уже вошли.";
+"verification.why" = "Пока устройство не подтверждено, аккаунт не знает, что это правда вы, и старая переписка сюда не приедет. Подтвердить можно с телефона или компьютера, где вы уже вошли.";
 "verification.waiting.title" = "Загляните на другое устройство";
 "verification.waiting.message" = "Приложение на другом устройстве должно быть открыто прямо сейчас — иначе запрос до него не дойдёт.";
-"verification.asked.message" = "Это устройство только что вошло в ваш аккаунт и просит его подтвердить. Если входили вы — согласитесь, и вы сверите эмодзи. Если нет — откажите: значит, ваш пароль знает кто-то ещё.";
+"verification.asked.message" = "Это устройство только что вошло в ваш аккаунт и просит его подтвердить. Если входили вы, согласитесь и сверьте эмодзи. Если нет, откажите: значит, ваш пароль знает кто-то ещё.";
 "verification.unnamedDevice" = "Устройство без имени";
 "verification.mine" = "Это я";
 "verification.notMine" = "Это не я";
 "verification.negotiating.title" = "Секунду";
 "verification.negotiating.message" = "Устройства договариваются между собой. Сейчас на обоих экранах появятся эмодзи.";
-"verification.compare" = "На другом устройстве сейчас те же семь эмодзи. Проверьте, что они совпадают, — и в том же порядке.";
+"verification.compare" = "На другом устройстве сейчас те же семь эмодзи. Проверьте, что они совпадают и идут в том же порядке.";
 "verification.match" = "Совпадают";
 "verification.noMatch" = "Не совпадают";
 "verification.done.title" = "Устройство подтверждено";
 "verification.done.message" = "Теперь аккаунт доверяет этому устройству. Старая переписка появится здесь сама.";
 "verification.declined.title" = "Подтверждение отменено";
-"verification.declined.message" = "Если эмодзи правда не совпали — не доверяйте этому подключению и попробуйте ещё раз. Возможно, вы просто открыли подтверждение дважды.";
+"verification.declined.message" = "Если эмодзи правда не совпали, не доверяйте этому подключению и попробуйте ещё раз. Возможно, вы просто открыли подтверждение дважды.";
 "verification.refused.title" = "Вы отказали";
-"verification.refused.message" = "Устройство не получило доступа к переписке. Но если входили не вы, значит, ваш пароль знает кто-то ещё, — и менять его нужно прямо сейчас.";
+"verification.refused.message" = "Устройство не получило доступа к переписке. Но если входили не вы, значит, ваш пароль знает кто-то ещё, и менять его нужно прямо сейчас.";
 "verification.refused.endSession" = "Завершить этот сеанс";
 "verification.failed.title" = "Не получилось";
 "verification.failed.message" = "Подтверждение не дошло до конца. Попробуйте ещё раз.";
@@ -818,15 +994,15 @@
 /* Flow 2. Две кнопки одного веса. Ни одна не «основная»: тот, кто выбрал эмодзи-сверку,
    не должен чувствовать, что выбрал запасной вариант. */
 "recovery.new.title" = "Создать новый код?";
-"recovery.new.message" = "Прежний код перестанет работать сразу же, и вернуть его будет нельзя. Если он у вас где-то записан — эта запись станет бесполезной.";
+"recovery.new.message" = "Прежний код перестанет работать сразу же, и вернуть его будет нельзя. Если он у вас где-то записан, эта запись станет бесполезной.";
 "recovery.new.confirm" = "Создать новый код";
 "recovery.new.keepOld" = "Позже — я поищу старый";
 "recovery.approve.title" = "Одобрили сброс?";
-"recovery.approve.message" = "Сброс нужно подтвердить на странице сервера. Если вы это сделали — продолжайте, и старая переписка будет потеряна навсегда. Если передумали — ничего не произойдёт.";
+"recovery.approve.message" = "Сброс нужно подтвердить на странице сервера. Если вы это сделали, продолжайте: старая переписка будет потеряна навсегда. Если передумали, ничего не произойдёт.";
 "recovery.approve.confirm" = "Стереть старую переписку навсегда";
-"recovery.approve.cancel" = "Я передумал";
+"recovery.approve.cancel" = "Нет, оставить как есть";
 "recovery.choose.title" = "Разблокируйте переписку";
-"recovery.choose.message" = "Прошлые сообщения зашифрованы, и это устройство пока не умеет их открывать. Есть два способа — оба рабочие.";
+"recovery.choose.message" = "Прошлые сообщения зашифрованы, и это устройство пока не умеет их открывать. Есть два способа, оба рабочие.";
 "recovery.choose.haveCode" = "У меня есть код восстановления";
 "recovery.choose.otherDevice" = "Подтвердить с другого устройства";
 "recovery.choose.neither" = "Нет ни того, ни другого";
@@ -839,12 +1015,12 @@
 
 /* Flow 3, ветка «есть другое устройство». Потеря кода — не катастрофа, и тон это говорит. */
 "recovery.lost.title" = "Не нашли код?";
-"recovery.lost.hasDevices" = "Ничего страшного. Подтвердите это устройство с телефона или компьютера, где вы уже вошли, — и мы сразу дадим новый код взамен потерянного.";
+"recovery.lost.hasDevices" = "Ничего страшного. Подтвердите это устройство с телефона или компьютера, где вы уже вошли, и мы сразу дадим новый код взамен потерянного.";
 
 /* Flow 3, ветка «больше ничего нет». Говорим прямо, но не пугаем: потерять переписку
    неприятно, а вот испугаться и не понять, что делать, — хуже. */
 "recovery.lost.alone.title" = "Начнём с чистого листа";
-"recovery.lost.alone.message" = "Без кода и без другого устройства старую переписку не вернуть — она останется зашифрованной навсегда. Новые сообщения будут приходить как обычно, и мы дадим вам новый код восстановления.";
+"recovery.lost.alone.message" = "Без кода и без другого устройства старую переписку не вернуть: она останется зашифрованной навсегда. Новые сообщения будут приходить как обычно, и мы дадим вам новый код восстановления.";
 
 /* Документ требует развести это со сбросом пароля явно, чтобы никто — включая
    разработчика — не перепутал одно с другим. Пароль открывает аккаунт, а не переписку. */
@@ -860,14 +1036,12 @@
 /* Полоска в списке чатов. Висит, пока причина не устранена: код показывают один раз,
    и человек, который его не сохранил, узнаёт об этом через полгода — если ему не напомнить. */
 "recovery.banner.locked" = "Старая переписка заблокирована";
-"recovery.save.warning" = "Если код потеряется и другого устройства у вас не будет, старую переписку не вернёт никто — ни мы, ни сервер. Она навсегда останется зашифрованной.";
-"recovery.save.confirm" = "Я записал код в надёжное место";
+"recovery.save.warning" = "Если код потеряется и другого устройства у вас не будет, старую переписку не вернёт никто, ни мы, ни сервер: она навсегда останется зашифрованной.";
+"recovery.save.confirm" = "Код записан, он в надёжном месте";
 "recovery.lost.noAccess" = "Нет доступа к тому устройству";
 "recovery.banner.hint" = "Открыть настройку восстановления";
 "recovery.close" = "Закрыть";
 
-"settings.devices" = "Мои устройства";
-"settings.devicesHelp" = "Список устройств и выход из них живёт на сайте вашего сервера — там же, где вы входили.";
 
 /* Кнопка есть только там, где сервер сам говорит, что умеет заводить аккаунты. */
 "signIn.createAccount" = "Создать аккаунт";
@@ -884,21 +1058,48 @@
 
 /* Разделы в панели эмодзи. Короткие: это заголовки над сеткой, а не названия глав. */
 "reactions.recent" = "Недавние";
-"reactions.smileys" = "Улыбки";
-"reactions.gestures" = "Жесты";
-"reactions.hearts" = "Сердца";
+"reactions.smileys" = "Смайлики и люди";
 "reactions.animals" = "Животные и природа";
-"reactions.food" = "Еда";
-"reactions.activity" = "Занятия";
-"reactions.places" = "Места";
-"reactions.objects" = "Вещи";
+"reactions.food" = "Еда и напитки";
+"reactions.activity" = "Активность";
+"reactions.places" = "Путешествия и места";
+"reactions.objects" = "Предметы";
 "reactions.symbols" = "Символы";
+"reactions.flags" = "Флаги";
 
 /* Вкладка «Безопасность» — бывшее «Шифрование». Под одной крышей собрано всё, что отвечает
    на вопрос «кто может до этого добраться»: восстановление переписки, это устройство, мои
    устройства, замок по Face ID и мост. Порознь эти пункты выглядели как пять мелочей;
    вместе это один разговор. */
 "settings.security" = "Безопасность";
+
+/* Круглые кнопки под портретом человека, как в Telegram. */
+"profile.message" = "Написать";
+"profile.share" = "Поделиться";
+/* Подпись к адресу человека в Matrix в карточке профиля. */
+"profile.matrixID" = "Matrix ID";
+"profile.loading" = "Загружаем профиль…";
+"profile.notInRoom" = "Этого человека нет в чате.";
+
+/* Строка в настройках и заголовок экрана со всеми сеансами аккаунта — как «Устройства» в Telegram. */
+"devices.title" = "Устройства";
+"devices.thisDevice" = "Это устройство";
+/* Под этим устройством, вместо времени последнего входа. */
+"devices.online" = "в сети";
+"devices.endOthers" = "Завершить все другие сеансы";
+"devices.endOthersFooter" = "Выйти из аккаунта на всех устройствах, кроме этого.";
+"devices.endOthersConfirm" = "Завершить все другие сеансы?";
+"devices.others" = "Активные сеансы";
+"devices.noOthers" = "Других сеансов нет, вы вошли только здесь.";
+"devices.end" = "Завершить";
+"devices.endConfirm" = "Завершить этот сеанс?";
+/* Под списком, когда сеансы завершаются на сайте сервера (вход через браузер). */
+"devices.managedFooter" = "Сеансы этого аккаунта завершаются на сайте сервера, кнопка «Завершить» откроет его.";
+"devices.passwordTitle" = "Нужен пароль";
+"devices.passwordMessage" = "Сервер просит пароль от аккаунта, чтобы завершить сеанс.";
+"devices.passwordField" = "Пароль";
+"devices.cancel" = "Отмена";
+"devices.retry" = "Попробовать ещё раз";
 
 /* Экран «Уведомления»: что приходит по умолчанию, пока конкретный чат не сказал иначе.
    Про правила важно сказать вслух две вещи — они живут на сервере, значит действуют на всех
@@ -908,17 +1109,16 @@
 "notifications.defaults" = "По умолчанию";
 "notifications.direct" = "Личные чаты";
 "notifications.groups" = "Группы";
-"notifications.defaultsFooter" = "Это правила аккаунта: они действуют на всех устройствах, где вы вошли. Если у чата есть своя настройка уведомлений, она главнее.";
+"notifications.defaultsFooter" = "Настройки уведомлений чатов приоритетнее настроек по умолчанию.";
 
 "notifications.mentions" = "Упоминания";
 "notifications.mentionsMe" = "Когда меня упоминают";
-"notifications.roomMentions" = "Когда пишут @room";
-"notifications.mentionsFooter" = "Упоминания доходят даже из чатов, которые вы выключили. @room будит всех сразу — его можно отключить отдельно.";
+"notifications.roomMentions" = "Когда обращаются ко всем в чате (@room)";
 
 "notifications.other" = "Остальное";
 "notifications.invitations" = "Приглашения в чаты";
 "notifications.calls" = "Звонки";
-"notifications.otherFooter" = "Звонков в Iskra пока нет, но правило общее для аккаунта: звонить может другое приложение, в которое вы вошли этим же аккаунтом.";
+"notifications.otherFooter" = "Звонков в Iskra пока нет, но собеседники могут звонить вам из других приложений.";
 
 "notifications.system" = "Разрешение";
 "notifications.systemOn" = "Система пропускает уведомления";
@@ -927,7 +1127,7 @@
 "notifications.openSystem" = "Открыть настройки";
 "notifications.systemFooter" = "Пока система не пропускает уведомления, ни одно правило ниже не сработает.";
 
-"notifications.failed" = "Не удалось прочитать настройки уведомлений. Похоже, сервер не отвечает — попробуйте позже.";
+"notifications.failed" = "Не удалось прочитать настройки уведомлений. Похоже, сервер не отвечает. Попробуйте позже.";
 
 /* Первый запуск. Шесть слайдов до входа — это единственное место, где приложение говорит
    о себе, поэтому фразы короткие и без единого протокольного слова. См. WelcomeView. */
@@ -941,7 +1141,7 @@
 "onboarding.slide.decentralised.body" = "Iskra работает на открытом протоколе Matrix, который развивает сообщество";
 
 "onboarding.slide.appleWay.title" = "Apple way";
-"onboarding.slide.appleWay.body" = "Нативное приложение на Swift для всех платформ сразу — летает и не жрёт батарею";
+"onboarding.slide.appleWay.body" = "Нативное приложение на Swift для всех платформ сразу: летает и не жрёт батарею";
 
 "onboarding.slide.freedom.title" = "Свобода выбора";
 "onboarding.slide.freedom.body" = "Хотите — берите готовый сервер, хотите — поднимите свой. Никто не запирает вас в одной экосистеме";
@@ -959,11 +1159,20 @@
 /* Оба экрана после входа спрашивают про вкус, а не про дело, — поэтому мимо них есть дорога. */
 "onboarding.skip" = "Пропустить";
 
+"room.identity.changedTitle" = "%@: новые ключи шифрования";
+"room.identity.changedBody" = "Сообщения этому человеку теперь шифруются новыми ключами. Обычно так бывает после входа на новом телефоне. Если вы этого не ждали — уточните лично.";
+"room.identity.understood" = "Понятно";
+"room.identity.violationTitle" = "%@: ключи не совпадают с проверенными";
+"room.identity.violationBody" = "Вы проверяли этого собеседника, но с тех пор ключи сменились. Пока не убедитесь, что это тот же человек, не пишите ничего важного.";
+"room.identity.withdraw" = "Снять отметку о проверке";
+"room.identity.failed" = "Не получилось. Проверьте связь и попробуйте ещё раз.";
+"message.delivery.sendAnyway" = "Отправить всё равно";
+"message.delivery.sendAnywayFailed" = "Сообщение всё ещё не ушло. Проверьте связь и попробуйте ещё раз.";
 "onboarding.greeting" = "Привет, %@!";
 "onboarding.greetingNameless" = "Привет!";
 
 "onboarding.appearance.title" = "Какого цвета Iskra?";
-"onboarding.appearance.body" = "Этим цветом будут ваши сообщения и всё, что вы нажимаете. Поменять можно когда угодно — в настройках, на экране «Внешний вид».";
+"onboarding.appearance.body" = "Этим цветом будут ваши сообщения и всё, что вы нажимаете. Поменять можно когда угодно: в настройках, на экране «Внешний вид».";
 
 "onboarding.faces.title" = "Кому рисовать мордочки";
 "onboarding.faces.body" = "Мордочка считается прямо на устройстве из адреса собеседника: у каждого своя и всегда одна и та же. Никуда ничего не уходит.";
@@ -972,7 +1181,7 @@
 "onboarding.faces.picturesHelp" = "Всё как есть: у кого аватарка стоит — аватарка, у остальных инициалы.";
 
 "onboarding.faces.mixed" = "Аватарки и мордочки";
-"onboarding.faces.mixedHelp" = "Показывать мордочки для пользователей без аватара.";
+"onboarding.faces.mixedHelp" = "У кого есть аватарка — аватарка, у остальных — мордочка.";
 
 "onboarding.faces.faces" = "Мордочки";
 "onboarding.faces.facesHelp" = "Мордочки для всех, даже для тех, у кого есть аватарка.";
@@ -1005,6 +1214,10 @@
 /* В списке чатов и на плашке над перепиской. Заменяет последнее сообщение, а не дополняет его. */
 "call.ongoing" = "Идёт звонок";
 "call.join" = "Присоединиться";
+"call.tile" = "Звонок";
+"call.joinTile" = "Войти";
+"call.audioCall" = "Аудиозвонок";
+"call.videoCall" = "Видеозвонок";
 /* Имя на звонящем звонке, пока событие ещё не расшифровано. Секунда-две, но пусто быть не может. */
 "call.incoming" = "Входящий звонок";
 
@@ -1014,3 +1227,306 @@
 "beta.elementCall.title" = "Свой адрес Element Call";
 "beta.elementCall.prompt" = "https://call.example.org";
 "beta.elementCall.note" = "Обычно адрес называет сам сервер. Молчит — значит, звонков нет, и это не поломка: тот, кто держит Element Call, видит, кто с кем и когда говорит. Вписывать сюда стоит только свой.";
+/* Несколько аккаунтов */
+"accounts.section" = "Аккаунты";
+"accounts.add" = "Добавить аккаунт";
+"accounts.cancel" = "Отмена";
+"accounts.switchHint" = "Переключит приложение на этот аккаунт";
+"accounts.current" = "Открыт сейчас";
+"accounts.unread" = "Непрочитанных: %lld";
+"accounts.signOutOf" = "Выйти из %@";
+"session.endedOther.message" = "Сервер перестал принимать сеанс %@. Скорее всего, его завершили с другого устройства. Остальные аккаунты на месте, а этот можно добавить заново.";
+"signIn.problem.alreadySignedIn" = "Этот аккаунт уже есть на устройстве, переключиться на него можно в настройках.";
+
+/* Настройки → Чаты: служебные строчки, клавиша Enter, аккаунт в меню «Поделиться». */
+"settings.chats" = "Чаты";
+"chats.title" = "Чаты";
+"chats.serviceSection" = "Служебные сообщения";
+"chats.hideNameChanges" = "Скрывать смену имён";
+"chats.hideMembershipChanges" = "Скрывать вход и выход участников";
+"chats.serviceHelp" = "Серые строчки о том, кто сменил имя и кто зашёл, вышел или кого пригласили. Новое название чата и его фото видно всегда.";
+"chats.keyboardSection" = "Клавиатура";
+"chats.commandReturn" = "Отправлять по ⌘ + Enter";
+"chats.commandReturnOnHelp" = "Enter переносит строку, ⌘ + Enter отправляет.";
+"chats.commandReturnOffHelp" = "Enter отправляет, Shift + Enter переносит строку.";
+"chats.shareSection" = "Меню «Поделиться»";
+"chats.shareAccount" = "Аккаунт";
+"chats.shareActive" = "Активный";
+"chats.shareAll" = "Все";
+"chats.shareHelp" = "Чьи чаты показывать, когда делитесь чем-то из другого приложения. «Активный» — тот, что сейчас открыт в Искре.";
+"chats.widgetSection" = "Виджет «Избранные чаты»";
+"chats.widgetHelp" = "Чьи чаты показывать в виджете, если в нём самом ничего не выбрано. «Активный» — тот, что сейчас открыт в Искре.";
+
+/* Настройки → Конфиденциальность. */
+"privacy.title" = "Конфиденциальность";
+"privacy.hidePresence" = "Скрывать время захода";
+"privacy.hidePresenceHelp" = "Другие не увидят, когда вы были в сети, и вы не увидите, когда были они.";
+"privacy.hideTyping" = "Скрывать «печатает…»";
+"privacy.hideTypingHelp" = "Другие пользователи не увидят, когда вы печатаете.";
+
+/* Фото и видео: автозагрузка. */
+"media.download" = "Загрузить";
+"media.autoDownload" = "Автозагрузка";
+"media.autoDownload.always" = "Всегда";
+"media.autoDownload.wifi" = "Только по Wi-Fi";
+"media.autoDownload.never" = "Никогда";
+"media.autoDownload.alwaysHelp" = "Фото, видео и кружочки в чатах загружаются сами, как только появляются на экране.";
+"media.autoDownload.wifiHelp" = "В мобильной сети и в режиме экономии трафика фото и видео сами не загружаются: вместо них размытый силуэт и кнопка загрузки.";
+"media.autoDownload.neverHelp" = "Фото и видео загружаются, только когда нажмёте на кнопку загрузки или откроете их. Аватарки и стикеры — всегда.";
+
+/* Карточка сеанса и плашка о новом входе. */
+"devices.application" = "Приложение";
+"devices.lastSeen" = "Последняя активность";
+"devices.ipAddress" = "IP-адрес";
+"devices.deviceID" = "ID устройства";
+"devices.unknown" = "неизвестно";
+"devices.endSession" = "Завершить сеанс";
+"devices.done" = "Готово";
+"devices.newSignInTitle" = "Новый вход в аккаунт";
+"devices.newSignInMore" = "и ещё %lld";
+"devices.newSignInYes" = "Да, это я";
+"devices.newSignInNo" = "Это не я";
+
+/* Кто поставил реакции: вкладка «все». */
+"message.menu.reactorsAll" = "Все · %lld";
+"message.menu.seenAndReacted" = "%1$@ · %2$@";
+
+/* Просмотрщик медиа: счётчик и перемотка видео. */
+"message.media.counter" = "%lld из %lld";
+"message.media.skipBack" = "Назад на 15 секунд";
+"message.media.skipForward" = "Вперёд на 15 секунд";
+"signIn.server" = "Сервер: %@";
+"signIn.changeServer" = "Изменить";
+"signIn.serverDone" = "Готово";
+"signIn.signInTo" = "Вход на %@";
+"signIn.back" = "Назад";
+"signIn.continueInBrowser" = "Продолжить в браузере";
+"signIn.browserHelp" = "Откроется страница входа вашего сервера, там всё как обычно.";
+"signIn.passwordHelp" = "Имя пользователя и пароль от вашего аккаунта.";
+"signIn.problem.noRegistration" = "На этом сервере нельзя создать аккаунт из приложения. Выберите другой сервер или зарегистрируйтесь на его сайте.";
+"profile.search" = "Поиск";
+"profile.mute" = "Без звука";
+"profile.unmute" = "Со звуком";
+"profile.blockUser" = "Заблокировать пользователя";
+"profile.unblockUser" = "Разблокировать пользователя";
+"profile.blockedNotice" = "Вы заблокировали этого пользователя. Его новые сообщения сюда не приходят.";
+
+"accounts.signOut" = "Выйти";
+"accounts.signOutTitle" = "Выйти из %@?";
+"accounts.signOutMessage" = "Чаты этого аккаунта удалятся с устройства. Чтобы снова читать зашифрованные сообщения, понадобится ключ восстановления или другое ваше устройство.";
+"stickers.subscribe" = "Добавить себе";
+"stickers.settings.sheetSection" = "Отображение стикеров";
+"stickers.settings.builtIn" = "Искорки";
+"stickers.settings.roomPacks" = "Наборы чатов";
+"stickers.settings.roomPacksHelp" = "Если у чата есть свой набор, он виден, пока вы в этом чате. Нажмите «Добавить себе» над ним, и он будет во всех чатах.";
+"stickers.settings.subscriptions" = "Добавленные наборы";
+"stickers.settings.subscriptionsHelp" = "Смахните набор влево, чтобы убрать его. Сам набор останется в своём чате.";
+"stickers.settings.unsubscribe" = "Убрать";
+"stickers.settings.mineHelp" = "Стикер попадает сюда, когда вы добавляете его из чата. Нажмите и подержите, чтобы убрать. Этот набор виден и в других приложениях Matrix.";
+"stickers.settings.clearRecent" = "Очистить недавние";
+"stickers.settings.clearRecentHelp" = "Недавние хранятся в аккаунте и очистятся на всех ваших устройствах.";
+"message.forwarded" = "Пересланное сообщение";
+"message.forwardedFrom" = "Переслано от %@";
+
+/* The line under somebody's name in a one-to-one chat — see PresenceLabel. */
+"presence.online" = "в сети";
+"presence.justNow" = "был(а) только что";
+"presence.minutesAgo" = "был(а) %lld мин назад";
+"presence.hoursAgo" = "был(а) %lld ч назад";
+"presence.atTime" = "был(а) в %@";
+"presence.yesterday" = "был(а) вчера";
+"presence.at" = "был(а) %@";
+
+/* QR codes: your own, a chat's, and the scanner in New chat. */
+"qr.title" = "QR-код";
+"qr.scan" = "Отсканировать QR-код";
+"qr.scanHint" = "Наведите камеру на QR-код человека или комнаты";
+"qr.notMatrix" = "Это не ссылка на Matrix";
+"qr.choosePicture" = "Выбрать картинку";
+"qr.noCamera" = "Нет доступа к камере. Разрешите его в Настройках или выберите картинку с кодом.";
+"qr.nothingFound" = "На картинке нет QR-кода";
+"qr.joinRoom" = "Войти в комнату";
+"qr.openRoom" = "Открыть";
+"qr.roomUnknown" = "Сервер ничего не рассказал об этой комнате, но войти всё равно можно попробовать.";
+"qr.inviteOnlyRoom" = "В эту комнату пускают только по приглашению.";
+
+/* Under the empty address field on the sign-in screen: opens the list of public servers. */
+"signIn.chooseServer" = "Не знаете, какой сервер выбрать?";
+/* The main button under the address field. */
+"signIn.next" = "Далее";
+/* A small grey link at the foot of the sign-in screen: opens a screen explaining Matrix. */
+"signIn.whatIsMatrix" = "Что такое Matrix?";
+/* The title of that screen. */
+"aboutMatrix.title" = "Что такое Matrix";
+/* The opening paragraph, set larger than the rest. */
+"aboutMatrix.intro" = "Matrix — открытый способ, которым приложения для переписки общаются между собой. Iskra — одно из таких приложений. Есть и другие, и все они друг друга понимают.";
+/* Then three short sections: a heading and a paragraph under it. */
+"aboutMatrix.email.title" = "Как почта, только для чатов";
+"aboutMatrix.email.body" = "Аккаунт живёт на одном сервере, а писать можно людям с любого другого. С почтой так же: у вас Gmail, у друга Яндекс, а письма всё равно доходят. Адрес в Matrix выглядит так: @имя:сервер.";
+"aboutMatrix.nobody.title" = "Здесь никто не главный";
+"aboutMatrix.nobody.body" = "Matrix не принадлежит одной компании, которая может закрыть сервис, продать ваши данные или поменять правила. Серверов тысячи, и держат их фонды, сообщества и обычные люди. Можно поднять и свой.";
+"aboutMatrix.private.title" = "Переписка остаётся вашей";
+"aboutMatrix.private.body" = "Сообщения шифруются прямо на вашем устройстве, а расшифровать их может только собеседник. Сервер их хранит и пересылает, но прочитать не может.";
+
+/* The list of public servers, opened from the sign-in screen. */
+"servers.title" = "Выбор сервера";
+"servers.intro" = "Аккаунт живёт на одном сервере, а писать можно людям с любого другого, как с почтой. На всех серверах ниже аккаунт можно создать прямо в Iskra.";
+"servers.matrixOrg" = "Самый большой сервер Matrix. Его держит фонд, который развивает сам Matrix.";
+/* Where the server is. */
+"servers.matrixOrgWhere" = "Великобритания";
+/* A note on matrix.org, shown only on a phone with Russian language or region: it may not answer from there. */
+"servers.matrixOrgBlocked" = "Из России может быть недоступен";
+"servers.tchncs" = "Один из старейших общественных серверов. Владелец держит и другие свободные сервисы.";
+"servers.tchncsWhere" = "Германия";
+"servers.quassel" = "Открытый сервер для повседневного общения, бесплатный для всех.";
+"servers.quasselWhere" = "Германия, сервер в Финляндии";
+"servers.nopeChat" = "Сервер команды adminForge, которая держит и другие свободные сервисы. Есть мосты в другие мессенджеры.";
+"servers.nopeChatWhere" = "Германия";
+/* The last entry: running a server of your own. Opens a page about it in the browser. */
+"servers.ownTitle" = "Свой сервер";
+"servers.ownAbout" = "Можно поднять собственный сервер, и тогда переписка будет полностью в ваших руках. Понадобятся свой домен и немного времени.";
+
+/* Under the "open to anyone" switch when making a room: what the room will be. Changes with the switch. */
+"roomList.new.willBeEncrypted" = "Комната будет с шифрованием";
+"roomList.new.willNotBeEncrypted" = "Комната будет без шифрования";
+
+/* Room access: history, address, blocked (stage 9) */
+"room.access.historyHeader" = "История для новых участников";
+"room.access.historyFooter" = "Что из уже сказанного увидит тот, кто придёт позже. В защищённом чате старые сообщения могут у него не открыться: ключей к ним у него нет.";
+"room.access.history.shared" = "Вся история";
+"room.access.history.invited" = "С момента приглашения";
+"room.access.history.joined" = "С момента вступления";
+"room.access.history.worldReadable" = "Всем, даже без вступления";
+"room.access.addressHeader" = "Адрес";
+"room.access.addressPlaceholder" = "название";
+"room.access.addressFooter" = "По адресу чат находят и открывают по ссылке. Если стереть его, адреса не будет.";
+"room.access.inDirectory" = "Показывать в каталоге сервера";
+"room.access.inDirectoryHelp" = "Чат найдут в поиске публичных комнат на %@.";
+"room.access.banned" = "Заблокированные";
+"room.access.bannedFooter" = "Они не могут войти в чат, даже по приглашению.";
+"room.access.unban" = "Разблокировать";
+"room.access.unbanQuestion" = "Разблокировать %@?";
+"room.access.unbanHelp" = "Человек снова сможет войти. Сам в чате он не появится — его нужно пригласить или дать ссылку.";
+
+/* Choosing several messages (stage 9) */
+"message.menu.select" = "Выбрать";
+"message.selection.count" = "Выбрано: %lld";
+"message.selection.cancel" = "Отмена";
+"message.selection.deleteTitle" = "Удалить выбранные сообщения?";
+"message.selection.deleteMessage" = "Они исчезнут у всех участников чата. Вернуть их будет нельзя.";
+"message.selection.copied" = "Скопировано";
+
+/* Chat folders (stage 9) */
+"folders.all" = "Все";
+"folders.title" = "Папки";
+"folders.explanation" = "Папки собирают чаты по правилам (личные, группы, непрочитанные) и стоят вкладками над списком. Они общие для всех ваших устройств.";
+"folders.new" = "Новая папка";
+"folders.suggested" = "Можно начать с этих";
+"folders.add" = "Добавить";
+"folders.edit" = "Папка";
+"folders.namePlaceholder" = "Название";
+"folders.kindsHeader" = "Какие чаты";
+"folders.kind.direct" = "Личные";
+"folders.kind.groups" = "Группы";
+"folders.kind.spaces" = "Пространства";
+"folders.kind.invitations" = "Приглашения";
+"folders.suggestion.unread" = "Непрочитанные";
+"folders.conditionsHeader" = "Условия";
+"folders.onlyUnread" = "Только непрочитанные";
+"folders.excludesMuted" = "Без беззвучных";
+"folders.includesArchived" = "Вместе с архивом";
+"folders.includedHeader" = "Всегда показывать";
+"folders.excludedHeader" = "Никогда не показывать";
+"folders.addChats" = "Добавить чаты";
+"folders.chooseChats" = "Выберите чаты";
+"folders.editList" = "Изменить";
+"folders.done" = "Готово";
+"folders.cancel" = "Отмена";
+"folders.delete" = "Удалить папку";
+"folders.deleteQuestion" = "Удалить папку «%@»?";
+"folders.deleteHelp" = "Чаты останутся на месте, пропадёт только вкладка.";
+"folders.addToFolder" = "В папку";
+"folders.membershipTitle" = "Папки";
+"folders.membershipFooter" = "С галочкой чат будет в папке, даже если не подходит под её правила. Без галочки — не попадёт в неё никогда.";
+"folders.emptyTitle" = "В папке пока пусто";
+"folders.emptyMessage" = "Сюда попадут чаты, которые подходят под её правила.";
+
+/* Which account a notification came for */
+"chats.namesAccount" = "Аккаунт в уведомлениях";
+"chats.namesAccountHelp" = "В заголовке уведомления будет видно, на какой из ваших аккаунтов оно пришло.";
+
+"poll.retract" = "Отменить голос";
+
+"stickers.settings.mine" = "Мои стикеры";
+
+/* Beta: for developers */
+"beta.developers" = "Для разработчиков";
+"beta.showsSource" = "JSON сообщения в меню";
+"beta.showsSourceHelp" = "В меню сообщения появится «Просмотреть JSON»: событие так, как его прислал сервер. Пригодится, если сообщение показывается не так.";
+"beta.homeserver" = "Сервер";
+"beta.homeserverHelp" = "Адрес, с которым на самом деле разговаривает приложение после поиска по имени аккаунта. Он может отличаться от введённого при входе. Мост его не меняет, он только везёт соединение.";
+"beta.showsAllEvents" = "Все события в чате";
+"beta.showsAllEventsHelp" = "В чате появятся и те события, которые приложение обычно не показывает: права, правила входа, звонки, смена аватарки и всё, что не удалось разобрать. Каждое показано серой строкой с типом и отправителем.";
+"beta.viewSource" = "Просмотреть JSON";
+"beta.noSource" = "У этого сообщения пока нет события на сервере.";
+"beta.demoSignIn" = "Демо-вход";
+"beta.demoSignInHelp" = "Экран входа на сервере внутри приложения: alice / password. Ваш аккаунт он не трогает, а вошедший сразу выходит.";
+"beta.demoSignedIn" = "Вход прошёл: %@";
+"beta.close" = "Закрыть";
+
+/* Threads */
+"thread.title" = "Тред";
+"thread.replyInThread" = "Ответить в треде";
+"thread.replies" = "%lld ответа";
+
+/* Live location */
+"location.shareLive" = "Делиться в реальном времени";
+"location.shareLiveFor" = "На сколько делиться геопозицией?";
+"location.liveUntil" = "В реальном времени · до %@";
+"location.liveEnded" = "Трансляция окончена";
+"location.liveWaiting" = "Ждём первую точку…";
+"location.youAreSharing" = "Вы делитесь геопозицией до %@";
+"location.stop" = "Остановить";
+
+"location.liveForMinutes" = "%lld минут";
+"location.liveForHours" = "%lld часов";
+
+/* Voice transcription */
+"message.transcript.show" = "Расшифровать";
+"message.transcript.hide" = "Скрыть текст";
+"message.transcript.notAllowed" = "Нет доступа к распознаванию речи. Его можно дать в Настройках.";
+"message.transcript.unavailable" = "Для вашего языка на этом устройстве нет распознавания без интернета, а отправлять голос на сервер Искра не станет.";
+"message.transcript.nothingHeard" = "Слов не разобрать.";
+"message.transcript.failed" = "Не получилось расшифровать. Попробуйте ещё раз.";
+
+"chats.threads" = "Показывать треды";
+"chats.threadsHelp" = "Ответы в тредах собираются под сообщением строкой «3 ответа». Пока ответы не скрыты, они видны и в самом чате, среди остальных сообщений. Изменения действуют с того момента, как вы откроете чат заново. В личных чатах тредов нет.";
+"chats.threadsAlways" = "Всегда";
+"chats.threadsLargeRooms" = "В чатах больше 100 человек";
+"chats.threadsNever" = "Никогда";
+"chats.threadsHideReplies" = "Скрывать ответы из чата";
+
+/* The photo editor — PhotoEditor */
+"photoEditor.edit" = "Изменить фото";
+"photoEditor.cancel" = "Отмена";
+"photoEditor.done" = "Готово";
+"photoEditor.undo" = "Отменить";
+"photoEditor.draw" = "Рисовать";
+"photoEditor.text" = "Текст";
+"photoEditor.crop" = "Обрезать";
+"photoEditor.rotate" = "Повернуть";
+"photoEditor.textPrompt" = "Напишите что-нибудь";
+"photoEditor.failed" = "Не получилось сохранить изменения — фото осталось как было";
+"photoEditor.ok" = "Понятно";
+"photoEditor.white" = "Белый";
+"photoEditor.black" = "Чёрный";
+"photoEditor.red" = "Красный";
+"photoEditor.yellow" = "Жёлтый";
+"photoEditor.green" = "Зелёный";
+"photoEditor.blue" = "Синий";
+
+/* Avatar crop */
+"avatarCrop.title" = "Переместите и приблизьте";
+"avatarCrop.zoom" = "Масштаб";
+"avatarCrop.cancel" = "Отмена";
+"avatarCrop.done" = "Готово";

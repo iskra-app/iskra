@@ -5,8 +5,8 @@ import IskraDesign
 /// Everything you can *do* to a message, lifted off the shape it is drawn in.
 ///
 /// A bubble and a compact line are two ways of showing the same message, and the long press
-/// on them offers the same nine things either way: react, reply, edit, copy, forward, pin,
-/// delete, report, block. None of that is a fact about the shape — so none of it lives with
+/// on them offers the same eight things either way: react, reply, edit, copy, forward, pin,
+/// delete, report. None of that is a fact about the shape — so none of it lives with
 /// the shape. It lives here, and both rows put it on.
 ///
 /// The alternative was to leave it in `MessageRow` and copy it into the compact row, which is
@@ -17,7 +17,9 @@ import IskraDesign
 /// That is deliberate: the long press lifts what it is attached to, and a menu attached to the
 /// row would lift the avatar, the clock and the width of the screen along with the message.
 /// The one gesture that does belong to the whole row is the swipe, which is why it is a
-/// separate modifier — see `SwipeToReply`.
+/// separate modifier — see `SwipeToReply`. The compact row is the exception, and on purpose: a
+/// plain line has no shape to say whose it is, so there the face, the name and the clock go up
+/// with it — see `CompactMessageRow.heading`.
 ///
 /// It is a view that *wraps* the content rather than a modifier applied to it, and that is not
 /// a matter of taste. The menu lifts a copy of the message out of the scroll view and draws it
@@ -51,30 +53,36 @@ struct MessageActions<Content: View>: View {
     @MainActor
     private final class Anchor {
         var rect: CGRect = .zero
-    }
 
-    /// Whether a finger is currently down on the message, which the bubble answers by giving
-    /// very slightly under it. The whole of the feedback that the press is being *counted* —
-    /// without it the moment before the lift is a moment of nothing.
-    ///
-    /// `@GestureState` rather than `@State`, and that is not a style choice: gesture state resets
-    /// itself the instant the gesture ends, *including* when it ends by failing. A press released
-    /// early, or one that turns into a scroll, leaves nothing behind — where a plain flag would
-    /// need a callback that does not fire on failure, and a bubble could be left sitting at 97%.
-    @State private var isPressing = false
+        /// Where UIKit had the conversation at the moment `rect` was measured — so that a message
+        /// held while the room is still sliding in can be moved by however far it has slid since.
+        /// See `WindowProbe`.
+        var roomPosition: CGPoint?
+
+        /// Everything the conversation tells this message about how to draw itself — whether
+        /// there is a wallpaper behind it, how wide the room is, the reader's text size — kept
+        /// so the copy the menu lifts can be told the same. See `EnvironmentTap`.
+        var environment: EnvironmentValues?
+    }
 
     /// Guarding a redaction behind a confirmation, because it cannot be undone and every
     /// other item in that menu can.
     @State private var isConfirmingDelete = false
 
+    /// Whether "End the poll?" is up. Closing a poll cannot be undone, so it asks, as deleting does.
+    @State private var isConfirmingEndPoll = false
+
     /// Whether the report form is up for this message.
     @State private var isReporting = false
 
-    /// Whether the "block this sender?" confirmation is up.
-    @State private var isConfirmingBlock = false
-
     /// Whether the room picker for forwarding is up.
     @State private var isForwarding = false
+
+    /// Whether "who reacted" is up — see `ReactorsSheet`.
+    @State private var isShowingReactors = false
+
+    /// The event's JSON, while the developer's sheet for it is up — see `BetaFeatures.showsEventSourceKey`.
+    @State private var source: EventSource?
 
     /// Which of the two taps this message's finger turned out to be — see `MessageTaps`.
     @State private var taps = MessageTaps()
@@ -89,14 +97,17 @@ struct MessageActions<Content: View>: View {
     /// message, and a new message goes into the send queue and leaves when the network does.
     @Environment(\.isOffline) private var isOffline
 
-    /// The account's block list, for blocking a message's sender from the menu.
-    @Environment(\.blockStore) private var blockStore
-
     /// The forward capability, for sending this message into another room.
     @Environment(\.forwarding) private var forwarding
 
+    /// The account's stickers, for keeping a sticker somebody sent.
+    @Environment(\.stickers) private var stickers
+
     /// The menu itself, which lives above the whole app — see `messageMenuLayer()`.
     @Environment(\.messageMenu) private var menu
+
+    /// The conversation this message is in, if it is in one — see `WindowProbe`.
+    @Environment(\.messageMenuRoom) private var room
 
     /// The emoji a double tap leaves. The user's, chosen once in settings and read by every
     /// row in every conversation — see `QuickReaction`.
@@ -139,15 +150,19 @@ struct MessageActions<Content: View>: View {
             // put its copy of the message exactly where the original is standing.
             .onGeometryChange(for: CGRect.self) { proxy in
                 proxy.frame(in: .named(MessageMenu.space))
-            } action: { anchor.rect = $0 }
-            // The wait, made visible. The bubble sinks over exactly the length of the press and
-            // arrives at the bottom as the menu takes over, so a held finger is watching something
-            // happen instead of waiting for it — and a press abandoned halfway springs back, which
-            // is how the app says "that wasn't long enough" without anything appearing to explain
-            // it. See `Theme.Scale.pressedMessage` and `Theme.Timing.menuReleases`.
-            .scaleEffect(isPressing ? Theme.Scale.pressedMessage : 1)
-            .animation(isPressing ? .easeOut(duration: Theme.Timing.menuLift) : Theme.Timing.menuReleases,
-                       value: isPressing)
+            } action: {
+                anchor.rect = $0
+                anchor.roomPosition = room?.position
+            }
+            // And the environment it is drawn in, for the same reason and in the same box.
+            .background { EnvironmentTap { [anchor] in anchor.environment = $0 } }
+            // Nothing happens to the bubble under a held finger — no sinking, no squeeze. It used
+            // to give under the press as a countdown to the lift, and what that actually said was
+            // that the message changes shape when touched; the one thing a message being picked up
+            // must not do is stop looking like itself. The knock of the lift is the feedback.
+            // Gone from its place while it is in the menu — picked up, not copied. See
+            // `MessageMenuPresenter.liftedID`.
+            .modifier(LeavesGapWhileLifted(id: message.id))
             // The hold and the double tap, each simultaneous with everything else on the screen —
             // see `hold` and `doubleTap`, where the three attempts it took to get there are
             // written down. The single tap still lands underneath, so a photograph still opens and
@@ -162,17 +177,22 @@ struct MessageActions<Content: View>: View {
             #if os(iOS)
             .overlay {
                 MessageHold(duration: Theme.Timing.menuLift,
-                            onPressingChanged: { isPressing = $0 },
+                            onPressingChanged: { _ in },
                             onHold: open)
             }
             #else
             .onLongPressGesture(minimumDuration: Theme.Timing.menuLift) {
                 open()
-            } onPressingChanged: { pressing in
-                isPressing = pressing
             }
             #endif
             .simultaneousGesture(doubleTap)
+            // Everything the menu offers, for VoiceOver too — swipe up or down on a message and
+            // the rotor goes through them, as it does in Messages and Mail. The menu used to be the
+            // system's `.contextMenu`, which VoiceOver exposes by itself; since the menu became
+            // ours, a hold that VoiceOver cannot make was the only way in, and replying, reacting
+            // or deleting was out of reach. The same `sections` as the menu, so the two cannot
+            // disagree about what a message allows.
+            .accessibilityActions { spokenActions }
             // The knock that says the reaction went. Without it a double tap on a message
             // whose pill appears a beat later feels like nothing happened.
             .sensoryFeedback(.impact(weight: .medium), trigger: quickTaps)
@@ -195,23 +215,28 @@ struct MessageActions<Content: View>: View {
             } message: {
                 Text(Strings.Message.Menu.deleteConfirmMessage)
             }
-            .sheet(isPresented: $isReporting) {
+            .confirmationDialog(Text(Strings.Poll.endConfirmTitle),
+                                isPresented: $isConfirmingEndPoll,
+                                titleVisibility: .visible) {
+                Button(String(app: Strings.Poll.end), role: .destructive, action: handlers.onEndPoll)
+            } message: {
+                Text(Strings.Poll.endConfirmMessage)
+            }
+            .pageSheet(isPresented: $isReporting) {
                 ReportSheet(onReport: handlers.onReport)
             }
-            .sheet(isPresented: $isForwarding) {
+            .pageSheet(isPresented: $isForwarding) {
                 if let forwarding {
                     ForwardPicker(message: message, forwarding: forwarding)
                 }
             }
-            .confirmationDialog(Text(Strings.Message.Menu.blockConfirm(message.senderName)),
-                                isPresented: $isConfirmingBlock,
-                                titleVisibility: .visible) {
-                Button(String(app: Strings.Message.Menu.block), role: .destructive) {
-                    let sender = message.senderID
-                    Task { await blockStore?.block(userID: sender) }
+            .pageSheet(isPresented: $isShowingReactors) {
+                if let load = handlers.loadReactors {
+                    ReactorsSheet(reactions: message.reactions, load: load, loadReaders: handlers.loadReaders)
                 }
-            } message: {
-                Text(Strings.Message.Menu.blockConfirmMessage)
+            }
+            .pageSheet(item: $source) { source in
+                EventSourceSheet(json: source.json)
             }
     }
 
@@ -279,17 +304,68 @@ struct MessageActions<Content: View>: View {
         // refusal of the tap that is about to arrive. See `MessageTaps.suppress`.
         taps.suppress()
 
-        let rect = anchor.rect
-        guard let menu, rect != .zero else { return }
+        guard let menu, anchor.rect != .zero else { return }
+        // Moved by however far the conversation has slid since it was measured — nothing at all,
+        // unless the room is still arriving. See `WindowProbe`.
+        var rect = anchor.rect
+        if let then = anchor.roomPosition, let now = room?.position {
+            rect = rect.offsetBy(dx: now.x - then.x, dy: now.y - then.y)
+        }
         menu.present(MessageMenuPresentation(
             id: message.id,
             anchor: rect,
             isOwn: message.isOwn,
             canReact: message.canReact && !isOffline,
             mine: Set(message.reactions.filter(\.isMine).map(\.key)),
-            content: AnyView(content()),
+            content: AnyView(lifted),
+            isPicture: message.isPicture,
             sections: sections,
             onReaction: handlers.onToggleReaction))
+    }
+
+    /// The message as the menu draws it: the same view, in the same environment.
+    ///
+    /// The menu is drawn above the whole app, and the conversation's environment does not reach
+    /// up there — so a copy built from `content()` alone was a *different-looking* message: an
+    /// opaque bubble where the room has a wallpaper (`hasWallpaper` is set by the room, not by the
+    /// app), and whatever else the room tells its rows. It changed colour the instant it left the
+    /// page, which is precisely what Telegram's never does. Handing it the row's own environment,
+    /// whole, is what makes the thing in the menu the message rather than a likeness of it.
+    ///
+    /// Less one value: where the composer is. A message that has just been sent travels in from
+    /// there (`ComposerTravel`), and a copy that inherited that would fly across the screen a
+    /// second time the moment it was pressed.
+    ///
+    /// Both exceptions — and the page under the bubble, `bubbleIsLifted` — are written *into* the
+    /// captured environment, not laid over it with modifiers of their own. `.environment(\.self,)`
+    /// is the modifier nearest the content and so the last word: anything set outside it is
+    /// overwritten by the row's own values, which is how the first version of this shipped with
+    /// a lifted bubble that was still see-through.
+    private var lifted: some View {
+        var environment = anchor.environment ?? EnvironmentValues()
+        environment.composerTextOrigin = nil
+        environment.bubbleIsLifted = true
+        return content()
+            .environment(\.self, environment)
+    }
+
+    /// The menu, read out: the quick reaction first — it is what a double tap does, and a double
+    /// tap is VoiceOver's own "activate" — then the rest of the emoji behind "More reactions", which
+    /// opens the real menu with its bar, then every verb. The dates are left out: they are facts,
+    /// not things to do, and the menu shows them only as lines to read.
+    @ViewBuilder
+    private var spokenActions: some View {
+        if message.canReact && !isOffline {
+            let isMine = message.reactions.contains { $0.key == quickReaction && $0.isMine }
+            Button(String(app: isMine ? Strings.Message.Menu.removeQuick(quickReaction)
+                                      : Strings.Message.Menu.addQuick(quickReaction))) {
+                handlers.onToggleReaction(quickReaction)
+            }
+            Button(String(app: Strings.Message.Menu.moreReactions)) { open() }
+        }
+        ForEach(sections.flatMap(\.actions).filter { $0.manner != .fact }) { action in
+            Button(String(app: action.title), action: action.perform)
+        }
     }
 
     // MARK: - What the menu offers
@@ -309,10 +385,36 @@ struct MessageActions<Content: View>: View {
     /// 👍 hanging under the words "message deleted" — see `Message.canReact`, which the store
     /// enforces as well.
     private var sections: [MessageMenuSection] {
-        [MessageMenuSection(actions: doing),
+        [MessageMenuSection(actions: reacted),
+         MessageMenuSection(actions: doing),
          MessageMenuSection(actions: reporting),
          MessageMenuSection(actions: facts)]
             .filter { !$0.actions.isEmpty }
+    }
+
+    /// "12 seen · 5 reactions", above everything else in a group: who read it and who left what
+    /// are the questions a pill of numbers and a pair of ticks cannot answer. One line for both,
+    /// opening one list, as Telegram's does. Not in a personal chat, where there are two people and
+    /// the ticks and the pill already say it — `loadReactors` is nil there.
+    private var reacted: [MessageMenuAction] {
+        guard handlers.loadReactors != nil else { return [] }
+        let reactions = message.reactions.reduce(0) { $0 + $1.count }
+        let seen = handlers.countReaders?() ?? 0
+        let title: LocalizedStringResource
+        switch (seen > 0, reactions > 0) {
+        case (true, true):
+            title = Strings.Message.Menu.seenAndReacted(String(app: Strings.Message.Menu.seen(seen)),
+                                                        String(app: Strings.Message.Menu.reactors(reactions)))
+        case (true, false):
+            title = Strings.Message.Menu.seen(seen)
+        case (false, true):
+            title = Strings.Message.Menu.reactors(reactions)
+        case (false, false):
+            return []
+        }
+        return [MessageMenuAction(title: title,
+                                  systemImage: seen > 0 ? "checkmark.message" : "face.smiling",
+                                  perform: { isShowingReactors = true })]
     }
 
     private var doing: [MessageMenuAction] {
@@ -322,6 +424,14 @@ struct MessageActions<Content: View>: View {
             actions.append(MessageMenuAction(title: Strings.Message.Menu.reply,
                                              systemImage: "arrowshape.turn.up.left",
                                              perform: handlers.onReply))
+        }
+
+        // Answering in a thread rather than in the room: the same thread the line under the message
+        // opens, started here when there is none yet. Only on something the server has.
+        if message.canReply, message.threadRootID == nil, let onOpenThread = handlers.onOpenThread {
+            actions.append(MessageMenuAction(title: Strings.Thread.replyInThread,
+                                             systemImage: "bubble.left.and.text.bubble.right",
+                                             perform: onOpenThread))
         }
 
         if message.canEdit && !isOffline {
@@ -344,6 +454,25 @@ struct MessageActions<Content: View>: View {
                                              perform: { isForwarding = true }))
         }
 
+        // A sticker can be kept — put in the account's own pack, which nothing is uploaded for:
+        // the pack points at the picture the event already points at. Only a plain one: see
+        // `Attachment.asSticker`, which is nil for an encrypted file nobody could draw from a pack.
+        if case let .sticker(attachment) = message.kind, let stickers, !isOffline,
+           let sticker = attachment.asSticker {
+            let isMine = stickers.isMine(sticker.url)
+            actions.append(MessageMenuAction(title: isMine ? Strings.Stickers.remove : Strings.Stickers.add,
+                                             systemImage: isMine ? "minus.circle" : "plus.circle",
+                                             perform: {
+                                                 Task {
+                                                     if isMine {
+                                                         await stickers.remove(sticker)
+                                                     } else {
+                                                         await stickers.add(sticker)
+                                                     }
+                                                 }
+                                             }))
+        }
+
         // Pinning names an event, so it is offered on the same messages a reply is: one the
         // server actually has. The homeserver may still refuse it — pinning is a change to the
         // room's state and needs the power level for it — and that refusal is said in an alert
@@ -355,6 +484,39 @@ struct MessageActions<Content: View>: View {
                                              perform: handlers.onTogglePin))
         }
 
+        // Several at once: forward them together, copy them as one piece of text, delete a run of
+        // mistakes. Telegram's "Select", with this message already ticked.
+        if let onSelect = handlers.onSelect, message.delivery?.hasFailed != true {
+            actions.append(MessageMenuAction(title: Strings.Message.Menu.select,
+                                             systemImage: "checkmark.circle",
+                                             perform: onSelect))
+        }
+
+        // For whoever is chasing a message that draws wrong — Beta → for developers.
+        if let loadSource = handlers.loadSource {
+            actions.append(MessageMenuAction(title: Strings.Beta.viewSource,
+                                             systemImage: "curlybraces",
+                                             perform: {
+                                                 source = EventSource(json: loadSource() ?? String(app: Strings.Beta.noSource))
+                                             }))
+        }
+
+        // Taking a vote back: a response with no answers in it, which the poll counts as no vote at
+        // all (MSC3381). Only while the poll is open, and only for somebody who has voted.
+        if case let .poll(poll) = message.kind, poll.hasVoted, !poll.isEnded, !isOffline {
+            actions.append(MessageMenuAction(title: Strings.Poll.retract,
+                                             systemImage: "arrow.uturn.backward.circle",
+                                             perform: { handlers.onVote([]) }))
+        }
+
+        // Only the sender may close a poll — the room ignores an end from anybody else — and only
+        // one the server has.
+        if message.canEndPoll && !isOffline {
+            actions.append(MessageMenuAction(title: Strings.Poll.end,
+                                             systemImage: "stop.circle",
+                                             perform: { isConfirmingEndPoll = true }))
+        }
+
         return actions
     }
 
@@ -363,7 +525,8 @@ struct MessageActions<Content: View>: View {
     private var reporting: [MessageMenuAction] {
         var actions: [MessageMenuAction] = []
 
-        if message.canDelete && !isOffline {
+        // Your own, or — for a moderator the room allows it — anybody's.
+        if (message.canDelete || (handlers.canDeleteOthers && message.canBeDeletedByModerator)) && !isOffline {
             actions.append(MessageMenuAction(title: Strings.Message.Menu.delete,
                                              systemImage: "trash",
                                              manner: .destructive,
@@ -378,14 +541,6 @@ struct MessageActions<Content: View>: View {
                                              systemImage: "exclamationmark.bubble",
                                              manner: .destructive,
                                              perform: { isReporting = true }))
-        }
-
-        // Block the sender — someone else, and only when there is a block list to add them to.
-        if !message.isOwn && blockStore != nil {
-            actions.append(MessageMenuAction(title: Strings.Message.Menu.block,
-                                             systemImage: "hand.raised",
-                                             manner: .destructive,
-                                             perform: { isConfirmingBlock = true }))
         }
 
         return actions
@@ -552,6 +707,10 @@ struct SwipeToReply: ViewModifier {
                 // opposite of the one it moves toward.
                 .background(alignment: dragsToward == .leading ? .trailing : .leading) { hint }
                 .simultaneousGesture(gesture)
+                #if os(macOS)
+                .onHover { isHovered = $0; hoverChanged() }
+                .onDisappear { stopListening() }
+                #endif
                 .sensoryFeedback(.impact(weight: .light), trigger: haptic)
                 .animation(.spring(response: 0.3, dampingFraction: 0.7), value: dragOffset)
         } else {
@@ -570,6 +729,87 @@ struct SwipeToReply: ViewModifier {
             .scaleEffect(isArmed ? 1.1 : 0.9)
     }
 
+    /// Moves the row by a drag's horizontal travel, toward the centre only, and arms the reply once
+    /// it is far enough — the finger's drag on the phone and two fingers on a Mac's trackpad alike.
+    private func follow(_ travel: CGFloat) {
+        let directed = dragsToward == .leading ? min(0, travel) : max(0, travel)
+        // Rubber-band: it gives, then resists, so it never flies to the edge.
+        let capped = max(-Self.threshold * 1.6, min(Self.threshold * 1.6, directed))
+        dragOffset = capped * 0.7
+
+        let passed = abs(dragOffset) >= Self.threshold
+        if passed != isArmed {
+            isArmed = passed
+            if passed { haptic += 1 }
+        }
+    }
+
+    private func finish() {
+        if isArmed { onReply() }
+        isArmed = false
+        dragOffset = 0
+        isScrolling = nil
+    }
+
+    #if os(macOS)
+    /// The pointer is over this message, and so a two-finger swipe on the trackpad is about it.
+    @State private var isHovered = false
+    @State private var scrollMonitor: Any?
+
+    /// How far two fingers have travelled sideways in the swipe under way.
+    @State private var swipeTravel: CGFloat = 0
+
+    /// Two fingers on a trackpad are scrolling as far as AppKit is concerned, and no SwiftUI gesture
+    /// hears them — so the message under the pointer listens for scrolling while the pointer is on
+    /// it, and keeps listening until a swipe it took has ended, however far the row moved from under
+    /// the pointer meanwhile. Vertical swipes and the momentum after one pass straight through to the
+    /// conversation; a sideways one is this message's, the same rule the finger follows on the phone.
+    private func hoverChanged() {
+        if isHovered {
+            guard scrollMonitor == nil else { return }
+            scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
+                takes(event) ? nil : event
+            }
+        } else if isScrolling == nil {
+            stopListening()
+        }
+    }
+
+    /// Whether the event was this message's to take.
+    private func takes(_ event: NSEvent) -> Bool {
+        // A mouse wheel has no phases, and a swipe that is already over is coasting.
+        guard event.hasPreciseScrollingDeltas, event.momentumPhase.isEmpty else { return false }
+
+        if event.phase.contains(.began) {
+            swipeTravel = 0
+            isScrolling = nil
+        }
+        if event.phase.contains(.ended) || event.phase.contains(.cancelled) {
+            let wasOurs = isScrolling == false
+            finish()
+            if !isHovered { stopListening() }
+            return wasOurs
+        }
+        guard event.phase.contains(.changed) || event.phase.contains(.began) else { return false }
+
+        if isScrolling == nil {
+            guard event.scrollingDeltaX != 0 || event.scrollingDeltaY != 0 else { return false }
+            isScrolling = abs(event.scrollingDeltaY) >= abs(event.scrollingDeltaX)
+        }
+        guard isScrolling == false else { return false }
+        // `scrollingDelta` already follows the user's choice of natural scrolling, so the message
+        // moves the way content under those fingers would.
+        swipeTravel += event.scrollingDeltaX
+        follow(swipeTravel)
+        return true
+    }
+
+    private func stopListening() {
+        if let scrollMonitor { NSEvent.removeMonitor(scrollMonitor) }
+        scrollMonitor = nil
+    }
+    #endif
+
     private var gesture: some Gesture {
         DragGesture(minimumDistance: 18)
             .onChanged { value in
@@ -581,24 +821,9 @@ struct SwipeToReply: ViewModifier {
                     isScrolling = abs(value.translation.height) >= abs(value.translation.width)
                 }
                 guard isScrolling == false else { return }
-                let directed = dragsToward == .leading ? min(0, value.translation.width)
-                                                       : max(0, value.translation.width)
-                // Rubber-band: it gives, then resists, so it never flies to the edge.
-                let capped = max(-Self.threshold * 1.6, min(Self.threshold * 1.6, directed))
-                dragOffset = capped * 0.7
-
-                let passed = abs(dragOffset) >= Self.threshold
-                if passed != isArmed {
-                    isArmed = passed
-                    if passed { haptic += 1 }
-                }
+                follow(value.translation.width)
             }
-            .onEnded { _ in
-                if isArmed { onReply() }
-                isArmed = false
-                dragOffset = 0
-                isScrolling = nil
-            }
+            .onEnded { _ in finish() }
     }
 }
 
@@ -621,5 +846,41 @@ extension View {
                       dragsToward: HorizontalEdge,
                       onReply: @escaping () -> Void) -> some View {
         modifier(SwipeToReply(message: message, dragsToward: dragsToward, onReply: onReply))
+    }
+}
+
+/// Keeps the environment a message is drawn in, so the menu can draw its copy in the same one.
+///
+/// A view of its own, behind the message, so that it is *this* body that re-runs when the
+/// environment changes and not the message's — the box is written, nothing is redrawn.
+private struct EnvironmentTap: View {
+    let keep: (EnvironmentValues) -> Void
+    @Environment(\.self) private var environment
+
+    var body: some View {
+        // A write from a body, and harmless only because of where it goes: into a box SwiftUI is
+        // not watching, so it changes nothing on screen and cannot start another pass. See
+        // `MessageActions.anchor`.
+        keep(environment)
+        return Color.clear
+    }
+}
+
+/// Empties a message's place in the conversation while the message itself is up in the menu.
+///
+/// A modifier that reads the presenter, rather than the row reading it, so that opening a menu
+/// re-runs this small body on every message on screen and not every message's bubble.
+private struct LeavesGapWhileLifted: ViewModifier {
+    let id: String
+
+    @Environment(\.messageMenu) private var menu
+
+    func body(content: Content) -> some View {
+        let isAway = menu?.liftedID == id
+        content
+            .opacity(isAway ? 0 : 1)
+            // Never faded: the gap opens in the frame the copy appears, and closes in the frame it
+            // lands — a fade either way is a moment with two messages, or with none.
+            .animation(nil, value: isAway)
     }
 }

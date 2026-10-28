@@ -141,7 +141,7 @@ for label, base in (("upstream main (3 args)", ApnsPushkin),
     # the pushkin as broken when the pushkin was fine.
     iskra_ring.RingPushkin.__bases__ = (base,)
     pushkin = iskra_ring.RingPushkin.__new__(iskra_ring.RingPushkin)
-    pushkin.name = "moscow.swag.iskra.voip.dev"
+    pushkin.name = "wtf.iskra.voip.dev"
 
     note = Notification({"room_id": "!r:example.org", "event_id": "$e"})
     try:

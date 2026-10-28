@@ -18,14 +18,17 @@ import sys
 source, destination = sys.argv[1], sys.argv[2]
 text = open(source, encoding="utf-8").read()
 
-if "moscow.swag.iskra.voip" in text:
+if "wtf.iskra.voip" in text:
     print("ALREADY PRESENT — nothing to do")
     sys.exit(0)
 
 # The production entry is the donor: same key, same team, same file on disk.
-block = re.search(r"\n  moscow\.swag\.iskra:\n(.*?)(?=\n  \S|\n\S|\Z)", text, re.S)
+# `wtf.iskra` since the bundle ID moved; a gateway not yet moved still has `moscow.swag.iskra`,
+# and its key and team are just as good — only the topic below is derived from the bundle ID.
+block = (re.search(r"\n  wtf\.iskra:\n(.*?)(?=\n  \S|\n\S|\Z)", text, re.S)
+         or re.search(r"\n  moscow\.swag\.iskra:\n(.*?)(?=\n  \S|\n\S|\Z)", text, re.S))
 if not block:
-    print("FAILED: could not find the moscow.swag.iskra entry")
+    print("FAILED: could not find the wtf.iskra entry")
     sys.exit(1)
 
 body = block.group(1)
@@ -53,7 +56,7 @@ def entry(name: str, platform: str) -> str:
     keyfile: {keyfile}
     key_id: {key_id}
     team_id: {team_id}
-    topic: moscow.swag.iskra.voip   # bundle id + ".voip" — это и есть весь VoIP-переключатель
+    topic: wtf.iskra.voip   # bundle id + ".voip" — это и есть весь VoIP-переключатель
     platform: {platform}
     push_type: voip
     convert_device_token_to_hex: false"""
@@ -62,9 +65,9 @@ def entry(name: str, platform: str) -> str:
 text = (
     text.rstrip("\n")
     + "\n"
-    + entry("moscow.swag.iskra.voip.dev", "sandbox")
+    + entry("wtf.iskra.voip.dev", "sandbox")
     + "\n"
-    + entry("moscow.swag.iskra.voip", "production")
+    + entry("wtf.iskra.voip", "production")
     + "\n"
 )
 open(destination, "w", encoding="utf-8").write(text)

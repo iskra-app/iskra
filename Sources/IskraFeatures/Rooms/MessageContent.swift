@@ -27,6 +27,9 @@ struct MessageContent: View {
     /// actually scroll the conversation, so it is reported upward.
     let onOpenReply: (String) -> Void
 
+    /// Casts this account's answer to a poll — the whole new choice. See `PollBubble`.
+    var onVote: ([String]) -> Void = { _ in }
+
     @Environment(\.accent) private var accent
 
     /// The real opener, captured before the message text overrides `openURL` to intercept taps.
@@ -37,6 +40,10 @@ struct MessageContent: View {
     @Environment(\.currentUserID) private var currentUserID
     @Environment(\.currentUserName) private var currentUserName
 
+    /// The row's tap arbiter, so a hold that opened the menu does not also open a link — see
+    /// `messageText`.
+    @Environment(\.messageTaps) private var taps
+
     /// A link the user tapped, held while they are asked whether they really mean to open it. A
     /// message can say one thing and link to another — "our shared album" pointing at a phishing
     /// page — so the address is shown in full, and nothing opens until they say so.
@@ -45,6 +52,11 @@ struct MessageContent: View {
     /// override inside `messageText`, a few lines down, and the view that draws the link is the
     /// one that should hold the question about it.
     @State private var linkToConfirm: URL?
+
+    /// The spoilers in this message somebody has tapped open, by their number in it — see
+    /// `MatrixHTML` and `paintedBody`. Not kept: a spoiler scrolled away and back is hidden again,
+    /// which is how Telegram's behave.
+    @State private var revealedSpoilers: Set<Int> = []
 
     /// Which way a stack of things — a quote and the picture under it — lines up. Read off the
     /// style rather than off `isOwn`, which comes to the same thing and says why: only a message
@@ -76,6 +88,23 @@ struct MessageContent: View {
 
     @ViewBuilder
     private var content: some View {
+        if let album = message.album, album.count > 1 {
+            quoted {
+                AlbumBubble(items: album, style: style,
+                            caption: message.albumCaption.map { AnyView(messageText($0)) })
+            }
+        } else {
+            single
+        }
+    }
+
+    /// The caption under a photo, a video or a file, painted like a message — see `MediaCaption`.
+    private func caption(of attachment: Attachment) -> AnyView? {
+        attachment.caption.map { AnyView(messageText($0)) }
+    }
+
+    @ViewBuilder
+    private var single: some View {
         switch message.kind {
         case let .text(body):
             bubble { messageText(body) }
@@ -100,11 +129,22 @@ struct MessageContent: View {
         case let .voice(attachment, waveform):
             bubble { VoiceMessageView(attachment: attachment, waveform: waveform) }
 
+        // A photo or a video with words under it is drawn as an album of one: the bubble's own
+        // fill, no outline, the caption where a text message's words would be — the same as an
+        // album with a caption, so the two do not look like two different things. Without words it
+        // stays the bare picture on the blur of itself.
+        case let .image(attachment) where attachment.caption != nil,
+             let .video(attachment) where attachment.caption != nil && !attachment.isVideoNote:
+            quoted {
+                AlbumBubble(items: [message], style: style, caption: caption(of: attachment))
+            }
+
         case let .image(attachment):
             quoted {
                 PictureBubble(attachment: attachment, messageID: message.id,
                               style: style, isPlayable: false,
-                              sender: message.spokenSender, timestamp: message.timestamp)
+                              sender: message.spokenSender, timestamp: message.timestamp,
+                              caption: caption(of: attachment))
             }
 
         case let .sticker(attachment):
@@ -119,26 +159,37 @@ struct MessageContent: View {
             quoted {
                 PictureBubble(attachment: attachment, messageID: message.id,
                               style: style, isPlayable: true,
-                              sender: message.spokenSender, timestamp: message.timestamp)
+                              sender: message.spokenSender, timestamp: message.timestamp,
+                              caption: caption(of: attachment))
             }
 
         // `quoted`, like every other kind that draws its own bubble rather than sitting in
         // one. These two were bare, and the quote above an answer to a file or a piece of
         // music was silently dropped.
         case let .audio(attachment):
-            quoted {
-                FileBubble(attachment: attachment, systemImage: "waveform", style: style)
+            // Played in place, like a voice message — not handed to the system as a file.
+            bubble {
+                AudioFileView(attachment: attachment)
+                if let caption = attachment.caption { messageText(caption) }
             }
 
         case let .file(attachment):
             quoted {
                 FileBubble(attachment: attachment, systemImage: "doc", style: style)
+                if let caption = attachment.caption {
+                    messageText(caption)
+                        .font(.body)
+                        .messageBubble(style)
+                }
             }
 
         case let .location(location):
             quoted {
                 LocationBubble(location: location, style: style)
             }
+
+        case let .poll(poll):
+            bubble { PollBubble(poll: poll, style: style, onVote: onVote) }
 
         case .unreadable:
             // Not an error the user caused, and not one they can fix. Say what
@@ -171,9 +222,18 @@ struct MessageContent: View {
     /// its own, "yes, and it's at six" is not a sentence — so it travels with the words rather
     /// than floating over them. The bubble grows to hold it, which is exactly right: an answer
     /// carrying its question is a bigger thing than a bare line of text.
+    ///
+    /// The words sit closer under a quote than under "Forwarded from": the quote is a block with
+    /// its own edge, and a full line's gap under it pulled the answer away from its question.
     private func bubble(@ViewBuilder _ inner: () -> some View) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.close) {
-            quote
+        VStack(alignment: .leading,
+               spacing: message.replyTo != nil ? Theme.Spacing.tight : Theme.Spacing.close) {
+            if message.forwardedFrom != nil || message.replyTo != nil {
+                VStack(alignment: .leading, spacing: Theme.Spacing.close) {
+                    forwarded
+                    quote
+                }
+            }
 
             inner()
                 .font(.body)
@@ -185,12 +245,41 @@ struct MessageContent: View {
     /// emote. It gets a small bubble of its own and sits above them.
     private func quoted(@ViewBuilder _ inner: () -> some View) -> some View {
         VStack(alignment: alignment, spacing: Theme.Spacing.tight) {
-            if message.replyTo != nil {
-                quote
-                    .messageBubble(style)
+            if message.forwardedFrom != nil || message.replyTo != nil {
+                VStack(alignment: .leading, spacing: Theme.Spacing.close) {
+                    forwarded
+                    quote
+                }
+                .messageBubble(style)
             }
 
             inner()
+        }
+    }
+
+    /// "Forwarded from Аня", over the words — Telegram's line, and for the same reason: without it
+    /// the person who passed the message on reads as the person who wrote it. Only for a message
+    /// that says it is a forward (`m.forwarded`); in the bubble's own ink, stepped back from it,
+    /// like the quote under it.
+    ///
+    /// A claim, not a proof: `m.forwarded` is written by whoever sent the message, and nothing in
+    /// Matrix checks it — Telegram's server vouches for its line, no homeserver does for this one.
+    /// So it is drawn quietly, as the sender's own aside, and never as anything that looks verified.
+    @ViewBuilder
+    private var forwarded: some View {
+        if let origin = message.forwardedFrom {
+            Label {
+                if let name = origin.displayName {
+                    Text(Strings.Message.forwardedFrom(name))
+                } else {
+                    Text(Strings.Message.forwarded)
+                }
+            } icon: {
+                Image(systemName: "arrowshape.turn.up.right.fill")
+            }
+            .font(.caption.weight(.semibold))
+            .lineLimit(1)
+            .opacity(0.75)
         }
     }
 
@@ -208,18 +297,42 @@ struct MessageContent: View {
     /// colour is a thing the design layer owns and the model layer cannot see. A mention of you is
     /// drawn louder than a mention of someone else — it is the one that means *you* were called.
     /// Overriding `openURL` is what turns a tapped link into a question instead of a jump.
-    private func messageText(_ body: String) -> some View {
-        Text(paintedBody(body))
-            .tint(accent.color)
+    private func messageText(_ body: String, from source: Message? = nil) -> some View {
+        Text(paintedBody(body, from: source ?? message))
+            .tint(linkColor)
             .environment(\.openURL, OpenURLAction { url in
+                // The finger coming off a hold that opened the menu is not a tap on the link it
+                // happened to be resting on — see `MessageTaps.wasSpentByPress`.
+                if taps?.wasSpentByPress() == true { return .handled }
+                // A hidden spoiler is drawn as a link to itself, so that the tap which reveals it
+                // is the text's own and not a gesture fighting the bubble's. See `paintedBody`.
+                if url.scheme == Self.spoilerScheme, let number = Int(url.host() ?? "") {
+                    withAnimation(.smooth(duration: Theme.Timing.reaction)) { _ = revealedSpoilers.insert(number) }
+                    return .handled
+                }
+                // A link to a person or a room is not a page that could be pretending to be another:
+                // it opens inside the app, on a page that shows who or what it is, and nothing
+                // happens until a button there is pressed. Asking first would be asking twice.
+                if IskraRootView.matrixLink(in: url) != nil {
+                    openURL(url)
+                    return .handled
+                }
                 linkToConfirm = url
                 return .handled
             })
     }
 
-    private func paintedBody(_ body: String) -> AttributedString {
+    /// What a link is drawn in: the accent, except on a bubble that is the accent already.
+    private var linkColor: Color {
+        style == .own ? accent.onBubbleColor : accent.color
+    }
+
+    /// `source` is the message the words belong to — this one, or the picture of an album that
+    /// carries its caption, whose HTML and mentions are its own.
+    private func paintedBody(_ body: String, from source: Message) -> AttributedString {
         var attributed = RichText.attributed(body: body,
-                                             mentionedUserIDs: Set(message.mentionedUserIDs),
+                                             formattedBody: source.formattedBody,
+                                             mentionedUserIDs: Set(source.mentionedUserIDs),
                                              displayNames: currentUserID.isEmpty ? [:] : [currentUserID: currentUserName],
                                              ownUserID: currentUserID.isEmpty ? nil : currentUserID)
 
@@ -229,6 +342,17 @@ struct MessageContent: View {
             guard run.iskra.mentionUserID != nil else { return nil }
             return (run.range, run.iskra.mentionIsSelf ?? false)
         }
+        // Links underlined, as well as tinted. Colour alone is a promise the reader has to know the
+        // code for. In your own bubble, already filled with the accent, they are not tinted at all
+        // but drawn in the bubble's own ink: the accent on the accent was very nearly the colour of
+        // the bubble around it. Painted into the string as well as tinted, because a Mac draws a
+        // link in its own blue and does not ask `.tint`.
+        let linkRanges = attributed.runs.compactMap { run in run.link == nil ? nil : run.range }
+        for range in linkRanges {
+            attributed[range].underlineStyle = .single
+            attributed[range].foregroundColor = linkColor
+        }
+
         for (range, isSelf) in mentionRuns {
             attributed[range].foregroundColor = accent.color
             if isSelf {
@@ -238,6 +362,46 @@ struct MessageContent: View {
                 attributed[range].backgroundColor = accent.color.opacity(0.16)
             }
         }
+
+        paintFormatting(&attributed)
         return attributed
+    }
+
+    /// The scheme a hidden spoiler's tap arrives under. Never leaves this view.
+    private static let spoilerScheme = "iskra-spoiler"
+
+    /// What `MatrixHTML` marked and `Text` has no word for: underline, quotes, headings, spoilers.
+    /// Bold, italic, strikethrough and code arrive as Foundation's own intents, which `Text` draws.
+    private func paintFormatting(_ attributed: inout AttributedString) {
+        let runs = attributed.runs.map { run in
+            (run.range, run.iskra.underline ?? false, run.iskra.quote ?? false,
+             run.iskra.heading, run.iskra.spoiler)
+        }
+        // Back to front, because a hidden spoiler's words are replaced by dots of a different
+        // length — and that would move every range after it.
+        for (range, underline, quote, heading, spoiler) in runs.reversed() {
+            if underline {
+                attributed[range].underlineStyle = .single
+            }
+            if quote {
+                attributed[range].foregroundColor = .secondary
+            }
+            if let heading {
+                attributed[range].font = heading <= 2 ? .title3.weight(.bold) : .headline
+            }
+            if let spoiler {
+                if revealedSpoilers.contains(spoiler) {
+                    attributed[range].backgroundColor = Color.secondary.opacity(Theme.Backdrop.wash)
+                } else {
+                    // Dots for the words — Telegram's speckle, in a character — so nothing of the
+                    // secret is on screen until it is asked for, whatever colour links are drawn in.
+                    let length = attributed[range].characters.count
+                    var dots = AttributedString(String(repeating: "⠿", count: max(1, length)))
+                    dots.link = URL(string: "\(Self.spoilerScheme)://\(spoiler)")
+                    dots.foregroundColor = .secondary
+                    attributed.replaceSubrange(range, with: dots)
+                }
+            }
+        }
     }
 }

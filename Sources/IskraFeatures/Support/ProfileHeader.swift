@@ -1,3 +1,4 @@
+import IskraCore
 import SwiftUI
 import IskraDesign
 
@@ -29,11 +30,38 @@ struct ProfileHeader: View {
     /// A Matrix ID is; "12 participants" is not, and a count that highlights under a long press
     /// is a small piece of nonsense.
     var isSubtitleSelectable = false
+    /// A group's faces, drawn as the same cluster the chat list shows. Empty for a person, and for
+    /// the settings screen, where the header is the user's own.
+    var faces: [RoomFace] = []
+    /// One small line under everything else — whether a chat is encrypted. Nil on the screens that
+    /// have nothing of the kind to say, which is a person's own settings.
+    var note: LocalizedStringResource?
+    var noteIcon: String?
+    /// The icon's colour: grey for the ordinary state, a warning colour for the one worth noticing.
+    var noteTint: Color = .secondary
+
+    /// The picture, opened full screen — Telegram's: a tap on the portrait shows the photograph
+    /// itself rather than the circle cut out of it. Only where there is a photograph; initials and
+    /// a drawn creature have nothing more to show.
+    @State private var opened: MediaItem?
+
+    private var picture: MediaItem? {
+        guard let avatarURL, let attachment = Attachment.picture(url: avatarURL) else { return nil }
+        return MediaItem(id: avatarURL, attachment: attachment, kind: .photo,
+                         sender: name, timestamp: .now)
+    }
 
     var body: some View {
         VStack(spacing: Theme.Spacing.normal) {
-            Avatar(name: name, url: avatarURL, size: Theme.Size.avatarProfile, shape: shape,
-                   seed: seed)
+            RoomAvatar(name: name, url: avatarURL, size: Theme.Size.avatarProfile, shape: shape,
+                       seed: seed, faces: faces)
+                .contentShape(.circle)
+                .onTapGesture {
+                    if let picture { opened = picture }
+                }
+            .mediaViewer(item: $opened) { item in
+                MediaPager(items: [item], startIndex: 0)
+            }
 
             VStack(spacing: Theme.Spacing.tight) {
                 // A size up from the `.title2` a heading in a form would get, because this is not
@@ -57,6 +85,22 @@ struct ProfileHeader: View {
                     } else {
                         line.textSelection(.disabled)
                     }
+                }
+
+                if let note {
+                    // An `HStack` rather than a `Label`: a label leaves the icon a column of its own
+                    // to sit in, and at this size the padlock ended up a word's width from the words.
+                    HStack(spacing: Theme.Spacing.tight) {
+                        if let noteIcon {
+                            Image(systemName: noteIcon)
+                                .foregroundStyle(noteTint)
+                        }
+                        Text(note)
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, Theme.Spacing.tight)
                 }
             }
         }
@@ -133,7 +177,7 @@ private struct ProfileScreen: ViewModifier {
             .navigationTitle(Text(verbatim: ""))
             .toolbarTitleDisplayMode(.inline)
             .toolbarBackgroundVisibility(isPastPortrait ? .automatic : .hidden, for: .navigationBar)
-            .scrollEdgeEffectHidden(!isPastPortrait, for: .top)
+            .scrollEdgeHidden(!isPastPortrait, for: .top)
             // The grouped form's own opening gap, which sits between the bar and the first row
             // and would put the portrait back below the buttons.
             .contentMargins(.top, 0, for: .scrollContent)

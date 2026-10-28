@@ -25,6 +25,8 @@ struct ProfileEditView: View {
 
     @State private var isChoosingPicture = false
     @State private var pickedPicture: PhotosPickerItem?
+    /// The picked picture, being cut into the face — see `AvatarCropper`.
+    @State private var cropping: AvatarCropRequest?
 
     /// A change the server would not make — or a picture the photo library would not hand over,
     /// which never reached the server at all.
@@ -45,12 +47,29 @@ struct ProfileEditView: View {
             } header: {
                 Text(Strings.Account.nameHeader)
             } footer: {
+                // A new display name is a member event in every room the account is in, so
+                // everybody it shares a chat with sees "X changed their name to Y". Worth saying
+                // before the field is left, not after.
                 if isOffline {
                     Text(Strings.Account.editOffline)
+                } else {
+                    Text(Strings.Account.nameChangeNotice)
                 }
             }
+
+            // The Matrix ID, shown in a field so it reads as the name's sibling, and disabled
+            // because no homeserver can change it: it is the account itself.
+            Section {
+                TextField(String(app: Strings.Account.usernameHeader), text: .constant(session.userID))
+                    .disabled(true)
+                    .textSelection(.enabled)
+            } header: {
+                Text(Strings.Account.usernameHeader)
+            } footer: {
+                Text(Strings.Account.usernameFixed)
+            }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .profileScreen()
         .onChange(of: session.displayName, initial: true) { _, name in
             guard !isNaming else { return }
@@ -72,44 +91,31 @@ struct ProfileEditView: View {
         .photosPicker(isPresented: $isChoosingPicture, selection: $pickedPicture, matching: .images)
         .onChange(of: pickedPicture) { _, item in
             guard let item else { return }
-            Task { await setPicture(item) }
+            Task { await choosePicture(item) }
+        }
+        // Cut to a square before it goes anywhere — see `AvatarCropper`.
+        .pageSheet(item: $cropping) { request in
+            AvatarCropper(image: request.image,
+                          onCancel: { cropping = nil },
+                          onDone: { data in
+                              cropping = nil
+                              Task { await setPicture(data) }
+                          })
         }
         .failureAlert($failure)
     }
 
-    /// The face, large, with the two things that can be done to it written under it in words.
-    ///
-    /// Buttons rather than a menu on the picture. On the profile screen the picture is something
-    /// to look at and the menu was a trap; here the whole screen is the edit, so the choices can
-    /// simply be visible instead of hidden behind a press nobody is told about.
+    /// The face, large, dimmed under a pencil — tapping it offers to change it or remove it.
     private var picture: some View {
-        VStack(spacing: Theme.Spacing.normal) {
-            Avatar(name: session.displayName,
-                   url: session.avatarURL,
-                   size: Theme.Size.avatarProfile,
-                   seed: session.userID)
-
-            VStack(spacing: Theme.Spacing.close) {
-                Button {
-                    isChoosingPicture = true
-                } label: {
-                    Text(Strings.Account.changePicture)
-                }
-                .disabled(isOffline)
-
-                if session.avatarURL != nil {
-                    Button(role: .destructive) {
-                        Task { await removePicture() }
-                    } label: {
-                        Text(Strings.Account.removePicture)
-                    }
-                    .disabled(isOffline)
-                }
-            }
-            .font(.callout)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, Theme.Spacing.roomy)
+        EditableAvatar(name: session.displayName,
+                       url: session.avatarURL,
+                       seed: session.userID,
+                       canRemove: session.avatarURL != nil,
+                       onChange: { isChoosingPicture = true },
+                       onRemove: { Task { await removePicture() } })
+            .disabled(isOffline)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, Theme.Spacing.roomy)
     }
 
     private func rename() async {
@@ -128,14 +134,17 @@ struct ProfileEditView: View {
         }
     }
 
-    private func setPicture(_ item: PhotosPickerItem) async {
+    private func choosePicture(_ item: PhotosPickerItem) async {
         pickedPicture = nil
 
-        guard let data = await imageData(from: item) else {
+        guard let data = await imageData(from: item), let image = AvatarCrop.image(from: data) else {
             failure = .picture
             return
         }
+        cropping = AvatarCropRequest(image: image)
+    }
 
+    private func setPicture(_ data: Data) async {
         do {
             try await session.setPicture(data, filename: "avatar.jpg")
         } catch {

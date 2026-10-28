@@ -3,22 +3,28 @@ import IskraDesign
 
 /// What this app is, which build of it you are holding, and whose work it is standing on.
 ///
-/// The version was already at the foot of the settings screen and stays there — a number you
-/// glance at should not cost a tap. This screen is the rest of the answer: the sentence that
-/// says what Iskra is, the build details in a form you can paste into a bug report without
-/// copying them out by hand, and the credit that the code this app leans on is owed.
+/// The screen is the whole answer to "which Iskra is this": the settings screen no longer
+/// carries the version in its footer, so the number lives here and nowhere else. Every row is
+/// selectable, which is what a bug report needs — the three facts it is useless without, in a
+/// form that can be copied one at a time.
 ///
-/// That last section is not decoration. Every line of Matrix and every line of cryptography
-/// here is `matrix-rust-sdk`'s, under Apache-2.0, and a licence that asks to be carried with
-/// the binary needs somewhere in the shipped app that a person can actually reach. This is
-/// that place, which is also why the section is a list of links rather than a paragraph: a
-/// name with no way through to the source is a thank-you, not a notice.
+/// The licences sit one push further in (`LicensesView`) rather than on this screen: they are
+/// a list somebody opens on purpose, not something to scroll past on the way to a version.
 struct AboutView: View {
-    /// Set for a moment after the build details are copied, so the row can say it happened.
-    /// A copy is silent otherwise, and a button that gives back nothing gets pressed twice.
-    @State private var didCopy = false
+    /// The homeserver the session on screen talks to, for the developers' corner of `BetaView`.
+    var homeserver: String?
+
+    /// Handed on to `BetaView`, which is behind the spark on this screen — see
+    /// `BetaView.onCallAddressChanged`.
+    var onCallAddressChanged: (() -> Void)?
 
     @Environment(\.accent) private var accent
+
+    /// Whether the beta features are pushed — by three taps on the spark, which is the only way
+    /// to them. See `BetaView`.
+    @State private var isShowingBeta = false
+    /// The licences, pushed by a flag so Escape can take them back — see `escapeKey`.
+    @State private var isShowingLicences = false
 
     var body: some View {
         Form {
@@ -29,86 +35,75 @@ struct AboutView: View {
 
             Section {
                 LabeledContent {
-                    Text(verbatim: "\(AppVersion.marketing) (\(AppVersion.build))")
+                    Text(verbatim: AppVersion.marketing)
                 } label: {
                     Text(Strings.About.version)
                 }
                 .textSelection(.enabled)
 
                 LabeledContent {
-                    Text(verbatim: AboutView.device)
+                    Text(verbatim: AppVersion.buildWithCommit)
                 } label: {
-                    Text(Strings.About.device)
+                    Text(Strings.About.build)
                 }
                 .textSelection(.enabled)
 
                 LabeledContent {
-                    Text(verbatim: AboutView.system)
+                    Text(verbatim: "\(AboutView.device) (\(AboutView.system))")
                 } label: {
-                    Text(Strings.About.system)
+                    Text(Strings.About.device)
                 }
                 .textSelection(.enabled)
-
-                Button {
-                    Clipboard.copy(AboutView.buildDetails)
-                    withAnimation(.smooth(duration: Theme.Timing.reaction)) { didCopy = true }
-                    // And back again, so the row is a button once more. A tick that stays put
-                    // reads as a state the screen is now in rather than as something that just
-                    // happened, and the second copy — after the first paste went astray — then
-                    // looks like it did nothing at all.
-                    Task {
-                        try? await Task.sleep(for: .seconds(2))
-                        withAnimation(.smooth(duration: Theme.Timing.reaction)) { didCopy = false }
-                    }
-                } label: {
-                    Label(didCopy ? Strings.About.copied : Strings.About.copy,
-                          systemImage: didCopy ? "checkmark" : "doc.on.doc")
-                }
-            } footer: {
-                Text(Strings.About.copyHelp)
             }
 
             Section {
-                Link(destination: URL(string: "https://iskra.swag.moscow")!) {
+                Link(destination: URL(string: "https://iskra.wtf")!) {
                     LabeledContent {
                         Image(systemName: "arrow.up.right")
                             .foregroundStyle(.secondary)
                     } label: {
                         Text(Strings.About.website)
-                        Text(verbatim: "iskra.swag.moscow")
+                        Text(verbatim: "iskra.wtf")
                     }
                 }
-            }
 
-            Section {
-                Link(destination: URL(string: "https://github.com/matrix-org/matrix-rust-sdk")!) {
+                Link(destination: URL(string: "https://github.com/iskra-app/iskra")!) {
                     LabeledContent {
                         Image(systemName: "arrow.up.right")
                             .foregroundStyle(.secondary)
                     } label: {
-                        Text(Strings.About.sdk)
-                        Text(Strings.About.sdkLicence)
+                        Text(Strings.About.sourceCode)
+                        Text(verbatim: "github.com/iskra-app/iskra")
                     }
                 }
 
-                Link(destination: URL(string: "https://matrix.org")!) {
-                    LabeledContent {
-                        Image(systemName: "arrow.up.right")
-                            .foregroundStyle(.secondary)
-                    } label: {
-                        Text(Strings.About.protocolName)
-                        Text(Strings.About.protocolExplained)
-                    }
+                // `LicensesView` must not read `dismiss` — this screen is itself pushed onto the
+                // settings stack. See CLAUDE.md.
+                PushRow { isShowingLicences = true } label: {
+                    Text(Strings.About.licences)
                 }
-            } header: {
-                Text(Strings.About.builtOn)
             } footer: {
-                Text(Strings.About.cryptography)
+                // The GPL asks an interactive program for exactly this, on screen: whose it is,
+                // that it is free software, and that there is no warranty. Under the source and
+                // licence rows, because those are the two things the sentence points at.
+                VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                    Text(Strings.About.copyright)
+                    Text(Strings.About.freeSoftware)
+                }
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .tint(accent.color)
         .navigationTitle(Text(Strings.About.title))
+        // Bound to a flag rather than a value, because nothing on this screen is a row that leads
+        // there: the way in is a gesture on the icon. `BetaView` reads no `dismiss` — this stack
+        // can be the sidebar's, see CLAUDE.md.
+        .navigationDestination(isPresented: $isShowingBeta) {
+            BetaView(homeserver: homeserver, onCallAddressChanged: onCallAddressChanged)
+        }
+        .navigationDestination(isPresented: $isShowingLicences) {
+            LicensesView()
+        }
     }
 
     /// The icon, the name and the one sentence that says what the thing is.
@@ -118,6 +113,8 @@ struct AboutView: View {
     private var header: some View {
         VStack(spacing: Theme.Spacing.close) {
             AppIconView(size: Theme.Size.avatarProfile)
+                .contentShape(.rect)
+                .onTapGesture(count: 3) { isShowingBeta = true }
 
             Text(Strings.Settings.appName)
                 .font(.title2.weight(.semibold))
@@ -177,13 +174,5 @@ struct AboutView: View {
         let name = String(cString: value)
         return name.isEmpty ? fallback : name
     }
-
-    /// The facts a bug report needs, on one line each, in the order they get asked for.
-    private static var buildDetails: String {
-        """
-        Iskra \(AppVersion.marketing) (\(AppVersion.build))
-        \(device)
-        \(system)
-        """
-    }
 }
+

@@ -30,11 +30,16 @@ enum AppSettings {
         QuickReaction.storageKey,
         Wallpaper.storageKey,
         Wallpaper.dimmingKey,
-        TunnelSettings.enabledKey,
-    ]
+        ComposerReturnKey.sendsWithCommandReturnKey,
+    ] + MediaSettings.keys + PrivacySettings.keys + ServiceEventSettings.keys + StickerSettings.keys + ThreadSettings.keys
 
     @MainActor
     static func forget() {
+        // Signing out of an account on `--mock-signin` is not the person holding this device
+        // leaving it. Their accent, their wallpaper and their experiments belong to the real
+        // account, which the mock never touched, and is still there on the next ordinary launch.
+        guard !MockSignIn.isRequested else { return }
+
         let defaults = UserDefaults.standard
         for key in keys {
             defaults.removeObject(forKey: key)
@@ -47,6 +52,13 @@ enum AppSettings {
         for flag in BetaFeatures.stores {
             (flag.store ?? defaults).removeObject(forKey: flag.key)
         }
+
+        // The bridge switch lives in the App Group too, for the notification extension's sake —
+        // see `TunnelSettings.store`. Only the switch: the bridge's address and relays are the
+        // device's route to its homeserver, and wiping them on sign-out left the next sign-in
+        // with no way through a network where only the bridge gets out.
+        TunnelSettings.store.removeObject(forKey: TunnelSettings.enabledKey)
+        defaults.removeObject(forKey: TunnelSettings.enabledKey)
 
         // And the one setting that is not a value in `UserDefaults` but a file on the disk: the
         // wallpaper somebody chose from their own photo library. Forgetting the *key* and leaving

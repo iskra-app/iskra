@@ -14,7 +14,7 @@ import IskraDesign
 /// and this screen must not draw a second one. Inside a sidebar it does not, and this
 /// screen must — see `showsBackButton`.
 ///
-/// Five rows, and the shape of them is the point. This screen used to be a list of everything the
+/// Eight rows, and the shape of them is the point. This screen used to be a list of everything the
 /// app could be told, in the order the features happened to be built: appearance, reactions,
 /// encryption, storage, connection, blocked, a greyed-out notifications row, then a lock section,
 /// then a devices section. Nine things, several of which were halves of each other — the devices
@@ -22,9 +22,10 @@ import IskraDesign
 /// "Connection" that decides who can read your traffic sat two rows from the word "Encryption".
 ///
 /// So they are gathered by the question they answer rather than by what they happen to be.
-/// Appearance took the quick reaction, which is a choice about how a conversation looks and had no
-/// business being a screen of its own. Security took the devices, the Face ID lock and the bridge.
-/// Notifications stopped being a promise and became a screen — see `NotificationsView`.
+/// Appearance took the app icon and Security took the devices, the blocked list, the privacy
+/// switches, the Face ID lock and the bridge. The beta features have no row at all — they are
+/// three taps on the spark in About. Notifications stopped being a promise and became a screen —
+/// see `NotificationsView`.
 ///
 /// Signing out is the one thing on this screen that cannot be undone, so it is last and it
 /// is red.
@@ -45,15 +46,32 @@ struct SettingsView: View {
 
     /// Set when the sign-out starts, and never cleared — see the button.
     @State private var isSigningOut = false
+    /// Your own QR code — see `QRCodeSheet`.
+    @State private var isShowingCode = false
 
-    /// The one place this screen can go that is worth building lazily — see the
-    /// `navigationDestination` below.
-    private enum Destination: Hashable {
+    /// Another account, swiped to be signed out of and waiting for the answer to "are you sure".
+    @State private var accountToSignOut: AccountRecord?
+
+    /// Every page this screen pushes, built on the push — see the `navigationDestination` below.
+    /// Held in a flag, `page`, rather than pushed by `NavigationLink`s, because this screen sits in
+    /// the sidebar's stack, where the only safe way back is a flag its owner clears: that is what
+    /// Escape does on a Mac (`escapeKey`). `dismiss` is not an option here — see `onClose`.
+    private enum Page: Hashable {
         case profile
+        case appearance
+        case reactions
+        case chats
+        case folders
         case notifications
         case security
+        case media
         case storage
+        case about
+        case language
     }
+
+    /// The page pushed over this screen, if any.
+    @State private var page: Page?
 
     /// Whether this screen has to draw its own way out.
     ///
@@ -85,96 +103,185 @@ struct SettingsView: View {
     /// of coloured symbols is the point rather than noise.
     @Environment(\.accent) private var accent
 
+    /// The other accounts on the device, and the way to add one. See `AccountSwitcher`.
+    @Environment(\.accountSwitcher) private var switcher
+
+    /// Everybody but the account on screen, each a tap away, and "Add account" under them.
+    ///
+    /// Right under the profile, because it is the same question the profile answers — *who* the
+    /// app is being — and the one somebody with two accounts comes here to change most often.
+    private func accounts(_ switcher: AccountSwitcher) -> some View {
+        Section {
+            ForEach(switcher.others) { account in
+                Button {
+                    switcher.switchTo(account.sessionID)
+                } label: {
+                    AccountRow(account: account,
+                               unread: switcher.unread[account.sessionID] ?? 0,
+                               isSigningOut: switcher.signingOut.contains(account.sessionID))
+                }
+                .buttonStyle(.plain)
+                .disabled(switcher.signingOut.contains(account.sessionID))
+                // A swipe, as a chat is left from the chat list — and the same thing on a press,
+                // because a Mac has no swipe to find it by.
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    Button(role: .destructive) {
+                        accountToSignOut = account
+                    } label: {
+                        Label(String(app: Strings.Accounts.signOutShort),
+                              systemImage: "rectangle.portrait.and.arrow.right")
+                    }
+                    // Red by hand. A swipe button takes the tint of the screen, and this screen is
+                    // tinted with the accent — white on the mono one, so "Sign out" came up white.
+                    .tint(.red)
+                }
+                .contextMenu {
+                    Button(role: .destructive) {
+                        accountToSignOut = account
+                    } label: {
+                        Label(String(app: Strings.Account.signOut),
+                              systemImage: "rectangle.portrait.and.arrow.right")
+                    }
+                }
+            }
+            Button {
+                switcher.addAccount()
+            } label: {
+                Label(Strings.Accounts.add, systemImage: "person.crop.circle.badge.plus")
+            }
+        } header: {
+            if switcher.hasSeveral {
+                Text(Strings.Accounts.section)
+            }
+        }
+        .onAppear { switcher.refreshUnread() }
+        // Asked, because it cannot be undone from here: the chats go off the device, and an
+        // encrypted history comes back only with the recovery key.
+        .confirmationDialog(Text(Strings.Accounts.signOutTitle(of: accountToSignOut.map(AccountSwitcher.name(of:)) ?? "")),
+                            isPresented: Binding(get: { accountToSignOut != nil },
+                                                 set: { if !$0 { accountToSignOut = nil } }),
+                            titleVisibility: .visible,
+                            presenting: accountToSignOut) { account in
+            Button(role: .destructive) {
+                switcher.signOut(account.sessionID)
+            } label: {
+                Text(Strings.Accounts.signOutShort)
+            }
+        } message: { _ in
+            Text(Strings.Accounts.signOutMessage)
+        }
+    }
+
+    /// "Sign out", or — when there is more than one account it could mean — whose.
+    private var signOutTitle: LocalizedStringResource {
+        guard switcher?.hasSeveral == true else { return Strings.Account.signOut }
+        return Strings.Accounts.signOut(of: session.displayName)
+    }
+
     var body: some View {
         Form {
+            // The two ways of handing yourself to somebody, under your name — the same round tiles a
+            // person's page has under theirs, so your own page and theirs are one design. In the
+            // portrait's section, so the form's gap between sections does not open up under the name.
             Section {
                 profile
+                NavigationGlassGroup(spacing: Theme.Spacing.close) {
+                    HStack(spacing: Theme.Spacing.close) {
+                        ShareLink(item: MatrixLink.user(session.userID).url) {
+                            ProfileActionTileLabel(title: Strings.Profile.share, systemImage: "square.and.arrow.up")
+                        }
+                        .buttonStyle(.plain)
+
+                        ProfileActionTile(title: Strings.QR.title, systemImage: "qrcode", isBusy: false) {
+                            isShowingCode = true
+                        }
+                    }
+                }
+                .padding(.bottom, Theme.Spacing.close)
             }
             .profileHeaderRow()
 
+            if let switcher, switcher.isAvailable {
+                accounts(switcher)
+            }
+
             Section {
-                NavigationLink {
-                    AppearanceView()
+                PushRow {
+                    page = .appearance
                 } label: {
                     Label(Strings.Settings.appearance, systemImage: "paintbrush")
+                }
+
+                // A list of its own on a Mac; on iPhone and iPad the app's page in the system
+                // Settings, where iOS keeps the language of every app. See `LanguageView`.
+                PushRow {
+                    #if os(macOS)
+                    page = .language
+                    #else
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                    #endif
+                } label: {
+                    Label(Strings.Settings.language, systemImage: "globe")
                 }
 
                 // Next to appearance rather than inside it. What the double tap sends is not a
                 // decision about how a conversation *looks* — it is what a gesture does — and it
                 // is a word people arrive at settings already looking for. See `ReactionsView`.
-                NavigationLink {
-                    ReactionsView()
+                PushRow {
+                    page = .reactions
                 } label: {
                     Label(Strings.Settings.reactions, systemImage: "face.smiling")
                 }
 
-                // iPhone and iPad only, and not drawn at all where the device forbids it.
-                // `setAlternateIconName` is UIKit's and AppKit has no equivalent, so on a Mac
-                // this row would lead to a screen that could only explain itself — see `HomeIcon`.
-                #if os(iOS)
-                if HomeIcons.areSupported {
-                    NavigationLink {
-                        HomeIconView()
-                    } label: {
-                        Label(Strings.Settings.appIcon, systemImage: "app.badge")
-                    }
+                // How conversations behave rather than how they look: the grey lines, the Return
+                // key, the share sheet's account. See `ChatSettingsView`.
+                PushRow {
+                    page = .chats
+                } label: {
+                    Label(Strings.Settings.chats, systemImage: "bubble.left.and.bubble.right")
                 }
-                #endif
 
-                // Value-based, like the two below and for the same reason: `notificationRules()`
-                // builds a store holding an SDK `NotificationSettings` with a listener
-                // registration behind it, and a `NavigationLink` with a destination *closure*
-                // builds its destination eagerly on every pass of this body. See
-                // `navigationDestination`, which is where it is actually made.
-                NavigationLink(value: Destination.notifications) {
+                // Folders of chats, as tabs over the list — see `FoldersView`.
+                PushRow {
+                    page = .folders
+                } label: {
+                    Label(Strings.Folders.title, systemImage: "folder")
+                }
+
+                PushRow { page = .notifications } label: {
                     Label(Strings.Settings.notifications, systemImage: "bell")
                 }
 
                 // A shield rather than a padlock, and that is the rename saying itself in the
                 // margin: a padlock is a picture of encryption, and this screen is no longer only
-                // about encryption. See `SecurityView`.
-                NavigationLink(value: Destination.security) {
+                // about encryption. It took the devices, the blocked list and the privacy
+                // switches too — see `SecurityView`.
+                PushRow { page = .security } label: {
                     Label(Strings.Settings.security, systemImage: "lock.shield")
                 }
 
-                NavigationLink(value: Destination.storage) {
+                // Before storage: both are about the bytes photos and videos cost, and this one is
+                // the question people come to settings with — "why did it send so big".
+                PushRow {
+                    page = .media
+                } label: {
+                    Label(Strings.Settings.media, systemImage: "photo.on.rectangle")
+                }
+
+                PushRow { page = .storage } label: {
                     Label(Strings.Settings.storage, systemImage: "internaldrive")
                 }
 
-                NavigationLink {
-                    BlockedUsersView(store: session.blocked)
-                } label: {
-                    Label(Strings.Settings.blocked, systemImage: "hand.raised")
-                }
-
-                // Last in the section, and only where there is something behind it: on iPhone the
-                // one experiment on offer is about a sidebar that does not exist there. A row that
-                // leads to an empty screen is worse than no row — see `BetaFeatures.hasAnything`.
-                if BetaFeatures.hasAnything {
-                    NavigationLink {
-                        BetaView(onCallAddressChanged: {
-                            // A typed Element Call address is the one input to `callAvailability`
-                            // that does not come from the server, so it is the one that can change
-                            // while the app is running. See `BetaView.onCallAddressChanged`.
-                            Task { await session.loadCallAvailability() }
-                        })
-                    } label: {
-                        Label(Strings.Settings.beta, systemImage: "flask")
-                    }
-                }
-
-                // After the experiments, because it is the one row that changes nothing. The
-                // version stayed in the footer below — a number you glance at should not cost a
-                // tap — and this leads to the rest of the answer: what the app is, the build
-                // details in a form that can be pasted, and the credit the SDK is owed. See
-                // `AboutView`.
-                NavigationLink {
-                    AboutView()
+                // Last, because it is the one row that changes nothing. It is also the only place
+                // the version is shown, and the only way to the beta features — three taps on the
+                // spark there. See `AboutView`.
+                PushRow {
+                    page = .about
                 } label: {
                     Label(Strings.Settings.about, systemImage: "info.circle")
                 }
-            } footer: {
-                Text(Strings.Settings.moreSoon)
             }
 
             Section {
@@ -191,7 +298,7 @@ struct SettingsView: View {
                     // fails, the session is already half torn down and there is nothing here to go
                     // back to — the app goes to the sign-in screen either way.
                     HStack(spacing: Theme.Spacing.close) {
-                        Text(Strings.Account.signOut)
+                        Text(signOutTitle)
                         if isSigningOut {
                             Spacer()
                             ProgressView()
@@ -199,35 +306,21 @@ struct SettingsView: View {
                     }
                 }
                 .disabled(isSigningOut)
-            } footer: {
-                about
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
+        .pageSheet(isPresented: $isShowingCode) {
+            QRCodeSheet(name: session.displayName, subtitle: session.userID,
+                        avatarURL: session.avatarURL, seed: session.userID,
+                        link: .user(session.userID))
+        }
         .tint(accent.color)
         .profileScreen()
-        // Value-based, because a `NavigationLink` with a destination *closure* builds that
-        // destination eagerly, on every pass of this `body`. `session.storage()` allocates a store
-        // and takes the room list with it, so the link-with-a-closure version minted and threw one
-        // away every time anything on this screen changed — and when the name was still a field up
-        // here, that was once per character typed. This closure runs when the row is pushed.
-        .navigationDestination(for: Destination.self) { destination in
-            switch destination {
-            case .profile:
-                ProfileEditView(session: session)
-            case .notifications:
-                NotificationsView(rules: session.notificationRules())
-            case .security:
-                SecurityView(session: session,
-                             recovery: session.recovery,
-                             verification: session.verification,
-                             deviceID: session.deviceID)
-            case .storage:
-                // Built here, on the push, for the same reason as the encryption screen above:
-                // a `NavigationLink` with a destination closure builds it on every pass of this
-                // body, and this body re-runs whenever anything on the screen moves.
-                StorageView(storage: session.storage(), onCleared: onClearedCache)
-            }
+        // Built on the push, never on a pass of this body — see `pageView`. A `NavigationLink`
+        // with a destination closure built `session.storage()` every time anything here changed,
+        // once per character typed when the name was still a field up here.
+        .navigationDestination(item: $page) { page in
+            pageView(page)
         }
         .toolbar {
             // The one thing on this screen that is *yours* rather than the app's, so it gets the
@@ -235,7 +328,7 @@ struct SettingsView: View {
             // holds a back chevron on Mac, and two words facing each other across a title bar read
             // as a dialog rather than as a screen.
             ToolbarItem(placement: .primaryAction) {
-                NavigationLink(value: Destination.profile) {
+                Button { page = .profile } label: {
                     Image(systemName: "pencil")
                         .font(.body.weight(.medium))
                 }
@@ -257,6 +350,44 @@ struct SettingsView: View {
         }
     }
 
+    /// What each page is. Built here, on the push: `notificationRules()` builds a store with an
+    /// SDK listener behind it and `session.storage()` takes the room list with it, and a
+    /// `NavigationLink` with a destination closure built them on every pass of this body.
+    @ViewBuilder
+    private func pageView(_ page: Page) -> some View {
+        switch page {
+        case .profile:
+            ProfileEditView(session: session)
+        case .appearance:
+            AppearanceView()
+        case .reactions:
+            ReactionsView()
+        case .chats:
+            ChatSettingsView()
+        case .folders:
+            FoldersView(folders: session.folders, roomList: session.roomList)
+        case .media:
+            MediaSettingsView()
+        case .about:
+            AboutView(homeserver: session.homeserverURL.absoluteString, onCallAddressChanged: {
+                // A typed Element Call address is the one input to `callAvailability` that does
+                // not come from the server, so it is the one that can change while the app is
+                // running. See `BetaView.onCallAddressChanged`.
+                Task { await session.loadCallAvailability() }
+            })
+        case .language:
+            LanguageView()
+        case .notifications:
+            NotificationsView(rules: session.notificationRules())
+        case .security:
+            SecurityView(session: session,
+                         recovery: session.recovery,
+                         verification: session.verification)
+        case .storage:
+            StorageView(storage: session.storage(), onCleared: onClearedCache)
+        }
+    }
+
     /// Who you are: your picture, large and centred, your name under it, and the Matrix ID
     /// under that.
     ///
@@ -274,23 +405,4 @@ struct SettingsView: View {
                       seed: session.userID,
                       isSubtitleSelectable: true)
     }
-
-    /// The app saying what it is and which build of it this is.
-    ///
-    /// A footer rather than a row, and centred, because it is not a setting: there is nothing
-    /// here to press. It sits below sign-out — the last thing on the screen, where every other
-    /// app puts it, and where somebody who has come looking for a version number to quote in a
-    /// bug report will look for it. The numbers come from the bundle; see `AppVersion`.
-    private var about: some View {
-        VStack(spacing: Theme.Spacing.tight) {
-            Text(Strings.Settings.appName)
-            Text(Strings.Settings.version(AppVersion.marketing, build: AppVersion.build))
-        }
-        .font(.footnote)
-        .foregroundStyle(.secondary)
-        .frame(maxWidth: .infinity)
-        .padding(.top, Theme.Spacing.roomy)
-        .textSelection(.enabled)
-    }
-
 }

@@ -82,6 +82,16 @@ public enum AccentTheme: String, CaseIterable, Identifiable, Sendable {
     /// glass* — so a mono label asking for `.background` was drawn in the colour of the pill it was
     /// written on, and the sign-in button came out blank. A shape style cannot see the colour scheme
     /// on its own, so the scheme is handed in and the black/white pair is chosen here.
+    /// The accent as a plain colour, never a hierarchical one. `color` is `.primary` on mono, and
+    /// `.primary` drawn inside glass is *vibrant* — grey, whatever the appearance — so a fill on the
+    /// navigation layer that has to be the accent takes this.
+    public func solid(in scheme: ColorScheme) -> Color {
+        switch self {
+        case .mono: scheme == .dark ? .white : .black
+        default: color
+        }
+    }
+
     public func foreground(in scheme: ColorScheme) -> AnyShapeStyle {
         switch self {
         case .mono: AnyShapeStyle(scheme == .dark ? Color.black : Color.white)
@@ -106,7 +116,7 @@ public enum AccentTheme: String, CaseIterable, Identifiable, Sendable {
     /// the accent itself.
     public func control(in scheme: ColorScheme) -> Color {
         switch self {
-        case .mono: scheme == .dark ? Color.white.opacity(0.38) : Color.black.opacity(0.72)
+        case .mono: if scheme == .dark { Color.white.opacity(0.38) } else { Color.black.opacity(0.72) }
         default: color
         }
     }
@@ -158,6 +168,16 @@ public enum AccentTheme: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .mono: AnyShapeStyle(.primary)
         default: foreground
+        }
+    }
+
+    /// `onBubble` as a plain colour, for what can only be given one — the links in a message's
+    /// words, which an `AttributedString` paints and a `.tint` reaches only on some platforms.
+    public var onBubbleColor: Color {
+        switch self {
+        case .yellow: .black
+        case .mono: .primary
+        default: .white
         }
     }
 }

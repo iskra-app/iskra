@@ -62,7 +62,7 @@ public final class VideoNoteRecorder: NSObject {
 
     /// Where the frames arrive, and where every part of writing them down happens. A serial queue,
     /// so a `finish` dispatched onto it cannot land in the middle of a frame being appended.
-    nonisolated private let frames = DispatchQueue(label: "moscow.swag.iskra.videonote.frames")
+    nonisolated private let frames = DispatchQueue(label: "wtf.iskra.videonote.frames")
 
     /// The two outputs the frames come down. `nonisolated(unsafe)` because the delegate callback
     /// has to tell them apart — it is handed *an* output and must know which — and that callback
@@ -133,6 +133,27 @@ public final class VideoNoteRecorder: NSObject {
     /// like an app that had ignored the press. Now the overlay is on the screen before the camera
     /// is even asked for, and the picture arrives into a window that is already there.
     public func prepare() async {
+        // Already being opened — by the touch-down on the record button, a moment before the hold
+        // put this screen up (`MessageComposer.onPrewarm`). Waited for rather than skipped: the
+        // screen goes straight on to `start()`, which needs the camera ready, not merely asked for.
+        //
+        // Then looked at again: a tap that warmed the camera and was called off a moment later
+        // leaves an opening in flight that ends in nothing, and a hold right behind it needs one
+        // of its own.
+        if let preparing {
+            await preparing.value
+        }
+        guard state == .idle else { return }
+        let task = Task { await open() }
+        preparing = task
+        await task.value
+        if preparing == task { preparing = nil }
+    }
+
+    /// The camera being opened, for anybody else who asks while it is — see `prepare()`.
+    private var preparing: Task<Void, Never>?
+
+    private func open() async {
         guard state == .idle else { return }
         state = .preparing
 
@@ -269,8 +290,42 @@ public final class VideoNoteRecorder: NSObject {
     /// camera records mirrored and the back camera does not, so a flip that forgot to say so would
     /// send a rear-facing shot reversed. `camera` is set before `aim()` runs, which is what makes
     /// the question answerable at all.
+    /// How far in the lens is — 1 is as wide as it goes. Pinched on the circle, Telegram's.
+    public private(set) var zoom: CGFloat = 1
+
+    /// Twice as close at most on a front camera, five times on a back one: further than that a
+    /// face fills the circle with pores, and digital zoom past the sensor is mush.
+    private var maximumZoom: CGFloat {
+        #if os(iOS)
+        guard let device = cameraInput?.device else { return 1 }
+        return min(device.maxAvailableVideoZoomFactor, camera == .front ? 2 : 5)
+        #else
+        return 1
+        #endif
+    }
+
+    /// Sets the zoom, held between 1 and what the lens can honestly give. A Mac's camera has no
+    /// zoom to set, and there it does nothing.
+    public func setZoom(_ factor: CGFloat) {
+        #if os(iOS)
+        guard let device = cameraInput?.device else { return }
+        let clamped = min(max(factor, 1), maximumZoom)
+        guard clamped != zoom else { return }
+        do {
+            try device.lockForConfiguration()
+            device.videoZoomFactor = clamped
+            device.unlockForConfiguration()
+            zoom = clamped
+        } catch {
+            Log.media.error("the camera would not zoom: \(Log.describe(error), privacy: .public)")
+        }
+        #endif
+    }
+
     public func flip() {
         guard state == .ready || isRecording, let session, let cameraInput else { return }
+        // The other lens starts wide; a zoom chosen for one camera is nothing to the other.
+        zoom = 1
 
         let wanted: AVCaptureDevice.Position = camera == .front ? .back : .front
         guard let lens = Self.lens(facing: wanted),
@@ -356,21 +411,30 @@ public final class VideoNoteRecorder: NSObject {
 
         let url = URL.temporaryDirectory.appending(component: "\(UUID().uuidString).mov")
 
-        // The cap arrives from the capture queue, on the frame that crosses sixty seconds. It is
-        // routed back through `stop` and not handled there, because reaching the cap is a
-        // recording that *ended properly* and has to go the same way as one the user let go of.
-        guard let writing = VideoNoteWriter(url: url, audioSettings: settings, onCap: { [weak self] in
-            Task { @MainActor in self?.stop() }
-        }) else {
-            state = .unavailable
-            return
-        }
-
         self.onRecorded = onRecorded
         recordingStarted = .now
         state = .recording(secondsElapsed: 0)
 
-        frames.async { [take] in take.hold(writing) }
+        // The writer is made on the capture queue, where it lives, and not here. Making an
+        // `AVAssetWriter` opens a file and an encoder, and on the main actor that was a frozen
+        // frame at the very moment the camera circle should start to move. The first frames
+        // that arrive before it is ready simply have nothing to hold them, which is a few
+        // milliseconds of nothing at the head of the clip.
+        //
+        // The cap arrives from the capture queue, on the frame that crosses sixty seconds. It is
+        // routed back through `stop` and not handled there, because reaching the cap is a
+        // recording that *ended properly* and has to go the same way as one the user let go of.
+        nonisolated(unsafe) let audioSettings = settings
+        let onCap: @Sendable () -> Void = { [weak self] in
+            Task { @MainActor in self?.stop() }
+        }
+        frames.async { [take, weak self] in
+            guard let writing = VideoNoteWriter(url: url, audioSettings: audioSettings, onCap: onCap) else {
+                Task { @MainActor in self?.writerRefused() }
+                return
+            }
+            take.hold(writing)
+        }
 
         ticker = Task { [weak self] in
             while !Task.isCancelled {
@@ -381,6 +445,14 @@ public final class VideoNoteRecorder: NSObject {
                 }
             }
         }
+    }
+
+    /// The file could not be opened on the capture queue — see `start`. Nothing was recorded, and
+    /// the screen says the camera is unavailable rather than showing a clock over nothing.
+    private func writerRefused() {
+        guard case .recording = state else { return }
+        teardown()
+        state = .unavailable
     }
 
     /// Stops and sends. The cap may also stop us on its own, and lands here.

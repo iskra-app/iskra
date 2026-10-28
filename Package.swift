@@ -16,48 +16,55 @@ let package = Package(
     // Every user-facing string lives in a String Catalog, never in a view. English is
     // the source language; Russian is a full translation, not a fallback.
     defaultLocalization: "en",
-    // OS 26 across the board. This buys Liquid Glass without a single availability
-    // check, and it also matches reality: the Rust SDK's prebuilt macOS objects are
-    // compiled against the 26.x SDK, so linking them into an older deployment target
-    // is something the linker rightly complains about.
-    // Spelled as strings because `.v26` does not exist in this tools version's
-    // PackageDescription yet.
+    // iOS 18 / macOS 15, and neither number is a preference: `Mutex` (Synchronization) is
+    // what sets both, and it is the lowest floor the code reaches without rewriting its
+    // locks. iOS 18 runs on everything iOS 17 does, so going lower would buy no phones.
+    //
+    // Liquid Glass is OS 26 and is reached only through `IskraDesign` (`Glass.swift`),
+    // which draws a material in its place on older systems — a view never checks.
+    //
+    // The linker says ~200 times that SDK objects were "built for newer macOS version
+    // (26.5)". They are the C libraries vendored into the Rust SDK (zstd, the TLS stack),
+    // compiled without a deployment target of their own, and what they call is libc and
+    // pthreads — nothing a macOS 15 lacks. The warning is the label, not the contents.
+    //
+    // Spelled as strings to match the tools version's PackageDescription.
     platforms: [
-        .iOS("26.0"),
-        .macOS("26.0")
+        .iOS("18.0"),
+        .macOS("15.0")
     ],
     products: [
-        .library(name: "IskraCore", targets: ["IskraCore"]),
         .library(name: "IskraDesign", targets: ["IskraDesign"]),
         .library(name: "IskraFeatures", targets: ["IskraFeatures"])
     ],
     dependencies: [
-        .package(url: "https://github.com/matrix-org/matrix-rust-components-swift.git", exact: "26.06.06")
+        // IskraCore lives in a package of its own so that it can be one dynamic framework shared
+        // by the app and both extensions, instead of three copies of the Rust SDK — see
+        // Core/Package.swift. The SDK and secp256k1 are its dependencies, not this package's.
+        .package(path: "Core")
     ],
     targets: [
-        // Matrix, sessions, secrets, media. No SwiftUI here.
-        .target(
-            name: "IskraCore",
-            dependencies: [
-                .product(name: "MatrixRustSDK", package: "matrix-rust-components-swift")
-            ],
-            resources: [.process("Resources")]
-        ),
         // Colours, type, bubbles, glass. No Matrix here.
         .target(name: "IskraDesign"),
         // The screens, which are the only place the two meet.
         .target(
             name: "IskraFeatures",
-            dependencies: ["IskraCore", "IskraDesign"],
+            dependencies: [.product(name: "IskraCore", package: "Core"), "IskraDesign"],
             resources: [.process("Resources")]
         ),
-        .testTarget(name: "IskraCoreTests", dependencies: ["IskraCore"]),
+        // Carries the NIP-44 vector file published with the NIP, so the tunnel's encryption
+        // can be held to somebody else's arithmetic rather than to its own.
+        .testTarget(
+            name: "IskraCoreTests",
+            dependencies: [.product(name: "IskraCore", package: "Core")],
+            resources: [.process("Resources")]
+        ),
         // Carries blobatar's own golden fixture, so the port can be held to it.
         .testTarget(
             name: "IskraDesignTests",
             dependencies: ["IskraDesign"],
             resources: [.process("Resources")]
         ),
-        .testTarget(name: "IskraFeaturesTests", dependencies: ["IskraFeatures", "IskraCore"])
+        .testTarget(name: "IskraFeaturesTests", dependencies: ["IskraFeatures", .product(name: "IskraCore", package: "Core")])
     ]
 )

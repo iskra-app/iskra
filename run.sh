@@ -6,6 +6,12 @@
 #   ./run.sh mac
 #   ./run.sh ios
 #   ./run.sh ios --verify-storage    # extra arguments are passed to the app
+#   ./run.sh --verbose  # the whole of xcodegen's and xcodebuild's output, not just the steps
+#
+# Without --verbose the tools' output goes to .build/logs/<step>.log, and the console gets
+# the steps, how long each took, and — when one fails — its error lines and the log's path.
+# The app's own console (the simulator launch) is printed either way: it is what this script
+# is usually run for.
 #
 # The .xcodeproj is generated and gitignored, so every run regenerates it first.
 #
@@ -18,9 +24,19 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
-BUNDLE_ID="moscow.swag.iskra"
+BUNDLE_ID="wtf.iskra"
 DERIVED="$PWD/.build/xcode"
 PROJECT="Apps/Iskra.xcodeproj"
+LOGS="$PWD/.build/logs"
+
+# --verbose is taken out wherever it stands, so that it can follow the target as naturally
+# as precede it; everything else keeps its place, because after the target it is the app's.
+verbose=0
+args=()
+for arg in "$@"; do
+  if [ "$arg" = "--verbose" ]; then verbose=1; else args+=("$arg"); fi
+done
+set -- ${args[@]+"${args[@]}"}
 
 target="${1:-both}"
 case "$target" in
@@ -31,12 +47,33 @@ app_args=("$@")
 
 say() { printf '\n\033[1;34m==> %s\033[0m\n' "$1"; }
 
+# quietly <log name> <command...>: runs the command with its output in .build/logs/<name>.log,
+# and says only how long it took. On failure it prints the log's error lines — or, when the
+# tool wrote none in the usual form, the log's tail — so the reason is on screen without
+# scrolling through two thousand lines of compiler invocations to find it.
+quietly() {
+  local name="$1"; shift
+  if [ "$verbose" -eq 1 ]; then "$@"; return; fi
+  mkdir -p "$LOGS"
+  local log="$LOGS/$name.log" start=$SECONDS status
+  if "$@" >"$log" 2>&1; then
+    printf '    done in %ds\n' $((SECONDS - start))
+  else
+    status=$?
+    printf '\033[1;31m    failed after %ds:\033[0m\n' $((SECONDS - start)) >&2
+    { grep -E '(^|[: ])(fatal )?error:|\*\* [A-Z ]+ FAILED \*\*' "$log" || tail -n 30 "$log"; } \
+      | awk '!seen[$0]++' | head -n 50 >&2
+    printf '    full log: %s\n' "$log" >&2
+    return "$status"
+  fi
+}
+
 say "Regenerating $PROJECT"
-(cd Apps && xcodegen)
+(cd Apps && quietly xcodegen xcodegen)
 
 build_mac() {
   say "Building for macOS"
-  xcodebuild -project "$PROJECT" -scheme 'Iskra (macOS)' \
+  quietly build-macos xcodebuild -project "$PROJECT" -scheme 'Iskra (macOS)' \
     -destination 'platform=macOS' -derivedDataPath "$DERIVED" build
 
   say "Launching Iskra on the Mac"
@@ -55,7 +92,7 @@ build_ios() {
   say "Building for the iPhone simulator"
   # `generic/platform=iOS Simulator`, not a named device: two simulators can share a name
   # and xcodebuild refuses an ambiguous destination.
-  xcodebuild -project "$PROJECT" -scheme 'Iskra (iOS)' \
+  quietly build-ios-simulator xcodebuild -project "$PROJECT" -scheme 'Iskra (iOS)' \
     -destination 'generic/platform=iOS Simulator' -derivedDataPath "$DERIVED" build
 
   say "Launching Iskra in the simulator"
@@ -86,7 +123,7 @@ build_ios() {
   fi
   # `bootstatus -b` boots it if it is shut down and returns only once it has finished
   # booting; `simctl install` against a half-booted device fails.
-  xcrun simctl bootstatus "$udid" -b
+  quietly simulator-boot xcrun simctl bootstatus "$udid" -b
 
   open -b "$devices_app"
 

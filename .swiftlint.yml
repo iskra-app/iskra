@@ -28,7 +28,7 @@ excluded:
   - .build
   - Apps/Iskra.xcodeproj
   # The blurhash constants are the format's own, not ours to rename.
-  - Sources/IskraCore/Media/Blurhash.swift
+  - Core/Sources/IskraCore/Media/Blurhash.swift
 
 disabled_rules:
   - line_length            # prose wraps where the sentence ends, not at column 120

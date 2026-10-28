@@ -3,7 +3,8 @@ import PhotosUI
 import IskraCore
 import IskraDesign
 
-/// The chat's picture, its name and what it is for — on a screen that exists to change them.
+/// The chat's picture, its name, what it is for and who may walk in — on a screen that exists to
+/// change them.
 ///
 /// Reached by the pencil in the corner of `RoomInfoView`, and only ever shown to somebody the
 /// room actually lets change something: the pencil is not drawn otherwise. Each field appears on
@@ -27,12 +28,17 @@ struct RoomEditView: View {
     @Environment(\.isOffline) private var isOffline
 
     @State private var draftName = ""
+    /// A picked picture being cut into the room's face — see `AvatarCropper`.
+    @State private var cropping: AvatarCropRequest?
     @State private var draftTopic = ""
 
     /// What to call the person at the other end of a personal chat. Kept apart from `draftName`,
     /// which is the room's own name on the server — these are two different names with two
     /// different audiences, and one of them is never sent anywhere.
     @State private var draftLocalName = ""
+
+    /// The address being typed — just its name, between the `#` and the server.
+    @State private var draftAddress = ""
 
     @State private var isChoosingPicture = false
     @State private var pickedPicture: PhotosPickerItem?
@@ -43,6 +49,7 @@ struct RoomEditView: View {
         case name
         case topic
         case localName
+        case address
     }
 
     /// A room, as opposed to a conversation with one person. Asked of what the chat *is* rather
@@ -52,6 +59,16 @@ struct RoomEditView: View {
     var body: some View {
         Form {
             if !isRoom {
+                // Their face at the top, as on every person's page — and what the screen's layout
+                // assumes (`profileScreen()` lifts the form under the bar to meet a portrait). With
+                // nothing there the name field itself went up under the toolbar.
+                Section {
+                    RoomAvatar(name: details.name, url: details.avatarURL,
+                               size: Theme.Size.avatarProfile, seed: details.avatarSeed)
+                        .frame(maxWidth: .infinity)
+                        .padding(.bottom, Theme.Spacing.roomy)
+                        .profileHeaderRow()
+                }
                 contactName
             }
 
@@ -83,14 +100,84 @@ struct RoomEditView: View {
                         .disabled(isOffline)
                 } header: {
                     Text(Strings.Room.about)
-                } footer: {
-                    if isOffline {
-                        Text(Strings.Room.Manage.offline)
+                }
+            }
+
+            // Whether anybody can find the room and walk in. A setting of the room, like its name,
+            // so it lives here with the name rather than on the screen people read.
+            if isRoom, details.permissions.canChangeVisibility {
+                Section {
+                    Toggle(isOn: Binding(get: { details.isPublic },
+                                         set: { open in Task { await details.setPublic(open) } })) {
+                        VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                            Text(Strings.Room.Manage.openToAnyone)
+                            Text(Strings.Room.Manage.openToAnyoneHelp)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .accentControl()
+                    .disabled(isOffline)
+                }
+            }
+
+            if isRoom, details.permissions.canChangeHistory {
+                history
+            }
+
+            if isRoom, details.permissions.canChangeAddress {
+                address
+            }
+
+            // Who runs the room and what everybody else may do — for whoever may change the room's
+            // power levels, which in practice is its administrators. A screen of its own, because
+            // it is two lists, not a field.
+            if isRoom, details.permissions.canChangeRoles {
+                Section {
+                    // A link, not a flag and a `navigationDestination` on this screen: this screen is
+                    // itself pushed by one, and a destination declared on it put the whole window
+                    // into a layout loop on macOS 26 — the room and its info screen rebuilt
+                    // forever. Escape does not reach this one list; that is the price.
+                    NavigationLink {
+                        RoomRulesView(details: details)
+                    } label: {
+                        Label {
+                            Text(Strings.Room.Rules.title)
+                        } icon: {
+                            Image(systemName: "person.badge.key")
+                        }
                     }
                 }
             }
+
+            // The people the room has shut out — a list only somebody who could let them back needs,
+            // and only when there is somebody on it.
+            if isRoom, details.permissions.canBan, !details.banned.isEmpty {
+                Section {
+                    NavigationLink {
+                        BannedMembersView(details: details)
+                    } label: {
+                        LabeledContent {
+                            Text(details.banned.count, format: .number)
+                        } label: {
+                            Label {
+                                Text(Strings.Room.Access.banned)
+                            } icon: {
+                                Image(systemName: "nosign")
+                            }
+                        }
+                    }
+                }
+            }
+
+            if isRoom, isOffline {
+                Section {
+                } footer: {
+                    Text(Strings.Room.Manage.offline)
+                }
+            }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .profileScreen()
         // The fields follow the room, except while somebody is typing in them — a name that
         // arrives from a sync must not overwrite the one being written.
@@ -104,9 +191,16 @@ struct RoomEditView: View {
         .onChange(of: details.localName, initial: true) { _, local in
             if focus != .localName { draftLocalName = local ?? "" }
         }
+        .onChange(of: details.canonicalAlias, initial: true) { _, _ in
+            if focus != .address { draftAddress = details.addressName }
+        }
+        .task {
+            if details.permissions.canChangeAddress { await details.loadDirectory() }
+        }
         .onChange(of: focus) { previous, _ in
             switch previous {
             case .name: Task { await details.rename(to: draftName) }
+            case .address: Task { await commitAddress() }
             case .topic: Task { await details.setTopic(draftTopic) }
             // No `Task`, and no server: the nickname is written to this device and read back by
             // the room list and the header at once. See `LocalNames`.
@@ -125,11 +219,23 @@ struct RoomEditView: View {
             if focus == .name { Task { await details.rename(to: draftName) } }
             if focus == .topic { Task { await details.setTopic(draftTopic) } }
             if focus == .localName { details.renameLocally(to: draftLocalName) }
+            if focus == .address { Task { await commitAddress() } }
         }
         .photosPicker(isPresented: $isChoosingPicture, selection: $pickedPicture, matching: .images)
         .onChange(of: pickedPicture) { _, item in
             guard let item else { return }
-            Task { await setPicture(item) }
+            Task { await choosePicture(item) }
+        }
+        // Cut to a square before it goes anywhere — see `AvatarCropper`. A space's face is a
+        // rounded square, and the outline in the cropper says so.
+        .pageSheet(item: $cropping) { request in
+            AvatarCropper(image: request.image,
+                          shape: details.kind == .space ? .roundedSquare : .circle,
+                          onCancel: { cropping = nil },
+                          onDone: { data in
+                              cropping = nil
+                              Task { await details.setPicture(data, filename: "avatar.jpg") }
+                          })
         }
         .failureAlert(Binding(get: { details.failure }, set: { details.failure = $0 }))
     }
@@ -163,7 +269,7 @@ struct RoomEditView: View {
                     draftLocalName = ""
                     details.renameLocally(to: nil)
                 } label: {
-                    Text(Strings.Room.LocalName.reset)
+                    Text(Strings.Room.LocalName.reset(details.serverName))
                 }
             }
         } header: {
@@ -173,43 +279,103 @@ struct RoomEditView: View {
         }
     }
 
-    /// The picture, and the two things that can be done to it spelled out underneath rather
-    /// than hidden in a menu on the image.
-    private var picture: some View {
-        VStack(spacing: Theme.Spacing.normal) {
-            Avatar(name: details.name, url: details.avatarURL, size: Theme.Size.avatarProfile,
-                   seed: details.kind == .space ? nil : details.avatarSeed)
-
-            VStack(spacing: Theme.Spacing.close) {
-                Button {
-                    isChoosingPicture = true
-                } label: {
-                    Text(Strings.Room.Manage.changePicture)
-                }
-                .disabled(isOffline)
-
-                if details.avatarURL != nil {
-                    Button(role: .destructive) {
-                        Task { await details.removePicture() }
-                    } label: {
-                        Text(Strings.Room.Manage.removePicture)
-                    }
-                    .disabled(isOffline)
-                }
-            }
-            .font(.callout)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, Theme.Spacing.roomy)
+    /// What is offered — and what the room already has, even where it would not be offered: a
+    /// room made open to the world and then shut keeps saying so until somebody changes it.
+    private var historyChoices: [HistoryAccess] {
+        let offered = HistoryAccess.choices(isPublic: details.isPublic)
+        return offered.contains(details.history) ? offered : offered + [details.history]
     }
 
-    private func setPicture(_ item: PhotosPickerItem) async {
+    /// What somebody who comes later may read of what was said before them.
+    private var history: some View {
+        Section {
+            Picker(selection: Binding(get: { details.history },
+                                      set: { choice in Task { await details.setHistory(choice) } })) {
+                ForEach(historyChoices) { choice in
+                    Text(Strings.Room.Access.history(choice)).tag(choice)
+                }
+            } label: {
+                EmptyView()
+            }
+            .pickerStyle(.inline)
+            .labelsHidden()
+            .disabled(isOffline)
+        } header: {
+            Text(Strings.Room.Access.historyHeader)
+        } footer: {
+            Text(Strings.Room.Access.historyFooter)
+        }
+    }
+
+    /// `#name:server`, with only the name to type — the server is ours and not a choice — and, for
+    /// a room anybody may walk into, whether the server lists it.
+    private var address: some View {
+        Section {
+            HStack(spacing: 0) {
+                Text(verbatim: "#")
+                    .foregroundStyle(.secondary)
+                TextField(String(app: Strings.Room.Access.addressPlaceholder), text: $draftAddress)
+                    .focused($focus, equals: .address)
+                    .onSubmit { focus = nil }
+                    .autocorrectionDisabled()
+                    #if !os(macOS)
+                    .textInputAutocapitalization(.never)
+                    #endif
+                Text(verbatim: ":\(details.addressServer)")
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.head)
+            }
+            .disabled(isOffline)
+
+            if details.isPublic, let listed = details.isInDirectory {
+                Toggle(isOn: Binding(get: { listed },
+                                     set: { listed in Task { await details.setInDirectory(listed) } })) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                        Text(Strings.Room.Access.inDirectory)
+                        Text(Strings.Room.Access.inDirectoryHelp(details.addressServer))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .accentControl()
+                .disabled(isOffline)
+            }
+        } header: {
+            Text(Strings.Room.Access.addressHeader)
+        } footer: {
+            Text(Strings.Room.Access.addressFooter)
+        }
+    }
+
+    /// The address, sent — and the field put back to what the room really has, whether that is
+    /// the new address, the old one after a refusal, or the cleaned-up spelling of what was typed.
+    private func commitAddress() async {
+        await details.setAddress(draftAddress)
+        if focus != .address { draftAddress = details.addressName }
+    }
+
+    /// The picture, dimmed under a pencil — tapping it offers to change it or remove it.
+    private var picture: some View {
+        EditableAvatar(name: details.name,
+                       url: details.avatarURL,
+                       shape: details.kind == .space ? .roundedSquare : .circle,
+                       seed: details.kind == .space ? nil : details.avatarSeed,
+                       canRemove: details.avatarURL != nil,
+                       onChange: { isChoosingPicture = true },
+                       onRemove: { Task { await details.removePicture() } })
+            .disabled(isOffline)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, Theme.Spacing.roomy)
+    }
+
+    private func choosePicture(_ item: PhotosPickerItem) async {
         pickedPicture = nil
 
-        guard let data = await imageData(from: item) else {
+        guard let data = await imageData(from: item), let image = AvatarCrop.image(from: data) else {
             details.failure = .picture
             return
         }
-        await details.setPicture(data, filename: "avatar.jpg")
+        cropping = AvatarCropRequest(image: image)
     }
 }

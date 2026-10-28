@@ -21,6 +21,22 @@ enum AvatarShape {
     case roundedSquare
 }
 
+/// The outline of an avatar of either shape, at whatever size it is drawn. A space's corners are
+/// rounded at a fixed fraction of its size, so the square scales with the face and never turns
+/// into a sharp-cornered tile at the large accessibility sizes.
+struct AvatarOutline: Shape {
+    let shape: AvatarShape
+
+    func path(in rect: CGRect) -> Path {
+        switch shape {
+        case .circle:
+            Circle().path(in: rect)
+        case .roundedSquare:
+            RoundedRectangle(cornerRadius: rect.width * 0.28, style: .continuous).path(in: rect)
+        }
+    }
+}
+
 struct Avatar: View {
     let name: String
     /// The `mxc://` URL the homeserver gives out beside the name. Nil for the very many
@@ -49,18 +65,22 @@ struct Avatar: View {
 
     @State private var image: Image?
 
+    /// The face in state, or — before the task has run — the one already in `AvatarCache`.
+    ///
+    /// Read on the first frame and not left to the task, which runs a frame later: a row the
+    /// timeline rebuilt (a window being resized, a scroll back) drew its initials for that frame
+    /// and then the face, and every avatar on screen flickered.
+    private var shown: Image? {
+        if let image { return image }
+        guard let url else { return nil }
+        return AvatarCache.shared.image(for: url)
+    }
+
     /// What is actually drawn, as opposed to what the caller asked for.
     private var diameter: CGFloat { size * textScale }
 
-    /// The outline, as a type-erased `Shape` so the fill and the clip agree without branching twice.
-    /// A space's corners are rounded at a fixed fraction of its size, so the square scales with the
-    /// face and never turns into a sharp-cornered tile at the large accessibility sizes.
-    private var outline: AnyShape {
-        switch shape {
-        case .circle: AnyShape(Circle())
-        case .roundedSquare: AnyShape(RoundedRectangle(cornerRadius: diameter * 0.28, style: .continuous))
-        }
-    }
+    /// The outline, one `Shape` so the fill and the clip agree.
+    private var outline: AvatarOutline { AvatarOutline(shape: shape) }
 
     /// Whether a creature is standing in here, rather than a letter or a photograph.
     ///
@@ -68,7 +88,13 @@ struct Avatar: View {
     /// actually set — which is a thing to ask for and never a default, and is also the only way
     /// to see this feature at all in an account where everybody has a face already.
     private var drawsBlobatar: Bool {
-        blobatarEnabled && seed != nil && (image == nil || forceBlobatar)
+        Self.drawsBlobatar(enabled: blobatarEnabled, forced: forceBlobatar, seed: seed, hasPicture: shown != nil)
+    }
+
+    /// The same decision, for a face drawn somewhere a `.task` never runs — the QR card, which is
+    /// also rendered into a picture to share — so that the card and the avatar cannot disagree.
+    static func drawsBlobatar(enabled: Bool, forced: Bool, seed: String?, hasPicture: Bool) -> Bool {
+        enabled && seed != nil && (!hasPicture || forced)
     }
 
     var body: some View {
@@ -82,7 +108,7 @@ struct Avatar: View {
             .overlay {
                 if drawsBlobatar, let seed {
                     BlobatarView(seed: seed)
-                } else if let image {
+                } else if let image = shown {
                     image
                         .resizable()
                         .scaledToFill()
@@ -95,7 +121,7 @@ struct Avatar: View {
             }
             // The picture arrives late by definition, and swapping it in on the spot makes a
             // room list twitch as it syncs. It fades instead.
-            .animation(.smooth(duration: Theme.Timing.reaction), value: image == nil)
+            .animation(.smooth(duration: Theme.Timing.reaction), value: shown == nil)
             // The flag is part of the identity of this request, not just of how it is drawn:
             // turning it on has to *stop* the fetch, not merely cover up what it returned.
             .task(id: "\(forceBlobatar)\u{0}\(url ?? "")") { await load() }
@@ -131,20 +157,7 @@ struct Avatar: View {
         image = loaded
     }
 
-    private var initials: String {
-        // Only words that start with a letter or a number count. Punctuation never did any work
-        // here, and now it can turn up: a chat renamed on this device is whatever the user typed,
-        // so «Тарас (работа)» was coming out as "Т(" — a bracket drawn at forty points, which
-        // reads as a bug rather than as a name.
-        let words = name.split(separator: " ")
-            .filter { $0.first?.isLetter == true || $0.first?.isNumber == true }
-            .prefix(2)
-
-        let letters = words.compactMap(\.first).map(String.init).joined().uppercased()
-        // A name made entirely of punctuation or emoji still has to draw something, and the first
-        // character of it is the best guess there is.
-        return letters.isEmpty ? String(name.prefix(1)).uppercased() : letters
-    }
+    private var initials: String { Initials.of(name) }
 }
 
 /// The faces already fetched, kept for as long as the app is running.

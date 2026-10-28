@@ -28,6 +28,17 @@ struct MemberProfileView: View {
     let remove: () -> Void
     let block: () -> Void
 
+    /// Whether this page asks "Block?" itself before `block`. From the member list the list asks —
+    /// it is still there under this page when it closes. From a name in the conversation there is
+    /// nothing under this page that would, so it asks here. See `RoomMemberProfile`.
+    var asksBeforeBlocking = false
+
+    /// Whether the room's rungs mean anything here. Not in a personal chat: both people in one are
+    /// made its administrators the moment it is created, and "Administrator" under somebody you
+    /// are simply talking to is a word about the protocol, not about them.
+    var showsRole = true
+    @State private var isConfirmingBlock = false
+
     @Environment(\.isOffline) private var isOffline
     @Environment(\.dismiss) private var dismiss
 
@@ -56,6 +67,9 @@ struct MemberProfileView: View {
     /// visibly does nothing.
     @State private var failure: RoomCreationFailure?
 
+    /// The QR code with this person's link in it — see `QRCodeSheet`.
+    @State private var isShowingCode = false
+
     var body: some View {
         Form {
             Section {
@@ -66,19 +80,30 @@ struct MemberProfileView: View {
                               // The ID is exactly the string somebody opens this screen to copy.
                               isSubtitleSelectable: true)
                     .profileHeaderRow()
+
+                // Telegram's row of buttons under the portrait: the things one does *with* a person,
+                // as tiles, before anything that is said *about* them. In the portrait's section, so
+                // the form's gap between sections does not open up under the name.
+                actionTiles
+                    .profileHeaderRow()
             }
 
-            writeTo
-
+            // And then what is known about them, as one card — Telegram's "username", "bio" block.
+            // The Matrix ID is the one thing here people come to copy, so it is selectable and has a
+            // copy of its own in the menu.
             Section {
-                LabeledContent {
-                    Text(name(of: member.role))
-                } label: {
-                    Label(String(app: Strings.Room.Manage.role), systemImage: "person.badge.key")
+                MatrixIDField(userID: member.id)
+
+                if showsRole {
+                    LabeledContent {
+                        Text(name(of: member.role))
+                    } label: {
+                        Text(Strings.Room.Manage.role)
+                    }
                 }
             }
 
-            if !roles.isEmpty {
+            if showsRole, !roles.isEmpty {
                 Section {
                     Picker(selection: Binding(get: { member.role }, set: setRole)) {
                         ForEach(roles, id: \.self) { role in
@@ -108,8 +133,12 @@ struct MemberProfileView: View {
 
                     if canBlock {
                         Button(role: .destructive) {
-                            block()
-                            dismiss()
+                            if asksBeforeBlocking {
+                                isConfirmingBlock = true
+                            } else {
+                                block()
+                                dismiss()
+                            }
                         } label: {
                             Label(String(app: Strings.Room.Manage.block), systemImage: "hand.raised")
                         }
@@ -121,50 +150,96 @@ struct MemberProfileView: View {
                     }
                 }
             }
+
+            // The account's own block, last — the same button, in the same place, as on a
+            // personal chat's page. See `PersonBlockButton`.
+            if member.id != currentUserID {
+                Section {
+                    PersonBlockButton(userID: member.id, name: member.name)
+                }
+            }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .profileScreen()
         .failureAlert($failure)
+        .pageSheet(isPresented: $isShowingCode) {
+            QRCodeSheet(name: member.name, subtitle: member.id, avatarURL: member.avatarURL,
+                        seed: member.id, link: .user(member.id))
+        }
+        .confirmationDialog(Text(Strings.Room.Manage.blockQuestion(member.name)),
+                            isPresented: $isConfirmingBlock,
+                            titleVisibility: .visible) {
+            Button(String(app: Strings.Room.Manage.block), role: .destructive) {
+                block()
+                dismiss()
+            }
+            Button(String(app: Strings.Room.Manage.cancel), role: .cancel) {}
+        } message: {
+            Text(Strings.Room.Manage.blockHelp)
+        }
         // Once, on the way in. The answer cannot change while this screen is up — nothing here
         // starts a chat except the button below, which sets it itself.
         .task { existingChat = personalChats?.existing(with: member.id) }
     }
 
-    /// The way from a name in a list to a conversation with the person behind it.
+    /// Telegram's tiles: write to them, share them, and the rest behind "More".
     ///
-    /// One button with two labels, because it is one act with two histories: if there is already a
-    /// chat this goes to it, and if there is not this starts one. Saying "write" over a chat that
-    /// exists would promise a blank page and deliver three years of history; saying "go to the
-    /// chat" where there is none would name a place that is not there. The word follows the fact.
-    ///
-    /// Not shown for yourself — you are in the member list of every room you are in, and a
-    /// conversation with yourself is a thing Matrix will happily create and nobody wants. Not shown
-    /// either where nothing could act on it: with no `openRoom` there is no room list behind this
-    /// screen to put a conversation into.
-    @ViewBuilder
-    private var writeTo: some View {
-        if personalChats != nil, openRoom != nil, member.id != currentUserID {
-            Section {
-                Button {
-                    Task { await write() }
-                } label: {
-                    HStack {
-                        Label(String(app: existingChat == nil ? Strings.Room.Manage.write
-                                                              : Strings.Room.Manage.goToChat),
-                              systemImage: existingChat == nil ? "square.and.pencil" : "bubble.left.and.text.bubble.right")
+    /// Each one a rounded card with an icon over a word, in the accent — buttons, not rows, because
+    /// on a person's page these are the reasons to be there.
+    private var actionTiles: some View {
+        // One container for the circles, so neighbouring glass is drawn as glass beside glass and
+        // not as three panes muddling where they nearly touch — see `Glass.swift`.
+        NavigationGlassGroup(spacing: Theme.Spacing.close) {
+            tileRow
+        }
+        .padding(.bottom, Theme.Spacing.close)
+    }
 
-                        if isOpening {
-                            Spacer()
-                            ProgressView()
-                        }
-                    }
+    private var tileRow: some View {
+        HStack(spacing: Theme.Spacing.close) {
+            if canWrite {
+                ProfileActionTile(title: Strings.Profile.message,
+                                  systemImage: existingChat == nil ? "bubble.left.fill" : "bubble.left.and.text.bubble.right.fill",
+                                  isBusy: isOpening) {
+                    Task { await write() }
                 }
                 // Opening a chat that exists is a local act and works with no network at all.
-                // Making one is not: it is `createRoom` on the homeserver, so offline the button
-                // is withheld rather than offered and then refused.
+                // Making one is `createRoom` on the homeserver, so offline it is withheld.
                 .disabled(isOpening || (isOffline && existingChat == nil))
             }
+
+            if let link = Self.link(to: member.id) {
+                ShareLink(item: link) {
+                    ProfileActionTileLabel(title: Strings.Profile.share, systemImage: "square.and.arrow.up")
+                }
+                .buttonStyle(.plain)
+            }
+
+            // The ID is what people open a profile to take away with them — and across a table it is
+            // taken away by a camera, not by a clipboard. It can still be copied: the ID on the card
+            // below is selectable. The destructive acts stay where Telegram keeps them, in red at the
+            // foot of the page, rather than behind a tile.
+            ProfileActionTile(title: Strings.QR.title, systemImage: "qrcode", isBusy: false) {
+                isShowingCode = true
+            }
         }
+    }
+
+    /// Whether "Write" is on offer at all.
+    ///
+    /// One act with two histories: if there is already a chat this goes to it, and if there is not
+    /// this starts one. Not for yourself — you are in the member list of every room you are in, and a
+    /// conversation with yourself is a thing Matrix will happily create and nobody wants. Not either
+    /// where nothing could act on it: with no `openRoom` there is no room list behind this screen to
+    /// put a conversation into.
+    private var canWrite: Bool {
+        personalChats != nil && openRoom != nil && member.id != currentUserID
+    }
+
+    /// The person's address as a link anybody can open — `s.iskra.wtf`, which opens in Iskra and
+    /// offers every other Matrix client from its page, and what Telegram's "share contact" is here.
+    static func link(to userID: String) -> URL? {
+        MatrixLink.user(userID).url
     }
 
     private func write() async {

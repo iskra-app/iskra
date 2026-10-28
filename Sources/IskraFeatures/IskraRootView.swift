@@ -18,6 +18,34 @@ public struct IskraRootView: View {
 
     @State private var selectedRoomID: String?
 
+    /// A link to a person or a room that is being shown — see `matrixLink(in:)`.
+    @State private var openedLink: OpenedLink?
+
+    /// A link that has arrived and has nowhere to be shown yet. The system hands one over the
+    /// moment the app is opened by it, and at that moment there may be no signed-in screen to
+    /// receive it — a cold start is still a spinner. It waits here, on the root, which is always
+    /// there, and the signed-in screen takes it as soon as it exists.
+    @State private var incomingLink: MatrixLink?
+
+    struct OpenedLink: Identifiable {
+        let id = UUID()
+        let link: MatrixLink
+    }
+
+    /// The person or room a URL points at, if it is a Matrix link: `s.iskra.wtf` or `matrix.to`,
+    /// `matrix:`, or this app's own `wtf.iskra://u/…` (the button on the `s.iskra.wtf` page).
+    /// Anything else — a web page, the sign-in callback, the host-less `wtf.iskra:/open` a Live
+    /// Activity sends — is not this function's.
+    static func matrixLink(in url: URL) -> MatrixLink? {
+        let scheme = url.scheme?.lowercased()
+        let host = url.host?.lowercased()
+        let isMatrix = scheme == "matrix"
+            || (scheme == "wtf.iskra" && host != nil)
+            || ((scheme == "https" || scheme == "http") && (host == "matrix.to" || host == MatrixLink.webHost))
+        guard isMatrix else { return nil }
+        return MatrixLink(parsing: url.absoluteString)
+    }
+
     /// The *message* the room is being opened on, when it is being opened on one — searching finds
     /// a message, not a room, and landing at the bottom of the conversation it happens to be in is
     /// not an answer to what was asked.
@@ -39,16 +67,19 @@ public struct IskraRootView: View {
     /// user's. See the wash below, and `AccentTheme.tintsInterfaceKey` for why it is off by default.
     @AppStorage(AccentTheme.tintsInterfaceKey) private var tintsInterface = false
 
-    /// Whether this device has already been shown what the app is — see `Onboarding` and
-    /// `WelcomeView`. False on a fresh install, and the slides are what stands where the sign-in
-    /// screen otherwise would.
-    @AppStorage(Onboarding.welcomeSeenKey) private var hasSeenWelcome = false
+    /// Whether the app is in the demo rather than the real account — see `SignInMockServer`. Watched
+    /// here because switching it swaps the whole session, and this is the view that owns one.
+    @AppStorage(BetaFeatures.mockBackendKey) private var mockBackend = false
 
     /// Read here, *outside* the `NavigationSplitView`, because this is the only place it
     /// means what it appears to mean: the size class of the window. Inside the split view
     /// each column gets the size class its own width earns, so the sidebar reports
     /// `.compact` on a full-screen iPad. See `RoomListView.isSidebar`.
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    /// See the `\.locale` set at the bottom of `body`.
+    @AppStorage(AppLanguage.key) private var language = ""
+    /// What Escape does on a Mac, for the whole window — see `EscapeStack`.
+    @State private var escapeStack = EscapeStack()
 
     /// Whether the app is in front. Read here rather than in a screen, because the sync loop belongs
     /// to the session and not to any one of them — see the `.onChange` below.
@@ -71,15 +102,6 @@ public struct IskraRootView: View {
         /// not open. Somebody who merely reopened the app answered it long ago, and asking again
         /// every morning would be the app forgetting rather than remembering.
         case settingUp(UserSession)
-        /// Signed in, encryption settled, and being shown the first run: a hello by name, the
-        /// colour, and the faces. See `FirstRunView`.
-        ///
-        /// After the encryption question and not before it, although the two colour screens come
-        /// last in the order somebody describes this flow. The reason is that one of these is a
-        /// question about the account and the other two are questions about taste: an app that
-        /// asks what colour it should be and *then* asks whether this device can read your history
-        /// has put the trivial question in front of the one that decides what the app can do.
-        case decorating(UserSession)
         case signedIn(UserSession)
     }
 
@@ -99,18 +121,49 @@ public struct IskraRootView: View {
     /// simply has one button instead of two.
     @State private var devicesURL: URL?
 
-    private let authentication = AuthenticationService()
+    private let authentication = MockSignIn.isRequested ? MockSignIn.authentication : AuthenticationService()
+
+    /// Where `--mock-signin` is listening, once it is. Nil in every ordinary launch.
+    @State private var mockAddress: String?
+
+    /// The accounts on the device, handed down so settings and the chat list can offer to switch —
+    /// see `AccountSwitcher`. The root answers what they ask for.
+    @State private var switcher = AccountSwitcher()
+
+    /// A room to open once the switch to another account has landed: the notification that was
+    /// tapped, the Shortcut that asked, was for somebody who was not on screen.
+    @State private var roomAfterSwitch: String?
+
+    /// Set when one of several accounts was ended by its server and the app went on to another.
+    /// Says whose it was, because the screen now shows somebody else and nothing else would.
+    @State private var endedAccountName: String?
 
     public init() {
         // Every scroll view in the app hands touches on immediately, so the press that lifts a
         // message is the length it says it is — see `ScrollTouches`.
         ScrollTouches.stopDelaying()
 
+        // No hyphenation in the text system's default layout. A messenger's lines are short, and
+        // on a phone the system was breaking ordinary words across them — "сообще-ние" in a
+        // bubble two words wide — which reads as the app mangling what somebody wrote. Words
+        // now wrap whole; only a word too long for a line of its own is broken, where it must.
+        // It is the text system's own preference key (see `NSLayoutManager.usesDefaultHyphenation`),
+        // registered rather than set, so it is a default and never a value written to disk.
+        UserDefaults.standard.register(defaults: ["NSUsesDefaultHyphenation": false])
+
         // The generated-faces switch moved into the App Group's defaults so that the notification
         // extension can read it too — and somebody who turned it on before it moved would
         // otherwise find it back off, and their lock screen disagreeing with their chat list.
         // See `BetaFeatures.faceStore`.
         BetaFeatures.adoptFaceFlags()
+
+        // `Iskra --mock-backend`: straight into the demo, for a device with nobody signed in —
+        // where the switch, being in settings, cannot be reached. Debug builds only, like the demo.
+        #if DEBUG
+        if CommandLine.arguments.contains(BetaFeatures.mockBackendArgument) {
+            UserDefaults.standard.set(true, forKey: BetaFeatures.mockBackendKey)
+        }
+        #endif
     }
 
     public var body: some View {
@@ -121,18 +174,11 @@ public struct IskraRootView: View {
                     .task { await restore() }
 
             case .signedOut:
-                // The slides first, once per device. They are what this app is, said before
-                // anybody is asked to type an address into it — and `hasSeenWelcome` is not
-                // forgotten on sign-out, deliberately: somebody signing out to change accounts,
-                // or signed out by a server that ended their session, has not forgotten what
-                // Iskra is. See `Onboarding`.
-                if hasSeenWelcome {
-                    SignInView { session in
-                        phase = .settingUp(session)
-                    }
-                } else {
-                    WelcomeView { hasSeenWelcome = true }
-                }
+                // Straight to signing in. There used to be slides first, and after signing in a
+                // greeting, a choice of colour and a choice of faces — four screens between a
+                // person and their conversations, all of them answerable later in settings and
+                // none of them anything somebody opened a messenger to do.
+                signIn
 
             case .offline:
                 offlineStart
@@ -144,17 +190,20 @@ public struct IskraRootView: View {
                 // sign-in seam handing over a session it had not started would have made the first
                 // thing the user sees a spinner over an account nobody was syncing.
                 RecoverySetupView(session: session) {
-                    phase = .decorating(session)
+                    phase = .signedIn(session)
                 }
                 .task { try? await session.start() }
 
-            case let .decorating(session):
-                FirstRunView(session: session) {
-                    phase = .signedIn(session)
-                }
-
             case let .signedIn(session):
                 conversations(session)
+                    #if DEBUG && os(macOS)
+                    .task {
+                        guard ResizeProbe.isRequested else { return }
+                        await ResizeProbe.run(rooms: { session.roomList.rooms },
+                                              open: { selectedRoomID = $0 },
+                                              column: infoColumn)
+                    }
+                    #endif
                     // The message menu, above every screen the signed-in app has — see
                     // `MessageMenu`. It lifts a message out of the conversation and darkens
                     // everything else, and "everything else" is the toolbar above the timeline
@@ -169,14 +218,26 @@ public struct IskraRootView: View {
                     // contents. Put on last, the lifted copy would be the only bubble in the app
                     // with no media loader: a photograph would lift off the page as an empty
                     // rectangle, and only ever in the menu.
+                    // The chat peek, for the same two reasons and on the same side of the
+                    // environment — see `ChatPeek`. Inside the message menu's layer rather than
+                    // over it, which changes nothing today: the card hands its messages no menu.
+                    .chatPeekLayer()
                     .messageMenuLayer()
                     .environment(\.mediaLoader, session.media())
                     // Handed down so a bubble can tell a mention of *you* from a mention of anyone
                     // else, without being given the session to do it.
                     .environment(\.currentUserID, session.userID)
                     .environment(\.currentUserName, session.displayName)
+                    .environment(\.currentUserAvatarURL, session.avatarURL)
                     .environment(\.blockStore, session.blocked)
+                    .environment(\.stickers, session.stickers)
+                    .environment(\.accountSwitcher, switcher)
+                    .task(id: session.sessionID) { reloadAccounts(session) }
+                    // The name and the picture are written down for the switcher as they arrive.
+                    .onChange(of: session.displayName) { reloadAccounts(session) }
+                    .onChange(of: session.avatarURL) { reloadAccounts(session) }
                     .environment(\.forwarding, Forwarding(session: session))
+                    .environment(\.liveLocation, session.liveLocation)
                     // Writing to somebody whose name was pressed in a room's member list, and the
                     // one wire that lets a screen several pushes deep in the conversation column
                     // change which conversation that column is showing. See `PersonalChats`.
@@ -185,6 +246,50 @@ public struct IskraRootView: View {
                         selectedRoomID = roomID
                         selectedEventID = nil
                     })
+                    // A link to a person or a room opens here, wherever it came from: tapped in a
+                    // message (`matrix.to`, `s.iskra.wtf`), or handed over by the system — `matrix:`
+                    // and `wtf.iskra://`, the schemes this app claims, and `s.iskra.wtf` as a
+                    // Universal Link, which SwiftUI delivers to `onOpenURL` as well (see
+                    // `Apps/project.yml`). It opens as a page about them, never as a jump into a
+                    // room: see `MatrixLinkView`.
+                    .environment(\.openURL, OpenURLAction { url in
+                        guard let link = Self.matrixLink(in: url) else { return .systemAction }
+                        openedLink = OpenedLink(link: link)
+                        return .handled
+                    })
+                    .onOpenURL { url in
+                        // A tapped Live Activity asks for its chat — and, like a widget's face,
+                        // for the account it belongs to. The same way in as Shortcuts. Asked first:
+                        // it shares the `wtf.iskra` scheme with the links below.
+                        if let request = ChatDirectory.OpenRequest(url: url) {
+                            ChatDirectory.requestOpen(roomID: request.roomID, accountID: request.accountID)
+                            Task { await handleIntents(session) }
+                            return
+                        }
+                    }
+                    // Taken from the root's `incomingLink`, which is where a link lands first.
+                    .onChange(of: incomingLink, initial: true) { _, link in
+                        guard let link else { return }
+                        incomingLink = nil
+                        openedLink = OpenedLink(link: link)
+                    }
+                    .pageSheet(item: $openedLink) { opened in
+                        NavigationStack {
+                            MatrixLinkView(session: session, link: opened.link) { roomID in
+                                selectedRoomID = roomID
+                                selectedEventID = nil
+                                openedLink = nil
+                            }
+                            .toolbar {
+                                ToolbarItem(placement: .cancellationAction) {
+                                    Button(role: .leaving) { openedLink = nil } label: {
+                                        Label(String(app: Strings.Recovery.close), systemImage: "xmark")
+                                            .labelStyle(.iconOnly)
+                                    }
+                                }
+                            }
+                        }
+                    }
                     // Notifications are asked for *here*, and the timing is the whole of the
                     // decision. On the sign-in screen the question is about nothing — no account,
                     // no chats, nothing that could notify anybody — and it gets the answer a
@@ -192,6 +297,9 @@ public struct IskraRootView: View {
                     // conversations on the screen behind the prompt, and the question means what
                     // it says.
                     .task {
+                        // Not for the demo. A pusher registered for a made-up account would be a
+                        // pusher pointing this phone's token at a server that does not exist.
+                        guard !session.isDemo else { return }
                         PushPermission.shared.signedIn(session)
                         await PushPermission.shared.request()
                         // And ask the server to tell us about reactions, which by default it will
@@ -225,14 +333,25 @@ public struct IskraRootView: View {
                     // every message it sends waits in a queue for a server that will not have it.
                     .onChange(of: session.wasEndedElsewhere) { _, wasEnded in
                         guard wasEnded else { return }
-                        AppSettings.forget()
-                        // Somebody else's unread count has no business staying on the icon of an
-                        // app nobody is signed into.
-                        AppBadge.clear()
+                        accountLeft(session)
                         selectedRoomID = nil
                         selectedEventID = nil
-                        phase = .signedOut
-                        wasSignedOutRemotely = true
+                        // One of several: the app goes on to the next account and says whose
+                        // session it was. The last one: back to sign-in, as before.
+                        //
+                        // The next one is named here rather than left to the list, because the
+                        // session is still on its way out of the Keychain as this runs — asked now,
+                        // the list would still hold it, and the app would try to open it again.
+                        let next = authentication.accounts().first { $0.sessionID != session.sessionID }
+                        if let next {
+                            authentication.setActiveAccount(next.sessionID)
+                            endedAccountName = session.displayName
+                            restart()
+                        } else {
+                            nobodyLeft()
+                            phase = .signedOut
+                            wasSignedOutRemotely = true
+                        }
                     }
                     // A device of this user's is signing in and asking to be trusted. It is put up
                     // here, at the root, rather than on the encryption screen where the *outgoing*
@@ -244,7 +363,7 @@ public struct IskraRootView: View {
                     // The sheet answers for itself: it cannot be swiped away while the question is
                     // on it, and it takes itself down when the store has nothing left to say. See
                     // `VerificationSheet`.
-                    .sheet(isPresented: Binding(get: { session.verification.incoming != nil },
+                    .pageSheet(isPresented: Binding(get: { session.verification.incoming != nil },
                                                 set: { if !$0 { session.verification.reset() } })) {
                         VerificationSheet(verification: session.verification,
                                           onDone: { session.verification.reset() },
@@ -277,17 +396,45 @@ public struct IskraRootView: View {
                     // Keep the App-Intents chat directory in step, so Siri and Shortcuts can list the
                     // conversations without waking a client — see `ChatDirectory`.
                     .onChange(of: session.roomList.rooms, initial: true) { _, rooms in
-                        writeChatDirectory(rooms)
+                        // Siri's list is the real account's. Made-up chats in it would outlive
+                        // the demo and send somebody's dictated message nowhere.
+                        if !session.isDemo { writeChatDirectory(rooms, of: session) }
                         // And the number on the icon, from the same list and at the same moment,
                         // so that reading a chat takes the count down without anybody asking it to.
-                        AppBadge.update(for: rooms)
+                        // This account's number; the icon adds everybody's — see `UnreadCounts`.
+                        AppBadge.update(for: rooms, account: session.isDemo ? nil : session.sessionID)
+                        switcher.refreshUnread()
+                    }
+                    // New pictures landed for the share sheet and the widget: written into the
+                    // directory now, rather than with whatever the next sync happens to bring.
+                    .onChange(of: session.chatFaces.revision) {
+                        if !session.isDemo { writeChatDirectory(session.roomList.rooms, of: session) }
                     }
                     // Act on what an intent asked for: open the chat it launched us for, and send any
                     // messages it left in the outbox. Once on appear (a cold launch by an intent), and
                     // again whenever we come back to the front.
                     .task { await handleIntents(session) }
+                    // A widget's face or a shortcut asked for a chat — heard whether it was asked
+                    // before or after the app came to the front. See `OpenRequestSignal`.
+                    .task {
+                        for await _ in OpenRequestSignal.announcements() {
+                            await handleIntents(session)
+                        }
+                    }
+                    #if os(iOS)
+                    // The live location activity and a long upload's background time follow this
+                    // session from here on, pocket included — see `LiveLocationActivity` and
+                    // `MediaSendBackground`.
+                    .task(id: session.sessionID) {
+                        LiveLocationActivity.attach(session)
+                        MediaSendBackground.shared.attach(session)
+                    }
+                    #endif
                     .onChange(of: scenePhase) { _, phase in
                         if phase == .active { Task { await handleIntents(session) } }
+                    }
+                    .onChange(of: appLock.isLocked) { _, locked in
+                        if !locked { Task { await handleIntents(session) } }
                     }
                     // A tapped notification asked for a conversation. It does not go through the
                     // intents slot above: that one lives in the shared defaults because Shortcuts
@@ -306,15 +453,86 @@ public struct IskraRootView: View {
                     // already on screen.
                     .onChange(of: selectedRoomID, initial: true) { _, roomID in
                         PushRouter.shared.visibleRoomID = roomID
+                        PushRouter.shared.visibleAccountID = session.sessionID
+                        // Opening a chat clears its notifications off the device — see
+                        // `DeliveredNotifications`.
+                        if let roomID { DeliveredNotifications.clear(roomID: roomID) }
                     }
                     .onChange(of: scenePhase) { _, phase in
                         // Nothing is "on screen" when the app is not. Without this, going straight
                         // from a conversation into a pocket silences every push from it.
                         PushRouter.shared.visibleRoomID = phase == .active ? selectedRoomID : nil
+                        // And coming back to a chat that was left open is opening it again: what
+                        // arrived for it in the meantime has now been seen.
+                        if phase == .active, let roomID = selectedRoomID {
+                            DeliveredNotifications.clear(roomID: roomID)
+                        }
                     }
+                    // One account, one tree. Without this, signing out of one of several came back
+                    // to the settings screen it was pressed on, spinner and all: `restart()` goes to
+                    // `.starting`, the next account is restored from disk before the animation below
+                    // has finished taking the old tree away, and SwiftUI brings a view that is
+                    // still on its way out *back*, `@State` included — the pushed settings and
+                    // `isSigningOut` with them. Adding an account did the same, and every `.task`
+                    // above without an `id` went on holding the session that had left.
+                    .id(session.sessionID)
             }
         }
         .animation(.smooth, value: isSignedIn)
+        // A link to a person or a room is received here, above every phase, and not inside the
+        // signed-in screen: the camera's Universal Link arrives as the app launches, before that
+        // screen exists, and a handler that is not there yet is a link nobody hears. A Universal
+        // Link is also delivered as a web user activity, which not every launch path turns into
+        // `onOpenURL`, so both are listened to. The Live Activity's request is the signed-in
+        // screen's own and is left to it.
+        .onOpenURL { url in
+            guard ChatDirectory.OpenRequest(url: url) == nil, let link = Self.matrixLink(in: url) else { return }
+            incomingLink = link
+        }
+        .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+            guard let url = activity.webpageURL, let link = Self.matrixLink(in: url) else { return }
+            incomingLink = link
+        }
+        // The demo switch, flipped in settings, from inside the very session it replaces.
+        .onChange(of: mockBackend) { _, _ in
+            Task { await switchBackend() }
+        }
+        // The bridge, switched on or off or pointed somewhere else, from Settings → Connection. A
+        // client cannot be re-pointed live, so the session is closed and restored again — the same
+        // road as switching accounts, which is what used to need a relaunch.
+        .onReceive(NotificationCenter.default.publisher(for: TunnelSettings.changed)) { _ in
+            Task { await reconnect() }
+        }
+        // Another account, asked for from settings or from the menu on the avatar.
+        .onChange(of: switcher.requestedAccount) { _, id in
+            guard let id else { return }
+            switcher.requestedAccount = nil
+            Task { await switchAccount(to: id) }
+        }
+        // Signing out of an account that is not on screen — swiped away in settings.
+        .onChange(of: switcher.requestedSignOut) { _, id in
+            guard let id else { return }
+            switcher.requestedSignOut = nil
+            Task { await signOutInBackground(id) }
+        }
+        // "Add account": the sign-in screen over the app, with the account underneath still open
+        // until the new one is in.
+        .pageSheet(isPresented: Binding(get: { switcher.isAddingAccount },
+                                    set: { switcher.isAddingAccount = $0 }),
+               onDismiss: { Task { await authentication.cancelSignIn() } },
+               content: {
+            AddAccountView(authentication: authentication,
+                           address: MockSignIn.isRequested ? mockAddress ?? "" : "",
+                           onSignedIn: { added($0) },
+                           onCancel: { switcher.isAddingAccount = false })
+        })
+        .alert(Text(Strings.Session.endedTitle),
+               isPresented: Binding(get: { endedAccountName != nil },
+                                    set: { if !$0 { endedAccountName = nil } })) {
+            Button(String(app: Strings.Problem.ok), role: .cancel) {}
+        } message: {
+            Text(Strings.Session.endedOtherMessage(endedAccountName ?? ""))
+        }
         .alert(Text(Strings.Session.endedTitle), isPresented: $wasSignedOutRemotely) {
             Button(String(app: Strings.Problem.ok), role: .cancel) {}
         } message: {
@@ -356,30 +574,21 @@ public struct IskraRootView: View {
         }
         .animation(.smooth(duration: Theme.Timing.reaction), value: tintsInterface)
         .environment(\.appLock, appLock)
+        // The widget hides its faces behind the lock, so turning the lock on or off is something it
+        // has to be told about at once — not with the next message.
+        .onChange(of: appLock.isEnabled) {
+            WidgetRefresh.directoryChanged()
+        }
         // The cover the app wears on its way out, so that the picture iOS keeps for the app switcher
-        // is a padlock and not somebody's conversation — see `PrivacyCover`.
+        // is a padlock and not somebody's conversation — see `PrivacyCover` — and the shield,
+        // above everything: the tint, a sheet, a media viewer. On iOS both live in a window of their
+        // own, because an overlay here sits *under* every sheet — see `lockShield`.
         //
-        // Deliberately unanimated, and that is the whole trick. The system photographs the app as it
-        // leaves; a cover that fades in over a quarter of a second is photographed half-transparent,
-        // with the conversation legible straight through it. `nil` against the scene phase says "no
-        // animation for this one change" — scoped to the phase rather than a blanket `.transaction`,
-        // which would strip the animation from every child in the app.
-        .overlay {
-            if PrivacyCover.isNeeded(lockEnabled: appLock.isEnabled, phase: scenePhase) {
-                PrivacyCover()
-            }
-        }
-        .animation(nil, value: scenePhase)
-        // The shield, above everything — the tint, a sheet, a media viewer — because a lock that any
-        // screen could sit on top of is not a lock. It is here, at the very root, for the same reason
-        // the colour scheme is.
-        .overlay {
-            if appLock.isLocked {
-                LockScreen(appLock: appLock)
-                    .transition(.opacity)
-            }
-        }
-        .animation(.smooth(duration: Theme.Timing.chrome), value: appLock.isLocked)
+        // The cover is deliberately unanimated, and that is the whole trick. The system photographs
+        // the app as it leaves; a cover that fades in is photographed half-transparent, with the
+        // conversation legible straight through it.
+        .lockShield(appLock: appLock, phase: scenePhase, accent: accent,
+                    colorScheme: appearance.colorScheme)
         // Driving the lock is separate from the sync teardown below: the lock cares about every trip
         // away, signed in or not, and on the Mac as well as the phone.
         .onChange(of: scenePhase) { _, phase in
@@ -392,11 +601,30 @@ public struct IskraRootView: View {
             default: break
             }
         }
+        #if os(macOS)
+        // A Mac app switched away from goes `.inactive` and stays there; `.background` takes a
+        // hidden or minimised window. So "lock immediately" locked only at launch. Leaving the app
+        // is what the Mac calls resigning active.
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
+            appLock.enteredBackground()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            appLock.enteredForeground()
+        }
+        #endif
         .environment(\.accent, accent)
+        // The language picked on a Mac, at once: `Text` resolves in the environment's locale, and
+        // `language` (stored, observed) is what runs this body again when it changes. See
+        // `AppLanguage`.
+        .environment(\.locale, AppLanguage.locale)
         // And light or dark, if the user asked for either. Applied at the root, above everything,
         // because a colour scheme is not a property of a screen — a sheet or a media viewer left
         // out of it would be the one place the app changed its mind about what time of day it is.
         .preferredColorScheme(appearance.colorScheme)
+        // Reduce Motion, for the whole app at once — see `respectsReduceMotion`.
+        .respectsReduceMotion()
+        // The window's one Escape key — see `EscapeStack`.
+        .escapeKeyRoot(escapeStack)
     }
 
     private var isSignedIn: Bool {
@@ -405,23 +633,49 @@ public struct IskraRootView: View {
     }
 
     /// Writes the joined conversations (not spaces, not invitations) into the shared directory the
-    /// App Intents read. Names only — nothing an intent needs to fetch.
-    private func writeChatDirectory(_ rooms: [RoomSummary]) {
-        let entries = rooms
-            .filter { !$0.isInvitation && !$0.isSpace }
-            .map { ChatDirectoryEntry(id: $0.id, name: $0.name) }
-        ChatDirectory.writeDirectory(entries)
+    /// App Intents, the share sheet and the widget read — see `UserSession.chatDirectoryEntries`.
+    private func writeChatDirectory(_ rooms: [RoomSummary], of session: UserSession) {
+        // This account's part of the list; everybody else's stays as it was.
+        ChatDirectory.writeDirectory(session.chatDirectoryEntries(for: rooms), account: session.sessionID)
+        // And whose list is live: the share sheet's "active account" is this one.
+        ChatDirectory.recordActiveAccount(session.sessionID)
+        // The widget, only when what it draws has changed — see `WidgetRefresh`.
+        WidgetRefresh.directoryChanged()
     }
 
     /// Acts on what a Shortcuts intent left behind: opens the chat it asked for, and sends the
     /// messages it queued. Draining is one-shot — the reads clear the shared slots — so this is safe
     /// to call on every foreground.
     private func handleIntents(_ session: UserSession) async {
-        if let roomID = ChatDirectory.takePendingOpen() {
-            selectedRoomID = roomID
+        // What Shortcuts left in the outbox is for the real account, and waits for it — and for the
+        // owner. Behind the shield nothing is sent and no chat is opened: this used to send what
+        // anybody holding the phone had queued through Shortcuts or the share sheet the moment
+        // the app came to the front, lock or no lock. The unlock runs it again.
+        guard !session.isDemo, !appLock.isLocked else { return }
+        if let request = ChatDirectory.takePendingOpenRequest() {
+            // A chat of another account's: that account first, and the chat once it is open. The
+            // outbox waits for it too, and the second pass through here sends it.
+            if let account = request.accountID, account != session.sessionID, isOnDevice(account) {
+                await switchAccount(to: account, thenOpen: request.roomID)
+                return
+            }
+            selectedRoomID = request.roomID
         }
-        for item in ChatDirectory.drainOutbox() {
-            await session.sendText(item.text, toRoomID: item.roomID)
+        // Only what this account sends. What was shared into another account's chat waits for
+        // that account — and is the reason to open it, below.
+        // What could not go yet — a chat that would not open, offline — goes back in, and is tried
+        // again the next time the app comes to the front. See `UserSession.sendQueued`.
+        for item in ChatDirectory.drainOutbox(forAccount: session.sessionID) {
+            if let waiting = await session.sendQueued(item) {
+                ChatDirectory.enqueue(waiting)
+            }
+        }
+
+        // Somebody shared into a chat of an account that is not open, and came back to the app:
+        // open that account, which is what sends it. Nothing goes out from the wrong person, and
+        // nothing sits in the outbox waiting for somebody who never happens to be opened.
+        if let waiting = ChatDirectory.accountsWaitingToSend().first(where: { $0 != session.sessionID && isOnDevice($0) }) {
+            await switchAccount(to: waiting)
         }
     }
 
@@ -431,8 +685,18 @@ public struct IskraRootView: View {
     /// the reader has gone somewhere else themselves — does not drag them back to a chat they have
     /// already left.
     private func openRoomAskedForByANotification() {
-        guard let roomID = PushRouter.shared.takeRoomToOpen() else { return }
-        selectedRoomID = roomID
+        guard let request = PushRouter.shared.takeRequest() else { return }
+
+        // A push for another account on the device: switch to it, then open the room. Not from the
+        // demo, which is not one of the device's accounts and is left by its own switch.
+        if let account = request.accountID,
+           let session = currentSession, !session.isDemo,
+           account != session.sessionID, isOnDevice(account) {
+            Task { await switchAccount(to: account, thenOpen: request.roomID) }
+            return
+        }
+
+        selectedRoomID = request.roomID
         selectedEventID = nil
     }
 
@@ -444,6 +708,15 @@ public struct IskraRootView: View {
     /// and deletes the encrypted store — and while it ran, the screen it was pressed on sat there
     /// looking untouched. So it got pressed again. Now the caller can await it and say so.
     private func signOut(_ session: UserSession) async {
+        // Signing out of the demo is leaving it. Nothing below applies: there is no pusher to
+        // take down, and `AppSettings.forget()` would take the real account's preferences with it.
+        // Turning the switch off is what `switchBackend` answers, and it goes back to the account
+        // that was there before — or to the sign-in screen, if there was none.
+        if session.isDemo {
+            mockBackend = false
+            return
+        }
+
         // Before the session goes, because telling the server to stop pushing here is a request
         // that needs the session to make it. Without it the homeserver goes on pushing this
         // account's messages to a phone that has been signed out of: the extension wakes, finds
@@ -458,6 +731,7 @@ public struct IskraRootView: View {
         IncomingCallCenter.shared.signedOut()
 
         await session.signOut()
+        accountLeft(session)
 
         // And any document handed to another application on the way. `SessionStore.clear` knows
         // about the encrypted store and nothing about a PDF copied out of it in the clear so
@@ -467,11 +741,116 @@ public struct IskraRootView: View {
         FileOpener.sweep()
         #endif
 
-        AppSettings.forget()
-        AppBadge.clear()
         selectedRoomID = nil
         selectedEventID = nil
+
+        // Somebody else is still signed in: the app opens them, and keeps looking the way it did.
+        guard authentication.accounts().isEmpty else {
+            restart()
+            return
+        }
+        nobodyLeft()
         phase = .signedOut
+    }
+
+    /// What goes with one account when it leaves the device, whoever else stays: its chats from
+    /// Siri's list and the share sheet, and its number from the icon.
+    private func accountLeft(_ session: UserSession) {
+        guard !session.isDemo else { return }
+        ChatDirectory.forget(account: session.sessionID)
+        KnownDevices().forget(account: session.sessionID)
+        AppBadge.forget(account: session.sessionID)
+        DeliveredNotifications.clear(account: session.sessionID)
+        CommunicationNotification.forget(account: session.sessionID)
+    }
+
+    /// The last account has gone. What the app remembers about how it looks goes too — see
+    /// `AppSettings` — because the next person to sign in on this device is somebody else.
+    private func nobodyLeft() {
+        AppSettings.forget()
+        // Somebody else's unread count has no business staying on the icon of an app nobody is
+        // signed into.
+        AppBadge.clear()
+        // Not under `--mock-signin`: its accounts are scratch ones, and "the last of them left"
+        // says nothing about the real account the banners and suggestions belong to.
+        if !MockSignIn.isRequested {
+            DeliveredNotifications.clear(account: nil)
+            CommunicationNotification.forget(account: nil)
+        }
+    }
+
+    // MARK: - Accounts
+
+    private func isOnDevice(_ account: String) -> Bool {
+        authentication.accounts().contains { $0.sessionID == account }
+    }
+
+    private func reloadAccounts(_ session: UserSession) {
+        switcher.reload(accounts: authentication.accounts(),
+                        activeID: session.sessionID,
+                        isAvailable: !session.isDemo)
+    }
+
+    /// Puts another account on screen.
+    ///
+    /// The one on screen is *closed*, not signed out — exactly what leaving the demo does — and the
+    /// app starts over on the other, which `restore()` opens because it is now the active one. Its
+    /// store is on the disk and its tokens are in the Keychain, so this is a launch without the
+    /// launch: no network is needed to see its chats.
+    private func switchAccount(to id: String, thenOpen roomID: String? = nil) async {
+        guard let current = currentSession, current.sessionID != id else {
+            if let roomID {
+                selectedRoomID = roomID
+                selectedEventID = nil
+            }
+            return
+        }
+        await current.close()
+        authentication.setActiveAccount(id)
+        roomAfterSwitch = roomID
+        restart()
+    }
+
+    /// Signs out of an account that is closed, and leaves the one on screen exactly where it is.
+    ///
+    /// Signing out is something only a live client can do — the server is asked to end the
+    /// session, and to stop pushing — so the account is opened for the length of it, without sync,
+    /// beside the one on screen. Two clients at once is nothing new: the notification extension
+    /// does it every time a push arrives. If it will not open — no network, a session the server
+    /// has already ended — what is on this device goes anyway: the keys, the tokens and the store
+    /// are what signing out *means* here, and a device the server still lists is the lesser harm.
+    private func signOutInBackground(_ id: String) async {
+        defer { switcher.signingOut.remove(id) }
+        guard let current = currentSession, current.sessionID != id, isOnDevice(id) else { return }
+
+        if let other = try? await authentication.restoreSession(id: id) {
+            await PushPermission.shared.signingOutInBackground(other)
+            await other.signOut()
+            accountLeft(other)
+        } else {
+            await authentication.forgetSession(id)
+            ChatDirectory.forget(account: id)
+            KnownDevices().forget(account: id)
+            AppBadge.forget(account: id)
+            DeliveredNotifications.clear(account: id)
+            CommunicationNotification.forget(account: id)
+        }
+
+        // Opening the other account pointed the nicknames at it — see `UserSession.init`. They
+        // belong to the one on screen.
+        LocalNames.use(account: current.sessionID)
+        reloadAccounts(current)
+    }
+
+    /// Signed in to one more account from the sheet. It becomes the account on screen; the one that
+    /// was there is closed and stays signed in, a tap away.
+    private func added(_ session: UserSession) {
+        switcher.isAddingAccount = false
+        let previous = currentSession
+        selectedRoomID = nil
+        selectedEventID = nil
+        phase = .settingUp(session)
+        Task { await previous?.close() }
     }
 
     /// The launch that could not reach the server.
@@ -506,6 +885,47 @@ public struct IskraRootView: View {
     /// `restore()` again — which builds a fresh client from the session that is still, untouched,
     /// in the Keychain. Nobody is signed out; the account, the keys and the messages on the server
     /// are exactly where they were, and what was thrown away downloads again.
+    /// The session on screen, whichever phase it is in.
+    private var currentSession: UserSession? {
+        switch phase {
+        case let .settingUp(session), let .signedIn(session): session
+        case .starting, .signedOut, .offline: nil
+        }
+    }
+
+    /// Between the demo and the real account, in whichever direction the switch went.
+    ///
+    /// The session going away is *closed*, not signed out: whichever of the two it is, it is still
+    /// there to come back to. Then the app starts over, and `restore()` reads the switch.
+    private func switchBackend() async {
+        // Already starting: `restore()` has not got as far as reading the switch, or is the one
+        // that just turned it off because the demo would not start.
+        if case .starting = phase { return }
+        await currentSession?.close()
+        restart()
+    }
+
+    /// The same account again, over the connection the settings now describe.
+    ///
+    /// The chat that was open stays open: this is a change of route, not of anything the person is
+    /// looking at. On the offline screen — the bridge would not come up, say — it is simply another
+    /// try, which is exactly what somebody who has just fixed the bridge's address wants.
+    private func reconnect() async {
+        switch phase {
+        case .signedIn(let session):
+            // The demo never went through a tunnel; there is nothing to rebuild.
+            guard !session.isDemo else { return }
+            let room = selectedRoomID
+            await session.close()
+            restart()
+            roomAfterSwitch = room
+        case .offline:
+            restart()
+        default:
+            break
+        }
+    }
+
     private func restart() {
         selectedRoomID = nil
         selectedEventID = nil
@@ -523,6 +943,11 @@ public struct IskraRootView: View {
         horizontalSizeClass == .regular
         #endif
     }
+
+    #if os(macOS)
+    /// The chat's info, as a column on the right of the window — see `InfoColumn`.
+    @State private var infoColumn = InfoColumn()
+    #endif
 
     private func conversations(_ session: UserSession) -> some View {
         NavigationSplitView {
@@ -543,9 +968,27 @@ public struct IskraRootView: View {
                 // `SettingsView` — see `SettingsView.onClose`. The width stays because a
                 // column that resizes itself when you open settings is its own small bug.
                 // See `Theme.Size.sidebar*`.
+                #if os(macOS)
+                // On a Mac, one width and no dragging it — see `Theme.Size.sideColumn`.
+                .navigationSplitViewColumnWidth(Theme.Size.sideColumn)
+                // The window's least height, held by the list, which is always there — whatever the
+                // other column shows (a chat, settings, a thread). See `Theme.Size.columnMinimumHeight`.
+                .frame(minHeight: Theme.Size.columnMinimumHeight)
+                #else
                 .navigationSplitViewColumnWidth(min: Theme.Size.sidebarMinimum,
                                                 ideal: Theme.Size.sidebarIdeal,
                                                 max: Theme.Size.sidebarMaximum)
+                #endif
+                #if os(macOS)
+                // The seam between the list and the conversation: the same line as between two chats
+                // in the list — its colour and its thickness — so the window has one kind of rule.
+                .overlay(alignment: .trailing) {
+                    Rectangle()
+                        .fill(.separator)
+                        .frame(width: Theme.Border.hairline)
+                        .ignoresSafeArea()
+                }
+                #endif
         } detail: {
             // The stack is load-bearing, and its absence fails in a way that looks like
             // nothing at all: a `navigationDestination` declared inside a split view's
@@ -560,29 +1003,100 @@ public struct IskraRootView: View {
                     // would leave the reader pushed onto a conversation that no longer
                     // exists.
                     RoomView(timeline: timeline,
+                             identityChanges: session.identityChanges(forRoomID: roomID),
                              makeDetails: { session.details(forRoomID: roomID) },
+                             makeThread: { session.threadTimeline(forRoomID: roomID, rootEventID: $0) },
                              openAt: $selectedEventID,
                              onLeave: { selectedRoomID = nil },
+                             onClose: { selectedRoomID = nil },
                              makeCall: { session.call(forRoomID: roomID) },
                              mayCall: { await session.canStartCall(inRoomID: roomID) })
+                        #if os(macOS)
+                        // A chat stops somewhere: squeezed with nothing to hold it, it became a
+                        // column of one word a line. On the chat and not on the column around it —
+                        // see `Theme.Size.conversationMinimum`.
+                        .frame(minWidth: infoColumn.conversationMinimumWidth)
+                        #endif
                         // Rebuilds the view when the user picks a different room, rather
                         // than reusing one room's state for another's messages.
                         .id(roomID)
                 } else {
-                    ContentUnavailableView(String(app: Strings.Room.noRoomSelectedTitle),
-                                           systemImage: "bubble.left.and.bubble.right",
-                                           description: Text(Strings.Room.noRoomSelectedMessage))
+                    // The spark and nothing else, as on the web: an empty column needs no
+                    // instructions — the list is right beside it. The words stay for VoiceOver.
+                    BlinkingSpark()
+                        #if os(macOS)
+                        // As narrow as a chat can be and no narrower — see
+                        // `Theme.Size.conversationMinimum`. On the spark and not on the column: a
+                        // minimum put on the whole column was re-measured from the chat inside it
+                        // on every frame of a resize, and AppKit ended the app for it.
+                        .frame(minWidth: Theme.Size.windowMinimum - Theme.Size.sideColumn,
+                               maxWidth: .infinity,
+                               maxHeight: .infinity)
+                        #else
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        #endif
+                        .accessibilityElement()
+                        .accessibilityLabel(Text(Strings.Room.noRoomSelectedTitle))
+                        .accessibilityHint(Text(Strings.Room.noRoomSelectedMessage))
+                        #if os(macOS)
+                        // No title bar over the empty column either, as over a conversation.
+                        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+                        .toolbar(removing: .title)
+                        #endif
                 }
             }
+            #if os(macOS)
+            // The phone's page under the conversation and under the empty column — see `Color.page`.
+            // A chat with no wallpaper is transparent, and stood on the window's grey.
+            .background(Color.page)
+            // The same least width as a chat's for whatever else this column shows — settings and
+            // its pages, a thread, the pinned list. They are pushed here, past the chat's own
+            // minimum, and with settings open the window went down to 500 points by 216. As the
+            // column's width, not a frame round its content: see `Theme.Size.conversationMinimum`.
+            // The ideal is the least as well, so that it never asks for more room than that.
+            .navigationSplitViewColumnWidth(min: infoColumn.conversationMinimumWidth,
+                                            ideal: infoColumn.conversationMinimumWidth)
+            #endif
         }
+        #if os(macOS)
+        // On the split view itself — see `InfoColumn`.
+        .infoColumn(infoColumn)
+        .paintsFullScreenBand()
+        #endif
         // Said once, here, and read by both columns. The room list and the room are in different
         // branches of the tree and both have to know, and the session is the only thing that is
         // above both of them. See `OfflineBanner`.
-        .environment(\.isOffline, session.roomList.isOffline)
+        .environment(\.isOffline, session.roomList.isUnreachable)
+        // The window's shape, read here because only a view outside the split view sees it —
+        // a column reports its own, and not steadily while a push animates. See `RoomView.isCompact`.
+        .environment(\.windowIsCompact, !isSidebar)
+        .environment(\.isUpdating, session.roomList.isUpdating)
+    }
+
+    /// The sign-in screen — pointed at the in-app server under `--mock-signin`, and otherwise at
+    /// whatever the user types.
+    @ViewBuilder
+    private var signIn: some View {
+        if MockSignIn.isRequested {
+            SignInView(authentication: authentication, address: mockAddress ?? "") { session in
+                phase = .settingUp(session)
+            }
+        } else {
+            SignInView { session in
+                phase = .settingUp(session)
+            }
+        }
     }
 
     /// Brings back the signed-in user, if there is one, before showing anything.
     private func restore() async {
+        // Under `--mock-signin` there is nobody to bring back: the service is the scratch one, its
+        // Keychain is in memory and empty, and the restore below finds nothing and falls through to
+        // sign-in — which is the point. The server just has to be up before that screen appears.
+        if MockSignIn.isRequested, mockAddress == nil {
+            mockAddress = await MockSignIn.start()
+        }
+
         // Whatever the last run left lying about. A file opened on the Mac is copied out of the
         // encrypted store in the clear so another application can read it, and the app is never
         // told when that application is finished — so the sweeping is done at the two moments we
@@ -590,6 +1104,11 @@ public struct IskraRootView: View {
         #if os(macOS)
         FileOpener.sweep()
         #endif
+        // And the Share extension's copies that nothing is waiting to send any more — see
+        // `ChatDirectory.sweepOutbox`. They are somebody's photos in the clear in a shared folder.
+        ChatDirectory.sweepOutbox()
+        // And the chats' pictures nobody names any more — see `DirectoryFaces.sweep`.
+        DirectoryFaces.sweep()
 
         // And whatever the last run left in the *container*: encrypted stores belonging to sign-ins
         // that never finished and sessions that have been replaced. They are readable — the
@@ -598,24 +1117,78 @@ public struct IskraRootView: View {
         // `sweepOrphanedStores`.
         await authentication.sweepOrphanedStores()
 
-        do {
-            if let session = try await authentication.restorePreviousSession() {
+        // The demo, when the switch says so. It is restored *instead of* the real session and never
+        // on top of it: the Keychain is not read, so nothing of the real account is even opened.
+        // A release build has no demo, and a switch left on by a debug build is simply ignored.
+        #if DEBUG
+        if mockBackend {
+            do {
+                let session = try await authentication.startDemoSession()
                 phase = .signedIn(session)
                 try? await session.start()
                 return
+            } catch {
+                // Not the user's problem to diagnose and not worth a sentence on screen: the switch
+                // goes back off, which is itself the message, and the real account opens instead.
+                Log.session.error("the demo would not start: \(Log.describe(error), privacy: .public)")
+                mockBackend = false
             }
-        } catch AuthenticationError.networkUnavailable {
-            // Never the sign-in screen for this. The account is fine — the tokens are in the
-            // Keychain, the conversations are in the store, and the only thing missing is the
-            // network. Sending somebody to "Sign in" here tells them their account is gone, which
-            // is untrue and frightening, and it is what the app used to do to anybody who opened it
-            // in a tunnel: an empty `catch` treated a lost network and a dead session as one fact.
-            phase = .offline
-            return
-        } catch {
-            // A session we cannot restore is a session the user must create again.
-            // Falling through to sign-in is the honest outcome.
         }
+        #endif
+
+        // The account on screen last, and then everybody else in the order they were added: one
+        // account that will not open is not a reason to hide the others behind a sign-in screen.
+        let accounts = authentication.accounts()
+        let active = authentication.activeAccountID()
+        let order = (active.map { [$0] } ?? []) + accounts.map(\.sessionID).filter { $0 != active }
+
+        var ended: [String] = []
+
+        for id in order {
+            do {
+                guard let session = try await authentication.restoreSession(id: id) else { continue }
+                authentication.setActiveAccount(id)
+                phase = .signedIn(session)
+                if let roomID = roomAfterSwitch {
+                    roomAfterSwitch = nil
+                    selectedRoomID = roomID
+                }
+                if let name = ended.first { endedAccountName = name }
+                try? await session.start()
+                return
+            } catch AuthenticationError.networkUnavailable {
+                // Never the sign-in screen for this. The account is fine — the tokens are in the
+                // Keychain, the conversations are in the store, and the only thing missing is the
+                // network. Sending somebody to "Sign in" here tells them their account is gone, which
+                // is untrue and frightening, and it is what the app used to do to anybody who opened
+                // it in a tunnel: an empty `catch` treated a lost network and a dead session as one
+                // fact. And the network is the same for every account, so there is no next one to try.
+                phase = .offline
+                return
+            } catch AuthenticationError.bridgeUnavailable {
+                // The same, one step further out: the bridge would not come up, and with an address
+                // filled in the app refuses to go direct (see `route`). The accounts are untouched
+                // and the bridge is the same for every one of them.
+                phase = .offline
+                return
+            } catch AuthenticationError.sessionEnded {
+                // The server has said this account is over, which is the one failure that settles it.
+                let record = accounts.first { $0.sessionID == id }
+                ended.append(record.map(AccountSwitcher.name(of:)) ?? id)
+                await authentication.forgetSession(id)
+                ChatDirectory.forget(account: id)
+                KnownDevices().forget(account: id)
+                AppBadge.forget(account: id)
+            } catch {
+                // Kept, not forgotten: a store that will not open today is not a reason to destroy it,
+                // and signing in to the same account again replaces the record anyway — see
+                // `AuthenticationService.persist`, which is what mends it.
+                Log.session.error("an account would not open: \(Log.describe(error), privacy: .public)")
+            }
+        }
+
+        // Nobody opened. A session that cannot be restored is one the user has to sign in to again.
+        wasSignedOutRemotely = !ended.isEmpty
         phase = .signedOut
     }
 }

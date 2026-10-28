@@ -23,9 +23,17 @@ public final class Forwarding {
     public func forward(_ message: Message, to roomID: String) async -> Bool {
         await session.forward(message, toRoomID: roomID)
     }
+
+    /// The words written under a forward in the share sheet, sent after it as a message of their own
+    /// — Telegram's order: what is being passed on, then what you have to say about it.
+    public func comment(_ text: String, to roomID: String) async {
+        await session.sendText(text, toRoomID: roomID)
+    }
 }
 
 public extension EnvironmentValues {
     /// The forward capability. Nil until a session is up.
     @Entry var forwarding: Forwarding?
+    /// Live location sharing for the open account — see `LiveLocationSharer`. Nil until a session is up.
+    @Entry var liveLocation: LiveLocationSharer?
 }

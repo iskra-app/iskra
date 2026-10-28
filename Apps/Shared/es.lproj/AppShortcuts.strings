@@ -1,0 +1,4 @@
+/* What Siri listens for. Every phrase has to carry the app's name. */
+
+"Open a chat in ${applicationName}" = "Abre un chat en ${applicationName}";
+"Send a message with ${applicationName}" = "Envía un mensaje con ${applicationName}";

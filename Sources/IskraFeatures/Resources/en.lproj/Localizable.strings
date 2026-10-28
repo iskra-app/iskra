@@ -9,6 +9,9 @@
 
 "message.deleted" = "Message deleted";
 
+/* VoiceOver: the cross in the ring over a photo or file that is still uploading. */
+"message.delivery.cancelUpload" = "Cancel sending";
+
 /* Names the red badge beside a message. Deliberately does not promise a retry: most of
    these failures wait on the user, and the reason that follows says so. */
 "message.delivery.failed" = "Not sent";
@@ -55,7 +58,7 @@
 "message.spoken.you" = "You";
 
 /* Shown in place of a message this device has no key for. Must not mention keys or decryption. */
-"message.unreadable" = "This message was sent before you joined, so it can’t be shown.";
+"message.unreadable" = "This message can’t be opened: this device doesn’t have its key.";
 
 "message.unsupported" = "Iskra can’t show this message yet.";
 
@@ -63,6 +66,8 @@
 "room.attach" = "Add a photo or file";
 
 "room.composerPlaceholder" = "Message";
+"room.captionPlaceholder" = "Caption";
+"room.mentionSuggestions" = "People to mention";
 
 /* The banner shown in place of the composer when posting is not allowed. */
 "room.readOnly" = "You can’t send messages in this chat";
@@ -82,13 +87,16 @@
 
 "roomList.emptyTitle" = "No chats yet";
 
-"roomList.loading" = "Catching up on your messages…";
+/* The chat list's title in place of "Chats", while the list catches up and while there is no network. */
+"roomList.updating" = "Updating…";
+"roomList.waitingForNetwork" = "Waiting for network…";
 
 /* Accessibility label for the lock icon. The only place encryption is named, and it is named as privacy. */
 "roomList.privateChat" = "Private chat";
 
 /* Accessibility label for the pin icon on a pinned chat. */
 "roomList.pinned" = "Pinned chat";
+"roomList.draft" = "Draft: %@";
 "roomList.hasUnread" = "Unread";
 
 "roomList.searchPrompt" = "Search messages";
@@ -132,14 +140,10 @@
 
 /* The settings row that leads to the emoji a double tap leaves. One word, and it is the one
    people go looking for. */
-"settings.reactions" = "Reactions";
+"settings.reactions" = "Stickers & reactions";
 
 /* The settings row that leads to the app's icon. iPhone and iPad only. */
 "settings.appIcon" = "Icon";
-
-/* Under the six tiles. It warns about the system alert, which is coming whatever we do and is
-   better expected than met. */
-"appIcon.help" = "The icon on your home screen. The system will say once that it has changed — that is meant to happen. The app switcher and search catch up a moment later.";
 
 /* When the system refuses, which it does where a management profile forbids alternate icons. */
 "appIcon.failed" = "The icon could not be changed. It looks like this device does not allow it.";
@@ -148,14 +152,13 @@
 /* The icons' names. Things rather than colours: "dark grey" is a description, and a name is
    something you can say out loud. */
 "appIcon.spark" = "Spark";
-"appIcon.coal" = "Coal";
-"appIcon.frost" = "Frost";
+"appIcon.chrome" = "Chrome";
 "appIcon.garnet" = "Garnet";
-"appIcon.pine" = "Pine";
-"appIcon.paper" = "Paper";
-/* The settings row that leads to the unfinished things. See `BetaFeatures`. */
-"settings.beta" = "Beta features";
-
+"appIcon.brat" = "Brat";
+"appIcon.rio" = "Rio de Janeiro";
+"appIcon.blackWhite" = "B/w";
+"appIcon.retro" = "Retro";
+"appIcon.letters" = "Letters";
 "beta.title" = "Beta features";
 
 /* Said once at the top of the screen, so that every switch below it is read as an offer
@@ -164,13 +167,13 @@
 
 "beta.nativeSidebar" = "Native sidebar";
 
-"beta.nativeSidebarHelp" = "The chat list becomes an ordinary macOS sidebar: chats gathered into sections, search at the top, and rows set closer together. Like Mail and Notes — and less like a phone.";
+"beta.nativeSidebarHelp" = "The chat list becomes an ordinary macOS sidebar: chats gathered into sections, search at the top, and rows set closer together. It looks like Mail and Notes rather than a phone.";
 
 "beta.blobatar" = "Creatures instead of initials";
 
 /* Says the two things a person actually wants to know before flipping it: that the face
    belongs to that person and will not change, and that nothing left the device to draw it. */
-"beta.blobatarHelp" = "Anyone without a picture of their own gets a little creature instead — their own, and the same one every time. It is drawn here on the device; nothing is sent anywhere. Groups get a cluster of the people in them rather than a letter.";
+"beta.blobatarHelp" = "Anyone without a picture of their own gets a little creature instead, their own and the same one every time. It is drawn here on the device; nothing is sent anywhere. Groups get a cluster of the people in them rather than a letter.";
 
 "beta.blobatarForce" = "Even instead of pictures";
 
@@ -179,10 +182,26 @@
    everybody has a picture, and it answers "are the photographs still being fetched?". */
 "beta.blobatarForceHelp" = "Everybody gets a creature, including the people who did set a picture. Their photographs are not fetched at all.";
 
+"beta.mockBackend" = "Demo server";
+
+/* The last sentence is the one that matters: whoever turns this on is first of all afraid
+   of losing their real account. */
+"beta.mockBackendHelp" = "A made-up account instead of yours, with chats, photos, voice messages and even an invitation already in it. The server lives inside the app and never goes online. Your own account stays where it is: turn this off and you are back in it.";
+
 
 
 
 "settings.storage" = "Storage";
+
+/* Photos and videos: what happens to them before they are sent. */
+"settings.media" = "Photos & videos";
+"media.title" = "Photos & videos";
+"media.stripMetadata" = "Send without metadata";
+"media.compress" = "Compress photos and videos";
+"media.compression" = "Compression";
+"media.compression.strong" = "Strong (540p)";
+"media.compression.balanced" = "Medium (720p)";
+"media.compression.light" = "Light (1080p)";
 
 "settings.connection" = "Connection";
 
@@ -193,16 +212,53 @@
 
 "connection.status" = "Status";
 "connection.statusDirect" = "Direct";
-"connection.statusLocal" = "Through the local layer";
+"connection.statusConnecting" = "Through the bridge, relays: %lld. The bridge hasn’t answered yet";
+"connection.statusBlind" = "Through the bridge, relays: %lld. The bridge can’t see your messages";
 "connection.statusFailed" = "Could not be turned on";
+"connection.pending" = "The new settings take effect as soon as you leave this screen: the app reconnects by itself.";
+"connection.applyNow" = "Reconnect now";
 
-/* With no transport yet the switch gets you past nothing, and saying so plainly beats
-   letting someone decide they are protected. */
-"connection.unfinished" = "Not finished yet";
-"connection.unfinishedBody" = "The bridge itself works, but the app cannot talk to it yet. For now this switch routes traffic through the local layer, and from there it still goes straight to the server — so it does not get you past a block.";
+/* The bridge's address. While the field is empty the switch changes nothing, and that is
+   said here rather than only in the status: this is what somebody is looking at. */
+"connection.address" = "Bridge address";
+"connection.addressPrompt" = "npub1… or 64 hex characters";
+"connection.addressFooter" = "A bridge prints its address when it starts, in the line “bridge address for Iskra: npub1…”.";
+"connection.addressBad" = "That does not look like a bridge key";
+"connection.addressSecret" = "That is a secret key. The public one is wanted here, the one that starts with npub.";
+"connection.defaultBridge" = "Back to the Iskra bridge";
+
+"connection.relays" = "Relays";
+"connection.relaysPrompt" = "wss://relay.snort.social, wss://nostr.wine";
+"connection.relaysFooter" = "This is where the app and the bridge find each other. A request goes out to all of them at once and the answer comes back from whichever was quickest, so one is too few. Leave it empty for the default three.";
+
+"connection.myKey" = "This device's key";
+"connection.myKeyFooter" = "If the bridge is a closed one, add this key to its ALLOWED_PUBKEYS — otherwise it will not hear you at all.";
+"connection.copy" = "Copy";
+"connection.copied" = "Copied";
+
+"connection.check" = "Check the bridge";
+"connection.checking" = "Checking…";
+"connection.checkOK" = "The bridge answered, the server is there: %lld ms";
+"connection.checkNoRelay" = "No relay is answering";
+"connection.checkSilent" = "The bridge is silent. Is it running, and is that the right key?";
+"connection.checkFailed" = "No luck: %@";
+"bridge.refusal.notAllowed" = "The bridge won’t take you to this server: it isn’t on the bridge’s list";
+"bridge.refusal.notMatrix" = "The bridge doesn’t recognise this server as a Matrix server";
+"bridge.refusal.badPort" = "The bridge only goes to port 443, and this server is on another";
+"bridge.refusal.notPublic" = "The server is on a private network, and an open bridge doesn’t go there";
+"bridge.refusal.noSuchHost" = "The bridge couldn’t find this server";
+"bridge.refusal.unreachable" = "The bridge couldn’t connect to the server";
+"bridge.refusal.busy" = "The bridge is overloaded. Try again in a minute";
+"bridge.refusal.disagreement" = "The app and the bridge didn’t understand each other. Update the app or the bridge";
+"bridge.refusal.broke" = "The bridge dropped the connection: %@";
+
+/* Not "what is unfinished" but what to expect: the numbers come from measuring a whole session
+   through the bridge (the README of iskra-app/iskra-bridge), and whoever turns the bridge on should know them first. */
+"connection.unfinished" = "What to expect";
+"connection.unfinishedBody" = "Every request goes the long way round through a relay and costs 200–350 ms, so signing in and opening chats for the first time are noticeably slower than a direct connection: a second where it used to be instant. New messages, though, arrive almost as fast as they do directly. Large attachments will get through too, but they are better kept off public relays: for media, give the bridge a relay of its own.";
 
 "connection.sees" = "What the bridge sees";
-"connection.seesBody" = "A bridge unpacks your requests to the server, so it sees your token, which rooms you are in, and the text of messages in unencrypted chats. It cannot read encrypted conversations. This is why the bridge should be your own rather than somebody else's.";
+"connection.seesBody" = "Only which server you connect to, when, and how many bytes. The app encrypts the connection to the server itself, so your token, your rooms and your messages are hidden from the bridge, even in unencrypted chats. Your IP address is seen by the relays, not the bridge.";
 
 /* App lock by Face ID / device passcode. */
 "settings.lock" = "App Lock";
@@ -219,7 +275,7 @@
 "lock.unlock" = "Unlock";
 "lock.reason" = "Unlock Iskra";
 
-"settings.blocked" = "Blocked";
+"settings.blocked" = "Blocked Users";
 "settings.blockedEmptyTitle" = "Nobody is blocked";
 "settings.blockedEmptyMessage" = "People you block show up here. You won’t see their messages.";
 "settings.unblock" = "Unblock";
@@ -232,13 +288,13 @@
 "storage.measuring" = "Adding it up…";
 
 "storage.session" = "Keys and rooms";
-"storage.session.explained" = "Encryption keys, room state, and messages that have not gone out yet. This is never cleared: without the keys, this phone cannot read the conversations it already has.";
+"storage.session.explained" = "Encryption keys. Without them, old messages won’t open.";
 
 "storage.cache" = "Messages and media";
-"storage.cache.explained" = "Downloaded messages, photos and files. They download again when you need them.";
+"storage.cache.explained" = "Downloads. They come back when needed.";
 
 "storage.search" = "Search index";
-"storage.search.explained" = "A copy of your messages for search to read: search runs on the device, and your query never reaches the server. Cleared along with the cache.";
+"storage.search.explained" = "For searching your messages right on the device.";
 
 "storage.clear" = "Clear cache";
 "storage.clearing" = "Clearing…";
@@ -250,51 +306,56 @@
 
 "storage.search.clear" = "Clear search index";
 "storage.search.confirm.title" = "Clear search index?";
-"storage.search.confirm.body" = "The app will reload. For a while search will not find everything — the index fills again as you read. Your messages and photos stay where they are.";
+"storage.search.confirm.body" = "The app will reload. For a while search will not find everything, because the index fills again as you read. Your messages and photos stay where they are.";
 "storage.search.failed" = "The index could not be cleared. Try again.";
-
-/* Explains why the settings above it are greyed out. Says what will happen, not what is missing. */
-"settings.moreSoon" = "More settings are on the way.";
 
 /* The last row of settings, the way through to the About screen. */
 "settings.about" = "About Iskra";
+"settings.language" = "Language";
+"settings.language.system" = "Same as system";
+"settings.language.help" = "Menus and system windows switch after a restart.";
+"settings.language.restartTitle" = "Restart Iskra?";
+"settings.language.restartMessage" = "Menus and system windows switch to the new language after a restart.";
+"settings.language.restart" = "Restart";
+"settings.language.restartLater" = "Later";
 
-/* The app about itself, at the very foot of the screen, under the way out. The name is not
-   translated — it is what the app is called in both languages. The version and the build sit
-   together, because on its own neither number says much. */
+/* The app's name under the icon on the About screen. Not translated — it is what the app is
+   called in both languages. */
 "settings.appName" = "Iskra App";
-"settings.version" = "Version %1$@ (%2$@)";
 
-/* The About screen, the last row in settings, where the app says what it is, which build this
-   is, and whose work it stands on. The acknowledgements are not politeness: the Apache 2.0
-   licence travels with the binary, so a person holding the app has to be able to read about it
-   inside the app. */
+/* The About screen, the last row in settings: what the app is, which build this is, and whose
+   work it stands on. */
 "about.title" = "About Iskra";
-"about.tagline" = "A Matrix messenger for iPhone, iPad and Mac. Written in Swift — a real app, not a website in a wrapper.";
+"about.tagline" = "An open-source Matrix client for iPhone, iPad and Mac, written in Swift.";
 
-/* The same two numbers as the settings footer, this time as a row you can select and copy. */
+/* Three rows you can select and copy. The build is the number with the commit in brackets,
+   the device is the model with the system in brackets. */
 "about.version" = "Version";
+"about.build" = "Build";
 "about.device" = "Device";
-"about.system" = "System";
 
-/* The button and its note: otherwise a build number gets transcribed into a report by hand,
-   with a digit wrong. */
-"about.copy" = "Copy build details";
-"about.copied" = "Copied";
-"about.copyHelp" = "Handy when something breaks: paste this into your report instead of copying the numbers out by hand.";
-
-/* The app's own page. A line of its own above the credits: it is about Iskra itself
-   rather than about what Iskra is built out of. The address shows under the label —
-   nobody presses a link whose destination is invisible. */
+/* The app's own page. The address shows under the label — nobody presses a link whose
+   destination is invisible. */
 "about.website" = "Iskra online";
+"about.sourceCode" = "Source code";
 
-/* The credits. Every line is a link out, so the name leads somewhere. */
-"about.builtOn" = "What it stands on";
-"about.sdk" = "matrix-rust-sdk";
-"about.sdkLicence" = "Apache 2.0 licence";
-"about.protocol" = "Matrix";
-"about.protocolExplained" = "The open protocol these chats run on";
-"about.cryptography" = "All the encryption comes from matrix-rust-sdk. Not a line of it is written here, and that is for the best.";
+/* The row that leads to the list of licences, and that screen's title. They are not politeness:
+   Apache 2.0 and MIT travel with the binary, so a person holding the app has to be able to read
+   about them inside the app. */
+"about.licences" = "Licences";
+
+/* The GPL's "appropriate legal notices", under the links on the About screen: who holds the
+   copyright, that the app is free software under the GPL, and that it comes with no warranty.
+   The name stays in Latin letters, as it is in the licence. */
+"about.copyright" = "© 2026 Boris Zhuravlev and the Iskra contributors";
+"about.freeSoftware" = "Iskra is free software: you can share and change it under the GNU GPL, version 3. It comes with no warranty of any kind.";
+
+/* On the licences screen: the heading over the projects Iskra is made from, the row that opens
+   the extra permission that lets the GPL'd app be published in app stores, and the link from a
+   licence's text to the project it belongs to. */
+"licences.builtOn" = "What Iskra is built on";
+"licences.storePermission" = "App store permission";
+"licences.projectPage" = "Project page";
 
 /* The screen where the double-tap reaction is chosen: the heading over the six emoji, and
    the line under them. */
@@ -328,6 +389,11 @@
 "signIn.problem.storageUnavailable" = "Iskra couldn’t set up secure storage on this device, so it can’t sign you in safely.";
 
 "signIn.problem.unreachable" = "Something went wrong reaching that address. Check your connection and try again.";
+"signIn.problem.bridgeUnavailable" = "The bridge didn’t come up, and Iskra won’t go direct while the bridge is on. Check the bridge address and relays in Connection settings.";
+/* Under "couldn't reach the server", when the bridge is off: the bridge as a second route. */
+"signIn.bridgeOffer" = "If a direct connection doesn’t work, try going through a bridge.";
+/* The button under it: switches the bridge on and looks the server up again. */
+"signIn.tryThroughBridge" = "Turn on the bridge and try again";
 
 "signIn.problem.unsupportedMethod" = "That service uses a way of signing in that Iskra doesn’t support yet.";
 
@@ -335,7 +401,7 @@
    anything about signing in: the account is fine and the messages are on the device. */
 "session.offlineTitle" = "No connection";
 
-"session.offlineMessage" = "Your conversations are here, on this device. We just can’t reach the server right now — check your network.";
+"session.offlineMessage" = "Your conversations are on this device. We can’t reach the server right now, so check your network.";
 
 "session.tryAgain" = "Try again";
 
@@ -358,18 +424,33 @@
 
 "signIn.tagline" = "Private messages, on your terms.";
 
-"signIn.title" = "Welcome to Iskra";
+"signIn.title" = "Iskra";
 
 "signIn.username" = "Username";
 
 /* The question that replaces asking for a 'homeserver URL'. */
 "signIn.whereIsAccount" = "Where’s your account?";
 
-"signIn.whereIsAccountHelp" = "If someone gave you an address to use, type it here. If not, matrix.org works for most people.";
+"signIn.whereIsAccountHelp" = "Type the address of the server where your account is, or where you’d like to create one.";
 
 "room.attachPhoto" = "Photo or video";
 
 "room.attachFile" = "File";
+
+/* The choice under the "+" that appears when a photo or video has been copied. */
+"room.pasteImage" = "Paste photo or video";
+
+/* Read aloud for a photo waiting in the composer to be sent. */
+"room.attachedPhoto" = "Photo for the message";
+
+/* Read aloud for a video waiting in the composer to be sent. */
+"room.attachedVideo" = "Video for the message";
+
+/* The cross on a photo or video waiting in the composer. */
+"room.removeAttachment" = "Remove from message";
+
+/* Over the room while a photo or video is dragged over it. */
+"room.dropToAttach" = "Let go to attach";
 
 "videoNote.title" = "Video message";
 
@@ -386,13 +467,13 @@
 /* A conversation with no messages in it. Not a problem — an invitation. */
 "room.emptyTitle" = "Nothing here yet";
 
-"room.emptyMessage" = "Send the first message — that’s how it starts.";
+"room.emptyMessage" = "Send the first message. That’s how it starts.";
 
 /* The chat could not be opened at all. Must not be confused with an empty chat: the
    messages are there, we just can't show them. */
 "room.loadFailedTitle" = "Couldn’t open this chat";
 
-"room.loadFailedMessage" = "The messages haven’t gone anywhere — we just couldn’t load them. Check your connection.";
+"room.loadFailedMessage" = "Your messages are still there, but they didn’t load. Check your connection.";
 
 "room.tryAgain" = "Try again";
 
@@ -424,6 +505,9 @@
 
 /* Accessibility hints on a reaction. Say what pressing it will do — the pill itself can't. */
 "message.menu.addReaction" = "Add a reaction";
+"message.menu.addQuick" = "React with %@";
+"message.menu.removeQuick" = "Remove %@";
+"message.menu.moreReactions" = "More reactions";
 
 "message.menu.removeReaction" = "Remove your reaction";
 
@@ -446,7 +530,9 @@
 
 /* The Appearance screen: light or dark. "System" is the ordinary case and the default; the
    other two are for people whose phone is light while their messages ought to be dark. */
+"appearance.themeAndColors" = "Theme and colours";
 "appearance.theme" = "Theme";
+"appearance.accent" = "Accent colour";
 "appearance.mode.system" = "System";
 "appearance.mode.light" = "Light";
 "appearance.mode.dark" = "Dark";
@@ -456,7 +542,7 @@
 
 /* The Appearance screen: the colour the app is painted in. The seven colours of the
    rainbow, and a mono theme with no colour at all. */
-"appearance.accent" = "App colour";
+"appearance.avatars" = "Avatars";
 
 /* The switch under the swatches. Washes the chosen colour across the whole interface — every
    screen's background, the text, the messages themselves. Off by default: a colour that is
@@ -485,12 +571,10 @@
    of the user's own. */
 "appearance.wallpaper" = "Wallpaper";
 
-/* Under the row of wallpapers. It says two things at once: the wallpaper is the same in every
-   conversation, and a chosen photograph stays on this device — nobody else ever sees it. */
-"appearance.wallpaperFooter" = "The wallpaper is the same in every conversation. Your photo stays on this device and is never sent anywhere.";
 
 /* The slider under the wallpapers: how far to take the picture down so that messages read on it. */
 "appearance.wallpaperDimming" = "Dimming";
+"appearance.wallpaperLightening" = "Lightening";
 
 /* The button under the slider — swap your photograph for a different one. */
 "appearance.wallpaperChoose" = "Choose another photo";
@@ -515,7 +599,7 @@
 
 /* The photo was picked and could not be read — a refusal that happens before anything is
    sent, so blaming the server would be a lie. Usually it is still in iCloud, not on the phone. */
-"room.attachmentUnreadable" = "This photo could not be read. That happens when it is still in iCloud — open it in Photos and try again.";
+"room.attachmentUnreadable" = "This photo could not be read. That happens when it is still in iCloud. Open it in Photos and try again.";
 
 /* A link in a message: ask before opening. The dialog's title is the address itself. */
 "message.link.open" = "Open";
@@ -527,6 +611,8 @@
 "message.forward.title" = "Forward to…";
 "message.forward.prompt" = "Search chats";
 "message.forward.cancel" = "Cancel";
+"message.forward.comment" = "Add a comment…";
+"message.forward.send" = "Send";
 "message.menu.block" = "Block";
 "message.menu.blockConfirm" = "Block %@?";
 "message.menu.blockConfirmMessage" = "You’ll stop receiving this person’s messages. You can unblock them in settings.";
@@ -574,7 +660,6 @@
 "room.sharedMedia" = "Media & files";
 "room.sharedMediaEmptyTitle" = "No media yet";
 "room.sharedMediaEmptyMessage" = "Photos, videos, and files from this chat will show up here.";
-"room.galleryLoadEarlier" = "Show earlier";
 
 /* Spaces and what is inside them. */
 "room.spaceLabel" = "Space";
@@ -601,33 +686,81 @@
 "voice.needsMicrophone" = "Allow access to the microphone to record voice messages";
 
 /* Sending a place. */
+/* The sticker sheet's title, and the composer button that opens it. */
+"stickers.title" = "Stickers";
+"stickers.open" = "Stickers";
+"stickers.close" = "Close";
+
+/* The row of stickers sent last. */
+"stickers.recent" = "Recent";
+
+/* The account's own sticker pack — the one stickers are added to. */
+"stickers.mine" = "My stickers";
+
+/* A room's sticker pack that has no name of its own. */
+"stickers.roomPack" = "Chat stickers";
+
+/* The sticker pack the app comes with: round faces, a heart and a star. */
+"stickers.builtIn" = "Sparks";
+
+/* The sticker sheet with nothing in it. */
+"stickers.empty.title" = "No stickers yet";
+"stickers.empty.message" = "Like a sticker in a chat? Touch and hold it, then choose “Add to my stickers”.";
+
+/* In a sticker's menu: put it into, or take it out of, the account's own pack. */
+"stickers.add" = "Add to my stickers";
+"stickers.remove" = "Remove from my stickers";
+
 "location.title" = "Location";
 "location.send" = "Send";
 "location.cancel" = "Cancel";
 "location.myLocation" = "My location";
 "location.attach" = "Location";
 "message.spoken.sentLocation" = "a location";
+"poll.kind" = "Poll";
+"poll.kindAnonymous" = "Anonymous poll";
+"poll.ended" = "Poll ended";
+"poll.multiple" = "choose several";
+"poll.noVotes" = "No votes yet";
+"poll.hiddenUntilEnd" = "results when it ends";
+"poll.end" = "End poll";
+"poll.endConfirmTitle" = "End the poll?";
+"poll.endConfirmMessage" = "Nobody will be able to vote any more, and everyone will see the results.";
+"poll.attach" = "Poll";
+"poll.newTitle" = "New poll";
+"poll.question" = "Question";
+"poll.questionPlaceholder" = "What do you want to ask?";
+"poll.answers" = "Answers";
+"poll.answerPlaceholder" = "Answer";
+"poll.addAnswer" = "Add an answer";
+"poll.removeAnswer" = "Remove answer";
+"poll.settings" = "Settings";
+"poll.allowMultiple" = "Several answers";
+"poll.anonymous" = "Results only when it ends";
+"poll.anonymousFooter" = "While the poll is open, nobody sees how the others voted. Only you can end it.";
+"poll.send" = "Send";
+"poll.cancel" = "Cancel";
+"poll.chosen" = "your answer";
+"message.spoken.sentPoll" = "a poll, %@";
 
 /* Running a room. Shown only to whoever the room allows to do it. */
 "room.manage.namePlaceholder" = "Chat name";
 "room.manage.topicPlaceholder" = "What this chat is about";
-"room.manage.changePicture" = "Choose a picture";
-"room.manage.removePicture" = "Remove the picture";
 "room.manage.openToAnyone" = "Open chat";
 "room.manage.openToAnyoneHelp" = "Anyone who finds this chat can join it. Otherwise, by invitation only.";
 "room.manage.invite" = "Invite";
-"room.manage.inviteTitle" = "Who should join?";
-"room.manage.inviteHelp" = "A Matrix address looks like @name:server.";
-"room.manage.invitePlaceholder" = "@name:server";
+"room.invite.inviteCount" = "Invite (%lld)";
+"room.invite.chosen" = "Chosen";
+"room.invite.alreadyHere" = "Already here";
+"room.invite.byAddress" = "Invite by this address";
 "room.manage.role" = "Role";
 "room.manage.roleHeader" = "What they can do";
-"room.manage.roleQuestion" = "What can %@ do?";
 "room.manage.member" = "Member";
 "room.manage.write" = "Write to them";
 "room.manage.goToChat" = "Go to the chat";
 "room.manage.remove" = "Remove";
-"room.manage.block" = "Block";
-"room.manage.blockQuestion" = "Block %@?";
+"room.manage.block" = "Ban from Chat";
+"room.manage.blockQuestion" = "Ban %@ from this chat?";
 "room.manage.blockHelp" = "They will leave the chat and cannot come back until you unblock them.";
 "room.manage.leave" = "Leave the chat";
 "room.manage.leaveQuestion" = "Leave this chat?";
@@ -636,13 +769,50 @@
 /* Why everything on the room-settings screen is greyed out. Shown only while offline. Must say
    what still works — reading and writing — rather than only what does not. */
 "room.manage.offline" = "With no network you can read this chat and write to it, but not change it.";
+"room.rules.title" = "Roles and permissions";
+"room.rules.staffHeader" = "Running the chat";
+"room.rules.staffFooter" = "To change someone’s role, swipe left on them or open their page.";
+"room.rules.rulesHeader" = "Who can";
+"room.rules.rulesFooter" = "“Moderators” means moderators and administrators.";
+"room.rules.sendMessages" = "Send messages";
+"room.rules.invite" = "Invite people";
+"room.rules.remove" = "Remove people";
+"room.rules.ban" = "Block people";
+"room.rules.deleteOthers" = "Delete others’ messages";
+"room.rules.rename" = "Change the name";
+"room.rules.changeTopic" = "Change the description";
+"room.rules.changePicture" = "Change the picture";
+"room.rules.everyone" = "Everyone";
+"room.rules.moderators" = "Moderators";
+"room.rules.administrators" = "Administrators";
+"room.manage.chooseRole" = "Choose a role";
+"room.rules.addStaff" = "Add";
+"room.rules.appointTitle" = "Appoint";
+"room.rules.nobodyToAppoint" = "There’s no one else to appoint.";
+"room.rules.demote" = "Remove role";
 "room.manage.cancel" = "Cancel";
 "problem.title" = "It didn’t work";
 
 /* Starting a new chat, or a new room. */
 "roomList.new.create" = "Create";
-"roomList.new.start" = "Start";
 "roomList.new.openMeansUnencrypted" = "Anyone who joins an open room can read it, so it isn’t encrypted. A private one is.";
+"roomList.new.searchPrompt" = "Search people";
+"roomList.new.createRoom" = "Create a room";
+"roomList.new.publicRooms" = "Public rooms";
+"roomList.new.joinByAddress" = "Join by address";
+"roomList.new.yourChats" = "People you talk to";
+"roomList.new.onServer" = "On the server";
+"roomList.new.writeTo" = "Write to this address";
+"roomList.new.nobodyFound" = "Nobody found";
+"roomList.new.searchFailed" = "The server didn’t answer the search";
+"roomList.new.roomsPrompt" = "Search rooms";
+"roomList.new.inviteOnly" = "Invite only";
+"roomList.new.noRooms" = "No rooms found";
+"roomList.new.directoryFailed" = "The directory didn’t open.";
+"roomList.new.retry" = "Try again";
+"roomList.new.join" = "Join";
+"roomList.new.addressPlaceholder" = "#room:server";
+"roomList.new.addressHelp" = "A room address looks like #name:server. Its ID works too — it starts with “!”.";
 
 /* Swipe actions on a chat row, and their VoiceOver twins. */
 "roomList.swipe.markRead" = "Read";
@@ -653,15 +823,22 @@
 "roomList.swipe.unarchive" = "Unarchive";
 "roomList.swipe.delete" = "Delete";
 "roomList.swipe.leaveConfirmTitle" = "Leave this chat?";
-"roomList.swipe.leaveConfirmMessage" = "You’ll leave the room and stop receiving its messages. Matrix has no way to delete a shared chat — you can only leave it yourself.";
+"roomList.swipe.leaveConfirmMessage" = "You’ll leave the room and stop receiving its messages. Matrix has no way to delete a shared chat; you can only leave it yourself.";
 "roomList.swipe.leaveConfirm" = "Leave";
 "roomList.swipe.cancel" = "Cancel";
 
+/* The chat preview a long press opens in the chat list: a look inside that marks nothing as read. */
+"roomList.peek.peek" = "Peek";
+"roomList.peek.open" = "Open chat";
+"roomList.peek.markRead" = "Mark as read";
+"roomList.peek.markUnread" = "Mark as unread";
+"roomList.peek.staysUnread" = "Just peeking, so nothing gets marked as read";
+"roomList.peek.close" = "Close preview";
+
 /* The archive: the shelf for set-aside chats and the way back to them. */
 "roomList.archive.title" = "Archive";
-"roomList.archive.entry" = "Archive (%lld)";
 "roomList.archive.emptyTitle" = "Nothing archived";
-"roomList.archive.emptyMessage" = "Swipe a chat left and archive it — it stays out of the main list without going anywhere.";
+"roomList.archive.emptyMessage" = "Swipe a chat left to archive it. It stays out of the main list without going anywhere.";
 
 /* How loudly a room may interrupt you. */
 "room.manage.alerts" = "Notifications";
@@ -671,18 +848,25 @@
 
 /* The profile: name and picture. */
 "account.namePlaceholder" = "Your name";
-"account.changePicture" = "Change picture";
-"account.removePicture" = "Remove picture";
 "account.edit" = "Edit";
 "account.editTitle" = "Your profile";
 "account.nameHeader" = "Name";
-"account.editOffline" = "Your profile can’t be changed offline — there’s no server to tell.";
+"account.editOffline" = "Your profile can’t be changed offline, because the app can’t reach the server.";
+"account.nameChangeNotice" = "Everyone you chat with will hear about a new name: a note appears in every chat you share.";
+"account.usernameHeader" = "Username";
+"account.usernameFixed" = "Your username is chosen once, when the account is created. It can’t be changed, here or anywhere else.";
+
+/* The menu on a picture that can be changed: in your profile and in a chat. */
+"picture.edit" = "Change picture";
+"picture.change" = "Change";
+"picture.remove" = "Remove";
 "room.manage.edit" = "Edit";
+"room.manage.closeInfo" = "Hide chat info";
 "room.manage.editTitle" = "Edit chat";
 "room.manage.nameHeader" = "Name";
 "room.manage.deleteChat" = "Delete chat";
 "room.manage.deleteChatQuestion" = "Delete this chat?";
-"room.manage.deleteChatHelp" = "The conversation goes from this device. The other person isn’t told, and if they write again the chat comes back — empty.";
+"room.manage.deleteChatHelp" = "The conversation goes from this device. The other person isn’t told, and if they write again the chat comes back, but empty.";
 "room.tabs.members" = "People";
 "room.tabs.media" = "Photos";
 "room.tabs.voice" = "Voice";
@@ -692,7 +876,7 @@
 "room.tabs.label" = "What's in here";
 "room.localName.header" = "Name on this device";
 "room.localName.help" = "Only you see this name, and only on this device. The other person is never told, your other devices keep the name they already had, and signing out forgets it.";
-"room.localName.reset" = "Use their real name again";
+"room.localName.reset" = "Restore “%@”";
 
 /* Encryption: whether your messages will still be readable on your next device. */
 "encryption.title" = "Encryption";
@@ -701,7 +885,7 @@
 "encryption.onHelp" = "Your conversations are kept on the server in a backup, encrypted. With your recovery code you can read them on any new device.";
 
 "encryption.off" = "Your messages aren’t protected";
-"encryption.offHelp" = "If you lose this device, nobody will be able to read your old messages — including you. Protect them, and we’ll give you the code that brings them back.";
+"encryption.offHelp" = "If you lose this device, nobody will be able to read your old messages, including you. Protect them, and we’ll give you the code that brings them back.";
 "encryption.protect" = "Protect my messages";
 
 "encryption.keyNeeded" = "Your recovery code is needed";
@@ -709,28 +893,19 @@
 "encryption.keyPlaceholder" = "Recovery code";
 "encryption.restore" = "Bring my messages back";
 
-"encryption.newKey" = "Create a new code";
+"encryption.newKey" = "Create a new recovery code";
 "encryption.newKeyHelp" = "The old code will stop working. Worth doing if it ended up somewhere it shouldn’t have.";
 
 "encryption.saveKey" = "Save your code";
-"encryption.saveKeyHelp" = "We show it once and never again. Write it down or put it in a password manager: without it, your old messages don’t come back.";
+"encryption.saveKeyHelp" = "We show it only once. Write it down or put it in a password manager: without it, your old messages don’t come back.";
 "encryption.copyKey" = "Copy the code";
 "encryption.keyCopied" = "Copied";
 "encryption.saved" = "I’ve saved the code";
 
-"encryption.thisDevice" = "This device";
-"encryption.deviceVerified" = "Verified";
 "encryption.deviceUnverified" = "New device";
-/* Two footers under "this device", and which one is true is the server's to decide.
-   The first is for when the "My devices" row exists. The second is for when it does not,
-   because the session was not obtained through a browser and the server has no account page
-   we can reach. Sending somebody to a section they will not find is worse than sending them
-   nowhere at all. */
-"encryption.otherDevicesHere" = "Your other devices are under “My devices”.";
-"encryption.otherDevices" = "Iskra can’t show your other devices. To end a session on another device, go to your server’s website.";
 
-/* The pill at the foot of a room when a message arrives while you are reading further up. */
-"room.jumpToNewest" = "New messages";
+/* The bar across the conversation: what you have not read yet starts here. */
+"room.unreadMessages" = "Unread messages";
 
 /* A room invitation: who asked, and the two answers. */
 "roomList.invite.from" = "%@ invites you";
@@ -743,9 +918,8 @@
 "room.typingBy" = "%@ is typing…";
 
 "room.scrollToBottom" = "Go to the latest message";
-"room.loadEarlier" = "Show what came before";
 
-/* Stands where the "show earlier" button would be, when the older messages could not be fetched —
+/* Stands at the top of the conversation when the older messages could not be fetched —
    offline, this is where the cached history runs out. Explains; does not promise. */
 "room.earlierUnavailable" = "We’ll show what came before once you’re back online";
 "appearance.previewAsk" = "Which colour did you pick?";
@@ -766,7 +940,7 @@
    Somebody dropped back onto the sign-in screen with no explanation assumes the app lost their
    account, so this names the cause rather than merely stating the fact. */
 "session.ended.title" = "You are no longer signed in";
-"session.ended.message" = "Your server has stopped accepting this session. You most likely ended it from another device. Sign in again — none of your conversations have gone anywhere.";
+"session.ended.message" = "Your server has stopped accepting this session. You most likely ended it from another device. Sign in again. Your conversations are all still there.";
 
 /* What the media bubbles are called for VoiceOver. A photo and a video note are opened by a tap
    gesture, and a tap gesture does not exist in the accessibility tree at all — with no name and no
@@ -781,16 +955,16 @@
    show the same thing, which is the whole of it, and is explicable without a single term. */
 "verification.verify" = "Verify this device";
 "verification.title" = "Verification";
-"verification.why" = "Until this device is verified, your account has no way to know it is really you — and your older conversations will not come through to it. You can verify it from a phone or computer where you are already signed in.";
+"verification.why" = "Until this device is verified, your account has no way to know it is really you, and your older conversations will not come through to it. You can verify it from a phone or computer where you are already signed in.";
 "verification.waiting.title" = "Look at your other device";
 "verification.waiting.message" = "The app on your other device has to be open right now, or the request will not reach it.";
-"verification.asked.message" = "This device has just signed in to your account and is asking you to verify it. If that was you, agree — and then compare the emoji. If it wasn't, refuse: somebody else knows your password.";
+"verification.asked.message" = "This device has just signed in to your account and is asking you to verify it. If that was you, agree and then compare the emoji. If it wasn't, refuse: somebody else knows your password.";
 "verification.unnamedDevice" = "An unnamed device";
 "verification.mine" = "It's me";
 "verification.notMine" = "It isn't me";
 "verification.negotiating.title" = "One moment";
 "verification.negotiating.message" = "The two devices are working it out between them. The emoji are about to appear on both screens.";
-"verification.compare" = "Your other device is showing the same seven emoji. Check that they match — and that they are in the same order.";
+"verification.compare" = "Your other device is showing the same seven emoji. Check that they match and that they are in the same order.";
 "verification.match" = "They match";
 "verification.noMatch" = "They don’t match";
 "verification.done.title" = "This device is verified";
@@ -798,7 +972,7 @@
 "verification.declined.title" = "Verification stopped";
 "verification.declined.message" = "If the emoji really did not match, do not trust this connection, and try again. It may also be that you simply started the verification twice.";
 "verification.refused.title" = "You said no";
-"verification.refused.message" = "That device was given no access to your conversations. But if the sign-in wasn't yours, then somebody else knows your password — and it needs changing right now.";
+"verification.refused.message" = "That device was given no access to your conversations. But if the sign-in wasn't yours, then somebody else knows your password, and it needs changing right now.";
 "verification.refused.endSession" = "End this session";
 "verification.failed.title" = "That didn't work";
 "verification.failed.message" = "The verification did not finish. Try again.";
@@ -828,11 +1002,11 @@
 "recovery.new.confirm" = "Create a new code";
 "recovery.new.keepOld" = "Later — I’ll go and look for the old one";
 "recovery.approve.title" = "Did you approve it?";
-"recovery.approve.message" = "The reset has to be approved on your server’s page. If you did that, carry on — and your old messages are gone for good. If you changed your mind, nothing happens.";
+"recovery.approve.message" = "The reset has to be approved on your server’s page. If you did that, carry on; your old messages are gone for good. If you changed your mind, nothing happens.";
 "recovery.approve.confirm" = "Erase old messages for good";
 "recovery.approve.cancel" = "I changed my mind";
 "recovery.choose.title" = "Unlock your messages";
-"recovery.choose.message" = "Your earlier messages are encrypted, and this device can’t open them yet. There are two ways — both of them work.";
+"recovery.choose.message" = "Your earlier messages are encrypted, and this device can’t open them yet. There are two ways, and both of them work.";
 "recovery.choose.haveCode" = "I have my recovery code";
 "recovery.choose.otherDevice" = "Confirm from another device";
 "recovery.choose.neither" = "I have neither";
@@ -850,7 +1024,7 @@
 /* Flow 3, the branch where there is nothing else. Said plainly, without frightening anyone:
    losing your messages is bad, but being frightened and not knowing what to do is worse. */
 "recovery.lost.alone.title" = "Let’s start fresh";
-"recovery.lost.alone.message" = "Without the code and without another device, your old messages can’t come back — they stay encrypted for good. New messages will arrive as usual, and we’ll give you a new recovery code.";
+"recovery.lost.alone.message" = "Without the code and without another device, your old messages can’t come back: they stay encrypted for good. New messages will arrive as usual, and we’ll give you a new recovery code.";
 
 /* The design note asks for this to be separated from a password reset explicitly, so that
    nobody — the developer included — confuses the two. A password opens the account, not the messages. */
@@ -866,14 +1040,12 @@
 /* The strip in the chat list. It stays until the reason is gone: the code is shown once, and
    somebody who didn’t save it finds out six months later — unless they’re reminded. */
 "recovery.banner.locked" = "Your old messages are locked";
-"recovery.save.warning" = "If this code is lost and you have no other device, nobody can bring your old messages back — not us, not the server. They stay encrypted for good.";
+"recovery.save.warning" = "If this code is lost and you have no other device, nobody can bring your old messages back, not us and not the server. They stay encrypted for good.";
 "recovery.save.confirm" = "I’ve written the code down somewhere safe";
 "recovery.lost.noAccess" = "I can’t get to that device";
 "recovery.banner.hint" = "Opens recovery setup";
 "recovery.close" = "Close";
 
-"settings.devices" = "My devices";
-"settings.devicesHelp" = "The list of your devices, and signing out of them, lives on your server’s website — where you signed in.";
 
 /* The button appears only where the server itself says it can make accounts. */
 "signIn.createAccount" = "Create an account";
@@ -890,20 +1062,47 @@
 
 /* The groups in the emoji panel. Short — they are headings over a grid, not chapter titles. */
 "reactions.recent" = "Recent";
-"reactions.smileys" = "Smileys";
-"reactions.gestures" = "Gestures";
-"reactions.hearts" = "Hearts";
-"reactions.animals" = "Animals & nature";
-"reactions.food" = "Food";
+"reactions.smileys" = "Smileys & People";
+"reactions.animals" = "Animals & Nature";
+"reactions.food" = "Food & Drink";
 "reactions.activity" = "Activity";
-"reactions.places" = "Places";
+"reactions.places" = "Travel & Places";
 "reactions.objects" = "Objects";
 "reactions.symbols" = "Symbols";
+"reactions.flags" = "Flags";
 
 /* The Security tab — what used to be Encryption. Everything that answers "who can get at this"
    lives under one roof now: recovery, this device, my devices, the Face ID lock and the bridge.
    Apart they read as five small things; together they are one conversation. */
 "settings.security" = "Security";
+
+/* The round buttons under a person's portrait. */
+"profile.message" = "Message";
+"profile.share" = "Share";
+/* The label beside a person's Matrix address on their profile. */
+"profile.matrixID" = "Matrix ID";
+"profile.loading" = "Loading profile…";
+"profile.notInRoom" = "This person isn’t in the chat.";
+
+/* The settings row and the title of the screen listing every session on the account. */
+"devices.title" = "Devices";
+"devices.thisDevice" = "This device";
+/* Under this device, in place of when it was last seen. */
+"devices.online" = "online";
+"devices.endOthers" = "End all other sessions";
+"devices.endOthersFooter" = "Sign out of your account on every device except this one.";
+"devices.endOthersConfirm" = "End all other sessions?";
+"devices.others" = "Active sessions";
+"devices.noOthers" = "No other sessions: you’re only signed in here.";
+"devices.end" = "End";
+"devices.endConfirm" = "End this session?";
+/* Under the list, when sessions are ended on the server's website (browser sign-in). */
+"devices.managedFooter" = "This account’s sessions are ended on your server’s website; “End” will open it.";
+"devices.passwordTitle" = "Password needed";
+"devices.passwordMessage" = "Your server wants your account password to end the session.";
+"devices.passwordField" = "Password";
+"devices.cancel" = "Cancel";
+"devices.retry" = "Try again";
 
 /* The Notifications screen: what arrives by default, until a particular chat says otherwise.
    Two things have to be said out loud about these rules — they live on the server, so they apply
@@ -913,17 +1112,16 @@
 "notifications.defaults" = "By default";
 "notifications.direct" = "Personal chats";
 "notifications.groups" = "Groups";
-"notifications.defaultsFooter" = "These are account rules: they apply on every device you are signed in on. If a chat has its own notification setting, that one wins.";
+"notifications.defaultsFooter" = "A chat’s own notification settings take priority over the defaults.";
 
 "notifications.mentions" = "Mentions";
 "notifications.mentionsMe" = "When I’m mentioned";
-"notifications.roomMentions" = "When someone writes @room";
-"notifications.mentionsFooter" = "Mentions reach you even from chats you have silenced. @room wakes everybody at once, so it can be turned off on its own.";
+"notifications.roomMentions" = "When someone addresses the whole chat (@room)";
 
 "notifications.other" = "Everything else";
 "notifications.invitations" = "Chat invitations";
 "notifications.calls" = "Calls";
-"notifications.otherFooter" = "There are no calls in Iskra yet, but the rule belongs to the account: another app signed into it can ring.";
+"notifications.otherFooter" = "There are no calls in Iskra yet, but people can still call you from other apps.";
 
 "notifications.system" = "Permission";
 "notifications.systemOn" = "The system lets notifications through";
@@ -932,7 +1130,7 @@
 "notifications.openSystem" = "Open Settings";
 "notifications.systemFooter" = "While the system is blocking notifications, none of the rules below will fire.";
 
-"notifications.failed" = "The notification settings couldn’t be read. The server isn’t answering — try again later.";
+"notifications.failed" = "The notification settings couldn’t be read. The server isn’t answering, so try again later.";
 
 /* The first run. Six slides before the sign-in — the only place the app talks about itself,
    so the lines are short and no protocol word appears on any of them. See `WelcomeView`. */
@@ -946,7 +1144,7 @@
 "onboarding.slide.decentralised.body" = "Iskra runs on Matrix, an open protocol the community builds";
 
 "onboarding.slide.appleWay.title" = "Apple way";
-"onboarding.slide.appleWay.body" = "A native Swift app for every platform at once — it flies, and it leaves your battery alone";
+"onboarding.slide.appleWay.body" = "A native Swift app for every platform at once: it flies, and it leaves your battery alone";
 
 "onboarding.slide.freedom.title" = "Your choice";
 "onboarding.slide.freedom.body" = "Take a server that already exists, or run your own. Nobody locks you into one ecosystem";
@@ -965,6 +1163,15 @@
    so there is a way straight past them. */
 "onboarding.skip" = "Skip";
 
+"room.identity.changedTitle" = "%@: new encryption keys";
+"room.identity.changedBody" = "Messages to this person are now encrypted with new keys. That usually happens after signing in on a new phone. If you weren’t expecting it, check with them in person.";
+"room.identity.understood" = "Got it";
+"room.identity.violationTitle" = "%@: keys no longer match the ones you verified";
+"room.identity.violationBody" = "You verified this person, but the keys have changed since. Until you’re sure it’s still them, don’t write anything important.";
+"room.identity.withdraw" = "Remove verification";
+"room.identity.failed" = "That didn’t work. Check your connection and try again.";
+"message.delivery.sendAnyway" = "Send anyway";
+"message.delivery.sendAnywayFailed" = "The message still hasn’t gone. Check your connection and try again.";
 "onboarding.greeting" = "Hello, %@!";
 "onboarding.greetingNameless" = "Hello!";
 
@@ -1011,6 +1218,10 @@
 /* In the chat list and on the strip above a conversation. Replaces the last message, not joins it. */
 "call.ongoing" = "Call in progress";
 "call.join" = "Join";
+"call.tile" = "Call";
+"call.joinTile" = "Join";
+"call.audioCall" = "Audio call";
+"call.videoCall" = "Video call";
 /* The name on a ringing call before the event is decrypted. A second or two, and never blank. */
 "call.incoming" = "Incoming call";
 
@@ -1020,3 +1231,306 @@
 "beta.elementCall.title" = "Your own Element Call address";
 "beta.elementCall.prompt" = "https://call.example.org";
 "beta.elementCall.note" = "Normally the server names the address. When it names none there are no calls, and that is not a fault: whoever runs an Element Call sees who is talking to whom, and when. Only put your own here.";
+/* More than one account */
+"accounts.section" = "Accounts";
+"accounts.add" = "Add account";
+"accounts.cancel" = "Cancel";
+"accounts.switchHint" = "Switches the app to this account";
+"accounts.current" = "Open now";
+"accounts.unread" = "Unread: %lld";
+"accounts.signOutOf" = "Sign out of %@";
+"session.endedOther.message" = "The server stopped accepting the session for %@. Most likely it was ended from another device. Your other accounts are still here, and you can add this one again.";
+"signIn.problem.alreadySignedIn" = "This account is already on this device. You can switch to it in Settings.";
+
+/* Settings → Chats: service lines, the Return key, the account in the Share menu. */
+"settings.chats" = "Chats";
+"chats.title" = "Chats";
+"chats.serviceSection" = "Service messages";
+"chats.hideNameChanges" = "Hide name changes";
+"chats.hideMembershipChanges" = "Hide joins and leaves";
+"chats.serviceHelp" = "The grey lines about who changed their name and who joined, left or was invited. A new chat name or photo is always shown.";
+"chats.keyboardSection" = "Keyboard";
+"chats.commandReturn" = "Send with ⌘ + Return";
+"chats.commandReturnOnHelp" = "Return starts a new line, ⌘ + Return sends.";
+"chats.commandReturnOffHelp" = "Return sends, Shift + Return starts a new line.";
+"chats.shareSection" = "Share menu";
+"chats.shareAccount" = "Account";
+"chats.shareActive" = "Active";
+"chats.shareAll" = "All";
+"chats.shareHelp" = "Whose chats to offer when you share something from another app. “Active” is the one open in Iskra right now.";
+"chats.widgetSection" = "Favourite chats widget";
+"chats.widgetHelp" = "Whose chats the widget shows when none are chosen in it. “Active” is the one open in Iskra right now.";
+
+/* Settings → Privacy. */
+"privacy.title" = "Privacy";
+"privacy.hidePresence" = "Hide last seen";
+"privacy.hidePresenceHelp" = "Other people won’t see when you were last online, and you won’t see theirs.";
+"privacy.hideTyping" = "Hide “typing…”";
+"privacy.hideTypingHelp" = "Other people won’t see when you are typing.";
+
+/* Photos & videos: auto-download. */
+"media.download" = "Download";
+"media.autoDownload" = "Auto-download";
+"media.autoDownload.always" = "Always";
+"media.autoDownload.wifi" = "Wi-Fi only";
+"media.autoDownload.never" = "Never";
+"media.autoDownload.alwaysHelp" = "Photos, videos and video messages in chats download by themselves as soon as they appear on screen.";
+"media.autoDownload.wifiHelp" = "On mobile data and in Low Data Mode, photos and videos do not download by themselves: you see a blurred outline and a download button instead.";
+"media.autoDownload.neverHelp" = "Photos and videos download only when you tap the download button or open them. Avatars and stickers always do.";
+
+/* The session card and the new sign-in banner. */
+"devices.application" = "App";
+"devices.lastSeen" = "Last active";
+"devices.ipAddress" = "IP address";
+"devices.deviceID" = "Device ID";
+"devices.unknown" = "unknown";
+"devices.endSession" = "End session";
+"devices.done" = "Done";
+"devices.newSignInTitle" = "New sign-in to your account";
+"devices.newSignInMore" = "and %lld more";
+"devices.newSignInYes" = "Yes, it was me";
+"devices.newSignInNo" = "It wasn’t me";
+
+/* Who reacted: the "everybody" tab. */
+"message.menu.reactorsAll" = "All · %lld";
+"message.menu.seenAndReacted" = "%1$@ · %2$@";
+
+/* Media viewer: the counter and video skipping. */
+"message.media.counter" = "%lld of %lld";
+"message.media.skipBack" = "Back 15 seconds";
+"message.media.skipForward" = "Forward 15 seconds";
+"signIn.server" = "Server: %@";
+"signIn.changeServer" = "Change";
+"signIn.serverDone" = "Done";
+"signIn.signInTo" = "Sign in to %@";
+"signIn.back" = "Back";
+"signIn.continueInBrowser" = "Continue in browser";
+"signIn.browserHelp" = "Your server's sign-in page opens, and everything there works as usual.";
+"signIn.passwordHelp" = "The username and password of your account.";
+"signIn.problem.noRegistration" = "This server doesn't let you create an account from the app. Pick another server, or sign up on its website.";
+"profile.search" = "Search";
+"profile.mute" = "Mute";
+"profile.unmute" = "Unmute";
+"profile.blockUser" = "Block User";
+"profile.unblockUser" = "Unblock User";
+"profile.blockedNotice" = "You blocked this user. Their new messages don't reach you.";
+
+"accounts.signOut" = "Sign out";
+"accounts.signOutTitle" = "Sign out of %@?";
+"accounts.signOutMessage" = "This account’s chats will be removed from this device. To read encrypted messages again, you’ll need your recovery key or another of your devices.";
+"stickers.subscribe" = "Add to mine";
+"stickers.settings.sheetSection" = "Sticker display";
+"stickers.settings.builtIn" = "Sparks";
+"stickers.settings.roomPacks" = "Chat packs";
+"stickers.settings.roomPacksHelp" = "If a chat has its own pack, you see it while you’re in that chat. Tap “Add to mine” above it to have it in every chat.";
+"stickers.settings.subscriptions" = "Added packs";
+"stickers.settings.subscriptionsHelp" = "Swipe a pack left to remove it. The pack itself stays in its chat.";
+"stickers.settings.unsubscribe" = "Remove";
+"stickers.settings.mineHelp" = "A sticker lands here when you add it from a chat. Touch and hold to remove it. Other Matrix apps see this pack too.";
+"stickers.settings.clearRecent" = "Clear recent";
+"stickers.settings.clearRecentHelp" = "Recent stickers are kept in your account, so they’ll be cleared on all your devices.";
+"message.forwarded" = "Forwarded message";
+"message.forwardedFrom" = "Forwarded from %@";
+
+/* The line under somebody's name in a one-to-one chat — see PresenceLabel. */
+"presence.online" = "online";
+"presence.justNow" = "last seen just now";
+"presence.minutesAgo" = "last seen %lld min ago";
+"presence.hoursAgo" = "last seen %lld hr ago";
+"presence.atTime" = "last seen at %@";
+"presence.yesterday" = "last seen yesterday";
+"presence.at" = "last seen %@";
+
+/* QR codes: your own, a chat's, and the scanner in New chat. */
+"qr.title" = "QR code";
+"qr.scan" = "Scan QR code";
+"qr.scanHint" = "Point the camera at a person’s or a room’s QR code";
+"qr.notMatrix" = "That’s not a Matrix link";
+"qr.choosePicture" = "Choose a picture";
+"qr.noCamera" = "No access to the camera. Allow it in Settings or choose a picture of the code.";
+"qr.nothingFound" = "There’s no QR code in that picture";
+"qr.joinRoom" = "Join room";
+"qr.openRoom" = "Open";
+"qr.roomUnknown" = "The server didn’t say anything about this room, but you can still try to join.";
+"qr.inviteOnlyRoom" = "This room is invite only.";
+
+/* Under the empty address field on the sign-in screen: opens the list of public servers. */
+"signIn.chooseServer" = "Not sure which server to choose?";
+/* The main button under the address field. */
+"signIn.next" = "Next";
+/* A small grey link at the foot of the sign-in screen: opens a screen explaining Matrix. */
+"signIn.whatIsMatrix" = "What is Matrix?";
+/* The title of that screen. */
+"aboutMatrix.title" = "What is Matrix";
+/* The opening paragraph, set larger than the rest. */
+"aboutMatrix.intro" = "Matrix is an open way for messaging apps to talk to each other. Iskra is one of those apps. There are others, and they all understand each other.";
+/* Then three short sections: a heading and a paragraph under it. */
+"aboutMatrix.email.title" = "Like email, but for chats";
+"aboutMatrix.email.body" = "Your account lives on one server, and you can write to people on any other. Email works the same way: you’re on Gmail, your friend is on Yahoo, and the mail still arrives. A Matrix address looks like this: @name:server.";
+"aboutMatrix.nobody.title" = "Nobody’s in charge";
+"aboutMatrix.nobody.body" = "Matrix isn’t owned by one company that could shut it down, sell your data or change the rules. There are thousands of servers, run by foundations, communities and ordinary people. You can run one too.";
+"aboutMatrix.private.title" = "Your conversations stay yours";
+"aboutMatrix.private.body" = "Messages are encrypted right on your device, and only the person you’re writing to can decrypt them. The server stores and passes them along, but it can’t read them.";
+
+/* The list of public servers, opened from the sign-in screen. */
+"servers.title" = "Choose a server";
+"servers.intro" = "Your account lives on one server, and you can write to people on any other, just like email. On every server below you can create an account right in Iskra.";
+"servers.matrixOrg" = "The largest Matrix server, run by the foundation that develops Matrix itself.";
+/* Where the server is. */
+"servers.matrixOrgWhere" = "United Kingdom";
+/* A note on matrix.org, shown only on a phone with Russian language or region: it may not answer from there. */
+"servers.matrixOrgBlocked" = "May be unreachable from Russia";
+"servers.tchncs" = "One of the oldest community servers. Its owner runs other free services too.";
+"servers.tchncsWhere" = "Germany";
+"servers.quassel" = "An open server for everyday conversation, free for everyone.";
+"servers.quasselWhere" = "Germany, server in Finland";
+"servers.nopeChat" = "Run by the adminForge team, who host other free services too. Has bridges to other messengers.";
+"servers.nopeChatWhere" = "Germany";
+/* The last entry: running a server of your own. Opens a page about it in the browser. */
+"servers.ownTitle" = "Your own server";
+"servers.ownAbout" = "You can run a server of your own, and then your conversations are entirely in your hands. You’ll need a domain and a little time.";
+
+/* Under the "open to anyone" switch when making a room: what the room will be. Changes with the switch. */
+"roomList.new.willBeEncrypted" = "The room will be encrypted";
+"roomList.new.willNotBeEncrypted" = "The room won’t be encrypted";
+
+/* Room access: history, address, blocked (stage 9) */
+"room.access.historyHeader" = "History for new members";
+"room.access.historyFooter" = "What someone who joins later will see of what was already said. In a protected chat older messages may not open for them: they don’t have the keys.";
+"room.access.history.shared" = "All of it";
+"room.access.history.invited" = "From when they were invited";
+"room.access.history.joined" = "From when they joined";
+"room.access.history.worldReadable" = "Anyone, even without joining";
+"room.access.addressHeader" = "Address";
+"room.access.addressPlaceholder" = "name";
+"room.access.addressFooter" = "The address is how the chat is found and opened from a link. Clear it and the chat has none.";
+"room.access.inDirectory" = "List in the server’s directory";
+"room.access.inDirectoryHelp" = "People will find the chat when they search public rooms on %@.";
+"room.access.banned" = "Blocked";
+"room.access.bannedFooter" = "They can’t come into the chat, even if invited.";
+"room.access.unban" = "Unblock";
+"room.access.unbanQuestion" = "Unblock %@?";
+"room.access.unbanHelp" = "They’ll be able to come in again. They won’t appear in the chat by themselves — invite them or send a link.";
+
+/* Choosing several messages (stage 9) */
+"message.menu.select" = "Select";
+"message.selection.count" = "Selected: %lld";
+"message.selection.cancel" = "Cancel";
+"message.selection.deleteTitle" = "Delete the selected messages?";
+"message.selection.deleteMessage" = "They’ll disappear for everyone in the chat. You won’t be able to bring them back.";
+"message.selection.copied" = "Copied";
+
+/* Chat folders (stage 9) */
+"folders.all" = "All";
+"folders.title" = "Folders";
+"folders.explanation" = "Folders gather chats by rules (personal, groups, unread) and sit as tabs above the list. They’re the same on all your devices.";
+"folders.new" = "New folder";
+"folders.suggested" = "You could start with these";
+"folders.add" = "Add";
+"folders.edit" = "Folder";
+"folders.namePlaceholder" = "Name";
+"folders.kindsHeader" = "Which chats";
+"folders.kind.direct" = "Personal";
+"folders.kind.groups" = "Groups";
+"folders.kind.spaces" = "Spaces";
+"folders.kind.invitations" = "Invitations";
+"folders.suggestion.unread" = "Unread";
+"folders.conditionsHeader" = "Conditions";
+"folders.onlyUnread" = "Only unread";
+"folders.excludesMuted" = "Leave out muted";
+"folders.includesArchived" = "Include the archive";
+"folders.includedHeader" = "Always show";
+"folders.excludedHeader" = "Never show";
+"folders.addChats" = "Add chats";
+"folders.chooseChats" = "Choose chats";
+"folders.editList" = "Edit";
+"folders.done" = "Done";
+"folders.cancel" = "Cancel";
+"folders.delete" = "Delete folder";
+"folders.deleteQuestion" = "Delete the folder “%@”?";
+"folders.deleteHelp" = "The chats stay where they are; only the tab goes.";
+"folders.addToFolder" = "Add to folder";
+"folders.membershipTitle" = "Folders";
+"folders.membershipFooter" = "Ticked, the chat is in the folder even if it doesn’t fit the rules. Unticked, it never is.";
+"folders.emptyTitle" = "Nothing in this folder yet";
+"folders.emptyMessage" = "Chats that fit its rules will appear here.";
+
+/* Which account a notification came for */
+"chats.namesAccount" = "Account in notifications";
+"chats.namesAccountHelp" = "The notification’s title shows which of your accounts it came to.";
+
+"poll.retract" = "Retract vote";
+
+"stickers.settings.mine" = "My stickers";
+
+/* Beta: for developers */
+"beta.developers" = "For developers";
+"beta.showsSource" = "Message JSON in the menu";
+"beta.showsSourceHelp" = "A message’s menu gets “View JSON”: the event as the server sent it. Useful when a message shows up wrong.";
+"beta.homeserver" = "Server";
+"beta.homeserverHelp" = "The address the app really talks to, found from the account’s name. It is not necessarily what was typed at sign-in. A bridge doesn’t change it; it only carries the connection.";
+"beta.showsAllEvents" = "All events in chats";
+"beta.showsAllEventsHelp" = "Chats also show the events the app normally leaves out (permissions, join rules, calls, picture changes, anything that failed to parse) as a grey line with the type and the sender.";
+"beta.viewSource" = "View JSON";
+"beta.noSource" = "This message has no event on the server yet.";
+"beta.demoSignIn" = "Demo sign-in";
+"beta.demoSignInHelp" = "The sign-in screen against a server inside the app: alice / password. Your account is untouched, and whoever signs in is signed out at once.";
+"beta.demoSignedIn" = "Signed in: %@";
+"beta.close" = "Close";
+
+/* Threads */
+"thread.title" = "Thread";
+"thread.replyInThread" = "Reply in thread";
+"thread.replies" = "%lld replies";
+
+/* Live location */
+"location.shareLive" = "Share live location";
+"location.shareLiveFor" = "Share your location for how long?";
+"location.liveUntil" = "Live · until %@";
+"location.liveEnded" = "Live location ended";
+"location.liveWaiting" = "Waiting for the first point…";
+"location.youAreSharing" = "You’re sharing your location until %@";
+"location.stop" = "Stop";
+
+"location.liveForMinutes" = "%lld minutes";
+"location.liveForHours" = "%lld hours";
+
+/* Voice transcription */
+"message.transcript.show" = "Transcribe";
+"message.transcript.hide" = "Hide text";
+"message.transcript.notAllowed" = "Speech recognition isn’t allowed. You can allow it in Settings.";
+"message.transcript.unavailable" = "This device can’t recognise your language offline, and Iskra won’t send the voice to a server.";
+"message.transcript.nothingHeard" = "No words could be made out.";
+"message.transcript.failed" = "It couldn’t be transcribed. Try again.";
+
+"chats.threads" = "Show threads";
+"chats.threadsHelp" = "Replies in threads are gathered under their message as “3 replies”. Unless replies are hidden, they also appear in the chat itself, among the other messages. Changes apply once you open the chat again. Personal chats have no threads.";
+"chats.threadsAlways" = "Always";
+"chats.threadsLargeRooms" = "In chats of over 100 people";
+"chats.threadsNever" = "Never";
+"chats.threadsHideReplies" = "Hide replies from the chat";
+
+/* The photo editor — PhotoEditor */
+"photoEditor.edit" = "Edit photo";
+"photoEditor.cancel" = "Cancel";
+"photoEditor.done" = "Done";
+"photoEditor.undo" = "Undo";
+"photoEditor.draw" = "Draw";
+"photoEditor.text" = "Text";
+"photoEditor.crop" = "Crop";
+"photoEditor.rotate" = "Rotate";
+"photoEditor.textPrompt" = "Write something";
+"photoEditor.failed" = "Couldn’t save the changes — the photo is as it was";
+"photoEditor.ok" = "OK";
+"photoEditor.white" = "White";
+"photoEditor.black" = "Black";
+"photoEditor.red" = "Red";
+"photoEditor.yellow" = "Yellow";
+"photoEditor.green" = "Green";
+"photoEditor.blue" = "Blue";
+
+/* Avatar crop */
+"avatarCrop.title" = "Move and zoom";
+"avatarCrop.zoom" = "Zoom";
+"avatarCrop.cancel" = "Cancel";
+"avatarCrop.done" = "Done";

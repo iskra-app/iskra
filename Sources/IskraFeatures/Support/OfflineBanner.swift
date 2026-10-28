@@ -18,6 +18,20 @@ extension EnvironmentValues {
     }
 }
 
+/// Whether the app is catching up with the server — sync has come back and nothing has been heard
+/// yet. `RoomListStore.isUpdating`, put here by `IskraRootView` beside `isOffline`, so the room can
+/// say "Updating…" under its name the way the chat list says it in its title.
+private struct UpdatingKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    public var isUpdating: Bool {
+        get { self[UpdatingKey.self] }
+        set { self[UpdatingKey.self] = newValue }
+    }
+}
+
 /// The strip that says the network is gone.
 ///
 /// An *inset* and not an overlay, for the same reason the search field below the conversation list
@@ -39,18 +53,21 @@ struct OfflineBanner: View {
 
 extension View {
     /// Puts the strip above this screen while the app is offline, and takes it away when it is not.
-    func offlineBanner() -> some View {
-        modifier(OfflineBannerModifier())
+    /// `isShown` false leaves it out on a screen that says the same thing some other way — the chat
+    /// list on iPhone, whose title does (`RoomListStatus`).
+    func offlineBanner(_ isShown: Bool = true) -> some View {
+        modifier(OfflineBannerModifier(isShown: isShown))
     }
 }
 
 private struct OfflineBannerModifier: ViewModifier {
+    let isShown: Bool
     @Environment(\.isOffline) private var isOffline
 
     func body(content: Content) -> some View {
         content
             .safeAreaInset(edge: .top) {
-                if isOffline {
+                if isShown, isOffline {
                     OfflineBanner()
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }

@@ -59,17 +59,17 @@ one more volume and one environment variable::
 
 and then, in ``sygnal.yaml``::
 
-    moscow.swag.iskra.voip.dev:
+    wtf.iskra.voip.dev:
       type: iskra_ring.RingPushkin
       keyfile: /keys/AuthKey_XXXXXXXXXX.p8
       key_id: XXXXXXXXXX
       team_id: XXXXXXXXXX
-      topic: moscow.swag.iskra.voip     # bundle id + ".voip"
+      topic: wtf.iskra.voip     # bundle id + ".voip"
       platform: sandbox
       push_type: voip
       convert_device_token_to_hex: false
 
-plus the same entry named ``moscow.swag.iskra.voip`` with ``platform: production``.
+plus the same entry named ``wtf.iskra.voip`` with ``platform: production``.
 
 A note on versions
 ------------------

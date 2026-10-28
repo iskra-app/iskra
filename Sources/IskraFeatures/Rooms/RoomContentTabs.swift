@@ -142,22 +142,93 @@ struct RoomContentPicker: View {
     }
 }
 
+/// The end of a tab, which fetches more of the room's history for as long as it is on the screen —
+/// Telegram's shared media, which has no button for this.
+///
+/// For as long as it is *seen*, not once: older history is thin on photographs and files, and a page
+/// of twenty-five events very often adds nothing to the tab at all, so a single fetch on appearing
+/// would leave the spinner sitting at the bottom of an unchanged list. It goes on paging until the
+/// list has grown enough to push it off the screen, the room runs out of history, a page fails (the
+/// store stops on that by itself — see `TimelineStore.loadMore`), or a ceiling is reached; scrolling
+/// away and back starts it again.
+///
+/// Not the opening fetch — the conversation has that, explicitly, in `TimelineStore.open()`. This is
+/// only the reader asking for *more*, by scrolling, which is the one way of asking the tab has.
+struct AutoLoadEarlier: View {
+    let timeline: TimelineStore
+    @State private var isVisible = false
+
+    var body: some View {
+        ProgressView()
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, Theme.Spacing.normal)
+            .onAppear { isVisible = true }
+            .onDisappear { isVisible = false }
+            .task(id: isVisible) {
+                guard isVisible else { return }
+                var pages = 0
+                while !Task.isCancelled, timeline.canLoadMore, !timeline.didFailToPaginate,
+                      pages < Self.pagesPerVisit {
+                    await timeline.loadMore()
+                    pages += 1
+                }
+            }
+            .accessibilityHidden(true)
+    }
+
+    /// Twenty pages is five hundred events: plenty for a screenful of anything, and a bound on how
+    /// much history one glance at the bottom of a tab can pull in.
+    private static let pagesPerVisit = 20
+}
+
 // MARK: - What each tab is made of
 
 /// The pictures and the videos, as a grid — the arrangement the eye can actually search, which a
 /// list of filenames is not.
+///
+/// Telegram's shared media: three square tiles to a row, edge to edge with a hairline between them
+/// and no rounded corners — a contact sheet, not a set of cards — broken up by the month each run
+/// was sent in, and a video wearing its length in the corner.
+///
+/// Each month heading and each run of three is a row of the form, not one row holding the whole
+/// grid. A lazy grid inside a single list row is not lazy at all — the row is laid out whole — so a
+/// room with a few hundred pictures built and fetched every tile the moment the tab opened, and
+/// again on every page that arrived. As rows, the form only builds what is on screen.
 struct RoomMediaGrid: View {
     let items: [MediaItem]
     /// Opening one opens all of them, swipeable: the index is which one was pressed.
-    @State private var openedAt: Int?
+    let open: (Int) -> Void
 
-    private let columns = [GridItem(.adaptive(minimum: 96), spacing: Theme.Spacing.tight)]
+    private static let perRow = 3
 
     var body: some View {
-        LazyVGrid(columns: columns, spacing: Theme.Spacing.tight) {
-            ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                Button {
-                    openedAt = index
+        ForEach(MonthGroups.group(items, by: \.timestamp), id: \.month) { group in
+            MonthHeader(month: group.month)
+            ForEach(Self.rows(of: group.items), id: \.first?.element.id) { row in
+                HStack(spacing: Theme.Border.hairline) {
+                    ForEach(0..<Self.perRow, id: \.self) { column in
+                        if column < row.count {
+                            tile(row[column].element, at: row[column].offset)
+                        } else {
+                            // An empty square keeps a short last row in the same columns as the rest.
+                            Color.clear.aspectRatio(1, contentMode: .fit)
+                        }
+                    }
+                }
+                .padding(.bottom, Theme.Border.hairline)
+            }
+        }
+    }
+
+    private static func rows<T>(of items: [T]) -> [[T]] {
+        stride(from: 0, to: items.count, by: perRow).map { start in
+            Array(items[start..<min(start + perRow, items.count)])
+        }
+    }
+
+    private func tile(_ item: MediaItem, at index: Int) -> some View {
+        Button {
+                    open(index)
                 } label: {
                     // The square is the *container*, and the picture is a passenger inside it.
                     //
@@ -177,23 +248,145 @@ struct RoomMediaGrid: View {
                         .overlay {
                             MediaThumbnail(attachment: item.attachment)
                         }
-                        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
+                        // Square corners: tiles that touch, the way a contact sheet's do.
+                        .clipped()
                         .overlay(alignment: .bottomTrailing) {
-                            if item.isVideo {
-                                Image(systemName: "play.circle.fill")
-                                    .foregroundStyle(.white)
-                                    .padding(Theme.Spacing.tight)
-                                    .shadow(radius: 2)
-                            }
+                            if item.isVideo { videoBadge(item) }
                         }
                 }
                 .buttonStyle(.plain)
+    }
+
+    /// The length in the corner of a video, Telegram's; a play mark where the length is unknown.
+    @ViewBuilder
+    private func videoBadge(_ item: MediaItem) -> some View {
+        Group {
+            if let duration = item.attachment.duration {
+                Text(Duration.seconds(duration), format: .time(pattern: .minuteSecond))
+                    .font(.caption2.weight(.semibold).monospacedDigit())
+            } else {
+                Image(systemName: "play.fill")
+                    .font(.caption2)
             }
         }
-        .sheet(item: Binding(get: { openedAt.map { OpenedIndex(value: $0) } },
-                             set: { openedAt = $0?.value })) { opened in
-            MediaPager(items: items, startIndex: opened.value)
+        .foregroundStyle(.white)
+        .shadow(color: .black.opacity(0.6), radius: 2)
+        .padding(Theme.Spacing.tight)
+    }
+}
+
+extension View {
+    /// A section of a grouped form with no margin either side — the full width of the screen. On
+    /// systems before 26, and on the Mac, there is no way to ask, and the section keeps its card's inset.
+    @ViewBuilder
+    func edgeToEdge(_ isOn: Bool = true) -> some View {
+        #if os(iOS)
+        if isOn, #available(iOS 26, *) {
+            listSectionMargins(.horizontal, 0)
+        } else {
+            self
         }
+        #else
+        self
+        #endif
+    }
+}
+
+/// A month's heading over the run of things sent in it — "Октябрь 2026" — Telegram's way of breaking
+/// up shared media, so a long history reads as a calendar and not as one undifferentiated wall.
+struct MonthHeader: View {
+    let month: Date
+
+    var body: some View {
+        Text(MonthGroups.label(for: month))
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, Theme.Spacing.roomy)
+            .padding(.top, Theme.Spacing.normal)
+            .padding(.bottom, Theme.Spacing.close)
+            .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// Things sorted into the months they were sent in, newest month first, keeping each one's place in
+/// the whole list — the index is what opens the right picture in the pager.
+enum MonthGroups {
+    struct Group<Item> {
+        let month: Date
+        let items: [(offset: Int, element: Item)]
+    }
+
+    static func group<Item>(_ items: [Item], by date: KeyPath<Item, Date>,
+                            calendar: Calendar = .current) -> [Group<Item>] {
+        var groups: [Group<Item>] = []
+        var current: (month: Date, items: [(offset: Int, element: Item)])?
+
+        for (index, item) in items.enumerated() {
+            let month = calendar.dateInterval(of: .month, for: item[keyPath: date])?.start ?? item[keyPath: date]
+            if current?.month != month {
+                if let current { groups.append(Group(month: current.month, items: current.items)) }
+                current = (month, [])
+            }
+            current?.items.append((index, item))
+        }
+        if let current { groups.append(Group(month: current.month, items: current.items)) }
+        return groups
+    }
+
+    /// "Октябрь 2026": the month as it stands alone (`LLLL` — nominative in Russian, not "октября"),
+    /// capitalised, and the year.
+    @MainActor static func label(for month: Date, locale: Locale = .current) -> String {
+        let text = formatter(for: locale).string(from: month)
+        return text.prefix(1).uppercased() + text.dropFirst()
+    }
+
+    /// One formatter per locale: building a `DateFormatter` costs more than the formatting, and a
+    /// heading is drawn on every pass over the grid.
+    @MainActor private static var formatters: [Locale: DateFormatter] = [:]
+
+    @MainActor private static func formatter(for locale: Locale) -> DateFormatter {
+        if let formatter = formatters[locale] { return formatter }
+        let formatter = DateFormatter()
+        formatter.locale = locale
+        formatter.setLocalizedDateFormatFromTemplate("LLLLyyyy")
+        formatters[locale] = formatter
+        return formatter
+    }
+}
+
+/// The history sorted into the tabs of the info screen, newest first.
+///
+/// The timeline holds messages the way a conversation reads: oldest at the top, newest at the
+/// bottom, which is right for the chat and backwards for every tab. Nobody opens the files tab to
+/// find the first file ever sent. Reversed once, here, so the lists cannot disagree about it — and
+/// so a link posted this morning is not eleven screens down.
+///
+/// Worked out as a value, once per change of the timeline and off the main thread. It used to be
+/// six computed properties, each starting again from every row, read several times per redraw —
+/// and the links tab runs a data detector over every text message, so each page of history that
+/// arrived while the tab was open stalled the scroll it was arriving for.
+struct RoomContents: Sendable {
+    var photos: [MediaItem] = []
+    var voices: [MediaItem] = []
+    var videoNotes: [MediaItem] = []
+    var files: [MediaItem] = []
+    var links: [LinkItem] = []
+
+    init() {}
+
+    init(rows: [TimelineRow]) {
+        let messages: [Message] = rows.reversed().compactMap { row in
+            if case let .message(message) = row { message } else { nil }
+        }
+        for item in MediaItem.items(from: messages) {
+            switch item.kind {
+            case .photo, .video: photos.append(item)
+            case .voice, .audio: voices.append(item)
+            case .videoNote: videoNotes.append(item)
+            case .file: files.append(item)
+            }
+        }
+        links = LinkItem.items(from: messages)
     }
 }
 
@@ -273,8 +466,8 @@ struct RoomVideoNoteList: View {
             }
             .buttonStyle(.plain)
         }
-        .sheet(item: Binding(get: { openedAt.map { OpenedIndex(value: $0) } },
-                             set: { openedAt = $0?.value })) { opened in
+        .mediaViewer(item: Binding(get: { openedAt.map { OpenedIndex(value: $0) } },
+                                   set: { openedAt = $0?.value })) { opened in
             MediaPager(items: items, startIndex: opened.value)
         }
     }
@@ -292,10 +485,16 @@ struct RoomFileList: View {
             Button {
                 Task { await opener.open(item.attachment, using: loader) }
             } label: {
-                RoomContentRow(icon: opener.failed ? "exclamationmark.triangle" : "doc",
-                               title: Text(item.attachment.filename),
-                               detail: Text(item.sender),
-                               timestamp: item.timestamp)
+                // Telegram's file row: a coloured tile with the extension on it, so a PDF is told
+                // from a spreadsheet before a word of the name is read.
+                HStack(spacing: Theme.Spacing.normal) {
+                    FileTypeTile(filename: item.attachment.filename, failed: opener.failed)
+                    RoomContentRow.Labels(title: Text(item.attachment.filename),
+                                          detail: Text(item.sender),
+                                          timestamp: item.timestamp)
+                }
+                .padding(.vertical, Theme.Spacing.tight)
+                .contentShape(.rect)
             }
             .buttonStyle(.plain)
         }
@@ -310,6 +509,49 @@ struct RoomFileList: View {
             }
         }
         #endif
+    }
+}
+
+/// The square beside a file in the files tab: its extension, on a colour that says what sort of file
+/// it is — Telegram's.
+struct FileTypeTile: View {
+    let filename: String
+    var failed = false
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: Theme.Spacing.close, style: .continuous)
+            .fill(failed ? Color.red : Self.tint(for: fileExtension))
+            .frame(width: Theme.Size.avatar, height: Theme.Size.avatar)
+            .overlay {
+                if failed {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.white)
+                } else {
+                    Text(verbatim: fileExtension.isEmpty ? "FILE" : String(fileExtension.prefix(4)).uppercased())
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(.white)
+                        .minimumScaleFactor(0.6)
+                        .padding(.horizontal, Theme.Spacing.tight)
+                }
+            }
+            .accessibilityHidden(true)
+    }
+
+    private var fileExtension: String {
+        (filename as NSString).pathExtension.lowercased()
+    }
+
+    static func tint(for fileExtension: String) -> Color {
+        switch fileExtension {
+        case "pdf": .red
+        case "doc", "docx", "rtf", "pages", "txt", "md", "odt": .blue
+        case "xls", "xlsx", "csv", "numbers", "ods": .green
+        case "ppt", "pptx", "key", "odp": .orange
+        case "zip", "rar", "7z", "tar", "gz": .brown
+        case "mp3", "m4a", "ogg", "wav", "flac", "aac", "opus": .purple
+        case "mp4", "mov", "mkv", "avi", "webm": .pink
+        case "jpg", "jpeg", "png", "heic", "gif", "webp": .teal
+        default: .gray
+        }
     }
 }
 

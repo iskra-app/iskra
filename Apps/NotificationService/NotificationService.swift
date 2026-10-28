@@ -34,6 +34,10 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
     /// weakening something bigger. What makes it true is the `Mutex` — the handler is reached
     /// through the lock, exactly once, and never held anywhere else.
     private struct Delivery: @unchecked Sendable {
+        /// Which push this is. The decrypt for an older push can finish after a newer one has
+        /// displaced it, and without this it took the *newer* push's handler: push 2 showed push
+        /// 1's words, and push 2's own were dropped.
+        let id = UUID()
         let handler: (UNNotificationContent) -> Void
         /// iOS's own words for this push — "New message", or whatever the homeserver put in
         /// the payload. Kept, because it is what goes on screen if we run out of time, and
@@ -53,9 +57,10 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
         // So whatever was in there gets its fallback and is let go of, before the new one takes its
         // place. Showing the server's own "New message" for the older push is the right answer:
         // something did arrive, and we are out of time to say what.
+        let delivery = Delivery(handler: contentHandler, fallback: request.content)
         let displaced = pending.withLock { pending -> Delivery? in
             let previous = pending
-            pending = Delivery(handler: contentHandler, fallback: request.content)
+            pending = delivery
             return previous
         }
 
@@ -76,9 +81,19 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
             return
         }
 
+        // Whose push it is, written into the payload when the pusher was registered — see
+        // `PushRegistration.accountKey`. Absent from a pusher older than that, and then the decoder
+        // works it out.
+        let accountID = payload[PushRegistration.accountKey] as? String
+
         Task {
-            let outcome = await PushDecoder().notification(roomID: roomID, eventID: eventID)
-            deliver(outcome, roomID: roomID)
+            let decoder = PushDecoder()
+            let outcome = await decoder.notification(roomID: roomID, eventID: eventID, accountID: accountID)
+            // Under the lock the words and the sender are already gone; which of the user's
+            // accounts it came for — "@boris:work.example" — goes with them.
+            let locked = AppLock.isLockedNow(defaults: UserDefaults(suiteName: AppEnvironment.appGroupIdentifier))
+            deliver(outcome, to: delivery.id, roomID: roomID, accountID: accountID,
+                    accountLabel: locked ? nil : decoder.accountLabel(for: accountID))
         }
     }
 
@@ -95,13 +110,21 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
 
     // MARK: - Private
 
-    private func deliver(_ outcome: PushOutcome, roomID: String) {
-        guard let delivery = pending.withLock({ $0.take() }) else { return }
+    private func deliver(_ outcome: PushOutcome, to id: UUID, roomID: String, accountID: String?,
+                         accountLabel: String?) {
+        // Only our own push. One that was displaced has already been given its fallback.
+        let mine = pending.withLock { pending -> Delivery? in
+            guard pending?.id == id else { return nil }
+            return pending.take()
+        }
+        guard let delivery = mine else { return }
 
         switch outcome {
         case let .show(notification):
             delivery.handler(content(for: notification,
                                      roomID: roomID,
+                                     accountID: accountID,
+                                     accountLabel: accountLabel,
                                      // Read off the server's own notification, which is the only
                                      // place this number exists — and read here, because the line
                                      // above has already taken `pending` and there is nothing left
@@ -150,12 +173,15 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
 
     private func content(for notification: PushNotification,
                          roomID: String,
+                         accountID: String?,
+                         accountLabel: String?,
                          unread: Int?) -> UNNotificationContent {
         let content = UNMutableNotificationContent()
+        // No subtitle, ever: an iPhone does not draw it, so nothing that matters may live there.
+        // Which account a push came for, with more than one on the phone, goes after the title —
+        // the same message means something different to the work account and the personal one.
+        let notification = accountLabel.map { notification.titled("\(notification.title) · \($0)") } ?? notification
         content.title = notification.title
-        if let sender = notification.sender {
-            content.subtitle = sender
-        }
         content.body = notification.body
         content.sound = notification.isNoisy ? .default : nil
 
@@ -164,7 +190,13 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
         // this process works out, which it could not: it holds one event and has no idea what else
         // is waiting. `nil` means the server offered no number, and then the badge is left exactly
         // as it was rather than cleared. The app recomputes it from the room list when it opens.
-        if let unread { content.badge = NSNumber(value: unread) }
+        //
+        // It is *this account's* count, though, and the icon is everybody's: so it is written down
+        // as this account's and the icon shows all of them added up. See `UnreadCounts`.
+        if let unread {
+            let total = accountID.map { UnreadCounts.set(unread, forAccount: $0) } ?? unread
+            content.badge = NSNumber(value: total)
+        }
 
         // Collapses every push from one conversation into one entry, so a room that gets
         // twenty messages is one line on the lock screen and not twenty.
@@ -173,7 +205,11 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
         // What the app opens to when the notification is tapped. The room, and nothing else —
         // the app already has the conversation. Read by `PushDelegate`, which hands it to
         // `PushRouter`.
-        content.userInfo = ["room_id": roomID]
+        //
+        // And whose room: tapping a notification for the account that is not open opens that one.
+        var info: [String: Any] = ["room_id": roomID]
+        if let accountID { info[PushRegistration.accountKey] = accountID }
+        content.userInfo = info
 
         // And last, the thing that makes it look like a message rather than an app notice: the
         // sender's face, their name in place of ours, its own line in Notification Summary. This
@@ -183,7 +219,8 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
         // `PushFace` is what fills the circle when the sender has no picture of their own: the app
         // draws a creature for such people, and the lock screen has to draw the same one, in this
         // process, from the same seed.
-        return CommunicationNotification.apply(to: content, for: PushFace.applied(to: notification))
+        return CommunicationNotification.apply(to: content, for: PushFace.applied(to: notification),
+                                               account: accountID)
     }
 }
 

@@ -33,8 +33,9 @@ public enum Wallpaper: String, CaseIterable, Identifiable, Sendable {
     /// Where the choice is kept, read by every room and written by the appearance screen.
     public static let storageKey = "appearance.wallpaper"
 
-    /// How far down the wallpaper is taken, 0 to `maximumDimming`. A separate key because it is a
-    /// separate question: which picture, and how loudly.
+    /// How far the wallpaper is taken back, 0 to `maximumDimming` — towards black in the dark
+    /// theme and towards white in the light one (`WallpaperBackdrop`). A separate key because it is
+    /// a separate question: which picture, and how loudly.
     public static let dimmingKey = "appearance.wallpaperDimming"
 
     /// Enough to take a bright photograph down to something a grey bubble reads on, and not so far
@@ -51,6 +52,43 @@ public enum Wallpaper: String, CaseIterable, Identifiable, Sendable {
 
     /// Whether anything is drawn behind the conversation at all.
     public var isSet: Bool { self != .none }
+
+    /// How bright the gradient is, 0 to 1 — the mean of its two colours' relative luminance. Nil
+    /// for the photograph, whose brightness has to be measured (`WallpaperStore.luminance`), and
+    /// for no wallpaper at all.
+    public var luminance: Double? {
+        let values: [[Double]] = switch self {
+        case .sunset: [[0.98, 0.55, 0.35], [0.54, 0.24, 0.47]]
+        case .sea: [[0.36, 0.68, 0.86], [0.10, 0.28, 0.52]]
+        case .forest: [[0.51, 0.74, 0.51], [0.11, 0.31, 0.27]]
+        case .dusk: [[0.44, 0.45, 0.74], [0.16, 0.15, 0.33]]
+        case .sand: [[0.93, 0.85, 0.70], [0.66, 0.51, 0.38]]
+        case .night: [[0.22, 0.24, 0.30], [0.05, 0.05, 0.09]]
+        case .none, .photo: []
+        }
+        guard !values.isEmpty else { return nil }
+        return values.map { Self.luminance(red: $0[0], green: $0[1], blue: $0[2]) }.reduce(0, +) / Double(values.count)
+    }
+
+    /// Relative luminance of an sRGB colour, as WCAG defines it.
+    public static func luminance(red: Double, green: Double, blue: Double) -> Double {
+        func linear(_ channel: Double) -> Double {
+            channel <= 0.03928 ? channel / 12.92 : pow((channel + 0.055) / 1.055, 2.4)
+        }
+        return 0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue)
+    }
+
+    /// Whether words on this wallpaper should be light. Measured after the veil, which darkens in
+    /// the dark theme and lightens in the light one (`lightens`). The threshold is where white and
+    /// black text have the same contrast (WCAG): below it white reads better, above it black does.
+    ///
+    /// The white veil is blended in sRGB and this blends luminance, which is linear — so it counts a
+    /// lightened picture a little brighter than it is. Near the threshold that tips towards dark
+    /// words on a picture that is getting paler, which is the side to err on.
+    public static func isDark(luminance: Double, dimming: Double, lightens: Bool = false) -> Bool {
+        let veiled = lightens ? luminance * (1 - dimming) + dimming : luminance * (1 - dimming)
+        return veiled < 0.179
+    }
 
     /// The two colours, top to bottom.
     ///
@@ -85,6 +123,9 @@ public struct WallpaperBackdrop: View {
     let photo: Image?
     let dimming: Double
 
+    /// Which way the veil goes — see the overlay below.
+    @Environment(\.colorScheme) private var scheme
+
     public init(wallpaper: Wallpaper, photo: Image?, dimming: Double) {
         self.wallpaper = wallpaper
         self.photo = photo
@@ -111,12 +152,13 @@ public struct WallpaperBackdrop: View {
                 LinearGradient(colors: wallpaper.colors, startPoint: .top, endPoint: .bottom)
             }
         }
-        // The dimmer, over the picture and under the conversation. Black rather than a scheme-aware
-        // veil: "затемнение" is one direction, and a wallpaper the user finds too loud is never too
-        // loud in the direction of *brighter*.
+        // The veil, over the picture and under the conversation: black in the dark theme, white in
+        // the light one. A wallpaper is taken back towards the page it stands in for — a light app
+        // with its picture darkened was a dark room in the middle of a white one, and the bubbles
+        // and chrome tuned for a light page sat on it like stickers.
         .overlay {
             if wallpaper.isSet {
-                Color.black.opacity(dimming)
+                (scheme == .light ? Color.white : Color.black).opacity(dimming)
             }
         }
         .clipped()
@@ -137,4 +179,47 @@ public extension EnvironmentValues {
     /// laid over somebody's holiday snap is the holiday snap, with words on it. So the bubble asks
     /// this, and over a wallpaper it uses an opaque fill instead. See `MessageBubble`.
     @Entry var hasWallpaper: Bool = false
+
+    /// Whether the wallpaper under the conversation is dark — what words drawn straight onto it
+    /// take their colour from (`onWallpaperInk()`). Meaningless without `hasWallpaper`.
+    @Entry var wallpaperIsDark: Bool = true
+}
+
+public extension View {
+    /// Words drawn straight onto the conversation, coloured so a wallpaper cannot swallow them:
+    /// white on a dark one, near-black on a light one, each with a faint halo of the other for the
+    /// busy parts of a photograph. Without a wallpaper, the secondary grey they have on the app's
+    /// own page. In place of `.foregroundStyle(.secondary)` on the words themselves — a style set
+    /// further out is overridden by one set closer in, so it cannot be put round them afterwards.
+    ///
+    /// Everything drawn straight onto the conversation wears it, and nothing more: the time beside
+    /// a bubble, the date between days, the line saying who joined. There used to be a capsule of
+    /// material under the date and the note whenever a wallpaper was showing, and it made them two
+    /// more shapes in a column of shapes — the time beside a bubble had already shown that ink
+    /// with a halo reads on a photograph without anything under it.
+    ///
+    /// Links inside the words — the names in a note — take the same ink, through the tint: a link
+    /// in grey on a dark photograph would be the one part of the line nobody could read.
+    func onWallpaperInk() -> some View {
+        modifier(OnWallpaperInk())
+    }
+}
+
+private struct OnWallpaperInk: ViewModifier {
+    @Environment(\.hasWallpaper) private var hasWallpaper
+    @Environment(\.wallpaperIsDark) private var isDark
+
+    func body(content: Content) -> some View {
+        if hasWallpaper {
+            let ink = isDark ? Color.white.opacity(0.92) : Color.black.opacity(0.78)
+            content
+                .foregroundStyle(ink)
+                .tint(ink)
+                .shadow(color: (isDark ? Color.black : Color.white).opacity(0.45), radius: 1.5)
+        } else {
+            content
+                .foregroundStyle(.secondary)
+                .tint(.secondary)
+        }
+    }
 }

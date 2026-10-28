@@ -1,0 +1,72 @@
+{
+  "fill-specializations" : [
+    {
+      "value" : "system-dark"
+    },
+    {
+      "appearance" : "dark",
+      "value" : {
+        "solid" : "srgb:0.98824,0.97647,0.11765,1.00000"
+      }
+    }
+  ],
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "fill-specializations" : [
+            {
+              "value" : {
+                "solid" : "srgb:0.98824,0.97647,0.11765,1.00000"
+              }
+            },
+            {
+              "appearance" : "dark",
+              "value" : "system-dark"
+            }
+          ],
+          "image-name" : "Subtract3.svg",
+          "name" : "Subtract3",
+          "position" : {
+            "scale" : 1.08,
+            "translation-in-points" : [
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "fill-specializations" : [
+            {
+              "appearance" : "dark",
+              "value" : "system-dark"
+            }
+          ],
+          "image-name" : "Subtract2.svg",
+          "name" : "Subtract2",
+          "position" : {
+            "scale" : 0.8800000000000003,
+            "translation-in-points" : [
+              0,
+              0
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}

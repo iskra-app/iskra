@@ -24,6 +24,10 @@ final class WallpaperStore {
     /// which is what it did before anybody chose anything.
     private(set) var photo: Image?
 
+    /// How bright the picture is on average, 0 to 1 — what the time beside a bubble takes its
+    /// colour from (`onWallpaperInk()`). Measured once, when the picture is read.
+    private(set) var luminance: Double?
+
     /// Whether the disk has already been asked. The file is read once per launch: it does not
     /// change except through `store(_:)`, which updates `photo` itself.
     private var hasLoaded = false
@@ -48,12 +52,38 @@ final class WallpaperStore {
         hasLoaded = true
 
         let url = fileURL
-        let data = await Task.detached(priority: .userInitiated) {
-            try? Data(contentsOf: url)
+        let read = await Task.detached(priority: .userInitiated) { () -> (Data, Double?)? in
+            guard let data = try? Data(contentsOf: url) else { return nil }
+            return (data, Self.measure(data))
         }.value
 
-        guard let data, let image = Image(mediaData: data) else { return }
+        guard let read, let image = Image(mediaData: read.0) else { return }
         photo = image
+        luminance = read.1
+    }
+
+    /// The picture's mean relative luminance, from a thumbnail a few pixels across — which is the
+    /// average the eye makes of it from arm's length, and costs nothing.
+    nonisolated static func measure(_ data: Data) -> Double? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                  kCGImageSourceCreateThumbnailFromImageAlways: true,
+                  kCGImageSourceThumbnailMaxPixelSize: 16
+              ] as CFDictionary),
+              let space = CGColorSpace(name: CGColorSpace.sRGB) else { return nil }
+        let width = thumbnail.width, height = thumbnail.height
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        guard let context = CGContext(data: &pixels, width: width, height: height, bitsPerComponent: 8,
+                                      bytesPerRow: width * 4, space: space,
+                                      bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue) else { return nil }
+        context.draw(thumbnail, in: CGRect(x: 0, y: 0, width: width, height: height))
+        var total = 0.0
+        for index in stride(from: 0, to: pixels.count, by: 4) {
+            total += Wallpaper.luminance(red: Double(pixels[index]) / 255,
+                                         green: Double(pixels[index + 1]) / 255,
+                                         blue: Double(pixels[index + 2]) / 255)
+        }
+        return total / Double(width * height)
     }
 
     /// Keeps a picked photograph as the wallpaper.
@@ -79,11 +109,24 @@ final class WallpaperStore {
 
         hasLoaded = true
         photo = image
+        luminance = Self.measure(data)
+    }
+
+    /// Whether this wallpaper, under this veil, is dark enough for light words — see
+    /// `Wallpaper.isDark`. A photograph not yet measured counts as dark under a darkening veil and
+    /// as light under a lightening one: that is where the veil is taking it, and the guess over a
+    /// picture nobody has looked at yet should go the same way.
+    func isDark(_ wallpaper: Wallpaper, dimming: Double, scheme: ColorScheme) -> Bool {
+        let lightens = scheme == .light
+        let luminance = wallpaper == .photo ? self.luminance : wallpaper.luminance
+        guard let luminance else { return !lightens }
+        return Wallpaper.isDark(luminance: luminance, dimming: dimming, lightens: lightens)
     }
 
     /// Forgets it — signing out, or choosing a different wallpaper after having used one's own.
     func forget() {
         photo = nil
+        luminance = nil
         hasLoaded = true
         try? FileManager.default.removeItem(at: fileURL)
     }
@@ -116,10 +159,14 @@ extension View {
 
 private struct ChatWallpaperBackground: ViewModifier {
     @AppStorage(Wallpaper.storageKey) private var wallpaper: Wallpaper = .default
+    @AppStorage(Wallpaper.dimmingKey) private var dimming: Double = Wallpaper.defaultDimming
+    @Environment(\.colorScheme) private var scheme
 
     func body(content: Content) -> some View {
         content
             .environment(\.hasWallpaper, wallpaper.isSet)
+            .environment(\.wallpaperIsDark,
+                         WallpaperStore.shared.isDark(wallpaper, dimming: dimming, scheme: scheme))
             .background { ChatWallpaper() }
     }
 }

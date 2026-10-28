@@ -2,6 +2,22 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>roomList.reactions</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+				<key>one</key>
+				<string>%lld new reaction</string>
+				<key>other</key>
+				<string>%lld new reactions</string>
+		</dict>
+	</dict>
 	<key>roomList.mentions</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -64,6 +80,118 @@
 				<string>%lld unread</string>
 				<key>other</key>
 				<string>%lld unread</string>
+		</dict>
+	</dict>
+	<key>message.menu.seen</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld seen</string>
+			<key>other</key>
+			<string>%lld seen</string>
+		</dict>
+	</dict>
+	<key>message.menu.reactors</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+				<key>one</key>
+				<string>%lld reaction</string>
+				<key>other</key>
+				<string>%lld reactions</string>
+		</dict>
+	</dict>
+	<key>stickers.settings.count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+				<key>one</key>
+				<string>%lld sticker</string>
+				<key>other</key>
+				<string>%lld stickers</string>
+		</dict>
+	</dict>
+	<key>poll.voters</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+				<key>one</key>
+				<string>%lld vote</string>
+				<key>other</key>
+				<string>%lld votes</string>
+		</dict>
+	</dict>
+	<key>thread.replies</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+				<key>one</key>
+				<string>%lld reply</string>
+				<key>other</key>
+				<string>%lld replies</string>
+		</dict>
+	</dict>
+	<key>location.liveForMinutes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+				<key>one</key>
+				<string>%lld minute</string>
+				<key>other</key>
+				<string>%lld minutes</string>
+		</dict>
+	</dict>
+	<key>location.liveForHours</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+				<key>one</key>
+				<string>%lld hour</string>
+				<key>other</key>
+				<string>%lld hours</string>
 		</dict>
 	</dict>
 </dict>

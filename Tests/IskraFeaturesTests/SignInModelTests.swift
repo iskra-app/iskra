@@ -41,7 +41,7 @@ struct SignInModelTests {
         await model.findServer()
 
         #expect(model.problem == nil)
-        guard case let .ready(options) = model.step else {
+        guard case let .found(options) = model.step else {
             Issue.record("Expected to reach the sign-in step, got \(model.step)")
             return
         }
@@ -63,11 +63,26 @@ struct SignInModelTests {
         #expect(problem.contains("address"))
         // And it must not leak protocol vocabulary onto the screen.
         #expect(!problem.lowercased().contains("homeserver"))
+        // A block fails the same way a typo does, so the bridge is offered — where it is off.
+        #expect(model.canTryBridge == !TunnelSettings.isEnabled())
     }
 
-    @Test("an empty address cannot be submitted")
+    /// The field starts empty — no server is chosen for anybody — and an empty one, or one of
+    /// spaces, cannot be submitted.
+    @Test("the server starts empty, and an empty one cannot be submitted")
     func requiresAnAddress() {
         let model = model()
+        #expect(model.address.isEmpty)
         #expect(!model.canContinue)
+
+        model.address = "  "
+        #expect(!model.canContinue)
+    }
+
+    @Test("the server is shown without its scheme or a trailing slash")
+    func serverName() {
+        let model = model()
+        model.address = "https://example.org/"
+        #expect(model.serverName == "example.org")
     }
 }

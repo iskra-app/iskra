@@ -31,7 +31,7 @@ struct MediaItem: Identifiable, Equatable {
     let sender: String
     let timestamp: Date
 
-    /// Whether the viewer should play it rather than show it — the one thing `MediaViewer` and the
+    /// Whether the viewer should play it rather than show it — the one thing the gallery and the
     /// grid's corner badge both need to know.
     var isVideo: Bool { kind == .video || kind == .videoNote }
 
@@ -39,7 +39,8 @@ struct MediaItem: Identifiable, Equatable {
     /// locations, stickers and the rest are not attachments anybody goes looking for later, so they
     /// fall away.
     static func items(from messages: [Message]) -> [MediaItem] {
-        messages.compactMap { message in
+        // An album is several pictures in one row, and the viewer swipes through each — see `Album`.
+        messages.flatMap(\.members).compactMap { message in
             switch message.kind {
             case let .image(attachment):
                 item(message, attachment, kind: .photo)
@@ -71,34 +72,6 @@ struct MediaItem: Identifiable, Equatable {
 struct OpenedIndex: Identifiable {
     let value: Int
     var id: Int { value }
-}
-
-/// The full-screen viewer, swipeable across a room's pictures and videos — Telegram's horizontal
-/// paging. Each page is the same `MediaViewer` a single tap opens, so zoom, share, save and
-/// drag-to-dismiss all come along; the page swipe is the one thing added on top.
-struct MediaPager: View {
-    let items: [MediaItem]
-    @State var index: Int
-
-    init(items: [MediaItem], startIndex: Int) {
-        self.items = items
-        _index = State(initialValue: startIndex)
-    }
-
-    var body: some View {
-        TabView(selection: $index) {
-            ForEach(Array(items.enumerated()), id: \.element.id) { offset, item in
-                MediaViewer(attachment: item.attachment,
-                            isVideo: item.isVideo,
-                            sender: item.sender,
-                            timestamp: item.timestamp)
-                    .tag(offset)
-            }
-        }
-        #if os(iOS)
-        .tabViewStyle(.page(indexDisplayMode: .never))
-        #endif
-    }
 }
 
 /// Everything in this room worth opening full-screen, asked for at the moment somebody opens one.
@@ -138,4 +111,9 @@ extension EnvironmentValues {
     /// The room's pictures, for the viewer a message opens. Absent outside a conversation — in the
     /// media grid, which has its own list, and in search results, where a photograph is on its own.
     @Entry var roomMedia: RoomMediaSource?
+
+    /// Told when something inside the room covers the whole of it — the photo viewer, on a
+    /// phone — and when it stops. The room goes on existing underneath; see `RoomView.onDisappear`,
+    /// which used to take the cover for the reader leaving and shut the room down behind it.
+    @Entry var coversRoom: @MainActor (Bool) -> Void = { _ in }
 }

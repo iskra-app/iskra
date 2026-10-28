@@ -1,0 +1,12 @@
+/* Shortcuts, Siri and Spotlight — see IskraAppIntents.swift. These live in the app bundle and
+   not in IskraFeatures, because that is where the system looks for an intent's words. */
+
+"Open Chat" = "Abrir chat";
+"Send Message" = "Enviar mensaje";
+"Chat" = "Chat";
+"Message" = "Mensaje";
+
+/* The favourites widget and the live location activity — see Apps/Widgets. */
+"Choose Chats" = "Elegir chats";
+"Chats" = "Chats";
+"Stop Sharing Location" = "Dejar de compartir ubicación";
