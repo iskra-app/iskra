@@ -59,7 +59,9 @@ struct ProfileActionTileLabel: View {
             Text(title)
                 .font(.caption)
                 .foregroundStyle(.primary)
-                .lineLimit(1)
+                .lineLimit(2)
+                .minimumScaleFactor(0.8)
+                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
         .opacity(isEnabled ? 1 : 0.4)

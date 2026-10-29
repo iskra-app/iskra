@@ -19,8 +19,6 @@ struct BetaView: View {
     var homeserver: String?
 
     @AppStorage(BetaFeatures.nativeSidebarKey) private var nativeSidebar = BetaFeatures.nativeSidebarByDefault
-    @AppStorage(BetaFeatures.blobatarKey, store: BetaFeatures.faceStore) private var blobatar = BetaFeatures.blobatarByDefault
-    @AppStorage(BetaFeatures.forceBlobatarKey, store: BetaFeatures.faceStore) private var forceBlobatar = BetaFeatures.forceBlobatarByDefault
     @AppStorage(BetaFeatures.mockBackendKey) private var mockBackend = false
     @AppStorage(BetaFeatures.showsEventSourceKey) private var showsEventSource = false
     @AppStorage(BetaFeatures.showsAllEventsKey) private var showsAllEvents = false
@@ -38,9 +36,8 @@ struct BetaView: View {
                     .foregroundStyle(.secondary)
             }
 
-            // Who gets a drawn face — the slider the first run asks with. It lived under
-            // Appearance; the faces are still an experiment, and the switches below it that
-            // decide whether they are drawn at all were already here.
+            // Who gets a drawn face — the slider the first run asks with, and the only control for
+            // it: it writes the same two keys the two switches that stood below it used to.
             Section {
                 FaceModePicker()
                     .padding(.vertical, Theme.Spacing.close)
@@ -61,29 +58,6 @@ struct BetaView: View {
                 Text(Strings.Beta.nativeSidebarHelp)
             }
             #endif
-
-            Section {
-                Toggle(isOn: $blobatar.animation(.smooth(duration: Theme.Timing.reaction))) {
-                    Label(Strings.Beta.blobatar, systemImage: "face.smiling")
-                }
-                .accentControl()
-            } footer: {
-                Text(Strings.Beta.blobatarHelp)
-            }
-
-            // Appears with the switch it depends on rather than sitting there greyed out: a
-            // disabled row is the app showing somebody a thing they cannot have and not saying
-            // why, and the answer — "turn the one above on" — is the row directly above it.
-            if blobatar {
-                Section {
-                    Toggle(isOn: $forceBlobatar.animation(.smooth(duration: Theme.Timing.reaction))) {
-                        Label(Strings.Beta.blobatarForce, systemImage: "person.crop.circle.badge.xmark")
-                    }
-                    .accentControl()
-                } footer: {
-                    Text(Strings.Beta.blobatarForceHelp)
-                }
-            }
 
             #if DEBUG
             // Flipping it takes the whole app with it — `IskraRootView` watches the same key and

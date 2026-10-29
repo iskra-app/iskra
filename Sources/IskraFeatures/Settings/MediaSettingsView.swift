@@ -9,8 +9,8 @@ import SwiftUI
 /// read by `TimelineStore` at the moment of sending — so there is no "done", and the next photo
 /// already goes the new way. Video notes are outside all of it (`MediaSettings.videoNote`).
 ///
-/// One footer, under auto-download. The switches below it are named for what they do — "Send
-/// without metadata" — and a sentence under each repeated the name at greater length.
+/// Every switch has a short footer: "Send without metadata" is the app's main privacy promise,
+/// and the screen has to say what it does when it is on and what leaves the phone when it is off.
 struct MediaSettingsView: View {
     @AppStorage(MediaSettings.stripsMetadataKey) private var stripsMetadata = MediaSettings.stripsMetadataByDefault
     @AppStorage(MediaSettings.compressesKey) private var compresses = MediaSettings.compressesByDefault
@@ -40,6 +40,8 @@ struct MediaSettingsView: View {
                     Label(Strings.Media.stripMetadata, systemImage: "location.slash")
                 }
                 .accentControl()
+            } footer: {
+                Text(stripsMetadata ? Strings.Media.stripMetadataHelpOn : Strings.Media.stripMetadataHelpOff)
             }
 
             Section {
@@ -59,6 +61,8 @@ struct MediaSettingsView: View {
                         Label(Strings.Media.compression, systemImage: "slider.horizontal.3")
                     }
                 }
+            } footer: {
+                Text(Strings.Media.compressHelp)
             }
         }
         .formStyle(.groupedRows)

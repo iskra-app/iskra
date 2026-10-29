@@ -198,6 +198,7 @@ struct MessageRow: View {
                         .contentShape(.circle)
                         .onTapGesture { openProfile?(message.senderID) }
                         .accessibilityAddTraits(openProfile == nil ? [] : .isButton)
+                        .accessibilityAction { openProfile?(message.senderID) }
                 }
             }
 
@@ -205,9 +206,11 @@ struct MessageRow: View {
                 if showsSender && !message.isContinuation {
                     Text(message.senderName)
                         .font(.caption.weight(.medium))
-                        .foregroundStyle(.secondary)
+                        .onWallpaperInk()
                         .padding(.leading, Theme.Spacing.close)
                         .onTapGesture { openProfile?(message.senderID) }
+                        .accessibilityAddTraits(openProfile == nil ? [] : .isButton)
+                        .accessibilityAction { openProfile?(message.senderID) }
                 }
 
                 if case let .failed(failure)? = message.delivery {
@@ -337,8 +340,16 @@ struct MessageRow: View {
     /// Nothing at all until the conversation has been measured, which lasts one layout pass.
     private var emptyColumn: CGFloat {
         if case .videoNote = message.kind { return 0 }
-        return max(0, timelineWidth * (1 - Theme.Size.bubbleWidthFraction) - Theme.Size.clockColumn)
+        let byFraction = timelineWidth * (1 - Theme.Size.bubbleWidthFraction) - Theme.Size.clockColumn
+        // And never more than a readable line: on a full-screen Mac or iPad window nine tenths of
+        // the column is a line of a hundred and twenty characters.
+        let byLine = timelineWidth - Theme.Size.clockColumn - Self.readableBubbleWidth
+        return max(0, byFraction, byLine)
     }
+
+    /// The widest a bubble may grow. A multiple of 4 like the rest; it belongs next to
+    /// `Theme.Size.bubbleWidthFraction` and moves there with the design pass.
+    private static let readableBubbleWidth: CGFloat = 560
 
     /// How big a video note goes while it plays.
     ///
@@ -661,6 +672,7 @@ struct SendFailureReason: View {
 /// player with a scrubber for four seconds of somebody's face is a ceremony nobody asked for.
 /// Press it and it plays; press it again, or let it reach the end, and it is a still again.
 struct VideoNoteView: View {
+    @ScaledSize(Theme.Size.minimumTapTarget) private var playGlyph
     let attachment: Attachment
 
     /// How big it goes while it plays — the width of the conversation, worked out by the row
@@ -698,7 +710,7 @@ struct VideoNoteView: View {
                     .tint(.white)
             } else if !playback.isPlaying {
                 Image(systemName: "play.circle.fill")
-                    .font(.system(size: 44))
+                    .font(.system(size: playGlyph))
                     .foregroundStyle(.white.opacity(0.9))
                     .shadow(radius: 8)
                     // The play button gets out of the way rather than blinking out: it
@@ -715,7 +727,7 @@ struct VideoNoteView: View {
                     .font(.caption2.monospacedDigit())
                     .foregroundStyle(.white)
                     .padding(.horizontal, Theme.Spacing.close)
-                    .padding(.vertical, 2)
+                    .padding(.vertical, Theme.Spacing.withinRun)
                     .background(.black.opacity(Theme.Backdrop.plate), in: Capsule())
                     .padding(.bottom, Theme.Spacing.normal)
                     .transition(.opacity)
@@ -732,7 +744,7 @@ struct VideoNoteView: View {
                     .font(.caption2)
                     .foregroundStyle(.white)
                     .padding(.horizontal, Theme.Spacing.close)
-                    .padding(.vertical, 2)
+                    .padding(.vertical, Theme.Spacing.withinRun)
                     .background(.black.opacity(Theme.Backdrop.plate), in: Capsule())
                     .padding(.bottom, Theme.Spacing.normal)
             }
@@ -1121,6 +1133,7 @@ struct StickerView: View {
 /// is the right shape *before* the picture arrives and the timeline does not jump
 /// around as things load.
 struct PictureBubble: View {
+    @ScaledSize(Theme.Size.avatar) private var playGlyph
     /// The conversation's height with the keyboard down — see `EnvironmentValues.timelineHeight`.
     @Environment(\.timelineHeight) private var timelineHeight
 
@@ -1261,7 +1274,7 @@ struct PictureBubble: View {
                 .overlay {
                     if isPlayable {
                         Image(systemName: "play.circle.fill")
-                            .font(.system(size: 40))
+                            .font(.system(size: playGlyph))
                             .foregroundStyle(.white.opacity(0.9))
                             .shadow(radius: 8)
                     }
@@ -1272,7 +1285,7 @@ struct PictureBubble: View {
                             .font(.caption2.monospacedDigit())
                             .foregroundStyle(.white)
                             .padding(.horizontal, Theme.Spacing.close)
-                            .padding(.vertical, 2)
+                            .padding(.vertical, Theme.Spacing.withinRun)
                             .background(.black.opacity(Theme.Backdrop.plate), in: Capsule())
                             .padding(Theme.Spacing.close)
                     }

@@ -37,6 +37,7 @@ struct LocationBubble: View {
             .messageTap { openInMaps() }
             .accessibilityLabel(Text(Strings.Location.title))
             .accessibilityAddTraits(.isButton)
+            .accessibilityAction { openInMaps() }
 
             if let name = location.name {
                 Text(name)

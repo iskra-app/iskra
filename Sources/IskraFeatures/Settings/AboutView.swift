@@ -123,6 +123,8 @@ struct AboutView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, Theme.Spacing.roomy)
         .accessibilityElement(children: .combine)
+        // Three taps on a picture do not exist for VoiceOver; this is the same door.
+        .accessibilityAction(named: Text(Strings.Beta.title)) { isShowingBeta = true }
     }
 
     /// Which OS this is running on, named rather than numbered alone: "26.0" says nothing on

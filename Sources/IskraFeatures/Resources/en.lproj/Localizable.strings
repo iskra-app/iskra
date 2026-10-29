@@ -80,6 +80,7 @@
 
 /* Accessibility label for the send button. */
 "room.send" = "Send";
+"room.saveEdit" = "Save";
 
 "room.sendFailedTitle" = "Message not sent";
 
@@ -197,6 +198,9 @@
 "settings.media" = "Photos & videos";
 "media.title" = "Photos & videos";
 "media.stripMetadata" = "Send without metadata";
+"media.stripMetadataHelpOn" = "Photos and videos leave without the place, camera model and date.";
+"media.stripMetadataHelpOff" = "Careful: photos and videos will carry the place, camera model and date they were taken with.";
+"media.compressHelp" = "Smaller files send faster and use less data, with a little less detail.";
 "media.compress" = "Compress photos and videos";
 "media.compression" = "Compression";
 "media.compression.strong" = "Strong (540p)";
@@ -231,7 +235,7 @@
 "connection.relaysPrompt" = "wss://relay.snort.social, wss://nostr.wine";
 "connection.relaysFooter" = "This is where the app and the bridge find each other. A request goes out to all of them at once and the answer comes back from whichever was quickest, so one is too few. Leave it empty for the default three.";
 
-"connection.myKey" = "This device's key";
+"connection.myKey" = "This device’s key";
 "connection.myKeyFooter" = "If the bridge is a closed one, add this key to its ALLOWED_PUBKEYS — otherwise it will not hear you at all.";
 "connection.copy" = "Copy";
 "connection.copied" = "Copied";
@@ -262,10 +266,11 @@
 
 /* App lock by Face ID / device passcode. */
 "settings.lock" = "App Lock";
-"settings.lockEnable" = "Require Face ID or passcode";
+"settings.lockEnable" = "Require device passcode";
 "settings.lockTimeout" = "Ask";
 "settings.lockExplanation" = "The app will ask for Face ID, Touch ID, or your device passcode when you come back.";
 "settings.lockUnavailable" = "Set a device passcode first.";
+"settings.offlineFooter" = "Without a network this can’t be changed: the app can’t reach the server.";
 "settings.lockTimeout.immediately" = "Immediately";
 "settings.lockTimeout.afterMinute" = "After 1 minute";
 "settings.lockTimeout.afterFiveMinutes" = "After 5 minutes";
@@ -275,7 +280,7 @@
 "lock.unlock" = "Unlock";
 "lock.reason" = "Unlock Iskra";
 
-"settings.blocked" = "Blocked Users";
+"settings.blocked" = "Blocked users";
 "settings.blockedEmptyTitle" = "Nobody is blocked";
 "settings.blockedEmptyMessage" = "People you block show up here. You won’t see their messages.";
 "settings.unblock" = "Unblock";
@@ -623,6 +628,7 @@
 "message.report.cancel" = "Cancel";
 
 "message.media.close" = "Close";
+"message.media.controls" = "Show or hide controls";
 
 /* The video would not download. Not an alarm and not a dialog — a line on the message
    itself, because there is nothing to be done about it but press again. */
@@ -812,7 +818,7 @@
 "roomList.new.retry" = "Try again";
 "roomList.new.join" = "Join";
 "roomList.new.addressPlaceholder" = "#room:server";
-"roomList.new.addressHelp" = "A room address looks like #name:server. Its ID works too — it starts with “!”.";
+"roomList.new.addressHelp" = "A room address looks like #name:server. Its ID works too: it starts with “!”.";
 
 /* Swipe actions on a chat row, and their VoiceOver twins. */
 "roomList.swipe.markRead" = "Read";
@@ -848,13 +854,14 @@
 
 /* The profile: name and picture. */
 "account.namePlaceholder" = "Your name";
+"account.save" = "Save";
 "account.edit" = "Edit";
 "account.editTitle" = "Your profile";
 "account.nameHeader" = "Name";
 "account.editOffline" = "Your profile can’t be changed offline, because the app can’t reach the server.";
 "account.nameChangeNotice" = "Everyone you chat with will hear about a new name: a note appears in every chat you share.";
-"account.usernameHeader" = "Username";
-"account.usernameFixed" = "Your username is chosen once, when the account is created. It can’t be changed, here or anywhere else.";
+"account.usernameHeader" = "Matrix ID";
+"account.usernameFixed" = "Your Matrix ID is chosen once, when the account is created. It can’t be changed, here or anywhere else.";
 
 /* The menu on a picture that can be changed: in your profile and in a chat. */
 "picture.edit" = "Change picture";
@@ -873,7 +880,7 @@
 "room.tabs.videoNotes" = "Video notes";
 "room.tabs.files" = "Files";
 "room.tabs.links" = "Links";
-"room.tabs.label" = "What's in here";
+"room.tabs.label" = "What’s in here";
 "room.localName.header" = "Name on this device";
 "room.localName.help" = "Only you see this name, and only on this device. The other person is never told, your other devices keep the name they already had, and signing out forgets it.";
 "room.localName.reset" = "Restore “%@”";
@@ -902,7 +909,7 @@
 "encryption.keyCopied" = "Copied";
 "encryption.saved" = "I’ve saved the code";
 
-"encryption.deviceUnverified" = "New device";
+"encryption.deviceUnverified" = "Device not verified";
 
 /* The bar across the conversation: what you have not read yet starts here. */
 "room.unreadMessages" = "Unread messages";
@@ -958,10 +965,10 @@
 "verification.why" = "Until this device is verified, your account has no way to know it is really you, and your older conversations will not come through to it. You can verify it from a phone or computer where you are already signed in.";
 "verification.waiting.title" = "Look at your other device";
 "verification.waiting.message" = "The app on your other device has to be open right now, or the request will not reach it.";
-"verification.asked.message" = "This device has just signed in to your account and is asking you to verify it. If that was you, agree and then compare the emoji. If it wasn't, refuse: somebody else knows your password.";
+"verification.asked.message" = "This device has just signed in to your account and is asking you to verify it. If that was you, agree and then compare the emoji. If it wasn’t, refuse: somebody else knows your password.";
 "verification.unnamedDevice" = "An unnamed device";
-"verification.mine" = "It's me";
-"verification.notMine" = "It isn't me";
+"verification.mine" = "It’s me";
+"verification.notMine" = "It isn’t me";
 "verification.negotiating.title" = "One moment";
 "verification.negotiating.message" = "The two devices are working it out between them. The emoji are about to appear on both screens.";
 "verification.compare" = "Your other device is showing the same seven emoji. Check that they match and that they are in the same order.";
@@ -970,11 +977,11 @@
 "verification.done.title" = "This device is verified";
 "verification.done.message" = "Your account trusts this device now. Your older conversations will appear here on their own.";
 "verification.declined.title" = "Verification stopped";
-"verification.declined.message" = "If the emoji really did not match, do not trust this connection, and try again. It may also be that you simply started the verification twice.";
+"verification.declined.message" = "If the emoji really did not match, do not trust this connection, and try again. It may also be that you started the verification twice.";
 "verification.refused.title" = "You said no";
-"verification.refused.message" = "That device was given no access to your conversations. But if the sign-in wasn't yours, then somebody else knows your password, and it needs changing right now.";
+"verification.refused.message" = "That device was given no access to your conversations. But if the sign-in wasn’t yours, then somebody else knows your password, and it needs changing right now.";
 "verification.refused.endSession" = "End this session";
-"verification.failed.title" = "That didn't work";
+"verification.failed.title" = "That didn’t work";
 "verification.failed.message" = "The verification did not finish. Try again.";
 "verification.close" = "Close";
 "verification.signIn.title" = "Account sign-in";
@@ -1000,7 +1007,7 @@
 "recovery.new.title" = "Create a new code?";
 "recovery.new.message" = "The old code stops working immediately, and there is no getting it back. If you have it written down somewhere, that copy becomes useless.";
 "recovery.new.confirm" = "Create a new code";
-"recovery.new.keepOld" = "Later — I’ll go and look for the old one";
+"recovery.new.keepOld" = "Later, I’ll look for the old one";
 "recovery.approve.title" = "Did you approve it?";
 "recovery.approve.message" = "The reset has to be approved on your server’s page. If you did that, carry on; your old messages are gone for good. If you changed your mind, nothing happens.";
 "recovery.approve.confirm" = "Erase old messages for good";
@@ -1103,6 +1110,7 @@
 "devices.passwordField" = "Password";
 "devices.cancel" = "Cancel";
 "devices.retry" = "Try again";
+"devices.loadFailed" = "Couldn’t load the list of devices.";
 
 /* The Notifications screen: what arrives by default, until a particular chat says otherwise.
    Two things have to be said out loud about these rules — they live on the server, so they apply
@@ -1128,6 +1136,7 @@
 "notifications.systemOff" = "The system is blocking notifications";
 "notifications.systemUnknown" = "Permission hasn’t been asked for yet";
 "notifications.openSystem" = "Open Settings";
+"notifications.allow" = "Allow notifications";
 "notifications.systemFooter" = "While the system is blocking notifications, none of the rules below will fire.";
 
 "notifications.failed" = "The notification settings couldn’t be read. The server isn’t answering, so try again later.";
@@ -1135,16 +1144,16 @@
 /* The first run. Six slides before the sign-in — the only place the app talks about itself,
    so the lines are short and no protocol word appears on any of them. See `WelcomeView`. */
 "onboarding.slide.iskra.title" = "Iskra";
-"onboarding.slide.iskra.body" = "Conversations that belong to you and nobody else";
+"onboarding.slide.iskra.body" = "A Matrix client for iPhone, iPad and Mac";
 
 "onboarding.slide.encryption.title" = "End-to-end encrypted by default";
-"onboarding.slide.encryption.body" = "Nobody but you and the person you are writing to can read it. Not even the CIA";
+"onboarding.slide.encryption.body" = "Only you and the person you are writing to can read the messages. Not even the CIA";
 
 "onboarding.slide.decentralised.title" = "Decentralised";
 "onboarding.slide.decentralised.body" = "Iskra runs on Matrix, an open protocol the community builds";
 
-"onboarding.slide.appleWay.title" = "Apple way";
-"onboarding.slide.appleWay.body" = "A native Swift app for every platform at once: it flies, and it leaves your battery alone";
+"onboarding.slide.appleWay.title" = "Made for Apple";
+"onboarding.slide.appleWay.body" = "A native Swift app for iPhone, iPad and Mac. It looks and behaves like any other app on the system";
 
 "onboarding.slide.freedom.title" = "Your choice";
 "onboarding.slide.freedom.body" = "Take a server that already exists, or run your own. Nobody locks you into one ecosystem";
@@ -1270,19 +1279,19 @@
 "signIn.signInTo" = "Sign in to %@";
 "signIn.back" = "Back";
 "signIn.continueInBrowser" = "Continue in browser";
-"signIn.browserHelp" = "Your server's sign-in page opens, and everything there works as usual.";
+"signIn.browserHelp" = "Your server’s sign-in page opens, and everything there works as usual.";
 "signIn.passwordHelp" = "The username and password of your account.";
-"signIn.problem.noRegistration" = "This server doesn't let you create an account from the app. Pick another server, or sign up on its website.";
+"signIn.problem.noRegistration" = "This server doesn’t let you create an account from the app. Pick another server, or sign up on its website.";
 "profile.search" = "Search";
 "profile.mute" = "Mute";
 "profile.unmute" = "Unmute";
-"profile.blockUser" = "Block User";
-"profile.unblockUser" = "Unblock User";
-"profile.blockedNotice" = "You blocked this user. Their new messages don't reach you.";
+"profile.blockUser" = "Block user";
+"profile.unblockUser" = "Unblock user";
+"profile.blockedNotice" = "You blocked this user. Their new messages don’t reach you.";
 
 "accounts.signOut" = "Sign out";
 "accounts.signOutTitle" = "Sign out of %@?";
-"accounts.signOutMessage" = "This account’s chats will be removed from this device. To read encrypted messages again, you’ll need your recovery key or another of your devices.";
+"accounts.signOutMessage" = "This account’s chats will be removed from this device. To read encrypted messages again, you’ll need your recovery code or another of your devices.";
 "stickers.subscribe" = "Add to mine";
 "stickers.settings.sheetSection" = "Sticker display";
 "stickers.settings.builtIn" = "Sparks";
@@ -1375,7 +1384,7 @@
 "room.access.bannedFooter" = "They can’t come into the chat, even if invited.";
 "room.access.unban" = "Unblock";
 "room.access.unbanQuestion" = "Unblock %@?";
-"room.access.unbanHelp" = "They’ll be able to come in again. They won’t appear in the chat by themselves — invite them or send a link.";
+"room.access.unbanHelp" = "They’ll be able to come in again. They won’t appear in the chat by themselves: invite them or send a link.";
 
 /* Choosing several messages (stage 9) */
 "message.menu.select" = "Select";
@@ -1485,7 +1494,7 @@
 "photoEditor.crop" = "Crop";
 "photoEditor.rotate" = "Rotate";
 "photoEditor.textPrompt" = "Write something";
-"photoEditor.failed" = "Couldn’t save the changes — the photo is as it was";
+"photoEditor.failed" = "Couldn’t save the changes. The photo is as it was";
 "photoEditor.ok" = "OK";
 "photoEditor.white" = "White";
 "photoEditor.black" = "Black";

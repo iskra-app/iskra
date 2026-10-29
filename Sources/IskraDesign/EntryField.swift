@@ -32,6 +32,7 @@ public extension View {
 
 private struct EntryFieldShape: ViewModifier {
     @ScaledSize(Theme.Size.minimumTapTarget) private var height
+    @Environment(\.colorSchemeContrast) private var contrast
 
     func body(content: Content) -> some View {
         content
@@ -41,5 +42,12 @@ private struct EntryFieldShape: ViewModifier {
             .frame(minHeight: height)
             .background(.quaternary,
                         in: RoundedRectangle(cornerRadius: height / 2, style: .continuous))
+            // With Increase Contrast on, a field gets the edge that the fill alone does not give.
+            .overlay {
+                if contrast == .increased {
+                    RoundedRectangle(cornerRadius: height / 2, style: .continuous)
+                        .strokeBorder(.secondary, lineWidth: Theme.Border.hairline)
+                }
+            }
     }
 }

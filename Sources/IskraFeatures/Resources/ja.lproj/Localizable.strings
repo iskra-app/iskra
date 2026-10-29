@@ -80,6 +80,7 @@
 
 /* Accessibility label for the send button. */
 "room.send" = "送信";
+"room.saveEdit" = "保存";
 
 "room.sendFailedTitle" = "メッセージを送信できませんでした";
 
@@ -197,6 +198,9 @@
 "settings.media" = "写真とビデオ";
 "media.title" = "写真とビデオ";
 "media.stripMetadata" = "メタデータなしで送信";
+"media.stripMetadataHelpOn" = "写真と動画は、撮影場所、カメラの機種、日付を消して送られます。";
+"media.stripMetadataHelpOff" = "ご注意：写真と動画に、撮影場所、カメラの機種、日付がそのまま付きます。";
+"media.compressHelp" = "ファイルが小さくなり、送信が速く、データ量も減ります。細部は少し粗くなります。";
 "media.compress" = "写真とビデオを圧縮";
 "media.compression" = "圧縮率";
 "media.compression.strong" = "強 (540p)";
@@ -262,10 +266,11 @@
 
 /* App lock by Face ID / device passcode. */
 "settings.lock" = "アプリのロック";
-"settings.lockEnable" = "Face ID またはパスコードを要求";
+"settings.lockEnable" = "デバイスのパスコードを要求";
 "settings.lockTimeout" = "要求するタイミング";
 "settings.lockExplanation" = "戻ってきたときに、Face ID、Touch ID、またはデバイスのパスコードを求めます。";
 "settings.lockUnavailable" = "先にデバイスのパスコードを設定してください。";
+"settings.offlineFooter" = "オフラインでは変更できません。サーバーにつながらないためです。";
 "settings.lockTimeout.immediately" = "すぐに";
 "settings.lockTimeout.afterMinute" = "1 分後";
 "settings.lockTimeout.afterFiveMinutes" = "5 分後";
@@ -623,6 +628,7 @@
 "message.report.cancel" = "キャンセル";
 
 "message.media.close" = "閉じる";
+"message.media.controls" = "操作ボタンを表示または非表示";
 
 /* The video would not download. Not an alarm and not a dialog — a line on the message
    itself, because there is nothing to be done about it but press again. */
@@ -848,13 +854,14 @@
 
 /* The profile: name and picture. */
 "account.namePlaceholder" = "あなたの名前";
+"account.save" = "保存";
 "account.edit" = "編集";
 "account.editTitle" = "プロフィール";
 "account.nameHeader" = "名前";
 "account.editOffline" = "オフラインではプロフィールを変更できません。サーバーにつながらないためです。";
 "account.nameChangeNotice" = "名前を変えると、やり取りしている全員に伝わります。共通のチャットそれぞれにお知らせが表示されます。";
-"account.usernameHeader" = "ユーザー名";
-"account.usernameFixed" = "ユーザー名はアカウント作成時に一度だけ決めるものです。ここでも、ほかのどこでも変更できません。";
+"account.usernameHeader" = "Matrix ID";
+"account.usernameFixed" = "Matrix ID はアカウント作成時に一度だけ決めるものです。ここでも、ほかのどこでも変更できません。";
 
 /* The menu on a picture that can be changed: in your profile and in a chat. */
 "picture.edit" = "写真を変更";
@@ -902,7 +909,7 @@
 "encryption.keyCopied" = "コピーしました";
 "encryption.saved" = "コードを保存しました";
 
-"encryption.deviceUnverified" = "新しいデバイス";
+"encryption.deviceUnverified" = "デバイスは未承認";
 
 /* The bar across the conversation: what you have not read yet starts here. */
 "room.unreadMessages" = "未読メッセージ";
@@ -970,7 +977,7 @@
 "verification.done.title" = "このデバイスは承認されました";
 "verification.done.message" = "アカウントはこのデバイスを信頼するようになりました。過去の会話は自動的にここに表示されます。";
 "verification.declined.title" = "承認を中止しました";
-"verification.declined.message" = "絵文字が本当に一致しなかったなら、この接続は信頼せず、もう一度お試しください。単に承認を 2 回開始しただけかもしれません。";
+"verification.declined.message" = "絵文字が本当に一致しなかったなら、この接続は信頼せず、もう一度お試しください。承認を 2 回開始しただけかもしれません。";
 "verification.refused.title" = "拒否しました";
 "verification.refused.message" = "そのデバイスには会話へのアクセスは与えられていません。ただ、サインインしたのがあなたでないなら、誰かがパスワードを知っています。今すぐ変更してください。";
 "verification.refused.endSession" = "このセッションを終了";
@@ -1103,6 +1110,7 @@
 "devices.passwordField" = "パスワード";
 "devices.cancel" = "キャンセル";
 "devices.retry" = "再試行";
+"devices.loadFailed" = "デバイスの一覧を読み込めませんでした。";
 
 /* The Notifications screen: what arrives by default, until a particular chat says otherwise.
    Two things have to be said out loud about these rules — they live on the server, so they apply
@@ -1128,6 +1136,7 @@
 "notifications.systemOff" = "システムが通知をブロックしています";
 "notifications.systemUnknown" = "まだ許可を求めていません";
 "notifications.openSystem" = "設定を開く";
+"notifications.allow" = "通知を許可";
 "notifications.systemFooter" = "システムが通知をブロックしているあいだは、下のルールはどれも働きません。";
 
 "notifications.failed" = "通知の設定を読み込めませんでした。サーバーが応答していません。あとでもう一度お試しください。";
@@ -1135,16 +1144,16 @@
 /* The first run. Six slides before the sign-in — the only place the app talks about itself,
    so the lines are short and no protocol word appears on any of them. See `WelcomeView`. */
 "onboarding.slide.iskra.title" = "Iskra";
-"onboarding.slide.iskra.body" = "あなただけのものになる会話";
+"onboarding.slide.iskra.body" = "iPhone、iPad、Mac 向けの Matrix クライアント";
 
 "onboarding.slide.encryption.title" = "標準でエンドツーエンド暗号化";
-"onboarding.slide.encryption.body" = "読めるのはあなたと相手だけ。CIA にも読めません";
+"onboarding.slide.encryption.body" = "会話を読めるのは、あなたと相手だけ。CIA にも読めません";
 
 "onboarding.slide.decentralised.title" = "分散型";
 "onboarding.slide.decentralised.body" = "Iskra は、コミュニティが育てるオープンなプロトコル Matrix で動いています";
 
-"onboarding.slide.appleWay.title" = "Apple way";
-"onboarding.slide.appleWay.body" = "すべてのプラットフォーム向けのネイティブな Swift アプリ。サクサク動いて、バッテリーにもやさしい";
+"onboarding.slide.appleWay.title" = "Apple のために作られた";
+"onboarding.slide.appleWay.body" = "iPhone、iPad、Mac 向けのネイティブな Swift アプリ。ほかのシステムアプリと同じ見た目、同じ使い心地です";
 
 "onboarding.slide.freedom.title" = "自由に選べる";
 "onboarding.slide.freedom.body" = "既存のサーバーを使っても、自分で立ててもかまいません。ひとつのエコシステムに縛られることはありません";
@@ -1282,7 +1291,7 @@
 
 "accounts.signOut" = "サインアウト";
 "accounts.signOutTitle" = "%@ からサインアウトしますか？";
-"accounts.signOutMessage" = "このアカウントのチャットはこのデバイスから削除されます。暗号化されたメッセージをもう一度読むには、復元キーかほかのデバイスが必要です。";
+"accounts.signOutMessage" = "このアカウントのチャットはこのデバイスから削除されます。暗号化されたメッセージをもう一度読むには、復元コードかほかのデバイスが必要です。";
 "stickers.subscribe" = "追加";
 "stickers.settings.sheetSection" = "ステッカーの表示";
 "stickers.settings.builtIn" = "スパークス";

@@ -376,7 +376,7 @@ private struct SheetSearchField: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(Text(Strings.Room.Manage.cancel))
+                .accessibilityLabel(Text(Strings.RoomList.clearSearch))
             }
         }
         .font(.title3)

@@ -112,7 +112,7 @@ struct LocalizationTests {
         (Strings.Room.Manage.invite, en: "Invite", ru: "Пригласить"),
         (Strings.Room.Manage.remove, en: "Remove", ru: "Исключить"),
         (Strings.Room.Manage.block, en: "Ban from Chat", ru: "Заблокировать в чате"),
-        (Strings.Profile.blockUser, en: "Block User", ru: "Заблокировать пользователя"),
+        (Strings.Profile.blockUser, en: "Block user", ru: "Заблокировать пользователя"),
         (Strings.Room.Manage.member, en: "Member", ru: "Участник"),
         (Strings.Room.Manage.openToAnyone, en: "Open chat", ru: "Открытый чат"),
         (Strings.Room.Manage.leave, en: "Leave the chat", ru: "Выйти из чата"),
@@ -141,7 +141,7 @@ struct LocalizationTests {
 
         // Neutral, not alarming. An unverified device is the ordinary state of a device somebody has
         // just signed in on, and "Not verified" in red made it read as a break-in.
-        (Strings.Encryption.deviceUnverified, en: "New device", ru: "Новое устройство"),
+        (Strings.Encryption.deviceUnverified, en: "Device not verified", ru: "Устройство не подтверждено"),
 
         // "Emoji", not "pictures". They are emoji, everybody calls them emoji, and inventing a
         // gentler word for them only makes the reader wonder what they are being protected from.
@@ -165,8 +165,8 @@ struct LocalizationTests {
         // The two answers to a device asking to be trusted. Pinned here because the whole security
         // of the incoming flow is that neither of them reads as the easy one — a "Yes, allow" beside
         // a "Cancel" would be the app quietly recommending the answer that hands over the keys.
-        (Strings.Verification.mine, en: "It's me", ru: "Это я"),
-        (Strings.Verification.notMine, en: "It isn't me", ru: "Это не я"),
+        (Strings.Verification.mine, en: "It’s me", ru: "Это я"),
+        (Strings.Verification.notMine, en: "It isn’t me", ru: "Это не я"),
         // The switch that washes the accent across the whole interface. Pinned because it is a
         // setting whose label is the only thing explaining what it will do to the whole app.
         (Strings.Appearance.tintInterface, en: "Tint the interface", ru: "Тонировать интерфейс"),
@@ -196,7 +196,7 @@ struct LocalizationTests {
         // Blocking a person.
         (Strings.Message.Menu.block, en: "Block", ru: "Заблокировать"),
         (Strings.Message.Menu.blockConfirm("Аня"), en: "Block Аня?", ru: "Заблокировать Аня?"),
-        (Strings.Settings.blocked, en: "Blocked Users", ru: "Заблокированные пользователи"),
+        (Strings.Settings.blocked, en: "Blocked users", ru: "Заблокированные пользователи"),
         (Strings.Settings.unblock, en: "Unblock", ru: "Разблокировать"),
 
         // The app lock.

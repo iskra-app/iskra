@@ -305,6 +305,6 @@ struct CompactTypingRow: View {
             Spacer(minLength: 0)
         }
         .padding(.top, Theme.Spacing.betweenSenders)
-        .accessibilityHidden(true)
+        .accessibilityElement(children: .combine)
     }
 }

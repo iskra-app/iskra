@@ -22,7 +22,7 @@ struct ThreadLine: View {
                 if let latest = latestLine {
                     Text(verbatim: latest)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .onWallpaperInk()
                         .lineLimit(1)
                 }
                 Image(systemName: "chevron.forward")

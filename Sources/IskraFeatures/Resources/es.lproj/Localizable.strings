@@ -80,6 +80,7 @@
 
 /* Accessibility label for the send button. */
 "room.send" = "Enviar";
+"room.saveEdit" = "Guardar";
 
 "room.sendFailedTitle" = "Mensaje no enviado";
 
@@ -197,6 +198,9 @@
 "settings.media" = "Fotos y vídeos";
 "media.title" = "Fotos y vídeos";
 "media.stripMetadata" = "Enviar sin metadatos";
+"media.stripMetadataHelpOn" = "Las fotos y los vídeos salen sin el lugar, el modelo de cámara ni la fecha.";
+"media.stripMetadataHelpOff" = "Cuidado: las fotos y los vídeos llevarán el lugar, el modelo de cámara y la fecha.";
+"media.compressHelp" = "Los archivos pesan menos: se envían antes y gastan menos datos, con algo menos de detalle.";
 "media.compress" = "Comprimir fotos y vídeos";
 "media.compression" = "Compresión";
 "media.compression.strong" = "Fuerte (540p)";
@@ -262,10 +266,11 @@
 
 /* App lock by Face ID / device passcode. */
 "settings.lock" = "Bloqueo de la app";
-"settings.lockEnable" = "Pedir Face ID o código";
+"settings.lockEnable" = "Pedir el código del dispositivo";
 "settings.lockTimeout" = "Pedir";
 "settings.lockExplanation" = "La app pedirá Face ID, Touch ID o el código del dispositivo cuando vuelva.";
 "settings.lockUnavailable" = "Configure primero un código en el dispositivo.";
+"settings.offlineFooter" = "Sin red no se puede cambiar: la app no puede contactar con el servidor.";
 "settings.lockTimeout.immediately" = "Inmediatamente";
 "settings.lockTimeout.afterMinute" = "Tras 1 minuto";
 "settings.lockTimeout.afterFiveMinutes" = "Tras 5 minutos";
@@ -623,6 +628,7 @@
 "message.report.cancel" = "Cancelar";
 
 "message.media.close" = "Cerrar";
+"message.media.controls" = "Mostrar u ocultar los controles";
 
 /* The video would not download. Not an alarm and not a dialog — a line on the message
    itself, because there is nothing to be done about it but press again. */
@@ -848,13 +854,14 @@
 
 /* The profile: name and picture. */
 "account.namePlaceholder" = "Su nombre";
+"account.save" = "Guardar";
 "account.edit" = "Editar";
 "account.editTitle" = "Su perfil";
 "account.nameHeader" = "Nombre";
 "account.editOffline" = "Sin red no puede cambiar su perfil: la app no puede contactar con el servidor.";
 "account.nameChangeNotice" = "Si cambia su nombre, se enterarán todas las personas con las que habla: aparecerá un aviso en cada chat compartido.";
-"account.usernameHeader" = "Nombre de usuario";
-"account.usernameFixed" = "El nombre de usuario se elige una sola vez, al crear la cuenta. No se puede cambiar, ni aquí ni en ningún otro sitio.";
+"account.usernameHeader" = "Matrix ID";
+"account.usernameFixed" = "El Matrix ID se elige una sola vez, al crear la cuenta. No se puede cambiar, ni aquí ni en ningún otro sitio.";
 
 /* The menu on a picture that can be changed: in your profile and in a chat. */
 "picture.edit" = "Cambiar foto";
@@ -902,7 +909,7 @@
 "encryption.keyCopied" = "Copiado";
 "encryption.saved" = "He guardado el código";
 
-"encryption.deviceUnverified" = "Dispositivo nuevo";
+"encryption.deviceUnverified" = "Dispositivo sin confirmar";
 
 /* The bar across the conversation: what you have not read yet starts here. */
 "room.unreadMessages" = "Mensajes no leídos";
@@ -970,7 +977,7 @@
 "verification.done.title" = "Este dispositivo está confirmado";
 "verification.done.message" = "Su cuenta ya confía en este dispositivo. Sus conversaciones anteriores aparecerán aquí solas.";
 "verification.declined.title" = "Confirmación detenida";
-"verification.declined.message" = "Si los emojis de verdad no coincidían, no confíe en esta conexión e inténtelo de nuevo. También puede que simplemente iniciara la confirmación dos veces.";
+"verification.declined.message" = "Si los emojis de verdad no coincidían, no confíe en esta conexión e inténtelo de nuevo. También puede que iniciara la confirmación dos veces.";
 "verification.refused.title" = "Lo ha rechazado";
 "verification.refused.message" = "Ese dispositivo no ha recibido acceso a sus conversaciones. Pero si no fue usted quien inició sesión, alguien más conoce su contraseña, y hay que cambiarla ya mismo.";
 "verification.refused.endSession" = "Cerrar esta sesión";
@@ -1103,6 +1110,7 @@
 "devices.passwordField" = "Contraseña";
 "devices.cancel" = "Cancelar";
 "devices.retry" = "Reintentar";
+"devices.loadFailed" = "No se pudo cargar la lista de dispositivos.";
 
 /* The Notifications screen: what arrives by default, until a particular chat says otherwise.
    Two things have to be said out loud about these rules — they live on the server, so they apply
@@ -1128,6 +1136,7 @@
 "notifications.systemOff" = "El sistema bloquea las notificaciones";
 "notifications.systemUnknown" = "Aún no se ha pedido permiso";
 "notifications.openSystem" = "Abrir Ajustes";
+"notifications.allow" = "Permitir notificaciones";
 "notifications.systemFooter" = "Mientras el sistema bloquee las notificaciones, ninguna de las reglas de abajo funcionará.";
 
 "notifications.failed" = "No se han podido leer los ajustes de notificación. El servidor no responde: inténtelo más tarde.";
@@ -1135,16 +1144,16 @@
 /* The first run. Six slides before the sign-in — the only place the app talks about itself,
    so the lines are short and no protocol word appears on any of them. See `WelcomeView`. */
 "onboarding.slide.iskra.title" = "Iskra";
-"onboarding.slide.iskra.body" = "Conversaciones que son suyas y de nadie más";
+"onboarding.slide.iskra.body" = "Un cliente de Matrix para iPhone, iPad y Mac";
 
 "onboarding.slide.encryption.title" = "Cifrado de extremo a extremo por defecto";
-"onboarding.slide.encryption.body" = "Nadie más que usted y la persona a la que escribe puede leerlo. Ni siquiera la CIA";
+"onboarding.slide.encryption.body" = "Solo usted y la persona a la que escribe pueden leer la conversación. Ni siquiera la CIA";
 
 "onboarding.slide.decentralised.title" = "Descentralizado";
 "onboarding.slide.decentralised.body" = "Iskra funciona sobre Matrix, un protocolo abierto que desarrolla la comunidad";
 
-"onboarding.slide.appleWay.title" = "Apple way";
-"onboarding.slide.appleWay.body" = "Una app nativa en Swift para todas las plataformas a la vez: vuela y no se come la batería";
+"onboarding.slide.appleWay.title" = "Hecha para Apple";
+"onboarding.slide.appleWay.body" = "Una app nativa en Swift para iPhone, iPad y Mac. Se ve y se comporta como cualquier otra app del sistema";
 
 "onboarding.slide.freedom.title" = "Usted elige";
 "onboarding.slide.freedom.body" = "Use un servidor que ya existe o monte el suyo. Nadie le encierra en un solo ecosistema";
@@ -1282,7 +1291,7 @@
 
 "accounts.signOut" = "Cerrar sesión";
 "accounts.signOutTitle" = "¿Cerrar sesión de %@?";
-"accounts.signOutMessage" = "Los chats de esta cuenta se borrarán de este dispositivo. Para volver a leer los mensajes cifrados, necesitará su clave de recuperación u otro de sus dispositivos.";
+"accounts.signOutMessage" = "Los chats de esta cuenta se borrarán de este dispositivo. Para volver a leer los mensajes cifrados, necesitará su código de recuperación u otro de sus dispositivos.";
 "stickers.subscribe" = "Añadir";
 "stickers.settings.sheetSection" = "Visualización de stickers";
 "stickers.settings.builtIn" = "Chispitas";

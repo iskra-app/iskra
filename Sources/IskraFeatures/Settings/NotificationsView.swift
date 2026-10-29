@@ -5,6 +5,8 @@ import IskraDesign
 
 #if os(iOS)
 import UIKit
+#elseif os(macOS)
+import AppKit
 #endif
 
 /// What the account notifies about, before any one chat has an opinion.
@@ -44,6 +46,12 @@ struct NotificationsView: View {
                     Text(Strings.Notifications.failed)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+
+                    Button {
+                        Task { await rules.load() }
+                    } label: {
+                        Text(Strings.Devices.retry)
+                    }
                 }
             } else if !rules.isLoaded {
                 Section {
@@ -88,9 +96,33 @@ struct NotificationsView: View {
             }
 
             #if os(iOS)
-            if permission == .denied {
+            if permission == .notDetermined {
+                // The one moment the system will still show its own question; after a refusal it
+                // never does, and the button below is the way.
+                Button {
+                    Task {
+                        await PushPermission.shared.request()
+                        await readPermission()
+                    }
+                } label: {
+                    Text(Strings.Notifications.allow)
+                }
+            } else if permission == .denied {
                 Button {
                     open()
+                } label: {
+                    LabeledContent {
+                        Image(systemName: "arrow.up.forward.app")
+                            .foregroundStyle(.secondary)
+                    } label: {
+                        Text(Strings.Notifications.openSystem)
+                    }
+                }
+            }
+            #elseif os(macOS)
+            if permission != .authorized && permission != .provisional {
+                Button {
+                    openSystem()
                 } label: {
                     LabeledContent {
                         Image(systemName: "arrow.up.forward.app")
@@ -108,6 +140,8 @@ struct NotificationsView: View {
             // about nothing, sitting at the top of the screen where the eye lands first.
             if permission == .denied {
                 Text(Strings.Notifications.systemFooter)
+            } else if isOffline {
+                Text(Strings.Settings.offlineFooter)
             }
         }
     }
@@ -207,6 +241,14 @@ struct NotificationsView: View {
     private func readPermission() async {
         permission = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
     }
+
+    #if os(macOS)
+    private func openSystem() {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension")
+        else { return }
+        NSWorkspace.shared.open(url)
+    }
+    #endif
 
     #if os(iOS)
     private func open() {

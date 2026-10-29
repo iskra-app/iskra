@@ -80,6 +80,7 @@
 
 /* Accessibility label for the send button. */
 "room.send" = "发送";
+"room.saveEdit" = "保存";
 
 "room.sendFailedTitle" = "消息未发送";
 
@@ -197,6 +198,9 @@
 "settings.media" = "照片和视频";
 "media.title" = "照片和视频";
 "media.stripMetadata" = "发送时去除元数据";
+"media.stripMetadataHelpOn" = "发送的照片和视频不带拍摄地点、相机型号和日期。";
+"media.stripMetadataHelpOff" = "请注意：照片和视频会带上拍摄地点、相机型号和日期。";
+"media.compressHelp" = "文件更小，发送更快，也更省流量，细节会略有减少。";
 "media.compress" = "压缩照片和视频";
 "media.compression" = "压缩程度";
 "media.compression.strong" = "强 (540p)";
@@ -262,10 +266,11 @@
 
 /* App lock by Face ID / device passcode. */
 "settings.lock" = "应用锁";
-"settings.lockEnable" = "要求 Face ID 或密码";
+"settings.lockEnable" = "要求输入设备密码";
 "settings.lockTimeout" = "何时要求";
 "settings.lockExplanation" = "您回到应用时，它会要求 Face ID、Touch ID 或设备密码。";
 "settings.lockUnavailable" = "请先设置设备密码。";
+"settings.offlineFooter" = "没有网络时无法修改，应用联系不上服务器。";
 "settings.lockTimeout.immediately" = "立即";
 "settings.lockTimeout.afterMinute" = "1 分钟后";
 "settings.lockTimeout.afterFiveMinutes" = "5 分钟后";
@@ -623,6 +628,7 @@
 "message.report.cancel" = "取消";
 
 "message.media.close" = "关闭";
+"message.media.controls" = "显示或隐藏控件";
 
 /* The video would not download. Not an alarm and not a dialog — a line on the message
    itself, because there is nothing to be done about it but press again. */
@@ -812,7 +818,7 @@
 "roomList.new.retry" = "再试一次";
 "roomList.new.join" = "加入";
 "roomList.new.addressPlaceholder" = "#房间:服务器";
-"roomList.new.addressHelp" = "房间地址的格式是 #名称:服务器。也可以用房间 ID——它以“!”开头。";
+"roomList.new.addressHelp" = "房间地址的格式是 #名称:服务器。也可以用房间 ID，它以“!”开头。";
 
 /* Swipe actions on a chat row, and their VoiceOver twins. */
 "roomList.swipe.markRead" = "已读";
@@ -848,13 +854,14 @@
 
 /* The profile: name and picture. */
 "account.namePlaceholder" = "您的名字";
+"account.save" = "保存";
 "account.edit" = "编辑";
 "account.editTitle" = "您的个人资料";
 "account.nameHeader" = "名字";
 "account.editOffline" = "没有网络时无法修改个人资料，应用联系不上服务器。";
 "account.nameChangeNotice" = "改名后，所有和您聊天的人都会知道，每个共同聊天里都会出现一条提示。";
-"account.usernameHeader" = "用户名";
-"account.usernameFixed" = "用户名只在注册时选择一次，之后无法更改，这里不行，别处也不行。";
+"account.usernameHeader" = "Matrix ID";
+"account.usernameFixed" = "Matrix ID 只在注册时选择一次，之后无法更改，这里不行，别处也不行。";
 
 /* The menu on a picture that can be changed: in your profile and in a chat. */
 "picture.edit" = "更换照片";
@@ -902,7 +909,7 @@
 "encryption.keyCopied" = "已拷贝";
 "encryption.saved" = "我已保存代码";
 
-"encryption.deviceUnverified" = "新设备";
+"encryption.deviceUnverified" = "设备未确认";
 
 /* The bar across the conversation: what you have not read yet starts here. */
 "room.unreadMessages" = "未读消息";
@@ -970,7 +977,7 @@
 "verification.done.title" = "这台设备已确认";
 "verification.done.message" = "您的账户现在信任这台设备了。旧的对话会自动出现在这里。";
 "verification.declined.title" = "确认已中止";
-"verification.declined.message" = "如果表情符号确实不一致，请不要信任这个连接，并再试一次。也可能只是您启动了两次确认。";
+"verification.declined.message" = "如果表情符号确实不一致，请不要信任这个连接，并再试一次。也可能是您启动了两次确认。";
 "verification.refused.title" = "您拒绝了";
 "verification.refused.message" = "那台设备没有获得访问您对话的权限。但如果登录的不是您，说明别人知道您的密码，需要立刻更改。";
 "verification.refused.endSession" = "结束这个会话";
@@ -1000,7 +1007,7 @@
 "recovery.new.title" = "创建新代码？";
 "recovery.new.message" = "旧代码会立即失效，且无法找回。如果您把它记在了某处，那份记录就没用了。";
 "recovery.new.confirm" = "创建新代码";
-"recovery.new.keepOld" = "以后再说——我去找找旧的";
+"recovery.new.keepOld" = "以后再说，我去找找旧的";
 "recovery.approve.title" = "您批准了吗？";
 "recovery.approve.message" = "重置需要在服务器页面上批准。如果您已经批准，请继续，旧消息将永久丢失。如果您改主意了，什么都不会发生。";
 "recovery.approve.confirm" = "永久清除旧消息";
@@ -1103,6 +1110,7 @@
 "devices.passwordField" = "密码";
 "devices.cancel" = "取消";
 "devices.retry" = "重试";
+"devices.loadFailed" = "无法加载设备列表。";
 
 /* The Notifications screen: what arrives by default, until a particular chat says otherwise.
    Two things have to be said out loud about these rules — they live on the server, so they apply
@@ -1128,6 +1136,7 @@
 "notifications.systemOff" = "系统阻止了通知";
 "notifications.systemUnknown" = "尚未请求权限";
 "notifications.openSystem" = "打开设置";
+"notifications.allow" = "允许通知";
 "notifications.systemFooter" = "系统阻止通知期间，下面的规则都不会生效。";
 
 "notifications.failed" = "没能读取通知设置。服务器没有响应，请稍后再试。";
@@ -1135,16 +1144,16 @@
 /* The first run. Six slides before the sign-in — the only place the app talks about itself,
    so the lines are short and no protocol word appears on any of them. See `WelcomeView`. */
 "onboarding.slide.iskra.title" = "Iskra";
-"onboarding.slide.iskra.body" = "只属于您的对话";
+"onboarding.slide.iskra.body" = "适用于 iPhone、iPad 和 Mac 的 Matrix 客户端";
 
 "onboarding.slide.encryption.title" = "默认端到端加密";
-"onboarding.slide.encryption.body" = "除了您和对方，没人能读。连 CIA 也不行";
+"onboarding.slide.encryption.body" = "只有您和对方能读到这段对话。连 CIA 也不行";
 
 "onboarding.slide.decentralised.title" = "去中心化";
 "onboarding.slide.decentralised.body" = "Iskra 基于社区共建的开放协议 Matrix";
 
-"onboarding.slide.appleWay.title" = "Apple way";
-"onboarding.slide.appleWay.body" = "一款同时面向所有平台的原生 Swift 应用：飞快，而且不费电";
+"onboarding.slide.appleWay.title" = "为 Apple 而生";
+"onboarding.slide.appleWay.body" = "面向 iPhone、iPad 和 Mac 的原生 Swift 应用。外观和使用感受与系统里的其他应用一致";
 
 "onboarding.slide.freedom.title" = "由您选择";
 "onboarding.slide.freedom.body" = "用现成的服务器，或者自己搭一个。没人把您锁在一个生态里";
@@ -1282,7 +1291,7 @@
 
 "accounts.signOut" = "退出登录";
 "accounts.signOutTitle" = "退出 %@？";
-"accounts.signOutMessage" = "这个账号的聊天将从此设备上删除。要再次阅读加密消息，需要您的恢复密钥或您的其他设备。";
+"accounts.signOutMessage" = "这个账号的聊天将从此设备上删除。要再次阅读加密消息，需要您的恢复代码或您的其他设备。";
 "stickers.subscribe" = "添加";
 "stickers.settings.sheetSection" = "贴纸显示";
 "stickers.settings.builtIn" = "小火花";
@@ -1375,7 +1384,7 @@
 "room.access.bannedFooter" = "即使被邀请，他们也无法进入这个聊天。";
 "room.access.unban" = "解除封禁";
 "room.access.unbanQuestion" = "解除对 %@ 的封禁？";
-"room.access.unbanHelp" = "对方可以再次加入，但不会自动出现在聊天中——请邀请对方或发送链接。";
+"room.access.unbanHelp" = "对方可以再次加入，但不会自动出现在聊天中。请邀请对方或发送链接。";
 
 /* Choosing several messages (stage 9) */
 "message.menu.select" = "选择";

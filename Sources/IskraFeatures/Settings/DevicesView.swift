@@ -66,7 +66,7 @@ struct DevicesView: View {
                             DeviceRow(device: device, isEnding: store.ending.contains(device.id))
                         }
                         .buttonStyle(.plain)
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                             Button(role: .destructive) {
                                 Task { await store.end([device.id]) }
                             } label: {
@@ -91,6 +91,13 @@ struct DevicesView: View {
                 }
             } else {
                 Section {
+                    Label {
+                        Text(Strings.Devices.loadFailed)
+                    } icon: {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                    }
+
                     Button {
                         Task { await store.load() }
                     } label: {
@@ -206,8 +213,9 @@ extension DevicePlatform {
         switch self {
         case .iPhone, .iPad: .blue
         case .mac: .indigo
-        case .android: .green
-        case .web: .orange
+        // Darkened a step: white on the plain system green and orange is about 2:1.
+        case .android: .green.mix(with: .black, by: 0.3)
+        case .web: .orange.mix(with: .black, by: 0.3)
         case .desktop: .purple
         case .unknown: .gray
         }

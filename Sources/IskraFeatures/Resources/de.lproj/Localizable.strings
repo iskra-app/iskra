@@ -80,6 +80,7 @@
 
 /* Accessibility label for the send button. */
 "room.send" = "Senden";
+"room.saveEdit" = "Speichern";
 
 "room.sendFailedTitle" = "Nachricht nicht gesendet";
 
@@ -197,6 +198,9 @@
 "settings.media" = "Fotos & Videos";
 "media.title" = "Fotos & Videos";
 "media.stripMetadata" = "Ohne Metadaten senden";
+"media.stripMetadataHelpOn" = "Fotos und Videos werden ohne Aufnahmeort, Kameramodell und Datum gesendet.";
+"media.stripMetadataHelpOff" = "Achtung: Fotos und Videos enthalten dann Aufnahmeort, Kameramodell und Datum.";
+"media.compressHelp" = "Kleinere Dateien werden schneller gesendet und brauchen weniger Daten, zeigen aber etwas weniger Details.";
 "media.compress" = "Fotos und Videos komprimieren";
 "media.compression" = "Komprimierung";
 "media.compression.strong" = "Stark (540p)";
@@ -262,10 +266,11 @@
 
 /* App lock by Face ID / device passcode. */
 "settings.lock" = "App-Sperre";
-"settings.lockEnable" = "Face ID oder Code verlangen";
+"settings.lockEnable" = "Gerätecode verlangen";
 "settings.lockTimeout" = "Verlangen";
 "settings.lockExplanation" = "Die App fragt nach Face ID, Touch ID oder dem Gerätecode, wenn Sie zurückkommen.";
 "settings.lockUnavailable" = "Legen Sie zuerst einen Gerätecode fest.";
+"settings.offlineFooter" = "Ohne Netz lässt sich das nicht ändern, denn die App erreicht den Server nicht.";
 "settings.lockTimeout.immediately" = "Sofort";
 "settings.lockTimeout.afterMinute" = "Nach 1 Minute";
 "settings.lockTimeout.afterFiveMinutes" = "Nach 5 Minuten";
@@ -623,6 +628,7 @@
 "message.report.cancel" = "Abbrechen";
 
 "message.media.close" = "Schließen";
+"message.media.controls" = "Bedienelemente ein- oder ausblenden";
 
 /* The video would not download. Not an alarm and not a dialog — a line on the message
    itself, because there is nothing to be done about it but press again. */
@@ -812,7 +818,7 @@
 "roomList.new.retry" = "Noch einmal";
 "roomList.new.join" = "Beitreten";
 "roomList.new.addressPlaceholder" = "#raum:server";
-"roomList.new.addressHelp" = "Eine Raumadresse sieht so aus: #name:server. Die ID des Raums geht auch – sie beginnt mit „!“.";
+"roomList.new.addressHelp" = "Eine Raumadresse sieht so aus: #name:server. Die ID des Raums geht auch, sie beginnt mit „!“.";
 
 /* Swipe actions on a chat row, and their VoiceOver twins. */
 "roomList.swipe.markRead" = "Gelesen";
@@ -848,13 +854,14 @@
 
 /* The profile: name and picture. */
 "account.namePlaceholder" = "Ihr Name";
+"account.save" = "Sichern";
 "account.edit" = "Bearbeiten";
 "account.editTitle" = "Ihr Profil";
 "account.nameHeader" = "Name";
 "account.editOffline" = "Ohne Netz lässt sich Ihr Profil nicht ändern, denn die App erreicht den Server nicht.";
 "account.nameChangeNotice" = "Wenn Sie Ihren Namen ändern, erfahren es alle, mit denen Sie schreiben: In jedem gemeinsamen Chat erscheint ein Hinweis.";
-"account.usernameHeader" = "Benutzername";
-"account.usernameFixed" = "Der Benutzername wird einmal gewählt, bei der Registrierung. Er lässt sich nicht ändern, weder hier noch sonst wo.";
+"account.usernameHeader" = "Matrix ID";
+"account.usernameFixed" = "Die Matrix ID wird einmal gewählt, bei der Registrierung. Sie lässt sich nicht ändern, weder hier noch sonst wo.";
 
 /* The menu on a picture that can be changed: in your profile and in a chat. */
 "picture.edit" = "Bild ändern";
@@ -902,7 +909,7 @@
 "encryption.keyCopied" = "Kopiert";
 "encryption.saved" = "Ich habe den Code gespeichert";
 
-"encryption.deviceUnverified" = "Neues Gerät";
+"encryption.deviceUnverified" = "Gerät nicht bestätigt";
 
 /* The bar across the conversation: what you have not read yet starts here. */
 "room.unreadMessages" = "Ungelesene Nachrichten";
@@ -970,7 +977,7 @@
 "verification.done.title" = "Dieses Gerät ist bestätigt";
 "verification.done.message" = "Ihr Konto vertraut diesem Gerät jetzt. Ihre älteren Unterhaltungen erscheinen hier von selbst.";
 "verification.declined.title" = "Bestätigung abgebrochen";
-"verification.declined.message" = "Wenn die Emoji wirklich nicht übereinstimmten, vertrauen Sie dieser Verbindung nicht und versuchen Sie es noch einmal. Vielleicht haben Sie die Bestätigung auch einfach zweimal gestartet.";
+"verification.declined.message" = "Wenn die Emoji wirklich nicht übereinstimmten, vertrauen Sie dieser Verbindung nicht und versuchen Sie es noch einmal. Vielleicht haben Sie die Bestätigung auch zweimal gestartet.";
 "verification.refused.title" = "Sie haben abgelehnt";
 "verification.refused.message" = "Dieses Gerät hat keinen Zugriff auf Ihre Unterhaltungen bekommen. Aber wenn die Anmeldung nicht von Ihnen war, kennt jemand anderes Ihr Passwort, und es muss sofort geändert werden.";
 "verification.refused.endSession" = "Diese Sitzung beenden";
@@ -1000,7 +1007,7 @@
 "recovery.new.title" = "Neuen Code erstellen?";
 "recovery.new.message" = "Der alte Code funktioniert sofort nicht mehr, und er lässt sich nicht zurückholen. Wenn Sie ihn irgendwo aufgeschrieben haben, ist diese Notiz dann wertlos.";
 "recovery.new.confirm" = "Neuen Code erstellen";
-"recovery.new.keepOld" = "Später – ich suche den alten";
+"recovery.new.keepOld" = "Später, ich suche den alten";
 "recovery.approve.title" = "Haben Sie es bestätigt?";
 "recovery.approve.message" = "Das Zurücksetzen muss auf der Seite Ihres Servers bestätigt werden. Wenn Sie das getan haben, machen Sie weiter: Dann sind Ihre alten Nachrichten für immer weg. Wenn Sie es sich anders überlegt haben, passiert nichts.";
 "recovery.approve.confirm" = "Alte Nachrichten endgültig löschen";
@@ -1103,6 +1110,7 @@
 "devices.passwordField" = "Passwort";
 "devices.cancel" = "Abbrechen";
 "devices.retry" = "Erneut versuchen";
+"devices.loadFailed" = "Die Geräteliste konnte nicht geladen werden.";
 
 /* The Notifications screen: what arrives by default, until a particular chat says otherwise.
    Two things have to be said out loud about these rules — they live on the server, so they apply
@@ -1128,6 +1136,7 @@
 "notifications.systemOff" = "Das System blockiert Mitteilungen";
 "notifications.systemUnknown" = "Die Berechtigung wurde noch nicht erfragt";
 "notifications.openSystem" = "Einstellungen öffnen";
+"notifications.allow" = "Mitteilungen erlauben";
 "notifications.systemFooter" = "Solange das System Mitteilungen blockiert, greift keine der Regeln unten.";
 
 "notifications.failed" = "Die Mitteilungseinstellungen ließen sich nicht lesen. Der Server antwortet nicht, versuchen Sie es später noch einmal.";
@@ -1135,16 +1144,16 @@
 /* The first run. Six slides before the sign-in — the only place the app talks about itself,
    so the lines are short and no protocol word appears on any of them. See `WelcomeView`. */
 "onboarding.slide.iskra.title" = "Iskra";
-"onboarding.slide.iskra.body" = "Unterhaltungen, die Ihnen gehören und niemandem sonst";
+"onboarding.slide.iskra.body" = "Ein Matrix-Client für iPhone, iPad und Mac";
 
 "onboarding.slide.encryption.title" = "Standardmäßig Ende-zu-Ende-verschlüsselt";
-"onboarding.slide.encryption.body" = "Niemand außer Ihnen und Ihrem Gegenüber kann es lesen. Nicht einmal die CIA";
+"onboarding.slide.encryption.body" = "Lesen können die Unterhaltung nur Sie und Ihr Gegenüber. Nicht einmal die CIA";
 
 "onboarding.slide.decentralised.title" = "Dezentral";
 "onboarding.slide.decentralised.body" = "Iskra läuft auf Matrix, einem offenen Protokoll, das die Community entwickelt";
 
-"onboarding.slide.appleWay.title" = "Apple way";
-"onboarding.slide.appleWay.body" = "Eine native Swift-App für alle Plattformen zugleich: Sie fliegt und schont Ihren Akku";
+"onboarding.slide.appleWay.title" = "Für Apple gemacht";
+"onboarding.slide.appleWay.body" = "Eine native Swift-App für iPhone, iPad und Mac. Sie sieht aus und verhält sich wie jede andere App des Systems";
 
 "onboarding.slide.freedom.title" = "Ihre Wahl";
 "onboarding.slide.freedom.body" = "Nehmen Sie einen Server, den es schon gibt, oder betreiben Sie Ihren eigenen. Niemand sperrt Sie in ein Ökosystem ein";
@@ -1282,7 +1291,7 @@
 
 "accounts.signOut" = "Abmelden";
 "accounts.signOutTitle" = "Von %@ abmelden?";
-"accounts.signOutMessage" = "Die Chats dieses Kontos werden von diesem Gerät entfernt. Um verschlüsselte Nachrichten wieder zu lesen, brauchen Sie Ihren Wiederherstellungsschlüssel oder ein anderes Ihrer Geräte.";
+"accounts.signOutMessage" = "Die Chats dieses Kontos werden von diesem Gerät entfernt. Um verschlüsselte Nachrichten wieder zu lesen, brauchen Sie Ihren Wiederherstellungscode oder ein anderes Ihrer Geräte.";
 "stickers.subscribe" = "Hinzufügen";
 "stickers.settings.sheetSection" = "Sticker-Anzeige";
 "stickers.settings.builtIn" = "Fünkchen";
@@ -1375,7 +1384,7 @@
 "room.access.bannedFooter" = "Sie können dem Chat nicht beitreten, auch nicht mit Einladung.";
 "room.access.unban" = "Freigeben";
 "room.access.unbanQuestion" = "%@ freigeben?";
-"room.access.unbanHelp" = "Die Person kann wieder beitreten. Von selbst erscheint sie nicht im Chat – laden Sie sie ein oder schicken Sie einen Link.";
+"room.access.unbanHelp" = "Die Person kann wieder beitreten. Von selbst erscheint sie nicht im Chat: laden Sie sie ein oder schicken Sie einen Link.";
 
 /* Choosing several messages (stage 9) */
 "message.menu.select" = "Auswählen";
@@ -1485,7 +1494,7 @@
 "photoEditor.crop" = "Zuschneiden";
 "photoEditor.rotate" = "Drehen";
 "photoEditor.textPrompt" = "Schreiben Sie etwas";
-"photoEditor.failed" = "Die Änderungen ließen sich nicht speichern – das Foto ist unverändert";
+"photoEditor.failed" = "Die Änderungen ließen sich nicht speichern. Das Foto ist unverändert";
 "photoEditor.ok" = "OK";
 "photoEditor.white" = "Weiß";
 "photoEditor.black" = "Schwarz";

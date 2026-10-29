@@ -301,8 +301,35 @@ struct MessageComposer: View {
     /// Who the "@" being typed could mean — empty when nothing is being typed, or nobody matches.
     private var mentionMatches: [RoomMemberSummary] {
         guard let mentionQuery, let mentionCandidates else { return [] }
+        // Escape put the list away for this "@…"; typing on, or another "@", brings it back.
+        guard mentionQuery.text != mentionDismissedFor else { return [] }
         return ComposerMentions.matches(mentionQuery.text, in: mentionCandidates)
     }
+
+    /// The row of the list the keyboard is on — Mac. Always inside the list: see `mentionRow`.
+    @State private var mentionHighlight = 0
+    /// The text of the "@…" whose list Escape closed.
+    @State private var mentionDismissedFor: String?
+
+    private func mentionRow(in matches: [RoomMemberSummary]) -> Int {
+        min(max(mentionHighlight, 0), max(matches.count - 1, 0))
+    }
+
+    #if os(macOS)
+    /// ↑ ↓ Tab Return Escape while the list is up. Returns whether the key was taken.
+    private func handleMentionKey(_ key: MentionKey) -> Bool {
+        let matches = mentionMatches
+        guard !matches.isEmpty else { return false }
+        let row = mentionRow(in: matches)
+        switch key {
+        case .up: mentionHighlight = (row - 1 + matches.count) % matches.count
+        case .down: mentionHighlight = (row + 1) % matches.count
+        case .confirm: pick(matches[row])
+        case .escape: mentionDismissedFor = mentionQuery?.text
+        }
+        return true
+    }
+    #endif
 
     /// A name chosen from the list: into the draft in place of what was typed, the cursor after it.
     private func pick(_ member: RoomMemberSummary) {
@@ -406,7 +433,7 @@ struct MessageComposer: View {
                     // with a different confirmation.
                     if let context, context.isEditing {
                         button(systemImage: "checkmark",
-                               label: Strings.Room.send,
+                               label: Strings.Room.saveEdit,
                                isPrimary: true,
                                action: onSend)
                             // A caption may be emptied — that takes it off the photo.
@@ -502,13 +529,20 @@ struct MessageComposer: View {
         .overlay(alignment: .bottom) {
             let matches = mentionMatches
             if !matches.isEmpty {
-                MentionPicker(members: matches, onPick: pick)
+                MentionPicker(members: matches, highlighted: mentionRow(in: matches), onPick: pick)
                     .padding(.horizontal, Theme.Spacing.normal)
                     .offset(y: -(height + Theme.Spacing.close))
                     .transition(.scale(scale: 0.96, anchor: .bottom).combined(with: .opacity))
             }
         }
         .animation(.smooth(duration: Theme.Timing.chrome), value: mentionMatches.isEmpty)
+        .onChange(of: mentionQuery?.text) { _, text in
+            mentionHighlight = 0
+            if text == nil { mentionDismissedFor = nil }
+        }
+        #if os(macOS)
+        .background { MentionKeyCatcher(isEnabled: isFocused && !mentionMatches.isEmpty, perform: handleMentionKey) }
+        #endif
         // The room's people are asked for the first time an "@" is typed, and kept.
         .task(id: mentionQuery != nil) {
             guard mentionQuery != nil, mentionCandidates == nil, let loadMentionCandidates else { return }
@@ -1266,7 +1300,7 @@ struct MessageComposer: View {
             .frame(width: control, height: control)
 
         if isPrimary {
-            glyph.primaryActionGlass(tint: tint ?? accent.color, in: .circle)
+            glyph.primaryActionGlass(tint: tint ?? accent.solid(in: scheme), in: .circle)
                 .contentShape(.circle)
         } else {
             glyph.navigationGlass(in: .circle)

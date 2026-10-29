@@ -206,3 +206,69 @@ private struct UpArrowCatcher: NSViewRepresentable {
     }
 }
 #endif
+
+#if os(macOS)
+/// The keys of the mention list. See `MentionKeyCatcher`.
+enum MentionKey { case up, down, confirm, escape }
+
+/// ↑ ↓ Tab Return Escape, taken ahead of the focused text view while the mention list is up, for
+/// the same reason `UpArrowCatcher` is: the field would use ↑ ↓ to move the cursor and Return to
+/// send the half-written "@ан". Escape is taken here too, so it closes the list and does not
+/// leave the chat. A key `perform` does not want goes on to the field.
+struct MentionKeyCatcher: NSViewRepresentable {
+    let isEnabled: Bool
+    let perform: @MainActor (MentionKey) -> Bool
+
+    func makeNSView(context: Context) -> CatcherView {
+        let view = CatcherView()
+        view.isEnabled = isEnabled
+        view.perform = perform
+        return view
+    }
+
+    func updateNSView(_ view: CatcherView, context: Context) {
+        view.isEnabled = isEnabled
+        view.perform = perform
+    }
+
+    static func dismantleNSView(_ view: CatcherView, coordinator: ()) {
+        view.stop()
+    }
+
+    final class CatcherView: NSView {
+        var isEnabled = false
+        var perform: @MainActor (MentionKey) -> Bool = { _ in false }
+        private var monitor: Any?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if window == nil { stop() } else { start() }
+        }
+
+        private func start() {
+            guard monitor == nil else { return }
+            monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                guard let self, self.isEnabled, self.window != nil, event.window === self.window,
+                      event.modifierFlags.intersection([.command, .shift, .option, .control]).isEmpty,
+                      let key = Self.key(for: event.keyCode), self.perform(key) else { return event }
+                return nil
+            }
+        }
+
+        func stop() {
+            if let monitor { NSEvent.removeMonitor(monitor) }
+            monitor = nil
+        }
+
+        private static func key(for code: UInt16) -> MentionKey? {
+            switch code {
+            case 126: .up
+            case 125: .down
+            case 36, 76, 48: .confirm
+            case 53: .escape
+            default: nil
+            }
+        }
+    }
+}
+#endif

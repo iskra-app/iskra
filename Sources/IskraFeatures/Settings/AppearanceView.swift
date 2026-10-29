@@ -378,6 +378,9 @@ struct AppearanceView: View {
 
             Slider(value: $dimming, in: 0...Wallpaper.maximumDimming)
                 .accentControl()
+                .accessibilityLabel(Text(scheme == .light ? Strings.Appearance.wallpaperLightening
+                                                          : Strings.Appearance.wallpaperDimming))
+                .accessibilityValue(Text(dimming.formatted(.percent.precision(.fractionLength(0)))))
 
             // Changing one's mind about the photograph, which is the only wallpaper that can be
             // changed as well as chosen.

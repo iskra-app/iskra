@@ -79,5 +79,8 @@ struct ReplyQuote: View {
         // punctuation, not a sentence to translate.
         // swiftlint:disable:next literal_string_in_view
         .accessibilityLabel(Text("\(String(app: Strings.Room.replyingTo)): \(reply.text)"))
+        // The tap above is a gesture VoiceOver cannot see: with somewhere to go, say so and offer it.
+        .accessibilityAddTraits(onOpen == nil ? [] : .isButton)
+        .accessibilityAction { onOpen?() }
     }
 }

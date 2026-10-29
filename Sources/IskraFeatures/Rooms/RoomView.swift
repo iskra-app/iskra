@@ -2513,7 +2513,7 @@ public struct RoomView: View {
             } label: {
                 Text(Strings.Room.earlierUnavailable)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .onWallpaperInk()
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, Theme.Spacing.normal)
                     .padding(.vertical, Theme.Spacing.close)

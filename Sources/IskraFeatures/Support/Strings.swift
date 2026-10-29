@@ -366,6 +366,8 @@ public enum Strings {
         public static let systemUnknown = LocalizedStringResource("notifications.systemUnknown", bundle: bundle)
         public static let openSystem = LocalizedStringResource("notifications.openSystem", bundle: bundle)
         public static let systemFooter = LocalizedStringResource("notifications.systemFooter", bundle: bundle)
+        /// The button that asks the system for the permission, while it can still be asked.
+        public static let allow = LocalizedStringResource("notifications.allow", bundle: bundle)
 
         /// The rules could not be read. Not the same as "everything is off", and the difference
         /// is the whole of what the reader needs: nothing here has been changed, and the screen
@@ -684,6 +686,8 @@ public enum Strings {
         /// The "@" list over the composer, as VoiceOver names it.
         public static let mentionSuggestions = LocalizedStringResource("room.mentionSuggestions", bundle: bundle)
         public static let send = LocalizedStringResource("room.send", bundle: bundle)
+        /// The tick that confirms an edit: it saves the message, it does not send a new one.
+        public static let saveEdit = LocalizedStringResource("room.saveEdit", bundle: bundle)
         public static let attach = LocalizedStringResource("room.attach", bundle: bundle)
 
         /// Shown in place of the composer when the room's power levels do not allow posting.
@@ -1139,6 +1143,8 @@ public enum Strings {
 
         public enum Media {
             public static let close = LocalizedStringResource("message.media.close", bundle: bundle)
+            /// VoiceOver's way to the tap that shows and hides the gallery's buttons.
+            public static let controls = LocalizedStringResource("message.media.controls", bundle: bundle)
             public static let share = LocalizedStringResource("message.media.share", bundle: bundle)
             /// Into the photo library. Only on iOS: on a Mac the share sheet already offers
             /// every sensible destination, and a "Save" button beside it would be a second way
@@ -1538,6 +1544,8 @@ public enum Strings {
         /// an invitation rather than as a label — the row has no label, because the thing
         /// you are looking at is your own name.
         public static let namePlaceholder = LocalizedStringResource("account.namePlaceholder", bundle: bundle)
+        /// The toolbar button that sends the new name.
+        public static let save = LocalizedStringResource("account.save", bundle: bundle)
 
         /// The pencil in the corner of settings, and the screen it opens.
         ///
@@ -1757,6 +1765,9 @@ public enum Strings {
         public static let title = LocalizedStringResource("media.title", bundle: bundle)
 
         public static let stripMetadata = LocalizedStringResource("media.stripMetadata", bundle: bundle)
+        public static let stripMetadataHelpOn = LocalizedStringResource("media.stripMetadataHelpOn", bundle: bundle)
+        public static let stripMetadataHelpOff = LocalizedStringResource("media.stripMetadataHelpOff", bundle: bundle)
+        public static let compressHelp = LocalizedStringResource("media.compressHelp", bundle: bundle)
 
         public static let compress = LocalizedStringResource("media.compress", bundle: bundle)
         public static let compression = LocalizedStringResource("media.compression", bundle: bundle)
@@ -1872,6 +1883,7 @@ public enum Strings {
         public static let passwordField = LocalizedStringResource("devices.passwordField", bundle: bundle)
         public static let cancel = LocalizedStringResource("devices.cancel", bundle: bundle)
         public static let retry = LocalizedStringResource("devices.retry", bundle: bundle)
+        public static let loadFailed = LocalizedStringResource("devices.loadFailed", bundle: bundle)
 
         /// The card for one session — see `DeviceDetailSheet`.
         public static let application = LocalizedStringResource("devices.application", bundle: bundle)
@@ -1893,6 +1905,9 @@ public enum Strings {
 
     public enum Settings {
         public static let title = LocalizedStringResource("settings.title", bundle: bundle)
+
+        /// Under the settings that are requests to the server, while there is no network.
+        public static let offlineFooter = LocalizedStringResource("settings.offlineFooter", bundle: bundle)
 
         /// Only ever shown in a sidebar, where the system pushes settings without giving
         /// it a way back. On iPhone the back button is the system's and is labelled — and

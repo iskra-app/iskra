@@ -16,6 +16,10 @@ struct FoldersView: View {
     /// The folder open in the editor — a new one, or a copy of an existing one.
     @State private var editing: ChatFolder?
 
+    /// Folders waiting for the answer to "Delete the folder?": swipe, the Mac's minus button and
+    /// the context menu all end here, the way the editor's own button does.
+    @State private var pendingDeletion: [ChatFolder] = []
+
     #if os(macOS)
     /// The Mac's stand-in for `EditButton`, which AppKit does not have: a `Form` there has no
     /// swipe to delete, so without it a folder could only be deleted from inside its editor.
@@ -38,7 +42,7 @@ struct FoldersView: View {
                         #if os(macOS)
                         if isEditingList {
                             Button {
-                                Task { await folders.delete(folder.id) }
+                                pendingDeletion = [folder]
                             } label: {
                                 Image(systemName: "minus.circle.fill")
                                     .foregroundStyle(.red)
@@ -64,7 +68,7 @@ struct FoldersView: View {
                     #if os(macOS)
                     .contextMenu {
                         Button(String(app: Strings.Folders.delete), role: .destructive) {
-                            Task { await folders.delete(folder.id) }
+                            pendingDeletion = [folder]
                         }
                         .disabled(isOffline)
                     }
@@ -74,8 +78,7 @@ struct FoldersView: View {
                     Task { await folders.move(fromOffsets: source, toOffset: destination) }
                 }
                 .onDelete { offsets in
-                    let ids = offsets.map { folders.folders[$0].id }
-                    Task { for id in ids { await folders.delete(id) } }
+                    pendingDeletion = offsets.map { folders.folders[$0] }
                 }
 
                 if !isFull {
@@ -87,7 +90,11 @@ struct FoldersView: View {
                     .disabled(isOffline)
                 }
             } footer: {
-                Text(Strings.Folders.explanation)
+                if isOffline {
+                    Text(Strings.Folders.explanation) + Text(verbatim: "\n\n") + Text(Strings.Settings.offlineFooter)
+                } else {
+                    Text(Strings.Folders.explanation)
+                }
             }
 
             if !suggestions.isEmpty, !isFull {
@@ -139,6 +146,18 @@ struct FoldersView: View {
                          onDelete: { id in Task { await folders.delete(id) } })
         }
         .failureAlert(Binding(get: { folders.failure }, set: { folders.failure = $0 }))
+        .confirmationDialog(Text(Strings.Folders.deleteQuestion(pendingDeletion.first?.name ?? "")),
+                            isPresented: Binding(get: { !pendingDeletion.isEmpty },
+                                                 set: { if !$0 { pendingDeletion = [] } }),
+                            titleVisibility: .visible) {
+            Button(String(app: Strings.Folders.delete), role: .destructive) {
+                let ids = pendingDeletion.map(\.id)
+                pendingDeletion = []
+                Task { for id in ids { await folders.delete(id) } }
+            }
+        } message: {
+            Text(Strings.Folders.deleteHelp)
+        }
     }
 }
 

@@ -831,7 +831,7 @@ struct RoomRow: View {
                         Image(systemName: "lock.fill")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
-                            .accessibilityLabel(Text(Strings.RoomList.privateChat))
+                            .accessibilityHidden(true)
                     }
 
                     Spacer(minLength: 0)
@@ -932,7 +932,7 @@ struct RoomRow: View {
                                     Text(room.unreadNotifyingMessages, format: .number)
                                         .font(.caption.weight(.semibold).monospacedDigit())
                                         .foregroundStyle(badgeInk)
-                                        .padding(.horizontal, 7)
+                                        .padding(.horizontal, Theme.Spacing.close)
                                         .frame(minWidth: Theme.Size.unreadBadge,
                                                minHeight: Theme.Size.unreadBadge)
                                 } else if room.hasUnread && !room.isMentioned {
@@ -1049,9 +1049,8 @@ struct RoomRow: View {
     /// fragments.
     private var accessibilityLabel: String {
         var parts = [room.name]
-        if room.privacy == .protected {
-            parts.append(String(app: Strings.RoomList.privateChat))
-        }
+        // No "private chat" here: nearly every row is encrypted, and hearing it a hundred times
+        // tells nobody anything. The lock is hidden from VoiceOver for the same reason.
         if room.isPinned {
             parts.append(String(app: Strings.RoomList.pinned))
         }
@@ -1162,7 +1161,9 @@ private struct InviteRow: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
 
-                // Green and red, and neither one nudged ahead of the other — see `AnswerStyle`.
+                // "Join" is the one filled answer; "Decline" is the quiet one beside it (`QuietAnswerStyle`).
+                // The row used to carry a green pill and a red pill, the loudest thing in the list.
+                // The old reasoning follows, for the equal size and the shape of the pair.
                 // The two used to be a filled "Join" beside a bordered "Decline", which is the
                 // shape of a screen with one action and a way out of it. This is not that: both
                 // are real answers, and the row was quietly nudging towards one of them while
@@ -1182,7 +1183,7 @@ private struct InviteRow: View {
                         .buttonStyle(.answer(.accepting))
 
                     Button(String(app: Strings.RoomList.Invite.decline), action: onDecline)
-                        .buttonStyle(.answer(.declining))
+                        .buttonStyle(.quietAnswer)
 
                     Spacer(minLength: 0)
                 }

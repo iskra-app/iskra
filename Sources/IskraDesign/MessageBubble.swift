@@ -90,11 +90,7 @@ struct MessageBubble: ViewModifier {
     }
 
     private var fill: AnyShapeStyle {
-        switch style {
-        case .own: accent.bubble(onWallpaper: hasWallpaper)
-        case .incoming: AnyShapeStyle(hasWallpaper ? Color.incomingBubbleOnWallpaper : Color.incomingBubble)
-        case .plain: AnyShapeStyle(.clear)
-        }
+        style.fill(accent: accent, onWallpaper: hasWallpaper)
     }
 
     func body(content: Content) -> some View {
@@ -104,7 +100,7 @@ struct MessageBubble: ViewModifier {
             .frame(minWidth: minimumContentWidth)
             .padding(.horizontal, horizontal)
             .padding(.vertical, vertical)
-            .foregroundStyle(style == .own ? accent.onBubble : AnyShapeStyle(.primary))
+            .foregroundStyle(style.ink(accent: accent))
             .background(fill, in: shape)
             // The page, under the fill, when there is no page — see `bubbleIsLifted`.
             .background(isLifted && style != .plain ? Color.page : Color.clear, in: shape)
@@ -135,17 +131,13 @@ struct BubbleFill: ViewModifier {
     @Environment(\.bubbleIsLifted) private var isLifted
 
     private var fill: AnyShapeStyle {
-        switch style {
-        case .own: accent.bubble(onWallpaper: hasWallpaper)
-        case .incoming: AnyShapeStyle(hasWallpaper ? Color.incomingBubbleOnWallpaper : Color.incomingBubble)
-        case .plain: AnyShapeStyle(.clear)
-        }
+        style.fill(accent: accent, onWallpaper: hasWallpaper)
     }
 
     func body(content: Content) -> some View {
         let shape = BubbleShape()
         return content
-            .foregroundStyle(style == .own ? accent.onBubble : AnyShapeStyle(.primary))
+            .foregroundStyle(style.ink(accent: accent))
             .background(fill, in: shape)
             .background(isLifted && style != .plain ? Color.page : Color.clear, in: shape)
     }
@@ -179,11 +171,7 @@ struct PictureBorder: ViewModifier {
     }
 
     private var border: AnyShapeStyle {
-        switch style {
-        case .own: accent.bubble(onWallpaper: hasWallpaper)
-        case .incoming: AnyShapeStyle(hasWallpaper ? Color.incomingBubbleOnWallpaper : Color.incomingBubble)
-        case .plain: AnyShapeStyle(.clear)
-        }
+        style.fill(accent: accent, onWallpaper: hasWallpaper)
     }
 }
 
@@ -324,5 +312,22 @@ public extension Color {
         #else
         .white
         #endif
+    }
+}
+
+extension BubbleStyle {
+    /// The fill of a message in this style — the one place it is decided, for the bubble, the
+    /// album's bubble and the outline round a picture alike.
+    func fill(accent: AccentTheme, onWallpaper: Bool) -> AnyShapeStyle {
+        switch self {
+        case .own: accent.bubble(onWallpaper: onWallpaper)
+        case .incoming: AnyShapeStyle(onWallpaper ? Color.incomingBubbleOnWallpaper : Color.incomingBubble)
+        case .plain: AnyShapeStyle(.clear)
+        }
+    }
+
+    /// The words on that fill.
+    func ink(accent: AccentTheme) -> AnyShapeStyle {
+        self == .own ? accent.onBubble : AnyShapeStyle(.primary)
     }
 }

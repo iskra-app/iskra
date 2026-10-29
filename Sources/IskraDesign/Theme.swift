@@ -8,18 +8,19 @@ import AppKit
 
 /// The handful of numbers the whole app agrees on.
 ///
-/// Spacings and sizes are multiples of 4 and all corners are `.continuous`, which is what gives
+/// Spacings and sizes are, with the exceptions below, multiples of 4 and all corners are `.continuous`, which is what gives
 /// Apple's own apps their soft, un-fussy geometry. Sizes are *not* hard-coded anywhere else: a
 /// bubble that pads itself by a bare twelve points is a bug waiting to drift out of line with the
 /// one next to it.
 ///
-/// Two things in here are **not** multiples of 4, and the rule used to claim otherwise about them —
-/// which is a small lie of the kind that eventually gets one of them "corrected". `Spacing.withinRun`
-/// is 2, because the gap inside a run of messages from one person is meant to be *tighter* than the
-/// grid, and 4 reads as two separate remarks. `Size.recordingDot` is 10, because it is a dot and a
-/// dot is sized by eye against the text beside it, not by a grid it is not standing on.
-///
-/// The grid is for the things that line up with each other. These two line up with nothing.
+/// Not everything in here is a multiple of 4, and the rule used to claim otherwise — a small lie
+/// of the kind that eventually gets one of them "corrected". The grid is for the things that line up
+/// with each other: spacings, radii, tap targets. Some values are deliberately off it and say why in
+/// their own comments: `Spacing.withinRun` (2, tighter than the grid so a run of messages from one
+/// person does not read as separate remarks), `Size.recordingDot` and `Size.unreadDot` (10, a dot is
+/// sized by eye against the text beside it), the hairline gaps of an album and a waveform (2 to 3),
+/// `formRowInset` (10, the system's own row inset) and the window's least height. A new constant off
+/// the grid says in its comment what it lines up with instead.
 public enum Theme {
     public enum Radius {
         /// Message bubbles, on every corner. Large enough that a one-line message comes
@@ -69,6 +70,9 @@ public enum Theme {
     }
 
     public enum Opacity {
+        /// The edge of a secondary button drawn without glass, so that it is not the same blank
+        /// capsule as the entry field beside it.
+        public static let fallbackEdge: Double = 0.2
         /// A warning's colour spread under its words — enough to be told apart from an ordinary
         /// notice at a glance, little enough that the words on it stay the words' own colour.
         public static let warningWash: Double = 0.14
@@ -154,6 +158,9 @@ public enum Theme {
     /// shadowing it inside `Theme` would make every `Duration.seconds(…)` in the package
     /// mean something subtly different.
     public enum Timing {
+        /// The spring a face in the share sheet settles with when it is chosen or let go.
+        public static let chosen: Animation = .spring(duration: 0.3, bounce: 0.3)
+
         /// How long a finger stays on a message before the menu lifts it.
         ///
         /// This constant has now been deleted once and written twice, which is worth saying out
@@ -320,10 +327,6 @@ public enum Theme {
         /// they no longer are. See `RoomView.held`.
         public static let placeIsHeld: Duration = .milliseconds(600)
 
-        /// How often the end is asked for again while it is being held. See
-        /// `Timing.endIsHeld` and `RoomView.followEnd()`.
-        public static let endIsCheckedEvery: Duration = .milliseconds(50)
-
         /// How long a room that has just opened stays perfectly still before it is allowed to
         /// animate anything.
         ///
@@ -391,31 +394,6 @@ public enum Theme {
         /// it — longer than a tap, so switching between voice and video wakes nothing.
         public static let prewarmAfter: Duration = .milliseconds(90)
 
-        /// How long one slide of the welcome carousel stands still before the next one comes.
-        ///
-        /// Long enough to read two lines without hurrying — the slides are the app's only pitch,
-        /// and a carousel that moves while somebody is still reading it is a carousel they fight.
-        /// Short enough that a person who is not reading gets through all six on the way to the
-        /// button. See `WelcomeView`, which stops the timer at the last slide rather than looping:
-        /// once everything has been said, the screen waits.
-        public static let welcomeSlide: Duration = .seconds(5)
-
-        /// The pause between the question and the answer in the first run's preview.
-        ///
-        /// The two lines are a conversation, so they arrive the way a conversation does: one, and
-        /// then the other, with long enough between them to be an answer rather than a second half
-        /// of the same breath. Short enough that somebody who came to pick a colour is not kept
-        /// waiting for the thing they are picking it against.
-        public static let previewReplies: Duration = .milliseconds(450)
-
-        /// One first-run screen giving way to the next.
-        ///
-        /// Half a second, and no bounce. A whole screen is the largest thing this app ever
-        /// animates, and weight that is charming on a message bubble is a wobbling wall at this
-        /// size — so it is a spring for the ease alone: quick off the mark, and settling rather
-        /// than stopping. See `AnyTransition.onboardingStep`.
-        public static let stepChanges: Animation = .spring(duration: 0.45, bounce: 0)
-
         /// One frame at sixty hertz.
         ///
         /// Not a delay: it is the frame in which a thing is drawn *where it starts*, so that the
@@ -452,6 +430,10 @@ public enum Theme {
         /// not *do* anything, it was repainted, and a bubble that jumped would be claiming more
         /// than that. See `AppearanceStep.nod()`.
         public static let nod: CGFloat = 1.04
+
+        /// How far a face in the share sheet draws in when it is chosen, to leave room for the
+        /// accent's ring round it.
+        public static let chosen: CGFloat = 0.86
     }
 
     /// The lines the app draws *around* things rather than under them. There are very few:
@@ -680,9 +662,6 @@ public enum Theme {
         #else
         public static let profileAction: CGFloat = 56
         #endif
-        /// The QR code on its own screen — `QRCodeSheet`. Large enough for a camera across a table,
-        /// small enough to leave the name and the face above it on a small phone.
-        public static let qrCode: CGFloat = 240
         /// How wide that card is. The code fills it less the margins, so this is what makes it
         /// "large": about the width of a phone less a hand's grip on either side.
         public static let qrCardWidth: CGFloat = 320
@@ -875,15 +854,6 @@ public enum Theme {
         /// The app's icon at the top of the opening screen — the one picture on it, so it can be
         /// big enough to be the screen's subject.
         public static let signInLogo: CGFloat = 112
-
-        /// The mark over a welcome slide. A placeholder for now — the illustrations that go
-        /// there are not drawn yet — and sized as the picture it will be rather than as the
-        /// symbol standing in for it, so the layout does not shift when they arrive.
-        public static let welcomeMark: CGFloat = 132
-
-        /// One of the dots under the welcome slides. Small: it says where you are, it is not a
-        /// control anybody aims at — the tap target around it is a full `minimumTapTarget`.
-        public static let pageDot: CGFloat = 8
 
         /// The red badge beside a message that failed to send. Bigger than the delivery
         /// ticks on purpose: those report progress and may be ignored, this one is the

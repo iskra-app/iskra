@@ -309,13 +309,23 @@ private struct GalleryPage: View {
                           }
                       })
             .ignoresSafeArea()
+            .modifier(spokenPicture)
     }
     #else
     private func zoomable(_ picture: NSImage) -> some View {
         MacZoomableImage(image: picture, maximumZoom: Self.maximumZoom, doubleTapZoom: Self.doubleTapZoom,
                          isCurrent: isCurrent)
+            .modifier(spokenPicture)
     }
     #endif
+
+    /// What a picture is called to VoiceOver, and the way to bring the controls back: the tap that
+    /// toggles them is a gesture it cannot make.
+    private var spokenPicture: SpokenPicture {
+        SpokenPicture(label: [item.sender, item.timestamp.formatted(date: .abbreviated, time: .shortened)]
+                        .joined(separator: ", "),
+                      toggleChrome: { model.isChromeVisible.toggle() })
+    }
 
     // MARK: Video
 
@@ -593,6 +603,18 @@ private struct MacZoomableImage: View {
 // MARK: - The chrome
 
 /// Close on the left, whose and when in the middle, how far through on the right.
+private struct SpokenPicture: ViewModifier {
+    let label: String
+    let toggleChrome: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .accessibilityLabel(Text(verbatim: label))
+            .accessibilityAddTraits(.isImage)
+            .accessibilityAction(named: Text(Strings.Message.Media.controls), toggleChrome)
+    }
+}
+
 private struct GalleryHeader: View {
     let item: MediaItem
     let position: Int

@@ -1,4 +1,5 @@
 import SwiftUI
+import LocalAuthentication
 import IskraCore
 import IskraDesign
 
@@ -347,7 +348,7 @@ struct SecurityView: View {
         @Bindable var appLock = appLock
         Section {
             Toggle(isOn: $appLock.isEnabled) {
-                Label(Strings.Settings.lockEnable, systemImage: "faceid")
+                Label(Strings.Settings.lockEnable, systemImage: LockBiometry.symbol)
             }
             .accentControl()
             .disabled(!appLock.canAuthenticate)
@@ -399,6 +400,22 @@ struct SecurityView: View {
                 Spacer()
                 ProgressView()
             }
+        }
+    }
+}
+
+
+/// The picture on the app-lock switch: the sensor this device really has, not always a face.
+/// The words beside it name the passcode, which every device has.
+private enum LockBiometry {
+    static var symbol: String {
+        let context = LAContext()
+        var error: NSError?
+        _ = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error)
+        switch context.biometryType {
+        case .faceID: return "faceid"
+        case .touchID: return "touchid"
+        default: return "lock"
         }
     }
 }

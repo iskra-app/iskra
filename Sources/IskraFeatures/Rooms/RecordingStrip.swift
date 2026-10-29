@@ -73,6 +73,8 @@ struct RecordingStrip: View {
         }
     }
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     private var strip: some View {
         HStack(spacing: Theme.Spacing.close) {
             Circle()
@@ -84,8 +86,11 @@ struct RecordingStrip: View {
                 // A pulse, because a red dot that does not move is a design element and a red
                 // dot that breathes is a thing that is happening. And when it is no longer
                 // happening the dot stops breathing, which is the same sentence read backwards.
-                .opacity(isPulsing && isLive ? 0.3 : 1)
-                .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: isPulsing)
+                .opacity(isPulsing && isLive && !reduceMotion ? 0.3 : 1)
+                // With Reduce Motion on the dot stays lit: an animation set this close to the view is
+                // not reliably silenced by the switch at the root.
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.6).repeatForever(autoreverses: true),
+                           value: isPulsing)
                 .onAppear { isPulsing = true }
                 .onDisappear { isPulsing = false }
 

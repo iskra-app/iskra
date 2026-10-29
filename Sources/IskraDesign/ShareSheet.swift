@@ -30,9 +30,15 @@ public struct ShareTargetGrid<Item: Identifiable, Face: View>: View {
     }
 
     @Environment(\.accent) private var accent
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: Theme.Spacing.close, alignment: .top),
-                                count: 4)
+    /// Four to a row, two once the type is so large that a name no longer fits under a face.
+    private var columns: [GridItem] {
+        Array(repeating: GridItem(.flexible(), spacing: Theme.Spacing.close, alignment: .top),
+              count: typeSize.isAccessibilitySize ? 2 : 4)
+    }
 
     public var body: some View {
         LazyVGrid(columns: columns, spacing: Theme.Spacing.roomy) {
@@ -46,18 +52,18 @@ public struct ShareTargetGrid<Item: Identifiable, Face: View>: View {
                         face(item)
                             .frame(width: Theme.Size.shareFace, height: Theme.Size.shareFace)
                             // Telegram's ring: the face draws in a little and the accent comes round it.
-                            .scaleEffect(isChosen ? 0.86 : 1)
+                            .scaleEffect(isChosen ? Theme.Scale.chosen : 1)
                             .background {
                                 Circle()
-                                    .strokeBorder(accent.color, lineWidth: 2.5)
+                                    .strokeBorder(accent.solid(in: colorScheme), lineWidth: Theme.Border.thick)
                                     .opacity(isChosen ? 1 : 0)
                             }
                             .overlay(alignment: .bottomTrailing) {
                                 if isChosen {
                                     Image(systemName: "checkmark.circle.fill")
-                                        .font(.system(size: 22, weight: .semibold))
+                                        .font(.title2.weight(.semibold))
                                         .symbolRenderingMode(.palette)
-                                        .foregroundStyle(.white, accent.color)
+                                        .foregroundStyle(accent.foreground(in: colorScheme), accent.solid(in: colorScheme))
                                         .background(Circle().fill(.background).padding(Theme.Spacing.withinRun))
                                         .transition(.scale.combined(with: .opacity))
                                 }
@@ -65,7 +71,7 @@ public struct ShareTargetGrid<Item: Identifiable, Face: View>: View {
 
                         Text(title(item))
                             .font(.caption)
-                            .foregroundStyle(isChosen ? accent.color : .primary)
+                            .foregroundStyle(isChosen ? AnyShapeStyle(accent.textColor(in: colorScheme)) : AnyShapeStyle(.primary))
                             .lineLimit(2)
                             .multilineTextAlignment(.center)
                     }
@@ -73,7 +79,7 @@ public struct ShareTargetGrid<Item: Identifiable, Face: View>: View {
                     .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
-                .animation(.spring(duration: 0.3, bounce: 0.3), value: isChosen)
+                .animation(reduceMotion ? nil : Theme.Timing.chosen, value: isChosen)
                 .accessibilityAddTraits(isChosen ? .isSelected : [])
             }
         }
@@ -135,7 +141,7 @@ public struct ShareSendBar: View {
                 // has a number to carry beside the arrow.
                 .padding(.horizontal, count > 1 ? Theme.Spacing.roomy : 0)
                 .frame(minWidth: Theme.Size.minimumTapTarget, minHeight: Theme.Size.minimumTapTarget)
-                .primaryActionGlass(tint: accent.color, in: .capsule)
+                .primaryActionGlass(tint: accent.solid(in: colorScheme), in: .capsule)
                 .accessibilityLabel(Text(verbatim: sendLabel))
             }
             .buttonStyle(.plain)

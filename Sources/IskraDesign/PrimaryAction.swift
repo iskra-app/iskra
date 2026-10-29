@@ -77,7 +77,8 @@ public struct GlassActionStyle: ButtonStyle {
             // The glass is already interactive — it responds to a touch by itself — so this one
             // does not take the press scale on top of that.
             if isEnabled {
-                face.primaryActionGlass(tint: accent.color)
+                face.primaryActionGlass(tint: accent.solid(in: scheme))
+                    .fallbackPress(configuration.isPressed)
             } else {
                 face.secondaryActionGlass()
             }
@@ -107,6 +108,7 @@ public struct GlassSecondaryStyle: ButtonStyle {
                 .padding(.vertical, Theme.Spacing.close)
                 .frame(minHeight: height)
                 .secondaryActionGlass()
+                .fallbackPress(configuration.isPressed)
         }
     }
 }
