@@ -63,7 +63,9 @@ public struct CalmBackdrop: View {
         Double(stableHash(seed) % 360) / 360
     }
 
-    /// The colour of a picture, from its bytes, or nil if it will not decode or has no colour in it.
+    /// The most expressive colour in a picture, as a hue, from its bytes. Nil if it will not decode
+    /// or has no real colour in it. Only the hue is kept: how bright and how saturated the screen
+    /// comes out is the look's decision (`Theme.Calm.Shade`).
     public nonisolated static func dominantHue(of data: Data) -> Double? {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil),
               let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
@@ -73,8 +75,9 @@ public struct CalmBackdrop: View {
         return dominantHue(of: image)
     }
 
-    /// A mean around the colour wheel, each pixel counted by how much colour it has, so a white
-    /// background and a black coat say nothing about the hue.
+    /// A vote around the colour wheel, in which a pixel's vote is the cube of how much colour it has. A small red thing on a big grey picture wins, since grey has almost no vote, and it beats
+    /// a large washed-out area too. The winner is a peak and not an average: red and blue in one
+    /// picture give red or blue, never the purple that is in neither.
     nonisolated static func dominantHue(of image: CGImage) -> Double? {
         let side = Theme.Calm.Shade.sampleSide
         var pixels = [UInt8](repeating: 0, count: side * side * 4)
@@ -84,19 +87,30 @@ public struct CalmBackdrop: View {
                                       bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
         context.draw(image, in: CGRect(x: 0, y: 0, width: side, height: side))
 
-        var x = 0.0, y = 0.0, weight = 0.0
+        let count = Theme.Calm.Shade.hueBuckets
+        var votes = [(x: Double, y: Double, weight: Double)](repeating: (0, 0, 0), count: count)
         for pixel in stride(from: 0, to: pixels.count, by: 4) {
             let r = Double(pixels[pixel]) / 255, g = Double(pixels[pixel + 1]) / 255, b = Double(pixels[pixel + 2]) / 255
             let high = max(r, g, b), chroma = high - min(r, g, b)
-            guard chroma > 0 else { continue }
+            // Below this it is grey with noise in it, and a hue read off noise means nothing.
+            guard chroma >= Theme.Calm.Shade.leastColour else { continue }
             let sector = high == r ? (g - b) / chroma : high == g ? (b - r) / chroma + 2 : (r - g) / chroma + 4
-            let angle = sector / 6 * 2 * .pi
-            x += cos(angle) * chroma
-            y += sin(angle) * chroma
-            weight += chroma
+            let hue = (sector / 6 + 1).truncatingRemainder(dividingBy: 1)
+            let weight = chroma * chroma * chroma
+            let bucket = min(Int(hue * Double(count)), count - 1)
+            votes[bucket].x += cos(hue * 2 * .pi) * weight
+            votes[bucket].y += sin(hue * 2 * .pi) * weight
+            votes[bucket].weight += weight
         }
-        guard weight / Double(side * side) >= Theme.Calm.Shade.leastColour else { return nil }
-        let hue = atan2(y, x) / (2 * .pi)
+
+        // A bucket with its two neighbours, so that a colour on the line between two is not split.
+        func around(_ i: Int) -> [(x: Double, y: Double, weight: Double)] {
+            [votes[(i + count - 1) % count], votes[i], votes[(i + 1) % count]]
+        }
+        let totals = (0..<count).map { around($0).map(\.weight).reduce(0, +) }
+        guard let best = totals.indices.max(by: { totals[$0] < totals[$1] }), totals[best] > 0 else { return nil }
+        let peak = around(best)
+        let hue = atan2(peak.map(\.y).reduce(0, +), peak.map(\.x).reduce(0, +)) / (2 * .pi)
         return hue < 0 ? hue + 1 : hue
     }
 }

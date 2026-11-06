@@ -127,6 +127,8 @@ struct MemberProfileView: View {
                             dismiss()
                         } label: {
                             Label(String(app: Strings.Room.Manage.remove), systemImage: "person.badge.minus")
+                                // The role reddens the words and leaves the icon as it was.
+                                .foregroundStyle(.red)
                         }
                         .disabled(isOffline)
                     }
@@ -141,6 +143,8 @@ struct MemberProfileView: View {
                             }
                         } label: {
                             Label(String(app: Strings.Room.Manage.block), systemImage: "hand.raised")
+                                // The role reddens the words and leaves the icon as it was.
+                                .foregroundStyle(.red)
                         }
                         .disabled(isOffline)
                     }

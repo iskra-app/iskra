@@ -51,6 +51,36 @@ struct CalmThemeTests {
         #expect(CalmBackdrop.dominantHue(of: try picture(red: 0.5, green: 0.5, blue: 0.5)) == nil)
     }
 
+    /// A picture of one colour with a square of another in its middle.
+    private func picture(ground: (CGFloat, CGFloat, CGFloat), centre: (CGFloat, CGFloat, CGFloat)) throws -> CGImage {
+        let context = try #require(CGContext(data: nil, width: 64, height: 64, bitsPerComponent: 8, bytesPerRow: 0,
+                                             space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        context.setFillColor(red: ground.0, green: ground.1, blue: ground.2, alpha: 1)
+        context.fill(CGRect(x: 0, y: 0, width: 64, height: 64))
+        context.setFillColor(red: centre.0, green: centre.1, blue: centre.2, alpha: 1)
+        context.fill(CGRect(x: 24, y: 24, width: 16, height: 16))
+        return try #require(context.makeImage())
+    }
+
+    @Test("a small bright object beats a big grey picture")
+    func redOnGrey() throws {
+        let hue = try #require(CalmBackdrop.dominantHue(of: picture(ground: (0.5, 0.5, 0.5), centre: (0.9, 0.1, 0.1))))
+        #expect(hue < 0.03 || hue > 0.97)
+    }
+
+    @Test("a small bright object beats a big washed-out colour")
+    func redOnPaleBlue() throws {
+        let hue = try #require(CalmBackdrop.dominantHue(of: picture(ground: (0.6, 0.7, 0.85), centre: (0.9, 0.05, 0.05))))
+        #expect(hue < 0.03 || hue > 0.97)
+    }
+
+    @Test("two colours give one of them and not the mix")
+    func noMixing() throws {
+        let hue = try #require(CalmBackdrop.dominantHue(of: picture(ground: (0, 0, 1), centre: (1, 0, 0))))
+        #expect(abs(hue - 2.0 / 3) < 0.03)
+    }
+
     /// A room's shade is the same on every launch, which `String.hashValue` would not give.
     @Test("a room's shade does not change between launches")
     func shadeIsStable() {

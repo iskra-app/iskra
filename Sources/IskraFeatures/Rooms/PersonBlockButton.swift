@@ -32,6 +32,8 @@ struct PersonBlockButton: View {
             } label: {
                 Label(String(app: isBlocked ? Strings.Profile.unblockUser : Strings.Profile.blockUser),
                       systemImage: isBlocked ? "hand.raised.slash" : "hand.raised")
+                    // The role reddens the words and leaves the icon as it was.
+                    .foregroundStyle(isBlocked ? Color.primary : Color.red)
             }
             .disabled(isOffline)
             .confirmationDialog(Text(Strings.Message.Menu.blockConfirm(name)),

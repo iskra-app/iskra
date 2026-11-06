@@ -97,10 +97,13 @@ public extension Theme {
             public static let inkBrightnessDark: Double = 0.96
             public static let inkSaturationLight: Double = 0.6
             public static let inkBrightnessLight: Double = 0.18
-            /// The side of the small copy of an avatar its colour is read from.
-            public static let sampleSide: Int = 16
-            /// How much colour a picture must have, on average, to count as having one.
-            public static let leastColour: Double = 0.08
+            /// The side of the small copy of an avatar its colour is read from. Big enough that a
+            /// small object in the middle of the picture is still there.
+            public static let sampleSide: Int = 32
+            /// How much colour a pixel must have to have a say in the picture's colour.
+            public static let leastColour: Double = 0.2
+            /// How finely the colour wheel is cut when a picture's colour is voted on.
+            public static let hueBuckets: Int = 24
         }
 
         /// How a conversation fades under the title bar and the composer — see `RoomView.timelineFade`.
@@ -115,8 +118,9 @@ public extension Theme {
             public static let circle: CGFloat = 28
             /// How far the first one stands in from the bubble's side.
             public static let edgeInset: CGFloat = 4
-            /// How far below the bubble they reach, which the row keeps free for them.
-            public static let overhang: CGFloat = 12
+            /// How far below the bubble they reach, which the row keeps free for them. The rest of the
+            /// circle, 8 points, lies on the bubble: less than its 12 of padding, so never on the words.
+            public static let overhang: CGFloat = 20
             /// The most an emoji leans, either way.
             public static let maxTilt: Double = 14
 
