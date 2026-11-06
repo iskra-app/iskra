@@ -349,11 +349,16 @@ public extension RoomSummary {
     /// A display name is whatever its owner typed, so here it could pose as somebody else: another
     /// ID written into it, a line break to look like a second line, characters that reorder the text
     /// around them. So those are taken out, the length is capped, and what is left is isolated from
-    /// the text around it. Nil when the inviter is not known.
+    /// the text around it. An ID is never cleaned: with a character taken out it can become somebody
+    /// else's, so one that is not plain ASCII counts as not known. Nil when the inviter is not known.
     var inviterLabel: String? {
-        guard let id = invitedByID.map(Self.printable), !id.isEmpty else { return nil }
+        guard let id = invitedByID, Self.isPlainUserID(id) else { return nil }
         guard let name = invitedBy.map(Self.safeName), !name.isEmpty, name != id else { return id }
         return "\(id) (\u{2068}\(name)\u{2069})"
+    }
+
+    private static func isPlainUserID(_ id: String) -> Bool {
+        id.hasPrefix("@") && id.contains(":") && id.unicodeScalars.allSatisfy { (0x21...0x7E).contains($0.value) }
     }
 
     private static func printable(_ text: String) -> String {
@@ -366,7 +371,10 @@ public extension RoomSummary {
     }
 
     private static func safeName(_ name: String) -> String {
-        let withoutIDs = printable(name).replacing(/@[^\s:]+:\S+/, with: "")
+        // Folded first, or a fullwidth "＠" and "：" would write an ID the pattern does not see. The
+        // class holds the colons that folding leaves alone and that look the same.
+        let folded = printable(name).precomposedStringWithCompatibilityMapping
+        let withoutIDs = folded.replacing(/@[^\s:∶։׃ː꞉]+[:∶։׃ː꞉]\S+/, with: "")
         return String(withoutIDs.trimmingCharacters(in: .whitespaces).prefix(maxInviterNameLength))
     }
 

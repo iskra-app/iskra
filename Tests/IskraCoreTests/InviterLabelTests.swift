@@ -42,8 +42,16 @@ struct InviterLabelTests {
         #expect(text.count == id.count + " ()".count + 2 + 64)
     }
 
-    @Test("the same marks are taken out of the ID")
-    func cleanID() {
-        #expect(label(name: nil, id: "@eve\u{202E}:evil.example") == id)
+    @Test("an ID that is not plain ASCII is not shown, and is never tidied into somebody else's")
+    func oddIDIsUnknown() {
+        #expect(label(name: "Ева", id: "@eve\u{200B}:evil.example") == nil)
+        #expect(label(name: "Ева", id: "@е\u{0432}e:evil.example") == nil)
+        #expect(label(name: "Ева", id: "eve") == nil)
+    }
+
+    @Test("an ID in lookalike characters is taken out of a name too")
+    func lookalikeIDInName() {
+        #expect(label(name: "Мама ＠mama：matrix.org", id: id) == "\(id) (\(open)Мама\(close))")
+        #expect(label(name: "Мама @mama∶matrix.org", id: id) == "\(id) (\(open)Мама\(close))")
     }
 }
