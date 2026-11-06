@@ -11,19 +11,21 @@ import Intents
 /// the identifier that keeps yesterday's messages and today's the same conversation.
 struct CommunicationNotificationTests {
     private func notification(sender: String? = nil,
+                              isGroup: Bool = false,
                               personName: String? = "Аня",
                               personID: String? = "@anya:matrix.org",
                               avatar: Data? = nil) -> PushNotification {
         PushNotification(roomID: "!kitchen:matrix.org",
                          eventID: "$1",
-                         title: sender == nil ? "Аня" : "Кухня",
+                         title: isGroup ? "Кухня" : "Аня",
                          sender: sender,
                          body: "приду через час",
                          isNoisy: true,
                          personName: personName,
                          personID: personID,
                          avatarURL: "mxc://matrix.org/abc",
-                         avatar: avatar)
+                         avatar: avatar,
+                         isGroup: isGroup)
     }
 
     @Test("the message is attributed to the person who sent it")
@@ -53,8 +55,8 @@ struct CommunicationNotificationTests {
 
     @Test("a direct chat is not a group")
     func aDirectChatHasNoGroupName() throws {
-        // `sender` nil is the mapper saying "the room *is* the person" — there is no group here to
-        // name, and naming one would put the person's name on the notification twice.
+        // The room *is* the person: there is no group here to name, and naming one would put the
+        // person's name on the notification twice.
         let intent = try #require(CommunicationNotification.intent(for: notification(sender: nil)))
 
         #expect(intent.speakableGroupName == nil)
@@ -62,7 +64,16 @@ struct CommunicationNotificationTests {
 
     @Test("a room with people in it is named as one")
     func aGroupCarriesItsName() throws {
-        let intent = try #require(CommunicationNotification.intent(for: notification(sender: "Аня")))
+        let intent = try #require(CommunicationNotification.intent(for: notification(sender: "Аня", isGroup: true)))
+
+        #expect(intent.speakableGroupName?.spokenPhrase == "Кухня")
+    }
+
+    /// The mapper says what is a group. A sender with no display name used to make a group arrive
+    /// looking like a personal message.
+    @Test("a group stays a group when its sender has no name to show")
+    func aGroupDoesNotDependOnTheSendersName() throws {
+        let intent = try #require(CommunicationNotification.intent(for: notification(sender: nil, isGroup: true)))
 
         #expect(intent.speakableGroupName?.spokenPhrase == "Кухня")
     }
