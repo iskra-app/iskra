@@ -88,6 +88,7 @@ private struct CalmScreen: ViewModifier {
             content
         case .calm:
             content
+                .environment(\.calmShadeSeed, userID.isEmpty ? nil : userID)
                 .scrollContentBackground(.hidden)
                 .background { CalmBackdrop(seed: userID.isEmpty ? nil : userID, isDimmed: isDimmed) }
         }
@@ -161,10 +162,16 @@ struct ScreenList<Content: View>: View {
 /// and there is no way to put one sheet of glass behind a whole section of a `Form`.
 struct CalmRowMaterial: View {
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.calmShadeSeed) private var seed
 
     var body: some View {
         Rectangle()
             .fill(.thinMaterial)
+            .overlay {
+                if let seed {
+                    CalmBackdrop.shade(for: seed, in: scheme).opacity(Theme.Calm.Shade.surfaceTint)
+                }
+            }
             .overlay(Color.white.opacity(scheme == .dark ? Theme.Calm.Form.rowLift : Theme.Calm.Form.rowLiftLight))
     }
 }

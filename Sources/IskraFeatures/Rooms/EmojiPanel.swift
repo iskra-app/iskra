@@ -86,7 +86,7 @@ struct EmojiPanel: View {
         if isFloating {
             grid
                 .clipShape(MessageMenuOverlay.panel)
-                .navigationGlass(in: MessageMenuOverlay.panel)
+                .menuGlass(in: MessageMenuOverlay.panel)
         } else {
             grid
         }

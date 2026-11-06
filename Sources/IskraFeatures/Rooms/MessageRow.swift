@@ -67,6 +67,7 @@ struct MessageRow: View {
     /// of the view graph rewrote the state that started the pass. See
     /// `EnvironmentValues.timelineWidth`.
     @Environment(\.timelineWidth) private var timelineWidth
+    @Environment(\.design) private var design
 
     /// Whether this is a phone-shaped layout. A playing video note fills the width of a phone
     /// and merely doubles on a Mac or an iPad — see `playingDiameter`.
@@ -104,11 +105,14 @@ struct MessageRow: View {
         VStack(alignment: message.isOwn ? .trailing : .leading, spacing: 0) {
             swipeableBubbleRow
 
-            if !message.reactions.isEmpty {
+            if !message.reactions.isEmpty, design == .classic {
                 reactions
                     .transition(.reactionsAppear)
             }
         }
+        // The calm look's emoji hang off the bubble (`calmReactions`), and this keeps them clear of
+        // the next message.
+        .padding(.bottom, design == .calm && !message.reactions.isEmpty ? Theme.Calm.Reaction.overhang : 0)
         .padding(.top, opensDay ? 0
                                 : message.isContinuation ? Theme.Spacing.withinRun
                                                          : Theme.Spacing.betweenSenders)
@@ -262,6 +266,9 @@ struct MessageRow: View {
             // `ComposerTravel`. On the bubble rather than the row, which spans the screen.
             .travelsFromComposer(arrivesAnimated && message.isOwn)
             .messageActions(message, isPinned: isPinned, handlers: handlers)
+            // After the actions, so that a press on an emoji is the emoji's and a lifted message
+            // goes up without them.
+            .overlay { calmReactions }
     }
 
     // MARK: - Reactions
@@ -296,6 +303,28 @@ struct MessageRow: View {
         // only true because this comes second in the stack.
         .zIndex(1)
         .reactorsSheet($reactorsRequest, reactions: message.reactions, load: handlers.loadReactors)
+    }
+
+    /// The same emoji in the calm look, on the bubble's corner — see `CalmReactionCluster`. There
+    /// whether or not there is anything in it, or the first one would have nothing to scale up in.
+    @ViewBuilder
+    private var calmReactions: some View {
+        if design == .calm {
+            CalmReactionCluster(isOwn: message.isOwn) {
+                ForEach(message.reactions) { reaction in
+                    ReactionPill(reaction: reaction,
+                                 tiltSeed: message.id + reaction.key,
+                                 onShowReactors: handlers.loadReactors == nil ? nil : {
+                                     reactorsRequest = ReactorsRequest(filter: reaction.key)
+                                 }) {
+                        handlers.onToggleReaction(reaction.key)
+                    }
+                    .transition(.scale(scale: 0.01))
+                }
+            }
+            .animation(Theme.Timing.reactionPops, value: message.reactions.map(\.key))
+            .reactorsSheet($reactorsRequest, reactions: message.reactions, load: handlers.loadReactors)
+        }
     }
 
     /// Two different things, added together, and worth keeping apart in the head.
@@ -387,6 +416,9 @@ struct MessageRow: View {
 /// the navigation layer — see `IskraDesign/Glass.swift`.
 struct ReactionPill: View {
     let reaction: MessageReaction
+    /// Set, this is the calm look's circle of glass with the emoji leaning in it, and this is what
+    /// the lean is worked out from. Nil, the pill: the classic look and the compact column.
+    var tiltSeed: String?
     /// Who left it, and who else left what — a hold on the pill, as in Signal. Nil where nobody can
     /// be asked (`MessageHandlers.loadReactors`), and then a hold does nothing.
     var onShowReactors: (() -> Void)?
@@ -399,7 +431,7 @@ struct ReactionPill: View {
     /// on one ends in its action as soon as the finger lifts — the reaction toggled under the list
     /// that was opened to look at it.
     var body: some View {
-        pill
+        face
             .onTapGesture(perform: onToggle)
             .onLongPressGesture {
                 guard let onShowReactors else { return }
@@ -417,6 +449,37 @@ struct ReactionPill: View {
 
     /// Counts holds that opened the list, only so the phone can answer each one.
     @State private var holds = 0
+
+    @ViewBuilder
+    private var face: some View {
+        if let tiltSeed {
+            circle(tilt: Theme.Calm.Reaction.tilt(for: tiltSeed))
+        } else {
+            pill
+        }
+    }
+
+    /// One emoji in a circle. A number makes it a capsule, since it has to go somewhere. Yours is a
+    /// tone heavier, as a pill is.
+    private func circle(tilt: Double) -> some View {
+        HStack(spacing: Theme.Spacing.tight) {
+            Text(reaction.key)
+                .font(.footnote)
+                .rotationEffect(.degrees(tilt))
+
+            if reaction.count > 1 {
+                Text(reaction.count, format: .number)
+                    .font(.caption2.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(Theme.Calm.ink)
+            }
+        }
+        .padding(.horizontal, reaction.count > 1 ? Theme.Spacing.close : 0)
+        .frame(minWidth: Theme.Calm.Reaction.circle, minHeight: Theme.Calm.Reaction.circle)
+        .contentGlass(in: .capsule,
+                      tint: reaction.isMine ? Theme.Calm.ink.opacity(Theme.Calm.monoBubbleTint) : nil,
+                      interactive: true)
+        .contentShape(.capsule)
+    }
 
     private var pill: some View {
         Group {
@@ -438,10 +501,8 @@ struct ReactionPill: View {
             // bubble, and the grey above is translucent — laid straight over a blue bubble it
             // would take its colour and turn to mud. The page's own background goes down
             // first, so the pill sits *on* the bubble rather than bleeding through it.
-            //
-            // In the calm look the bubble under it is glass, so this stays a flat tone of its own:
-            // glass does not go on glass.
             .background {
+                // The compact column's, which has no bubble under it.
                 if design == .calm {
                     Capsule().fill(reaction.isMine ? Theme.Calm.surfaceHigh : Theme.Calm.surface)
                 } else {

@@ -89,6 +89,33 @@ public extension Theme {
             public static let brightnessLight: Double = 0.9
             public static let opacityDark: Double = 0.24
             public static let opacityLight: Double = 0.18
+            /// How much of the shade goes into a surface on top of it: a settings row, the menu.
+            public static let surfaceTint: Double = 0.35
+        }
+
+        /// How a conversation fades under the title bar and the composer — see `RoomView.timelineFade`.
+        public enum Fade {
+            public static let length: CGFloat = 96
+            /// How much of a message is left at the end of the fade.
+            public static let floor: Double = 0.25
+        }
+
+        /// The emoji under a message — see `CalmReactionCluster`.
+        public enum Reaction {
+            public static let circle: CGFloat = 28
+            /// How far the first one stands in from the bubble's side.
+            public static let edgeInset: CGFloat = 4
+            /// How far below the bubble they reach, which the row keeps free for them.
+            public static let overhang: CGFloat = 12
+            /// The most an emoji leans, either way.
+            public static let maxTilt: Double = 14
+
+            /// How far this emoji leans on this message. Looks random, and stays the same every time
+            /// the message is drawn, or the emoji would shift on each redraw.
+            public static func tilt(for seed: String) -> Double {
+                let steps = Int(maxTilt) * 2 + 1
+                return Double(Int(stableHash(seed) % UInt64(steps))) - maxTilt
+            }
         }
 
         /// Settings and the screens like them: the page a little darker, so that the rows on it read

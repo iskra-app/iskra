@@ -290,7 +290,7 @@ struct MessageMenuOverlay: View {
         // for — so a long verb in a narrow menu would otherwise be drawn straight out over the
         // conversation on both sides, which is what the emoji panel below was doing.
         .clipShape(Self.panel)
-        .navigationGlass(in: Self.panel)
+        .menuGlass(in: Self.panel)
     }
 
     /// The shape both floating panels are cut to: the list of verbs, and the grid of emoji.
@@ -508,7 +508,7 @@ struct ReactionBar: View {
         }
         .padding(.horizontal, Self.inset)
         .frame(width: width, height: Theme.Size.reactionBar)
-        .navigationGlass(in: .capsule)
+        .menuGlass(in: .capsule)
     }
 
     private var moreButton: some View {

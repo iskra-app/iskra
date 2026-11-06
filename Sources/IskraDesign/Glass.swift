@@ -44,7 +44,7 @@ public extension View {
     /// Glass on content: a message, a row of a list. **Only in the calm look**, whose whole idea
     /// is glass everywhere (`DesignLanguage`, `docs/DESIGN-CALM.md`). It is a separate name so that
     /// the rule above stays true of everything else: a call to this outside a `.calm` branch is
-    /// a bug. Never glass on glass still holds, and what lies on this is a flat tone.
+    /// a bug. What lies on this is a flat tone, apart from the emoji on the corner of a message.
     ///
     /// Before glass, a material, with the tint laid over it.
     @ViewBuilder

@@ -237,6 +237,7 @@ public struct RoomView: View {
     /// For the count on the way-down button — `AccentTheme.foreground(in:)`.
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.messageMenu) private var messageMenu
+    @Environment(\.design) private var design
 
     /// What the line under the name says before anything else — see `headerSubtitle`.
     @Environment(\.isOffline) private var isOffline
@@ -485,19 +486,25 @@ public struct RoomView: View {
     /// the two edges read as one effect. Each fade *ends* at its bar's edge and runs under the bar,
     /// never out over the open conversation. `screen` is the mask's own frame, in the same global
     /// coordinates the composer was measured in.
+    ///
+    /// In the calm look the fade is longer and stops short of nothing, so the messages stay faintly
+    /// there under the glass of the bars.
     private func timelineFade(in screen: CGRect) -> LinearGradient {
+        let isCalm = design == .calm
+        let length = isCalm ? Theme.Calm.Fade.length : Theme.Size.timelineFade
+        let edge: Color = isCalm ? .black.opacity(Theme.Calm.Fade.floor) : .clear
         let height = max(screen.height, 1)
         func at(_ y: CGFloat) -> CGFloat { min(max((y - screen.minY) / height, 0), 1) }
         let titleBarEdge = screen.minY + timelineInsets.top
-        let topClear = at(titleBarEdge - Theme.Size.timelineFade)
+        let topClear = at(titleBarEdge - length)
         let topSolid = at(titleBarEdge)
         let hasComposer = composerFrame.height > 0
         let bottomSolid = hasComposer ? max(at(composerFrame.minY), topSolid) : 1
-        let bottomClear = hasComposer ? max(at(composerFrame.minY + Theme.Size.timelineFade), bottomSolid) : 1
-        return LinearGradient(stops: [.init(color: .clear, location: topClear),
+        let bottomClear = hasComposer ? max(at(composerFrame.minY + length), bottomSolid) : 1
+        return LinearGradient(stops: [.init(color: edge, location: topClear),
                                       .init(color: .black, location: topSolid),
                                       .init(color: .black, location: bottomSolid),
-                                      .init(color: .clear, location: bottomClear)],
+                                      .init(color: edge, location: bottomClear)],
                               startPoint: .top, endPoint: .bottom)
     }
 

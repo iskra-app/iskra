@@ -168,6 +168,7 @@ private struct ChatWallpaperBackground: ViewModifier {
         content
             .environment(\.hasWallpaper, wallpaper.isSet)
             .environment(\.wallpaperIsDark, WallpaperStore.shared.isDark(wallpaper, dimming: dimming))
+            .environment(\.calmShadeSeed, wallpaper.isSet ? nil : shadeSeed)
             .background {
                 if design == .calm, !wallpaper.isSet {
                     CalmBackdrop(seed: shadeSeed)

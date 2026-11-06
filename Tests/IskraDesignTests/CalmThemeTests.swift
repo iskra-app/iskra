@@ -21,6 +21,16 @@ struct CalmThemeTests {
         #expect(contrast(Tones.onAccent, on: Tones.trash, dark: dark) >= 4.5)
     }
 
+    /// An emoji leans within its limit, and the same way every time its message is drawn.
+    @Test("an emoji's tilt is bounded and stays put")
+    func tilt() {
+        let seeds = (0..<200).map { "$event\($0)👍" }
+        let tilts = seeds.map(Theme.Calm.Reaction.tilt(for:))
+        #expect(tilts.allSatisfy { abs($0) <= Theme.Calm.Reaction.maxTilt })
+        #expect(Set(tilts).count > 10)
+        #expect(tilts == seeds.map(Theme.Calm.Reaction.tilt(for:)))
+    }
+
     /// A room's shade is the same on every launch, which `String.hashValue` would not give.
     @Test("a room's shade does not change between launches")
     func shadeIsStable() {
