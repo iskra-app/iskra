@@ -262,6 +262,7 @@ struct MessageRow: View {
             // `ComposerTravel`. On the bubble rather than the row, which spans the screen.
             .travelsFromComposer(arrivesAnimated && message.isOwn)
             .messageActions(message, isPinned: isPinned, handlers: handlers)
+            .environment(\.liftsCalmReactions, design == .calm)
             // After the actions, so that a press on an emoji is the emoji's and a lifted message
             // goes up without them.
             .overlay { calmReactions }
@@ -302,25 +303,18 @@ struct MessageRow: View {
                        loadReaders: handlers.loadReaders)
     }
 
-    /// The same emoji in the calm look, on the bubble's corner — see `CalmReactionCluster`. There
-    /// whether or not there is anything in it, or the first one would have nothing to scale up in.
+    /// The same emoji in the calm look, on the bubble's corner. There whether or not there is
+    /// anything in it, or the first one would have nothing to scale up in.
     @ViewBuilder
     private var calmReactions: some View {
         if design == .calm {
-            CalmReactionCluster(isOwn: message.isOwn) {
-                ForEach(message.reactions) { reaction in
-                    ReactionPill(reaction: reaction,
-                                 tiltSeed: message.id + reaction.key,
-                                 onShowReactors: handlers.loadReactors == nil ? nil : {
-                                     reactorsRequest = ReactorsRequest(filter: reaction.key)
-                                 }) {
-                        handlers.onToggleReaction(reaction.key)
-                    }
-                    .transition(.scale(scale: 0.01))
-                }
-            }
-            .animation(Theme.Timing.reactionPops, value: message.reactions.map(\.key))
-            .reactorsSheet($reactorsRequest, reactions: message.reactions, load: handlers.loadReactors)
+            CalmReactions(message: message,
+                          onToggle: handlers.onToggleReaction,
+                          onShowReactors: handlers.loadReactors == nil ? nil : { key in
+                              reactorsRequest = ReactorsRequest(filter: key)
+                          })
+                .reactorsSheet($reactorsRequest, reactions: message.reactions, load: handlers.loadReactors,
+                               loadReaders: handlers.loadReaders)
         }
     }
 
@@ -404,6 +398,34 @@ struct MessageRow: View {
     }
 }
 
+/// The calm look's emoji on a bubble's corner — see `CalmReactionCluster`. In the conversation, and
+/// on the copy the message menu lifts.
+struct CalmReactions: View {
+    let message: Message
+    let onToggle: (String) -> Void
+    var onShowReactors: ((String) -> Void)?
+
+    var body: some View {
+        CalmReactionCluster(isOwn: message.isOwn) {
+            ForEach(message.reactions) { reaction in
+                ReactionPill(reaction: reaction,
+                             tiltSeed: message.id + reaction.key,
+                             onShowReactors: onShowReactors.map { show in { show(reaction.key) } }) {
+                    onToggle(reaction.key)
+                }
+                .transition(.scale(scale: 0.01))
+            }
+        }
+        .animation(Theme.Timing.reactionPops, value: message.reactions.map(\.key))
+    }
+}
+
+extension EnvironmentValues {
+    /// Whether the message being acted on wears `CalmReactions`, which the menu then lifts with it.
+    /// Only the bubble timeline does: the compact one keeps its pills under the row.
+    @Entry var liftsCalmReactions: Bool = false
+}
+
 /// One emoji under a message, and how many people have left it.
 ///
 /// A button, and a toggle: pressing one you have already left takes it back. No pill is
@@ -439,6 +461,14 @@ struct ReactionPill: View {
     /// that was opened to look at it.
     var body: some View {
         face
+            #if os(macOS)
+            // The Mac's way of holding: a right-click on it opens the same list.
+            .overlay {
+                if let onShowReactors {
+                    RightClickCatcher(perform: onShowReactors)
+                }
+            }
+            #endif
             .onTapGesture(perform: onToggle)
             .onLongPressGesture {
                 guard let onShowReactors else { return }

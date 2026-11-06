@@ -71,6 +71,19 @@ public struct IskraRootView: View {
     /// here because switching it swaps the whole session, and this is the view that owns one.
     @AppStorage(BetaFeatures.mockBackendKey) private var mockBackend = false
 
+    /// On a phone and an iPad the split view decides for itself.
+    @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
+
+    /// On a Mac the list of chats is always there. Its toggle is taken away (`RoomListView`), so a
+    /// divider dragged too far left a window with no list and no way to bring it back.
+    private var columns: Binding<NavigationSplitViewVisibility> {
+        #if os(macOS)
+        Binding(get: { .all }, set: { _ in })
+        #else
+        $columnVisibility
+        #endif
+    }
+
     /// Which look the app is drawn in — see `DesignLanguage`.
     @AppStorage(BetaFeatures.calmDesignKey) private var calmDesign = BetaFeatures.calmDesignByDefault
     private var design: DesignLanguage { calmDesign ? .calm : .classic }
@@ -175,6 +188,9 @@ public struct IskraRootView: View {
             switch phase {
             case .starting:
                 ProgressView()
+                    // The whole window: the calm look's backdrop is sized to what it stands behind,
+                    // and behind a bare spinner it came out a small square on a black screen.
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .task { await restore() }
 
             case .signedOut:
@@ -936,7 +952,7 @@ public struct IskraRootView: View {
     #endif
 
     private func conversations(_ session: UserSession) -> some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: columns) {
             // Settings is pushed onto this column's own navigation stack, so the push,
             // the back button and the swipe-back gesture all come from the system.
             // Sign-out, though, unwinds the whole app, so only this view can do it.

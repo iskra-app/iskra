@@ -52,6 +52,7 @@ private struct CalmType: ViewModifier {
     let design: DesignLanguage
 
     @AppStorage(BetaFeatures.calmRoundedFontKey) private var isRounded = BetaFeatures.calmRoundedFontByDefault
+    @AppStorage(AccentTheme.lastShadeKey) private var lastShade = AccentTheme.noShade
 
     func body(content: Content) -> some View {
         switch design {
@@ -60,8 +61,9 @@ private struct CalmType: ViewModifier {
         case .calm:
             content
                 .fontDesign(isRounded ? .rounded : nil)
-                // For whatever has no screen of its own yet: the wait at launch.
-                .background { CalmBackdrop(hue: nil) }
+                // For whatever has no screen of its own yet: the wait at launch, in the shade the
+                // chat list had last time, since the account is not known yet.
+                .background { CalmBackdrop(hue: lastShade == AccentTheme.noShade ? nil : lastShade) }
         }
     }
 }
@@ -71,6 +73,17 @@ private struct BannerGround: ViewModifier {
 
     func body(content: Content) -> some View {
         content.background(design == .calm ? Theme.Calm.surface : Color.page)
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func calmListBackground(onSheetGlass: Bool) -> some View {
+        if onSheetGlass {
+            scrollContentBackground(.hidden).glassSheetBackground()
+        } else {
+            calmScreen()
+        }
     }
 }
 
@@ -104,6 +117,8 @@ private struct CalmScreen: ViewModifier {
     let isDimmed: Bool
 
     @Environment(\.design) private var design
+    @Environment(\.calmRoomHue) private var roomHue
+    @AppStorage(AccentTheme.lastShadeKey) private var lastShade = AccentTheme.noShade
     private let hue = CalmHue()
 
     func body(content: Content) -> some View {
@@ -112,6 +127,9 @@ private struct CalmScreen: ViewModifier {
             content
         case .calm:
             content
+                .onChange(of: hue.value, initial: true) { _, value in
+                    if roomHue == nil { lastShade = value ?? AccentTheme.noShade }
+                }
                 .environment(\.calmShadeHue, hue.value)
                 .scrollContentBackground(.hidden)
                 .background { CalmBackdrop(hue: hue.value, isDimmed: isDimmed) }
@@ -214,7 +232,11 @@ struct ScreenForm<Content: View>: View {
 }
 
 /// The same, for a `List`. Its rows are plain, as the chat list's are: the backdrop shows through.
+///
+/// `onSheetGlass` is for a list in a sheet of glass, which keeps its hands off the background so the
+/// glass shows through.
 struct ScreenList<Content: View>: View {
+    var onSheetGlass = false
     @ViewBuilder let content: () -> Content
 
     @Environment(\.design) private var design
@@ -228,7 +250,7 @@ struct ScreenList<Content: View>: View {
                 Group { content() }
                     .listRowBackground(Color.clear)
             }
-            .calmScreen()
+            .calmListBackground(onSheetGlass: onSheetGlass)
         }
     }
 }

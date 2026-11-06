@@ -593,6 +593,12 @@ public struct RoomView: View {
             }, onSearch: {
                 showDetails(false)
                 openRoomSearch()
+            }, onOpenMessage: { id in
+                // On a Mac the info is a column beside the conversation, and it can stay open.
+                #if os(iOS)
+                showDetails(false)
+                #endif
+                jumpTarget = id
             }, isEditing: $isEditingDetails)
         }
     }
@@ -2471,8 +2477,10 @@ public struct RoomView: View {
             loadSource: showsEventSource ? { timeline.sourceJSON(of: message.id) } : nil,
             canDeleteOthers: timeline.canDeleteOthers,
             loadReactors: timeline.isOneToOne ? nil : { await timeline.reactors(of: message.id) },
-            countReaders: timeline.isOneToOne ? nil : { timeline.readerIDs(of: message.id).count },
-            loadReaders: timeline.isOneToOne ? nil : { await timeline.readers(of: message.id) }
+            // Who read it is asked of your own messages. Under somebody else's the list is only who
+            // reacted.
+            countReaders: timeline.isOneToOne || !message.isOwn ? nil : { timeline.readerIDs(of: message.id).count },
+            loadReaders: timeline.isOneToOne || !message.isOwn ? nil : { await timeline.readers(of: message.id) }
         )
     }
 

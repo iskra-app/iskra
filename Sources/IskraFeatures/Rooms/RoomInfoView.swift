@@ -33,6 +33,10 @@ struct RoomInfoView: View {
     /// Opening the in-chat search from the info screen.
     var onSearch: () -> Void
 
+    /// Taking the reader to a message in the conversation: a voice note or a round video pressed in
+    /// the lists here.
+    var onOpenMessage: (String) -> Void
+
 
     #if os(iOS)
     /// Not on a Mac, where this screen is the root of the info column beside the conversation: a
@@ -92,7 +96,9 @@ struct RoomInfoView: View {
     private let timeline: TimelineStore?
 
     init(details: RoomDetailsStore, timeline: TimelineStore? = nil, onLeave: @escaping () -> Void,
-         onSearch: @escaping () -> Void, isEditing: Binding<Bool>? = nil) {
+         onSearch: @escaping () -> Void, onOpenMessage: @escaping (String) -> Void,
+         isEditing: Binding<Bool>? = nil) {
+        self.onOpenMessage = onOpenMessage
         _details = State(initialValue: details)
         self.timeline = timeline
         self.onLeave = onLeave
@@ -488,8 +494,13 @@ struct RoomInfoView: View {
             Section {
                 RoomContentPicker(tabs: tabs, selection: Binding(get: { openTab },
                                                                 set: { tab = $0 }))
+                    // Spacing round this section is one number for both sides, so it is none, and
+                    // the air above is the control's own: close to what it switches, and clear of
+                    // the card over it.
+                    .padding(.top, Theme.Spacing.generous + Theme.Spacing.close)
                     .profileHeaderRow()
             }
+            .listSectionSpacing(0)
 
             Section {
                 tabContent
@@ -539,10 +550,10 @@ struct RoomInfoView: View {
                 .profileHeaderRow()
             loadEarlier
         case .voice:
-            RoomVoiceList(items: voices)
+            RoomVoiceList(items: voices, open: onOpenMessage)
             loadEarlier
         case .videoNotes:
-            RoomVideoNoteList(items: videoNotes)
+            RoomVideoNoteList(items: videoNotes, open: onOpenMessage)
             loadEarlier
         case .files:
             RoomFileList(items: files)

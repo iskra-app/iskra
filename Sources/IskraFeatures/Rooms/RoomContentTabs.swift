@@ -66,15 +66,14 @@ struct RoomContentPicker: View {
     let tabs: [RoomContentTab]
     @Binding var selection: RoomContentTab
 
-    // Its own margins, because the row it lives in has none — it is laid on the page rather than in
-    // a card, so the inset that lines it up with the cards above and below is here.
     #if os(iOS)
     var body: some View {
         ScrollingSegments(titles: titles,
                           selection: index,
                           label: String(app: Strings.Room.Tabs.label))
-            .padding(.horizontal, Theme.Spacing.roomy)
-            .padding(.vertical, Theme.Spacing.close)
+            // No sideways margin: the row already stands on the section's, as the cards around it do,
+            // and so comes out as wide as they are. None above and below either, which is the info
+            // screen's to decide (`RoomInfoView.contents`).
     }
 
     /// The words, already resolved. Pulled out of `body` rather than mapped inline: this is a
@@ -390,28 +389,19 @@ struct RoomContents: Sendable {
     }
 }
 
-/// The voice notes, as rows that play where they are.
-///
-/// Pressing one does not open anything — there is nothing to look at — so it plays in place, on the
-/// same `AudioPlayback` the conversation uses. That shared player is what keeps a voice note
-/// started here from talking over one started in the chat behind: the speaker has one claimant.
+/// The voice notes. Pressing one goes to it in the conversation, where it plays and has its answers
+/// around it.
 struct RoomVoiceList: View {
     let items: [MediaItem]
-
-    @Environment(\.mediaLoader) private var loader
-    @State private var playback = AudioPlayback()
-
-    /// Which note the player is holding. `AudioPlayback` knows whether it is playing and not what
-    /// it is playing — it is handed an attachment per call — so the list keeps that half, and a
-    /// press on a *different* row stops the old one before starting the new.
-    @State private var playing: String?
+    /// Takes the reader to the message, by its ID.
+    let open: (String) -> Void
 
     var body: some View {
         ForEach(items) { item in
             Button {
-                Task { await press(item) }
+                open(item.id)
             } label: {
-                RoomContentRow(icon: icon(for: item),
+                RoomContentRow(icon: "play.circle.fill",
                                title: Text(item.sender),
                                detail: item.attachment.duration.map {
                                    Text(Duration.seconds($0), format: .time(pattern: .minuteSecond))
@@ -420,35 +410,20 @@ struct RoomVoiceList: View {
             }
             .buttonStyle(.plain)
         }
-        // Leaving the screen stops the sound. A voice note that goes on playing out of a list the
-        // user has already closed is the app talking to itself.
-        .onDisappear { playback.stop() }
-    }
-
-    private func icon(for item: MediaItem) -> String {
-        playing == item.id && playback.isPlaying ? "pause.circle.fill" : "play.circle.fill"
-    }
-
-    private func press(_ item: MediaItem) async {
-        if playing != item.id {
-            playback.stop()
-            playing = item.id
-        }
-        await playback.toggle(item.attachment, using: loader)
     }
 }
 
-/// The round videos. A list rather than a grid, because a video note is watched rather than
-/// browsed — and because the thumbnail of one is a face at arm's length, which tiles badly.
+/// The round videos. A list rather than a grid, because the thumbnail of one is a face at arm's
+/// length, which tiles badly. Pressing one goes to it in the conversation, as with a voice note.
 struct RoomVideoNoteList: View {
     let items: [MediaItem]
-
-    @State private var openedAt: Int?
+    /// Takes the reader to the message, by its ID.
+    let open: (String) -> Void
 
     var body: some View {
-        ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+        ForEach(items) { item in
             Button {
-                openedAt = index
+                open(item.id)
             } label: {
                 HStack(spacing: Theme.Spacing.normal) {
                     Color.clear
@@ -465,10 +440,6 @@ struct RoomVideoNoteList: View {
                 .padding(.vertical, Theme.Spacing.tight)
             }
             .buttonStyle(.plain)
-        }
-        .mediaViewer(item: Binding(get: { openedAt.map { OpenedIndex(value: $0) } },
-                                   set: { openedAt = $0?.value })) { opened in
-            MediaPager(items: items, startIndex: opened.value)
         }
     }
 }

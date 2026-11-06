@@ -72,7 +72,7 @@ struct ReactorsSheet: View {
 
     var body: some View {
         NavigationStack {
-            ScreenList {
+            ScreenList(onSheetGlass: true) {
                 if reactors == nil {
                     HStack {
                         Spacer()

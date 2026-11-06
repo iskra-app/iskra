@@ -26,6 +26,7 @@ enum AppSettings {
         AccentTheme.storageKey,
         AccentTheme.tintsInterfaceKey,
         AccentTheme.tintsChatsKey,
+        AccentTheme.lastShadeKey,
         AppearanceMode.storageKey,
         MessageLayout.storageKey,
         QuickReaction.storageKey,

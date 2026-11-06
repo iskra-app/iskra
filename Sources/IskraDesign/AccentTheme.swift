@@ -42,6 +42,11 @@ public enum AccentTheme: String, CaseIterable, Identifiable, Sendable {
     public static let tintsChatsKey = "appearance.tintsChats"
     public static let tintsChatsByDefault = true
 
+    /// The shade of the chat list last time, for the wait at launch — see `CalmBackdrop`. `noShade`
+    /// is none: `@AppStorage` keeps a number or nothing, and a hue is never negative.
+    public static let lastShadeKey = "appearance.lastShade"
+    public static let noShade: Double = -1
+
     public var id: String { rawValue }
 
     /// The system's own colours, not seven of ours. They already carry a light and a dark
