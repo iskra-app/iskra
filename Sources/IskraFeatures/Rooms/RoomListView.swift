@@ -162,7 +162,7 @@ public struct RoomListView: View {
                 // a Mac is — see `sectionedRooms` and `isNativeSidebar`.
                 sectionedRooms
             } else {
-                if activeFolder == nil { archiveEntry.arrivingFromFolder(folderArrival) }
+                if activeFolder == nil { archiveEntry.sidebarRowInsets(on: isSidebar).arrivingFromFolder(folderArrival) }
                 rooms
             }
         }
@@ -488,6 +488,7 @@ public struct RoomListView: View {
         let rooms = listedRooms
         ForEach(Array(rooms.enumerated()), id: \.element.id) { index, room in
             row(for: room)
+                .sidebarRowInsets(on: isSidebar)
                 .arrivingFromFolder(folderArrival)
                 .separatorsBetweenRowsOnly(isFirst: index == 0, isLast: index == rooms.count - 1)
         }
@@ -503,15 +504,18 @@ public struct RoomListView: View {
     private func row(for room: RoomSummary) -> some View {
         Group {
                 if room.isInvitation {
-                    // Deliberately *not* tagged. A tagged row in a `List(selection:)` is a row you
-                    // can open, and there is nothing to open: you are not in this room, its
+                    // Deliberately not selectable, and leaving off `.tag` does not do that: the
+                    // `ForEach` around this row tags it with the room's ID by itself. A selectable
+                    // row is a row you can open, and there is nothing to open: you are not in this room, its
                     // timeline is empty, and anything typed into it is refused by the server. That
                     // is precisely what used to happen — an invitation arrived, rendered as an
                     // ordinary chat, and led into a dead conversation with no explanation. A
                     // question is answered, not entered.
                     InviteRow(room: room,
                               onAccept: { Task { await session.roomList.accept(roomID: room.id) } },
-                              onDecline: { Task { await session.roomList.decline(roomID: room.id) } })
+                              onDecline: { Task { await session.roomList.decline(roomID: room.id) } },
+                              compact: isCompactRow)
+                        .selectionDisabled()
                 } else if room.isSpace {
                     // A space is not a chat, so it does not select one: tapping it opens the list of
                     // rooms *inside* it. Not `.tag`-selectable for the same reason an invitation is
@@ -772,11 +776,23 @@ private extension View {
     /// the first thing on a row is a circle: flush against the capsule's own rounded edge, a face
     /// reads as having been cropped by it, and four points is the least that keeps the two curves
     /// apart. The rest of the row's breathing room is the sidebar's own margin, further out.
+    /// The same for the app's own list standing in a Mac's sidebar. On an iPad its rows keep theirs.
+    @ViewBuilder
+    func sidebarRowInsets(on isSidebar: Bool) -> some View {
+        #if os(macOS)
+        if isSidebar { sidebarRowInsets() } else { self }
+        #else
+        self
+        #endif
+    }
+
     func sidebarRowInsets() -> some View {
+        // The chat row's own numbers (`RoomRow.body`), so that chats, spaces, invitations and the
+        // archive all stand the same distance from the column's edges.
         listRowInsets(EdgeInsets(top: Theme.Spacing.close,
-                                 leading: Theme.Spacing.tight,
+                                 leading: RoomRow.compactLeading,
                                  bottom: Theme.Spacing.close,
-                                 trailing: Theme.Spacing.tight))
+                                 trailing: 0))
     }
 }
 
@@ -798,11 +814,7 @@ struct RoomRow: View {
     /// it and stay one height whatever the messages say.
     var compact = false
 
-    #if os(macOS)
-    private static let compactLeading = Theme.Spacing.close
-    #else
-    private static let compactLeading: CGFloat = 0
-    #endif
+    static let compactLeading: CGFloat = 0
 
     /// For the pin, which is the one coloured thing on this row. See `body`.
     @Environment(\.accent) private var accent
@@ -955,8 +967,6 @@ struct RoomRow: View {
         // rows — which carry two buttons and genuinely want the room — keep the system's.
         // In the Mac's sidebar, next to nothing: the sidebar draws its own margin round a row, and
         // ours on top of it left a band of empty space either side of every chat.
-        // On a Mac, a step in on the face's side too, so that with the list's own margin it stands
-        // twice as far from the column's edge as the margin alone put it.
         .listRowInsets(compact
                        ? EdgeInsets(top: Theme.Spacing.close, leading: Self.compactLeading,
                                     bottom: Theme.Spacing.close, trailing: 0)
@@ -1110,22 +1120,45 @@ struct RoomRow: View {
     }
 }
 
+/// An invitation in the place of a chat, for when one is opened from outside the list. The same two
+/// answers and nothing of the room: once it is joined the root draws the chat instead.
+struct InvitationScreen: View {
+    let room: RoomSummary
+    let roomList: RoomListStore
+    let onDeclined: () -> Void
+
+    var body: some View {
+        InviteRow(room: room,
+                  onAccept: { Task { await roomList.accept(roomID: room.id) } },
+                  onDecline: {
+                      Task {
+                          await roomList.decline(roomID: room.id)
+                          onDeclined()
+                      }
+                  })
+            .padding(Theme.Spacing.roomy)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .failureAlert(Bindable(roomList).failure)
+    }
+}
+
 /// A room somebody has asked you into, and the two answers.
 ///
-/// It sits in the same list as the conversations and reads like a sibling of `RoomRow` — same
-/// avatar, same name in the same weight — because it *is* one: the difference is not that it is a
-/// different kind of thing, it is that it is asking rather than telling. So instead of a last
-/// message it carries who invited you, and instead of being openable it carries the two buttons
-/// that are the only things you can do with it.
+/// It sits in the same list as the conversations and is drawn as a `RoomRow`: same avatar, same
+/// name in the same weight, same insets. Where a chat has its last message this has the two buttons,
+/// the only things you can do with it. Who invited you is read out by VoiceOver.
 ///
 /// The buttons carry a style of their own, which matters inside a `List`: a `Button` left to the
 /// list's own styling gives its whole row the tap, so pressing anywhere would fire whichever
 /// button SwiftUI picked.
-private struct InviteRow: View {
+struct InviteRow: View {
     let room: RoomSummary
     let onAccept: () -> Void
     let onDecline: () -> Void
+    /// The sidebar's denser row — see `RoomRow.compact`.
+    var compact = false
 
+    @State private var isConfirmingJoin = false
     @Environment(\.accent) private var accent
     @Environment(\.isOffline) private var isOffline
 
@@ -1135,12 +1168,12 @@ private struct InviteRow: View {
             // name is even read — see `AvatarShape`.
             // A space is a shelf of rooms rather than somebody to look at, so it gets no
             // creature — only the square and its initials.
-            RoomAvatar(name: room.name, url: room.avatarURL, size: Theme.Size.roomAvatar,
+            RoomAvatar(name: room.name, url: room.avatarURL, size: compact ? Theme.Size.roomAvatarCompact : Theme.Size.roomAvatar,
                        shape: room.isSpace ? .roundedSquare : .circle,
                        seed: room.isSpace ? nil : room.avatarSeed,
                        faces: room.faces)
 
-            VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+            VStack(alignment: .leading, spacing: compact ? Theme.Spacing.withinRun : Theme.Spacing.tight) {
                 HStack(spacing: Theme.Spacing.tight) {
                     Text(room.name)
                         .font(.body.weight(.semibold))
@@ -1156,11 +1189,7 @@ private struct InviteRow: View {
                     Spacer(minLength: 0)
                 }
 
-                Text(invitation)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-
+                // The buttons stand where a chat's last message does: otherwise this is the same row.
                 // "Join" is the one filled answer; "Decline" is the quiet one beside it (`QuietAnswerStyle`).
                 // The row used to carry a green pill and a red pill, the loudest thing in the list.
                 // The old reasoning follows, for the equal size and the shape of the pair.
@@ -1179,27 +1208,44 @@ private struct InviteRow: View {
                 // "Войти" is a shorter word than "Отклонить" and pretending otherwise is what
                 // cost the row its proportions.
                 HStack(spacing: Theme.Spacing.tight) {
-                    Button(String(app: Strings.RoomList.Invite.accept), action: onAccept)
+                    // Asked first, naming who invited you by their ID: the row does not say, and a
+                    // room's name and picture are whatever that person made them.
+                    Button(String(app: Strings.RoomList.Invite.accept)) { isConfirmingJoin = true }
                         .buttonStyle(.answer(.accepting))
+                        .confirmationDialog(Text(Strings.RoomList.Invite.confirmTitle),
+                                            isPresented: $isConfirmingJoin,
+                                            titleVisibility: .visible) {
+                            Button(String(app: Strings.RoomList.Invite.accept), action: onAccept)
+                        } message: {
+                            Text(confirmation)
+                        }
 
                     Button(String(app: Strings.RoomList.Invite.decline), action: onDecline)
                         .buttonStyle(.quietAnswer)
 
                     Spacer(minLength: 0)
                 }
-                .padding(.top, Theme.Spacing.tight)
                 // Joining is `client.joinRoomById` and declining is `room.leave()` — both go straight
                 // to the server, and neither is queued. The invitation keeps until the network is
                 // back; a press that silently did nothing would not.
                 .disabled(isOffline)
             }
         }
-        .padding(.vertical, Theme.Spacing.tight)
+        .listRowInsets(compact
+                       ? EdgeInsets(top: Theme.Spacing.close, leading: RoomRow.compactLeading,
+                                    bottom: Theme.Spacing.close, trailing: 0)
+                       : EdgeInsets(top: Theme.Spacing.normal, leading: Theme.Spacing.roomy,
+                                    bottom: Theme.Spacing.normal, trailing: Theme.Spacing.roomy))
         // Combined for the *label*, but the buttons stay reachable: VoiceOver reads the row as one
         // sentence and then offers "Join" and "Decline" as its actions, which is what a question
         // with two answers ought to sound like.
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text(invitation))
+    }
+
+    /// Who invited you — see `RoomSummary.inviterLabel`.
+    private var confirmation: LocalizedStringResource {
+        room.inviterLabel.map(Strings.RoomList.Invite.confirmFrom) ?? Strings.RoomList.Invite.confirmUnknown
     }
 
     private var invitation: String {

@@ -975,7 +975,14 @@ public struct IskraRootView: View {
             // warning was logged. The sidebar column gets a stack of its own from the
             // split view — which is why settings pushed and this did not.
             NavigationStack {
-                if let roomID = selectedRoomID, let timeline = session.timeline(forRoomID: roomID) {
+                // Not a chat until it is joined, however the selection got here: a notification and
+                // a link can name a room the list itself will not let anybody select.
+                if let invitation = session.roomList.rooms.first(where: { $0.id == selectedRoomID && $0.isInvitation }) {
+                    InvitationScreen(room: invitation, roomList: session.roomList) { selectedRoomID = nil }
+                        #if os(macOS)
+                        .frame(minWidth: infoColumn.conversationMinimumWidth)
+                        #endif
+                } else if let roomID = selectedRoomID, let timeline = session.timeline(forRoomID: roomID) {
                     // Leaving the room empties this column: the room list drops the room on
                     // its own, but the *selection* still points at it, and on iPhone that
                     // would leave the reader pushed onto a conversation that no longer

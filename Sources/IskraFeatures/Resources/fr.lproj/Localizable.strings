@@ -919,6 +919,9 @@
 "roomList.invite.unattributed" = "Vous avez été invité";
 "roomList.invite.accept" = "Rejoindre";
 "roomList.invite.decline" = "Refuser";
+"roomList.invite.confirmTitle" = "Rejoindre cette discussion ?";
+"roomList.invite.confirmFrom" = "Invitation de %@. Les membres de la discussion verront votre identifiant Matrix.";
+"roomList.invite.confirmUnknown" = "On ne sait pas qui vous a invité. Les membres de la discussion verront votre identifiant Matrix.";
 
 /* "Typing…" under the room's name. */
 "room.typing" = "écrit…";

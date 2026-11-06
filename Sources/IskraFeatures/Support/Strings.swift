@@ -462,6 +462,16 @@ public enum Strings {
         /// same word whoever is doing the inviting; "пригласила" would be a coin flip on every
         /// name in every room.
         public enum Invite {
+            /// The question before joining: the row shows no inviter, and a room's name and picture
+            /// are whatever the inviter made them.
+            public static let confirmTitle = LocalizedStringResource("roomList.invite.confirmTitle", bundle: bundle)
+            public static func confirmFrom(_ person: String) -> LocalizedStringResource {
+                LocalizedStringResource("roomList.invite.confirmFrom",
+                                        defaultValue: "Invitation from \(person). People in the chat will see your Matrix ID.",
+                                        bundle: bundle)
+            }
+            public static let confirmUnknown = LocalizedStringResource("roomList.invite.confirmUnknown", bundle: bundle)
+
             /// The label on the row, where we know who asked.
             public static func from(_ person: String) -> LocalizedStringResource {
                 LocalizedStringResource("roomList.invite.from",

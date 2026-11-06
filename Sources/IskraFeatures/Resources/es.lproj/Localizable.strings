@@ -919,6 +919,9 @@
 "roomList.invite.unattributed" = "Le han invitado";
 "roomList.invite.accept" = "Unirse";
 "roomList.invite.decline" = "Rechazar";
+"roomList.invite.confirmTitle" = "¿Unirse a este chat?";
+"roomList.invite.confirmFrom" = "Invitación de %@. Los miembros del chat verán su ID de Matrix.";
+"roomList.invite.confirmUnknown" = "No se sabe quién le ha invitado. Los miembros del chat verán su ID de Matrix.";
 
 /* "Typing…" under the room's name. */
 "room.typing" = "escribiendo…";

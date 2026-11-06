@@ -162,6 +162,9 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
     /// Genuinely optional even for an invitation: the SDK's own note on `RoomInfo.inviter` says it
     /// can be missing when the invite event itself is not in the store.
     public let invitedBy: String?
+    /// The Matrix ID of whoever invited you. A display name can be anybody's, so this is what is
+    /// shown before anybody joins (`InviteRow`).
+    public let invitedByID: String?
 
     /// Unread reactions, told apart from unread messages.
     ///
@@ -234,6 +237,7 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
                 isMuted: Bool = false,
                 membership: RoomMembership = .joined,
                 invitedBy: String? = nil,
+                invitedByID: String? = nil,
                 avatarSeed: String? = nil,
                 faces: [RoomFace] = []) {
         self.id = id
@@ -256,6 +260,7 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
         self.isMuted = isMuted
         self.membership = membership
         self.invitedBy = invitedBy
+        self.invitedByID = invitedByID
     }
 
     init?(info: RoomInfo,
@@ -314,6 +319,7 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
         // accent until the day its info screen happened to be opened.
         self.isMuted = isMuted || info.cachedUserDefinedNotificationMode == .mute
         self.invitedBy = info.inviter.map { $0.displayName ?? $0.userId }
+        self.invitedByID = info.inviter?.userId
     }
 }
 
@@ -335,4 +341,45 @@ public enum UnreadEmphasis: String, Sendable, CaseIterable {
     /// of one: it is the badge saying "yes, there is something here, and you already told me you
     /// did not want to hear about it".
     case muted
+}
+
+public extension RoomSummary {
+    /// Who invited you, for the question before joining: the Matrix ID first, then the name.
+    ///
+    /// A display name is whatever its owner typed, so here it could pose as somebody else: another
+    /// ID written into it, a line break to look like a second line, characters that reorder the text
+    /// around them. So those are taken out, the length is capped, and what is left is isolated from
+    /// the text around it. An ID is never cleaned: with a character taken out it can become somebody
+    /// else's, so one that is not plain ASCII counts as not known. Nil when the inviter is not known.
+    var inviterLabel: String? {
+        guard let id = invitedByID, Self.isPlainUserID(id) else { return nil }
+        guard let name = invitedBy.map(Self.safeName), !name.isEmpty, name != id else { return id }
+        return "\(id) (\u{2068}\(name)\u{2069})"
+    }
+
+    private static func isPlainUserID(_ id: String) -> Bool {
+        id.hasPrefix("@") && id.contains(":") && id.unicodeScalars.allSatisfy { (0x21...0x7E).contains($0.value) }
+    }
+
+    private static func printable(_ text: String) -> String {
+        String(String.UnicodeScalarView(text.unicodeScalars.filter {
+            // Invisible and not "format" by category: a variation selector, a grapheme joiner.
+            if $0.properties.isDefaultIgnorableCodePoint { return false }
+            return switch $0.properties.generalCategory {
+            case .control, .format, .lineSeparator, .paragraphSeparator: false
+            default: true
+            }
+        }))
+    }
+
+    private static func safeName(_ name: String) -> String {
+        // Folded first, or a fullwidth "＠" and "：" would write an ID the pattern does not see. The
+        // class holds the colons that folding leaves alone and that look the same.
+        let folded = printable(name).precomposedStringWithCompatibilityMapping
+        // By scalar: by character, a combining mark on the "@" makes it some other character.
+        let withoutIDs = folded.replacing(/@[^\s:∶։׃ː꞉]+[:∶։׃ː꞉]\S+/.matchingSemantics(.unicodeScalar), with: "")
+        return String(withoutIDs.trimmingCharacters(in: .whitespaces).prefix(maxInviterNameLength))
+    }
+
+    private static var maxInviterNameLength: Int { 64 }
 }

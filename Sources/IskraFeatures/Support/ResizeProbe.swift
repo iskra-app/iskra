@@ -40,7 +40,8 @@ enum ResizeProbe {
         for _ in 0..<60 where rooms().isEmpty {
             try? await Task.sleep(for: .milliseconds(250))
         }
-        guard let first = rooms().first else {
+        // Not an invitation, which comes first in the list and does not open a chat.
+        guard let first = rooms().first(where: { !$0.isInvitation }) else {
             print("resize probe: no rooms")
             leave(1)
         }
@@ -110,7 +111,7 @@ enum ResizeProbe {
                 print("switch probe: only one room")
                 leave(1)
             }
-            open(rooms()[1].id)
+            open(rooms().filter { !$0.isInvitation }[1].id)
             try? await Task.sleep(for: .seconds(2))
             let moved = column.owner != nil && column.owner != firstOwner
             print("switch probe: second, open \(column.isOpen), presented \(column.isPresented), new info \(moved)")
