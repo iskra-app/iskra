@@ -2167,6 +2167,7 @@ public enum Strings {
         /// The switch that washes the accent across the whole interface — see
         /// `AccentTheme.tintsInterfaceKey`.
         public static let tintInterface = LocalizedStringResource("appearance.tintInterface", bundle: bundle)
+        public static let tintChatsHelp = LocalizedStringResource("appearance.tintChatsHelp", bundle: bundle)
 
         /// What lies behind a conversation — see `Wallpaper`.
         public static let wallpaper = LocalizedStringResource("appearance.wallpaper", bundle: bundle)

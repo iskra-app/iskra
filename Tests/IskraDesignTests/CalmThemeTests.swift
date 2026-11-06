@@ -1,3 +1,4 @@
+import CoreGraphics
 import Testing
 @testable import IskraDesign
 
@@ -29,6 +30,25 @@ struct CalmThemeTests {
         #expect(tilts.allSatisfy { abs($0) <= Theme.Calm.Reaction.maxTilt })
         #expect(Set(tilts).count > 10)
         #expect(tilts == seeds.map(Theme.Calm.Reaction.tilt(for:)))
+    }
+
+    private func picture(red: CGFloat, green: CGFloat, blue: CGFloat) throws -> CGImage {
+        let context = try #require(CGContext(data: nil, width: 8, height: 8, bitsPerComponent: 8, bytesPerRow: 0,
+                                             space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        context.setFillColor(red: red, green: green, blue: blue, alpha: 1)
+        context.fill(CGRect(x: 0, y: 0, width: 8, height: 8))
+        return try #require(context.makeImage())
+    }
+
+    /// A conversation takes its avatar's colour, and a grey avatar has none to give.
+    @Test("an avatar's colour is read off the picture")
+    func avatarHue() throws {
+        let blue = try #require(CalmBackdrop.dominantHue(of: picture(red: 0, green: 0, blue: 1)))
+        #expect(abs(blue - 2.0 / 3) < 0.02)
+        let green = try #require(CalmBackdrop.dominantHue(of: picture(red: 0, green: 1, blue: 0)))
+        #expect(abs(green - 1.0 / 3) < 0.02)
+        #expect(CalmBackdrop.dominantHue(of: try picture(red: 0.5, green: 0.5, blue: 0.5)) == nil)
     }
 
     /// A room's shade is the same on every launch, which `String.hashValue` would not give.

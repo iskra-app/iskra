@@ -364,7 +364,7 @@ private struct ChatPeekCard: View {
         .environment(\.messageMenu, nil)
         .overlay { placeholder }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .chatWallpaper(shadeSeed: room.avatarSeed)
+        .chatWallpaper(avatarURL: room.avatarURL)
         // The page itself, under the wallpaper. Without a wallpaper `chatWallpaper` draws nothing,
         // and the card's conversation was see-through: the bubbles floated on the darkened chat
         // list behind it, under a header that did have a background of its own.

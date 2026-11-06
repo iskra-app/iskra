@@ -145,6 +145,8 @@ private struct BubbleDress: ViewModifier {
 
     @Environment(\.design) private var design
     @Environment(\.bubbleAccent) private var bubbleAccent
+    @Environment(\.calmShadeHue) private var hue
+    @Environment(\.colorScheme) private var scheme
 
     func body(content: Content) -> some View {
         let shape = BubbleShape()
@@ -155,10 +157,10 @@ private struct BubbleDress: ViewModifier {
                 .contentGlass(in: shape, tint: bubbleAccent.calmBubbleTint)
         case (.calm, .incoming):
             content
-                .foregroundStyle(Theme.Calm.ink)
+                .foregroundStyle(CalmBackdrop.ink(hue: hue, in: scheme))
                 .contentGlass(in: shape)
         case (.calm, .plain):
-            content.foregroundStyle(Theme.Calm.ink)
+            content.foregroundStyle(CalmBackdrop.ink(hue: hue, in: scheme))
         case (.classic, _):
             content
                 .foregroundStyle(ink)

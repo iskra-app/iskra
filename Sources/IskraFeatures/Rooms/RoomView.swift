@@ -1330,7 +1330,7 @@ public struct RoomView: View {
         // own, taken down as far as they asked — see `Wallpaper`. Applied here, on the whole room
         // rather than on the scroll view inside it, so that the wallpaper runs under the composer
         // and the pinned strip instead of stopping at the edge of the messages.
-        .chatWallpaper(shadeSeed: timeline.roomAvatarSeed)
+        .chatWallpaper(avatarURL: timeline.roomAvatarURL)
         // The strip at the top of the room, above the conversation and below the toolbar.
         // Present only when there is something pinned — a room with nothing pinned should not
         // give up a row of its screen to say so.

@@ -37,6 +37,11 @@ public enum AccentTheme: String, CaseIterable, Identifiable, Sendable {
     /// `IskraRootView`.
     public static let tintsInterfaceKey = "appearance.tintsInterface"
 
+    /// Whether the calm look tints conversations in the colour of their avatars — see `CalmBackdrop`.
+    /// A key of its own: `tintsInterfaceKey` spreads the accent, this spreads the shade.
+    public static let tintsChatsKey = "appearance.tintsChats"
+    public static let tintsChatsByDefault = true
+
     public var id: String { rawValue }
 
     /// The system's own colours, not seven of ours. They already carry a light and a dark

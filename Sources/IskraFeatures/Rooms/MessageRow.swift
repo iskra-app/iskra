@@ -431,6 +431,8 @@ struct ReactionPill: View {
 
     @Environment(\.accent) private var accent
     @Environment(\.design) private var design
+    @Environment(\.calmShadeHue) private var shadeHue
+    @Environment(\.colorScheme) private var scheme
 
     /// A tap and a hold, and not a `Button`: a button takes the whole touch for itself, and a hold
     /// on one ends in its action as soon as the finger lifts — the reaction toggled under the list
@@ -475,7 +477,7 @@ struct ReactionPill: View {
             if reaction.count > 1 {
                 Text(reaction.count, format: .number)
                     .font(.caption2.weight(.semibold).monospacedDigit())
-                    .foregroundStyle(Theme.Calm.ink)
+                    .foregroundStyle(CalmBackdrop.ink(hue: shadeHue, in: scheme))
             }
         }
         .padding(.horizontal, reaction.count > 1 ? Theme.Spacing.close : 0)

@@ -93,6 +93,14 @@ public extension Theme {
             public static let surfaceTint: Double = 0.35
             public static let surfaceSaturationDark: Double = 0.4
             public static let surfaceBrightnessDark: Double = 0.2
+            public static let inkSaturationDark: Double = 0.08
+            public static let inkBrightnessDark: Double = 0.96
+            public static let inkSaturationLight: Double = 0.6
+            public static let inkBrightnessLight: Double = 0.18
+            /// The side of the small copy of an avatar its colour is read from.
+            public static let sampleSide: Int = 16
+            /// How much colour a picture must have, on average, to count as having one.
+            public static let leastColour: Double = 0.08
         }
 
         /// How a conversation fades under the title bar and the composer — see `RoomView.timelineFade`.

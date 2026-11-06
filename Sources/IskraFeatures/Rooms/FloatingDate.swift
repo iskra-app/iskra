@@ -35,12 +35,23 @@ struct FloatingDates: Equatable {
 struct FloatingDateLabel: View {
     let date: Date
 
+    @Environment(\.design) private var design
+
+    @ViewBuilder
+    private var capsule: some View {
+        if design == .calm {
+            CalmChip { Text(DayDividerView.label(for: date)) }
+        } else {
+            Text(DayDividerView.label(for: date))
+                .font(.caption.weight(.medium))
+                .padding(.horizontal, Theme.Spacing.normal)
+                .padding(.vertical, Theme.Spacing.tight)
+                .navigationGlass(in: .capsule)
+        }
+    }
+
     var body: some View {
-        Text(DayDividerView.label(for: date))
-            .font(.caption.weight(.medium))
-            .padding(.horizontal, Theme.Spacing.normal)
-            .padding(.vertical, Theme.Spacing.tight)
-            .navigationGlass(in: .capsule)
+        capsule
             .padding(.top, Theme.Spacing.close)
             .allowsHitTesting(false)
             // Said once, when it changes, rather than on every pass — and it is the dividers, in the

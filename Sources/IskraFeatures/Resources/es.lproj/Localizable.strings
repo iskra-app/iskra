@@ -553,6 +553,7 @@
    screen's background, the text, the messages themselves. Off by default: a colour that is
    everywhere emphasises nothing. */
 "appearance.tintInterface" = "Teñir la interfaz";
+"appearance.tintChatsHelp" = "La interfaz de los chats toma el tono del avatar del chat.";
 
 /* The names of the colours. They are never seen: a circle of colour has nothing to read
    out, and VoiceOver names it by its colour. */

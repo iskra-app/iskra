@@ -96,6 +96,7 @@ struct MessageActions<Content: View>: View {
     /// nobody can be told about. Replying is the exception, and only looks like one: a reply is a new
     /// message, and a new message goes into the send queue and leaves when the network does.
     @Environment(\.isOffline) private var isOffline
+    @Environment(\.design) private var design
 
     /// The forward capability, for sending this message into another room.
     @Environment(\.forwarding) private var forwarding
@@ -318,7 +319,10 @@ struct MessageActions<Content: View>: View {
             canReact: message.canReact && !isOffline,
             mine: Set(message.reactions.filter(\.isMine).map(\.key)),
             content: AnyView(lifted),
-            isPicture: message.isPicture,
+            // A picture on a bubble of glass, an album or one with words, scrolls instead of being scaled: glass under a
+            // `scaleEffect` comes out scaled twice, so the bubble shrinks away from what is on it. It
+            // has a fixed width (`AlbumBubble`), so the scroll view does not resize it.
+            isPicture: message.isPicture && !(design == .calm && (message.album != nil || message.captioned?.caption != nil)),
             sections: sections,
             onReaction: handlers.onToggleReaction))
     }

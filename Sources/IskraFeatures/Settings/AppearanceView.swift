@@ -48,6 +48,7 @@ struct AppearanceView: View {
     /// Whether the colour is let out of the messages and onto the chrome as well. Written here and
     /// read at the root — see `AccentTheme.tintsInterfaceKey`.
     @AppStorage(AccentTheme.tintsInterfaceKey) private var tintsInterface = false
+    @AppStorage(AccentTheme.tintsChatsKey) private var tintsChats = AccentTheme.tintsChatsByDefault
     @Environment(\.design) private var design
 
     var body: some View {
@@ -97,15 +98,25 @@ struct AppearanceView: View {
                     .padding(.vertical, Theme.Spacing.close)
                 #endif
 
-                // The calm look's chrome is ink whatever is chosen, so this would do nothing there.
+                // The same words for two different things, and only one of them on the screen: the
+                // calm look's chrome is ink whatever is chosen, and what it tints is its chats.
                 if design == .classic {
                     Toggle(isOn: $tintsInterface.animation(.smooth(duration: Theme.Timing.reaction))) {
+                        Text(Strings.Appearance.tintInterface)
+                    }
+                    .accentControl()
+                } else {
+                    Toggle(isOn: $tintsChats.animation(.smooth(duration: Theme.Timing.reaction))) {
                         Text(Strings.Appearance.tintInterface)
                     }
                     .accentControl()
                 }
             } header: {
                 Text(Strings.Appearance.themeAndColors)
+            } footer: {
+                if design == .calm {
+                    Text(Strings.Appearance.tintChatsHelp)
+                }
             }
 
             // iPhone and iPad only, and not drawn at all where the device forbids it.

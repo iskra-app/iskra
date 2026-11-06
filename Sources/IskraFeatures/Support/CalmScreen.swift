@@ -30,8 +30,19 @@ extension View {
         modifier(CalmListRow())
     }
 
-    /// Stands a screen on the calm backdrop, in the shade of the person using it: the list,
-    /// settings, anything that belongs to you rather than to a conversation.
+    /// Reads the colour of a conversation's avatar, for everything below that stands on its shade:
+    /// the conversation and its info screen.
+    func calmRoomHue(avatarURL: String?) -> some View {
+        modifier(CalmRoomHue(avatarURL: avatarURL))
+    }
+
+    /// The same for settings and everything pushed from them: the colour of your own avatar.
+    func calmOwnHue() -> some View {
+        modifier(CalmOwnHue())
+    }
+
+    /// Stands a screen on the calm backdrop, in the shade of the conversation it belongs to if it
+    /// belongs to one, and otherwise the shade of the person using it: the list, settings.
     func calmScreen(isDimmed: Bool = false) -> some View {
         modifier(CalmScreen(isDimmed: isDimmed))
     }
@@ -50,7 +61,7 @@ private struct CalmType: ViewModifier {
             content
                 .fontDesign(isRounded ? .rounded : nil)
                 // For whatever has no screen of its own yet: the wait at launch.
-                .background { CalmBackdrop(seed: nil) }
+                .background { CalmBackdrop(hue: nil) }
         }
     }
 }
@@ -76,11 +87,24 @@ private struct PhotoPlate: ViewModifier {
     }
 }
 
+/// The hue a screen is tinted in, or nil with "tint the interface" off: its conversation's avatar's
+/// colour, and without one the account's own shade, the one the chat list wears.
+struct CalmHue: DynamicProperty {
+    @AppStorage(AccentTheme.tintsChatsKey) private var isTinted = AccentTheme.tintsChatsByDefault
+    @Environment(\.calmRoomHue) private var roomHue
+    @Environment(\.currentUserID) private var userID
+
+    var value: Double? {
+        guard isTinted else { return nil }
+        return roomHue ?? (userID.isEmpty ? nil : CalmBackdrop.hue(for: userID))
+    }
+}
+
 private struct CalmScreen: ViewModifier {
     let isDimmed: Bool
 
     @Environment(\.design) private var design
-    @Environment(\.currentUserID) private var userID
+    private let hue = CalmHue()
 
     func body(content: Content) -> some View {
         switch design {
@@ -88,11 +112,64 @@ private struct CalmScreen: ViewModifier {
             content
         case .calm:
             content
-                .environment(\.calmShadeSeed, userID.isEmpty ? nil : userID)
+                .environment(\.calmShadeHue, hue.value)
                 .scrollContentBackground(.hidden)
-                .background { CalmBackdrop(seed: userID.isEmpty ? nil : userID, isDimmed: isDimmed) }
+                .background { CalmBackdrop(hue: hue.value, isDimmed: isDimmed) }
         }
     }
+}
+
+private struct CalmOwnHue: ViewModifier {
+    @Environment(\.currentUserAvatarURL) private var avatarURL
+
+    func body(content: Content) -> some View {
+        content.calmRoomHue(avatarURL: avatarURL)
+    }
+}
+
+private struct CalmRoomHue: ViewModifier {
+    let avatarURL: String?
+
+    @Environment(\.design) private var design
+    @Environment(\.mediaLoader) private var loader
+    @State private var hue: Double?
+
+    func body(content: Content) -> some View {
+        content
+            .environment(\.calmRoomHue, hue)
+            .task(id: "\(design)\u{0}\(avatarURL ?? "")") { await load() }
+    }
+
+    private func load() async {
+        guard design == .calm, let avatarURL, let loader else {
+            hue = nil
+            return
+        }
+        if let known = CalmAvatarHues.known[avatarURL] {
+            hue = known
+            return
+        }
+        // The smallest picture the server will give: all of it is about to be averaged away.
+        guard let data = try? await loader.avatar(url: avatarURL, size: Theme.Calm.Shade.sampleSide * 4) else {
+            hue = nil
+            return
+        }
+        let found = await Task.detached { CalmBackdrop.dominantHue(of: data) }.value
+        CalmAvatarHues.known[avatarURL] = found
+        hue = found
+    }
+}
+
+/// What each avatar's colour came out as, so that a room opened twice does not read it twice. Nil
+/// is an answer too: a picture with no colour in it.
+@MainActor
+private enum CalmAvatarHues {
+    static var known: [String: Double?] = [:]
+}
+
+extension EnvironmentValues {
+    /// The colour of the conversation's avatar, when it has one with a colour — see `CalmHue`.
+    @Entry var calmRoomHue: Double?
 }
 
 private struct CalmListRow: ViewModifier {
@@ -162,14 +239,14 @@ struct ScreenList<Content: View>: View {
 /// and there is no way to put one sheet of glass behind a whole section of a `Form`.
 struct CalmRowMaterial: View {
     @Environment(\.colorScheme) private var scheme
-    @Environment(\.calmShadeSeed) private var seed
+    @Environment(\.calmShadeHue) private var hue
 
     var body: some View {
         Rectangle()
             .fill(.thinMaterial)
             .overlay {
-                if let seed {
-                    CalmBackdrop.surfaceShade(for: seed, in: scheme).opacity(Theme.Calm.Shade.surfaceTint)
+                if let hue {
+                    CalmBackdrop.surfaceShade(hue: hue, in: scheme).opacity(Theme.Calm.Shade.surfaceTint)
                 }
             }
             .overlay(Color.white.opacity(scheme == .dark ? Theme.Calm.Form.rowLift : Theme.Calm.Form.rowLiftLight))

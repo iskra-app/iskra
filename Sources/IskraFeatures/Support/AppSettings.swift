@@ -25,6 +25,7 @@ enum AppSettings {
     private static let keys = [
         AccentTheme.storageKey,
         AccentTheme.tintsInterfaceKey,
+        AccentTheme.tintsChatsKey,
         AppearanceMode.storageKey,
         MessageLayout.storageKey,
         QuickReaction.storageKey,

@@ -110,6 +110,10 @@ struct RoomInfoView: View {
     private var isRoom: Bool { details.isRoom }
 
     var body: some View {
+        screen.calmRoomHue(avatarURL: details.avatarURL)
+    }
+
+    private var screen: some View {
         ScreenForm {
             // The round buttons under the portrait, in the portrait's own section: a section of
             // their own put the form's gap between sections under the name, and the buttons read as
