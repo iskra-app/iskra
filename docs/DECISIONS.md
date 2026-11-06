@@ -37,6 +37,11 @@ buttons and the sign-in actions are glass; message bubbles are opaque fills.
 `IskraDesign/Glass.swift` encodes this: there is no general `.glass()` modifier to reach
 for, only `.navigationGlass()`.
 
+A reaction is the deliberate exception (`.contentGlass()`, `ReactionCluster`, from the «Штиль» look
+on `new-design`): a small circle hanging off the bubble's corner, with the bubble itself still an
+opaque fill. It has a function of its own instead of loosening this rule for the app. The compact
+column has no bubble to hang from and keeps its flat pills.
+
 ## Round video messages are recognised by shape, not by a flag
 
 Matrix has no round-video event type. Tagging one with a custom field would mean building

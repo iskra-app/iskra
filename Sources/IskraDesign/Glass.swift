@@ -41,6 +41,33 @@ public extension View {
         }
     }
 
+    /// Glass on content, and the one piece of it there is: a reaction on a bubble's corner. A name
+    /// of its own, so that the rule above stays true of everything else. Message bubbles are opaque
+    /// fills, as ever.
+    ///
+    /// Before glass, a material, with the tint laid over it.
+    @ViewBuilder
+    func contentGlass(in shape: some Shape = .capsule, tint: Color? = nil,
+                      interactive: Bool = false) -> some View {
+        if #available(iOS 26, macOS 26, *) {
+            glassEffect(.regular.tint(tint).interactive(interactive), in: shape)
+        } else {
+            background(tint ?? .clear, in: shape)
+                .background(.regularMaterial, in: shape)
+        }
+    }
+
+    /// A sheet whose own background shows: glass by itself from OS 26, as long as nothing in it
+    /// paints over it. Before glass, a material.
+    @ViewBuilder
+    func glassSheetBackground() -> some View {
+        if #available(iOS 26, macOS 26, *) {
+            self
+        } else {
+            presentationBackground(.regularMaterial)
+        }
+    }
+
     /// The one control on screen that is the point of the screen — "Continue" on
     /// sign-in, "Send" in the composer. Tinted so it reads as primary, and
     /// interactive so it responds to touch the way system glass does.

@@ -595,6 +595,8 @@ public struct IskraRootView: View {
         }
         #endif
         .environment(\.accent, accent)
+        // SF Rounded, on all the text there is: nothing in the app names a font of its own.
+        .fontDesign(.rounded)
         // The language picked on a Mac, at once: `Text` resolves in the environment's locale, and
         // `language` (stored, observed) is what runs this body again when it changes. See
         // `AppLanguage`.

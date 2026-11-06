@@ -557,7 +557,13 @@ in the old language until a relaunch, and only on the Mac, where nobody tests it
 content, never on glass. There is deliberately no general `.glass()` modifier — only
 `.navigationGlass()` and `.primaryActionGlass(tint:)` in `IskraDesign/Glass.swift`. Message bubbles
 are opaque fills. If `.navigationGlass()` feels like the wrong name where you are about to put it,
-that is the guideline talking.
+that is the guideline talking. The one exception is a reaction on a bubble's corner, through
+`.contentGlass()`, and the list of reactors, which is a sheet with its own glass showing.
+
+**The text is SF Rounded**, set once by `.fontDesign(.rounded)` at the root (`IskraRootView`). It
+reaches everything because nothing names a font of its own: a `UIFont`, an `NSFont` or an explicit
+`design:` is a piece of text that stays out of it. Extensions are out of it on purpose: they have no
+root of ours.
 
 **The main button on a screen is `.primaryAction` or `.glassAction`** (`IskraDesign/PrimaryAction.swift`),
 **never `.borderedProminent` or `.glassProminent`.** The system's prominent styles fill themselves with

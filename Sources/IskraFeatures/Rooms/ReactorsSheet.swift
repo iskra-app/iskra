@@ -106,8 +106,14 @@ struct ReactorsSheet: View {
                         }
                     }
                     .accessibilityElement(children: .combine)
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
                 }
             }
+            // Plain: the grouped style's margins are for a card, and there is none on the sheet's glass.
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .glassSheetBackground()
             .animation(.smooth(duration: Theme.Timing.chrome), value: filter)
             .safeAreaInset(edge: .top, spacing: 0) { tabs }
             .navigationTitle(Text(total > 0 ? Strings.Message.Menu.reactors(total)

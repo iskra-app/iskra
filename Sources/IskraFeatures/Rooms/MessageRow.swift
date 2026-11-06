@@ -94,21 +94,9 @@ struct MessageRow: View {
     }
 
     var body: some View {
-        // The message and its emoji are two elements stacked, not one: VoiceOver flattens
-        // the message into a single label it can read, and the reaction pills have to stay
-        // outside that — a combined element swallows the buttons inside it, and a blind
-        // user would be the only one who could see the reactions and not press them.
-        //
-        // Zero spacing, because the emoji do not sit *below* the bubble — they climb back
-        // onto it. See `reactions`.
-        VStack(alignment: message.isOwn ? .trailing : .leading, spacing: 0) {
-            bubbleRow
-
-            if !message.reactions.isEmpty {
-                reactions
-                    .transition(.reactionsAppear)
-            }
-        }
+        bubbleRow
+        // The emoji hang off the bubble (`reactions`), and this keeps them clear of the next message.
+        .padding(.bottom, message.reactions.isEmpty ? 0 : Theme.Reaction.overhang)
         // The swipe takes the emoji with it. They sit on the bubble's foot, and a bubble pulled
         // out from under its own reactions left them hanging in the air where it had been.
         .swipeToReply(message,
@@ -158,12 +146,13 @@ struct MessageRow: View {
     // MARK: - The bubble, and what can be done to it
 
     /// One sentence for VoiceOver, unless there is a button inside the message that flattening
-    /// would swallow — see `Message.hasPressableContent`.
+    /// would swallow — see `Message.hasPressableContent`. The emoji on the bubble's corner are
+    /// such buttons: flattened, a blind user would be the only one who could not press them.
     @ViewBuilder
     private var bubbleRow: some View {
         let row = bubbleRowContent
 
-        if message.hasPressableContent {
+        if message.hasPressableContent || !message.reactions.isEmpty {
             row.accessibilityElement(children: .contain)
         } else {
             row
@@ -258,52 +247,24 @@ struct MessageRow: View {
             // `ComposerTravel`. On the bubble rather than the row, which spans the screen.
             .travelsFromComposer(arrivesAnimated && message.isOwn)
             .messageActions(message, isPinned: isPinned, handlers: handlers)
+            .environment(\.liftsReactions, true)
+            // After the actions, so that a press on an emoji is the emoji's and a lifted message
+            // goes up without them.
+            .overlay { reactions }
     }
 
     // MARK: - Reactions
 
-    /// The emoji under the bubble — aligned to the side the message is on, indented past
-    /// the avatar so they sit under the *bubble* rather than under the face beside it, and
-    /// tucked up over the bubble's bottom edge so they read as part of it.
-    ///
-    /// The overlap is a negative padding rather than an offset, deliberately: an offset
-    /// would move the pills without telling the layout, leaving a bubble-shaped hole of
-    /// empty space behind them and the next message pushed down past it. A negative padding
-    /// moves them *and* closes the gap they came from.
+    /// The emoji on the bubble's corner. There whether or not there is anything in it, or the first
+    /// one would have nothing to scale up in.
     private var reactions: some View {
-        FlowLayout(spacing: Theme.Spacing.tight,
-                   alignment: message.isOwn ? .trailing : .leading) {
-            ForEach(message.reactions) { reaction in
-                ReactionPill(reaction: reaction,
-                             onShowReactors: handlers.loadReactors == nil ? nil : {
-                                 reactorsRequest = ReactorsRequest(filter: reaction.key)
-                             }) {
-                    handlers.onToggleReaction(reaction.key)
-                }
-                // Each pill grows from nothing rather than fading in on the spot, so an
-                // emoji someone else just left reads as arriving.
-                .transition(.scale(scale: 0.3).combined(with: .opacity))
-            }
-        }
-        .padding(.leading, leadingInset)
-        .padding(.trailing, message.isOwn ? Theme.Spacing.reactionInset : 0)
-        .padding(.top, -Theme.Spacing.reactionOverlap)
-        // Drawn after the bubble and therefore over it — which is the whole point, and is
-        // only true because this comes second in the stack.
-        .zIndex(1)
-        .reactorsSheet($reactorsRequest, reactions: message.reactions, load: handlers.loadReactors,
-                       loadReaders: handlers.loadReaders)
-    }
-
-    /// Two different things, added together, and worth keeping apart in the head.
-    ///
-    /// The first is the avatar's column: without it the pills would line up under the
-    /// sender's face rather than under the words they are reacting to. The second is the
-    /// step in from the bubble's own leading edge — and that one is only spent on someone
-    /// else's message, because your own steps in from the *right* instead.
-    private var leadingInset: CGFloat {
-        let avatarColumn = showsSender ? avatarSize + Theme.Spacing.close : 0
-        return avatarColumn + (message.isOwn ? 0 : Theme.Spacing.reactionInset)
+        BubbleReactions(message: message,
+                        onToggle: handlers.onToggleReaction,
+                        onShowReactors: handlers.loadReactors == nil ? nil : { key in
+                            reactorsRequest = ReactorsRequest(filter: key)
+                        })
+            .reactorsSheet($reactorsRequest, reactions: message.reactions, load: handlers.loadReactors,
+                           loadReaders: handlers.loadReaders)
     }
 
     /// The time the message was sent, and — on your own messages — how far it has got.
@@ -375,6 +336,34 @@ struct MessageRow: View {
     }
 }
 
+/// A message's emoji on its bubble's corner — see `ReactionCluster`. In the conversation, and on the
+/// copy the message menu lifts.
+struct BubbleReactions: View {
+    let message: Message
+    let onToggle: (String) -> Void
+    var onShowReactors: ((String) -> Void)?
+
+    var body: some View {
+        ReactionCluster(isOwn: message.isOwn) {
+            ForEach(message.reactions) { reaction in
+                ReactionPill(reaction: reaction,
+                             tiltSeed: message.id + reaction.key,
+                             onShowReactors: onShowReactors.map { show in { show(reaction.key) } }) {
+                    onToggle(reaction.key)
+                }
+                .transition(.scale(scale: 0.01))
+            }
+        }
+        .animation(Theme.Timing.reactionPops, value: message.reactions.map(\.key))
+    }
+}
+
+extension EnvironmentValues {
+    /// Whether the message being acted on wears `BubbleReactions`, which the menu then lifts with
+    /// it. Only the bubble timeline does: the compact one keeps its pills under the row.
+    @Entry var liftsReactions: Bool = false
+}
+
 /// One emoji under a message, and how many people have left it.
 ///
 /// A button, and a toggle: pressing one you have already left takes it back. No pill is
@@ -392,6 +381,9 @@ struct MessageRow: View {
 /// the navigation layer — see `IskraDesign/Glass.swift`.
 struct ReactionPill: View {
     let reaction: MessageReaction
+    /// Set, this is the bubble's circle of glass with the emoji leaning in it, and this is what the
+    /// lean is worked out from. Nil, the flat pill of the compact column.
+    var tiltSeed: String?
     /// Who left it, and who else left what — a hold on the pill, as in Signal. Nil where nobody can
     /// be asked (`MessageHandlers.loadReactors`), and then a hold does nothing.
     var onShowReactors: (() -> Void)?
@@ -403,7 +395,15 @@ struct ReactionPill: View {
     /// on one ends in its action as soon as the finger lifts — the reaction toggled under the list
     /// that was opened to look at it.
     var body: some View {
-        pill
+        face
+            #if os(macOS)
+            // The Mac's way of holding: a right-click on it opens the same list.
+            .overlay {
+                if let onShowReactors {
+                    RightClickCatcher(perform: onShowReactors)
+                }
+            }
+            #endif
             .onTapGesture(perform: onToggle)
             .onLongPressGesture {
                 guard let onShowReactors else { return }
@@ -421,6 +421,37 @@ struct ReactionPill: View {
 
     /// Counts holds that opened the list, only so the phone can answer each one.
     @State private var holds = 0
+
+    @ViewBuilder
+    private var face: some View {
+        if let tiltSeed {
+            circle(tilt: Theme.Reaction.tilt(for: tiltSeed))
+        } else {
+            pill
+        }
+    }
+
+    /// One emoji in a circle. A number makes it a capsule, since it has to go somewhere. Yours is a
+    /// tone heavier, as a pill is.
+    private func circle(tilt: Double) -> some View {
+        HStack(spacing: Theme.Spacing.tight) {
+            Text(reaction.key)
+                .font(.footnote)
+                .rotationEffect(.degrees(tilt))
+
+            if reaction.count > 1 {
+                Text(reaction.count, format: .number)
+                    .font(.caption2.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(.primary)
+            }
+        }
+        .padding(.horizontal, reaction.count > 1 ? Theme.Spacing.close : 0)
+        .frame(minWidth: Theme.Reaction.circle, minHeight: Theme.Reaction.circle)
+        .contentGlass(in: .capsule,
+                      tint: reaction.isMine ? Color.primary.opacity(Theme.Reaction.mineTint) : nil,
+                      interactive: true)
+        .contentShape(.capsule)
+    }
 
     private var pill: some View {
         Group {

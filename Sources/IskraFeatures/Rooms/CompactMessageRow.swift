@@ -221,9 +221,8 @@ struct CompactMessageRow: View {
 
     /// The emoji under a message, lined up with the words rather than with the face beside them.
     ///
-    /// No inset of its own and no climbing back onto anything: the avatar column indents these
-    /// structurally, and there is no bubble whose bottom edge they could tuck under. Both the
-    /// `leadingInset` arithmetic and the `reactionOverlap` the bubbles need are simply absent.
+    /// No inset of its own and no corner to sit on: the avatar column indents these structurally,
+    /// and there is no bubble here, so they stay flat pills and not `MessageRow`'s circles.
     private var reactions: some View {
         FlowLayout(spacing: Theme.Spacing.tight, alignment: .leading) {
             ForEach(message.reactions) { reaction in

@@ -96,6 +96,7 @@ struct MessageActions<Content: View>: View {
     /// nobody can be told about. Replying is the exception, and only looks like one: a reply is a new
     /// message, and a new message goes into the send queue and leaves when the network does.
     @Environment(\.isOffline) private var isOffline
+    @Environment(\.liftsReactions) private var liftsReactions
 
     /// The forward capability, for sending this message into another room.
     @Environment(\.forwarding) private var forwarding
@@ -311,6 +312,8 @@ struct MessageActions<Content: View>: View {
         if let then = anchor.roomPosition, let now = room?.position {
             rect = rect.offsetBy(dx: now.x - then.x, dy: now.y - then.y)
         }
+        // The emoji hang below the bubble, and the menu keeps clear of what it was told is there.
+        if carriesReactions { rect.size.height += Theme.Reaction.overhang }
         menu.present(MessageMenuPresentation(
             id: message.id,
             anchor: rect,
@@ -346,7 +349,19 @@ struct MessageActions<Content: View>: View {
         environment.composerTextOrigin = nil
         environment.bubbleIsLifted = true
         return content()
+            .overlay {
+                // To be seen, not pressed: under an open menu a press means closing it.
+                if carriesReactions {
+                    BubbleReactions(message: message, onToggle: handlers.onToggleReaction)
+                        .allowsHitTesting(false)
+                }
+            }
+            .padding(.bottom, carriesReactions ? Theme.Reaction.overhang : 0)
             .environment(\.self, environment)
+    }
+
+    private var carriesReactions: Bool {
+        liftsReactions && !message.reactions.isEmpty
     }
 
     /// The menu, read out: the quick reaction first — it is what a double tap does, and a double
@@ -608,7 +623,7 @@ struct MessageActions<Content: View>: View {
 /// refuses every event it is offered *except* a right-click: `hitTest` returning nil is what
 /// lets a left click, a drag, a scroll and a double tap pass straight through to the message
 /// underneath as though this were not here at all.
-private struct RightClickCatcher: NSViewRepresentable {
+struct RightClickCatcher: NSViewRepresentable {
     let perform: () -> Void
 
     func makeNSView(context: Context) -> Catcher {

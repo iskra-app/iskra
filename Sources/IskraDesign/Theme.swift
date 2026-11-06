@@ -119,24 +119,6 @@ public enum Theme {
         /// gives, because a mosaic is busy right up to its edge.
         public static let albumCaptionTop: CGFloat = normal
 
-        /// How far the emoji under a message climb back onto it.
-        ///
-        /// Negative space, spent deliberately. Pills sitting in a clean row *below* the
-        /// bubble read as a separate thing that happens to be nearby; tucked over its
-        /// bottom edge they read as belonging to it — the same trick every messenger uses,
-        /// and the reason a reaction never has to be joined to its message by a line.
-        public static let reactionOverlap: CGFloat = 8
-
-        /// How far the emoji step in from the edge of the message they belong to — from the
-        /// left under someone else's, from the right under your own.
-        ///
-        /// Flush with the bubble's edge, a pill lines up with the widest point of a shape
-        /// whose corner is already curving away beneath it, and it reads as having slipped
-        /// off rather than as being tucked under. Stepped in, it sits over the bubble's
-        /// solid body. The step is *inwards*, which is why it swaps sides with the message:
-        /// the edge it comes away from is the one the conversation is anchored to.
-        public static let reactionInset: CGFloat = 12
-
         /// How much air a conversation gets above and below it in the Mac's own sidebar.
         ///
         /// Less than the list would choose, and on purpose. The system's own row insets are

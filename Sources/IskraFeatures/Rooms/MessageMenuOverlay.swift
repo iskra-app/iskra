@@ -493,8 +493,11 @@ struct ReactionBar: View {
     /// separate buttons rather than one strip. Hugging its cells, the gap between two emoji is
     /// the same on every phone and the strip reads as one thing.
     static var naturalWidth: CGFloat {
-        cells * Theme.Size.reactionCell + Theme.Spacing.close * 2
+        cells * Theme.Size.reactionCell + inset * 2
     }
+
+    /// The air around the cells, the same at the sides as above and below them.
+    private static var inset: CGFloat { (Theme.Size.reactionBar - Theme.Size.reactionCell) / 2 }
 
     /// Six things in the width of the bar: five emoji and the "+".
     ///
@@ -502,7 +505,7 @@ struct ReactionBar: View {
     /// come to more than there is — and an `HStack` handed more than it has room for does not
     /// shrink politely, it draws past the capsule it is inside and out over the conversation.
     private var cell: CGFloat {
-        min(Theme.Size.reactionCell, (width - Theme.Spacing.close * 2) / Self.cells)
+        min(Theme.Size.reactionCell, (width - Self.inset * 2) / Self.cells)
     }
 
     var body: some View {
@@ -519,7 +522,7 @@ struct ReactionBar: View {
 
             pops(moreButton, index: count - 1, of: count)
         }
-        .padding(.horizontal, Theme.Spacing.close)
+        .padding(.horizontal, Self.inset)
         .frame(width: width, height: Theme.Size.reactionBar)
         .navigationGlass(in: .capsule)
     }
