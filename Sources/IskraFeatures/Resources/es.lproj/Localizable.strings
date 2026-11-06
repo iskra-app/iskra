@@ -1426,6 +1426,9 @@
 "beta.developers" = "Para desarrolladores";
 "beta.showsSource" = "JSON del mensaje en el menú";
 "beta.showsSourceHelp" = "El menú del mensaje tendrá «Ver JSON»: el evento tal como lo envió el servidor. Útil si un mensaje se muestra mal.";
+"beta.calmDesign" = "Calma: el nuevo diseño";
+"beta.calmDesignHelp" = "Un diseño monocromo: los mensajes son de cristal, la letra es SF Rounded y cada chat tiene su propio tono de fondo. Sin caritas, y el color queda solo en sus propios mensajes y en las marcas de no leídos. Desactívelo y todo será como antes.";
+"beta.calmRoundedFont" = "Letra redondeada";
 "beta.viewSource" = "Ver JSON";
 "beta.noSource" = "Este mensaje aún no tiene evento en el servidor.";
 "beta.demoSignIn" = "Inicio de sesión de demostración";

@@ -13,7 +13,7 @@ struct LicensesView: View {
     @Environment(\.accent) private var accent
 
     var body: some View {
-        Form {
+        ScreenForm {
             Section {
                 row(.iskra)
                 NavigationLink {

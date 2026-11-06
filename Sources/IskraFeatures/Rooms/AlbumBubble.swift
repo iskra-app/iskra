@@ -48,11 +48,15 @@ struct AlbumBubble: View {
             mosaic
 
             if let caption {
+                // Exactly as wide as the pictures, so that words and pictures make one column: a long
+                // caption cannot widen the bubble past them, and a short one has all of it to use.
                 caption
                     .font(.body)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, Theme.Spacing.captionHorizontal)
                     .padding(.top, Theme.Spacing.albumCaptionTop)
                     .padding(.bottom, Theme.Spacing.captionVertical)
+                    .frame(width: width, alignment: .leading)
             }
         }
         .padding(Theme.Spacing.tight)
@@ -114,7 +118,7 @@ struct AlbumBubble: View {
                             .foregroundStyle(.white)
                             .padding(.horizontal, Theme.Spacing.close)
                             .padding(.vertical, 2)
-                            .background(.black.opacity(Theme.Backdrop.plate), in: Capsule())
+                            .photoPlate()
                             .padding(Theme.Spacing.tight)
                     }
                 }

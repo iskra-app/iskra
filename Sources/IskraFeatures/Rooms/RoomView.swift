@@ -1216,7 +1216,7 @@ public struct RoomView: View {
         // own, taken down as far as they asked — see `Wallpaper`. Applied here, on the whole room
         // rather than on the scroll view inside it, so that the wallpaper runs under the composer
         // and the pinned strip instead of stopping at the edge of the messages.
-        .chatWallpaper()
+        .chatWallpaper(shadeSeed: timeline.roomAvatarSeed)
         // The strip at the top of the room, above the conversation and below the toolbar.
         // Present only when there is something pinned — a room with nothing pinned should not
         // give up a row of its screen to say so.
@@ -2627,7 +2627,21 @@ public struct RoomView: View {
 /// there, and this is the one line in the room that says *start here*. Faint, and not the accent —
 /// the accent is what the reader can press, and this is somewhere to look.
 struct UnreadDividerView: View {
+    @Environment(\.design) private var design
+
     var body: some View {
+        if design == .calm {
+            CalmChip { Text(Strings.Room.unreadMessages) }
+                .frame(maxWidth: .infinity)
+                .padding(.top, Theme.Spacing.roomy)
+                .padding(.bottom, Theme.Spacing.close)
+                .accessibilityAddTraits(.isHeader)
+        } else {
+            band
+        }
+    }
+
+    private var band: some View {
         Text(Strings.Room.unreadMessages)
             .font(.caption.weight(.medium))
             .foregroundStyle(.secondary)
@@ -2650,6 +2664,7 @@ struct DayDividerView: View {
     /// the floating date over a scrolling room is worked out from. See `FloatingDate`.
     @Environment(\.dayPassesTop) private var dayPassesTop
     @Environment(\.floatingDateLine) private var floatingDateLine
+    @Environment(\.design) private var design
 
     var body: some View {
         label
@@ -2664,11 +2679,20 @@ struct DayDividerView: View {
             }
     }
 
+    @ViewBuilder
+    private var words: some View {
+        if design == .calm {
+            CalmChip { Text(Self.label(for: date)) }
+        } else {
+            Text(Self.label(for: date))
+                .font(.caption.weight(.medium))
+                // Bare words, like the time beside a bubble — see `onWallpaperInk`.
+                .onWallpaperInk()
+        }
+    }
+
     private var label: some View {
-        Text(Self.label(for: date))
-            .font(.caption.weight(.medium))
-            // Bare words, like the time beside a bubble — see `onWallpaperInk`.
-            .onWallpaperInk()
+        words
             // Enough air to read as a break in the conversation, and no more. At `roomy` on both
             // sides the date was holding a band of empty screen the height of a message either
             // side of it, so a day with two lines in it looked like a day with a hole in it.

@@ -13,6 +13,15 @@ struct AddAccountView: View {
     let onCancel: () -> Void
 
     var body: some View {
+
+        screen.calmScreen()
+
+    }
+
+
+    @ViewBuilder
+
+    private var screen: some View {
         NavigationStack {
             SignInView(authentication: authentication, address: address, onSignedIn: onSignedIn)
                 .toolbar {

@@ -55,7 +55,7 @@ struct RoomEditView: View {
     private var isRoom: Bool { details.kind != .direct }
 
     var body: some View {
-        Form {
+        ScreenForm {
             if !isRoom {
                 // Their face at the top, as on every person's page — and what the screen's layout
                 // assumes (`profileScreen()` lifts the form under the bar to meet a portrait). With

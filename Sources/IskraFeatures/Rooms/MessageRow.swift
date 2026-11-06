@@ -393,6 +393,7 @@ struct ReactionPill: View {
     let onToggle: () -> Void
 
     @Environment(\.accent) private var accent
+    @Environment(\.design) private var design
 
     /// A tap and a hold, and not a `Button`: a button takes the whole touch for itself, and a hold
     /// on one ends in its action as soon as the finger lifts — the reaction toggled under the list
@@ -437,12 +438,19 @@ struct ReactionPill: View {
             // bubble, and the grey above is translucent — laid straight over a blue bubble it
             // would take its colour and turn to mud. The page's own background goes down
             // first, so the pill sits *on* the bubble rather than bleeding through it.
+            //
+            // In the calm look the bubble under it is glass, so this stays a flat tone of its own:
+            // glass does not go on glass.
             .background {
-                Capsule()
-                    .fill(.background)
-                    .overlay {
-                        Capsule().fill(reaction.isMine ? Color.ownReaction : Color.incomingBubble)
-                    }
+                if design == .calm {
+                    Capsule().fill(reaction.isMine ? Theme.Calm.surfaceHigh : Theme.Calm.surface)
+                } else {
+                    Capsule()
+                        .fill(.background)
+                        .overlay {
+                            Capsule().fill(reaction.isMine ? Color.ownReaction : Color.incomingBubble)
+                        }
+                }
             }
             .contentShape(.capsule)
         }
@@ -721,7 +729,7 @@ struct VideoNoteView: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, Theme.Spacing.close)
                     .padding(.vertical, 2)
-                    .background(.black.opacity(Theme.Backdrop.plate), in: Capsule())
+                    .photoPlate()
                     .padding(.bottom, Theme.Spacing.normal)
                     .transition(.opacity)
             }
@@ -738,7 +746,7 @@ struct VideoNoteView: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, Theme.Spacing.close)
                     .padding(.vertical, 2)
-                    .background(.black.opacity(Theme.Backdrop.plate), in: Capsule())
+                    .photoPlate()
                     .padding(.bottom, Theme.Spacing.normal)
             }
         }
@@ -1287,7 +1295,7 @@ struct PictureBubble: View {
                             .foregroundStyle(.white)
                             .padding(.horizontal, Theme.Spacing.close)
                             .padding(.vertical, 2)
-                            .background(.black.opacity(Theme.Backdrop.plate), in: Capsule())
+                            .photoPlate()
                             .padding(Theme.Spacing.close)
                     }
                 }

@@ -15,7 +15,7 @@ struct ReportSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            ScreenForm {
                 Section {
                     TextField(String(app: Strings.Message.Report.reasonPrompt),
                               text: $reason,

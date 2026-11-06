@@ -13,7 +13,7 @@ struct BlockedUsersView: View {
     let store: BlockStore
 
     var body: some View {
-        List {
+        ScreenList {
             ForEach(store.blockedUserIDs, id: \.self) { userID in
                 HStack {
                     Text(userID)

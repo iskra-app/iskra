@@ -36,7 +36,7 @@ struct ReactorsSheet: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            ScreenList {
                 if reactors == nil {
                     HStack {
                         Spacer()

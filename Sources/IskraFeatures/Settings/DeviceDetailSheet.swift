@@ -23,7 +23,7 @@ struct DeviceDetailSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            ScreenForm {
                 Section {
                     header
                 }

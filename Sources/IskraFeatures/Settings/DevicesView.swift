@@ -25,7 +25,7 @@ struct DevicesView: View {
     @State private var isConfirmingOthers = false
 
     var body: some View {
-        Form {
+        ScreenForm {
             if let current = store.current {
                 Section {
                     Button {

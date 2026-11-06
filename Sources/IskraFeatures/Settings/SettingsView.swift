@@ -167,7 +167,7 @@ struct SettingsView: View {
     }
 
     var body: some View {
-        Form {
+        ScreenForm {
             // The two ways of handing yourself to somebody, under your name — the same round tiles a
             // person's page has under theirs, so your own page and theirs are one design. In the
             // portrait's section, so the form's gap between sections does not open up under the name.

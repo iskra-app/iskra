@@ -1426,6 +1426,9 @@
 "beta.developers" = "Pour les développeurs";
 "beta.showsSource" = "JSON du message dans le menu";
 "beta.showsSourceHelp" = "Le menu d’un message propose « Voir le JSON » — l’événement tel que le serveur l’a envoyé. Utile quand un message s’affiche mal.";
+"beta.calmDesign" = "Calme : le nouveau design";
+"beta.calmDesignHelp" = "Un design monochrome : les messages sont en verre, la police est SF Rounded et chaque discussion a sa propre teinte de fond. Pas de frimousses, et la couleur reste seulement sur vos propres messages et les marques de non-lus. Désactivez-le et tout redevient comme avant.";
+"beta.calmRoundedFont" = "Police arrondie";
 "beta.viewSource" = "Voir le JSON";
 "beta.noSource" = "Ce message n’a pas encore d’événement sur le serveur.";
 "beta.demoSignIn" = "Connexion de démonstration";

@@ -16,7 +16,7 @@ struct RoomSearchView: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            ScreenList {
                 ForEach(store.hits) { hit in
                     Button {
                         onOpen(hit.id)

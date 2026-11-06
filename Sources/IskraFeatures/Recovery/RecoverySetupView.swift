@@ -37,6 +37,15 @@ struct RecoverySetupView: View {
     }
 
     var body: some View {
+
+        screen.calmScreen()
+
+    }
+
+
+    @ViewBuilder
+
+    private var screen: some View {
         ScrollView {
             VStack(spacing: Theme.Spacing.generous) {
                 switch model.step {

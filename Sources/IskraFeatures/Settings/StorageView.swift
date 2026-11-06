@@ -40,7 +40,7 @@ struct StorageView: View {
     @State private var didFailSearch = false
 
     var body: some View {
-        Form {
+        ScreenForm {
             Section {
                 LabeledContent {
                     if storage.isMeasuring, storage.amounts.isEmpty {

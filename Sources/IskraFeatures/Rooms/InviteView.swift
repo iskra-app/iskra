@@ -32,7 +32,7 @@ struct InviteView: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            ScreenList {
                 if trimmedQuery.isEmpty {
                     chosenStrangers
                     contactSections

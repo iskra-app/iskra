@@ -1426,6 +1426,9 @@
 "beta.developers" = "开发者选项";
 "beta.showsSource" = "菜单中显示消息 JSON";
 "beta.showsSourceHelp" = "消息菜单中会出现“查看 JSON”——服务器发来的原始事件。消息显示不对时很有用。";
+"beta.calmDesign" = "宁静:新设计";
+"beta.calmDesignHelp" = "单色设计:消息是玻璃质感,字体是 SF Rounded,每个聊天都有自己的背景色调。没有生成的小脸,颜色只留在您自己的消息和未读标记上。关闭后,一切恢复原样。";
+"beta.calmRoundedFont" = "圆角字体";
 "beta.viewSource" = "查看 JSON";
 "beta.noSource" = "这条消息在服务器上还没有事件。";
 "beta.demoSignIn" = "演示登录";

@@ -50,6 +50,15 @@ struct VerificationSheet: View {
     @ScaledMetric(relativeTo: .largeTitle) private var emojiSize = Theme.Size.verificationEmoji
 
     var body: some View {
+
+        screen.calmScreen()
+
+    }
+
+
+    @ViewBuilder
+
+    private var screen: some View {
         NavigationStack {
             Group {
                 switch verification.step {

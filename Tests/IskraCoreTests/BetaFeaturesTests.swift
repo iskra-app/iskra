@@ -33,6 +33,15 @@ struct BetaFeaturesTests {
         #expect(BetaFeatures.drawsGeneratedFace(hasPicture: true, in: defaults) == false)
     }
 
+    /// The calm look is asked for, never arrived in, and signing out forgets it.
+    @Test("the calm look is off by default, and a sign-out forgets it")
+    func calmDesign() {
+        #expect(BetaFeatures.calmDesignByDefault == false)
+        #expect(BetaFeatures.stores.contains { $0.key == BetaFeatures.calmDesignKey && $0.store == nil })
+        #expect(BetaFeatures.calmRoundedFontByDefault)
+        #expect(BetaFeatures.stores.contains { $0.key == BetaFeatures.calmRoundedFontKey && $0.store == nil })
+    }
+
     /// And turning it off is still turning it off — the value written by hand beats the default,
     /// which is the whole of what a default is.
     @Test("switched off, nobody gets a creature")

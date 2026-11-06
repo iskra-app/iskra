@@ -16,9 +16,9 @@ import UIKit
 /// their own, above everything the app can present.
 extension View {
     func lockShield(appLock: AppLock, phase: ScenePhase, accent: AccentTheme,
-                    colorScheme: ColorScheme?) -> some View {
+                    design: DesignLanguage, colorScheme: ColorScheme?) -> some View {
         modifier(LockShieldModifier(appLock: appLock, phase: phase, accent: accent,
-                                    colorScheme: colorScheme))
+                                    design: design, colorScheme: colorScheme))
     }
 }
 
@@ -26,6 +26,7 @@ private struct LockShieldModifier: ViewModifier {
     let appLock: AppLock
     let phase: ScenePhase
     let accent: AccentTheme
+    let design: DesignLanguage
     let colorScheme: ColorScheme?
 
     private var cover: Bool { PrivacyCover.isNeeded(lockEnabled: appLock.isEnabled, phase: phase) }
@@ -72,8 +73,10 @@ private struct LockShieldModifier: ViewModifier {
     private func shield(_ view: some View) -> AnyView {
         AnyView(view
             .environment(\.accent, accent)
+            .environment(\.design, design)
             .environment(\.appLock, appLock)
             .tint(.primary)
+            .calmType(design)
             .preferredColorScheme(colorScheme))
     }
     #endif

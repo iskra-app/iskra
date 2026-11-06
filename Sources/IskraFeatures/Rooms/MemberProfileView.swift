@@ -71,7 +71,7 @@ struct MemberProfileView: View {
     @State private var isShowingCode = false
 
     var body: some View {
-        Form {
+        ScreenForm {
             Section {
                 ProfileHeader(name: member.name,
                               avatarURL: member.avatarURL,

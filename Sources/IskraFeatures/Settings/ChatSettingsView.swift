@@ -28,7 +28,7 @@ struct ChatSettingsView: View {
     @AppStorage(ThreadSettings.hidesRepliesKey) private var hidesThreadReplies = ThreadSettings.hidesRepliesByDefault
 
     var body: some View {
-        Form {
+        ScreenForm {
             // The choices inline, each a row with a tick, rather than a menu: "In chats of over 100
             // people" does not fit beside a label on a phone.
             Section {

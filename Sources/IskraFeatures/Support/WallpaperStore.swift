@@ -150,19 +150,30 @@ struct ChatWallpaper: View {
 extension View {
     /// Puts the chosen wallpaper behind this screen, and tells the bubbles standing on it that they
     /// are standing on something — see `EnvironmentValues.hasWallpaper`.
-    func chatWallpaper() -> some View {
-        modifier(ChatWallpaperBackground())
+    ///
+    /// In the calm look a room with no wallpaper stands on a shade of its own, worked out from this.
+    func chatWallpaper(shadeSeed: String? = nil) -> some View {
+        modifier(ChatWallpaperBackground(shadeSeed: shadeSeed))
     }
 }
 
 private struct ChatWallpaperBackground: ViewModifier {
     @AppStorage(Wallpaper.storageKey) private var wallpaper: Wallpaper = .default
     @AppStorage(Wallpaper.dimmingKey) private var dimming: Double = Wallpaper.defaultDimming
+    @Environment(\.design) private var design
+
+    let shadeSeed: String?
 
     func body(content: Content) -> some View {
         content
             .environment(\.hasWallpaper, wallpaper.isSet)
             .environment(\.wallpaperIsDark, WallpaperStore.shared.isDark(wallpaper, dimming: dimming))
-            .background { ChatWallpaper() }
+            .background {
+                if design == .calm, !wallpaper.isSet {
+                    CalmBackdrop(seed: shadeSeed)
+                } else {
+                    ChatWallpaper()
+                }
+            }
     }
 }

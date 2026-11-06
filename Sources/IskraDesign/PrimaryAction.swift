@@ -66,6 +66,11 @@ public struct GlassActionStyle: ButtonStyle {
         @ScaledSize(Theme.Size.minimumTapTarget) private var height
         /// See `PrimaryActionStyle`: disabled, it is untinted glass and grey words.
         @Environment(\.isEnabled) private var isEnabled
+        @Environment(\.design) private var design
+
+        /// The calm look's main button is ink, and ink has to be a plain colour on glass — see
+        /// `AccentTheme.solid(in:)`.
+        private var fill: Color { design == .calm ? accent.solid(in: scheme) : accent.color }
 
         var body: some View {
             let face = configuration.label
@@ -77,7 +82,7 @@ public struct GlassActionStyle: ButtonStyle {
             // The glass is already interactive — it responds to a touch by itself — so this one
             // does not take the press scale on top of that.
             if isEnabled {
-                face.primaryActionGlass(tint: accent.color)
+                face.primaryActionGlass(tint: fill)
             } else {
                 face.secondaryActionGlass()
             }
@@ -163,15 +168,23 @@ public struct AnswerStyle: ButtonStyle {
         let answer: Answer
         let configuration: Configuration
         @ScaledSize(Theme.Size.minimumTapTarget) private var height
+        @Environment(\.design) private var design
+
+        /// In the calm look these are its two colours with dark words on both, since an
+        /// invitation is the same keep-or-trash its two colours were made for.
+        private var fill: Color {
+            guard design == .calm else { return answer.color }
+            return answer == .accepting ? Theme.Calm.keep : Theme.Calm.trash
+        }
 
         var body: some View {
             configuration.label
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(design == .calm ? Theme.Calm.onAccent : .white)
                 .lineLimit(1)
                 .padding(.horizontal, Theme.Spacing.normal)
                 .padding(.vertical, Theme.Spacing.tight)
-                .background(answer.color, in: .capsule)
+                .background(fill, in: .capsule)
                 .pressed(configuration.isPressed)
                 // The target, around the capsule rather than under it. A shape this small is
                 // still forty-four points to a finger; `contentShape` is what makes the empty

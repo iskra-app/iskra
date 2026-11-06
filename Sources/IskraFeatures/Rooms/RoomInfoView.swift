@@ -90,7 +90,7 @@ struct RoomInfoView: View {
     private var isRoom: Bool { details.kind != .direct }
 
     var body: some View {
-        Form {
+        ScreenForm {
             // The round buttons under the portrait, in the portrait's own section: a section of
             // their own put the form's gap between sections under the name, and the buttons read as
             // the start of the list rather than as part of who this is. A personal chat is a person:

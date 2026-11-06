@@ -81,6 +81,20 @@ public enum BetaFeatures {
 
     public static let mockBackendKey = "beta.mockBackend"
 
+    /// Whether the app is drawn in «Штиль», the calm look brought over from PhotoDump: monochrome,
+    /// SF Rounded, glass everywhere — see `DesignLanguage` and `docs/DESIGN-CALM.md`.
+    ///
+    /// Off. It changes every screen at once, and it is exactly the thing to live with for a while
+    /// before anybody else has to. A preference of the app's, so `.standard`: the extensions draw no
+    /// more of it than they draw of the accent.
+    public static let calmDesignKey = "beta.calmDesign"
+    public static let calmDesignByDefault = false
+
+    /// Whether that look is set in SF Rounded. On, since it is half of the look, and the switch for
+    /// it appears only with the look itself.
+    public static let calmRoundedFontKey = "beta.calmDesign.roundedFont"
+    public static let calmRoundedFontByDefault = true
+
     /// What `Iskra --mock-backend` means: start in the demo, as though the switch were on. The
     /// switch is in settings, and settings are behind signing in — so without this, the demo
     /// could not be reached from a device that has no account on it.
@@ -147,6 +161,6 @@ public enum BetaFeatures {
     /// sign-out silently, and the next person inherits somebody else's experiment.
     public static var stores: [(key: String, store: UserDefaults?)] {
         [(nativeSidebarKey, nil), (blobatarKey, faceStore), (forceBlobatarKey, faceStore),
-         (mockBackendKey, nil)]
+         (mockBackendKey, nil), (calmDesignKey, nil), (calmRoundedFontKey, nil)]
     }
 }

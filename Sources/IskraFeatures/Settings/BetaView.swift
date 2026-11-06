@@ -19,6 +19,8 @@ struct BetaView: View {
     @AppStorage(BetaFeatures.forceBlobatarKey, store: BetaFeatures.faceStore) private var forceBlobatar = BetaFeatures.forceBlobatarByDefault
     @AppStorage(BetaFeatures.mockBackendKey) private var mockBackend = false
     @AppStorage(BetaFeatures.showsEventSourceKey) private var showsEventSource = false
+    @AppStorage(BetaFeatures.calmDesignKey) private var calmDesign = BetaFeatures.calmDesignByDefault
+    @AppStorage(BetaFeatures.calmRoundedFontKey) private var calmRoundedFont = BetaFeatures.calmRoundedFontByDefault
 
     /// The sign-in screen against the server inside the app — see `MockSignIn` — and its address
     /// once that server is up.
@@ -26,11 +28,26 @@ struct BetaView: View {
     @State private var demoSignedIn: String?
 
     var body: some View {
-        Form {
+        ScreenForm {
             Section {
                 Text(Strings.Beta.intro)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+            }
+
+            Section {
+                Toggle(isOn: $calmDesign.animation(.smooth(duration: Theme.Timing.reaction))) {
+                    Label(Strings.Beta.calmDesign, systemImage: "wind")
+                }
+                .accentControl()
+                if calmDesign {
+                    Toggle(isOn: $calmRoundedFont.animation(.smooth(duration: Theme.Timing.reaction))) {
+                        Label(Strings.Beta.calmRoundedFont, systemImage: "textformat")
+                    }
+                    .accentControl()
+                }
+            } footer: {
+                Text(Strings.Beta.calmDesignHelp)
             }
 
             // Who gets a drawn face — the slider the first run asks with. It lived under

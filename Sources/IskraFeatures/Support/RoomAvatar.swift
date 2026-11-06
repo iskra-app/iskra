@@ -27,12 +27,13 @@ struct RoomAvatar: View {
     @AppStorage(BetaFeatures.blobatarKey, store: BetaFeatures.faceStore) private var blobatarEnabled = BetaFeatures.blobatarByDefault
     @AppStorage(BetaFeatures.forceBlobatarKey, store: BetaFeatures.faceStore) private var forceBlobatar = BetaFeatures.forceBlobatarByDefault
 
+    @Environment(\.design) private var design
     @Environment(\.currentUserID) private var currentUserID
     @Environment(\.currentUserName) private var currentUserName
     @Environment(\.currentUserAvatarURL) private var currentUserAvatarURL
 
     var body: some View {
-        if url == nil || forceBlobatar, blobatarEnabled, !faces.isEmpty, !currentUserID.isEmpty {
+        if design == .classic, url == nil || forceBlobatar, blobatarEnabled, !faces.isEmpty, !currentUserID.isEmpty {
             FaceCluster(faces: cluster, size: size, shape: shape)
         } else {
             Avatar(name: name, url: url, size: size, shape: shape, seed: seed)

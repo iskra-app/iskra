@@ -16,7 +16,7 @@ struct BannedMembersView: View {
     @State private var unbanning: RoomMemberSummary?
 
     var body: some View {
-        Form {
+        ScreenForm {
             Section {
                 ForEach(details.banned) { member in
                     Button {

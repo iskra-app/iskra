@@ -128,7 +128,7 @@ struct PinnedMessagesView: View {
                 ContentUnavailableView(String(app: Strings.Room.pinnedEmpty),
                                        systemImage: "pin.slash")
             } else {
-                List {
+                ScreenList {
                     ForEach(pinned.messages) { message in
                         row(for: message)
                             .swipeActions(edge: .trailing) {

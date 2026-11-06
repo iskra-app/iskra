@@ -499,6 +499,12 @@ content, never on glass. There is deliberately no general `.glass()` modifier �
 are opaque fills. If `.navigationGlass()` feels like the wrong name where you are about to put it,
 that is the guideline talking.
 
+The one exception is «Штиль», the beta look behind `BetaFeatures.calmDesignKey`, off by default
+(`docs/DESIGN-CALM.md`): its bubbles are glass, through `.contentGlass()`, which may only be called
+from a `.calm` branch. Everything that draws differently branches on `\.design`, and the `.classic`
+branch stays the old code. In that look `\.accent` is `.mono`, and the chosen colour is
+`\.bubbleAccent`, read only by your own bubbles and the chat list's unread marks.
+
 **The main button on a screen is `.primaryAction` or `.glassAction`** (`IskraDesign/PrimaryAction.swift`),
 **never `.borderedProminent` or `.glassProminent`.** The system's prominent styles fill themselves with
 the *tint*, and the tint at the root of this app is `.primary` — so a prominent button that does not

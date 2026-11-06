@@ -1426,6 +1426,9 @@
 "beta.developers" = "Für Entwickler";
 "beta.showsSource" = "Nachrichten-JSON im Menü";
 "beta.showsSourceHelp" = "Im Menü einer Nachricht erscheint „JSON ansehen“ – das Ereignis, wie der Server es geschickt hat. Hilfreich, wenn eine Nachricht falsch angezeigt wird.";
+"beta.calmDesign" = "Stille: das neue Design";
+"beta.calmDesignHelp" = "Ein einfarbiges Design: Nachrichten aus Glas, die Schrift ist SF Rounded, und jeder Chat hat seinen eigenen Hintergrundton. Keine Gesichter, Farbe bleibt nur auf Ihren eigenen Nachrichten und den Markierungen für Ungelesenes. Schalten Sie es aus, und alles ist wie zuvor.";
+"beta.calmRoundedFont" = "Abgerundete Schrift";
 "beta.viewSource" = "JSON ansehen";
 "beta.noSource" = "Diese Nachricht hat noch kein Ereignis auf dem Server.";
 "beta.demoSignIn" = "Demo-Anmeldung";

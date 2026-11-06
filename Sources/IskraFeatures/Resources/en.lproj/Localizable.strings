@@ -1426,6 +1426,9 @@
 "beta.developers" = "For developers";
 "beta.showsSource" = "Message JSON in the menu";
 "beta.showsSourceHelp" = "A message’s menu gets “View JSON” — the event as the server sent it. Useful when a message shows up wrong.";
+"beta.calmDesign" = "Calm: the new look";
+"beta.calmDesignHelp" = "A monochrome look: messages are glass, the type is SF Rounded, and each chat has its own background shade. No generated faces, and colour stays only on your own messages and unread marks. Turn it off and everything is as it was.";
+"beta.calmRoundedFont" = "Rounded font";
 "beta.viewSource" = "View JSON";
 "beta.noSource" = "This message has no event on the server yet.";
 "beta.demoSignIn" = "Demo sign-in";

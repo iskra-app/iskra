@@ -18,7 +18,7 @@ struct MediaSettingsView: View {
     @AppStorage(MediaSettings.autoDownloadKey) private var autoDownload = MediaSettings.autoDownloadByDefault
 
     var body: some View {
-        Form {
+        ScreenForm {
             // First, because it is the one about what *arrives* — and the one people come to this
             // screen with on a roaming tariff.
             Section {

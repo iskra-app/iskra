@@ -53,7 +53,7 @@ struct ReactionsView: View {
     }
 
     var body: some View {
-        Form {
+        ScreenForm {
             Section {
                 LazyVGrid(columns: columns, spacing: Theme.Spacing.roomy) {
                     ForEach(QuickReaction.allCases) { candidate in

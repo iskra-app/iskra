@@ -23,7 +23,7 @@ struct PollComposer: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            ScreenForm {
                 Section {
                     TextField(String(app: Strings.Poll.questionPlaceholder), text: $draft.question, axis: .vertical)
                         .focused($focus, equals: .question)

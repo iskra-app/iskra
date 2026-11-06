@@ -36,7 +36,7 @@ struct NotificationsView: View {
     @Environment(\.isOffline) private var isOffline
 
     var body: some View {
-        Form {
+        ScreenForm {
             systemPermission
 
             if rules.didFailToLoad {

@@ -61,6 +61,10 @@ public struct IskraRootView: View {
     /// here because switching it swaps the whole session, and this is the view that owns one.
     @AppStorage(BetaFeatures.mockBackendKey) private var mockBackend = false
 
+    /// Which look the app is drawn in — see `DesignLanguage`.
+    @AppStorage(BetaFeatures.calmDesignKey) private var calmDesign = BetaFeatures.calmDesignByDefault
+    private var design: DesignLanguage { calmDesign ? .calm : .classic }
+
     /// Read here, *outside* the `NavigationSplitView`, because this is the only place it
     /// means what it appears to mean: the size class of the window. Inside the split view
     /// each column gets the size class its own width earns, so the sidebar reports
@@ -492,9 +496,12 @@ public struct IskraRootView: View {
         // then asks for it everywhere has asked for something that makes sense. It is washed with a
         // lighter hand instead, because darkness has no hue to spend and starts eating the words at
         // the opacity a colour is fine at. See `AccentTheme.washOpacity`.
-        .tint(tintsInterface ? accent.color : .primary)
+        //
+        // The calm look has no such wash: its chrome is ink whatever is chosen here, and the accent
+        // lives on your own bubbles. See `EnvironmentValues.bubbleAccent`.
+        .tint(calmDesign ? Theme.Calm.ink : tintsInterface ? accent.color : .primary)
         .overlay {
-            if tintsInterface {
+            if tintsInterface, !calmDesign {
                 accent.color
                     .opacity(accent.washOpacity)
                     .ignoresSafeArea()
@@ -516,8 +523,8 @@ public struct IskraRootView: View {
         // The cover is deliberately unanimated, and that is the whole trick. The system photographs
         // the app as it leaves; a cover that fades in is photographed half-transparent, with the
         // conversation legible straight through it.
-        .lockShield(appLock: appLock, phase: scenePhase, accent: accent,
-                    colorScheme: appearance.colorScheme)
+        .lockShield(appLock: appLock, phase: scenePhase, accent: calmDesign ? .mono : accent,
+                    design: design, colorScheme: appearance.colorScheme)
         // Driving the lock is separate from the sync teardown below: the lock cares about every trip
         // away, signed in or not, and on the Mac as well as the phone.
         .onChange(of: scenePhase) { _, phase in
@@ -541,7 +548,10 @@ public struct IskraRootView: View {
             appLock.enteredForeground()
         }
         #endif
-        .environment(\.accent, accent)
+        .environment(\.accent, calmDesign ? .mono : accent)
+        .environment(\.bubbleAccent, accent)
+        .environment(\.design, design)
+        .calmType(design)
         // And light or dark, if the user asked for either. Applied at the root, above everything,
         // because a colour scheme is not a property of a screen — a sheet or a media viewer left
         // out of it would be the one place the app changed its mind about what time of day it is.

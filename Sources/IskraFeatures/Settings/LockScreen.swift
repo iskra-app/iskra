@@ -14,6 +14,15 @@ struct LockScreen: View {
     @State private var isAuthenticating = false
 
     var body: some View {
+
+        screen.calmScreen()
+
+    }
+
+
+    @ViewBuilder
+
+    private var screen: some View {
         ZStack {
             // Opaque, over the whole screen: this is what actually hides the conversation behind it,
             // not just a tint.

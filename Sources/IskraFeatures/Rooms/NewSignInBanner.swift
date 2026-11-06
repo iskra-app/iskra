@@ -62,6 +62,7 @@ struct NewSignInBanner: View {
         .padding(.vertical, Theme.Spacing.normal)
         .frame(maxWidth: .infinity)
         .background(.red.opacity(Theme.Backdrop.wash))
+        .bannerGround()
         .accessibilityElement(children: .contain)
     }
 

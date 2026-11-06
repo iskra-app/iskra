@@ -85,7 +85,7 @@ struct SecurityView: View {
     }
 
     var body: some View {
-        Form {
+        ScreenForm {
             state
 
             if !recovery.isDeviceVerified {

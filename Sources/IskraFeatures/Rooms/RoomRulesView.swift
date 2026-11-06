@@ -32,7 +32,7 @@ struct RoomRulesView: View {
     }
 
     var body: some View {
-        Form {
+        ScreenForm {
             Section {
                 ForEach(details.staff) { member in
                     MemberRow(member: member, details: details, demotes: true) { openedMember = member.id }

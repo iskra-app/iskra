@@ -104,10 +104,7 @@ struct MessageBubble: ViewModifier {
             .frame(minWidth: minimumContentWidth)
             .padding(.horizontal, horizontal)
             .padding(.vertical, vertical)
-            .foregroundStyle(style == .own ? accent.onBubble : AnyShapeStyle(.primary))
-            .background(fill, in: shape)
-            // The page, under the fill, when there is no page — see `bubbleIsLifted`.
-            .background(isLifted && style != .plain ? Color.page : Color.clear, in: shape)
+            .bubbleDress(style, fill: fill, onBubble: accent.onBubble, isLifted: isLifted)
             // Lets a long-press menu and drag preview take the bubble's shape rather
             // than a rectangle around it.
             //
@@ -143,11 +140,47 @@ struct BubbleFill: ViewModifier {
     }
 
     func body(content: Content) -> some View {
+        content.bubbleDress(style, fill: fill, onBubble: accent.onBubble, isLifted: isLifted)
+    }
+}
+
+/// What a bubble is made of: an opaque fill in the classic look, glass in the calm one.
+private struct BubbleDress: ViewModifier {
+    let style: BubbleStyle
+    let fill: AnyShapeStyle
+    let onBubble: AnyShapeStyle
+    let isLifted: Bool
+
+    @Environment(\.design) private var design
+    @Environment(\.bubbleAccent) private var bubbleAccent
+
+    func body(content: Content) -> some View {
         let shape = BubbleShape()
-        return content
-            .foregroundStyle(style == .own ? accent.onBubble : AnyShapeStyle(.primary))
-            .background(fill, in: shape)
-            .background(isLifted && style != .plain ? Color.page : Color.clear, in: shape)
+        switch (design, style) {
+        case (.calm, .own):
+            content
+                .foregroundStyle(bubbleAccent.calmOnBubble)
+                .contentGlass(in: shape, tint: bubbleAccent.calmBubbleTint)
+        case (.calm, .incoming):
+            content
+                .foregroundStyle(Theme.Calm.ink)
+                .contentGlass(in: shape)
+        case (.calm, .plain):
+            content.foregroundStyle(Theme.Calm.ink)
+        case (.classic, _):
+            content
+                .foregroundStyle(style == .own ? onBubble : AnyShapeStyle(.primary))
+                .background(fill, in: shape)
+                // The page, under the fill, when there is no page — see `bubbleIsLifted`.
+                .background(isLifted && style != .plain ? Color.page : Color.clear, in: shape)
+        }
+    }
+}
+
+private extension View {
+    func bubbleDress(_ style: BubbleStyle, fill: AnyShapeStyle, onBubble: AnyShapeStyle,
+                     isLifted: Bool) -> some View {
+        modifier(BubbleDress(style: style, fill: fill, onBubble: onBubble, isLifted: isLifted))
     }
 }
 
@@ -163,6 +196,7 @@ struct PictureBorder: ViewModifier {
 
     @Environment(\.accent) private var accent
     @Environment(\.hasWallpaper) private var hasWallpaper
+    @Environment(\.design) private var design
 
     func body(content: Content) -> some View {
         content.overlay {
@@ -173,8 +207,12 @@ struct PictureBorder: ViewModifier {
             // Plain draws no edge at all. The outline stands in for the bubble a picture
             // replaced, and where there are no bubbles there is nothing for it to stand in
             // for — see `BubbleStyle`.
-            BubbleShape()
-                .strokeBorder(border, lineWidth: Theme.Border.hairline)
+            //
+            // Nor does the calm look: its bubble is glass, and an outline of glass is not a thing.
+            if design == .classic {
+                BubbleShape()
+                    .strokeBorder(border, lineWidth: Theme.Border.hairline)
+            }
         }
     }
 

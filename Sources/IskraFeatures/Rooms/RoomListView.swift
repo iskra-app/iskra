@@ -161,6 +161,9 @@ public struct RoomListView: View {
             }
         }
         .roomListStyle(nativeSidebar: isNativeSidebar)
+        .environment(\.calmListIsSidebar, isSidebar)
+        // Not behind a sidebar, which has a material of its own.
+        .modifier(CalmListBackdrop(isSidebar: isSidebar))
         // The folders, right over the list — under the banners, which are about the account and
         // not about which chats are showing.
         .safeAreaInset(edge: .top) {
@@ -450,6 +453,7 @@ public struct RoomListView: View {
             row(for: room)
                 .arrivingFromFolder(folderArrival)
                 .separatorsBetweenRowsOnly(isFirst: index == 0, isLast: index == rooms.count - 1)
+                .calmListRow()
         }
     }
 
@@ -599,6 +603,7 @@ public struct RoomListView: View {
             // Nothing drawn above it. It is the first thing under the title, and a rule there is
             // a line under an edge that already exists.
             .listRowSeparator(.hidden, edges: .top)
+            .calmListRow()
         }
     }
 
@@ -626,6 +631,7 @@ public struct RoomListView: View {
             }
             .buttonStyle(.plain)
             .separatorsBetweenRowsOnly(isFirst: index == 0, isLast: index == hits.count - 1)
+            .calmListRow()
         }
     }
 
@@ -646,6 +652,14 @@ public struct RoomListView: View {
                                        description: Text(Strings.RoomList.emptyMessage))
             }
         }
+    }
+}
+
+private struct CalmListBackdrop: ViewModifier {
+    let isSidebar: Bool
+
+    func body(content: Content) -> some View {
+        if isSidebar { content } else { content.calmScreen() }
     }
 }
 
@@ -736,6 +750,9 @@ struct RoomRow: View {
     /// For the pin, which is the one coloured thing on this row. See `body`.
     @Environment(\.accent) private var accent
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.design) private var design
+    /// The unread marks keep the colour in the calm look, where `accent` is ink.
+    @Environment(\.bubbleAccent) private var bubbleAccent
 
     var body: some View {
         HStack(spacing: Theme.Spacing.normal) {
@@ -832,7 +849,8 @@ struct RoomRow: View {
                                     .font(.system(size: Theme.Size.unreadBadge * 0.5, weight: .bold))
                                     .foregroundStyle(.white)
                                     .frame(width: Theme.Size.unreadBadge, height: Theme.Size.unreadBadge)
-                                    .background(room.isMuted ? Color.gray : Color.red, in: Circle())
+                                    .background(room.isMuted ? Color.gray : design == .calm ? Theme.Calm.trash : Color.red,
+                                                in: Circle())
                             }
 
                             // Somebody named you, or answered you. It used to turn the whole badge
@@ -843,7 +861,7 @@ struct RoomRow: View {
                             if room.isMentioned {
                                 Image(systemName: "at")
                                     .font(.caption.weight(.bold))
-                                    .foregroundStyle(accent.foreground(in: colorScheme))
+                                    .foregroundStyle((design == .calm ? bubbleAccent : accent).foreground(in: colorScheme))
                                     .frame(width: Theme.Size.unreadBadge, height: Theme.Size.unreadBadge)
                                     .background(mentionFill, in: Circle())
                             }
@@ -1008,7 +1026,7 @@ struct RoomRow: View {
     /// case, and nine percent of the foreground ten points across is a smudge.
     private var badgeFill: AnyShapeStyle {
         switch room.unreadEmphasis {
-        case .ordinary: AnyShapeStyle(accent.color)
+        case .ordinary: design == .calm ? AnyShapeStyle(bubbleAccent.solid(in: colorScheme)) : AnyShapeStyle(accent.color)
         case .muted: AnyShapeStyle(Color.gray)
         }
     }
@@ -1018,7 +1036,7 @@ struct RoomRow: View {
     /// latter is `.background`, which resolves against whatever it happens to be drawn into.
     private var badgeInk: AnyShapeStyle {
         switch room.unreadEmphasis {
-        case .ordinary: accent.foreground(in: colorScheme)
+        case .ordinary: (design == .calm ? bubbleAccent : accent).foreground(in: colorScheme)
         case .muted: AnyShapeStyle(.white)
         }
     }
@@ -1026,7 +1044,7 @@ struct RoomRow: View {
     /// The "@" is always the accent, even in a silenced room: Matrix lets a mention through a
     /// muted room's own rule, and so does this.
     private var mentionFill: AnyShapeStyle {
-        AnyShapeStyle(accent.color)
+        design == .calm ? AnyShapeStyle(bubbleAccent.solid(in: colorScheme)) : AnyShapeStyle(accent.color)
     }
 }
 

@@ -37,7 +37,7 @@ struct ConnectionView: View {
     @State private var appeared: TunnelSettings.Snapshot?
 
     var body: some View {
-        Form {
+        ScreenForm {
             Section {
                 Toggle(isOn: $throughBridge.animation(.smooth(duration: Theme.Timing.reaction))) {
                     Label(Strings.Connection.bridge, systemImage: "point.3.filled.connected.trianglepath.dotted")

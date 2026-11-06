@@ -25,7 +25,7 @@ struct FoldersView: View {
     private var isFull: Bool { folders.folders.count >= ChatFolders.limit }
 
     var body: some View {
-        Form {
+        ScreenForm {
             Section {
                 ForEach(folders.folders) { folder in
                     Button {
@@ -123,7 +123,7 @@ struct FolderEditor: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            ScreenForm {
                 Section {
                     TextField(String(app: Strings.Folders.namePlaceholder), text: $folder.name)
                 }
@@ -295,7 +295,7 @@ struct FolderMembershipSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            ScreenForm {
                 Section {
                     ForEach(folders.folders) { folder in
                         let isIn = folder.contains(room)

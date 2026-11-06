@@ -14,7 +14,7 @@ struct PublicRoomsView: View {
     @State private var failure: RoomJoinFailure?
 
     var body: some View {
-        List {
+        ScreenList {
             if let directory {
                 ForEach(directory.rooms) { room in
                     Button { Task { await open(room) } } label: {
@@ -157,7 +157,7 @@ struct JoinByAddressView: View {
     @FocusState private var isFocused: Bool
 
     var body: some View {
-        Form {
+        ScreenForm {
             Section {
                 TextField(String(app: Strings.RoomList.New.addressPlaceholder), text: $address)
                     .focused($isFocused)

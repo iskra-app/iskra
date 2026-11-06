@@ -41,6 +41,23 @@ public extension View {
         }
     }
 
+    /// Glass on content: a message, a row of a list. **Only in the calm look**, whose whole idea
+    /// is glass everywhere (`DesignLanguage`, `docs/DESIGN-CALM.md`). It is a separate name so that
+    /// the rule above stays true of everything else: a call to this outside a `.calm` branch is
+    /// a bug. Never glass on glass still holds, and what lies on this is a flat tone.
+    ///
+    /// Before glass, a material, with the tint laid over it.
+    @ViewBuilder
+    func contentGlass(in shape: some Shape = .capsule, tint: Color? = nil,
+                      interactive: Bool = false) -> some View {
+        if #available(iOS 26, macOS 26, *) {
+            glassEffect(.regular.tint(tint).interactive(interactive), in: shape)
+        } else {
+            background(tint ?? .clear, in: shape)
+                .background(.regularMaterial, in: shape)
+        }
+    }
+
     /// The one control on screen that is the point of the screen — "Continue" on
     /// sign-in, "Send" in the composer. Tinted so it reads as primary, and
     /// interactive so it responds to touch the way system glass does.

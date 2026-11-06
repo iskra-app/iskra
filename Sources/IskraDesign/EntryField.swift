@@ -32,14 +32,20 @@ public extension View {
 
 private struct EntryFieldShape: ViewModifier {
     @ScaledSize(Theme.Size.minimumTapTarget) private var height
+    @Environment(\.design) private var design
 
+    @ViewBuilder
     func body(content: Content) -> some View {
-        content
+        let field = content
             .textFieldStyle(.plain)
             .padding(.horizontal, Theme.Spacing.roomy)
             .padding(.vertical, Theme.Spacing.close)
             .frame(minHeight: height)
-            .background(.quaternary,
-                        in: RoundedRectangle(cornerRadius: height / 2, style: .continuous))
+        let shape = RoundedRectangle(cornerRadius: height / 2, style: .continuous)
+        if design == .calm {
+            field.contentGlass(in: shape)
+        } else {
+            field.background(.quaternary, in: shape)
+        }
     }
 }

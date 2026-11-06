@@ -53,6 +53,7 @@ struct RecoveryBanner: View {
                 // meant to hit while their mind is on something else.
                 .frame(maxWidth: .infinity, minHeight: Theme.Size.minimumTapTarget)
                 .background(.orange.opacity(Theme.Backdrop.wash))
+                .bannerGround()
                 .contentShape(.rect)
             }
             .buttonStyle(.plain)

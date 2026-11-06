@@ -48,9 +48,10 @@ struct AppearanceView: View {
     /// Whether the colour is let out of the messages and onto the chrome as well. Written here and
     /// read at the root — see `AccentTheme.tintsInterfaceKey`.
     @AppStorage(AccentTheme.tintsInterfaceKey) private var tintsInterface = false
+    @Environment(\.design) private var design
 
     var body: some View {
-        Form {
+        ScreenForm {
             Section {
                 conversation
             }
@@ -85,10 +86,13 @@ struct AppearanceView: View {
                 AccentSwatches(accent: $accent)
                     .padding(.vertical, Theme.Spacing.close)
 
-                Toggle(isOn: $tintsInterface.animation(.smooth(duration: Theme.Timing.reaction))) {
-                    Text(Strings.Appearance.tintInterface)
+                // The calm look's chrome is ink whatever is chosen, so this would do nothing there.
+                if design == .classic {
+                    Toggle(isOn: $tintsInterface.animation(.smooth(duration: Theme.Timing.reaction))) {
+                        Text(Strings.Appearance.tintInterface)
+                    }
+                    .accentControl()
                 }
-                .accentControl()
             } header: {
                 Text(Strings.Appearance.accent)
             }

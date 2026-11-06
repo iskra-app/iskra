@@ -37,6 +37,11 @@ buttons and the sign-in actions are glass; message bubbles are opaque fills.
 `IskraDesign/Glass.swift` encodes this: there is no general `.glass()` modifier to reach
 for, only `.navigationGlass()`.
 
+«Штиль» (`docs/DESIGN-CALM.md`) is the deliberate exception, and it stays one by being a beta
+behind a switch that is off by default. Glass on bubbles is the point of that look, so it gets a
+function of its own, `.contentGlass()`, instead of loosening this rule for the app. Whether it
+scrolls well enough on a real phone is one of the things the beta is there to find out.
+
 ## Round video messages are recognised by shape, not by a flag
 
 Matrix has no round-video event type. Tagging one with a custom field would mean building

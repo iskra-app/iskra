@@ -27,7 +27,7 @@ struct NewRoomView: View {
     @FocusState private var isFocused: Bool
 
     var body: some View {
-        Form {
+        ScreenForm {
             Section {
                 TextField(String(app: Strings.Room.Manage.namePlaceholder), text: $name)
                     .focused($isFocused)

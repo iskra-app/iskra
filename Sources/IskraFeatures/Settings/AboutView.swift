@@ -18,7 +18,7 @@ struct AboutView: View {
     @State private var isShowingBeta = false
 
     var body: some View {
-        Form {
+        ScreenForm {
             Section {
                 header
             }

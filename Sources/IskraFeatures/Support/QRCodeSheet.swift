@@ -173,7 +173,7 @@ private struct RoomLinkView: View {
     @State private var failure: RoomJoinFailure?
 
     var body: some View {
-        Form {
+        ScreenForm {
             Section {
                 ProfileHeader(name: preview?.title ?? address,
                               avatarURL: preview?.avatarURL,

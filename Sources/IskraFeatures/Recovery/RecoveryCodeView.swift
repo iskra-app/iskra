@@ -36,6 +36,15 @@ struct RecoveryCodeView: View {
     @State private var hasWrittenItDown = false
 
     var body: some View {
+
+        screen.calmScreen()
+
+    }
+
+
+    @ViewBuilder
+
+    private var screen: some View {
         VStack(spacing: Theme.Spacing.roomy) {
             Image(systemName: "key.horizontal.fill")
                 .font(.largeTitle)

@@ -247,6 +247,7 @@ struct MessageComposer: View {
     @State private var selection: TextSelection?
 
     @Environment(\.accent) private var accent
+    @Environment(\.design) private var design
 
     /// Which way round the mono accent's label goes — see the foreground in `icon`.
     @Environment(\.colorScheme) private var scheme
@@ -1252,7 +1253,8 @@ struct MessageComposer: View {
             .frame(width: control, height: control)
 
         if isPrimary {
-            glyph.primaryActionGlass(tint: tint ?? accent.color, in: .circle)
+            glyph.primaryActionGlass(tint: tint ?? (design == .calm ? accent.solid(in: scheme) : accent.color),
+                                     in: .circle)
                 .contentShape(.circle)
         } else {
             glyph.navigationGlass(in: .circle)

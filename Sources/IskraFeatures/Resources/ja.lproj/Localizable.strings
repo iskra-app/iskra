@@ -1426,6 +1426,9 @@
 "beta.developers" = "開発者向け";
 "beta.showsSource" = "メニューにメッセージのJSON";
 "beta.showsSourceHelp" = "メッセージのメニューに「JSONを表示」が加わり、サーバーから届いたイベントをそのまま見られます。表示がおかしいときに役立ちます。";
+"beta.calmDesign" = "凪:新しいデザイン";
+"beta.calmDesignHelp" = "モノクロのデザインです。メッセージはガラスになり、書体は SF Rounded に変わり、チャットごとに背景の色合いがつきます。自動生成の顔は出ず、色が残るのは自分のメッセージと未読の印だけです。オフにすれば元に戻ります。";
+"beta.calmRoundedFont" = "丸みのある書体";
 "beta.viewSource" = "JSONを表示";
 "beta.noSource" = "このメッセージにはまだサーバー上のイベントがありません。";
 "beta.demoSignIn" = "デモサインイン";

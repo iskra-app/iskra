@@ -31,7 +31,7 @@ struct ProfileEditView: View {
     @State private var failure: AccountActionFailure?
 
     var body: some View {
-        Form {
+        ScreenForm {
             Section {
                 picture
                     .profileHeaderRow()

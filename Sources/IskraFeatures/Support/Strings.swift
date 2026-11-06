@@ -1716,6 +1716,10 @@ public enum Strings {
 
     /// The screen where the unfinished things are switched on — see `BetaView`.
     public enum Beta {
+        /// «Штиль», the calm look — see `DesignLanguage`.
+        public static let calmDesign = LocalizedStringResource("beta.calmDesign", bundle: bundle)
+        public static let calmDesignHelp = LocalizedStringResource("beta.calmDesignHelp", bundle: bundle)
+        public static let calmRoundedFont = LocalizedStringResource("beta.calmRoundedFont", bundle: bundle)
         /// The developers' corner of the Beta screen.
         public static let developers = LocalizedStringResource("beta.developers", bundle: bundle)
         public static let showsSource = LocalizedStringResource("beta.showsSource", bundle: bundle)

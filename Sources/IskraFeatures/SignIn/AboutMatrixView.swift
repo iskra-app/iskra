@@ -8,6 +8,15 @@ struct AboutMatrixView: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
+
+        screen.calmScreen()
+
+    }
+
+
+    @ViewBuilder
+
+    private var screen: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.normal) {

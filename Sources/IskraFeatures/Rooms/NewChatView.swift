@@ -39,7 +39,7 @@ struct NewChatView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            List {
+            ScreenList {
                 if trimmedQuery.isEmpty {
                     actions
                     contactSections

@@ -54,6 +54,8 @@ struct Avatar: View {
     var seed: String?
 
     @Environment(\.mediaLoader) private var loader
+    /// The calm look draws no creatures: a picture, or initials.
+    @Environment(\.design) private var design
     @AppStorage(BetaFeatures.blobatarKey, store: BetaFeatures.faceStore) private var blobatarEnabled = BetaFeatures.blobatarByDefault
     @AppStorage(BetaFeatures.forceBlobatarKey, store: BetaFeatures.faceStore) private var forceBlobatar = BetaFeatures.forceBlobatarByDefault
 
@@ -77,7 +79,7 @@ struct Avatar: View {
     /// actually set — which is a thing to ask for and never a default, and is also the only way
     /// to see this feature at all in an account where everybody has a face already.
     private var drawsBlobatar: Bool {
-        blobatarEnabled && seed != nil && (image == nil || forceBlobatar)
+        design == .classic && blobatarEnabled && seed != nil && (image == nil || forceBlobatar)
     }
 
     var body: some View {
@@ -107,7 +109,7 @@ struct Avatar: View {
             .animation(.smooth(duration: Theme.Timing.reaction), value: image == nil)
             // The flag is part of the identity of this request, not just of how it is drawn:
             // turning it on has to *stop* the fetch, not merely cover up what it returned.
-            .task(id: "\(forceBlobatar)\u{0}\(url ?? "")") { await load() }
+            .task(id: "\(forceBlobatar)\u{0}\(design)\u{0}\(url ?? "")") { await load() }
             .accessibilityHidden(true)
     }
 
@@ -116,7 +118,7 @@ struct Avatar: View {
         // Nothing to fetch when a creature is going to be drawn over it anyway. Worth saying out
         // loud, because the alternative — download the photograph and then hide it — is what this
         // would do by itself, and it would be a switch that quietly costs a person their data.
-        guard !(forceBlobatar && blobatarEnabled && seed != nil) else { return }
+        guard !(design == .classic && forceBlobatar && blobatarEnabled && seed != nil) else { return }
         guard let url, let loader else { return }
 
         // Cached across every row that shows the same face — and there are many: one person

@@ -38,7 +38,7 @@ struct BridgeEditor: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            ScreenForm {
                 Section {
                     TextField(String(localized: Strings.Connection.bridgeNamePrompt), text: $name)
                 } header: {

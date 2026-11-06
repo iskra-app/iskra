@@ -72,6 +72,15 @@ struct ServerPickerView: View {
     private static let settle: TimeInterval = 0.35
 
     var body: some View {
+
+        screen.calmScreen()
+
+    }
+
+
+    @ViewBuilder
+
+    private var screen: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.normal) {

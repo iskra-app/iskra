@@ -40,6 +40,7 @@ struct ArchiveView: View {
                 // same rule the main list keeps.
                 .separatorsBetweenRowsOnly(isFirst: room.id == session.roomList.archivedRooms.first?.id,
                                            isLast: room.id == session.roomList.archivedRooms.last?.id)
+                .calmListRow()
                 .roomListSwipeActions(room: room,
                                       roomList: session.roomList,
                                       onLeave: { roomToLeave = room })
@@ -47,6 +48,7 @@ struct ArchiveView: View {
             }
         }
         .listStyle(.plain)
+        .calmScreen()
         .navigationDestination(item: pushed ?? .constant(nil)) { roomID in
             ArchivedRoom(session: session, roomID: roomID) { pushed?.wrappedValue = nil }
         }

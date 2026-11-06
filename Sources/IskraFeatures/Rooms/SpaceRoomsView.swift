@@ -34,7 +34,7 @@ struct SpaceRoomsView: View {
     }
 
     var body: some View {
-        List {
+        ScreenList {
             if let store {
                 ForEach(store.rooms) { room in
                     Button {

@@ -35,6 +35,15 @@ public struct SignInView: View {
     }
 
     public var body: some View {
+
+        screen.calmScreen()
+
+    }
+
+
+    @ViewBuilder
+
+    private var screen: some View {
         GeometryReader { proxy in
             ScrollViewReader { scroll in
                 ScrollView {
