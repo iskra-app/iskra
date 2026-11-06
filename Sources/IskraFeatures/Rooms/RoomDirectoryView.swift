@@ -171,7 +171,7 @@ struct JoinByAddressView: View {
                 Text(Strings.RoomList.New.addressHelp)
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .navigationTitle(Text(Strings.RoomList.New.joinByAddress))
         .toolbarTitleDisplayMode(.inline)
         .toolbar {

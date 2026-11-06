@@ -33,6 +33,7 @@ public extension View {
 private struct EntryFieldShape: ViewModifier {
     @ScaledSize(Theme.Size.minimumTapTarget) private var height
     @Environment(\.design) private var design
+    @Environment(\.colorSchemeContrast) private var contrast
 
     @ViewBuilder
     func body(content: Content) -> some View {
@@ -45,7 +46,14 @@ private struct EntryFieldShape: ViewModifier {
         if design == .calm {
             field.contentGlass(in: shape)
         } else {
-            field.background(.quaternary, in: shape)
+            field
+                .background(.quaternary, in: shape)
+                // With Increase Contrast on, a field gets the edge that the fill alone does not give.
+                .overlay {
+                    if contrast == .increased {
+                        shape.strokeBorder(.secondary, lineWidth: Theme.Border.hairline)
+                    }
+                }
         }
     }
 }

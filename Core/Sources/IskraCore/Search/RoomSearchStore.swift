@@ -4,9 +4,9 @@ import MatrixRustSDK
 
 /// Searching inside one conversation, as opposed to `SearchStore`, which searches them all.
 ///
-/// It runs against the same local encrypted index and never touches the homeserver — but through
-/// the room-scoped `Room.searchMessages`, which returns only this room's hits, rather than the
-/// global one filtered down afterwards. The results are the same `SearchHit` the room list already
+/// It runs against the same local encrypted index and never touches the homeserver. The SDK no
+/// longer searches one room on its own (26.08 dropped `Room.searchMessages`), so this is the global
+/// search with this room's hits kept — `MessageSearch` turns pages until there are enough. The results are the same `SearchHit` the room list already
 /// knows how to open, so a hit here jumps to the message the same way a hit from the global search
 /// does.
 ///
@@ -20,12 +20,15 @@ public final class RoomSearchStore: Identifiable {
     public private(set) var foundNothing = false
 
     private let room: Room
+    /// Who runs the search — `nil` for a timeline made without a session (tests), which finds nothing.
+    private let client: Client?
     private let roomID: String
     private let ownUserID: String
     private var searchTask: Task<Void, Never>?
 
-    init(room: Room) {
+    init(room: Room, client: Client?) {
         self.room = room
+        self.client = client
         self.roomID = room.id()
         self.ownUserID = room.ownUserId()
     }
@@ -67,21 +70,18 @@ public final class RoomSearchStore: Identifiable {
             if !Task.isCancelled { isSearching = false }
         }
 
-        let iterator = room.searchMessages(query: query, numResultsPerBatch: 50)
-
         do {
-            guard let results = try await iterator.nextEvents() else {
-                guard !Task.isCancelled else { return }
+            guard let client else {
                 hits = []
                 foundNothing = true
                 return
             }
-
+            let results = try await MessageSearch.results(client, query: query, limit: 50, roomID: roomID)
             guard !Task.isCancelled else { return }
             let counterpartID = LocalNames.name(for: roomID) == nil
                 ? nil : await SearchStore.counterpart(in: room, ownUserID: ownUserID)
             guard !Task.isCancelled else { return }
-            hits = results.compactMap { Self.hit(from: $0, roomID: roomID, counterpartID: counterpartID) }
+            hits = results.compactMap { Self.hit(from: $0.result, roomID: roomID, counterpartID: counterpartID) }
             foundNothing = hits.isEmpty
         } catch {
             guard !Task.isCancelled else { return }
@@ -93,11 +93,11 @@ public final class RoomSearchStore: Identifiable {
     /// One room-scoped result into a `SearchHit`. A deleted message is dropped by
     /// `SearchStore.excerpt` — the words the query matched may still be in the index even though the
     /// message is gone, and a redaction must not come back as a result. See that method's note.
-    static func hit(from result: RoomSearchResult, roomID: String, counterpartID: String?) -> SearchHit? {
+    static func hit(from result: MessageSearchResult, roomID: String, counterpartID: String?) -> SearchHit? {
         guard let excerpt = SearchStore.excerpt(for: result.content) else { return nil }
 
         var displayName: String?
-        if case let .ready(name, _, _) = result.senderProfile { displayName = name }
+        if case let .ready(name, _, _, _, _) = result.senderProfile { displayName = name }
 
         return SearchHit(id: result.eventId,
                          roomID: roomID,

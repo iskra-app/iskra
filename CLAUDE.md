@@ -16,6 +16,12 @@ file.
 SDK call each remaining piece hangs off. It is kept current — a finished item is ticked there in
 the same commit that finishes it.
 
+This repository is the reference for the other two clients, checked out next to it:
+`iskra-app/iskra-android` and `iskra-app/iskra-web`. They carry commits from `dev` over with their
+own `/port-from-ios` skill (same screen and behaviour, their own design) and mark each with an
+`iOS-Commit` trailer; `/fanout` (`.claude/skills/fanout/`) hands a commit or range to both, one
+session per repository.
+
 ## Commands
 
 ```sh
@@ -50,10 +56,12 @@ xcodebuild -project Apps/Iskra.xcodeproj -scheme 'Iskra (iOS)' \
 xcrun simctl bootstatus 'iPhone 18 Pro' -b
 open -b com.apple.dt.Devices
 xcrun simctl install booted .build/xcode/Build/Products/Debug-iphonesimulator/Iskra.app
-xcrun simctl launch booted moscow.swag.iskra
+xcrun simctl launch booted wtf.iskra
 ```
 
-`./run.sh` wraps the two above (`mac`, `ios`, or both). **A real iPhone is `./device.sh`**, which
+`./release.sh` builds a Release Mac app signed with Developer ID and zips it into `.build/mac-release/` — the build to send somebody to try (`NOTARY_PROFILE=… ./release.sh` notarizes it too). `./testflight.sh [ios|mac|both] [--upload]` archives the App Store builds (Mac App Store signing, not
+Developer ID) and exports them to `.build/testflight/`; only `--upload` sends anything to App Store
+Connect, after a y/N question. `./run.sh` wraps the two above (`mac`, `ios`, or both). **A real iPhone is `./device.sh`**, which
 builds the tip of `dev` — from its own detached worktree in `.build/dev-src`, so whatever is
 uncommitted in the working tree neither affects the build nor gets touched by it — signs it,
 installs it with `devicectl` and launches it with `--console`. `--here` builds the working tree
@@ -72,7 +80,7 @@ way to check provisioning — `swift test` builds an *unsigned* binary, which th
 Keychain refuses outright (`errSecMissingEntitlement`, -34018) no matter what the entitlements say.
 
 ```sh
-xcrun simctl launch --console booted moscow.swag.iskra --verify-storage
+xcrun simctl launch --console booted wtf.iskra --verify-storage
 ```
 
 `Iskra --probe-signin <address>` drives the same lookup the "Continue" button does, with the SDK's
@@ -81,7 +89,7 @@ in a signed build on a real device, where the only symptom is a spinner. On a de
 `devicectl`:
 
 ```sh
-xcrun devicectl device process launch --console --device <id> moscow.swag.iskra --probe-signin matrix.org
+xcrun devicectl device process launch --console --device <id> wtf.iskra --probe-signin matrix.org
 ```
 
 `Iskra --probe-notification` decrypts a push the way the notification extension will, and prints
@@ -90,8 +98,8 @@ try — a push carries only a room ID and an event ID, and nobody has an event I
 probe that demanded one would be a probe nobody ran.
 
 ```sh
-xcrun simctl launch --console booted moscow.swag.iskra --probe-notification
-xcrun simctl launch --console booted moscow.swag.iskra --probe-notification '!room:matrix.org' '$event'
+xcrun simctl launch --console booted wtf.iskra --probe-notification
+xcrun simctl launch --console booted wtf.iskra --probe-notification '!room:matrix.org' '$event'
 ```
 
 Be exact about what it proves. It proves `PushDecoder` end to end: the session restores, the
@@ -101,6 +109,13 @@ entitlements — it runs in the *app's* process, and the `.appex` is a different
 the App Group and the Keychain separately — and nothing but a real push proves that iOS wakes the
 extension at all.
 
+`Iskra --probe-push` is the other half: it lists the pushers the homeserver holds for the account
+(marking this build's — its app id *and* its gateway) and has the gateway deliver one push to each
+of ours. Sygnal answers with the pushkeys APNs refused, and that is the only place a sandbox token
+sent to a production entry, or a topic that is not the bundle ID, is ever said. A successful
+`setPusher` logs nothing, so "no pusher of ours" and "a pusher APNs refuses" are both silent
+without it. Run it signed in, on the device that gets nothing: `./device.sh -- --probe-push`.
+
 `Iskra --probe-bridge [npub] [homeserver]` sends one real request through the nostr tunnel and says
 which failure it was. Five things make a bridge look broken in exactly the same way — a mistyped
 key, a bridge that is not running, one whose `ALLOWED_UPSTREAMS` does not cover this homeserver, a
@@ -109,9 +124,41 @@ and from inside the app all five are a sign-in that spins. Given no arguments it
 Settings → Connection, which is the case worth having.
 
 ```sh
-xcrun simctl launch --console booted moscow.swag.iskra --probe-bridge
+xcrun simctl launch --console booted wtf.iskra --probe-bridge
 ./device.sh -- --probe-bridge npub1… matrix.org
 ```
+
+`Iskra --probe-resize` (Mac, Debug) opens the first chat and drags the window's width back and
+forth from code, then puts the window back and quits: "survived N steps", or a crash report. It
+exists for the layout loops AppKit ends an app over (`_postWindowNeedsUpdateConstraints`), which
+only happen with a real chat on screen and a window being resized. It prints the window's least
+size too. Words after it: `empty` (no chat), `closed` / `open` (the info column shut or open —
+the user's choice is put back on the way out), `narrow` (open the chat in the narrowest window
+instead of a wide one), `toolbar` (where each toolbar item stands against the columns, and quit),
+`toggle` (shut the open column and open it again: the window's width must not move), `switch`
+(with the column open, go to the second chat: the column must stay open and hold *its* info),
+`settings` (open settings and print the least size there), `heights` (each view's fitting height
+on the way up to the window), `snapshot` / `cache` (a picture of the window, as base64).
+
+Launch it through `open`, not by running the binary: started straight from a terminal, macOS
+sometimes makes no window at all, and a probe with no window waits for ever.
+
+```sh
+open -n -W --stdout /tmp/probe.log --stderr /tmp/probe.log .build/xcode/Build/Products/Debug/Iskra.app --args --probe-resize open narrow
+```
+
+Two things it found. A minimum frame on the whole conversation column starts the loop; the
+minimum is on the chat and on the empty column's spark instead. And SwiftUI counts an inspector on
+a split view *twice* in the window's least width; a window too narrow for that folds the info
+column away and back until the app is ended. Both side columns are a fixed `Theme.Size.sideColumn`,
+the window's least width is `Theme.Size.windowMinimum` with the column open or shut, and the chat's
+minimum frame pays for the second count (`InfoColumn.conversationMinimumWidth`). Everything else
+the conversation's column shows — settings and its pages, a thread — is pushed past the chat's
+frame, so the same least width is also the column's own (`navigationSplitViewColumnWidth(min:)`).
+The height has the same trap three times over: the window's title band is counted by both split
+views and by the window, so the room list asks for `Theme.Size.columnMinimumHeight`, not the
+height wanted. The probe prints the window's least size in every mode — it should be
+`windowMinimum` × `windowMinimumHeight` in all of them.
 
 ### The demo server
 
@@ -138,6 +185,12 @@ for it. The server's memory lasts one launch.
 The switch is behind sign-in, so `Iskra --mock-backend` turns it on from the command line for a
 device with nobody signed in — `./device.sh -- --mock-backend`. It stays on until turned off.
 
+**Both in-app servers are Debug only.** `MockBackend/`, `SignInMockServer` and `MockSignIn` are
+under `#if DEBUG`, and so are the two switches in Beta and the `--mock-backend` flag; a release
+build — TestFlight and the App Store alike — has none of them, and a switch left on by a debug
+build is ignored. `MockSignIn` keeps a release stub that answers "not requested", so the call
+sites need no `#if` of their own.
+
 ### The sign-in server
 
 The demo server skips the sign-in screen; this one is for it. `Iskra --mock-signin` opens the
@@ -148,7 +201,7 @@ flag pick the server: `password` (no browser, no "create account"), `sso` (legac
 only), `closed` (OIDC without registration), `slow` (two seconds a request).
 
 ```sh
-xcrun simctl launch --console booted moscow.swag.iskra --mock-signin
+xcrun simctl launch --console booted wtf.iskra --mock-signin
 ./device.sh -- --mock-signin password slow
 ```
 
@@ -188,16 +241,11 @@ nostr. Nothing above the transport learns anything, and the bridge sees cipherte
 `BlindRouteTests` holds that *everything* goes that way — sign-in, sliding sync, media, the
 notification extension's client — against a demo homeserver with real TLS. `LocalHTTPProxy` is no
 longer the bridge's: it stays for the demo and sign-in servers, which live inside the app in the
-clear. Which bridge is a choice between the **public list** (`PublicBridges`, `bridges.json` from
-`github.com/iskra-app/public-bridges` — fetched directly at most once a day, raw GitHub then the
-jsDelivr mirror, with a snapshot in `Resources/public-bridges.json`) and **one's own bridges**,
-as many as the person likes (`TunnelSettings.customBridges`). The bridge in use is stored
-**whole** (`chosenBridgeKey`) — never re-derived from a list — so a public entry that leaves the
-list, or a list reordered tomorrow, never moves anybody to another bridge behind their back; the
-first public bridge used without being picked is written down as picked (`route`). With the
-switch on, the public list *always* asks for a bridge: an empty one is a refusal, not a direct
-route. The old single address field (`addressKey`, `relaysKey`) is read once, into the first of
-one's own bridges. All of it is in the **App Group's** defaults
+clear. Which bridge is one address field and one relay field (`addressKey`, `relaysKey`).
+The address field holds **the Iskra developers' bridge** (`TunnelSettings.defaultAddress`) until
+somebody types another, so the switch alone is enough; *no value* means that default, an *emptied*
+field means no bridge. There is no list of public bridges to download — it was tried and taken
+out; the keys it left are read once into the address field (`retireBridgeList`) and removed. All of it is in the **App Group's** defaults
 (`TunnelSettings.store`, Settings → Connection) — the notification extension routes by it too, and
 with it in `.standard` every push went straight to the homeserver with the bridge switched on; this
 device's own nostr key is in the Keychain, under a **service of its own** — the session's service is
@@ -362,13 +410,19 @@ await the operation it gave up on, and a task group would: a group waits for its
 stuck in Rust and deaf to cancellation would still hold the caller past the deadline — which is the
 hang, not a hypothetical. `TimeoutTests` pins exactly that.
 
+**One copy of the app on a Mac, and a lock holder per process** (`AppEnvironment.processName` is
+the bundle ID *and* the PID; `IskraApp.init` hands a second copy over to the first and exits). Two
+copies under one holder name both took the SDK's cross-process lock, both refreshed the one
+single-use refresh token, and the loser's "session ended elsewhere" deleted the account — every
+account in turn, and the settings with the last. A soft logout never deletes anything.
+
 **The SDK logs nothing until asked.** `SDKLogging.start()` (called from `IskraApp.init`) is what makes
 a stall on a real device visible at all — there is no debugger attached to a signed build on a phone.
 The level stops at `.info` on purpose: `.debug` and `.trace` make the SDK log request and response
 bodies, and in this app those bodies are people's messages.
 
-The App Group (`group.moscow.swag.iskra`) and the Keychain access group
-(`$(AppIdentifierPrefix)moscow.swag.iskra.shared`) are two different identifiers and have to be: a
+The App Group (`group.wtf.iskra`) and the Keychain access group
+(`$(AppIdentifierPrefix)wtf.iskra.shared`) are two different identifiers and have to be: a
 Team Provisioning Profile allows `keychain-access-groups = ["<TeamID>.*"]`, which an App Group ID
 does not match.
 
@@ -386,7 +440,7 @@ Two things about it are easy to get subtly wrong, and both fail far from their c
 - **`AppIdentifierPrefix` must be in the extension's own Info.plist.**
   `AppEnvironment.keychainAccessGroup` reads that key out of `Bundle.main` — and inside an
   extension `Bundle.main` is the *extension's* bundle, not the app's. Leave it out and the prefix
-  is empty, the Keychain group silently becomes `moscow.swag.iskra.shared` with no team ID in
+  is empty, the Keychain group silently becomes `wtf.iskra.shared` with no team ID in
   front of it, the lookup returns nothing, and the extension reports *"nobody is signed in"* on a
   device where somebody plainly is.
 - **`processSetup: .multipleProcesses`, never `.singleProcess`.** The app may be open and holding
@@ -493,6 +547,12 @@ Three ways this fails silently, all guarded by `LocalizationTests`:
 
 Russian plurals (one/few/many) need `Localizable.stringsdict`; `.strings` cannot express them.
 
+**A string resolved in code goes through `String(app:)` (features) or `AppLanguage.resolve`
+(Core), never `String(localized:)`.** On a Mac the language can be picked in Settings and is
+applied at once: `Text` follows the root's `\.locale`, but `String(localized:)` takes
+`Locale.current`, which is fixed for the life of the process — so a string resolved that way stays
+in the old language until a relaunch, and only on the Mac, where nobody tests it.
+
 **Liquid Glass is confined to the navigation layer.** Toolbars, composer, floating controls. Never on
 content, never on glass. There is deliberately no general `.glass()` modifier — only
 `.navigationGlass()` and `.primaryActionGlass(tint:)` in `IskraDesign/Glass.swift`. Message bubbles
@@ -528,6 +588,23 @@ by whoever owns the flag that opened the screen. A sheet's `dismiss` is fine; a 
 stack. Narrowed by bisection under `sample`: a single `@Environment(\.dismiss)` added to an
 otherwise empty pushed `Form` is enough to reproduce it.
 
+**Escape is "Back" on a Mac, and it needs the same handed-down way out** (`escapeKey`,
+`IskraFeatures/Support/EscapeKey.swift`). Every pushed screen is pushed by a flag its parent owns
+— `navigationDestination(isPresented:)` / `(item:)` — and gets `.escapeKey { flag = nil }` there;
+a row that pushes is a `PushRow`, not a `NavigationLink`, because a link keeps no flag anybody can
+clear. A new screen pushed with a `NavigationLink` is a screen Escape cannot leave. **There is one
+`.cancelAction` key equivalent in the window, at the root** (`EscapeStack`): a screen covered by a
+push stays in a Mac window, and a hidden Escape button per screen was three at once on the chat's
+edit screen — AppKit re-chose between them on every layout pass and the window hung in
+`NSHostingView.layout()`. Never add a `.keyboardShortcut(.cancelAction)` to a pushed screen — and
+never `.escapeKey` either: any modifier of that kind on a screen pushed through
+`navigationDestination` looped the layout too (found by bisecting builds). Escape lives on the two
+columns' roots, which close what is pushed over them (`RoomView.escape`, the room list's).
+And a screen that is itself pushed by `navigationDestination(isPresented:)` in the *detail* stack
+does not declare destinations of its own: `RoomEditView` did (the rules, the banned list) and the
+window spun in layout, rebuilding the room and its info screen forever. Its rows are plain
+`NavigationLink`s, and Escape does not reach those two lists.
+
 **Sizes come from `Theme`.** Every spacing, radius and size is a named constant in
 `IskraDesign/Theme.swift`, all multiples of 4, corners `.continuous`. A view that hard-codes
 `.padding(12)` is a bug waiting to drift.
@@ -543,6 +620,13 @@ inside an availability check, so the build itself refuses the shortcut. Any othe
 takes an `#available` where it is used, with the iOS 18 path next to it (`LocationView.openInMaps`).
 The ~200 linker warnings about SDK objects "built for newer macOS version (26.5)" on the Mac are
 expected: vendored C code with no deployment target of its own, calling only libc and pthreads.
+
+**Names that live on the server keep the old prefix.** The app is `wtf.iskra`, but four names
+are still `moscow.swag.iskra.*`: the push rule `…reactions` (`ReactionPushRule`) and the account
+data `…chat_folders`, `…recent_stickers` and `…builtin_stickers`. They outlive every install and
+are shared with Android, so a rename that follows the bundle ID loses people's folders and stickers
+and leaves a second reaction rule beside the first. A rename that sweeps `moscow.swag.iskra`
+must step round them.
 
 **Round video messages are recognised by shape, not by a flag** (`IskraCore/Media/VideoNote.swift`).
 Exactly square, ≤60 s. Tagging them with a custom field would mean `Client.uploadMedia` +

@@ -288,6 +288,12 @@ public enum CoreStrings {
                                     bundle: bundle)
         }
 
+        /// A message in a group: who said it, then what — "Аня: купи хлеба". The group's name is
+        /// the title above it; the iPhone draws no second line to put the name on instead.
+        public static func groupLine(_ sender: String, _ text: String) -> LocalizedStringResource {
+            LocalizedStringResource("push.groupLine", defaultValue: "\(sender): \(text)", bundle: bundle)
+        }
+
         /// What a push says while the app is locked: that something arrived, and nothing else — no
         /// sender, no words, no room. The title is the app's own name so the banner still reads as
         /// Iskra's; the body is a neutral "New message".

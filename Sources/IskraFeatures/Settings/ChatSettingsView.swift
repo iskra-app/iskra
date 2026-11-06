@@ -142,7 +142,7 @@ struct ChatSettingsView: View {
             }
             #endif
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .navigationTitle(Text(Strings.Chats.title))
     }
 }

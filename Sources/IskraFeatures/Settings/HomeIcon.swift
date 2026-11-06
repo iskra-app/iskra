@@ -16,7 +16,7 @@ import UIKit
 /// really in the bundle could never have run. `HomeIconPreviewTests` is that check.
 ///
 /// Most of them are the same spark on a different ground — chrome so it is metal in the dark,
-/// garnet and pine for the deep ends, black-and-white for the one that is quiet on a home screen
+/// garnet for the deep end, brat for the loud acid green, black-and-white for the one that is quiet on a home screen
 /// full of colour, Rio for the one that is not quiet at all. Two are not: `retro` cuts the spark
 /// out of a disc, and `letters` drops the spark altogether for the name set in type. That is why
 /// the tiles on the picker are pictures now and no longer a shape drawn from two colours — see
@@ -32,7 +32,7 @@ enum HomeIcon: String, CaseIterable, Identifiable, Sendable {
     case spark = "iskra"
     case chrome = "iskra-chrome"
     case garnet = "iskra-garnet"
-    case pine = "iskra-pine"
+    case brat = "iskra-brat"
     case rio = "iskra-rio-de-janeiro"
     case blackWhite = "iskra-black-white"
     case retro = "iskra-retro"

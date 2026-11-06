@@ -8,18 +8,19 @@ import AppKit
 
 /// The handful of numbers the whole app agrees on.
 ///
-/// Spacings and sizes are multiples of 4 and all corners are `.continuous`, which is what gives
+/// Spacings and sizes are, with the exceptions below, multiples of 4 and all corners are `.continuous`, which is what gives
 /// Apple's own apps their soft, un-fussy geometry. Sizes are *not* hard-coded anywhere else: a
 /// bubble that pads itself by a bare twelve points is a bug waiting to drift out of line with the
 /// one next to it.
 ///
-/// Two things in here are **not** multiples of 4, and the rule used to claim otherwise about them —
-/// which is a small lie of the kind that eventually gets one of them "corrected". `Spacing.withinRun`
-/// is 2, because the gap inside a run of messages from one person is meant to be *tighter* than the
-/// grid, and 4 reads as two separate remarks. `Size.recordingDot` is 10, because it is a dot and a
-/// dot is sized by eye against the text beside it, not by a grid it is not standing on.
-///
-/// The grid is for the things that line up with each other. These two line up with nothing.
+/// Not everything in here is a multiple of 4, and the rule used to claim otherwise — a small lie
+/// of the kind that eventually gets one of them "corrected". The grid is for the things that line up
+/// with each other: spacings, radii, tap targets. Some values are deliberately off it and say why in
+/// their own comments: `Spacing.withinRun` (2, tighter than the grid so a run of messages from one
+/// person does not read as separate remarks), `Size.recordingDot` and `Size.unreadDot` (10, a dot is
+/// sized by eye against the text beside it), the hairline gaps of an album and a waveform (2 to 3),
+/// `formRowInset` (10, the system's own row inset) and the window's least height. A new constant off
+/// the grid says in its comment what it lines up with instead.
 public enum Theme {
     public enum Radius {
         /// Message bubbles, on every corner. Large enough that a one-line message comes
@@ -52,6 +53,9 @@ public enum Theme {
         public static func appIcon(side: CGFloat) -> CGFloat { side * 0.2237 }
         public static let card: CGFloat = 16
         public static let control: CGFloat = 12
+        /// The white card the QR screen turns in the hand — `QRCodeSheet`. Rounder than `card`,
+        /// because it is held up as an object of its own and not set into a list.
+        public static let qrCard: CGFloat = 28
 
         /// The menu a long press opens, and the panel of emoji beside it — see `MessageMenu`.
         ///
@@ -66,11 +70,22 @@ public enum Theme {
     }
 
     public enum Opacity {
+        /// The edge of a secondary button drawn without glass, so that it is not the same blank
+        /// capsule as the entry field beside it.
+        public static let fallbackEdge: Double = 0.2
         /// A warning's colour spread under its words — enough to be told apart from an ordinary
         /// notice at a glance, little enough that the words on it stay the words' own colour.
         public static let warningWash: Double = 0.14
         /// The pill under the open folder tab — there, and only just. See `FolderTabs`.
         public static let selectedTab: Double = 0.2
+        /// What is left of the conversation under the title bar and the composer, at the far end
+        /// of its fade. Not nothing: faded all the way out, the edges read as two solid bands
+        /// cut across the room rather than as messages passing underneath. See `RoomView`.
+        public static let timelineFadeFloor: Double = 0.3
+        /// The words of a form's button on a Mac while it is held down, and while it cannot be
+        /// pressed at all. See `FormRows`.
+        public static let rowPressed: Double = 0.6
+        public static let rowDisabled: Double = 0.4
     }
 
     public enum Spacing {
@@ -79,10 +94,19 @@ public enum Theme {
         public static let normal: CGFloat = 12
         public static let roomy: CGFloat = 16
         public static let generous: CGFloat = 24
+        /// How far a Mac form's cell stands its row in from the cell's top and bottom. Not ours and
+        /// not a multiple of 4: it is the system's, measured, and it is how far a row's card is
+        /// painted past the row (`CardSection`) — any less leaves a grey line either side of each
+        /// separator, any more paints over the separator.
+        public static let formRowInset: CGFloat = 10
         /// Between two messages from different people.
         public static let betweenSenders: CGFloat = 12
         /// Between two messages from the same person.
         public static let withinRun: CGFloat = 2
+        /// Between two messages from the same person in the compact column. Bubbles have their
+        /// own edges to tell two messages apart; plain lines have only the gap, and at
+        /// `withinRun` two messages read as one message on two lines.
+        public static let withinCompactRun: CGFloat = 8
         /// Between the pictures of an album — a hairline of the bubble showing through, as in
         /// Telegram, so the set reads as one thing made of several. See `AlbumMosaic`.
         public static let albumGap: CGFloat = 2
@@ -134,6 +158,9 @@ public enum Theme {
     /// shadowing it inside `Theme` would make every `Duration.seconds(…)` in the package
     /// mean something subtly different.
     public enum Timing {
+        /// The spring a face in the share sheet settles with when it is chosen or let go.
+        public static let chosen: Animation = .spring(duration: 0.3, bounce: 0.3)
+
         /// How long a finger stays on a message before the menu lifts it.
         ///
         /// This constant has now been deleted once and written twice, which is worth saying out
@@ -207,6 +234,10 @@ public enum Theme {
         /// something on it. Most of the way through the opening spring's response, which is when
         /// the glass is nearly its full size.
         public static let menuFills: Duration = .milliseconds(150)
+        /// How often the spark on an empty screen blinks, and how long its eyes stay shut —
+        /// `BlinkingSpark`, and the web client's watermark, which keeps the same rhythm.
+        public static let blinkEvery: Duration = .seconds(4)
+        public static let blinkShut: Duration = .milliseconds(150)
 
         /// What is on the glass appearing, once it is there — quick, it is only being shown.
         public static let menuContentShows: Animation = .easeOut(duration: 0.15)
@@ -260,6 +291,12 @@ public enum Theme {
         /// send is pressed and ease into the bubble rather than arriving at both ends at once.
         public static let messageCrosses: Animation = .timingCurve(0.23, 1, 0.32, 1, duration: 0.3)
 
+        /// …and up out of the field, from the line the words were typed on to the foot of the
+        /// conversation. The same shape as `messageCrosses` — off at once, long in the settling —
+        /// and a little longer, so the rise is seen as one movement with the column making room
+        /// rather than as a jump to where the column ends.
+        public static let messageLeavesComposer: Animation = .timingCurve(0.23, 1, 0.32, 1, duration: 0.4)
+
         /// Somebody else's message coming up into the space the column has made for it. A fade, and
         /// a short one — Telegram's 0.2 s — because the movement is the column's; this only keeps
         /// the bubble from being seen to slide in solid from under the composer.
@@ -289,10 +326,6 @@ public enum Theme {
         /// this is about a moment that has passed, and putting it back moves the reader somewhere
         /// they no longer are. See `RoomView.held`.
         public static let placeIsHeld: Duration = .milliseconds(600)
-
-        /// How often the end is asked for again while it is being held. See
-        /// `Timing.endIsHeld` and `RoomView.followEnd()`.
-        public static let endIsCheckedEvery: Duration = .milliseconds(50)
 
         /// How long a room that has just opened stays perfectly still before it is allowed to
         /// animate anything.
@@ -361,31 +394,6 @@ public enum Theme {
         /// it — longer than a tap, so switching between voice and video wakes nothing.
         public static let prewarmAfter: Duration = .milliseconds(90)
 
-        /// How long one slide of the welcome carousel stands still before the next one comes.
-        ///
-        /// Long enough to read two lines without hurrying — the slides are the app's only pitch,
-        /// and a carousel that moves while somebody is still reading it is a carousel they fight.
-        /// Short enough that a person who is not reading gets through all six on the way to the
-        /// button. See `WelcomeView`, which stops the timer at the last slide rather than looping:
-        /// once everything has been said, the screen waits.
-        public static let welcomeSlide: Duration = .seconds(5)
-
-        /// The pause between the question and the answer in the first run's preview.
-        ///
-        /// The two lines are a conversation, so they arrive the way a conversation does: one, and
-        /// then the other, with long enough between them to be an answer rather than a second half
-        /// of the same breath. Short enough that somebody who came to pick a colour is not kept
-        /// waiting for the thing they are picking it against.
-        public static let previewReplies: Duration = .milliseconds(450)
-
-        /// One first-run screen giving way to the next.
-        ///
-        /// Half a second, and no bounce. A whole screen is the largest thing this app ever
-        /// animates, and weight that is charming on a message bubble is a wobbling wall at this
-        /// size — so it is a spring for the ease alone: quick off the mark, and settling rather
-        /// than stopping. See `AnyTransition.onboardingStep`.
-        public static let stepChanges: Animation = .spring(duration: 0.45, bounce: 0)
-
         /// One frame at sixty hertz.
         ///
         /// Not a delay: it is the frame in which a thing is drawn *where it starts*, so that the
@@ -422,6 +430,10 @@ public enum Theme {
         /// not *do* anything, it was repainted, and a bubble that jumped would be claiming more
         /// than that. See `AppearanceStep.nod()`.
         public static let nod: CGFloat = 1.04
+
+        /// How far a face in the share sheet draws in when it is chosen, to leave room for the
+        /// accent's ring round it.
+        public static let chosen: CGFloat = 0.86
     }
 
     /// The lines the app draws *around* things rather than under them. There are very few:
@@ -493,6 +505,16 @@ public enum Theme {
         /// between the menu and the conversation (there is no blur there, see
         /// `MessageMenuOverlay.scrim`), it has to do all of that work by itself.
         public static let menuScrim: Double = 0.4
+
+        /// How dark the conversation goes behind an open photograph, under its blur — Instagram's
+        /// viewer, where the chat is still there but is no longer something to read. Dark enough
+        /// that the white header and footer stay legible over whatever colours the chat had.
+        public static let viewer: Double = 0.65
+
+        /// How much of the blur is laid over what is behind the photograph. Neither platform lets a
+        /// material's radius be chosen, so a lighter blur is the blurred layer let partly through:
+        /// at 1 the chat is gone, lower and its shapes stay faintly there behind the picture.
+        public static let viewerBlur: Double = 1
     }
 
     public enum Tint {
@@ -534,6 +556,20 @@ public enum Theme {
         /// how a conversation is found: the eye goes down the column of faces, not down the column
         /// of names, and at 40pt it was doing that work at the size of a footnote.
         public static let roomAvatar: CGFloat = 56
+        /// The same face in the Mac's own sidebar, which is a narrow column read down its length:
+        /// Telegram's size there, and what lets two lines of the last message sit beside it without
+        /// the row growing past the face.
+        public static let roomAvatarCompact: CGFloat = 48
+        /// The smallest the avatar cropper's window is on a Mac — `AvatarCropper`.
+        public static let avatarCropper: CGFloat = 480
+        /// A Mac sheet that is mostly a list — "New chat", "who reacted": a `List` asks for no size
+        /// of its own, so the sheet has to, or it opens with nothing between its title and Cancel.
+        public static let listSheetWidth: CGFloat = 440
+        public static let listSheetHeight: CGFloat = 520
+        /// The sticker picker on a Mac: a popover over the composer, like the reaction picker, not a
+        /// sheet the size of the window.
+        public static let stickerPopoverWidth: CGFloat = 360
+        public static let stickerPopoverHeight: CGFloat = 420
 
         /// The height of the unread badge in the chat list, and the width of the "@" beside it —
         /// one number, so the circle and the capsule stand exactly level.
@@ -619,10 +655,28 @@ public enum Theme {
         public static let uploadRing: CGFloat = 48
         /// One of the round glass buttons under a person's portrait — `ProfileActionTile`. A size a
         /// thumb lands on without aiming, with the word under it rather than inside.
+        /// On a Mac, smaller: a pointer needs no thumb's room, and at the phone's size four of them
+        /// under a name in a 320-point column read as the page's headline.
+        #if os(macOS)
+        public static let profileAction: CGFloat = 40
+        #else
         public static let profileAction: CGFloat = 56
-        /// The QR code on its own screen — `QRCodeSheet`. Large enough for a camera across a table,
-        /// small enough to leave the name and the face above it on a small phone.
-        public static let qrCode: CGFloat = 240
+        #endif
+        /// How wide that card is. The code fills it less the margins, so this is what makes it
+        /// "large": about the width of a phone less a hand's grip on either side.
+        public static let qrCardWidth: CGFloat = 320
+        /// The face at the top of the card.
+        public static let qrCardFace: CGFloat = 72
+        /// The spark on the back of the card — wider than the card itself, so that its rays run
+        /// off the edges and it reads as a mark printed across the card, not a badge placed on it.
+        public static let qrCardSpark: CGFloat = 448
+        /// How far left of centre that spark sits: about a third of the card's width.
+        public static let qrCardSparkShift: CGFloat = 96
+        /// The distance between two sparks of the rainbow watermark — `HoloWatermark`. Small enough
+        /// to read as a texture and not as a pattern of separate pictures.
+        public static let watermarkStep: CGFloat = 16
+        /// The spark on an empty screen — `BlinkingSpark`; the web client's `--size-watermark`.
+        public static let watermark: CGFloat = 128
         /// A chat's face in the share sheet's grid — four to a row on a phone, Telegram's size.
         public static let shareFace: CGFloat = 60
         /// How wide a poll's bubble is. Fixed, not hugging its words: the bars are a comparison,
@@ -632,11 +686,26 @@ public enum Theme {
         public static let pollBar: CGFloat = 4
         /// Nothing tappable is ever smaller than this. Apple's floor, and ours.
         public static let minimumTapTarget: CGFloat = 44
+        /// The column a symbol stands in at the start of a form row on a Mac (`FormRows.swift`):
+        /// as wide as the widest symbol the rows use, so every title starts at the same place.
+        public static let rowIcon: CGFloat = 20
+        /// The same column beside the larger words of the "New chat" sheet's actions on a Mac — wide
+        /// enough for `person.3`, the widest symbol there, at that size.
+        public static let actionRowIcon: CGFloat = 32
 
         /// A colour to choose the app's accent from, on the appearance screen. A full tap
         /// target: a swatch is a button, and a colour you have to aim at is a colour you
         /// pick by accident.
         public static let swatch: CGFloat = 44
+
+        /// The accent's circles in particular. On a Mac they are a row of dots at the end of a
+        /// settings line: a pointer needs no fingertip of room, and eight 44-point discs in a
+        /// settings card read as buttons shouting.
+        #if os(macOS)
+        public static let accentSwatch: CGFloat = 16
+        #else
+        public static let accentSwatch: CGFloat = swatch
+        #endif
 
         /// A wallpaper to choose from, on the same screen. Not a swatch: a background is judged
         /// as a *screen*, so the tile is the shape of one — tall, in roughly the proportion of a
@@ -743,6 +812,11 @@ public enum Theme {
         /// Telegram's gallery leaves a gap, so two photographs never touch edge to edge.
         public static let galleryPageGap: CGFloat = 20
 
+        /// How far a photograph sits in from the edges of the viewer before it is zoomed — Instagram's
+        /// picture, which floats over the blurred conversation rather than touching the screen's
+        /// sides. Zoomed in, it is the screen's again.
+        public static let galleryInset: CGFloat = 16
+
         /// The strip of little pictures along the foot of the viewer: a tile, and the wider one
         /// the current picture gets, so the strip says where in the room you are.
         public static let galleryThumbnail = CGSize(width: 28, height: 40)
@@ -780,15 +854,6 @@ public enum Theme {
         /// The app's icon at the top of the opening screen — the one picture on it, so it can be
         /// big enough to be the screen's subject.
         public static let signInLogo: CGFloat = 112
-
-        /// The mark over a welcome slide. A placeholder for now — the illustrations that go
-        /// there are not drawn yet — and sized as the picture it will be rather than as the
-        /// symbol standing in for it, so the layout does not shift when they arrive.
-        public static let welcomeMark: CGFloat = 132
-
-        /// One of the dots under the welcome slides. Small: it says where you are, it is not a
-        /// control anybody aims at — the tap target around it is a full `minimumTapTarget`.
-        public static let pageDot: CGFloat = 8
 
         /// The red badge beside a message that failed to send. Bigger than the delivery
         /// ticks on purpose: those report progress and may be ignored, this one is the
@@ -924,6 +989,47 @@ public enum Theme {
         public static let sidebarIdeal: CGFloat = 320
         public static let sidebarMaximum: CGFloat = 400
 
+        /// The two side columns of a Mac window — the room list on the left and the chat's info on
+        /// the right — fixed, and the same. Fixed, so a window resized gives and takes width from the
+        /// conversation alone, and the same, so the conversation sits between two columns that match.
+        public static let sideColumn: CGFloat = 320
+
+        /// The least a Mac window may be: both side columns and the narrowest a conversation may be
+        /// between them — so the info column can always be opened, however narrow the window is.
+        public static let windowMinimum: CGFloat = 2 * sideColumn + conversationMinimum.width
+
+        /// The widest a form may be on a Mac — settings and every page under it — with the form's own
+        /// margin of 20 either side, so its cards come out about 470. The Mac's own grouped form
+        /// stops at about 700, which in a window's wide column read as a page of banners rather
+        /// than of settings; this is two thirds of it.
+        public static let formCardMaximum: CGFloat = 508
+
+        /// The Mac's About window: the About screen at the width of a phone's, tall enough for the
+        /// version, the build and the links without scrolling.
+        public static let aboutWindow = CGSize(width: 420, height: 640)
+
+        /// The least a conversation may be squeezed to on a Mac, with the info column open beside
+        /// it. With the column shut, the conversation takes the column's width as well, so the
+        /// window never shrinks below `windowMinimum` whichever is showing — see
+        /// `InfoColumn.conversationMinimumWidth`. Squeezed with nothing to hold it, a chat became a
+        /// column of one word a line.
+        ///
+        /// Put on the chat and on the empty column's spark, never on the column around them: there,
+        /// it was re-measured from the chat on every frame of a resize, and AppKit ended the app
+        /// (`Iskra --probe-resize` reproduces it).
+        public static let conversationMinimum = CGSize(width: 420, height: 450)
+
+        /// The least height a Mac window may be.
+        public static let windowMinimumHeight: CGFloat = 450
+
+        /// The least height to put on the room list so that the window comes out
+        /// `windowMinimumHeight`. The window's title band (52 points) is counted three times on
+        /// the way up — by the split view round the columns, again by the one the info column hangs
+        /// on, and once more by the window itself (measured with `Iskra --probe-resize heights`) —
+        /// so a list asked for 450 held the window at 606. The same double count as the width's,
+        /// paid for the same way: see `InfoColumn.conversationMinimumWidth`.
+        public static let columnMinimumHeight: CGFloat = windowMinimumHeight - 3 * 52
+
         /// The list of things you can do to a message — see `MessageMenu`.
         ///
         /// Narrow on purpose, and narrower than the screen by a long way: it is a column of
@@ -931,7 +1037,13 @@ public enum Theme {
         /// menu and starts reading as a page. The verbs are one word each — the widest of them
         /// is "Переслать" — so the width is set by the shape a menu should be and not by the
         /// text, which has room to spare at this size in both languages.
+        /// Narrower on a Mac, where the menu is pointed at rather than touched and the text is
+        /// smaller — the phone's size there looked like a sheet, not a menu.
+        #if os(macOS)
+        public static let menuWidth: CGFloat = 200
+        #else
         public static let menuWidth: CGFloat = 240
+        #endif
 
         /// One line of that list.
         ///
@@ -940,7 +1052,12 @@ public enum Theme {
         /// screen — and what the four extra points actually bought was distance between verbs
         /// that belong together. The air a menu needs is *around* the list, at its top and its
         /// bottom and its sides, and that is where it is now spent.
+        /// A pointer needs no 44-point target: on a Mac a row is the height of a menu item there.
+        #if os(macOS)
+        public static let menuRow: CGFloat = 32
+        #else
         public static let menuRow: CGFloat = 44
+        #endif
 
         /// The icon column down the leading edge of the menu. Wide enough that a pin, a trash
         /// can and a bent arrow all sit on the same vertical line — they are drawn at different

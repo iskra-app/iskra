@@ -30,9 +30,9 @@ struct PublicServer: Identifiable {
         PublicServer(address: "matrix.org",
                      about: Strings.Servers.matrixOrg,
                      whereabouts: Strings.Servers.matrixOrgWhere,
-                     // Blocked in Russia, and reachable through the bridge — which the sign-in
-                     // screen offers to switch on the moment the lookup fails. Said only on a
-                     // phone that has something Russian about it — to everybody else it is noise.
+                     // It may not answer from Russia, so somebody there is better off knowing
+                     // before they pick it. Said only on a phone that has something Russian about
+                     // it — to everybody else it is noise.
                      warning: isRussianLocale ? Strings.Servers.matrixOrgBlocked : nil),
         PublicServer(address: "tchncs.de",
                      about: Strings.Servers.tchncs,
@@ -51,8 +51,9 @@ struct PublicServer: Identifiable {
             || Locale.preferredLanguages.contains { Locale(identifier: $0).language.languageCode == .russian }
     }
 
-    /// Where somebody who would rather run their own is sent to read about it.
-    static let ownServerGuide = URL(string: "https://matrix.org/ecosystem/servers/")!
+    /// Where somebody who would rather run their own is sent to read about it: our own guide, which
+    /// says what Iskra needs from a server (native sliding sync) and picks its language itself.
+    static let ownServerGuide = URL(string: "https://iskra.wtf/server.html")!
 }
 
 /// "Not sure which server to choose?" — a handful of public servers, and, last, the one you run

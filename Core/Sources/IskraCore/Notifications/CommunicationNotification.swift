@@ -107,13 +107,15 @@ public enum CommunicationNotification {
             customIdentifier: personID
         )
 
-        // A room with people in it, rather than a chat with one person. `sender` is the mapper's
-        // answer to "is there a name to put on the second line", and it is nil in a direct chat
-        // precisely because the room *is* the person — which is the same question asked here.
-        let isGroup = notification.sender != nil
+        // A room with people in it, rather than a chat with one person — the mapper's decision.
+        let isGroup = notification.isGroup
 
         let intent = INSendMessageIntent(
-            recipients: nil,
+            // iOS draws a conversation as a group only with more than one recipient beside the
+            // group's name. Who exactly is never shown, so the room stands in for everybody else.
+            recipients: isGroup ? [person, INPerson(personHandle: INPersonHandle(value: notification.roomID, type: .unknown),
+                                                    nameComponents: nil, displayName: notification.title, image: nil,
+                                                    contactIdentifier: nil, customIdentifier: notification.roomID)] : nil,
             outgoingMessageType: .outgoingMessageText,
             // The message itself is deliberately left out. iOS does not need it — the body is
             // already on the notification — and an intent is donated to the system, which is a
@@ -128,16 +130,15 @@ public enum CommunicationNotification {
             attachments: nil
         )
 
-        // In a group the circle shows the *room*, not whoever spoke — but a room avatar is not
-        // fetched here, so what goes in is the sender's picture again. Better a face than the grey
-        // placeholder iOS draws for a group with no image at all.
+        // In a group the circle shows the *room*: its picture, fetched by `PushDecoder`, or the
+        // creature drawn for it (`PushFace`); the sender's face only when there is neither.
         //
         // iOS-only, and not by choice: `setImage(_:forParameterNamed:)` is unavailable on macOS,
         // where there are no communication notifications to put a group picture on. The rest of
         // this file builds on both platforms because it is `IskraCore`, and `IskraCore` compiles
         // for the Mac whether or not every line of it has anything to do there.
         #if os(iOS)
-        if isGroup, let image = notification.avatar.flatMap(INImage.init(imageData:)) {
+        if isGroup, let image = (notification.roomAvatar ?? notification.avatar).flatMap(INImage.init(imageData:)) {
             intent.setImage(image, forParameterNamed: \.speakableGroupName)
         }
         #endif

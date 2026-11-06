@@ -41,7 +41,7 @@ struct HomeIconPreviewTests {
             "iskra",
             "iskra-chrome",
             "iskra-garnet",
-            "iskra-pine",
+            "iskra-brat",
             "iskra-rio-de-janeiro",
             "iskra-black-white",
             "iskra-retro",

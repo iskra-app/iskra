@@ -72,7 +72,7 @@ struct PollComposer: View {
                     if draft.isAnonymous { Text(Strings.Poll.anonymousFooter) }
                 }
             }
-            .formStyle(.grouped)
+            .formStyle(.groupedRows)
             .navigationTitle(String(app: Strings.Poll.newTitle))
             #if !os(macOS)
             .navigationBarTitleDisplayMode(.inline)

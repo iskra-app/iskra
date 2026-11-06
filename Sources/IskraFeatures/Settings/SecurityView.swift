@@ -1,4 +1,5 @@
 import SwiftUI
+import LocalAuthentication
 import IskraCore
 import IskraDesign
 
@@ -43,11 +44,15 @@ struct SecurityView: View {
     @AppStorage(PrivacySettings.hidesPresenceKey) private var hidesPresence = PrivacySettings.hidesPresenceByDefault
     @AppStorage(PrivacySettings.hidesTypingKey) private var hidesTyping = PrivacySettings.hidesTypingByDefault
 
-    /// The device list, built on the push and not on every pass of this body — see `SettingsView`'s
-    /// destinations, which is where it lived before.
-    private enum Destination: Hashable {
+    /// The page pushed over this screen — a flag rather than a `NavigationLink`, so Escape can take
+    /// it back (`escapeKey`): this screen can sit in the sidebar's stack, where `dismiss` is out.
+    private enum Page: Hashable {
         case devices
+        case blocked
+        case connection
     }
+
+    @State private var page: Page?
 
     /// The session's, not this screen's — a plain `let`, exactly like `verification` below.
     ///
@@ -121,17 +126,23 @@ struct SecurityView: View {
                 }
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .navigationTitle(Text(Strings.Settings.security))
         .toolbarTitleDisplayMode(.inline)
         .onChange(of: hidesPresence) {
             Task { await session.applyPresence() }
         }
-        .navigationDestination(for: Destination.self) { destination in
-            switch destination {
-            case .devices:
-                if let devices = session.accountDevices() {
-                    DevicesView(store: DevicesStore(source: devices))
+        .navigationDestination(item: $page) { page in
+            Group {
+                switch page {
+                case .devices:
+                    if let devices = session.accountDevices() {
+                        DevicesView(store: DevicesStore(source: devices))
+                    }
+                case .blocked:
+                    BlockedUsersView(store: session.blocked)
+                case .connection:
+                    ConnectionView(session: session)
                 }
             }
         }
@@ -139,7 +150,7 @@ struct SecurityView: View {
         // session and outlive this screen — `load()` is called once, when the session starts. Tearing
         // either down on the way out would unhook a listener the rest of the app is reading: the
         // banner in the room list watches the same recovery state this screen does.
-        .sheet(isPresented: $isVerifying) {
+        .pageSheet(isPresented: $isVerifying) {
             VerificationSheet(verification: verification) {
                 isVerifying = false
                 verification.reset()
@@ -164,7 +175,7 @@ struct SecurityView: View {
         } message: {
             Text(Strings.Recovery.newMessage)
         }
-        .sheet(item: $freshCode) { code in
+        .pageSheet(item: $freshCode) { code in
             // No "skip" here, unlike the setup flow: nobody arrives on this sheet by accident. They
             // pressed a button that says "make me a new code", and there is nothing to nag them
             // about afterwards that they have not just done on purpose.
@@ -287,14 +298,12 @@ struct SecurityView: View {
     private var people: some View {
         Section {
             if session.deviceID != nil {
-                NavigationLink(value: Destination.devices) {
+                PushRow { page = .devices } label: {
                     Label(Strings.Devices.title, systemImage: "laptopcomputer.and.iphone")
                 }
             }
 
-            NavigationLink {
-                BlockedUsersView(store: session.blocked)
-            } label: {
+            PushRow { page = .blocked } label: {
                 Label(Strings.Settings.blocked, systemImage: "hand.raised")
             }
 
@@ -339,7 +348,7 @@ struct SecurityView: View {
         @Bindable var appLock = appLock
         Section {
             Toggle(isOn: $appLock.isEnabled) {
-                Label(Strings.Settings.lockEnable, systemImage: "faceid")
+                Label(Strings.Settings.lockEnable, systemImage: LockBiometry.symbol)
             }
             .accentControl()
             .disabled(!appLock.canAuthenticate)
@@ -371,9 +380,7 @@ struct SecurityView: View {
     /// A row under the devices and the blocked, in their group: all three are about who stands
     /// between you and the people you talk to.
     private var bridge: some View {
-        NavigationLink {
-            ConnectionView(session: session)
-        } label: {
+        PushRow { page = .connection } label: {
             Label(
                 Strings.Settings.connection,
                 systemImage: "point.3.filled.connected.trianglepath.dotted"
@@ -393,6 +400,22 @@ struct SecurityView: View {
                 Spacer()
                 ProgressView()
             }
+        }
+    }
+}
+
+
+/// The picture on the app-lock switch: the sensor this device really has, not always a face.
+/// The words beside it name the passcode, which every device has.
+private enum LockBiometry {
+    static var symbol: String {
+        let context = LAContext()
+        var error: NSError?
+        _ = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error)
+        switch context.biometryType {
+        case .faceID: return "faceid"
+        case .touchID: return "touchid"
+        default: return "lock"
         }
     }
 }

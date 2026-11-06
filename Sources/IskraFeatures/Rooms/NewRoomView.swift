@@ -70,7 +70,7 @@ struct NewRoomView: View {
                 .animation(.smooth, value: isPublic)
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .navigationTitle(Text(Strings.RoomList.newRoom))
         .toolbarTitleDisplayMode(.inline)
         .toolbar {

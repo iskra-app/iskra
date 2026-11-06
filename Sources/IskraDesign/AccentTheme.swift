@@ -61,14 +61,17 @@ public enum AccentTheme: String, CaseIterable, Identifiable, Sendable {
     /// What stays readable on top of the accent — the words in your own bubble, the arrow
     /// in the send button.
     ///
-    /// White, for six of the seven. Yellow is the exception and it is not a close call:
-    /// white on yellow is the one combination on this list that cannot be read at all.
+    /// Black on the four light colours, white on the rest. The system's orange, yellow, green and
+    /// cyan are all light fills: white on them is 2.2, 1.5, 2.2 and 2.5 to 1 (1.7 for cyan in the
+    /// dark), black is 9.5, 13.9, 9.5 and 8.3 or better. Red, blue and purple stay white — 3.5 to
+    /// 4.1 to 1, below the 4.5 of body text but recognisably the colour people picked, and darker ink
+    /// on them (5 to 6 to 1) reads as a different, duller theme.
     /// And the mono accent is the *foreground* colour, so the only thing that can sit on
     /// it is the background one — white on black in the light, black on white in the dark,
     /// each the inverse of the other because both come from the same system pair.
     public var foreground: AnyShapeStyle {
         switch self {
-        case .yellow: AnyShapeStyle(.black)
+        case .orange, .yellow, .green, .cyan: AnyShapeStyle(.black)
         case .mono: AnyShapeStyle(.background)
         default: AnyShapeStyle(.white)
         }
@@ -168,6 +171,38 @@ public enum AccentTheme: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .mono: AnyShapeStyle(.primary)
         default: foreground
+        }
+    }
+
+    /// `onBubble` as a plain colour, for what can only be given one — the links in a message's
+    /// words, which an `AttributedString` paints and a `.tint` reaches only on some platforms.
+    public var onBubbleColor: Color {
+        switch self {
+        case .orange, .yellow, .green, .cyan: .black
+        case .mono: .primary
+        default: .white
+        }
+    }
+
+    /// The accent as the colour of *words and icons* on the page, not on a fill of its own: a link,
+    /// a selected name, a small glyph.
+    ///
+    /// `color` on white is yellow 1.5, orange 2.2, green 2.2, cyan 2.5, red 3.6 to 1 — a link in
+    /// yellow is invisible. In the light the colours are darkened to 5.2 to 6.0 to 1 on white (same
+    /// hue, deeper); in the dark the system colours are already light enough (5 to 15 to 1 on the
+    /// dark page) and are used as they are. Mono is `.primary`, which is its own answer. Blue is
+    /// `Color.blue` in both: it is the default and 4.0 to 1 on white, the one colour left under 4.5,
+    /// left alone so that the default look does not move.
+    public func textColor(in scheme: ColorScheme) -> Color {
+        guard scheme == .light else { return color }
+        switch self {
+        case .red: return Color(red: 0.84, green: 0.0, blue: 0.08)
+        case .orange: return Color(red: 0.66, green: 0.33, blue: 0.0)
+        case .yellow: return Color(red: 0.48, green: 0.37, blue: 0.0)
+        case .green: return Color(red: 0.11, green: 0.49, blue: 0.22)
+        case .cyan: return Color(red: 0.04, green: 0.42, blue: 0.58)
+        case .violet: return Color(red: 0.54, green: 0.27, blue: 0.67)
+        case .blue, .mono: return color
         }
     }
 }

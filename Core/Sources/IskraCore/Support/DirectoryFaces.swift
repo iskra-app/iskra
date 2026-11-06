@@ -251,7 +251,7 @@ public enum WidgetChats {
     }
 
     /// The favourites widget's `kind` — what the app names when it asks WidgetKit to redraw it.
-    public static let kind = "moscow.swag.iskra.favourites"
+    public static let kind = "wtf.iskra.favourites"
 
     /// The most faces any widget size shows.
     public static let largest = 8

@@ -101,7 +101,7 @@ struct MemberRow: View {
                             isPresented: $isChangingRole,
                             titleVisibility: .visible) {
             ForEach(roles, id: \.self) { role in
-                Button(String(localized: RoomRoleName.full(role))) { setRole(role) }
+                Button(String(app: RoomRoleName.full(role))) { setRole(role) }
             }
             Button(String(app: Strings.Room.Manage.cancel), role: .cancel) {}
         } message: {

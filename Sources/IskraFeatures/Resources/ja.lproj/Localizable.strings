@@ -80,6 +80,7 @@
 
 /* Accessibility label for the send button. */
 "room.send" = "送信";
+"room.saveEdit" = "保存";
 
 "room.sendFailedTitle" = "メッセージを送信できませんでした";
 
@@ -154,7 +155,7 @@
 "appIcon.spark" = "スパーク";
 "appIcon.chrome" = "クローム";
 "appIcon.garnet" = "ガーネット";
-"appIcon.pine" = "パイン";
+"appIcon.brat" = "Brat";
 "appIcon.rio" = "リオデジャネイロ";
 "appIcon.blackWhite" = "モノクロ";
 "appIcon.retro" = "レトロ";
@@ -167,7 +168,7 @@
 
 "beta.nativeSidebar" = "ネイティブのサイドバー";
 
-"beta.nativeSidebarHelp" = "チャット一覧が普通の macOS のサイドバーになります。チャットはセクションにまとまり、検索は上に、行の間隔は詰まります。メールやメモのように、スマホらしさは控えめに。";
+"beta.nativeSidebarHelp" = "チャット一覧が普通の macOS のサイドバーになります。チャットはセクションにまとまり、検索は上に、行の間隔は詰まります。見た目はスマホよりメールやメモに近くなります。";
 
 "beta.blobatar" = "イニシャルの代わりにキャラクター";
 
@@ -197,6 +198,9 @@
 "settings.media" = "写真とビデオ";
 "media.title" = "写真とビデオ";
 "media.stripMetadata" = "メタデータなしで送信";
+"media.stripMetadataHelpOn" = "写真と動画は、撮影場所、カメラの機種、日付を消して送られます。";
+"media.stripMetadataHelpOff" = "ご注意：写真と動画に、撮影場所、カメラの機種、日付がそのまま付きます。";
+"media.compressHelp" = "ファイルが小さくなり、送信が速く、データ量も減ります。細部は少し粗くなります。";
 "media.compress" = "写真とビデオを圧縮";
 "media.compression" = "圧縮率";
 "media.compression.strong" = "強 (540p)";
@@ -209,22 +213,6 @@
 "connection.title" = "接続";
 "connection.bridge" = "ブリッジ経由";
 "connection.bridgeFooter" = "通信は直接ではなく、ブリッジを経由してサーバーに届きます。サーバーにつながらない場所のための機能です。";
-"connection.publicSection" = "公開ブリッジ";
-"connection.publicFooter" = "github.com/iskra-app/public-bridges のリストにある、確認済みのブリッジです。ブリッジに何が見えるかは下に書いてあります。アプリはこのリストを 1 日に 1 回 GitHub から直接ダウンロードするため、GitHub とお使いのネットワークにはそのことがわかります。GitHub に接続できないときは保存済みのリストを使います。";
-"connection.publicEmpty" = "リストにはまだブリッジがありません。下で自分のブリッジを追加してください。";
-"connection.publicAnyServer" = "すべての Matrix サーバー";
-"connection.publicServers" = "%@ のみ";
-"connection.publicOperator" = "運営: %@";
-"connection.notListed" = "リストから外れました";
-"connection.ownSection" = "自分のブリッジ";
-"connection.ownFooter" = "自分で運営しているブリッジや、運営者から教わったブリッジです。複数登録でき、チェックの付いたものが使われます。";
-"connection.addBridge" = "ブリッジを追加";
-"connection.editBridge" = "ブリッジを編集";
-"connection.deleteBridge" = "削除";
-"connection.saveBridge" = "保存";
-"connection.cancelEditing" = "キャンセル";
-"connection.bridgeName" = "名前";
-"connection.bridgeNamePrompt" = "例: 自宅";
 
 "connection.status" = "状態";
 "connection.statusDirect" = "直接";
@@ -241,10 +229,11 @@
 "connection.addressFooter" = "ブリッジは起動時にアドレスを表示します。「bridge address for Iskra: npub1…」の行です。";
 "connection.addressBad" = "ブリッジの鍵ではないようです";
 "connection.addressSecret" = "それは秘密鍵です。ここに入れるのは公開鍵、npub で始まるほうです。";
+"connection.defaultBridge" = "Iskra のブリッジに戻す";
 
 "connection.relays" = "リレー";
 "connection.relaysPrompt" = "wss://relay.snort.social, wss://nostr.wine";
-"connection.relaysFooter" = "アプリとブリッジはここで互いを見つけます。複数あるのは予備ではありません。リクエストは全部に同時に送られ、いちばん速かったところから返事が来ます。空欄ならデフォルトの 3 つを使います。";
+"connection.relaysFooter" = "アプリとブリッジはここで互いを見つけます。リクエストは全部に同時に送られ、いちばん速かったところから返事が来るので、1 つでは足りません。空欄ならデフォルトの 3 つを使います。";
 
 "connection.myKey" = "このデバイスの鍵";
 "connection.myKeyFooter" = "ブリッジが非公開なら、この鍵をその ALLOWED_PUBKEYS に追加してください。そうしないと、まったく応答しません。";
@@ -253,7 +242,7 @@
 
 "connection.check" = "ブリッジを確認";
 "connection.checking" = "確認中…";
-"connection.checkOK" = "ブリッジが応答し、サーバーもつながっています — %lld ms";
+"connection.checkOK" = "ブリッジが応答し、サーバーもつながっています。%lld ms";
 "connection.checkNoRelay" = "応答するリレーがありません";
 "connection.checkSilent" = "ブリッジが応答しません。起動していますか？鍵は正しいですか？";
 "connection.checkFailed" = "うまくいきませんでした: %@";
@@ -277,10 +266,11 @@
 
 /* App lock by Face ID / device passcode. */
 "settings.lock" = "アプリのロック";
-"settings.lockEnable" = "Face ID またはパスコードを要求";
+"settings.lockEnable" = "デバイスのパスコードを要求";
 "settings.lockTimeout" = "要求するタイミング";
 "settings.lockExplanation" = "戻ってきたときに、Face ID、Touch ID、またはデバイスのパスコードを求めます。";
 "settings.lockUnavailable" = "先にデバイスのパスコードを設定してください。";
+"settings.offlineFooter" = "オフラインでは変更できません。サーバーにつながらないためです。";
 "settings.lockTimeout.immediately" = "すぐに";
 "settings.lockTimeout.afterMinute" = "1 分後";
 "settings.lockTimeout.afterFiveMinutes" = "5 分後";
@@ -326,6 +316,13 @@
 
 /* The last row of settings, the way through to the About screen. */
 "settings.about" = "Iskraについて";
+"settings.language" = "言語";
+"settings.language.system" = "システムと同じ";
+"settings.language.help" = "メニューとシステムのウインドウは再起動後に切り替わります。";
+"settings.language.restartTitle" = "Iskraを再起動しますか？";
+"settings.language.restartMessage" = "メニューとシステムのウインドウは、再起動後に新しい言語に切り替わります。";
+"settings.language.restart" = "再起動";
+"settings.language.restartLater" = "後で";
 
 /* The app's name under the icon on the About screen. Not translated — it is what the app is
    called in both languages. */
@@ -398,8 +395,8 @@
 
 "signIn.problem.unreachable" = "このアドレスに接続できませんでした。接続を確認して、もう一度お試しください。";
 "signIn.problem.bridgeUnavailable" = "ブリッジを起動できませんでした。ブリッジがオンの間、Iskra は直接接続しません。接続設定でブリッジのアドレスとリレーを確認してください。";
-/* Under "couldn't reach the server", when the bridge is off: the bridge as a way round a block. */
-"signIn.bridgeOffer" = "今いる場所でサーバーがブロックされていても、ブリッジ経由ならつながります。";
+/* Under "couldn't reach the server", when the bridge is off: the bridge as a second route. */
+"signIn.bridgeOffer" = "直接つながらない場合は、ブリッジ経由をお試しください。";
 /* The button under it: switches the bridge on and looks the server up again. */
 "signIn.tryThroughBridge" = "ブリッジをオンにして再試行";
 
@@ -409,7 +406,7 @@
    anything about signing in: the account is fine and the messages are on the device. */
 "session.offlineTitle" = "接続がありません";
 
-"session.offlineMessage" = "会話はこのデバイスにちゃんとあります。今はサーバーにつながらないだけです。ネットワークを確認してください。";
+"session.offlineMessage" = "会話はこのデバイスにあります。今はサーバーにつながらないので、ネットワークを確認してください。";
 
 "session.tryAgain" = "再試行";
 
@@ -481,7 +478,7 @@
    messages are there, we just can't show them. */
 "room.loadFailedTitle" = "チャットを開けませんでした";
 
-"room.loadFailedMessage" = "メッセージが消えたわけではありません。読み込めなかっただけです。接続を確認してください。";
+"room.loadFailedMessage" = "メッセージは残っていますが、読み込めませんでした。接続を確認してください。";
 
 "room.tryAgain" = "再試行";
 
@@ -538,7 +535,9 @@
 
 /* The Appearance screen: light or dark. "System" is the ordinary case and the default; the
    other two are for people whose phone is light while their messages ought to be dark. */
+"appearance.themeAndColors" = "テーマと色";
 "appearance.theme" = "テーマ";
+"appearance.accent" = "アクセントカラー";
 "appearance.mode.system" = "システムに合わせる";
 "appearance.mode.light" = "ライト";
 "appearance.mode.dark" = "ダーク";
@@ -548,7 +547,6 @@
 
 /* The Appearance screen: the colour the app is painted in. The seven colours of the
    rainbow, and a mono theme with no colour at all. */
-"appearance.accent" = "アプリの色";
 "appearance.avatars" = "アバター";
 
 /* The switch under the swatches. Washes the chosen colour across the whole interface — every
@@ -581,6 +579,7 @@
 
 /* The slider under the wallpapers: how far to take the picture down so that messages read on it. */
 "appearance.wallpaperDimming" = "暗さ";
+"appearance.wallpaperLightening" = "明るさ";
 
 /* The button under the slider — swap your photograph for a different one. */
 "appearance.wallpaperChoose" = "別の写真を選ぶ";
@@ -629,6 +628,7 @@
 "message.report.cancel" = "キャンセル";
 
 "message.media.close" = "閉じる";
+"message.media.controls" = "操作ボタンを表示または非表示";
 
 /* The video would not download. Not an alarm and not a dialog — a line on the message
    itself, because there is nothing to be done about it but press again. */
@@ -854,19 +854,21 @@
 
 /* The profile: name and picture. */
 "account.namePlaceholder" = "あなたの名前";
+"account.save" = "保存";
 "account.edit" = "編集";
 "account.editTitle" = "プロフィール";
 "account.nameHeader" = "名前";
 "account.editOffline" = "オフラインではプロフィールを変更できません。サーバーにつながらないためです。";
 "account.nameChangeNotice" = "名前を変えると、やり取りしている全員に伝わります。共通のチャットそれぞれにお知らせが表示されます。";
-"account.usernameHeader" = "ユーザー名";
-"account.usernameFixed" = "ユーザー名はアカウント作成時に一度だけ決めるものです。ここでも、ほかのどこでも変更できません。";
+"account.usernameHeader" = "Matrix ID";
+"account.usernameFixed" = "Matrix ID はアカウント作成時に一度だけ決めるものです。ここでも、ほかのどこでも変更できません。";
 
 /* The menu on a picture that can be changed: in your profile and in a chat. */
 "picture.edit" = "写真を変更";
 "picture.change" = "変更";
 "picture.remove" = "削除";
 "room.manage.edit" = "編集";
+"room.manage.closeInfo" = "チャット情報を隠す";
 "room.manage.editTitle" = "チャットを編集";
 "room.manage.nameHeader" = "名前";
 "room.manage.deleteChat" = "チャットを削除";
@@ -907,7 +909,7 @@
 "encryption.keyCopied" = "コピーしました";
 "encryption.saved" = "コードを保存しました";
 
-"encryption.deviceUnverified" = "新しいデバイス";
+"encryption.deviceUnverified" = "デバイスは未承認";
 
 /* The bar across the conversation: what you have not read yet starts here. */
 "room.unreadMessages" = "未読メッセージ";
@@ -975,7 +977,7 @@
 "verification.done.title" = "このデバイスは承認されました";
 "verification.done.message" = "アカウントはこのデバイスを信頼するようになりました。過去の会話は自動的にここに表示されます。";
 "verification.declined.title" = "承認を中止しました";
-"verification.declined.message" = "絵文字が本当に一致しなかったなら、この接続は信頼せず、もう一度お試しください。単に承認を 2 回開始しただけかもしれません。";
+"verification.declined.message" = "絵文字が本当に一致しなかったなら、この接続は信頼せず、もう一度お試しください。承認を 2 回開始しただけかもしれません。";
 "verification.refused.title" = "拒否しました";
 "verification.refused.message" = "そのデバイスには会話へのアクセスは与えられていません。ただ、サインインしたのがあなたでないなら、誰かがパスワードを知っています。今すぐ変更してください。";
 "verification.refused.endSession" = "このセッションを終了";
@@ -1108,6 +1110,7 @@
 "devices.passwordField" = "パスワード";
 "devices.cancel" = "キャンセル";
 "devices.retry" = "再試行";
+"devices.loadFailed" = "デバイスの一覧を読み込めませんでした。";
 
 /* The Notifications screen: what arrives by default, until a particular chat says otherwise.
    Two things have to be said out loud about these rules — they live on the server, so they apply
@@ -1133,6 +1136,7 @@
 "notifications.systemOff" = "システムが通知をブロックしています";
 "notifications.systemUnknown" = "まだ許可を求めていません";
 "notifications.openSystem" = "設定を開く";
+"notifications.allow" = "通知を許可";
 "notifications.systemFooter" = "システムが通知をブロックしているあいだは、下のルールはどれも働きません。";
 
 "notifications.failed" = "通知の設定を読み込めませんでした。サーバーが応答していません。あとでもう一度お試しください。";
@@ -1140,16 +1144,16 @@
 /* The first run. Six slides before the sign-in — the only place the app talks about itself,
    so the lines are short and no protocol word appears on any of them. See `WelcomeView`. */
 "onboarding.slide.iskra.title" = "Iskra";
-"onboarding.slide.iskra.body" = "あなただけのものになる会話";
+"onboarding.slide.iskra.body" = "iPhone、iPad、Mac 向けの Matrix クライアント";
 
 "onboarding.slide.encryption.title" = "標準でエンドツーエンド暗号化";
-"onboarding.slide.encryption.body" = "読めるのはあなたと相手だけ。CIA にも読めません";
+"onboarding.slide.encryption.body" = "会話を読めるのは、あなたと相手だけ。CIA にも読めません";
 
 "onboarding.slide.decentralised.title" = "分散型";
 "onboarding.slide.decentralised.body" = "Iskra は、コミュニティが育てるオープンなプロトコル Matrix で動いています";
 
-"onboarding.slide.appleWay.title" = "Apple way";
-"onboarding.slide.appleWay.body" = "すべてのプラットフォーム向けのネイティブな Swift アプリ。サクサク動いて、バッテリーにもやさしい";
+"onboarding.slide.appleWay.title" = "Apple のために作られた";
+"onboarding.slide.appleWay.body" = "iPhone、iPad、Mac 向けのネイティブな Swift アプリ。ほかのシステムアプリと同じ見た目、同じ使い心地です";
 
 "onboarding.slide.freedom.title" = "自由に選べる";
 "onboarding.slide.freedom.body" = "既存のサーバーを使っても、自分で立ててもかまいません。ひとつのエコシステムに縛られることはありません";
@@ -1263,6 +1267,7 @@
 
 /* Who reacted: the "everybody" tab. */
 "message.menu.reactorsAll" = "すべて · %lld";
+"message.menu.seenAndReacted" = "%1$@ · %2$@";
 
 /* Media viewer: the counter and video skipping. */
 "message.media.counter" = "%lld / %lld";
@@ -1286,7 +1291,7 @@
 
 "accounts.signOut" = "サインアウト";
 "accounts.signOutTitle" = "%@ からサインアウトしますか？";
-"accounts.signOutMessage" = "このアカウントのチャットはこのデバイスから削除されます。暗号化されたメッセージをもう一度読むには、復元キーかほかのデバイスが必要です。";
+"accounts.signOutMessage" = "このアカウントのチャットはこのデバイスから削除されます。暗号化されたメッセージをもう一度読むには、復元コードかほかのデバイスが必要です。";
 "stickers.subscribe" = "追加";
 "stickers.settings.sheetSection" = "ステッカーの表示";
 "stickers.settings.builtIn" = "スパークス";
@@ -1331,6 +1336,15 @@
 "signIn.whatIsMatrix" = "Matrixとは？";
 /* The title of that screen. */
 "aboutMatrix.title" = "Matrixとは";
+/* The opening paragraph, set larger than the rest. */
+"aboutMatrix.intro" = "Matrixは、メッセージアプリどうしが話すためのオープンな仕組みです。Iskraはそのアプリのひとつです。ほかにもアプリがあり、どれもお互いに通じ合えます。";
+/* Then three short sections: a heading and a paragraph under it. */
+"aboutMatrix.email.title" = "メールのように、チャットでも";
+"aboutMatrix.email.body" = "アカウントはひとつのサーバーにありますが、ほかのどのサーバーの人にもメッセージを送れます。メールと同じです。あなたがGmail、友だちがYahoo!メールでも、メールはちゃんと届きます。Matrixのアドレスは @名前:サーバー という形です。";
+"aboutMatrix.nobody.title" = "誰かひとりのものではありません";
+"aboutMatrix.nobody.body" = "Matrixは、サービスを終わらせたり、データを売ったり、ルールを変えたりできる一社のものではありません。サーバーは何千もあり、財団やコミュニティ、ふつうの人たちが運営しています。自分のサーバーを立てることもできます。";
+"aboutMatrix.private.title" = "会話はあなただけのもの";
+"aboutMatrix.private.body" = "メッセージはあなたの端末の上で暗号化され、解読できるのは相手だけです。サーバーはメッセージを保存して届けますが、読むことはできません。";
 
 /* The list of public servers, opened from the sign-in screen. */
 "servers.title" = "サーバーを選ぶ";
@@ -1338,8 +1352,8 @@
 "servers.matrixOrg" = "最大のMatrixサーバーです。Matrix自体を開発している財団が運営しています。";
 /* Where the server is. */
 "servers.matrixOrgWhere" = "イギリス";
-/* A note on matrix.org: it is blocked in Russia, and the bridge gets round that. */
-"servers.matrixOrgBlocked" = "ロシアではブロックされていますが、ブリッジ経由で使えます";
+/* A note on matrix.org, shown only on a phone with Russian language or region: it may not answer from there. */
+"servers.matrixOrgBlocked" = "ロシアからはつながらないことがあります";
 "servers.tchncs" = "最も古いコミュニティサーバーの1つです。運営者はほかの自由なサービスも提供しています。";
 "servers.tchncsWhere" = "ドイツ";
 "servers.quassel" = "日常の会話のための開かれたサーバーです。誰でも無料で使えます。";
@@ -1403,6 +1417,7 @@
 "folders.excludedHeader" = "表示しない";
 "folders.addChats" = "チャットを追加";
 "folders.chooseChats" = "チャットを選択";
+"folders.editList" = "編集";
 "folders.done" = "完了";
 "folders.cancel" = "キャンセル";
 "folders.delete" = "フォルダを削除";
@@ -1426,6 +1441,10 @@
 "beta.developers" = "開発者向け";
 "beta.showsSource" = "メニューにメッセージのJSON";
 "beta.showsSourceHelp" = "メッセージのメニューに「JSONを表示」が加わり、サーバーから届いたイベントをそのまま見られます。表示がおかしいときに役立ちます。";
+"beta.homeserver" = "サーバー";
+"beta.homeserverHelp" = "アプリが実際に通信しているアドレスです。サインイン時に入力したものではなく、アカウント名から見つけたものです。ブリッジはこれを変えず、接続を運ぶだけです。";
+"beta.showsAllEvents" = "チャットのすべてのイベント";
+"beta.showsAllEventsHelp" = "権限、参加ルール、通話、写真の変更、読み取れなかったものなど、普段は表示しないイベントも、種類と送信者を添えた灰色の行としてチャットに表示します。";
 "beta.calmDesign" = "凪:新しいデザイン";
 "beta.calmDesignHelp" = "モノクロのデザインです。メッセージはガラスになり、書体は SF Rounded に変わり、チャットごとに背景の色合いがつきます。自動生成の顔は出ず、色が残るのは自分のメッセージと未読の印だけです。オフにすれば元に戻ります。";
 "beta.calmRoundedFont" = "丸みのある書体";
@@ -1486,3 +1505,9 @@
 "photoEditor.yellow" = "黄";
 "photoEditor.green" = "緑";
 "photoEditor.blue" = "青";
+
+/* Avatar crop */
+"avatarCrop.title" = "移動と拡大";
+"avatarCrop.zoom" = "拡大率";
+"avatarCrop.cancel" = "キャンセル";
+"avatarCrop.done" = "完了";

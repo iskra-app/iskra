@@ -11,11 +11,11 @@ import IskraDesign
 struct MessageMenuOverlay: View {
     let presenter: MessageMenuPresenter
 
-    /// Whether the "+" has been pressed and the six have become all of them.
+    /// Whether the "+" has been pressed and the five have become all of them.
     ///
     /// Kept here rather than in the presentation, because it is a fact about this *opening* of
     /// the menu and not about the message — closing and reopening on the same bubble starts
-    /// again with the six, which is what anybody would expect.
+    /// again with the five, which is what anybody would expect.
     @State private var isPickingEmoji = false
 
     /// The emoji this person has reached for lately, at the top of the panel — see `RecentEmoji`.
@@ -222,6 +222,7 @@ struct MessageMenuOverlay: View {
     /// given the height `MessageMenuLayout` allows and *scrolls* in it, at full size. It used to
     /// be scaled down to fit instead, and a scaled page of text is a page of text too small to
     /// read; the long message is often the very one somebody opened the menu to copy a piece of.
+    /// A picture is the exception, and is scaled after all — see `MessageMenuPresentation.isPicture`.
     @ViewBuilder
     private func lifted(_ presentation: MessageMenuPresentation,
                         layout: MessageMenuLayout) -> some View {
@@ -232,12 +233,27 @@ struct MessageMenuOverlay: View {
         // squeezed to 240 and re-wrapped narrower than the one in the conversation. A fixed frame
         // offers its own width whatever it is offered; a message wider than the column overhangs
         // it on the side away from its anchored edge, which is where it hung in the conversation.
+        //
+        // And the height it had in the list, fixed too. Asked for its *ideal* height instead
+        // (`fixedSize`), a photo answered with less than it is drawn at — it fills the frame it is
+        // given, and has no height of its own to ask for — and came up flattened and cut. The row
+        // already measured the true height; the point more is the same allowance as the width's.
         let message = presentation.content
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(width: width, alignment: alignment)
+            .frame(width: width, height: presentation.anchor.height + 1, alignment: alignment)
 
         Group {
-            if layout.contentHeight < presentation.anchor.height {
+            if layout.contentHeight < presentation.anchor.height, presentation.isPicture {
+                // A picture is made smaller instead — see `MessageMenuPresentation.isPicture`.
+                // Laid out at its own size first and only then scaled, so nothing inside it is
+                // asked to fit a box it was never drawn in; and scaled from the edge it hangs
+                // from, so it stays under the menu's own edge.
+                let scale = layout.contentHeight / (presentation.anchor.height + 1)
+                let corner: UnitPoint = presentation.isOwn ? .topTrailing : .topLeading
+                message
+                    .scaleEffect(scale, anchor: corner)
+                    .frame(width: width * scale, height: layout.contentHeight,
+                           alignment: presentation.isOwn ? .topTrailing : .topLeading)
+            } else if layout.contentHeight < presentation.anchor.height {
                 ScrollView(.vertical) { message }
                     .scrollIndicators(.visible)
                     .frame(width: width, height: layout.contentHeight, alignment: .top)
@@ -429,11 +445,11 @@ private struct MessageMenuRowStyle: ButtonStyle {
     }
 }
 
-// MARK: - The six
+// MARK: - The five
 
 /// The bar of quick reactions over the lifted message.
 ///
-/// The same six as the double tap chooses from — see `QuickReaction`, which is the one list —
+/// The same five as the double tap chooses from — see `QuickReaction`, which is the one list —
 /// and a "+" at the end for everything else. Capsule, glass, floating: the navigation layer
 /// doing exactly what the material is for.
 struct ReactionBar: View {
@@ -471,7 +487,7 @@ struct ReactionBar: View {
 
     private static var cells: CGFloat { CGFloat(QuickReaction.allCases.count + 1) }
 
-    /// Seven full cells and the capsule's padding: the width the bar asks for when the screen
+    /// Six full cells and the capsule's padding: the width the bar asks for when the screen
     /// has the room. It used to be stretched to the emoji panel's 360 points, which spread the
     /// six across the capsule with a thumb's width of nothing between each pair — a row of
     /// separate buttons rather than one strip. Hugging its cells, the gap between two emoji is
@@ -483,9 +499,9 @@ struct ReactionBar: View {
     /// The air around the cells, the same at the sides as above and below them.
     private static var inset: CGFloat { (Theme.Size.reactionBar - Theme.Size.reactionCell) / 2 }
 
-    /// Seven things in the width of the bar: six emoji and the "+".
+    /// Six things in the width of the bar: five emoji and the "+".
     ///
-    /// Worked out rather than fixed, because on the narrowest screen seven 44-point circles
+    /// Worked out rather than fixed, because on the narrowest screen six 44-point circles
     /// come to more than there is — and an `HStack` handed more than it has room for does not
     /// shrink politely, it draws past the capsule it is inside and out over the conversation.
     private var cell: CGFloat {

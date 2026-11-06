@@ -78,10 +78,10 @@ public struct SignInView: View {
         .animation(.smooth, value: model.step)
         .animation(.smooth, value: model.problem)
         .animation(.smooth, value: model.canTryBridge)
-        .sheet(isPresented: $isPickingServer) {
+        .pageSheet(isPresented: $isPickingServer) {
             ServerPickerView { model.address = $0 }
         }
-        .sheet(isPresented: $isReadingAboutMatrix) {
+        .pageSheet(isPresented: $isReadingAboutMatrix) {
             AboutMatrixView()
         }
     }
@@ -312,13 +312,16 @@ public struct SignInView: View {
     }
 
     private func problemPanel(_ problem: LocalizedStringResource) -> some View {
+        // Red on the red wash is under 4.5:1, so the colour is spent on the symbol only and the
+        // sentence stays in the colour sentences are — the way `RecoveryBanner` does it.
         Label {
             Text(problem)
+                .foregroundStyle(.primary)
         } icon: {
             Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.red)
         }
         .font(.callout.weight(.medium))
-        .foregroundStyle(.red)
         .multilineTextAlignment(.leading)
         .padding(Theme.Spacing.normal)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -338,7 +341,7 @@ public struct SignInView: View {
         // the moment it is for: something has gone wrong, the screen has not changed shape, and
         // the user is waiting to be told.
         .onAppear {
-            AccessibilityNotification.Announcement(String(localized: problem)).post()
+            AccessibilityNotification.Announcement(String(app: problem)).post()
         }
     }
 
@@ -432,10 +435,13 @@ public struct SignInView: View {
                 #endif
                 .autocorrectionDisabled()
                 .focused($focus, equals: .username)
+                .submitLabel(.next)
+                .onSubmit { focus = .password }
 
             SecureField(String(app: Strings.SignIn.password), text: $model.password)
                 .textContentType(.password)
                 .focused($focus, equals: .password)
+                .submitLabel(.go)
                 .onSubmit { Task { await model.signInWithPassword() } }
         }
         .entryField()

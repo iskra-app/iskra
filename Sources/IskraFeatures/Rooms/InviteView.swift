@@ -163,6 +163,9 @@ struct InviteView: View {
         let isChosen = chosen.contains { $0.id == id }
 
         return Button {
+            // Not `.disabled`: a disabled button greys its own words, and "Already here" is the
+            // only thing that says why the row does nothing.
+            guard !isMember else { return }
             if let index = chosen.firstIndex(where: { $0.id == id }) {
                 chosen.remove(at: index)
             } else {
@@ -174,17 +177,16 @@ struct InviteView: View {
                           subtitle: isMember ? String(app: Strings.Room.Invite.alreadyHere) : subtitle,
                           avatarURL: avatarURL,
                           seed: id)
-                Image(systemName: isMember || isChosen ? "checkmark.circle.fill" : "circle")
+                // A member is a person with a tick, not the same tick as a chosen one.
+                Image(systemName: isMember ? "person.fill.checkmark"
+                                  : isChosen ? "checkmark.circle.fill" : "circle")
                     .font(.title3)
-                    .foregroundStyle(isMember ? AnyShapeStyle(.tertiary)
-                                     : isChosen ? AnyShapeStyle(.tint) : AnyShapeStyle(.tertiary))
+                    .foregroundStyle(isChosen && !isMember ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
                     .accessibilityHidden(true)
             }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .disabled(isMember)
-        .opacity(isMember ? 0.5 : 1)
         .accessibilityAddTraits(isChosen ? .isSelected : [])
     }
 

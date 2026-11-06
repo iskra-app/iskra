@@ -11,6 +11,8 @@ import IskraDesign
 /// can copy.
 struct MentionPicker: View {
     let members: [RoomMemberSummary]
+    /// The row the keyboard is on, drawn lifted. Nothing is lifted on a phone, which has no keys.
+    var highlighted: Int?
     let onPick: (RoomMemberSummary) -> Void
 
     /// Four and a half lines, then it scrolls — the half line is what says there is more.
@@ -23,9 +25,11 @@ struct MentionPicker: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
-                ForEach(members) { member in
+                ForEach(Array(members.enumerated()), id: \.element.id) { index, member in
                     Button { onPick(member) } label: { row(member) }
                         .buttonStyle(.plain)
+                        .background(highlighted == index ? Color.primary.opacity(Theme.Backdrop.wash) : .clear)
+                        .accessibilityAddTraits(highlighted == index ? .isSelected : [])
                 }
             }
             .padding(.vertical, Theme.Spacing.tight)

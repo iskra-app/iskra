@@ -153,6 +153,7 @@
 
 /* Pushes. A message speaks for itself — there is nothing to translate but the invitation. */
 "push.invite" = "%@ からチャットへの招待が届きました";
+"push.groupLine" = "%1$@：%2$@";
 "push.hiddenTitle" = "Iskra";
 "push.hiddenBody" = "新しいメッセージ";
 

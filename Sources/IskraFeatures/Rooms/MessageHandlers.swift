@@ -83,4 +83,10 @@ struct MessageHandlers {
     /// Who reacted, named — for the "N reactions" line in a group's menu. Nil in a personal chat,
     /// and nil means the line is not offered. See `ReactorsSheet`.
     var loadReactors: (() async -> [Reactor])?
+
+    /// Who has read the message — counted for the same line in a group's menu, and listed under
+    /// "All" in the same sheet, as Telegram does. Nil in a personal chat, where the ticks say it.
+    /// See `TimelineStore.readerIDs(of:)`.
+    var countReaders: (() -> Int)?
+    var loadReaders: (() async -> [Reader])?
 }

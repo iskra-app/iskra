@@ -5,15 +5,15 @@ import Foundation
 /// Both numbers come out of the bundle rather than being written down anywhere in Swift, and
 /// neither is a constant here, because a constant is a second place to forget to change.
 ///
-/// The version is `MARKETING_VERSION`, set by hand in `Apps/project.yml`. The build number is
-/// not set by anybody: a build phase stamps it with the number of commits, so it goes up on its
-/// own and two builds of the same version are always told apart. A build made outside a git
-/// checkout keeps `CURRENT_PROJECT_VERSION` instead.
+/// Neither is set by anybody. A build phase (`Stamped`, in `Apps/project.yml`) stamps the version
+/// with the date of the commit — `2026.10.19`, as the web client's — and the build number with the
+/// count of commits, so both go up on their own and two builds of one day are still told apart. A
+/// build made outside a git checkout keeps `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`.
 ///
 /// Under `swift test` there is no app bundle at all — the keys are simply absent — so the
 /// numbers fall back to zeros instead of trapping. A settings screen is not worth a crash.
 enum AppVersion {
-    /// The one people quote: 0.1.0.
+    /// The one people quote: 2026.10.19.
     static var marketing: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
     }

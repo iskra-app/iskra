@@ -139,6 +139,8 @@ public final class TimelineStore {
     private var typingStopper: Task<Void, Never>?
 
     private let room: Room
+    /// Who runs a search within the room (`makeSearch`) — the session's client; `nil` where there is none.
+    private let searchClient: Client?
     private let ownUserID: String
     private var timeline: Timeline?
 
@@ -245,8 +247,9 @@ public final class TimelineStore {
         ThreadSettings.usesThreads(kind: kind, memberCount: memberCount)
     }
 
-    init(room: Room, ownUserID: String, threadRootID: String? = nil) {
+    init(room: Room, ownUserID: String, threadRootID: String? = nil, searchClient: Client? = nil) {
         self.room = room
+        self.searchClient = searchClient
         self.ownUserID = ownUserID
         self.roomID = room.id()
         self.threadRootID = threadRootID
@@ -556,6 +559,24 @@ public final class TimelineStore {
         /// A brand-new room's first page could not be fetched — the store stalled, or the network
         /// is gone and nothing was cached. See `open()`.
         case firstPageUnavailable
+    }
+
+    /// The header, filled in from the chat list's row before the room itself has been read.
+    ///
+    /// A chat not yet opened since launch has no `RoomInfo` until `start()` has fetched it, and
+    /// that takes longer than the push onto the screen: on an iPhone the title and the subtitle
+    /// were blank for the whole slide in and appeared only when it ended. The row already knows
+    /// the name, the picture and what kind of chat it is, so the header starts from those and
+    /// `adopt` replaces them with the room's own answer when it comes.
+    func prefill(from summary: RoomSummary) {
+        guard roomName.isEmpty else { return }
+        roomName = summary.name
+        kind = summary.kind
+        isOneToOne = summary.kind == .direct
+        privacy = summary.privacy
+        roomAvatarURL = summary.avatarURL
+        roomAvatarSeed = summary.avatarSeed
+        roomFaces = summary.faces
     }
 
     /// Everything the header and the pinned strip read, taken from the room as it now is.
@@ -1239,16 +1260,58 @@ public final class TimelineStore {
         var reactors: [Reactor] = []
         for reaction in message.reactions {
             for userID in reaction.senders {
-                if names[userID] == nil {
-                    let name = (try? await room.memberDisplayName(userId: userID))
-                    let avatar = (try? await room.memberAvatarUrl(userId: userID))
-                    names[userID] = (name ?? userID, avatar)
-                }
+                if names[userID] == nil { names[userID] = await face(of: userID) }
                 let (name, avatar) = names[userID] ?? (userID, nil)
-                reactors.append(Reactor(key: reaction.key, userID: userID, name: name, avatarURL: avatar))
+                reactors.append(Reactor(key: reaction.key, userID: userID, name: name, avatarURL: avatar,
+                                        reactedAt: reaction.reactedAt[userID]))
             }
         }
         return reactors
+    }
+
+    /// Who has read a message, by Matrix ID, without names — enough to count them for the line in
+    /// a group's message menu. Everybody whose read receipt is on this message or on anything after
+    /// it, but you and whoever sent it; the time only for a receipt on this message itself — see
+    /// `Reader.readAt`.
+    ///
+    /// Worked out when asked, from the newest item back to this one, and not kept on every row: a
+    /// receipt moves every time somebody reads, and a row that changed with it would be drawn
+    /// again for nothing anybody can see.
+    public func readerIDs(of messageID: String) -> [(userID: String, readAt: Date?)] {
+        var readers: [(userID: String, readAt: Date?)] = []
+        for item in items.reversed() {
+            guard let event = item.asEvent() else { continue }
+            let isThis = TimelineMapper.identifier(for: event.eventOrTransactionId) == messageID
+            // Newest receipt first within an event too, so the list reads like the room does.
+            let receipts = event.readReceipts
+                .filter { $0.key != ownUserID }
+                .sorted { ($0.value.timestamp ?? 0) > ($1.value.timestamp ?? 0) }
+            for (userID, receipt) in receipts {
+                readers.append((userID, isThis ? receipt.timestamp.map(MessagePreview.date(from:)) : nil))
+            }
+            if isThis {
+                return readers.filter { $0.userID != event.sender }
+            }
+        }
+        // Not in the loaded timeline at all: nothing can be said about it.
+        return []
+    }
+
+    /// `readerIDs(of:)`, named the way this room names them — the list the menu line opens.
+    public func readers(of messageID: String) async -> [Reader] {
+        var readers: [Reader] = []
+        for (userID, readAt) in readerIDs(of: messageID) {
+            let (name, avatar) = await face(of: userID)
+            readers.append(Reader(userID: userID, name: name, avatarURL: avatar, readAt: readAt))
+        }
+        return readers
+    }
+
+    /// A member's name and picture as this room has them, the ID when it has no name.
+    private func face(of userID: String) async -> (String, String?) {
+        let name = try? await room.memberDisplayName(userId: userID)
+        let avatar = try? await room.memberAvatarUrl(userId: userID)
+        return ((name ?? nil) ?? userID, avatar ?? nil)
     }
 
     /// Who can be called with "@" in this room: everybody joined but you, whoever spoke most
@@ -1493,7 +1556,7 @@ public final class TimelineStore {
     /// holds — so the search screen does not have to go back to the session for a handle it is
     /// standing next to. See `RoomSearchStore`.
     public func makeSearch() -> RoomSearchStore {
-        RoomSearchStore(room: room)
+        RoomSearchStore(room: room, client: searchClient)
     }
 
     // MARK: - Forwarding
@@ -1654,7 +1717,17 @@ public final class TimelineStore {
             return
         }
         hasReadToEnd = true
-        try? await room.markAsRead(receiptType: .read)
+        // On the timeline this screen holds, not on the room. `Room.markAsRead` builds a timeline
+        // of its own inside the SDK, and a fresh timeline starts empty — the history arrives only
+        // by pagination, which that one never does. With no latest event to attach the receipt
+        // to, it quietly sends nothing, so whether a room stopped being unread after it was read
+        // came down to whether the SDK happened to have the room in memory already. The room's
+        // own call stays for the one moment there is no timeline here to ask.
+        if let timeline, !latestRows.isEmpty {
+            try? await timeline.markAsRead(receiptType: .read)
+        } else {
+            try? await room.markAsRead(receiptType: .read)
+        }
         try? await room.setUnreadFlag(newValue: false)
     }
 

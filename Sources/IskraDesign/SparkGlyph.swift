@@ -9,8 +9,16 @@ import SwiftUI
 /// changing that file and this one together.
 ///
 /// The eyes are holes, so it is filled even-odd: `.fill(style: FillStyle(eoFill: true))`.
+/// `eyes: false` is the same outline with nothing cut out of it — the spark with its eyes shut,
+/// which is what `BlinkingSpark` shows for a moment. It is the outline of this path and not a
+/// drawing of its own (`icons/iskra-spark-no-eyes.svg` is that outline, written out), so the two
+/// frames of a blink differ by the eyes and by nothing else.
 public struct SparkGlyph: Shape {
-    public init() {}
+    public var eyes: Bool
+
+    public init(eyes: Bool = true) {
+        self.eyes = eyes
+    }
 
     /// The drawing's own size, in the SVG's units.
     public static let size = CGSize(width: 747, height: 731)
@@ -55,6 +63,7 @@ public struct SparkGlyph: Shape {
         path.addCurve(to: p(278.152, 114.034), control1: p(245.353, 144.024), control2: p(267.253, 133.478))
         path.addLine(to: p(326.889, 27.0854))
         path.closeSubpath()
+        guard eyes else { return path }
         path.move(to: p(419.114, 253.578))
         path.addCurve(to: p(374.117, 231.218), control1: p(413.68, 234.385), control2: p(392.921, 224.562))
         path.addCurve(to: p(350.856, 277.731), control1: p(355.314, 237.874), control2: p(345.604, 258.488))

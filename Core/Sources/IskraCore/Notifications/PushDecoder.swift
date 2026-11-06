@@ -160,7 +160,22 @@ public actor PushDecoder {
         // locked phone has had its words taken away by the line above; adding the sender's face
         // back underneath them would give away exactly what was just withheld.
         guard case let .show(notification) = redacted, !locked else { return redacted }
-        return .show(notification.withAvatar(await avatar(for: notification, client: client)))
+        let withFace = notification.withAvatar(await avatar(for: notification, client: client))
+        guard withFace.isGroup, let roomURL = withFace.roomAvatarURL, !roomURL.isEmpty else { return .show(withFace) }
+        return .show(withFace.withRoomAvatar(await picture(at: roomURL, client: client)))
+    }
+
+    /// A room's picture for a group's notification, on the same terms as the sender's — see `avatar`.
+    private func picture(at url: String, client: Client) async -> Data? {
+        do {
+            let data = try await withTimeout(Self.avatarBudget) {
+                try await client.getMediaThumbnail(mediaSource: try MediaSource.fromUrl(url: url), width: 256, height: 256)
+            }
+            return data.count <= Self.avatarLimit ? data : nil
+        } catch {
+            Log.push.error("the room's picture could not be fetched: \(Log.describe(error), privacy: .public)")
+            return nil
+        }
     }
 
     /// The sender's avatar, or nil.

@@ -29,6 +29,8 @@ public struct ReactionPushRule: Sendable {
     /// Ours, and named so that it is obvious in `getRawPushRules()` whose it is and what it is for.
     /// A rule id is a string on somebody's account for as long as the account exists, and an
     /// account may well be looked at by somebody debugging a different client entirely.
+    /// Still `moscow.swag.iskra`, the app's old prefix, on purpose: this name lives on the server,
+    /// outlives any install and is shared with Android, so renaming it leaves the old rule behind and a second one beside it.
     static let ruleID = "moscow.swag.iskra.reactions"
 
     private let settings: NotificationSettings

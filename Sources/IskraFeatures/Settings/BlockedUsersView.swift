@@ -28,6 +28,14 @@ struct BlockedUsersView: View {
                     .buttonBorderShape(.capsule)
                     .controlSize(.small)
                 }
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    Button {
+                        Task { await store.unblock(userID: userID) }
+                    } label: {
+                        Text(Strings.Settings.unblock)
+                    }
+                    .tint(.accentColor)
+                }
             }
         }
         .navigationTitle(Text(Strings.Settings.blocked))

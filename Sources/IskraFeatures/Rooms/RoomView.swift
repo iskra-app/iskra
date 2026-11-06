@@ -47,6 +47,18 @@ public struct RoomView: View {
     /// message — and only the screen can see both ends.
     @State private var composerContext: ComposerContext?
 
+    /// What the composer held when an edit filled it with the message being changed: the user's own
+    /// half-written words, and the reply they belonged to. An edit borrows the box; when it ends —
+    /// sent, cancelled, Escape — the box is handed back as it was, not left empty and not left
+    /// holding the old message.
+    @State private var beforeEditing: ComposerSnapshot?
+
+    private struct ComposerSnapshot {
+        let draft: String
+        let mentions: [ComposerMention]
+        let context: ComposerContext?
+    }
+
     /// Builds a thread's timeline from its root's event ID — see `UserSession.threadTimeline`. Nil
     /// inside a thread, which is the same screen on a different timeline.
     private let makeThread: ((String) -> TimelineStore?)?
@@ -305,6 +317,10 @@ public struct RoomView: View {
     @State private var details: RoomDetailsStore?
     @State private var isShowingDetails = false
 
+    /// The info's editing screen — held here, because on a Mac the pencil that opens it is over the
+    /// info column, in a toolbar declared at the column's root (`RoomInfoColumnToolbar`).
+    @State private var isEditingDetails = false
+
     /// The person whose page is open, pushed over the room — see `openProfile(_:)`.
     @State private var profileUserID: String?
 
@@ -317,7 +333,7 @@ public struct RoomView: View {
         if details == nil { details = makeDetails() }
         guard details != nil else { return }
         if timeline.isOneToOne, userID == timeline.directCounterpartID {
-            isShowingDetails = true
+            showDetails(true)
         } else {
             profileUserID = userID
         }
@@ -338,13 +354,26 @@ public struct RoomView: View {
     /// The width the messages have to live in. See `EnvironmentValues.timelineWidth`.
     @State private var timelineWidth: CGFloat = 0
 
+    /// A window being resized by hand — see where the two sizes are measured.
+    @State private var isLiveResizing = false
+
+    /// The sizes measured during a resize, kept where writing them redraws nothing. In `@State`
+    /// they were written on every frame of the drag — and every write ran this whole screen's body
+    /// again, which is the very redrawing that holding the sizes back was meant to stop.
+    @State private var measured = MeasuredSizes()
+
+    private final class MeasuredSizes {
+        var width: CGFloat = 0
+        var size: CGSize = .zero
+    }
+
     /// What the picture height limit is taken from — see `EnvironmentValues.timelineHeight`.
     @State private var timelineSize: CGSize = .zero
 
-    /// The leading edge of the composer's text, on the screen — reported by `MessageComposer` and
-    /// handed down for `ComposerTravel`. Nil until the composer has been laid out, and in a room the
+    /// Where the composer's text starts, on the screen — reported by `MessageComposer` and handed
+    /// down for `ComposerTravel`. Nil until the composer has been laid out, and in a room the
     /// account cannot post in, where nothing of ours will ever travel.
-    @State private var composerTextLeading: CGFloat?
+    @State private var composerTextOrigin: CGPoint?
 
     /// The dates above the top of the screen, and so the one to float there — see `FloatingDates`.
     @State private var floatingDates = FloatingDates()
@@ -364,6 +393,7 @@ public struct RoomView: View {
     /// screen follows a change at once; `TimelineStore` reads the settings itself.
     @AppStorage(ServiceEventSettings.hidesNameChangesKey) private var hidesNameChanges = false
     @AppStorage(ServiceEventSettings.hidesMembershipChangesKey) private var hidesMembershipChanges = false
+    @AppStorage(BetaFeatures.showsAllEventsKey) private var showsAllEvents = false
 
     /// How tall the conversation is and how far into it the reader has come.
     private struct ScrollMetrics: Equatable {
@@ -430,11 +460,8 @@ public struct RoomView: View {
     @State private var highlighted: String?
     @State private var lighting: Task<Void, Never>?
 
-    /// Trustworthy *here*, unlike in the sidebar. `RoomView` fills the split view's detail
-    /// column, so the size class it reads is the width of the space it actually draws in —
-    /// and how much room the title bar has is precisely the question the header's shape
-    /// turns on. See `RoomListView.isSidebar` for the case where this reasoning goes wrong.
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    /// The window's shape, from the root — see `isCompact` for why not this column's size class.
+    @Environment(\.windowIsCompact) private var windowIsCompact
 
     /// Whether the app is still the thing the user is looking at.
     ///
@@ -481,18 +508,17 @@ public struct RoomView: View {
     /// Consumed once and cleared, so that returning to the room by ordinary means goes nowhere.
     @Binding private var openAt: String?
 
-    /// The conversation's opacity down the screen: solid in the middle, fading out over the same
-    /// distance at both ends — into the title bar at the top, into the composer at the bottom — so
+    /// The conversation's opacity down the screen: solid in the middle, fading over the same
+    /// distance at both ends, never quite to nothing (`Theme.Opacity.timelineFadeFloor`) — into the title bar at the top, into the composer at the bottom — so
     /// the two edges read as one effect. Each fade *ends* at its bar's edge and runs under the bar,
     /// never out over the open conversation. `screen` is the mask's own frame, in the same global
     /// coordinates the composer was measured in.
     ///
-    /// In the calm look the fade is longer and stops short of nothing, so the messages stay faintly
-    /// there under the glass of the bars.
+    /// In the calm look the fade is longer, and leaves more of the messages under the glass of the bars.
     private func timelineFade(in screen: CGRect) -> LinearGradient {
         let isCalm = design == .calm
         let length = isCalm ? Theme.Calm.Fade.length : Theme.Size.timelineFade
-        let edge: Color = isCalm ? .black.opacity(Theme.Calm.Fade.floor) : .clear
+        let faded = Color.black.opacity(isCalm ? Theme.Calm.Fade.floor : Theme.Opacity.timelineFadeFloor)
         let height = max(screen.height, 1)
         func at(_ y: CGFloat) -> CGFloat { min(max((y - screen.minY) / height, 0), 1) }
         let titleBarEdge = screen.minY + timelineInsets.top
@@ -501,10 +527,10 @@ public struct RoomView: View {
         let hasComposer = composerFrame.height > 0
         let bottomSolid = hasComposer ? max(at(composerFrame.minY), topSolid) : 1
         let bottomClear = hasComposer ? max(at(composerFrame.minY + length), bottomSolid) : 1
-        return LinearGradient(stops: [.init(color: edge, location: topClear),
+        return LinearGradient(stops: [.init(color: faded, location: topClear),
                                       .init(color: .black, location: topSolid),
                                       .init(color: .black, location: bottomSolid),
-                                      .init(color: edge, location: bottomClear)],
+                                      .init(color: faded, location: bottomClear)],
                               startPoint: .top, endPoint: .bottom)
     }
 
@@ -528,11 +554,18 @@ public struct RoomView: View {
 
     /// A phone-shaped title bar: an iPhone, or an iPad window squeezed narrow enough to be
     /// one. Never the Mac, which has no size class worth asking.
+    ///
+    /// The *window's* size class, handed down from the root (`windowIsCompact`), not this view's
+    /// own. The whole toolbar is built from this answer — the name and the subtitle in the middle
+    /// on a phone, the header at the leading edge otherwise — and inside the split view's column
+    /// the size class is not steady while a push is animating: for a few frames of opening a chat
+    /// on an iPhone it was not `.compact`, the title was swapped out for the iPad's header and
+    /// removed, and the bar stood empty until the push was over.
     private var isCompact: Bool {
         #if os(macOS)
         false
         #else
-        horizontalSizeClass == .compact
+        windowIsCompact
         #endif
     }
 
@@ -543,12 +576,68 @@ public struct RoomView: View {
         timeline.hasLoaded && !timeline.rows.isEmpty
     }
 
+    /// The chat's info: pushed over the conversation on the phone, a column beside it on a Mac.
+    @ViewBuilder
+    private var roomInfo: some View {
+        if let details {
+            // Leaving the room from the info screen is still leaving the room — and it was the
+            // one way out that tore nothing down. `onDisappear` below declines to clean up when
+            // the room is merely covered by a pushed screen, and at the moment "Leave" takes
+            // effect the info screen *is* still pushed, so the guard held and the whole teardown
+            // was skipped: the draft unsaved, the listeners running, "typing…" left standing in
+            // a room the user had just walked out of, and a locked voice recording still
+            // listening. So it is done here, explicitly, before the room goes.
+            RoomInfoView(details: details, timeline: timeline, onLeave: {
+                tearDown()
+                onLeave()
+            }, onSearch: {
+                showDetails(false)
+                openRoomSearch()
+            }, isEditing: $isEditingDetails)
+        }
+    }
+
     /// The room-info screen, built on the first press and kept, so going back and forth
     /// does not reload the member list each time.
     private func openDetails() {
         if details == nil { details = makeDetails() }
-        isShowingDetails = true
+        #if os(macOS)
+        // A column beside the conversation, and the header is its switch: pressed again, it closes.
+        showDetails(!isShowingDetails)
+        #else
+        showDetails(true)
+        #endif
     }
+
+    /// Opens or closes the info: a push on the phone, a column on the Mac, which takes its width out
+    /// of the conversation and leaves the window the size it was.
+    private func showDetails(_ show: Bool) {
+        isShowingDetails = show
+    }
+
+    #if os(macOS)
+    /// The window's info column — see `InfoColumn`.
+    @Environment(\.infoColumn) private var infoColumn
+
+    /// Who this room is to the column, so that a room on its way out does not empty the column the
+    /// next one has just filled.
+    @State private var columnOwner = UUID()
+
+    /// Puts this room's info in the window's column and opens it, or closes it — closing is the
+    /// user's choice, and the column remembers it for the next chat.
+    private func syncInfoColumn(_ show: Bool) {
+        guard let infoColumn else { return }
+        guard show, let details else {
+            infoColumn.isOpen = false
+            return
+        }
+        infoColumn.attach(AnyView(RoomInfoColumn(details: details,
+                                                 onEdit: { isEditingDetails = true },
+                                                 onClose: { showDetails(false) }) { roomInfo }),
+                          owner: columnOwner)
+        infoColumn.open()
+    }
+    #endif
 
     private func openRoomSearch() {
         roomSearch = timeline.makeSearch()
@@ -753,6 +842,8 @@ public struct RoomView: View {
             .onGeometryChange(for: CGFloat.self) { proxy in
                 proxy.size.width - Theme.Spacing.normal * 2
             } action: { width in
+                measured.width = width
+                guard !isLiveResizing else { return }
                 timelineWidth = width
             }
             .environment(\.timelineWidth, timelineWidth)
@@ -760,13 +851,29 @@ public struct RoomView: View {
             // width. The keyboard only ever makes it shorter, so it does not move this; a turn of
             // the phone or a window resized changes the width, and starts it again.
             .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
+                measured.size = size
+                guard !isLiveResizing else { return }
                 if size.width != timelineSize.width || size.height > timelineSize.height {
                     timelineSize = size
                 }
             }
+            #if os(macOS)
+            // Both sizes above are handed to every message, and a window being dragged wider changes
+            // them on every frame: every bubble in the conversation was laid out again, many times a
+            // second, and the drag stuttered. While the edge is held they keep the size the drag
+            // started at; the messages settle once, when it is let go.
+            .onReceive(NotificationCenter.default.publisher(for: NSWindow.willStartLiveResizeNotification)) { _ in
+                isLiveResizing = true
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSWindow.didEndLiveResizeNotification)) { _ in
+                isLiveResizing = false
+                timelineWidth = measured.width
+                timelineSize = measured.size
+            }
+            #endif
             .environment(\.timelineHeight, timelineSize.height)
             // Where a message of ours starts its journey to its bubble — see `ComposerTravel`.
-            .environment(\.composerTextLeading, composerTextLeading)
+            .environment(\.composerTextOrigin, composerTextOrigin)
             // A name in a grey line, a face beside a message: both go to that person's page.
             .environment(\.openProfile) { userID in openProfile(userID) }
             // The floating date — see `FloatingDates`. Written only when a date crosses the line, so
@@ -1275,6 +1382,7 @@ public struct RoomView: View {
         // the way the chat list's title does — see `headerSubtitle`.
         .onChange(of: hidesNameChanges) { timeline.serviceEventSettingsChanged() }
         .onChange(of: hidesMembershipChanges) { timeline.serviceEventSettingsChanged() }
+        .onChange(of: showsAllEvents) { timeline.serviceEventSettingsChanged() }
         // Opened the first time the room reports anything pinned, and kept afterwards. A room
         // with nothing pinned never opens a second timeline at all.
         .onChange(of: timeline.pinnedEventIDs.isEmpty, initial: true) { _, isEmpty in
@@ -1344,32 +1452,42 @@ public struct RoomView: View {
                 .outsideToolbarGlass()
             }
         }
-        .sheet(item: $roomSearch) { search in
+        .pageSheet(item: $roomSearch) { search in
             RoomSearchView(store: search) { eventID in
                 roomSearch = nil
                 // The same road a reply takes: paginate back until the message is loaded, then
                 // scroll to it and light it.
                 jumpTarget = eventID
             }
+            .listSheetSize()
         }
-        .navigationDestination(isPresented: $isShowingDetails) {
-            if let details {
-                // Leaving the room from the info screen is still leaving the room — and it was the
-                // one way out that tore nothing down. `onDisappear` below declines to clean up when
-                // the room is merely covered by a pushed screen, and at the moment "Leave" takes
-                // effect the info screen *is* still pushed, so the guard held and the whole teardown
-                // was skipped: the draft unsaved, the listeners running, "typing…" left standing in
-                // a room the user had just walked out of, and a locked voice recording still
-                // listening. So it is done here, explicitly, before the room goes.
-                RoomInfoView(details: details, timeline: timeline, onLeave: {
-                    tearDown()
-                    onLeave()
-                }, onSearch: {
-                    isShowingDetails = false
-                    openRoomSearch()
-                })
+        #if os(macOS)
+        // On a Mac the chat's info is a column on the right, beside the conversation rather than
+        // over it — the web client's. The column is the window's (`InfoColumn`); this room fills it
+        // while it is on screen, and opens it by itself when the user left it open.
+        .onChange(of: isShowingDetails) { _, isShowing in syncInfoColumn(isShowing) }
+        .onChange(of: infoColumn?.isOpen) { _, isOpen in
+            // Closed from the column's side — its own button, or dragged shut.
+            if isOpen == false, isShowingDetails { isShowingDetails = false }
+        }
+        .onAppear {
+            if isShowingDetails {
+                syncInfoColumn(true)
+            } else if infoColumn?.isOpen == true {
+                if details == nil { details = makeDetails() }
+                isShowingDetails = details != nil
+                // Filled now rather than from `onChange` a pass later, so that the column is never
+                // without a chat between the last one leaving and this one arriving.
+                if isShowingDetails { syncInfoColumn(true) }
             }
         }
+        // No title bar over a conversation: the window's band and its title go, and the header and
+        // the conversation run up into the space they took.
+        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+        .toolbar(removing: .title)
+        #else
+        .navigationDestination(isPresented: $isShowingDetails) { roomInfo }
+        #endif
         .navigationDestination(item: $openedThread) { thread in
             RoomView(timeline: thread.store,
                      makeDetails: makeDetails,
@@ -1410,30 +1528,18 @@ public struct RoomView: View {
         .fullScreenCover(item: $editingPhoto) { photoEditor($0) }
         .onChange(of: editingPhoto != nil) { _, isOpen in isCoveredByMedia = isOpen }
         #else
-        .sheet(item: $editingPhoto) { photoEditor($0) }
+        .pageSheet(item: $editingPhoto) { photoEditor($0) }
         #endif
-        .sheet(isPresented: $isChoosingSticker) {
-            StickerPicker(roomID: timeline.roomID) { sticker in
-                // Read now, before `cancelContext` clears it: the sticker answers what was being
-                // answered when the sheet was opened.
-                let reply = replyID
-                cancelContext()
-                Task {
-                    await timeline.send(sticker: sticker, replyingTo: reply)
-                    if timeline.failure == nil { await stickers?.used(sticker) }
-                }
-            }
-            // Here as well as on the room: an alert hung on a screen *under* a sheet is never
-            // shown, and adding a sticker from the sheet is one of the two ways to need it.
-            .failureAlert(stickerFailure)
-        }
-        .sheet(isPresented: $isCreatingPoll) {
+        #if os(iOS)
+        .pageSheet(isPresented: $isChoosingSticker) { stickerPicker }
+        #endif
+        .pageSheet(isPresented: $isCreatingPoll) {
             PollComposer { draft in
                 await timeline.send(poll: draft)
             }
         }
         .failureAlert(Binding(get: { liveLocation?.failure }, set: { liveLocation?.failure = $0 }))
-        .sheet(isPresented: $isChoosingLocation) {
+        .pageSheet(isPresented: $isChoosingLocation) {
             LocationPicker(onPick: { location in
                 await timeline.send(location: location, replyingTo: replyID)
                 cancelContext()
@@ -1504,17 +1610,11 @@ public struct RoomView: View {
             guard isAtNewest else { return }
             Task { await timeline.markAsRead() }
         }
-        #if os(macOS)
-        // Escape closes the conversation, the way it closes anything else on a Mac. A key
-        // equivalent rather than `onExitCommand`, because the latter only reaches a view that
-        // holds focus — and the focus is in the composer, which keeps Escape for itself.
-        .background {
-            Button("", action: escape)
-                .keyboardShortcut(.cancelAction)
-                .opacity(0)
-                .accessibilityHidden(true)
-        }
-        #endif
+        // Escape closes the conversation, the way it closes anything else on a Mac — after the
+        // menu, the reply or the edit, and after whatever is pushed over it. Only the room at the
+        // root of the column registers it: a thread is itself pushed, and a modifier on a pushed
+        // screen put the window into a layout loop on macOS 26 (see `escapeKey`).
+        .escapeKeyIfAny(rootEscape)
         // Put the app away mid-recording, and the recording does not survive it — the question is
         // only whether the app admits that.
         //
@@ -1567,7 +1667,15 @@ public struct RoomView: View {
         // is in the room. The flags are the honest signal — we know when we are pushing, because
         // we are the ones who pushed.
         .onDisappear {
+            #if os(macOS)
+            // The info column covers nothing: a room that goes with it open is really going — to
+            // another chat, say. Its info leaves the column with it; the column stays open for the
+            // next one.
+            infoColumn?.detach(owner: columnOwner)
+            guard !isShowingPinned, profileUserID == nil, !isCoveredByMedia else { return }
+            #else
             guard !isShowingDetails, !isShowingPinned, profileUserID == nil, !isCoveredByMedia else { return }
+            #endif
             tearDown()
         }
         .environment(\.coversRoom) { isCoveredByMedia = $0 }
@@ -1624,11 +1732,24 @@ public struct RoomView: View {
 
     /// Escape, on a Mac: the innermost thing that is open closes first. A message menu, then an
     /// answer or an edit being written, and only then the conversation itself.
+    /// `escape`, for the room at the root of its column — nil for a thread, which is pushed.
+    private var rootEscape: (() -> Void)? {
+        guard timeline.threadRootID == nil else { return nil }
+        return { escape() }
+    }
+
     private func escape() {
-        if let messageMenu, messageMenu.presentation != nil {
+        // Anything pushed over the room goes first, and all of it at once: the info screen takes
+        // whatever was pushed over *it* along when it goes.
+        if isShowingDetails || isShowingPinned || profileUserID != nil || openedThread != nil {
+            showDetails(false)
+            isShowingPinned = false
+            profileUserID = nil
+            openedThread = nil
+        } else if let messageMenu, messageMenu.presentation != nil {
             messageMenu.dismiss()
         } else if composerContext != nil {
-            withAnimation(.smooth(duration: Theme.Timing.chrome)) { composerContext = nil }
+            withAnimation(.smooth(duration: Theme.Timing.chrome)) { cancelContext() }
         } else {
             onClose()
         }
@@ -1668,7 +1789,7 @@ public struct RoomView: View {
         // editing "Привет", changing your mind, and leaving put a second "Привет" in the
         // conversation the next time the send button was pressed.
         let isEditing = composerContext?.isEditing == true
-        let unsent = isEditing ? "" : draft
+        let unsent = isEditing ? (beforeEditing?.draft ?? "") : draft
         let timeline = timeline
         Task { await timeline.saveDraft(unsent) }
 
@@ -1777,18 +1898,44 @@ public struct RoomView: View {
     /// row of the conversation with it, was rebuilt twenty times a second. That was the stutter at
     /// the start of every recording and the stiffness all the way through it. Read inside
     /// `VoiceScope`, they rebuild the composer and nothing else.
+
     private var composer: some View {
         VoiceScope(voice: voice) { recording in
             composer(voice: recording)
         }
+        #if os(macOS)
+        .popover(isPresented: $isChoosingSticker, arrowEdge: .top) {
+            stickerPicker
+                .frame(width: Theme.Size.stickerPopoverWidth, height: Theme.Size.stickerPopoverHeight)
+        }
+        #endif
+    }
+
+
+    /// The stickers, to send one into this room — a sheet on a phone, and on a Mac a popover over
+    /// the composer, the size of the reaction picker's rather than a window's worth of sheet.
+    private var stickerPicker: some View {
+        StickerPicker(roomID: timeline.roomID) { sticker in
+            // Read now, before `cancelContext` clears it: the sticker answers what was being
+            // answered when the sheet was opened.
+            let reply = replyID
+            cancelContext()
+            Task {
+                await timeline.send(sticker: sticker, replyingTo: reply)
+                if timeline.failure == nil { await stickers?.used(sticker) }
+            }
+        }
+        // Here as well as on the room: an alert hung on a screen *under* a sheet is never
+        // shown, and adding a sticker from the sheet is one of the two ways to need it.
+        .failureAlert(stickerFailure)
     }
 
     private func composer(voice recording: VoiceRecording?) -> some View {
         MessageComposer(draft: $draft,
                         context: composerContext,
                         onCancelContext: cancelContext,
-                        onTextLeading: { leading in
-                            if composerTextLeading != leading { composerTextLeading = leading }
+                        onTextOrigin: { origin in
+                            if composerTextOrigin != origin { composerTextOrigin = origin }
                         },
                         onSend: send,
                         onStartVideoNote: startVideoNote,
@@ -1824,7 +1971,8 @@ public struct RoomView: View {
                         onEditAttachment: editPhoto,
                         onPasteImage: { Task { await pasteImages() } },
                         mentions: $draftMentions,
-                        loadMentionCandidates: timeline.isOneToOne ? nil : { await timeline.mentionCandidates() })
+                        loadMentionCandidates: timeline.isOneToOne ? nil : { await timeline.mentionCandidates() },
+                        onEditLast: editLastMessage)
     }
 
     /// What the room looks like while a picture is held over it: an outline, and a sentence saying
@@ -1978,7 +2126,7 @@ public struct RoomView: View {
             } message: {
                 Text(Strings.Message.Selection.deleteMessage)
             }
-            .sheet(isPresented: $isForwardingSelection, onDismiss: endSelection) {
+            .pageSheet(isPresented: $isForwardingSelection, onDismiss: endSelection) {
                 if let forwarding {
                     ForwardPicker(messages: chosen, forwarding: forwarding)
                 }
@@ -2322,7 +2470,9 @@ public struct RoomView: View {
             },
             loadSource: showsEventSource ? { timeline.sourceJSON(of: message.id) } : nil,
             canDeleteOthers: timeline.canDeleteOthers,
-            loadReactors: timeline.isOneToOne ? nil : { await timeline.reactors(of: message.id) }
+            loadReactors: timeline.isOneToOne ? nil : { await timeline.reactors(of: message.id) },
+            countReaders: timeline.isOneToOne ? nil : { timeline.readerIDs(of: message.id).count },
+            loadReaders: timeline.isOneToOne ? nil : { await timeline.readers(of: message.id) }
         )
     }
 
@@ -2368,7 +2518,7 @@ public struct RoomView: View {
             } label: {
                 Text(Strings.Room.earlierUnavailable)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .onWallpaperInk()
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, Theme.Spacing.normal)
                     .padding(.vertical, Theme.Spacing.close)
@@ -2491,6 +2641,8 @@ public struct RoomView: View {
     }
 
     private func startReplying(to message: Message) {
+        // Out of an edit first, so the old message does not become the start of the answer.
+        if composerContext?.isEditing == true { endEditing() }
         composerContext = .replying(message)
     }
 
@@ -2500,25 +2652,49 @@ public struct RoomView: View {
     private func startEditing(_ message: Message) {
         // An album is its first picture, and so is its caption — see `Album`.
         guard let text = message.editingText else { return }
+        // Kept from before the *first* edit: going from one edit straight to another must not
+        // keep the first message's words as the user's own.
+        if composerContext?.isEditing != true {
+            beforeEditing = ComposerSnapshot(draft: draft, mentions: draftMentions, context: composerContext)
+        }
         composerContext = .editing(message)
         let (words, mentions) = ComposerMentions.unlinked(text)
         draft = words
         draftMentions = mentions
     }
 
+    /// ↑ in an empty composer on a Mac: the newest message of yours that can still be edited.
+    /// Not while answering or already editing — ↑ then is just a key.
+    private func editLastMessage() -> Bool {
+        guard composerContext == nil,
+              let last = timeline.rows.reversed().lazy.compactMap(\.message).first(where: \.isOwn),
+              last.canEdit else { return false }
+        startEditing(last)
+        return true
+    }
+
     /// Backs out of a reply or an edit.
     ///
-    /// An abandoned *edit* takes its draft with it, and this is the one place the draft is
-    /// thrown away. It has to be: the box was filled with the old message by the app, not by
-    /// the user, and leaving those words behind would mean cancelling an edit and finding the
-    /// message you were editing sitting in the composer, ready to be sent again as a new one.
-    /// An abandoned reply keeps the draft, because every word in it is the user's own.
+    /// An abandoned *edit* gives the composer back as it was before the edit began (`endEditing`).
+    /// The box was filled with the old message by the app, not by the user, and leaving those words
+    /// behind would mean cancelling an edit and finding the message you were editing sitting in the
+    /// composer, ready to be sent again as a new one. An abandoned reply keeps the draft, because
+    /// every word in it is the user's own.
     private func cancelContext() {
-        if case .editing = composerContext {
-            draft = ""
-            draftMentions = []
+        if composerContext?.isEditing == true {
+            endEditing()
+        } else {
+            composerContext = nil
         }
-        composerContext = nil
+    }
+
+    /// The composer as it was before the edit — its words and the reply they were — or empty, if
+    /// there is no record of it.
+    private func endEditing() {
+        draft = beforeEditing?.draft ?? ""
+        draftMentions = beforeEditing?.mentions ?? []
+        composerContext = beforeEditing?.context
+        beforeEditing = nil
     }
 
     private func togglePin(_ message: Message) async {
@@ -2571,9 +2747,13 @@ public struct RoomView: View {
         // screen in that state; the keyboard's Return still is.
         guard hasText || !images.isEmpty || context?.isEditing == true else { return }
 
-        draft = ""
-        draftMentions = []
-        composerContext = nil
+        if context?.isEditing == true {
+            endEditing()
+        } else {
+            draft = ""
+            draftMentions = []
+            composerContext = nil
+        }
         if !images.isEmpty { attachments = [] }
 
         Task {
@@ -2721,11 +2901,11 @@ struct DayDividerView: View {
                       now: Date = .now,
                       calendar: Calendar = .current) -> String {
         if calendar.isDate(date, inSameDayAs: now) {
-            return String(localized: Strings.Room.today)
+            return String(app: Strings.Room.today)
         }
         if let yesterday = calendar.date(byAdding: .day, value: -1, to: now),
            calendar.isDate(date, inSameDayAs: yesterday) {
-            return String(localized: Strings.Room.yesterday)
+            return String(app: Strings.Room.yesterday)
         }
         let sameYear = calendar.isDate(date, equalTo: now, toGranularity: .year)
         return date.formatted(sameYear ? .dateTime.day().month(.wide)
@@ -2755,4 +2935,10 @@ extension View {
 private struct PresenceWatch: Equatable {
     let counterpart: String?
     let hidesOwn: Bool
+}
+
+extension EnvironmentValues {
+    /// Whether the window is phone-shaped — set once at the root, from the one view outside the
+    /// split view, whose size class is the window's. See `RoomView.isCompact`.
+    @Entry var windowIsCompact = false
 }

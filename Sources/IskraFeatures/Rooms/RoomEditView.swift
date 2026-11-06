@@ -28,6 +28,8 @@ struct RoomEditView: View {
     @Environment(\.isOffline) private var isOffline
 
     @State private var draftName = ""
+    /// A picked picture being cut into the room's face — see `AvatarCropper`.
+    @State private var cropping: AvatarCropRequest?
     @State private var draftTopic = ""
 
     /// What to call the person at the other end of a personal chat. Kept apart from `draftName`,
@@ -132,6 +134,10 @@ struct RoomEditView: View {
             // it is two lists, not a field.
             if isRoom, details.permissions.canChangeRoles {
                 Section {
+                    // A link, not a flag and a `navigationDestination` on this screen: this screen is
+                    // itself pushed by one, and a destination declared on it put the whole window
+                    // into a layout loop on macOS 26 — the room and its info screen rebuilt
+                    // forever. Escape does not reach this one list; that is the price.
                     NavigationLink {
                         RoomRulesView(details: details)
                     } label: {
@@ -171,7 +177,7 @@ struct RoomEditView: View {
                 }
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .profileScreen()
         // The fields follow the room, except while somebody is typing in them — a name that
         // arrives from a sync must not overwrite the one being written.
@@ -218,7 +224,18 @@ struct RoomEditView: View {
         .photosPicker(isPresented: $isChoosingPicture, selection: $pickedPicture, matching: .images)
         .onChange(of: pickedPicture) { _, item in
             guard let item else { return }
-            Task { await setPicture(item) }
+            Task { await choosePicture(item) }
+        }
+        // Cut to a square before it goes anywhere — see `AvatarCropper`. A space's face is a
+        // rounded square, and the outline in the cropper says so.
+        .pageSheet(item: $cropping) { request in
+            AvatarCropper(image: request.image,
+                          shape: details.kind == .space ? .roundedSquare : .circle,
+                          onCancel: { cropping = nil },
+                          onDone: { data in
+                              cropping = nil
+                              Task { await details.setPicture(data, filename: "avatar.jpg") }
+                          })
         }
         .failureAlert(Binding(get: { details.failure }, set: { details.failure = $0 }))
     }
@@ -352,13 +369,13 @@ struct RoomEditView: View {
             .padding(.vertical, Theme.Spacing.roomy)
     }
 
-    private func setPicture(_ item: PhotosPickerItem) async {
+    private func choosePicture(_ item: PhotosPickerItem) async {
         pickedPicture = nil
 
-        guard let data = await imageData(from: item) else {
+        guard let data = await imageData(from: item), let image = AvatarCrop.image(from: data) else {
             details.failure = .picture
             return
         }
-        await details.setPicture(data, filename: "avatar.jpg")
+        cropping = AvatarCropRequest(image: image)
     }
 }

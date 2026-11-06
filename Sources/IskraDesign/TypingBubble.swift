@@ -65,6 +65,7 @@ public struct TypingDots: View {
     }
 
     @State private var pulsing = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// One full pulse, and how far each dot lags the one before it.
     private let period = 0.6
@@ -78,17 +79,19 @@ public struct TypingDots: View {
                     .frame(width: dot, height: dot)
                     // Opacity and scale are render transforms — they do not change the bubble's
                     // layout size, so the scroll view's content height stays put frame to frame.
-                    .opacity(pulsing ? 1 : 0.35)
-                    .scaleEffect(pulsing ? 1.0 : 0.8)
+                    // Reduce Motion: still dots, at a middling opacity. The root's transaction does not
+                    // stop a local `.animation(value:)`, so the animation is simply not asked for.
+                    .opacity(reduceMotion ? 0.6 : (pulsing ? 1 : 0.35))
+                    .scaleEffect(reduceMotion ? 1 : (pulsing ? 1.0 : 0.8))
                     .animation(
-                        .easeInOut(duration: period)
+                        reduceMotion ? nil : .easeInOut(duration: period)
                             .repeatForever(autoreverses: true)
                             .delay(Double(index) * stagger),
                         value: pulsing
                     )
             }
         }
-        .onAppear { pulsing = true }
+        .onAppear { if !reduceMotion { pulsing = true } }
         .accessibilityHidden(true)
     }
 }

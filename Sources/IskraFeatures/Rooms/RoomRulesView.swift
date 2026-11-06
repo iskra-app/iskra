@@ -66,13 +66,13 @@ struct RoomRulesView: View {
                 }
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .navigationTitle(String(app: Strings.Room.Rules.title))
         #if !os(macOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
         .memberProfiles($openedMember, details: details)
-        .sheet(isPresented: $isAppointing) {
+        .pageSheet(isPresented: $isAppointing) {
             AppointSheet(candidates: candidates,
                          roles: appointableRoles(for:),
                          appoint: { member, role in Task { await details.setRole(role, for: member) } })
@@ -178,7 +178,7 @@ private struct AppointSheet: View {
                                 titleVisibility: .visible,
                                 presenting: chosen) { member in
                 ForEach(roles(member), id: \.self) { role in
-                    Button(String(localized: RoomRoleName.full(role))) {
+                    Button(String(app: RoomRoleName.full(role))) {
                         appoint(member, role)
                         dismiss()
                     }

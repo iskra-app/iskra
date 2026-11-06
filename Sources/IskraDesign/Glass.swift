@@ -80,7 +80,25 @@ public extension View {
         if #available(iOS 26, macOS 26, *) {
             glassEffect(.regular.interactive(), in: shape)
         } else {
+            // The same fill as an entry field, so it gets an edge the field does not have —
+            // otherwise "Choose a server" cannot be told from the box above it.
             background(.quaternary, in: shape)
+                .overlay(shape.stroke(Color.primary.opacity(Theme.Opacity.fallbackEdge),
+                                      lineWidth: Theme.Border.hairline))
+        }
+    }
+
+    /// Feedback for a press on a glass-styled button before glass exists. On OS 26 the glass is
+    /// interactive and answers a touch by itself, so this does nothing there; earlier, the fill is a
+    /// plain colour and would otherwise not move at all.
+    @ViewBuilder
+    func fallbackPress(_ isPressed: Bool) -> some View {
+        if #available(iOS 26, macOS 26, *) {
+            self
+        } else {
+            scaleEffect(isPressed ? 0.97 : 1)
+                .opacity(isPressed ? 0.8 : 1)
+                .animation(.easeOut(duration: Theme.Timing.chrome), value: isPressed)
         }
     }
 
@@ -168,6 +186,28 @@ public extension ToolbarContent {
     /// leave.
     func outsideToolbarGlass() -> some ToolbarContent {
         OutsideToolbarGlass(content: self)
+    }
+}
+
+/// A gap between two toolbar items, so that each gets a capsule of glass of its own instead of
+/// sharing one — `flexible` to push them to either end of the bar. Before glass there is no capsule
+/// to split, and a flexible gap is the toolbar's own flexible space.
+@MainActor
+public func toolbarGlassGap(placement: ToolbarItemPlacement, flexible: Bool = false) -> some ToolbarContent {
+    ToolbarGlassGap(placement: placement, flexible: flexible)
+}
+
+struct ToolbarGlassGap: ToolbarContent {
+    let placement: ToolbarItemPlacement
+    let flexible: Bool
+
+    @ToolbarContentBuilder
+    var body: some ToolbarContent {
+        if #available(iOS 26, macOS 26, *) {
+            ToolbarSpacer(flexible ? .flexible : .fixed, placement: placement)
+        } else if flexible {
+            ToolbarItem(placement: placement) { Spacer() }
+        }
     }
 }
 

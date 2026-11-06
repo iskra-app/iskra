@@ -11,10 +11,15 @@ import Foundation
 public struct ServiceEventSettings: Sendable, Equatable {
     public var hidesNameChanges: Bool
     public var hidesMembershipChanges: Bool
+    /// Every event the app otherwise leaves out, as a grey line naming its type — a developer's
+    /// switch, see `BetaFeatures.showsAllEventsKey`.
+    public var showsEverything: Bool
 
-    public init(hidesNameChanges: Bool = false, hidesMembershipChanges: Bool = false) {
+    public init(hidesNameChanges: Bool = false, hidesMembershipChanges: Bool = false,
+                showsEverything: Bool = false) {
         self.hidesNameChanges = hidesNameChanges
         self.hidesMembershipChanges = hidesMembershipChanges
+        self.showsEverything = showsEverything
     }
 
     public static let hidesNameChangesKey = "chats.hidesNameChanges"
@@ -26,7 +31,8 @@ public struct ServiceEventSettings: Sendable, Equatable {
     /// What the settings screen says right now. Both off unless somebody turned them on.
     public static func current(_ defaults: UserDefaults = .standard) -> ServiceEventSettings {
         ServiceEventSettings(hidesNameChanges: defaults.bool(forKey: hidesNameChangesKey),
-                             hidesMembershipChanges: defaults.bool(forKey: hidesMembershipChangesKey))
+                             hidesMembershipChanges: defaults.bool(forKey: hidesMembershipChangesKey),
+                             showsEverything: defaults.bool(forKey: BetaFeatures.showsAllEventsKey))
     }
 
     /// Whether this line is left out of the conversation.
@@ -38,6 +44,8 @@ public struct ServiceEventSettings: Sendable, Equatable {
             hidesMembershipChanges
         case .roomRenamed, .roomTopicChanged, .roomPictureChanged, .roomCreated, .encryptionEnabled:
             false
+        case .hidden:
+            !showsEverything
         }
     }
 }

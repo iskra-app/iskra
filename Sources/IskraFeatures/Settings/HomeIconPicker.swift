@@ -53,7 +53,9 @@ struct HomeIconPicker: View {
     }
 
     private func tile(_ candidate: HomeIcon) -> some View {
-        VStack(spacing: Theme.Spacing.tight) {
+        // `normal`, not `tight`: the ring round a chosen icon stands `tight` outside the tile, and
+        // at `tight` the name sat right against it.
+        VStack(spacing: Theme.Spacing.normal) {
             Button {
                 choose(candidate)
             } label: {

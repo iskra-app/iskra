@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 #if os(iOS)
 import GameController
 import UIKit
@@ -54,17 +57,25 @@ enum ComposerReturnKey {
 extension View {
     /// The Return key in the composer's field, by the setting above. `send` is the composer's own
     /// send; `text` and `selection` are the field's, for putting a newline where the cursor is.
+    ///
+    /// `editLast`, on a Mac, is ↑ in an empty field — see `MessageComposer.onEditLast`. It needs
+    /// `isFocused`, because ↑ is caught before the field sees it (`UpArrowCatcher`).
     func composerReturnKey(text: Binding<String>,
                            selection: Binding<TextSelection?>,
-                           send: @escaping () -> Void) -> some View {
-        modifier(ComposerReturnKeyModifier(text: text, selection: selection, send: send))
+                           isFocused: Bool = false,
+                           send: @escaping () -> Void,
+                           editLast: (() -> Bool)? = nil) -> some View {
+        modifier(ComposerReturnKeyModifier(text: text, selection: selection, isFocused: isFocused,
+                                           send: send, editLast: editLast))
     }
 }
 
 private struct ComposerReturnKeyModifier: ViewModifier {
     @Binding var text: String
     @Binding var selection: TextSelection?
+    let isFocused: Bool
     let send: () -> Void
+    let editLast: (() -> Bool)?
 
     @AppStorage(ComposerReturnKey.sendsWithCommandReturnKey)
     private var stored = ComposerReturnKey.sendsWithCommandReturnByDefault
@@ -87,6 +98,16 @@ private struct ComposerReturnKeyModifier: ViewModifier {
             }
             // Return, unmodified, in the "Return sends" mode: the field's own submit.
             .onSubmit { if !commandSends { send() } }
+            // Only in an empty field: with words in it, ↑ is the cursor going up a line.
+            //
+            // Not `onKeyPress(.upArrow)`, which is what this was and which never fired: a vertical
+            // field is an `NSTextView`, and it takes ↑ as "move up" itself — even with nothing in
+            // it to move through — so the key never reached SwiftUI. Caught ahead of it instead.
+            .background {
+                UpArrowCatcher(isEnabled: isFocused && text.isEmpty && editLast != nil) {
+                    editLast?() ?? false
+                }
+            }
         #else
         content
             .onChange(of: text) { old, new in
@@ -124,3 +145,130 @@ private struct ComposerReturnKeyModifier: ViewModifier {
         self.selection = TextSelection(insertionPoint: text.index(text.startIndex, offsetBy: offset + 1))
     }
 }
+
+#if os(macOS)
+/// ↑ with no modifiers, in this view's window, taken before the focused text view can take it —
+/// see `ComposerReturnKeyModifier`. Listens only while `isEnabled`, and lets the key through
+/// whenever `perform` says it did nothing with it.
+private struct UpArrowCatcher: NSViewRepresentable {
+    let isEnabled: Bool
+    let perform: @MainActor () -> Bool
+
+    func makeNSView(context: Context) -> CatcherView {
+        let view = CatcherView()
+        view.isEnabled = isEnabled
+        view.perform = perform
+        return view
+    }
+
+    func updateNSView(_ view: CatcherView, context: Context) {
+        view.isEnabled = isEnabled
+        view.perform = perform
+    }
+
+    static func dismantleNSView(_ view: CatcherView, coordinator: ()) {
+        view.stop()
+    }
+
+    final class CatcherView: NSView {
+        var isEnabled = false
+        var perform: @MainActor () -> Bool = { false }
+        private var monitor: Any?
+
+        /// The arrow keys' own key code; the same on every layout.
+        private static let upArrow: UInt16 = 126
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if window == nil { stop() } else { start() }
+        }
+
+        private func start() {
+            guard monitor == nil else { return }
+            monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                guard let self, self.claims(event), self.perform() else { return event }
+                return nil
+            }
+        }
+
+        func stop() {
+            if let monitor { NSEvent.removeMonitor(monitor) }
+            monitor = nil
+        }
+
+        private func claims(_ event: NSEvent) -> Bool {
+            // An arrow key arrives with `.function` and `.numericPad` set; neither is a modifier
+            // anybody pressed.
+            let held = event.modifierFlags.intersection([.command, .shift, .option, .control])
+            return isEnabled && window != nil && event.window === window
+                && event.keyCode == Self.upArrow && held.isEmpty
+        }
+    }
+}
+#endif
+
+#if os(macOS)
+/// The keys of the mention list. See `MentionKeyCatcher`.
+enum MentionKey { case up, down, confirm, escape }
+
+/// ↑ ↓ Tab Return Escape, taken ahead of the focused text view while the mention list is up, for
+/// the same reason `UpArrowCatcher` is: the field would use ↑ ↓ to move the cursor and Return to
+/// send the half-written "@ан". Escape is taken here too, so it closes the list and does not
+/// leave the chat. A key `perform` does not want goes on to the field.
+struct MentionKeyCatcher: NSViewRepresentable {
+    let isEnabled: Bool
+    let perform: @MainActor (MentionKey) -> Bool
+
+    func makeNSView(context: Context) -> CatcherView {
+        let view = CatcherView()
+        view.isEnabled = isEnabled
+        view.perform = perform
+        return view
+    }
+
+    func updateNSView(_ view: CatcherView, context: Context) {
+        view.isEnabled = isEnabled
+        view.perform = perform
+    }
+
+    static func dismantleNSView(_ view: CatcherView, coordinator: ()) {
+        view.stop()
+    }
+
+    final class CatcherView: NSView {
+        var isEnabled = false
+        var perform: @MainActor (MentionKey) -> Bool = { _ in false }
+        private var monitor: Any?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if window == nil { stop() } else { start() }
+        }
+
+        private func start() {
+            guard monitor == nil else { return }
+            monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                guard let self, self.isEnabled, self.window != nil, event.window === self.window,
+                      event.modifierFlags.intersection([.command, .shift, .option, .control]).isEmpty,
+                      let key = Self.key(for: event.keyCode), self.perform(key) else { return event }
+                return nil
+            }
+        }
+
+        func stop() {
+            if let monitor { NSEvent.removeMonitor(monitor) }
+            monitor = nil
+        }
+
+        private static func key(for code: UInt16) -> MentionKey? {
+            switch code {
+            case 126: .up
+            case 125: .down
+            case 36, 76, 48: .confirm
+            case 53: .escape
+            default: nil
+            }
+        }
+    }
+}
+#endif

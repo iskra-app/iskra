@@ -27,7 +27,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 REPO="$PWD"
 
-BUNDLE_ID="moscow.swag.iskra"
+BUNDLE_ID="wtf.iskra"
 BRANCH="dev"
 DERIVED="$REPO/.build/xcode-device"
 SRC="$REPO/.build/dev-src"
@@ -157,6 +157,11 @@ else
     git -C "$SRC" checkout --quiet --detach --force "$BRANCH"
     git -C "$SRC" reset --quiet --hard "$BRANCH"
   else
+    # Каталог мог исчезнуть вместе с .build, а запись о нём в .git/worktrees —
+    # остаться, и тогда `worktree add` отказывается: «missing but already
+    # registered». Prune убирает только записи без каталога, ничьё живое дерево он
+    # не трогает.
+    git -C "$REPO" worktree prune
     mkdir -p "$(dirname "$SRC")"
     git -C "$REPO" worktree add --detach "$SRC" "$BRANCH" >/dev/null
   fi

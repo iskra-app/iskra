@@ -40,6 +40,15 @@ public struct CalmBackdrop: View {
               brightness: scheme == .dark ? Theme.Calm.Shade.brightnessDark : Theme.Calm.Shade.brightnessLight)
     }
 
+    /// The same hue for a surface on top of the shade: a settings row, the menu. In the dark it is
+    /// about as dark as the surface itself, so it colours the surface without lightening it.
+    public static func surfaceShade(for seed: String, in scheme: ColorScheme) -> Color {
+        guard scheme == .dark else { return shade(for: seed, in: scheme) }
+        return Color(hue: hue(for: seed),
+                     saturation: Theme.Calm.Shade.surfaceSaturationDark,
+                     brightness: Theme.Calm.Shade.surfaceBrightnessDark)
+    }
+
     /// The hue of a seed, 0 to 1.
     static func hue(for seed: String) -> Double {
         Double(stableHash(seed) % 360) / 360
@@ -84,7 +93,7 @@ private struct MenuGlass<S: Shape>: ViewModifier {
         case .calm:
             content.contentGlass(in: shape,
                                  tint: seed.map {
-                                     CalmBackdrop.shade(for: $0, in: scheme)
+                                     CalmBackdrop.surfaceShade(for: $0, in: scheme)
                                          .opacity(Theme.Calm.Shade.surfaceTint)
                                  })
         }

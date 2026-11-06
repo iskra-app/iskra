@@ -51,6 +51,13 @@ struct PushTests {
     /// The rule that decides the two lines at the top. In a group both are needed; in a
     /// one-to-one chat the room's name already *is* the person's, and printing it twice —
     /// once as the title and once again directly beneath — is the failure this prevents.
+    @Test("a group stays a group when its sender has no name: the ID speaks instead of the room")
+    func namelessSenderInAGroup() {
+        let group = PushMapper.attribution(roomName: "Кухня", senderName: "", senderID: "@anya:matrix.org", isDirect: false)
+        #expect(group.title == "Кухня")
+        #expect(group.sender == "@anya:matrix.org")
+    }
+
     @Test("a direct chat is titled with the person, and does not name them twice")
     func directChatNamesThePersonOnce() {
         let direct = PushMapper.attribution(roomName: "Аня", senderName: "Аня", isDirect: true)

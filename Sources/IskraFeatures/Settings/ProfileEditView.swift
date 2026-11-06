@@ -8,10 +8,10 @@ import IskraDesign
 /// Pushed from the pencil in the corner of `SettingsView`, and pushed rather than presented:
 /// the back chevron and the swipe are then the system's, exactly as everywhere else in this app.
 ///
-/// There is no Save button. The name is sent when the field is *left* — on submit, on leaving the
-/// screen — which is the arrangement settings already used when the field lived on the profile
-/// row itself. What moved here is not the mechanism, it is the *mode*: a name you can only edit
-/// on a screen you chose to open cannot be emptied by a stray tap on the screen you read.
+/// The name is sent only on purpose: with the Save button, or with Return in the field. Losing
+/// focus or leaving the screen sends nothing, because a new name is an event in every shared chat
+/// and a stray tap should not be able to announce it. An empty name is never sent; the field goes
+/// back to the current one instead of looking saved.
 struct ProfileEditView: View {
     let session: UserSession
 
@@ -25,6 +25,8 @@ struct ProfileEditView: View {
 
     @State private var isChoosingPicture = false
     @State private var pickedPicture: PhotosPickerItem?
+    /// The picked picture, being cut into the face — see `AvatarCropper`.
+    @State private var cropping: AvatarCropRequest?
 
     /// A change the server would not make — or a picture the photo library would not hand over,
     /// which never reached the server at all.
@@ -40,7 +42,8 @@ struct ProfileEditView: View {
             Section {
                 TextField(String(app: Strings.Account.namePlaceholder), text: $draftName)
                     .focused($isNaming)
-                    .onSubmit { isNaming = false }
+                    .submitLabel(.done)
+                    .onSubmit { Task { await save() } }
                     .disabled(isOffline)
             } header: {
                 Text(Strings.Account.nameHeader)
@@ -58,8 +61,8 @@ struct ProfileEditView: View {
             // The Matrix ID, shown in a field so it reads as the name's sibling, and disabled
             // because no homeserver can change it: it is the account itself.
             Section {
-                TextField(String(app: Strings.Account.usernameHeader), text: .constant(session.userID))
-                    .disabled(true)
+                Text(verbatim: session.userID)
+                    .foregroundStyle(.secondary)
                     .textSelection(.enabled)
             } header: {
                 Text(Strings.Account.usernameHeader)
@@ -67,29 +70,37 @@ struct ProfileEditView: View {
                 Text(Strings.Account.usernameFixed)
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .profileScreen()
         .onChange(of: session.displayName, initial: true) { _, name in
             guard !isNaming else { return }
             draftName = name
         }
-        .onChange(of: isNaming) { wasNaming, _ in
-            guard wasNaming else { return }
-            Task { await rename() }
-        }
-        // Leaving the screen is leaving the field: SwiftUI does not promise that focus resigns
-        // before a view is torn down, so tapping back with the keyboard still up would otherwise
-        // drop the new name. `UserSession.rename` returns early when nothing changed.
-        .onDisappear {
-            guard isNaming else { return }
-            Task { await rename() }
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button {
+                    Task { await save() }
+                } label: {
+                    Text(Strings.Account.save)
+                }
+                .disabled(!canSave)
+            }
         }
         // At the root of the screen, never inside the menu that asks for it: a `PhotosPicker`
         // declared inside a `Menu` simply never appears.
         .photosPicker(isPresented: $isChoosingPicture, selection: $pickedPicture, matching: .images)
         .onChange(of: pickedPicture) { _, item in
             guard let item else { return }
-            Task { await setPicture(item) }
+            Task { await choosePicture(item) }
+        }
+        // Cut to a square before it goes anywhere — see `AvatarCropper`.
+        .pageSheet(item: $cropping) { request in
+            AvatarCropper(image: request.image,
+                          onCancel: { cropping = nil },
+                          onDone: { data in
+                              cropping = nil
+                              Task { await setPicture(data) }
+                          })
         }
         .failureAlert($failure)
     }
@@ -105,6 +116,23 @@ struct ProfileEditView: View {
             .disabled(isOffline)
             .frame(maxWidth: .infinity)
             .padding(.vertical, Theme.Spacing.roomy)
+    }
+
+    private var trimmedName: String { draftName.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    private var canSave: Bool {
+        !isOffline && !trimmedName.isEmpty && trimmedName != session.displayName
+    }
+
+    /// Return in the field and the toolbar button both end here. An empty name cannot be sent, so
+    /// the field takes the current name back instead of staying empty and looking saved.
+    private func save() async {
+        isNaming = false
+        guard !trimmedName.isEmpty else {
+            draftName = session.displayName
+            return
+        }
+        await rename()
     }
 
     private func rename() async {
@@ -123,14 +151,17 @@ struct ProfileEditView: View {
         }
     }
 
-    private func setPicture(_ item: PhotosPickerItem) async {
+    private func choosePicture(_ item: PhotosPickerItem) async {
         pickedPicture = nil
 
-        guard let data = await imageData(from: item) else {
+        guard let data = await imageData(from: item), let image = AvatarCrop.image(from: data) else {
             failure = .picture
             return
         }
+        cropping = AvatarCropRequest(image: image)
+    }
 
+    private func setPicture(_ data: Data) async {
         do {
             try await session.setPicture(data, filename: "avatar.jpg")
         } catch {

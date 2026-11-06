@@ -74,28 +74,19 @@ public final class SearchStore {
         }
 
         do {
-            let iterator = try await client.searchMessages(query: query,
-                                                           filter: .rooms,
-                                                           numResultsPerBatch: 50)
-            guard let results = try await iterator.nextEvents() else {
-                guard !Task.isCancelled else { return }
-                hits = []
-                foundNothing = true
-                return
-            }
-
+            let results = try await MessageSearch.results(client, query: query, limit: 50)
             guard !Task.isCancelled else { return }
 
             // Who each nicknamed personal chat is with, asked once per room rather than per hit.
             var counterparts: [String: String] = [:]
-            for roomID in Set(results.map(\.roomId)) where LocalNames.name(for: roomID) != nil {
+            for roomID in Set(results.map(\.roomID)) where LocalNames.name(for: roomID) != nil {
                 if let id = await Self.counterpart(in: try? client.getRoom(roomId: roomID), ownUserID: ownUserID) {
                     counterparts[roomID] = id
                 }
             }
             guard !Task.isCancelled else { return }
 
-            hits = results.compactMap { hit(from: $0, counterpartID: counterparts[$0.roomId]) }
+            hits = results.compactMap { hit(from: $0.result, roomID: $0.roomID, counterpartID: counterparts[$0.roomID]) }
             foundNothing = hits.isEmpty
         } catch {
             guard !Task.isCancelled else { return }
@@ -104,18 +95,17 @@ public final class SearchStore {
         }
     }
 
-    private func hit(from result: GlobalSearchResult, counterpartID: String?) -> SearchHit? {
-        let event = result.result
+    private func hit(from event: MessageSearchResult, roomID: String, counterpartID: String?) -> SearchHit? {
         guard let excerpt = Self.excerpt(for: event.content) else { return nil }
 
         var displayName: String?
-        if case let .ready(name, _, _) = event.senderProfile { displayName = name }
+        if case let .ready(name, _, _, _, _) = event.senderProfile { displayName = name }
 
         return SearchHit(id: event.eventId,
-                         roomID: result.roomId,
+                         roomID: roomID,
                          senderName: Self.senderName(event.sender, displayName: displayName,
                                                      counterpartID: counterpartID,
-                                                     localName: LocalNames.name(for: result.roomId)),
+                                                     localName: LocalNames.name(for: roomID)),
                          excerpt: excerpt,
                          timestamp: MessagePreview.date(from: event.timestamp))
     }

@@ -91,6 +91,8 @@ public extension Theme {
             public static let opacityLight: Double = 0.18
             /// How much of the shade goes into a surface on top of it: a settings row, the menu.
             public static let surfaceTint: Double = 0.35
+            public static let surfaceSaturationDark: Double = 0.4
+            public static let surfaceBrightnessDark: Double = 0.2
         }
 
         /// How a conversation fades under the title bar and the composer — see `RoomView.timelineFade`.

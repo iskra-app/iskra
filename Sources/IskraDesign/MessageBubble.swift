@@ -90,11 +90,7 @@ struct MessageBubble: ViewModifier {
     }
 
     private var fill: AnyShapeStyle {
-        switch style {
-        case .own: accent.bubble(onWallpaper: hasWallpaper)
-        case .incoming: AnyShapeStyle(hasWallpaper ? Color.incomingBubbleOnWallpaper : Color.incomingBubble)
-        case .plain: AnyShapeStyle(.clear)
-        }
+        style.fill(accent: accent, onWallpaper: hasWallpaper)
     }
 
     func body(content: Content) -> some View {
@@ -104,7 +100,7 @@ struct MessageBubble: ViewModifier {
             .frame(minWidth: minimumContentWidth)
             .padding(.horizontal, horizontal)
             .padding(.vertical, vertical)
-            .bubbleDress(style, fill: fill, onBubble: accent.onBubble, isLifted: isLifted)
+            .bubbleDress(style, fill: fill, ink: style.ink(accent: accent), isLifted: isLifted)
             // Lets a long-press menu and drag preview take the bubble's shape rather
             // than a rectangle around it.
             //
@@ -132,15 +128,11 @@ struct BubbleFill: ViewModifier {
     @Environment(\.bubbleIsLifted) private var isLifted
 
     private var fill: AnyShapeStyle {
-        switch style {
-        case .own: accent.bubble(onWallpaper: hasWallpaper)
-        case .incoming: AnyShapeStyle(hasWallpaper ? Color.incomingBubbleOnWallpaper : Color.incomingBubble)
-        case .plain: AnyShapeStyle(.clear)
-        }
+        style.fill(accent: accent, onWallpaper: hasWallpaper)
     }
 
     func body(content: Content) -> some View {
-        content.bubbleDress(style, fill: fill, onBubble: accent.onBubble, isLifted: isLifted)
+        content.bubbleDress(style, fill: fill, ink: style.ink(accent: accent), isLifted: isLifted)
     }
 }
 
@@ -148,7 +140,7 @@ struct BubbleFill: ViewModifier {
 private struct BubbleDress: ViewModifier {
     let style: BubbleStyle
     let fill: AnyShapeStyle
-    let onBubble: AnyShapeStyle
+    let ink: AnyShapeStyle
     let isLifted: Bool
 
     @Environment(\.design) private var design
@@ -169,7 +161,7 @@ private struct BubbleDress: ViewModifier {
             content.foregroundStyle(Theme.Calm.ink)
         case (.classic, _):
             content
-                .foregroundStyle(style == .own ? onBubble : AnyShapeStyle(.primary))
+                .foregroundStyle(ink)
                 .background(fill, in: shape)
                 // The page, under the fill, when there is no page — see `bubbleIsLifted`.
                 .background(isLifted && style != .plain ? Color.page : Color.clear, in: shape)
@@ -178,9 +170,9 @@ private struct BubbleDress: ViewModifier {
 }
 
 private extension View {
-    func bubbleDress(_ style: BubbleStyle, fill: AnyShapeStyle, onBubble: AnyShapeStyle,
+    func bubbleDress(_ style: BubbleStyle, fill: AnyShapeStyle, ink: AnyShapeStyle,
                      isLifted: Bool) -> some View {
-        modifier(BubbleDress(style: style, fill: fill, onBubble: onBubble, isLifted: isLifted))
+        modifier(BubbleDress(style: style, fill: fill, ink: ink, isLifted: isLifted))
     }
 }
 
@@ -217,11 +209,7 @@ struct PictureBorder: ViewModifier {
     }
 
     private var border: AnyShapeStyle {
-        switch style {
-        case .own: accent.bubble(onWallpaper: hasWallpaper)
-        case .incoming: AnyShapeStyle(hasWallpaper ? Color.incomingBubbleOnWallpaper : Color.incomingBubble)
-        case .plain: AnyShapeStyle(.clear)
-        }
+        style.fill(accent: accent, onWallpaper: hasWallpaper)
     }
 }
 
@@ -310,13 +298,74 @@ public extension Color {
     /// background, named as a colour rather than reached through `ShapeStyle.background`. That
     /// one resolves through the environment's `backgroundStyle`, and the whole point of the page
     /// under a lifted bubble is that it is opaque whatever the environment around it says.
+    ///
+    /// On a Mac: white, and in the dark a grey — the conversation is the lightest thing in the
+    /// window, between two side columns that stand on `groupedPage`, darker in the dark and greyer
+    /// in the light. The phone's pure black read on a Mac as a hole in the window.
     static var page: Color {
         #if canImport(UIKit)
         Color(uiColor: .systemBackground)
         #elseif canImport(AppKit)
-        Color(nsColor: .windowBackgroundColor)
+        Color(nsColor: NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+                ? NSColor(srgbRed: 0x16 / 255, green: 0x16 / 255, blue: 0x16 / 255, alpha: 1)
+                : .white
+        })
         #else
         .white
         #endif
+    }
+
+    /// A card on that page — the phone's grouped cell: white, and in the dark a grey a step above
+    /// the conversation (`page`) and well above the near-black of the side columns. On a Mac the form's own plates are a translucent darkening of whatever is under
+    /// them, so on a grey page they came out greyer than the page: the phone's arrangement upside
+    /// down. Painted per row instead (`GroupedRowsFormStyle`).
+    static var groupedCard: Color {
+        #if canImport(UIKit)
+        Color(uiColor: .secondarySystemGroupedBackground)
+        #elseif canImport(AppKit)
+        Color(nsColor: NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+                ? NSColor(srgbRed: 0x1C / 255, green: 0x1C / 255, blue: 0x1E / 255, alpha: 1)
+                : .white
+        })
+        #else
+        .white
+        #endif
+    }
+
+    /// The page a form stands on — the phone's grouped background: a light grey under white cards,
+    /// and in the dark a near-black, so the cards stand off it as they do on the phone. On a Mac it
+    /// is also the side columns' page — the room list and the chat's info — so that they read as
+    /// columns beside the conversation rather than as more of it.
+    static var groupedPage: Color {
+        #if canImport(UIKit)
+        Color(uiColor: .systemGroupedBackground)
+        #elseif canImport(AppKit)
+        Color(nsColor: NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+                ? NSColor(srgbRed: 0x11 / 255, green: 0x11 / 255, blue: 0x11 / 255, alpha: 1)
+                : NSColor(srgbRed: 0xF2 / 255, green: 0xF2 / 255, blue: 0xF7 / 255, alpha: 1)
+        })
+        #else
+        .white
+        #endif
+    }
+}
+
+extension BubbleStyle {
+    /// The fill of a message in this style — the one place it is decided, for the bubble, the
+    /// album's bubble and the outline round a picture alike.
+    func fill(accent: AccentTheme, onWallpaper: Bool) -> AnyShapeStyle {
+        switch self {
+        case .own: accent.bubble(onWallpaper: onWallpaper)
+        case .incoming: AnyShapeStyle(onWallpaper ? Color.incomingBubbleOnWallpaper : Color.incomingBubble)
+        case .plain: AnyShapeStyle(.clear)
+        }
+    }
+
+    /// The words on that fill.
+    func ink(accent: AccentTheme) -> AnyShapeStyle {
+        self == .own ? accent.onBubble : AnyShapeStyle(.primary)
     }
 }

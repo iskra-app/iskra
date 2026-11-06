@@ -222,10 +222,18 @@ struct MessageContent: View {
     /// its own, "yes, and it's at six" is not a sentence — so it travels with the words rather
     /// than floating over them. The bubble grows to hold it, which is exactly right: an answer
     /// carrying its question is a bigger thing than a bare line of text.
+    ///
+    /// The words sit closer under a quote than under "Forwarded from": the quote is a block with
+    /// its own edge, and a full line's gap under it pulled the answer away from its question.
     private func bubble(@ViewBuilder _ inner: () -> some View) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.close) {
-            forwarded
-            quote
+        VStack(alignment: .leading,
+               spacing: message.replyTo != nil ? Theme.Spacing.tight : Theme.Spacing.close) {
+            if message.forwardedFrom != nil || message.replyTo != nil {
+                VStack(alignment: .leading, spacing: Theme.Spacing.close) {
+                    forwarded
+                    quote
+                }
+            }
 
             inner()
                 .font(.body)
@@ -291,7 +299,7 @@ struct MessageContent: View {
     /// Overriding `openURL` is what turns a tapped link into a question instead of a jump.
     private func messageText(_ body: String, from source: Message? = nil) -> some View {
         Text(paintedBody(body, from: source ?? message))
-            .tint(accent.color)
+            .tint(linkColor)
             .environment(\.openURL, OpenURLAction { url in
                 // The finger coming off a hold that opened the menu is not a tap on the link it
                 // happened to be resting on — see `MessageTaps.wasSpentByPress`.
@@ -314,6 +322,17 @@ struct MessageContent: View {
             })
     }
 
+    /// What a link is drawn in: the accent, except on a bubble that is the accent already.
+    private var linkColor: Color {
+        style == .own ? accent.onBubbleColor : accent.color
+    }
+
+    /// The quiet grey of a quote or a hidden spoiler. `Color.secondary` inside an attributed string
+    /// is one concrete grey, not a hierarchy, and on the filled own bubble it was nearly the fill.
+    private var mutedInk: Color {
+        style == .own ? accent.onBubbleColor.opacity(0.7) : .secondary
+    }
+
     /// `source` is the message the words belong to — this one, or the picture of an album that
     /// carries its caption, whose HTML and mentions are its own.
     private func paintedBody(_ body: String, from source: Message) -> AttributedString {
@@ -330,20 +349,29 @@ struct MessageContent: View {
             return (run.range, run.iskra.mentionIsSelf ?? false)
         }
         // Links underlined, as well as tinted. Colour alone is a promise the reader has to know the
-        // code for — and in a bubble already filled with the accent, the tinted words were very
-        // nearly the colour of the bubble around them.
+        // code for. In your own bubble, already filled with the accent, they are not tinted at all
+        // but drawn in the bubble's own ink: the accent on the accent was very nearly the colour of
+        // the bubble around it. Painted into the string as well as tinted, because a Mac draws a
+        // link in its own blue and does not ask `.tint`.
         let linkRanges = attributed.runs.compactMap { run in run.link == nil ? nil : run.range }
         for range in linkRanges {
             attributed[range].underlineStyle = .single
+            attributed[range].foregroundColor = linkColor
         }
 
         for (range, isSelf) in mentionRuns {
-            attributed[range].foregroundColor = accent.color
+            // In your own bubble the accent is the fill, so the name takes the bubble's ink,
+            // heavier and underlined, the way links do there.
+            attributed[range].foregroundColor = linkColor
+            if style == .own {
+                attributed[range].font = .body.weight(.semibold)
+                attributed[range].underlineStyle = .single
+            }
             if isSelf {
                 // Your own name gets weight and a wash behind it — the "you were mentioned" that the
                 // red badge in the list is the far-off twin of.
                 attributed[range].font = .body.weight(.semibold)
-                attributed[range].backgroundColor = accent.color.opacity(0.16)
+                attributed[range].backgroundColor = linkColor.opacity(style == .own ? 0.24 : 0.16)
             }
         }
 
@@ -368,21 +396,21 @@ struct MessageContent: View {
                 attributed[range].underlineStyle = .single
             }
             if quote {
-                attributed[range].foregroundColor = .secondary
+                attributed[range].foregroundColor = mutedInk
             }
             if let heading {
                 attributed[range].font = heading <= 2 ? .title3.weight(.bold) : .headline
             }
             if let spoiler {
                 if revealedSpoilers.contains(spoiler) {
-                    attributed[range].backgroundColor = Color.secondary.opacity(Theme.Backdrop.wash)
+                    attributed[range].backgroundColor = mutedInk.opacity(Theme.Backdrop.wash)
                 } else {
                     // Dots for the words — Telegram's speckle, in a character — so nothing of the
                     // secret is on screen until it is asked for, whatever colour links are drawn in.
                     let length = attributed[range].characters.count
                     var dots = AttributedString(String(repeating: "⠿", count: max(1, length)))
                     dots.link = URL(string: "\(Self.spoilerScheme)://\(spoiler)")
-                    dots.foregroundColor = .secondary
+                    dots.foregroundColor = mutedInk
                     attributed.replaceSubrange(range, with: dots)
                 }
             }

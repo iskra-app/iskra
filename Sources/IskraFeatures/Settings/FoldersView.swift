@@ -16,6 +16,16 @@ struct FoldersView: View {
     /// The folder open in the editor — a new one, or a copy of an existing one.
     @State private var editing: ChatFolder?
 
+    /// Folders waiting for the answer to "Delete the folder?": swipe, the Mac's minus button and
+    /// the context menu all end here, the way the editor's own button does.
+    @State private var pendingDeletion: [ChatFolder] = []
+
+    #if os(macOS)
+    /// The Mac's stand-in for `EditButton`, which AppKit does not have: a `Form` there has no
+    /// swipe to delete, so without it a folder could only be deleted from inside its editor.
+    @State private var isEditingList = false
+    #endif
+
     private var suggestions: [ChatFolder] {
         let names = Set(folders.folders.map { $0.name.lowercased() })
         return ChatFolder.suggestions { String(app: Strings.Folders.suggestion($0)) }
@@ -28,25 +38,47 @@ struct FoldersView: View {
         ScreenForm {
             Section {
                 ForEach(folders.folders) { folder in
-                    Button {
-                        editing = folder
-                    } label: {
-                        LabeledContent {
-                            Text(folder.rooms(from: roomList.rooms, archived: roomList.archivedRooms).count,
-                                 format: .number)
-                        } label: {
-                            Label(folder.name, systemImage: "folder")
+                    HStack(spacing: Theme.Spacing.normal) {
+                        #if os(macOS)
+                        if isEditingList {
+                            Button {
+                                pendingDeletion = [folder]
+                            } label: {
+                                Image(systemName: "minus.circle.fill")
+                                    .foregroundStyle(.red)
+                            }
+                            .buttonStyle(.borderless)
+                            .accessibilityLabel(Text(Strings.Folders.delete))
+                            .disabled(isOffline)
                         }
-                        .contentShape(.rect)
+                        #endif
+                        Button {
+                            editing = folder
+                        } label: {
+                            LabeledContent {
+                                Text(folder.rooms(from: roomList.rooms, archived: roomList.archivedRooms).count,
+                                     format: .number)
+                            } label: {
+                                Label(folder.name, systemImage: "folder")
+                            }
+                            .contentShape(.rect)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
+                    #if os(macOS)
+                    .contextMenu {
+                        Button(String(app: Strings.Folders.delete), role: .destructive) {
+                            pendingDeletion = [folder]
+                        }
+                        .disabled(isOffline)
+                    }
+                    #endif
                 }
                 .onMove { source, destination in
                     Task { await folders.move(fromOffsets: source, toOffset: destination) }
                 }
                 .onDelete { offsets in
-                    let ids = offsets.map { folders.folders[$0].id }
-                    Task { for id in ids { await folders.delete(id) } }
+                    pendingDeletion = offsets.map { folders.folders[$0] }
                 }
 
                 if !isFull {
@@ -58,7 +90,11 @@ struct FoldersView: View {
                     .disabled(isOffline)
                 }
             } footer: {
-                Text(Strings.Folders.explanation)
+                if isOffline {
+                    Text(Strings.Folders.explanation) + Text(verbatim: "\n\n") + Text(Strings.Settings.offlineFooter)
+                } else {
+                    Text(Strings.Folders.explanation)
+                }
             }
 
             if !suggestions.isEmpty, !isFull {
@@ -79,9 +115,22 @@ struct FoldersView: View {
                 }
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .navigationTitle(String(app: Strings.Folders.title))
-        #if !os(macOS)
+        #if os(macOS)
+        .toolbar {
+            if !folders.folders.isEmpty {
+                ToolbarItem(placement: .primaryAction) {
+                    Button(String(app: isEditingList ? Strings.Folders.done : Strings.Folders.editList)) {
+                        isEditingList.toggle()
+                    }
+                }
+            }
+        }
+        .onChange(of: folders.folders.isEmpty) { _, isEmpty in
+            if isEmpty { isEditingList = false }
+        }
+        #else
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if !folders.folders.isEmpty {
@@ -89,7 +138,7 @@ struct FoldersView: View {
             }
         }
         #endif
-        .sheet(item: $editing) { folder in
+        .pageSheet(item: $editing) { folder in
             FolderEditor(folder: folder,
                          isNew: !folders.folders.contains { $0.id == folder.id },
                          rooms: roomList.rooms + roomList.archivedRooms,
@@ -97,6 +146,18 @@ struct FoldersView: View {
                          onDelete: { id in Task { await folders.delete(id) } })
         }
         .failureAlert(Binding(get: { folders.failure }, set: { folders.failure = $0 }))
+        .confirmationDialog(Text(Strings.Folders.deleteQuestion(pendingDeletion.first?.name ?? "")),
+                            isPresented: Binding(get: { !pendingDeletion.isEmpty },
+                                                 set: { if !$0 { pendingDeletion = [] } }),
+                            titleVisibility: .visible) {
+            Button(String(app: Strings.Folders.delete), role: .destructive) {
+                let ids = pendingDeletion.map(\.id)
+                pendingDeletion = []
+                Task { for id in ids { await folders.delete(id) } }
+            }
+        } message: {
+            Text(Strings.Folders.deleteHelp)
+        }
     }
 }
 
@@ -162,7 +223,7 @@ struct FolderEditor: View {
                     }
                 }
             }
-            .formStyle(.grouped)
+            .formStyle(.groupedRows)
             .navigationTitle(String(app: isNew ? Strings.Folders.new : Strings.Folders.edit))
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
@@ -178,7 +239,7 @@ struct FolderEditor: View {
                     .disabled(!folder.isMeaningful)
                 }
             }
-            .sheet(item: $choosing) { side in
+            .pageSheet(item: $choosing) { side in
                 ChatChooser(rooms: rooms.filter { !$0.isInvitation },
                             chosen: Set(side == .included ? folder.included : folder.excluded)) { chosen in
                     let ordered = rooms.map(\.id).filter(chosen.contains)
@@ -315,7 +376,7 @@ struct FolderMembershipSheet: View {
                     Text(Strings.Folders.membershipFooter)
                 }
             }
-            .formStyle(.grouped)
+            .formStyle(.groupedRows)
             .navigationTitle(room.name)
             .toolbarTitleDisplayMode(.inline)
             .toolbar {

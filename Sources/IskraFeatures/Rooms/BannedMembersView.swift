@@ -55,7 +55,7 @@ struct BannedMembersView: View {
                 Text(Strings.Room.Access.bannedFooter)
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .navigationTitle(String(app: Strings.Room.Access.banned))
         #if !os(macOS)
         .navigationBarTitleDisplayMode(.inline)

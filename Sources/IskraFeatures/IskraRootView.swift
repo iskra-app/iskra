@@ -21,17 +21,27 @@ public struct IskraRootView: View {
     /// A link to a person or a room that is being shown — see `matrixLink(in:)`.
     @State private var openedLink: OpenedLink?
 
+    /// A link that has arrived and has nowhere to be shown yet. The system hands one over the
+    /// moment the app is opened by it, and at that moment there may be no signed-in screen to
+    /// receive it — a cold start is still a spinner. It waits here, on the root, which is always
+    /// there, and the signed-in screen takes it as soon as it exists.
+    @State private var incomingLink: MatrixLink?
+
     struct OpenedLink: Identifiable {
         let id = UUID()
         let link: MatrixLink
     }
 
-    /// The person or room a URL points at, if it is a Matrix link: `matrix.to`, or `matrix:`.
-    /// Anything else — a web page, the sign-in callback — is not this function's.
+    /// The person or room a URL points at, if it is a Matrix link: `s.iskra.wtf` or `matrix.to`,
+    /// `matrix:`, or this app's own `wtf.iskra://u/…` (the button on the `s.iskra.wtf` page).
+    /// Anything else — a web page, the sign-in callback, the host-less `wtf.iskra:/open` a Live
+    /// Activity sends — is not this function's.
     static func matrixLink(in url: URL) -> MatrixLink? {
         let scheme = url.scheme?.lowercased()
+        let host = url.host?.lowercased()
         let isMatrix = scheme == "matrix"
-            || ((scheme == "https" || scheme == "http") && url.host?.lowercased() == "matrix.to")
+            || (scheme == "wtf.iskra" && host != nil)
+            || ((scheme == "https" || scheme == "http") && (host == "matrix.to" || host == MatrixLink.webHost))
         guard isMatrix else { return nil }
         return MatrixLink(parsing: url.absoluteString)
     }
@@ -70,6 +80,10 @@ public struct IskraRootView: View {
     /// each column gets the size class its own width earns, so the sidebar reports
     /// `.compact` on a full-screen iPad. See `RoomListView.isSidebar`.
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    /// See the `\.locale` set at the bottom of `body`.
+    @AppStorage(AppLanguage.key) private var language = ""
+    /// What Escape does on a Mac, for the whole window — see `EscapeStack`.
+    @State private var escapeStack = EscapeStack()
 
     /// Whether the app is in front. Read here rather than in a screen, because the sync loop belongs
     /// to the session and not to any one of them — see the `.onChange` below.
@@ -148,10 +162,12 @@ public struct IskraRootView: View {
         BetaFeatures.adoptFaceFlags()
 
         // `Iskra --mock-backend`: straight into the demo, for a device with nobody signed in —
-        // where the switch, being in settings, cannot be reached.
+        // where the switch, being in settings, cannot be reached. Debug builds only, like the demo.
+        #if DEBUG
         if CommandLine.arguments.contains(BetaFeatures.mockBackendArgument) {
             UserDefaults.standard.set(true, forKey: BetaFeatures.mockBackendKey)
         }
+        #endif
     }
 
     public var body: some View {
@@ -184,6 +200,14 @@ public struct IskraRootView: View {
 
             case let .signedIn(session):
                 conversations(session)
+                    #if DEBUG && os(macOS)
+                    .task {
+                        guard ResizeProbe.isRequested else { return }
+                        await ResizeProbe.run(rooms: { session.roomList.rooms },
+                                              open: { selectedRoomID = $0 },
+                                              column: infoColumn)
+                    }
+                    #endif
                     // The message menu, above every screen the signed-in app has — see
                     // `MessageMenu`. It lifts a message out of the conversation and darkens
                     // everything else, and "everything else" is the toolbar above the timeline
@@ -227,9 +251,11 @@ public struct IskraRootView: View {
                         selectedEventID = nil
                     })
                     // A link to a person or a room opens here, wherever it came from: tapped in a
-                    // message (`matrix.to`), or handed over by another app (`matrix:`, the scheme
-                    // this app claims — see `Apps/project.yml`). It opens as a page about them, never
-                    // as a jump into a room: see `MatrixLinkView`.
+                    // message (`matrix.to`, `s.iskra.wtf`), or handed over by the system — `matrix:`
+                    // and `wtf.iskra://`, the schemes this app claims, and `s.iskra.wtf` as a
+                    // Universal Link, which SwiftUI delivers to `onOpenURL` as well (see
+                    // `Apps/project.yml`). It opens as a page about them, never as a jump into a
+                    // room: see `MatrixLinkView`.
                     .environment(\.openURL, OpenURLAction { url in
                         guard let link = Self.matrixLink(in: url) else { return .systemAction }
                         openedLink = OpenedLink(link: link)
@@ -237,16 +263,21 @@ public struct IskraRootView: View {
                     })
                     .onOpenURL { url in
                         // A tapped Live Activity asks for its chat — and, like a widget's face,
-                        // for the account it belongs to. The same way in as Shortcuts.
+                        // for the account it belongs to. The same way in as Shortcuts. Asked first:
+                        // it shares the `wtf.iskra` scheme with the links below.
                         if let request = ChatDirectory.OpenRequest(url: url) {
                             ChatDirectory.requestOpen(roomID: request.roomID, accountID: request.accountID)
                             Task { await handleIntents(session) }
                             return
                         }
-                        guard let link = Self.matrixLink(in: url) else { return }
+                    }
+                    // Taken from the root's `incomingLink`, which is where a link lands first.
+                    .onChange(of: incomingLink, initial: true) { _, link in
+                        guard let link else { return }
+                        incomingLink = nil
                         openedLink = OpenedLink(link: link)
                     }
-                    .sheet(item: $openedLink) { opened in
+                    .pageSheet(item: $openedLink) { opened in
                         NavigationStack {
                             MatrixLinkView(session: session, link: opened.link) { roomID in
                                 selectedRoomID = roomID
@@ -318,7 +349,7 @@ public struct IskraRootView: View {
                     // The sheet answers for itself: it cannot be swiped away while the question is
                     // on it, and it takes itself down when the store has nothing left to say. See
                     // `VerificationSheet`.
-                    .sheet(isPresented: Binding(get: { session.verification.incoming != nil },
+                    .pageSheet(isPresented: Binding(get: { session.verification.incoming != nil },
                                                 set: { if !$0 { session.verification.reset() } })) {
                         VerificationSheet(verification: session.verification,
                                           onDone: { session.verification.reset() },
@@ -423,9 +454,31 @@ public struct IskraRootView: View {
                             DeliveredNotifications.clear(roomID: roomID)
                         }
                     }
+                    // One account, one tree. Without this, signing out of one of several came back
+                    // to the settings screen it was pressed on, spinner and all: `restart()` goes to
+                    // `.starting`, the next account is restored from disk before the animation below
+                    // has finished taking the old tree away, and SwiftUI brings a view that is
+                    // still on its way out *back*, `@State` included — the pushed settings and
+                    // `isSigningOut` with them. Adding an account did the same, and every `.task`
+                    // above without an `id` went on holding the session that had left.
+                    .id(session.sessionID)
             }
         }
         .animation(.smooth, value: isSignedIn)
+        // A link to a person or a room is received here, above every phase, and not inside the
+        // signed-in screen: the camera's Universal Link arrives as the app launches, before that
+        // screen exists, and a handler that is not there yet is a link nobody hears. A Universal
+        // Link is also delivered as a web user activity, which not every launch path turns into
+        // `onOpenURL`, so both are listened to. The Live Activity's request is the signed-in
+        // screen's own and is left to it.
+        .onOpenURL { url in
+            guard ChatDirectory.OpenRequest(url: url) == nil, let link = Self.matrixLink(in: url) else { return }
+            incomingLink = link
+        }
+        .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+            guard let url = activity.webpageURL, let link = Self.matrixLink(in: url) else { return }
+            incomingLink = link
+        }
         // The demo switch, flipped in settings, from inside the very session it replaces.
         .onChange(of: mockBackend) { _, _ in
             Task { await switchBackend() }
@@ -450,7 +503,7 @@ public struct IskraRootView: View {
         }
         // "Add account": the sign-in screen over the app, with the account underneath still open
         // until the new one is in.
-        .sheet(isPresented: Binding(get: { switcher.isAddingAccount },
+        .pageSheet(isPresented: Binding(get: { switcher.isAddingAccount },
                                     set: { switcher.isAddingAccount = $0 }),
                onDismiss: { Task { await authentication.cancelSignIn() } },
                content: {
@@ -552,12 +605,18 @@ public struct IskraRootView: View {
         .environment(\.bubbleAccent, accent)
         .environment(\.design, design)
         .calmType(design)
+        // The language picked on a Mac, at once: `Text` resolves in the environment's locale, and
+        // `language` (stored, observed) is what runs this body again when it changes. See
+        // `AppLanguage`.
+        .environment(\.locale, AppLanguage.locale)
         // And light or dark, if the user asked for either. Applied at the root, above everything,
         // because a colour scheme is not a property of a screen — a sheet or a media viewer left
         // out of it would be the one place the app changed its mind about what time of day it is.
         .preferredColorScheme(appearance.colorScheme)
         // Reduce Motion, for the whole app at once — see `respectsReduceMotion`.
         .respectsReduceMotion()
+        // The window's one Escape key — see `EscapeStack`.
+        .escapeKeyRoot(escapeStack)
     }
 
     private var isSignedIn: Bool {
@@ -871,6 +930,11 @@ public struct IskraRootView: View {
         #endif
     }
 
+    #if os(macOS)
+    /// The chat's info, as a column on the right of the window — see `InfoColumn`.
+    @State private var infoColumn = InfoColumn()
+    #endif
+
     private func conversations(_ session: UserSession) -> some View {
         NavigationSplitView {
             // Settings is pushed onto this column's own navigation stack, so the push,
@@ -890,9 +954,27 @@ public struct IskraRootView: View {
                 // `SettingsView` — see `SettingsView.onClose`. The width stays because a
                 // column that resizes itself when you open settings is its own small bug.
                 // See `Theme.Size.sidebar*`.
+                #if os(macOS)
+                // On a Mac, one width and no dragging it — see `Theme.Size.sideColumn`.
+                .navigationSplitViewColumnWidth(Theme.Size.sideColumn)
+                // The window's least height, held by the list, which is always there — whatever the
+                // other column shows (a chat, settings, a thread). See `Theme.Size.columnMinimumHeight`.
+                .frame(minHeight: Theme.Size.columnMinimumHeight)
+                #else
                 .navigationSplitViewColumnWidth(min: Theme.Size.sidebarMinimum,
                                                 ideal: Theme.Size.sidebarIdeal,
                                                 max: Theme.Size.sidebarMaximum)
+                #endif
+                #if os(macOS)
+                // The seam between the list and the conversation: the same line as between two chats
+                // in the list — its colour and its thickness — so the window has one kind of rule.
+                .overlay(alignment: .trailing) {
+                    Rectangle()
+                        .fill(.separator)
+                        .frame(width: Theme.Border.hairline)
+                        .ignoresSafeArea()
+                }
+                #endif
         } detail: {
             // The stack is load-bearing, and its absence fails in a way that looks like
             // nothing at all: a `navigationDestination` declared inside a split view's
@@ -913,20 +995,65 @@ public struct IskraRootView: View {
                              openAt: $selectedEventID,
                              onLeave: { selectedRoomID = nil },
                              onClose: { selectedRoomID = nil })
+                        #if os(macOS)
+                        // A chat stops somewhere: squeezed with nothing to hold it, it became a
+                        // column of one word a line. On the chat and not on the column around it —
+                        // see `Theme.Size.conversationMinimum`.
+                        .frame(minWidth: infoColumn.conversationMinimumWidth)
+                        #endif
                         // Rebuilds the view when the user picks a different room, rather
                         // than reusing one room's state for another's messages.
                         .id(roomID)
                 } else {
-                    ContentUnavailableView(String(app: Strings.Room.noRoomSelectedTitle),
-                                           systemImage: "bubble.left.and.bubble.right",
-                                           description: Text(Strings.Room.noRoomSelectedMessage))
+                    // The spark and nothing else, as on the web: an empty column needs no
+                    // instructions — the list is right beside it. The words stay for VoiceOver.
+                    BlinkingSpark()
+                        #if os(macOS)
+                        // As narrow as a chat can be and no narrower — see
+                        // `Theme.Size.conversationMinimum`. On the spark and not on the column: a
+                        // minimum put on the whole column was re-measured from the chat inside it
+                        // on every frame of a resize, and AppKit ended the app for it.
+                        .frame(minWidth: Theme.Size.windowMinimum - Theme.Size.sideColumn,
+                               maxWidth: .infinity,
+                               maxHeight: .infinity)
+                        #else
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        #endif
+                        .accessibilityElement()
+                        .accessibilityLabel(Text(Strings.Room.noRoomSelectedTitle))
+                        .accessibilityHint(Text(Strings.Room.noRoomSelectedMessage))
+                        #if os(macOS)
+                        // No title bar over the empty column either, as over a conversation.
+                        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+                        .toolbar(removing: .title)
+                        #endif
                 }
             }
+            #if os(macOS)
+            // The phone's page under the conversation and under the empty column — see `Color.page`.
+            // A chat with no wallpaper is transparent, and stood on the window's grey.
+            .background(Color.page)
+            // The same least width as a chat's for whatever else this column shows — settings and
+            // its pages, a thread, the pinned list. They are pushed here, past the chat's own
+            // minimum, and with settings open the window went down to 500 points by 216. As the
+            // column's width, not a frame round its content: see `Theme.Size.conversationMinimum`.
+            // The ideal is the least as well, so that it never asks for more room than that.
+            .navigationSplitViewColumnWidth(min: infoColumn.conversationMinimumWidth,
+                                            ideal: infoColumn.conversationMinimumWidth)
+            #endif
         }
+        #if os(macOS)
+        // On the split view itself — see `InfoColumn`.
+        .infoColumn(infoColumn)
+        .paintsFullScreenBand()
+        #endif
         // Said once, here, and read by both columns. The room list and the room are in different
         // branches of the tree and both have to know, and the session is the only thing that is
         // above both of them. See `OfflineBanner`.
         .environment(\.isOffline, session.roomList.isUnreachable)
+        // The window's shape, read here because only a view outside the split view sees it —
+        // a column reports its own, and not steadily while a push animates. See `RoomView.isCompact`.
+        .environment(\.windowIsCompact, !isSidebar)
         .environment(\.isUpdating, session.roomList.isUpdating)
     }
 
@@ -976,6 +1103,8 @@ public struct IskraRootView: View {
 
         // The demo, when the switch says so. It is restored *instead of* the real session and never
         // on top of it: the Keychain is not read, so nothing of the real account is even opened.
+        // A release build has no demo, and a switch left on by a debug build is simply ignored.
+        #if DEBUG
         if mockBackend {
             do {
                 let session = try await authentication.startDemoSession()
@@ -989,6 +1118,7 @@ public struct IskraRootView: View {
                 mockBackend = false
             }
         }
+        #endif
 
         // The account on screen last, and then everybody else in the order they were added: one
         // account that will not open is not a reason to hide the others behind a sign-in screen.

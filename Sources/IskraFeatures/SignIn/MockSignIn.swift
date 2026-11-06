@@ -1,3 +1,6 @@
+// Debug only: the demo is for looking at screens during development, and a release build carries
+// none of it — no server to switch on, no flag to start it by. See CLAUDE.md, "The demo server".
+#if DEBUG
 import Foundation
 import IskraCore
 
@@ -90,3 +93,15 @@ public enum MockSignIn {
 
     private static let scratch = URL.temporaryDirectory.appending(component: "IskraMockServer")
 }
+#else
+import IskraCore
+
+/// A release build has no server inside it — see the `#if DEBUG` above. What remains is the answer
+/// every caller asks first: no, the flag is not on.
+@MainActor
+public enum MockSignIn {
+    public static var isRequested: Bool { false }
+    public static var authentication: AuthenticationService { AuthenticationService() }
+    public static func start() async -> String? { nil }
+}
+#endif

@@ -21,39 +21,33 @@ public enum BetaFeatures {
     /// plain list — see `RoomListView`.
     public static let nativeSidebarKey = "beta.nativeSidebar"
 
-    /// And it is on unless somebody turns it off.
+    /// Off unless somebody turns it on.
     ///
-    /// A beta feature nobody has seen is a beta feature nobody has an opinion about: off by
-    /// default, this one would have lived its whole life behind a switch on a screen most people
-    /// never open, and the thing it is being tried out *for* — whether the Mac's own sidebar is
-    /// better than the app's list — would never have been answered. So the Mac opens with it on,
-    /// and the switch is the way back rather than the way in.
+    /// It was on by default for a while, so that the question it is being tried out for — whether
+    /// the Mac's own sidebar is better than the app's list — got answered. It was: the app's list,
+    /// which stands on the same page as the rest of the app (`Color.groupedPage`), where the
+    /// sidebar material made the Mac app a different app from the one on the phone.
     ///
     /// Spelled out here rather than written into the two `@AppStorage` declarations that read it,
     /// because a default that disagrees with itself between the screen that sets it and the screen
     /// that obeys it is a bug nothing catches: the toggle would simply show the wrong position.
-    public static let nativeSidebarByDefault = true
+    public static let nativeSidebarByDefault = false
 
     /// Whether a person with no picture of their own is drawn as a generated creature rather
     /// than as their initials — see `Blobatar`, `Avatar`, and `CommunicationNotification`, which
     /// is the same question asked on a lock screen.
     public static let blobatarKey = "beta.blobatar"
 
-    /// And it is **on**, which it was not.
+    /// And it is **off**, again — it was on for a while, and the case for that is worth keeping.
     ///
-    /// The argument for off was that this changes what every person in the app looks like, and
-    /// that replacing a hundred familiar circles on somebody's behalf is not a thing to do. That
-    /// argument is about an app somebody is already using. It is not about the app a new person
-    /// meets: what they would meet with this off is a chat list of grey discs with one letter in
-    /// each, because most people in most rooms have never set a picture — and initials are not a
-    /// neutral default, they are the *absence* of a face rendered as a placeholder.
+    /// On, a new person met a chat list of creatures rather than of grey discs with one letter in
+    /// each, because most people in most rooms have never set a picture. But it changes what every
+    /// person in the app looks like, and that is a thing to ask for, not a thing to find: the
+    /// creatures stay one slider away in Beta features (see `FaceMode`), for whoever goes looking.
     ///
-    /// The creature replaces nothing anybody chose: a picture somebody set still wins, which is
-    /// the whole difference between this flag and `forceBlobatarByDefault` below. And the first
-    /// run now asks the question outright, with the three answers drawn rather than named (see
-    /// `FaceMode`), so this default is what the slider starts on rather than something decided
-    /// behind a person's back.
-    public static let blobatarByDefault = true
+    /// Off means off everywhere at once — the chat list, the widget, the share sheet and the lock
+    /// screen all ask `drawsGeneratedFace`, and so all of them fall back to initials together.
+    public static let blobatarByDefault = false
 
     /// Whether the creature wins even against a picture somebody actually set.
     ///
@@ -68,17 +62,24 @@ public enum BetaFeatures {
     /// photograph.
     public static let forceBlobatarByDefault = false
 
+    /// "View JSON" in a message's menu — the event as the server sent it, for whoever is chasing a
+    /// message that draws wrong. Off by default: it is a developer's tool, and to anybody else a
+    /// screen of braces.
+    public static let showsEventSourceKey = "beta.showsEventSource"
+
+    /// Every event in the conversation, the ones this app never shows included — power levels,
+    /// join rules, calls, avatar changes, whatever failed to parse — each as a grey line naming its
+    /// type and sender (`RoomEventKind.hidden`). Off by default for the same reason as the JSON:
+    /// it is for whoever is asking "why is this room behaving like that", and to anybody else it
+    /// is the audit log a conversation is not. Read with the rest of `ServiceEventSettings`.
+    public static let showsAllEventsKey = "beta.showsAllEvents"
+
     /// Whether the app talks to the made-up server inside it instead of the real account — see
     /// `MockHomeserver`. For looking at every screen with something on it, without anybody's
     /// conversations and without a network.
     ///
     /// Off, obviously. And it touches nothing on the way in or out: the real session stays in the
     /// Keychain the whole time, and turning this off goes back to it.
-    /// "View JSON" in a message's menu — the event as the server sent it, for whoever is chasing a
-    /// message that draws wrong. Off by default: it is a developer's tool, and to anybody else a
-    /// screen of braces.
-    public static let showsEventSourceKey = "beta.showsEventSource"
-
     public static let mockBackendKey = "beta.mockBackend"
 
     /// Whether the app is drawn in «Штиль», the calm look brought over from PhotoDump: monochrome,

@@ -30,7 +30,7 @@ actor NostrRelayPool {
     private let filter: NostrFilter
     private let subscriptionID = "iskra-" + UUID().uuidString.prefix(8)
     private let onEvent: @Sendable (NostrEvent) -> Void
-    private let log = Logger(subsystem: "moscow.swag.iskra", category: "tunnel")
+    private let log = Logger(subsystem: "wtf.iskra", category: "tunnel")
 
     private let session: URLSession
     /// The open sockets, by relay. A relay that is reconnecting is simply absent.

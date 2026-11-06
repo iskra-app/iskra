@@ -272,7 +272,14 @@ public final class UserSession {
 
         // Before the sync loop, not after: the token can be refused by the very first request the
         // loop makes, and a delegate registered afterwards would miss it.
-        authErrorHandle = try? client.setDelegate(delegate: AuthErrors { [weak self] in
+        authErrorHandle = try? client.setDelegate(delegate: AuthErrors { [weak self] isSoftLogout in
+            // A soft logout is the server asking for the password again, not the account ending:
+            // the keys and the history are still good. Deleting them over it is unrecoverable, and
+            // a token refused by a race between two processes looks exactly like one.
+            guard !isSoftLogout else {
+                Log.session.error("the server asked to sign in again (soft logout); the account is kept")
+                return
+            }
             Task { @MainActor [weak self] in
                 await self?.endedElsewhere()
             }
@@ -388,7 +395,11 @@ public final class UserSession {
             return nil
         }
 
-        let store = TimelineStore(room: room, ownUserID: userID)
+        let store = TimelineStore(room: room, ownUserID: userID, searchClient: client)
+        if let summary = roomList.rooms.first(where: { $0.id == roomID })
+            ?? roomList.archivedRooms.first(where: { $0.id == roomID }) {
+            store.prefill(from: summary)
+        }
         store.uploadMedia = { [client] mimeType, data in
             try await client.uploadMedia(mimeType: mimeType, data: data, progressWatcher: nil)
         }
@@ -427,7 +438,7 @@ public final class UserSession {
         guard let room = roomList.room(withID: roomID) ?? (try? client.getRoom(roomId: roomID)) else {
             return nil
         }
-        let store = TimelineStore(room: room, ownUserID: userID, threadRootID: rootEventID)
+        let store = TimelineStore(room: room, ownUserID: userID, threadRootID: rootEventID, searchClient: client)
         store.mediaJobs = mediaJobs
         store.uploadMedia = { [client] mimeType, data in
             try await client.uploadMedia(mimeType: mimeType, data: data, progressWatcher: nil)
@@ -504,13 +515,13 @@ public final class UserSession {
     }
 
     /// Searching within one conversation, made when its search is opened. Separate from the global
-    /// `search` store: this one runs the room-scoped `Room.searchMessages`, so it needs the room
-    /// handle the same way a timeline does.
+    /// `search` store: it keeps only this room's hits, so it needs the room handle the same way a
+    /// timeline does.
     public func roomSearch(forRoomID roomID: String) -> RoomSearchStore? {
         guard let room = roomList.room(withID: roomID) ?? (try? client.getRoom(roomId: roomID)) else {
             return nil
         }
-        return RoomSearchStore(room: room)
+        return RoomSearchStore(room: room, client: client)
     }
 
     /// Forwards a message into another room. Opens (or reuses) the destination's timeline just long
@@ -962,14 +973,14 @@ public final class UserSession {
 /// as Boris"), and Iskra has neither. Treating both as "you are signed out" is the honest
 /// simplification: the alternative is a store kept for a flow that does not exist.
 private final class AuthErrors: ClientDelegate {
-    private let onAuthError: @Sendable () -> Void
+    private let onAuthError: @Sendable (Bool) -> Void
 
-    init(onAuthError: @escaping @Sendable () -> Void) {
+    init(onAuthError: @escaping @Sendable (Bool) -> Void) {
         self.onAuthError = onAuthError
     }
 
     func didReceiveAuthError(isSoftLogout: Bool) {
-        onAuthError()
+        onAuthError(isSoftLogout)
     }
 
     /// The SDK's own note says an embedder that does not run background jobs may leave this empty.

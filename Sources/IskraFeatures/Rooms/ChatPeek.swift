@@ -117,7 +117,7 @@ private struct ChatPeekTrigger: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .sheet(isPresented: $isChoosingFolders) {
+            .pageSheet(isPresented: $isChoosingFolders) {
                 FolderMembershipSheet(room: room, folders: session.folders)
             }
             // UIKit's hold on the phone, for the reason the message bubble uses it: a SwiftUI long

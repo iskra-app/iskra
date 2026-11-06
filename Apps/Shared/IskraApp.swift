@@ -2,6 +2,7 @@ import SwiftUI
 import UserNotifications
 import IskraCore
 import IskraFeatures
+import IskraDesign
 
 /// The app shell, shared by iPhone, iPad and Mac.
 ///
@@ -49,6 +50,12 @@ struct IskraApp: App {
             DeviceProbe.runAndExit()
         }
 
+        // `Iskra --probe-push` lists this account's pushers and has the gateway deliver one push
+        // to each of ours, which is where APNs's refusal of a token is ever said. See PushProbe.
+        if PushProbe.wasRequested {
+            PushProbe.runAndExit()
+        }
+
         // `Iskra --probe-bridge [npub] [homeserver]` sends one request through the nostr tunnel
         // and says which of the five identical-looking failures it was. See BridgeProbe.
         if BridgeProbe.wasRequested {
@@ -63,6 +70,26 @@ struct IskraApp: App {
         }
 
         #endif
+
+        #if os(macOS)
+        // One copy of the app at a time. A second one — Xcode's build beside `run.sh`'s, the same
+        // bundle ID twice — shares the store, the Keychain and the refresh token with the first, and
+        // the two refreshing it in turn is how accounts used to vanish. So the second one hands over
+        // to the first and goes. See `AppEnvironment.processName`.
+        // Unless it is a relaunch, whose new copy waits for the old one to quit first.
+        Relaunch.waitForPredecessor()
+        let me = ProcessInfo.processInfo.processIdentifier
+        if let bundleID = Bundle.main.bundleIdentifier,
+           let other = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+               .first(where: { $0.processIdentifier != me }) {
+            other.activate()
+            exit(0)
+        }
+
+        // And one window in it — see `SingleWindowCommands`. Tabs are windows too: the "+" on the
+        // tab bar opened a second one past the menu.
+        NSWindow.allowsAutomaticWindowTabbing = false
+        #endif
     }
 
     #if os(iOS)
@@ -74,6 +101,14 @@ struct IskraApp: App {
     #endif
 
     var body: some Scene {
+        mainWindow
+        #if os(macOS)
+        // "About Iskra" in the application menu opens the app's own About screen — see `AboutWindow`.
+        AboutWindow()
+        #endif
+    }
+
+    private var mainWindow: some Scene {
         WindowGroup {
             IskraRootView()
             // The one probe that cannot run from `init` above: it asks UIKit questions UIKit
@@ -90,7 +125,12 @@ struct IskraApp: App {
         // A messenger is a content window, not a document: one window, resizable,
         // with the sidebar doing the navigating.
         .windowResizability(.contentMinSize)
-        .defaultSize(width: 1000, height: 700)
+        // As wide as it can be narrow: both side columns and the narrowest conversation between them.
+        .defaultSize(width: Theme.Size.windowMinimum, height: 700)
+        .commands {
+            AboutCommand()
+            SingleWindowCommands()
+        }
         #endif
     }
 }

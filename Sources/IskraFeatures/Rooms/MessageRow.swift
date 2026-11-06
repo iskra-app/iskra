@@ -103,7 +103,7 @@ struct MessageRow: View {
         // Zero spacing, because the emoji do not sit *below* the bubble — they climb back
         // onto it. See `reactions`.
         VStack(alignment: message.isOwn ? .trailing : .leading, spacing: 0) {
-            swipeableBubbleRow
+            bubbleRow
 
             if !message.reactions.isEmpty, design == .classic {
                 reactions
@@ -113,6 +113,11 @@ struct MessageRow: View {
         // The calm look's emoji hang off the bubble (`calmReactions`), and this keeps them clear of
         // the next message.
         .padding(.bottom, design == .calm && !message.reactions.isEmpty ? Theme.Calm.Reaction.overhang : 0)
+        // The swipe takes the emoji with it. They sit on the bubble's foot, and a bubble pulled
+        // out from under its own reactions left them hanging in the air where it had been.
+        .swipeToReply(message,
+                      dragsToward: message.isOwn ? .leading : .trailing,
+                      onReply: handlers.onReply)
         .padding(.top, opensDay ? 0
                                 : message.isContinuation ? Theme.Spacing.withinRun
                                                          : Theme.Spacing.betweenSenders)
@@ -156,18 +161,6 @@ struct MessageRow: View {
 
     // MARK: - The bubble, and what can be done to it
 
-    /// The bubble, wrapped so it can be dragged toward the centre to reply — see `SwipeToReply`.
-    ///
-    /// The direction is always "toward the middle of the screen", never a side the user has to
-    /// remember: your own messages sit on the right and give to the leading edge; everyone else's
-    /// sit on the left and give to the trailing one.
-    private var swipeableBubbleRow: some View {
-        bubbleRow
-            .swipeToReply(message,
-                          dragsToward: message.isOwn ? .leading : .trailing,
-                          onReply: handlers.onReply)
-    }
-
     /// One sentence for VoiceOver, unless there is a button inside the message that flattening
     /// would swallow — see `Message.hasPressableContent`.
     @ViewBuilder
@@ -209,6 +202,7 @@ struct MessageRow: View {
                         .contentShape(.circle)
                         .onTapGesture { openProfile?(message.senderID) }
                         .accessibilityAddTraits(openProfile == nil ? [] : .isButton)
+                        .accessibilityAction { openProfile?(message.senderID) }
                 }
             }
 
@@ -216,9 +210,11 @@ struct MessageRow: View {
                 if showsSender && !message.isContinuation {
                     Text(message.senderName)
                         .font(.caption.weight(.medium))
-                        .foregroundStyle(.secondary)
+                        .onWallpaperInk()
                         .padding(.leading, Theme.Spacing.close)
                         .onTapGesture { openProfile?(message.senderID) }
+                        .accessibilityAddTraits(openProfile == nil ? [] : .isButton)
+                        .accessibilityAction { openProfile?(message.senderID) }
                 }
 
                 if case let .failed(failure)? = message.delivery {
@@ -302,7 +298,8 @@ struct MessageRow: View {
         // Drawn after the bubble and therefore over it — which is the whole point, and is
         // only true because this comes second in the stack.
         .zIndex(1)
-        .reactorsSheet($reactorsRequest, reactions: message.reactions, load: handlers.loadReactors)
+        .reactorsSheet($reactorsRequest, reactions: message.reactions, load: handlers.loadReactors,
+                       loadReaders: handlers.loadReaders)
     }
 
     /// The same emoji in the calm look, on the bubble's corner — see `CalmReactionCluster`. There
@@ -372,8 +369,16 @@ struct MessageRow: View {
     /// Nothing at all until the conversation has been measured, which lasts one layout pass.
     private var emptyColumn: CGFloat {
         if case .videoNote = message.kind { return 0 }
-        return max(0, timelineWidth * (1 - Theme.Size.bubbleWidthFraction) - Theme.Size.clockColumn)
+        let byFraction = timelineWidth * (1 - Theme.Size.bubbleWidthFraction) - Theme.Size.clockColumn
+        // And never more than a readable line: on a full-screen Mac or iPad window nine tenths of
+        // the column is a line of a hundred and twenty characters.
+        let byLine = timelineWidth - Theme.Size.clockColumn - Self.readableBubbleWidth
+        return max(0, byFraction, byLine)
     }
+
+    /// The widest a bubble may grow. A multiple of 4 like the rest; it belongs next to
+    /// `Theme.Size.bubbleWidthFraction` and moves there with the design pass.
+    private static let readableBubbleWidth: CGFloat = 560
 
     /// How big a video note goes while it plays.
     ///
@@ -716,6 +721,7 @@ struct SendFailureReason: View {
                 }
                 .buttonStyle(.bordered)
                 .tint(.red)
+                .destructiveTint()
             }
             .padding(.top, Theme.Spacing.tight)
         }
@@ -735,6 +741,7 @@ struct SendFailureReason: View {
 /// player with a scrubber for four seconds of somebody's face is a ceremony nobody asked for.
 /// Press it and it plays; press it again, or let it reach the end, and it is a still again.
 struct VideoNoteView: View {
+    @ScaledSize(Theme.Size.minimumTapTarget) private var playGlyph
     let attachment: Attachment
 
     /// How big it goes while it plays — the width of the conversation, worked out by the row
@@ -772,7 +779,7 @@ struct VideoNoteView: View {
                     .tint(.white)
             } else if !playback.isPlaying {
                 Image(systemName: "play.circle.fill")
-                    .font(.system(size: 44))
+                    .font(.system(size: playGlyph))
                     .foregroundStyle(.white.opacity(0.9))
                     .shadow(radius: 8)
                     // The play button gets out of the way rather than blinking out: it
@@ -789,7 +796,7 @@ struct VideoNoteView: View {
                     .font(.caption2.monospacedDigit())
                     .foregroundStyle(.white)
                     .padding(.horizontal, Theme.Spacing.close)
-                    .padding(.vertical, 2)
+                    .padding(.vertical, Theme.Spacing.withinRun)
                     .photoPlate()
                     .padding(.bottom, Theme.Spacing.normal)
                     .transition(.opacity)
@@ -806,7 +813,7 @@ struct VideoNoteView: View {
                     .font(.caption2)
                     .foregroundStyle(.white)
                     .padding(.horizontal, Theme.Spacing.close)
-                    .padding(.vertical, 2)
+                    .padding(.vertical, Theme.Spacing.withinRun)
                     .photoPlate()
                     .padding(.bottom, Theme.Spacing.normal)
             }
@@ -1195,6 +1202,7 @@ struct StickerView: View {
 /// is the right shape *before* the picture arrives and the timeline does not jump
 /// around as things load.
 struct PictureBubble: View {
+    @ScaledSize(Theme.Size.avatar) private var playGlyph
     /// The conversation's height with the keyboard down — see `EnvironmentValues.timelineHeight`.
     @Environment(\.timelineHeight) private var timelineHeight
 
@@ -1276,26 +1284,17 @@ struct PictureBubble: View {
         // off the conversation, and it now takes in the blurred frame and the caption as well
         // as the photograph — which is the point of their being one bubble at all.
         .contentShape(BubbleShape())
-        // A cover on the phone and a sheet on the Mac. The Mac has no `fullScreenCover`, and would
-        // not want one: a picture there belongs in a window over the conversation rather than on
-        // top of the entire app. On the phone it is the opposite — a photograph in a sheet is a
-        // photograph with the room showing above it and a card's corners cut out of it, which is
-        // not what looking at a picture is anywhere else on the platform.
-        #if os(iOS)
-        .fullScreenCover(item: $opened) { opened in
+        // A cover over the whole app on the phone, and a full-screen space of its own on the Mac:
+        // a photograph in a sheet is a photograph with the room showing above it and a card's
+        // corners cut out of it, which is not what looking at a picture is anywhere else.
+        .mediaViewer(item: $opened) { opened in
             MediaPager(items: opened.items, startIndex: opened.index)
-                // A sheet dressed as nothing at all: the viewer draws its own black, and the
-                // system's card behind it would be a grey rectangle showing at the corners.
-                .presentationBackground(.black)
         }
+        #if os(iOS)
         // A cover makes the room underneath "disappear" as far as SwiftUI is concerned, and the
         // room used to take that for the reader leaving: the draft saved, the timeline stopped,
         // and — worse — a latch left set so that the *real* way out later did none of it.
         .onChange(of: opened != nil) { _, isOpen in coversRoom(isOpen) }
-        #else
-        .sheet(item: $opened) { opened in
-            MediaPager(items: opened.items, startIndex: opened.index)
-        }
         #endif
     }
 
@@ -1344,7 +1343,7 @@ struct PictureBubble: View {
                 .overlay {
                     if isPlayable {
                         Image(systemName: "play.circle.fill")
-                            .font(.system(size: 40))
+                            .font(.system(size: playGlyph))
                             .foregroundStyle(.white.opacity(0.9))
                             .shadow(radius: 8)
                     }
@@ -1355,7 +1354,7 @@ struct PictureBubble: View {
                             .font(.caption2.monospacedDigit())
                             .foregroundStyle(.white)
                             .padding(.horizontal, Theme.Spacing.close)
-                            .padding(.vertical, 2)
+                            .padding(.vertical, Theme.Spacing.withinRun)
                             .photoPlate()
                             .padding(Theme.Spacing.close)
                     }

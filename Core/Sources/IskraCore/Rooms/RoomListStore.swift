@@ -566,7 +566,7 @@ public final class RoomListStore {
                 }
             }
         }
-        monitor.start(queue: DispatchQueue(label: "moscow.swag.iskra.path"))
+        monitor.start(queue: DispatchQueue(label: "wtf.iskra.path"))
         pathMonitor = monitor
     }
 
@@ -1192,7 +1192,7 @@ public final class RoomListStore {
         switch answer.latest {
         case let .remote(timestamp, senderID, isOwn, profile, content):
             if !isOwn {
-                if case let .ready(displayName, _, _) = profile, let displayName, !displayName.isEmpty {
+                if case let .ready(displayName, _, _, _, _) = profile, let displayName, !displayName.isEmpty {
                     sender = displayName
                 } else {
                     sender = senderID

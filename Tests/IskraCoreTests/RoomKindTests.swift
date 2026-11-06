@@ -126,7 +126,7 @@ struct RoomKindTests {
     private static let ownID = "@me:example.org"
 
     private static func hero(id: String, name: String? = nil, avatar: String? = nil) -> RoomHero {
-        RoomHero(userId: id, displayName: name, avatarUrl: avatar)
+        RoomHero(userId: id, displayName: name, avatarUrl: avatar, status: nil, call: nil)
     }
 
     /// A `RoomInfo` with everything that does not matter here left at its emptiest. The SDK's

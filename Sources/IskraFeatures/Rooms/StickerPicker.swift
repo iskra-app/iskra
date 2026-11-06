@@ -34,6 +34,16 @@ struct StickerPicker: View {
     }
 
     var body: some View {
+        #if os(macOS)
+        // A popover over the composer on a Mac (`RoomView.stickerPicker`), not a sheet — so none
+        // of a sheet's furniture. A title bar with a Close button in it was an empty band across
+        // the top of the popover, and the sheet's minimum size, wider than the popover, pushed the
+        // grid out past its left edge. Opaque, because the popover's own glass is see-through and
+        // the conversation behind it showed between the stickers.
+        content
+            .background(.background)
+            .task { await library?.load(roomID: roomID) }
+        #else
         NavigationStack {
             content
                 .navigationTitle(Text(Strings.Stickers.title))
@@ -46,11 +56,8 @@ struct StickerPicker: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
-        #if os(macOS)
-        // A Mac sheet is as big as what is in it, and what is in it starts out as a spinner.
-        .frame(minWidth: Theme.Size.viewer, minHeight: Theme.Size.viewer)
-        #endif
         .task { await library?.load(roomID: roomID) }
+        #endif
     }
 
     @ViewBuilder

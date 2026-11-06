@@ -1,3 +1,6 @@
+// Debug only: the demo is for looking at screens during development, and a release build carries
+// none of it — no server to switch on, no flag to start it by. See CLAUDE.md, "The demo server".
+#if DEBUG
 import Foundation
 import Synchronization
 
@@ -12,7 +15,7 @@ import Synchronization
 /// fake *service* could never hand back, because a session is built around a live `Client`.
 ///
 /// The browser half is real too. OIDC's authorize endpoint answers with a small HTML page, the
-/// page's button redirects to `moscow.swag.iskra:/oauth-callback`, and `ASWebAuthenticationSession`
+/// page's button redirects to `wtf.iskra:/oauth-callback`, and `ASWebAuthenticationSession`
 /// catches it the way it catches Matrix Authentication Service. That is the one piece of the
 /// registration flow nobody can test from `swift test`, and here it can be tapped through.
 ///
@@ -704,3 +707,4 @@ private extension ProxiedResponse {
     static let unknownToken = error("M_UNKNOWN_TOKEN", "Unknown access token", status: 401)
     static let badJSON = error("M_BAD_JSON", "Could not read that", status: 400)
 }
+#endif

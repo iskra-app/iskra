@@ -57,8 +57,9 @@ struct MessageComposer: View {
     /// are their own and survive.
     var onCancelContext: () -> Void = {}
 
-    /// Where the text begins on the screen, reported as it moves — see `ComposerTravel`.
-    var onTextLeading: (CGFloat) -> Void = { _ in }
+    /// Where the text begins on the screen — its leading edge and its top — reported as it moves.
+    /// See `ComposerTravel`.
+    var onTextOrigin: (CGPoint) -> Void = { _ in }
 
     var onSend: () -> Void
 
@@ -184,7 +185,7 @@ struct MessageComposer: View {
     init(draft: Binding<String>,
          context: ComposerContext? = nil,
          onCancelContext: @escaping () -> Void = {},
-         onTextLeading: @escaping (CGFloat) -> Void = { _ in },
+         onTextOrigin: @escaping (CGPoint) -> Void = { _ in },
          onSend: @escaping () -> Void,
          onStartVideoNote: @escaping () -> Void = {},
          onFinishVideoNote: @escaping () -> Void = {},
@@ -209,11 +210,13 @@ struct MessageComposer: View {
          mentions: Binding<[ComposerMention]> = .constant([]),
          loadMentionCandidates: (() async -> [RoomMemberSummary])? = nil,
          isAttaching: Bool = false,
-         locking: LockGesture = LockGesture()) {
+         locking: LockGesture = LockGesture(),
+         onEditLast: (() -> Bool)? = nil) {
         _draft = draft
+        self.onEditLast = onEditLast
         self.context = context
         self.onCancelContext = onCancelContext
-        self.onTextLeading = onTextLeading
+        self.onTextOrigin = onTextOrigin
         self.onSend = onSend
         self.onStartVideoNote = onStartVideoNote
         self.onFinishVideoNote = onFinishVideoNote
@@ -241,13 +244,16 @@ struct MessageComposer: View {
         _locking = State(initialValue: locking)
     }
 
+    /// ↑ in an empty field, on a Mac: edit the last message you sent, as in Telegram and Slack.
+    /// Answers whether there was one; with none, the key goes on to the field as usual.
+    private let onEditLast: (() -> Bool)?
+
     @FocusState private var isFocused: Bool
 
     /// Where the cursor is in the field — for a newline put in by hand, see `ComposerReturnKey`.
     @State private var selection: TextSelection?
 
     @Environment(\.accent) private var accent
-    @Environment(\.design) private var design
 
     /// Which way round the mono accent's label goes — see the foreground in `icon`.
     @Environment(\.colorScheme) private var scheme
@@ -295,8 +301,35 @@ struct MessageComposer: View {
     /// Who the "@" being typed could mean — empty when nothing is being typed, or nobody matches.
     private var mentionMatches: [RoomMemberSummary] {
         guard let mentionQuery, let mentionCandidates else { return [] }
+        // Escape put the list away for this "@…"; typing on, or another "@", brings it back.
+        guard mentionQuery.text != mentionDismissedFor else { return [] }
         return ComposerMentions.matches(mentionQuery.text, in: mentionCandidates)
     }
+
+    /// The row of the list the keyboard is on — Mac. Always inside the list: see `mentionRow`.
+    @State private var mentionHighlight = 0
+    /// The text of the "@…" whose list Escape closed.
+    @State private var mentionDismissedFor: String?
+
+    private func mentionRow(in matches: [RoomMemberSummary]) -> Int {
+        min(max(mentionHighlight, 0), max(matches.count - 1, 0))
+    }
+
+    #if os(macOS)
+    /// ↑ ↓ Tab Return Escape while the list is up. Returns whether the key was taken.
+    private func handleMentionKey(_ key: MentionKey) -> Bool {
+        let matches = mentionMatches
+        guard !matches.isEmpty else { return false }
+        let row = mentionRow(in: matches)
+        switch key {
+        case .up: mentionHighlight = (row - 1 + matches.count) % matches.count
+        case .down: mentionHighlight = (row + 1) % matches.count
+        case .confirm: pick(matches[row])
+        case .escape: mentionDismissedFor = mentionQuery?.text
+        }
+        return true
+    }
+    #endif
 
     /// A name chosen from the list: into the draft in place of what was typed, the cursor after it.
     private func pick(_ member: RoomMemberSummary) {
@@ -364,11 +397,10 @@ struct MessageComposer: View {
                                       selection: $selection, axis: .vertical)
                                 .textFieldStyle(.plain)
                                 // Where the words start on the screen — the point a sent message
-                                // travels across from. Measured on the bare field, inside its
-                                // padding, so it is the first letter's edge and not the glass
-                                // around it.
-                                .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minX } action: {
-                                    onTextLeading($0)
+                                // travels from. Measured on the bare field, inside its padding, so
+                                // it is the first letter's edge and not the glass around it.
+                                .onGeometryChange(for: CGPoint.self) { $0.frame(in: .global).origin } action: {
+                                    onTextOrigin($0)
                                 }
                                 .lineLimit(1...5)
                                 .focused($isFocused)
@@ -377,7 +409,9 @@ struct MessageComposer: View {
                                 .padding(.vertical, Theme.Spacing.normal)
                                 .frame(minHeight: control)
                                 // Return or ⌘-Return, by Settings → Chats — see `ComposerReturnKey`.
-                                .composerReturnKey(text: $draft, selection: $selection, send: onSend)
+                                .composerReturnKey(text: $draft, selection: $selection, isFocused: isFocused,
+                                                   send: onSend,
+                                                   editLast: onEditLast)
 
                             if offersStickers, let onChooseSticker {
                                 stickerButton(onChooseSticker)
@@ -399,7 +433,7 @@ struct MessageComposer: View {
                     // with a different confirmation.
                     if let context, context.isEditing {
                         button(systemImage: "checkmark",
-                               label: Strings.Room.send,
+                               label: Strings.Room.saveEdit,
                                isPrimary: true,
                                action: onSend)
                             // A caption may be emptied — that takes it off the photo.
@@ -437,6 +471,12 @@ struct MessageComposer: View {
             .onChange(of: context == nil) { _, isPlainDraft in
                 if !isPlainDraft { isFocused = true }
             }
+            #if os(macOS)
+            // A chat opened on a Mac is a chat about to be written in: the cursor is in the field
+            // already, as in every desktop messenger. Not on iPhone or iPad, where focus is the
+            // keyboard coming up over the conversation somebody opened to read.
+            .task { isFocused = true }
+            #endif
             .padding(.horizontal, Theme.Spacing.normal)
             .padding(.vertical, Theme.Spacing.close)
             // How tall the composer actually is right now — one line, or five. Measured,
@@ -489,13 +529,20 @@ struct MessageComposer: View {
         .overlay(alignment: .bottom) {
             let matches = mentionMatches
             if !matches.isEmpty {
-                MentionPicker(members: matches, onPick: pick)
+                MentionPicker(members: matches, highlighted: mentionRow(in: matches), onPick: pick)
                     .padding(.horizontal, Theme.Spacing.normal)
                     .offset(y: -(height + Theme.Spacing.close))
                     .transition(.scale(scale: 0.96, anchor: .bottom).combined(with: .opacity))
             }
         }
         .animation(.smooth(duration: Theme.Timing.chrome), value: mentionMatches.isEmpty)
+        .onChange(of: mentionQuery?.text) { _, text in
+            mentionHighlight = 0
+            if text == nil { mentionDismissedFor = nil }
+        }
+        #if os(macOS)
+        .background { MentionKeyCatcher(isEnabled: isFocused && !mentionMatches.isEmpty, perform: handleMentionKey) }
+        #endif
         // The room's people are asked for the first time an "@" is typed, and kept.
         .task(id: mentionQuery != nil) {
             guard mentionQuery != nil, mentionCandidates == nil, let loadMentionCandidates else { return }
@@ -1253,8 +1300,7 @@ struct MessageComposer: View {
             .frame(width: control, height: control)
 
         if isPrimary {
-            glyph.primaryActionGlass(tint: tint ?? (design == .calm ? accent.solid(in: scheme) : accent.color),
-                                     in: .circle)
+            glyph.primaryActionGlass(tint: tint ?? accent.solid(in: scheme), in: .circle)
                 .contentShape(.circle)
         } else {
             glyph.navigationGlass(in: .circle)

@@ -466,8 +466,8 @@ struct RoomVideoNoteList: View {
             }
             .buttonStyle(.plain)
         }
-        .sheet(item: Binding(get: { openedAt.map { OpenedIndex(value: $0) } },
-                             set: { openedAt = $0?.value })) { opened in
+        .mediaViewer(item: Binding(get: { openedAt.map { OpenedIndex(value: $0) } },
+                                   set: { openedAt = $0?.value })) { opened in
             MediaPager(items: items, startIndex: opened.value)
         }
     }

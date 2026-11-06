@@ -8,7 +8,7 @@
 
 | Пункт | Статус | Детали | Что доделать |
 |---|---|---|---|
-| matrix-rust-sdk через UniFFI, не легаси matrix-ios-sdk | **сделано** | `matrix-org/matrix-rust-components-swift` exact `26.06.06` (upstream, ради macOS-слайса). Дополнительно `swift-secp256k1` — только для nostr-туннеля | — |
+| matrix-rust-sdk через UniFFI, не легаси matrix-ios-sdk | **сделано** | `matrix-org/matrix-rust-components-swift` exact `26.08.11` (upstream, ради macOS-слайса). Дополнительно `swift-secp256k1` — только для nostr-туннеля | — |
 | SwiftUI | **сделано** | Весь UI, включая Mac; UIKit/AppKit только там, где иначе нельзя (long press меню, QuickLook, `AVPlayerLayer`) | — |
 | SPM | **сделано** | `IskraCore` / `IskraDesign` / `IskraFeatures`; правило зависимостей держится (Core без SwiftUI, Design без Matrix, SDK импортирует только Core) | мёртвый `import MatrixRustSDK` в `Apps/Shared/SignInProbe.swift`; четыре публичных API Core с SDK-типами → `internal` |
 

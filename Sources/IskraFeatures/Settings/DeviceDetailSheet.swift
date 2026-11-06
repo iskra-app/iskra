@@ -78,7 +78,7 @@ struct DeviceDetailSheet: View {
                     }
                 }
             }
-            .formStyle(.grouped)
+            .formStyle(.groupedRows)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button { dismiss() } label: { Text(Strings.Devices.done) }

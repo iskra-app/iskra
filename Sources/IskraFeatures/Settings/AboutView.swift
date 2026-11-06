@@ -11,11 +11,16 @@ import IskraDesign
 /// The licences sit one push further in (`LicensesView`) rather than on this screen: they are
 /// a list somebody opens on purpose, not something to scroll past on the way to a version.
 struct AboutView: View {
+    /// The homeserver the session on screen talks to, for the developers' corner of `BetaView`.
+    var homeserver: String?
+
     @Environment(\.accent) private var accent
 
     /// Whether the beta features are pushed — by three taps on the spark, which is the only way
     /// to them. See `BetaView`.
     @State private var isShowingBeta = false
+    /// The licences, pushed by a flag so Escape can take them back — see `escapeKey`.
+    @State private var isShowingLicences = false
 
     var body: some View {
         ScreenForm {
@@ -48,13 +53,13 @@ struct AboutView: View {
             }
 
             Section {
-                Link(destination: URL(string: "https://iskra.swag.moscow")!) {
+                Link(destination: URL(string: "https://iskra.wtf")!) {
                     LabeledContent {
                         Image(systemName: "arrow.up.right")
                             .foregroundStyle(.secondary)
                     } label: {
                         Text(Strings.About.website)
-                        Text(verbatim: "iskra.swag.moscow")
+                        Text(verbatim: "iskra.wtf")
                     }
                 }
 
@@ -68,12 +73,9 @@ struct AboutView: View {
                     }
                 }
 
-                // A closure destination is fine here: `LicensesView` holds nothing but constants,
-                // so building it eagerly costs nothing. And it must not read `dismiss` — this
-                // screen is itself pushed onto the settings stack. See CLAUDE.md.
-                NavigationLink {
-                    LicensesView()
-                } label: {
+                // `LicensesView` must not read `dismiss` — this screen is itself pushed onto the
+                // settings stack. See CLAUDE.md.
+                PushRow { isShowingLicences = true } label: {
                     Text(Strings.About.licences)
                 }
             } footer: {
@@ -86,14 +88,17 @@ struct AboutView: View {
                 }
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .tint(accent.color)
         .navigationTitle(Text(Strings.About.title))
         // Bound to a flag rather than a value, because nothing on this screen is a row that leads
         // there: the way in is a gesture on the icon. `BetaView` reads no `dismiss` — this stack
         // can be the sidebar's, see CLAUDE.md.
         .navigationDestination(isPresented: $isShowingBeta) {
-            BetaView()
+            BetaView(homeserver: homeserver)
+        }
+        .navigationDestination(isPresented: $isShowingLicences) {
+            LicensesView()
         }
     }
 
@@ -118,6 +123,8 @@ struct AboutView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, Theme.Spacing.roomy)
         .accessibilityElement(children: .combine)
+        // Three taps on a picture do not exist for VoiceOver; this is the same door.
+        .accessibilityAction(named: Text(Strings.Beta.title)) { isShowingBeta = true }
     }
 
     /// Which OS this is running on, named rather than numbered alone: "26.0" says nothing on

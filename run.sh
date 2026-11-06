@@ -24,7 +24,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
-BUNDLE_ID="moscow.swag.iskra"
+BUNDLE_ID="wtf.iskra"
 DERIVED="$PWD/.build/xcode"
 PROJECT="Apps/Iskra.xcodeproj"
 LOGS="$PWD/.build/logs"

@@ -80,6 +80,7 @@
 
 /* Accessibility label for the send button. */
 "room.send" = "Envoyer";
+"room.saveEdit" = "Enregistrer";
 
 "room.sendFailedTitle" = "Message non envoyé";
 
@@ -154,7 +155,7 @@
 "appIcon.spark" = "Étincelle";
 "appIcon.chrome" = "Chrome";
 "appIcon.garnet" = "Grenat";
-"appIcon.pine" = "Pin";
+"appIcon.brat" = "Brat";
 "appIcon.rio" = "Rio de Janeiro";
 "appIcon.blackWhite" = "N/B";
 "appIcon.retro" = "Rétro";
@@ -167,7 +168,7 @@
 
 "beta.nativeSidebar" = "Barre latérale native";
 
-"beta.nativeSidebarHelp" = "La liste des discussions devient une barre latérale macOS ordinaire : discussions regroupées en sections, recherche en haut, lignes plus serrées. Comme Mail et Notes, et moins comme un téléphone.";
+"beta.nativeSidebarHelp" = "La liste des discussions devient une barre latérale macOS ordinaire : discussions regroupées en sections, recherche en haut, lignes plus serrées. Ça ressemble à Mail et Notes, pas à un téléphone.";
 
 "beta.blobatar" = "Des bestioles au lieu des initiales";
 
@@ -197,6 +198,9 @@
 "settings.media" = "Photos et vidéos";
 "media.title" = "Photos et vidéos";
 "media.stripMetadata" = "Envoyer sans métadonnées";
+"media.stripMetadataHelpOn" = "Les photos et vidéos partent sans le lieu, le modèle d’appareil ni la date.";
+"media.stripMetadataHelpOff" = "Attention : les photos et vidéos emporteront le lieu, le modèle d’appareil et la date.";
+"media.compressHelp" = "Des fichiers plus légers partent plus vite et consomment moins de données, avec un peu moins de détails.";
 "media.compress" = "Compresser les photos et vidéos";
 "media.compression" = "Compression";
 "media.compression.strong" = "Forte (540p)";
@@ -209,22 +213,6 @@
 "connection.title" = "Connexion";
 "connection.bridge" = "Via un pont";
 "connection.bridgeFooter" = "Le trafic passe par un pont au lieu d’aller directement au serveur. C’est utile là où le serveur est injoignable.";
-"connection.publicSection" = "Ponts publics";
-"connection.publicFooter" = "Des ponts vérifiés, issus de la liste github.com/iskra-app/public-bridges. Ce que voit un pont est expliqué plus bas. L’application télécharge la liste une fois par jour, directement depuis GitHub : GitHub et votre réseau peuvent le voir ; si GitHub est injoignable, elle utilise la copie enregistrée.";
-"connection.publicEmpty" = "La liste ne contient encore aucun pont. Ajoutez le vôtre ci-dessous.";
-"connection.publicAnyServer" = "n’importe quel serveur Matrix";
-"connection.publicServers" = "seulement %@";
-"connection.publicOperator" = "tenu par %@";
-"connection.notListed" = "n’est plus dans la liste";
-"connection.ownSection" = "Vos ponts";
-"connection.ownFooter" = "Un pont que vous faites tourner vous-même, ou que vous tenez de celui qui le fait tourner. Vous pouvez en garder plusieurs : celui qui est coché est utilisé.";
-"connection.addBridge" = "Ajouter un pont";
-"connection.editBridge" = "Modifier le pont";
-"connection.deleteBridge" = "Supprimer";
-"connection.saveBridge" = "Enregistrer";
-"connection.cancelEditing" = "Annuler";
-"connection.bridgeName" = "Nom";
-"connection.bridgeNamePrompt" = "Par exemple « Maison »";
 
 "connection.status" = "État";
 "connection.statusDirect" = "Directe";
@@ -238,13 +226,14 @@
    said here rather than only in the status: this is what somebody is looking at. */
 "connection.address" = "Adresse du pont";
 "connection.addressPrompt" = "npub1… ou 64 caractères hex";
-"connection.addressFooter" = "Le pont affiche son adresse au démarrage — la ligne « bridge address for Iskra: npub1… ».";
+"connection.addressFooter" = "Un pont affiche son adresse au démarrage, dans la ligne « bridge address for Iskra: npub1… ».";
 "connection.addressBad" = "Cela ne ressemble pas à une clé de pont";
 "connection.addressSecret" = "C’est une clé secrète. Il faut ici la clé publique, celle qui commence par npub.";
+"connection.defaultBridge" = "Revenir au pont d’Iskra";
 
 "connection.relays" = "Relais";
 "connection.relaysPrompt" = "wss://relay.snort.social, wss://nostr.wine";
-"connection.relaysFooter" = "C’est là que l’app et le pont se retrouvent. En mettre plusieurs n’est pas une roue de secours : la requête part vers tous à la fois et la réponse revient du plus rapide. Laissez vide pour les trois par défaut.";
+"connection.relaysFooter" = "C’est là que l’app et le pont se retrouvent. La requête part vers tous à la fois et la réponse revient du plus rapide, donc un seul ne suffit pas. Laissez vide pour les trois par défaut.";
 
 "connection.myKey" = "Clé de cet appareil";
 "connection.myKeyFooter" = "Si le pont est fermé, ajoutez cette clé à son ALLOWED_PUBKEYS, sinon il ne vous entendra pas du tout.";
@@ -253,7 +242,7 @@
 
 "connection.check" = "Vérifier le pont";
 "connection.checking" = "Vérification…";
-"connection.checkOK" = "Le pont a répondu, le serveur est là — %lld ms";
+"connection.checkOK" = "Le pont a répondu, le serveur est là : %lld ms";
 "connection.checkNoRelay" = "Aucun relais ne répond";
 "connection.checkSilent" = "Le pont ne répond pas. Est-il lancé, et est-ce la bonne clé ?";
 "connection.checkFailed" = "Échec : %@";
@@ -273,14 +262,15 @@
 "connection.unfinishedBody" = "Chaque requête fait le détour par un relais et coûte 200 à 350 ms : la connexion et la première ouverture des discussions sont donc nettement plus lentes qu’en direct, une seconde là où c’était instantané. Les nouveaux messages arrivent en revanche presque aussi vite qu’en direct. Les grosses pièces jointes passent aussi, mais mieux vaut les éviter sur des relais publics : pour les médias, donnez au pont un relais à lui.";
 
 "connection.sees" = "Ce que voit le pont";
-"connection.seesBody" = "Seulement à quel serveur vous vous connectez, quand, et combien d’octets. L’application chiffre elle-même la connexion au serveur : votre jeton, vos salons et vos messages — même dans les discussions non chiffrées — restent invisibles pour le pont. Votre adresse IP est vue par les relais, pas par le pont.";
+"connection.seesBody" = "Seulement à quel serveur vous vous connectez, quand, et combien d’octets. L’application chiffre elle-même la connexion au serveur : votre jeton, vos salons et vos messages restent invisibles pour le pont, même dans les discussions non chiffrées. Votre adresse IP est vue par les relais, pas par le pont.";
 
 /* App lock by Face ID / device passcode. */
 "settings.lock" = "Verrouillage de l’app";
-"settings.lockEnable" = "Exiger Face ID ou le code";
+"settings.lockEnable" = "Exiger le code de l’appareil";
 "settings.lockTimeout" = "Demander";
 "settings.lockExplanation" = "L’app demandera Face ID, Touch ID ou le code de l’appareil à votre retour.";
 "settings.lockUnavailable" = "Configurez d’abord un code sur l’appareil.";
+"settings.offlineFooter" = "Sans réseau, ce réglage ne peut pas être modifié : l’app ne joint pas le serveur.";
 "settings.lockTimeout.immediately" = "Immédiatement";
 "settings.lockTimeout.afterMinute" = "Après 1 minute";
 "settings.lockTimeout.afterFiveMinutes" = "Après 5 minutes";
@@ -326,6 +316,13 @@
 
 /* The last row of settings, the way through to the About screen. */
 "settings.about" = "À propos d’Iskra";
+"settings.language" = "Langue";
+"settings.language.system" = "Comme le système";
+"settings.language.help" = "Les menus et les fenêtres du système changent au redémarrage.";
+"settings.language.restartTitle" = "Redémarrer Iskra ?";
+"settings.language.restartMessage" = "Les menus et les fenêtres du système passeront à la nouvelle langue après un redémarrage.";
+"settings.language.restart" = "Redémarrer";
+"settings.language.restartLater" = "Plus tard";
 
 /* The app's name under the icon on the About screen. Not translated — it is what the app is
    called in both languages. */
@@ -398,8 +395,8 @@
 
 "signIn.problem.unreachable" = "Impossible de joindre cette adresse. Vérifiez la connexion et réessayez.";
 "signIn.problem.bridgeUnavailable" = "Le pont n’a pas démarré, et Iskra ne passera pas en direct tant que le pont est activé. Vérifiez l’adresse du pont et les relais dans les réglages de connexion.";
-/* Under "couldn't reach the server", when the bridge is off: the bridge as a way round a block. */
-"signIn.bridgeOffer" = "Si le serveur est bloqué là où vous êtes, un pont peut quand même l’atteindre.";
+/* Under "couldn't reach the server", when the bridge is off: the bridge as a second route. */
+"signIn.bridgeOffer" = "Si la connexion directe ne fonctionne pas, essayez de passer par un pont.";
 /* The button under it: switches the bridge on and looks the server up again. */
 "signIn.tryThroughBridge" = "Activer le pont et réessayer";
 
@@ -409,7 +406,7 @@
    anything about signing in: the account is fine and the messages are on the device. */
 "session.offlineTitle" = "Pas de connexion";
 
-"session.offlineMessage" = "Vos conversations sont là, sur cet appareil. Nous n’arrivons simplement pas à joindre le serveur pour l’instant : vérifiez votre réseau.";
+"session.offlineMessage" = "Vos conversations sont sur cet appareil. Le serveur est injoignable pour l’instant, vérifiez votre réseau.";
 
 "session.tryAgain" = "Réessayer";
 
@@ -481,7 +478,7 @@
    messages are there, we just can't show them. */
 "room.loadFailedTitle" = "Impossible d’ouvrir la discussion";
 
-"room.loadFailedMessage" = "Les messages n’ont pas disparu : nous n’avons simplement pas pu les charger. Vérifiez la connexion.";
+"room.loadFailedMessage" = "Les messages sont toujours là, mais ils n’ont pas pu se charger. Vérifiez la connexion.";
 
 "room.tryAgain" = "Réessayer";
 
@@ -538,7 +535,9 @@
 
 /* The Appearance screen: light or dark. "System" is the ordinary case and the default; the
    other two are for people whose phone is light while their messages ought to be dark. */
+"appearance.themeAndColors" = "Thème et couleurs";
 "appearance.theme" = "Thème";
+"appearance.accent" = "Couleur d’accent";
 "appearance.mode.system" = "Comme le système";
 "appearance.mode.light" = "Clair";
 "appearance.mode.dark" = "Sombre";
@@ -548,7 +547,6 @@
 
 /* The Appearance screen: the colour the app is painted in. The seven colours of the
    rainbow, and a mono theme with no colour at all. */
-"appearance.accent" = "Couleur de l’app";
 "appearance.avatars" = "Avatars";
 
 /* The switch under the swatches. Washes the chosen colour across the whole interface — every
@@ -581,6 +579,7 @@
 
 /* The slider under the wallpapers: how far to take the picture down so that messages read on it. */
 "appearance.wallpaperDimming" = "Assombrissement";
+"appearance.wallpaperLightening" = "Éclaircissement";
 
 /* The button under the slider — swap your photograph for a different one. */
 "appearance.wallpaperChoose" = "Choisir une autre photo";
@@ -629,6 +628,7 @@
 "message.report.cancel" = "Annuler";
 
 "message.media.close" = "Fermer";
+"message.media.controls" = "Afficher ou masquer les commandes";
 
 /* The video would not download. Not an alarm and not a dialog — a line on the message
    itself, because there is nothing to be done about it but press again. */
@@ -818,7 +818,7 @@
 "roomList.new.retry" = "Réessayer";
 "roomList.new.join" = "Rejoindre";
 "roomList.new.addressPlaceholder" = "#salon:serveur";
-"roomList.new.addressHelp" = "Une adresse de salon ressemble à #nom:serveur. Son identifiant convient aussi — il commence par « ! ».";
+"roomList.new.addressHelp" = "Une adresse de salon ressemble à #nom:serveur. Son identifiant convient aussi : il commence par « ! ».";
 
 /* Swipe actions on a chat row, and their VoiceOver twins. */
 "roomList.swipe.markRead" = "Lu";
@@ -854,19 +854,21 @@
 
 /* The profile: name and picture. */
 "account.namePlaceholder" = "Votre nom";
+"account.save" = "Enregistrer";
 "account.edit" = "Modifier";
 "account.editTitle" = "Votre profil";
 "account.nameHeader" = "Nom";
 "account.editOffline" = "Sans réseau, votre profil ne peut pas être modifié : l’app ne joint pas le serveur.";
 "account.nameChangeNotice" = "Si vous changez de nom, toutes les personnes avec qui vous discutez le sauront : une note apparaît dans chaque discussion commune.";
-"account.usernameHeader" = "Nom d’utilisateur";
-"account.usernameFixed" = "Le nom d’utilisateur se choisit une seule fois, à la création du compte. Il ne peut pas être changé, ni ici ni ailleurs.";
+"account.usernameHeader" = "Matrix ID";
+"account.usernameFixed" = "Le Matrix ID se choisit une seule fois, à la création du compte. Il ne peut pas être changé, ni ici ni ailleurs.";
 
 /* The menu on a picture that can be changed: in your profile and in a chat. */
 "picture.edit" = "Changer la photo";
 "picture.change" = "Changer";
 "picture.remove" = "Supprimer";
 "room.manage.edit" = "Modifier";
+"room.manage.closeInfo" = "Masquer les infos du chat";
 "room.manage.editTitle" = "Modifier la discussion";
 "room.manage.nameHeader" = "Nom";
 "room.manage.deleteChat" = "Supprimer la discussion";
@@ -907,7 +909,7 @@
 "encryption.keyCopied" = "Copié";
 "encryption.saved" = "J’ai enregistré le code";
 
-"encryption.deviceUnverified" = "Nouvel appareil";
+"encryption.deviceUnverified" = "Appareil non confirmé";
 
 /* The bar across the conversation: what you have not read yet starts here. */
 "room.unreadMessages" = "Messages non lus";
@@ -975,7 +977,7 @@
 "verification.done.title" = "Cet appareil est confirmé";
 "verification.done.message" = "Votre compte fait désormais confiance à cet appareil. Vos anciennes conversations apparaîtront ici d’elles-mêmes.";
 "verification.declined.title" = "Confirmation interrompue";
-"verification.declined.message" = "Si les emoji ne correspondaient vraiment pas, ne faites pas confiance à cette connexion et réessayez. Il se peut aussi que vous ayez simplement lancé la confirmation deux fois.";
+"verification.declined.message" = "Si les emoji ne correspondaient vraiment pas, ne faites pas confiance à cette connexion et réessayez. Il se peut aussi que vous ayez lancé la confirmation deux fois.";
 "verification.refused.title" = "Vous avez refusé";
 "verification.refused.message" = "Cet appareil n’a reçu aucun accès à vos conversations. Mais si cette connexion n’était pas la vôtre, quelqu’un d’autre connaît votre mot de passe, et il faut le changer tout de suite.";
 "verification.refused.endSession" = "Fermer cette session";
@@ -1108,6 +1110,7 @@
 "devices.passwordField" = "Mot de passe";
 "devices.cancel" = "Annuler";
 "devices.retry" = "Réessayer";
+"devices.loadFailed" = "Impossible de charger la liste des appareils.";
 
 /* The Notifications screen: what arrives by default, until a particular chat says otherwise.
    Two things have to be said out loud about these rules — they live on the server, so they apply
@@ -1133,6 +1136,7 @@
 "notifications.systemOff" = "Le système bloque les notifications";
 "notifications.systemUnknown" = "L’autorisation n’a pas encore été demandée";
 "notifications.openSystem" = "Ouvrir les Réglages";
+"notifications.allow" = "Autoriser les notifications";
 "notifications.systemFooter" = "Tant que le système bloque les notifications, aucune des règles ci-dessous ne s’applique.";
 
 "notifications.failed" = "Impossible de lire les réglages de notification. Le serveur ne répond pas : réessayez plus tard.";
@@ -1140,16 +1144,16 @@
 /* The first run. Six slides before the sign-in — the only place the app talks about itself,
    so the lines are short and no protocol word appears on any of them. See `WelcomeView`. */
 "onboarding.slide.iskra.title" = "Iskra";
-"onboarding.slide.iskra.body" = "Des conversations qui n’appartiennent qu’à vous";
+"onboarding.slide.iskra.body" = "Un client Matrix pour iPhone, iPad et Mac";
 
 "onboarding.slide.encryption.title" = "Chiffré de bout en bout par défaut";
-"onboarding.slide.encryption.body" = "Personne d’autre que vous et votre interlocuteur ne peut le lire. Pas même la CIA";
+"onboarding.slide.encryption.body" = "Seuls vous et votre interlocuteur pouvez lire la conversation. Pas même la CIA";
 
 "onboarding.slide.decentralised.title" = "Décentralisé";
 "onboarding.slide.decentralised.body" = "Iskra repose sur Matrix, un protocole ouvert développé par la communauté";
 
-"onboarding.slide.appleWay.title" = "Apple way";
-"onboarding.slide.appleWay.body" = "Une app native en Swift pour toutes les plateformes à la fois : elle file et épargne votre batterie";
+"onboarding.slide.appleWay.title" = "Pensée pour Apple";
+"onboarding.slide.appleWay.body" = "Une app native en Swift pour iPhone, iPad et Mac. Elle ressemble à n’importe quelle autre app du système et se comporte comme elle";
 
 "onboarding.slide.freedom.title" = "À vous de choisir";
 "onboarding.slide.freedom.body" = "Prenez un serveur qui existe déjà ou montez le vôtre. Personne ne vous enferme dans un écosystème";
@@ -1234,7 +1238,7 @@
 /* Settings → Privacy. */
 "privacy.title" = "Confidentialité";
 "privacy.hidePresence" = "Masquer la dernière connexion";
-"privacy.hidePresenceHelp" = "Les autres ne verront pas quand vous étiez en ligne pour la dernière fois — et vous ne verrez pas la leur.";
+"privacy.hidePresenceHelp" = "Les autres ne verront pas quand vous étiez en ligne pour la dernière fois, et vous ne verrez pas la leur.";
 "privacy.hideTyping" = "Masquer « écrit… »";
 "privacy.hideTypingHelp" = "Les autres ne verront pas quand vous écrivez.";
 
@@ -1263,6 +1267,7 @@
 
 /* Who reacted: the "everybody" tab. */
 "message.menu.reactorsAll" = "Toutes · %lld";
+"message.menu.seenAndReacted" = "%1$@ · %2$@";
 
 /* Media viewer: the counter and video skipping. */
 "message.media.counter" = "%lld sur %lld";
@@ -1286,7 +1291,7 @@
 
 "accounts.signOut" = "Se déconnecter";
 "accounts.signOutTitle" = "Se déconnecter de %@ ?";
-"accounts.signOutMessage" = "Les discussions de ce compte seront supprimées de cet appareil. Pour relire les messages chiffrés, il vous faudra votre clé de récupération ou un autre de vos appareils.";
+"accounts.signOutMessage" = "Les discussions de ce compte seront supprimées de cet appareil. Pour relire les messages chiffrés, il vous faudra votre code de récupération ou un autre de vos appareils.";
 "stickers.subscribe" = "Ajouter";
 "stickers.settings.sheetSection" = "Affichage des stickers";
 "stickers.settings.builtIn" = "Étincelles";
@@ -1316,7 +1321,7 @@
 "qr.scanHint" = "Pointez l’appareil photo vers le code QR d’une personne ou d’un salon";
 "qr.notMatrix" = "Ce n’est pas un lien Matrix";
 "qr.choosePicture" = "Choisir une image";
-"qr.noCamera" = "Pas d’accès à l’appareil photo. Autorisez-le dans Réglages — ou choisissez une image du code.";
+"qr.noCamera" = "Pas d’accès à l’appareil photo. Autorisez-le dans Réglages ou choisissez une image du code.";
 "qr.nothingFound" = "Il n’y a pas de code QR sur cette image";
 "qr.joinRoom" = "Rejoindre le salon";
 "qr.openRoom" = "Ouvrir";
@@ -1331,6 +1336,15 @@
 "signIn.whatIsMatrix" = "Qu’est-ce que Matrix ?";
 /* The title of that screen. */
 "aboutMatrix.title" = "Qu’est-ce que Matrix";
+/* The opening paragraph, set larger than the rest. */
+"aboutMatrix.intro" = "Matrix est une manière ouverte pour les messageries de se parler entre elles. Iskra est l’une d’elles. Il en existe d’autres, et toutes se comprennent.";
+/* Then three short sections: a heading and a paragraph under it. */
+"aboutMatrix.email.title" = "Comme l’e-mail, mais pour discuter";
+"aboutMatrix.email.body" = "Votre compte vit sur un serveur, et vous pouvez écrire à des personnes sur n’importe quel autre. C’est pareil avec l’e-mail : vous êtes chez Gmail, un ami chez Orange, et les messages arrivent quand même. Une adresse Matrix ressemble à ceci : @nom:serveur.";
+"aboutMatrix.nobody.title" = "Personne n’est aux commandes";
+"aboutMatrix.nobody.body" = "Matrix n’appartient à aucune entreprise qui pourrait fermer le service, vendre vos données ou changer les règles. Il existe des milliers de serveurs, tenus par des fondations, des communautés et des gens ordinaires. Vous pouvez aussi lancer le vôtre.";
+"aboutMatrix.private.title" = "Vos conversations restent les vôtres";
+"aboutMatrix.private.body" = "Les messages sont chiffrés directement sur votre appareil, et seule la personne à qui vous écrivez peut les déchiffrer. Le serveur les garde et les transmet, mais il ne peut pas les lire.";
 
 /* The list of public servers, opened from the sign-in screen. */
 "servers.title" = "Choisir un serveur";
@@ -1338,8 +1352,8 @@
 "servers.matrixOrg" = "Le plus grand serveur Matrix, géré par la fondation qui développe Matrix.";
 /* Where the server is. */
 "servers.matrixOrgWhere" = "Royaume-Uni";
-/* A note on matrix.org: it is blocked in Russia, and the bridge gets round that. */
-"servers.matrixOrgBlocked" = "Bloqué en Russie, mais fonctionne via un pont";
+/* A note on matrix.org, shown only on a phone with Russian language or region: it may not answer from there. */
+"servers.matrixOrgBlocked" = "Peut être injoignable depuis la Russie";
 "servers.tchncs" = "L’un des plus anciens serveurs communautaires. Son propriétaire héberge aussi d’autres services libres.";
 "servers.tchncsWhere" = "Allemagne";
 "servers.quassel" = "Un serveur ouvert pour les conversations de tous les jours, gratuit pour tous.";
@@ -1383,7 +1397,7 @@
 /* Chat folders (stage 9) */
 "folders.all" = "Tous";
 "folders.title" = "Dossiers";
-"folders.explanation" = "Les dossiers rassemblent les discussions selon des règles — personnelles, groupes, non lues — et apparaissent en onglets au-dessus de la liste. Ils sont identiques sur tous vos appareils.";
+"folders.explanation" = "Les dossiers rassemblent les discussions selon des règles (personnelles, groupes, non lues) et apparaissent en onglets au-dessus de la liste. Ils sont identiques sur tous vos appareils.";
 "folders.new" = "Nouveau dossier";
 "folders.suggested" = "Vous pouvez commencer par ceux-ci";
 "folders.add" = "Ajouter";
@@ -1403,11 +1417,12 @@
 "folders.excludedHeader" = "Ne jamais afficher";
 "folders.addChats" = "Ajouter des discussions";
 "folders.chooseChats" = "Choisissez des discussions";
+"folders.editList" = "Modifier";
 "folders.done" = "OK";
 "folders.cancel" = "Annuler";
 "folders.delete" = "Supprimer le dossier";
 "folders.deleteQuestion" = "Supprimer le dossier « %@ » ?";
-"folders.deleteHelp" = "Les discussions restent où elles sont — seul l’onglet disparaît.";
+"folders.deleteHelp" = "Les discussions restent où elles sont, seul l’onglet disparaît.";
 "folders.addToFolder" = "Dans un dossier";
 "folders.membershipTitle" = "Dossiers";
 "folders.membershipFooter" = "Cochée, la discussion est dans le dossier même hors de ses règles. Décochée, jamais.";
@@ -1425,7 +1440,11 @@
 /* Beta: for developers */
 "beta.developers" = "Pour les développeurs";
 "beta.showsSource" = "JSON du message dans le menu";
-"beta.showsSourceHelp" = "Le menu d’un message propose « Voir le JSON » — l’événement tel que le serveur l’a envoyé. Utile quand un message s’affiche mal.";
+"beta.showsSourceHelp" = "Le menu d’un message propose « Voir le JSON » : l’événement tel que le serveur l’a envoyé. Utile quand un message s’affiche mal.";
+"beta.homeserver" = "Serveur";
+"beta.homeserverHelp" = "L’adresse à laquelle l’app parle vraiment, trouvée à partir du nom du compte et pas forcément celle saisie à la connexion. Un pont ne la change pas : il ne fait que porter la connexion.";
+"beta.showsAllEvents" = "Tous les événements du chat";
+"beta.showsAllEventsHelp" = "Le chat affiche aussi les événements que l’app laisse d’habitude de côté (droits, règles d’accès, appels, changements de photo, tout ce qui n’a pas pu être lu), en ligne grise avec le type et l’expéditeur.";
 "beta.calmDesign" = "Calme : le nouveau design";
 "beta.calmDesignHelp" = "Un design monochrome : les messages sont en verre, la police est SF Rounded et chaque discussion a sa propre teinte de fond. Pas de frimousses, et la couleur reste seulement sur vos propres messages et les marques de non-lus. Désactivez-le et tout redevient comme avant.";
 "beta.calmRoundedFont" = "Police arrondie";
@@ -1457,7 +1476,7 @@
 "message.transcript.show" = "Transcrire";
 "message.transcript.hide" = "Masquer le texte";
 "message.transcript.notAllowed" = "La reconnaissance vocale n’est pas autorisée. Vous pouvez l’autoriser dans Réglages.";
-"message.transcript.unavailable" = "Cet appareil ne reconnaît pas votre langue hors ligne — et Iskra n’enverra pas la voix à un serveur.";
+"message.transcript.unavailable" = "Cet appareil ne reconnaît pas votre langue hors ligne, et Iskra n’enverra pas la voix à un serveur.";
 "message.transcript.nothingHeard" = "Aucun mot n’est audible.";
 "message.transcript.failed" = "La transcription a échoué. Réessayez.";
 
@@ -1486,3 +1505,9 @@
 "photoEditor.yellow" = "Jaune";
 "photoEditor.green" = "Vert";
 "photoEditor.blue" = "Bleu";
+
+/* Avatar crop */
+"avatarCrop.title" = "Déplacer et zoomer";
+"avatarCrop.zoom" = "Zoom";
+"avatarCrop.cancel" = "Annuler";
+"avatarCrop.done" = "OK";

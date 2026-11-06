@@ -79,10 +79,16 @@ struct CompactMessageRow: View {
                     .transition(.reactionsAppear)
             }
         }
-        // A run closes up and a new speaker gets air, exactly as in the bubbles — and the first
-        // message under a date takes none, because the date has already given it. See `MessageRow`.
+        // Everything is anchored to the leading edge here, your own messages included, so every
+        // message gives the same way — see `SwipeToReply.dragsToward`. Around the emoji as well as
+        // the line, so they go with it; outside the menu, so the copy it lifts carries no gesture.
+        .swipeToReply(message, dragsToward: .trailing, onReply: handlers.onReply)
+        // A run closes up and a new speaker gets air, as in the bubbles — and the first message
+        // under a date takes none, because the date has already given it. See `MessageRow`. A run
+        // closes up less than the bubbles' does: with no edge around a line, the gap is the only
+        // thing telling two messages from one message wrapped onto two lines.
         .padding(.top, opensDay ? 0
-                                : message.isContinuation ? Theme.Spacing.withinRun
+                                : message.isContinuation ? Theme.Spacing.withinCompactRun
                                                          : Theme.Spacing.betweenSenders)
         // Lit, when the conversation has just been sent here — see `MessageRow`, which lights
         // it the same way and for the same reason.
@@ -203,10 +209,6 @@ struct CompactMessageRow: View {
     private var spokenContent: some View {
         let content = heading
             .messageActions(message, isPinned: isPinned, handlers: handlers)
-            // Everything is anchored to the leading edge here, your own messages included, so
-            // every message gives the same way — see `SwipeToReply.dragsToward`. Outside the menu,
-            // so the copy it lifts does not carry a gesture of its own.
-            .swipeToReply(message, dragsToward: .trailing, onReply: handlers.onReply)
 
         if message.hasPressableContent {
             content.accessibilityElement(children: .contain)
@@ -234,7 +236,8 @@ struct CompactMessageRow: View {
                 .transition(.scale(scale: 0.3).combined(with: .opacity))
             }
         }
-        .reactorsSheet($reactorsRequest, reactions: message.reactions, load: handlers.loadReactors)
+        .reactorsSheet($reactorsRequest, reactions: message.reactions, load: handlers.loadReactors,
+                       loadReaders: handlers.loadReaders)
     }
 
     /// How big a video note goes while it plays.
@@ -302,6 +305,6 @@ struct CompactTypingRow: View {
             Spacer(minLength: 0)
         }
         .padding(.top, Theme.Spacing.betweenSenders)
-        .accessibilityHidden(true)
+        .accessibilityElement(children: .combine)
     }
 }

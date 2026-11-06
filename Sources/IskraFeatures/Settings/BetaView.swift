@@ -14,13 +14,16 @@ import SwiftUI
 /// people who will go looking, and everybody else is better off never seeing them. The sidebar
 /// switch is the one thing here that is Mac-only; the rest of the screen is the same everywhere.
 struct BetaView: View {
+    /// The homeserver the session on screen really talks to — the client's own answer, after
+    /// discovery, which is not always what was typed at sign-in. Nil where there is no session.
+    var homeserver: String?
+
     @AppStorage(BetaFeatures.nativeSidebarKey) private var nativeSidebar = BetaFeatures.nativeSidebarByDefault
-    @AppStorage(BetaFeatures.blobatarKey, store: BetaFeatures.faceStore) private var blobatar = BetaFeatures.blobatarByDefault
-    @AppStorage(BetaFeatures.forceBlobatarKey, store: BetaFeatures.faceStore) private var forceBlobatar = BetaFeatures.forceBlobatarByDefault
     @AppStorage(BetaFeatures.mockBackendKey) private var mockBackend = false
     @AppStorage(BetaFeatures.showsEventSourceKey) private var showsEventSource = false
     @AppStorage(BetaFeatures.calmDesignKey) private var calmDesign = BetaFeatures.calmDesignByDefault
     @AppStorage(BetaFeatures.calmRoundedFontKey) private var calmRoundedFont = BetaFeatures.calmRoundedFontByDefault
+    @AppStorage(BetaFeatures.showsAllEventsKey) private var showsAllEvents = false
 
     /// The sign-in screen against the server inside the app — see `MockSignIn` — and its address
     /// once that server is up.
@@ -50,9 +53,8 @@ struct BetaView: View {
                 Text(Strings.Beta.calmDesignHelp)
             }
 
-            // Who gets a drawn face — the slider the first run asks with. It lived under
-            // Appearance; the faces are still an experiment, and the switches below it that
-            // decide whether they are drawn at all were already here.
+            // Who gets a drawn face — the slider the first run asks with, and the only control for
+            // it: it writes the same two keys the two switches that stood below it used to.
             Section {
                 FaceModePicker()
                     .padding(.vertical, Theme.Spacing.close)
@@ -74,29 +76,7 @@ struct BetaView: View {
             }
             #endif
 
-            Section {
-                Toggle(isOn: $blobatar.animation(.smooth(duration: Theme.Timing.reaction))) {
-                    Label(Strings.Beta.blobatar, systemImage: "face.smiling")
-                }
-                .accentControl()
-            } footer: {
-                Text(Strings.Beta.blobatarHelp)
-            }
-
-            // Appears with the switch it depends on rather than sitting there greyed out: a
-            // disabled row is the app showing somebody a thing they cannot have and not saying
-            // why, and the answer — "turn the one above on" — is the row directly above it.
-            if blobatar {
-                Section {
-                    Toggle(isOn: $forceBlobatar.animation(.smooth(duration: Theme.Timing.reaction))) {
-                        Label(Strings.Beta.blobatarForce, systemImage: "person.crop.circle.badge.xmark")
-                    }
-                    .accentControl()
-                } footer: {
-                    Text(Strings.Beta.blobatarForceHelp)
-                }
-            }
-
+            #if DEBUG
             // Flipping it takes the whole app with it — `IskraRootView` watches the same key and
             // swaps the session underneath this screen, so the switch is the last thing touched
             // in the account it was touched in. No confirmation: nothing is lost either way.
@@ -108,29 +88,58 @@ struct BetaView: View {
             } footer: {
                 Text(Strings.Beta.mockBackendHelp)
             }
+            #endif
+
+            if let homeserver {
+                Section {
+                    LabeledContent {
+                        Text(verbatim: homeserver)
+                    } label: {
+                        Label(Strings.Beta.homeserver, systemImage: "server.rack")
+                    }
+                    .textSelection(.enabled)
+                } header: {
+                    Text(Strings.Beta.developers)
+                } footer: {
+                    Text(Strings.Beta.homeserverHelp)
+                }
+            }
 
             Section {
+                #if DEBUG
                 Button {
                     Task { demoServer = await MockSignIn.start().map(DemoServer.init) }
                 } label: {
                     Label(Strings.Beta.demoSignIn, systemImage: "person.badge.key")
                 }
+                #endif
                 Toggle(isOn: $showsEventSource) {
                     Label(Strings.Beta.showsSource, systemImage: "curlybraces")
                 }
                 .accentControl()
+                Toggle(isOn: $showsAllEvents) {
+                    Label(Strings.Beta.showsAllEvents, systemImage: "list.bullet.rectangle")
+                }
+                .accentControl()
             } header: {
-                Text(Strings.Beta.developers)
+                if homeserver == nil {
+                    Text(Strings.Beta.developers)
+                }
             } footer: {
+                #if DEBUG
                 Text(Strings.Beta.demoSignInHelp) + Text(verbatim: "\n\n") + Text(Strings.Beta.showsSourceHelp)
+                    + Text(verbatim: "\n\n") + Text(Strings.Beta.showsAllEventsHelp)
+                #else
+                Text(Strings.Beta.showsSourceHelp) + Text(verbatim: "\n\n") + Text(Strings.Beta.showsAllEventsHelp)
+                #endif
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .navigationTitle(Text(Strings.Beta.title))
         #if os(iOS)
         .fullScreenCover(item: $demoServer) { server in demoSignIn(server.address) }
         #else
-        .sheet(item: $demoServer) { server in
+        .pageSheet(item: $demoServer) { server in
             demoSignIn(server.address)
                 .frame(minWidth: Theme.Size.signInColumn, minHeight: Theme.Size.signInColumn * 4 / 3)
         }

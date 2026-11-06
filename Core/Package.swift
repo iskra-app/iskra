@@ -22,7 +22,7 @@ let package = Package(
         .library(name: "IskraCore", type: .dynamic, targets: ["IskraCore"])
     ],
     dependencies: [
-        .package(url: "https://github.com/matrix-org/matrix-rust-components-swift.git", exact: "26.06.06"),
+        .package(url: "https://github.com/matrix-org/matrix-rust-components-swift.git", exact: "26.08.11"),
         // secp256k1, for the nostr tunnel and nothing else: NIP-44 needs an ECDH on that curve and
         // a nostr event needs a BIP-340 signature over it, and CryptoKit has neither — it stops at
         // the NIST curves. This is libsecp256k1 itself, the same C library bitcoin runs on, not a

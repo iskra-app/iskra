@@ -21,7 +21,7 @@ final class NetworkCost {
             let expensive = path.isExpensive || path.isConstrained
             Task { @MainActor in NetworkCost.shared.isExpensive = expensive }
         }
-        monitor.start(queue: DispatchQueue(label: "moscow.swag.iskra.network-cost"))
+        monitor.start(queue: DispatchQueue(label: "wtf.iskra.network-cost"))
     }
 }
 

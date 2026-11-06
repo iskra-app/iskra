@@ -1,3 +1,6 @@
+// Debug only: the demo is for looking at screens during development, and a release build carries
+// none of it — no server to switch on, no flag to start it by. See CLAUDE.md, "The demo server".
+#if DEBUG
 import Foundation
 
 /// What the demo server starts out holding: the people, the conversations, the pictures.
@@ -238,9 +241,9 @@ struct MockWorld {
         text(room, anya, "Ссылка на макеты: https://matrix.org")
         state(room, me, "im.ponies.room_emotes", [
             "pack": ["display_name": "Искра", "usage": ["sticker"]],
-            "images": pack([.connected, .unlocked, .surprise, .bypass]),
+            "images": pack([.loading, .unlocked, .surprise, .curious]),
         ])
-        sticker(room, kostya, .connected)
+        sticker(room, kostya, .unlocked)
 
         rooms[room]?.accountData["m.tag"] = ["tags": ["m.favourite": ["order": 0.1]]]
         read(room, me, upToIndex: (rooms[room]?.events.count ?? 5) - 5)
@@ -600,3 +603,4 @@ struct MockWorld {
         ]]
     }
 }
+#endif

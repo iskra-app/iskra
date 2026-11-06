@@ -21,7 +21,10 @@ private struct ReduceMotion: ViewModifier {
 
     func body(content: Content) -> some View {
         content.transaction { transaction in
-            if reduceMotion { transaction.animation = nil }
+            if reduceMotion {
+                transaction.animation = nil
+                transaction.disablesAnimations = true
+            }
         }
     }
 }

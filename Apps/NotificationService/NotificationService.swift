@@ -157,15 +157,11 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
                          accountLabel: String?,
                          unread: Int?) -> UNNotificationContent {
         let content = UNMutableNotificationContent()
+        // No subtitle, ever: an iPhone does not draw it, so nothing that matters may live there.
+        // Which account a push came for, with more than one on the phone, goes after the title —
+        // the same message means something different to the work account and the personal one.
+        let notification = accountLabel.map { notification.titled("\(notification.title) · \($0)") } ?? notification
         content.title = notification.title
-        // With more than one account on the phone, which of them it came for — the same message
-        // means something different to the work account and the personal one.
-        switch (notification.sender, accountLabel) {
-        case let (sender?, label?): content.subtitle = "\(sender) · \(label)"
-        case let (sender?, nil): content.subtitle = sender
-        case let (nil, label?): content.subtitle = label
-        case (nil, nil): break
-        }
         content.body = notification.body
         content.sound = notification.isNoisy ? .default : nil
 

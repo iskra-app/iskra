@@ -159,10 +159,10 @@ struct MemberProfileView: View {
                 }
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.groupedRows)
         .profileScreen()
         .failureAlert($failure)
-        .sheet(isPresented: $isShowingCode) {
+        .pageSheet(isPresented: $isShowingCode) {
             QRCodeSheet(name: member.name, subtitle: member.id, avatarURL: member.avatarURL,
                         seed: member.id, link: .user(member.id))
         }
@@ -236,8 +236,8 @@ struct MemberProfileView: View {
         personalChats != nil && openRoom != nil && member.id != currentUserID
     }
 
-    /// The person's address as a link anybody can open in any Matrix client — `matrix.to`, the
-    /// protocol's own way of pointing at a person, and what Telegram's "share contact" is here.
+    /// The person's address as a link anybody can open — `s.iskra.wtf`, which opens in Iskra and
+    /// offers every other Matrix client from its page, and what Telegram's "share contact" is here.
     static func link(to userID: String) -> URL? {
         MatrixLink.user(userID).url
     }

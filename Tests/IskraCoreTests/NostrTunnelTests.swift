@@ -167,6 +167,81 @@ struct NostrTunnelTests {
         #expect(!TunnelSettings.isEnabled())
     }
 
+    /// An untouched field is the Iskra developers' bridge, so the switch alone is enough. The
+    /// address has to be a real key: a typo there would be a bridge nobody can reach.
+    @Test func nothingTypedMeansTheIskraBridge() throws {
+        let defaults = try #require(UserDefaults(suiteName: "bridge-\(UUID().uuidString)"))
+        #expect(BridgeAddress.isValid(TunnelSettings.defaultAddress))
+        #expect(TunnelSettings.address(defaults) == TunnelSettings.defaultAddress)
+        #expect(TunnelSettings.bridgeKey(defaults) != nil)
+        #expect(!TunnelSettings.asksForBridge(defaults))
+        defaults.set(true, forKey: TunnelSettings.enabledKey)
+        #expect(TunnelSettings.asksForBridge(defaults))
+
+        let keys = try NostrKeypair.generate()
+        defaults.set(keys.npub, forKey: TunnelSettings.addressKey)
+        #expect(TunnelSettings.bridgeKey(defaults) == keys.publicKey)
+
+        // Emptied on purpose is no bridge, not the default one back.
+        defaults.set("  ", forKey: TunnelSettings.addressKey)
+        #expect(TunnelSettings.bridgeKey(defaults) == nil)
+        #expect(!TunnelSettings.asksForBridge(defaults))
+    }
+
+    /// A mistyped address is not an empty one. `route` refuses the first and goes direct on the
+    /// second, and the two used to look the same — `bridgeKey() == nil` — so a typo went direct.
+    @Test func aMistypedAddressIsStillAnAddress() throws {
+        let defaults = try #require(UserDefaults(suiteName: "address-\(UUID().uuidString)"))
+        defaults.set(true, forKey: TunnelSettings.enabledKey)
+        let keys = try NostrKeypair.generate()
+        defaults.set(String(keys.npub.dropLast(4)), forKey: TunnelSettings.addressKey)
+        #expect(TunnelSettings.hasAddress(defaults))
+        #expect(TunnelSettings.bridgeKey(defaults) == nil)
+        #expect(TunnelSettings.asksForBridge(defaults))
+    }
+
+    /// Leaving the Connection screen rebuilds the session only when the connection would really be
+    /// different. Tearing one down to build it again identically is a spinner for nothing.
+    @Test func onlyAChangeThatMattersAsksForAReconnect() throws {
+        let defaults = try #require(UserDefaults(suiteName: "snapshot-\(UUID().uuidString)"))
+        let keys = try NostrKeypair.generate()
+        defaults.set(true, forKey: TunnelSettings.enabledKey)
+        defaults.set(Hex.string(keys.publicKey), forKey: TunnelSettings.addressKey)
+        let before = TunnelSettings.snapshot(defaults)
+
+        // The same key as npub, with a stray space; relays emptied back to what the defaults are.
+        defaults.set(" \(keys.npub) ", forKey: TunnelSettings.addressKey)
+        defaults.set("  ", forKey: TunnelSettings.relaysKey)
+        #expect(TunnelSettings.snapshot(defaults) == before)
+
+        defaults.set(false, forKey: TunnelSettings.enabledKey)
+        #expect(TunnelSettings.snapshot(defaults) != before)
+        defaults.set(true, forKey: TunnelSettings.enabledKey)
+
+        defaults.set("wss://relay.example", forKey: TunnelSettings.relaysKey)
+        #expect(TunnelSettings.snapshot(defaults) != before)
+    }
+
+    /// A bridge of one's own, picked under the builds that kept a list, is still the one in use.
+    @Test func theBridgeInUseOutlivesTheList() throws {
+        let defaults = try #require(UserDefaults(suiteName: "retired-\(UUID().uuidString)"))
+        let keys = try NostrKeypair.generate()
+        let chosen = #"{"source":"custom","bridge":{"id":"x","name":"Home","npub":"\#(keys.npub)","relays":["wss://mine.example"],"homeservers":"*"}}"#
+        defaults.set(Data(chosen.utf8), forKey: "transport.chosenBridge")
+        defaults.set("custom", forKey: "transport.bridgeSource")
+        TunnelSettings.retireBridgeList(defaults)
+        #expect(TunnelSettings.bridgeKey(defaults) == keys.publicKey)
+        #expect(TunnelSettings.relays(defaults).map(\.absoluteString) == ["wss://mine.example"])
+        #expect(TunnelSettings.retiredKeys.allSatisfy { defaults.object(forKey: $0) == nil })
+
+        // One from the public list was the Iskra bridge, which an untouched field already is.
+        let other = try #require(UserDefaults(suiteName: "retired-\(UUID().uuidString)"))
+        other.set("npub1stale", forKey: TunnelSettings.addressKey)
+        other.set(Data(chosen.replacingOccurrences(of: "custom", with: "public").utf8), forKey: "transport.chosenBridge")
+        TunnelSettings.retireBridgeList(other)
+        #expect(TunnelSettings.address(other) == TunnelSettings.defaultAddress)
+    }
+
 }
 
 // MARK: - Stream frames

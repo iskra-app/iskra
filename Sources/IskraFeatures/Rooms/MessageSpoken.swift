@@ -52,9 +52,24 @@ extension Message {
         // and VoiceOver never lands on it. The reason therefore has to be said here, or a
         // blind user would be the only one who cannot find out why nothing was delivered.
         if case let .failed(failure)? = delivery {
-            return "\(who): \(what). \(String(app: Strings.Message.Delivery.failed)). \(String(localized: failure.explanation))"
+            return "\(who): \(what). \(String(app: Strings.Message.Delivery.failed)). \(String(app: failure.explanation))"
         }
-        return "\(who): \(what)"
+
+        // The quiet facts the eye reads off the margin — when, whether it was changed, how far it
+        // got — said after the words, in that order, because they are what the combined row would
+        // otherwise have swallowed.
+        var parts = ["\(who): \(what)"]
+        parts.append(timestamp.formatted(date: .omitted, time: .shortened))
+        if isEdited { parts.append(String(app: Strings.Message.edited)) }
+        if isOwn, let delivery {
+            switch delivery {
+            case .sending: parts.append(String(app: Strings.Message.Delivery.sending))
+            case .sent: parts.append(String(app: Strings.Message.Delivery.sent))
+            case .read: if carriesReadMark { parts.append(String(app: Strings.Message.Delivery.read)) }
+            case .failed: break
+            }
+        }
+        return parts.joined(separator: ". ")
     }
 
     /// Whether the message has something inside it that has to be *pressed* — a play button, a
@@ -72,7 +87,7 @@ extension Message {
     /// to be read. Everything else stays one sentence.
     var hasPressableContent: Bool {
         switch kind {
-        case .voice, .audio, .image, .video, .videoNote, .file: true
+        case .voice, .audio, .image, .video, .videoNote, .file, .poll, .location: true
         default: false
         }
     }

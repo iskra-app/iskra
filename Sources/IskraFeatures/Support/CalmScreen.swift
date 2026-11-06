@@ -169,7 +169,7 @@ struct CalmRowMaterial: View {
             .fill(.thinMaterial)
             .overlay {
                 if let seed {
-                    CalmBackdrop.shade(for: seed, in: scheme).opacity(Theme.Calm.Shade.surfaceTint)
+                    CalmBackdrop.surfaceShade(for: seed, in: scheme).opacity(Theme.Calm.Shade.surfaceTint)
                 }
             }
             .overlay(Color.white.opacity(scheme == .dark ? Theme.Calm.Form.rowLift : Theme.Calm.Form.rowLiftLight))

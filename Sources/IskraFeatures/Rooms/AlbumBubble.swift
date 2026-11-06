@@ -117,7 +117,7 @@ struct AlbumBubble: View {
                             .font(.caption2.monospacedDigit())
                             .foregroundStyle(.white)
                             .padding(.horizontal, Theme.Spacing.close)
-                            .padding(.vertical, 2)
+                            .padding(.vertical, Theme.Spacing.withinRun)
                             .photoPlate()
                             .padding(Theme.Spacing.tight)
                     }

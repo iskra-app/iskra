@@ -82,6 +82,22 @@
 				<string>%lld sin leer</string>
 		</dict>
 	</dict>
+	<key>message.menu.seen</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld leído</string>
+			<key>other</key>
+			<string>%lld leídos</string>
+		</dict>
+	</dict>
 	<key>message.menu.reactors</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

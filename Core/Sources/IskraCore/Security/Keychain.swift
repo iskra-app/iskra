@@ -27,7 +27,7 @@ public struct Keychain: Sendable {
     private let service: String
     private let accessGroup: String?
 
-    public init(service: String = "moscow.swag.iskra.session", accessGroup: String? = nil) {
+    public init(service: String = "wtf.iskra.session", accessGroup: String? = nil) {
         self.service = service
         self.accessGroup = accessGroup
     }
