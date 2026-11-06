@@ -162,6 +162,9 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
     /// Genuinely optional even for an invitation: the SDK's own note on `RoomInfo.inviter` says it
     /// can be missing when the invite event itself is not in the store.
     public let invitedBy: String?
+    /// The Matrix ID of whoever invited you. A display name can be anybody's, so this is what is
+    /// shown before anybody joins (`InviteRow`).
+    public let invitedByID: String?
 
     /// Unread reactions, told apart from unread messages.
     ///
@@ -234,6 +237,7 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
                 isMuted: Bool = false,
                 membership: RoomMembership = .joined,
                 invitedBy: String? = nil,
+                invitedByID: String? = nil,
                 avatarSeed: String? = nil,
                 faces: [RoomFace] = []) {
         self.id = id
@@ -256,6 +260,7 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
         self.isMuted = isMuted
         self.membership = membership
         self.invitedBy = invitedBy
+        self.invitedByID = invitedByID
     }
 
     init?(info: RoomInfo,
@@ -314,6 +319,7 @@ public struct RoomSummary: Sendable, Identifiable, Equatable, Hashable {
         // accent until the day its info screen happened to be opened.
         self.isMuted = isMuted || info.cachedUserDefinedNotificationMode == .mute
         self.invitedBy = info.inviter.map { $0.displayName ?? $0.userId }
+        self.invitedByID = info.inviter?.userId
     }
 }
 

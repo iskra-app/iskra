@@ -920,6 +920,9 @@
 "roomList.invite.unattributed" = "您收到了邀请";
 "roomList.invite.accept" = "加入";
 "roomList.invite.decline" = "拒绝";
+"roomList.invite.confirmTitle" = "加入此聊天?";
+"roomList.invite.confirmFrom" = "来自 %@ 的邀请。聊天成员将看到您的 Matrix ID。";
+"roomList.invite.confirmUnknown" = "不知道是谁邀请了您。聊天成员将看到您的 Matrix ID。";
 
 /* "Typing…" under the room's name. */
 "room.typing" = "正在输入…";

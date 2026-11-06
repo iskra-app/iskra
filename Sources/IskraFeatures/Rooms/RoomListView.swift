@@ -174,7 +174,8 @@ public struct RoomListView: View {
         .roomListStyle(nativeSidebar: isNativeSidebar)
         .environment(\.calmListIsSidebar, isSidebar)
         // Not behind a sidebar, which has a material of its own. On a Mac, though, with a chat open
-        // the list beside it takes that chat's shade, so that the window is one room.
+        // the list beside it takes that chat's shade, so that the window is one room: over the
+        // list, since under it the sidebar's material hides it.
         .modifier(CalmListBackdrop(isSidebar: isSidebar, chatAvatarURL: chatAvatarURL, isChatOpen: selectedRoomID != nil))
         // The folders, right over the list — under the banners, which are about the account and
         // not about which chats are showing.
@@ -730,7 +731,7 @@ private struct CalmListBackdrop: ViewModifier {
     func body(content: Content) -> some View {
         #if os(macOS)
         if isSidebar, isChatOpen {
-            content.calmScreen().calmRoomHue(avatarURL: chatAvatarURL)
+            content.calmWash().calmRoomHue(avatarURL: chatAvatarURL)
         } else if isSidebar {
             content
         } else {
@@ -1195,6 +1196,7 @@ struct InviteRow: View {
     /// The sidebar's denser row — see `RoomRow.compact`.
     var compact = false
 
+    @State private var isConfirmingJoin = false
     @Environment(\.accent) private var accent
     @Environment(\.isOffline) private var isOffline
 
@@ -1244,8 +1246,17 @@ struct InviteRow: View {
                 // "Войти" is a shorter word than "Отклонить" and pretending otherwise is what
                 // cost the row its proportions.
                 HStack(spacing: Theme.Spacing.tight) {
-                    Button(String(app: Strings.RoomList.Invite.accept), action: onAccept)
+                    // Asked first, naming who invited you by their ID: the row does not say, and a
+                    // room's name and picture are whatever that person made them.
+                    Button(String(app: Strings.RoomList.Invite.accept)) { isConfirmingJoin = true }
                         .buttonStyle(.answer(.accepting))
+                        .confirmationDialog(Text(Strings.RoomList.Invite.confirmTitle),
+                                            isPresented: $isConfirmingJoin,
+                                            titleVisibility: .visible) {
+                            Button(String(app: Strings.RoomList.Invite.accept), action: onAccept)
+                        } message: {
+                            Text(confirmation)
+                        }
 
                     Button(String(app: Strings.RoomList.Invite.decline), action: onDecline)
                         .buttonStyle(.quietAnswer)
@@ -1268,6 +1279,15 @@ struct InviteRow: View {
         // with two answers ought to sound like.
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text(invitation))
+    }
+
+    /// Who invited you, with the ID beside the name, since a name can be anybody's.
+    private var confirmation: LocalizedStringResource {
+        guard let id = room.invitedByID else { return Strings.RoomList.Invite.confirmUnknown }
+        if let name = room.invitedBy, name != id {
+            return Strings.RoomList.Invite.confirmFrom("\(name) (\(id))")
+        }
+        return Strings.RoomList.Invite.confirmFrom(id)
     }
 
     private var invitation: String {

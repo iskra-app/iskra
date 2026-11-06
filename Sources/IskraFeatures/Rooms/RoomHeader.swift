@@ -66,6 +66,10 @@ struct RoomHeader: View {
             // buttons on either side of it. This keeps the header honest about how much
             // room it is allowed to take, and lets the name truncate instead.
             .frame(maxWidth: Theme.Size.roomHeader, alignment: .leading)
+            #if os(macOS)
+            // As far from the column's edge as the face is from the top and bottom of the title band.
+            .padding(.leading, Theme.Spacing.close)
+            #endif
             .contentShape(.rect)
         }
         .buttonStyle(.plain)

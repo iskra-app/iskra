@@ -920,6 +920,9 @@
 "roomList.invite.unattributed" = "招待が届いています";
 "roomList.invite.accept" = "参加";
 "roomList.invite.decline" = "辞退";
+"roomList.invite.confirmTitle" = "このチャットに参加しますか?";
+"roomList.invite.confirmFrom" = "%@ からの招待です。チャットの参加者にあなたの Matrix ID が表示されます。";
+"roomList.invite.confirmUnknown" = "誰から招待されたかわかりません。チャットの参加者にあなたの Matrix ID が表示されます。";
 
 /* "Typing…" under the room's name. */
 "room.typing" = "入力中…";

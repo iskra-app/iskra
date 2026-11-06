@@ -917,6 +917,9 @@
 "roomList.invite.unattributed" = "Вас приглашают в чат";
 "roomList.invite.accept" = "Войти";
 "roomList.invite.decline" = "Отклонить";
+"roomList.invite.confirmTitle" = "Вступить в чат?";
+"roomList.invite.confirmFrom" = "Приглашение от %@. Участники чата увидят ваш Matrix ID.";
+"roomList.invite.confirmUnknown" = "Неизвестно, кто вас пригласил. Участники чата увидят ваш Matrix ID.";
 
 /* «Печатает…» под именем комнаты. Род не угадываем: «печатает» — одно слово для всех. */
 "room.typing" = "печатает…";

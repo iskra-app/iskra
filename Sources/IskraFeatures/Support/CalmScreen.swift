@@ -30,6 +30,12 @@ extension View {
         modifier(CalmListRow())
     }
 
+    /// The shade laid over a column instead of under it, for the Mac's side columns, whose system
+    /// backgrounds cover whatever is put behind them. Touches pass through it.
+    func calmWash() -> some View {
+        modifier(CalmWash())
+    }
+
     /// Reads the colour of a conversation's avatar, for everything below that stands on its shade:
     /// the conversation and its info screen.
     func calmRoomHue(avatarURL: String?) -> some View {
@@ -146,6 +152,31 @@ private struct CalmOwnHue: ViewModifier {
     }
 }
 
+private struct CalmColumnWash: ViewModifier {
+    let isOn: Bool
+
+    func body(content: Content) -> some View {
+        if isOn { content.calmWash() } else { content }
+    }
+}
+
+private struct CalmWash: ViewModifier {
+    @Environment(\.design) private var design
+    @Environment(\.colorScheme) private var scheme
+    private let hue = CalmHue()
+
+    func body(content: Content) -> some View {
+        content.overlay {
+            if design == .calm, let hue = hue.value {
+                CalmBackdrop.shade(hue: hue, in: scheme)
+                    .opacity(scheme == .dark ? Theme.Calm.Shade.opacityDark : Theme.Calm.Shade.opacityLight)
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+            }
+        }
+    }
+}
+
 private struct CalmRoomHue: ViewModifier {
     let avatarURL: String?
 
@@ -233,6 +264,8 @@ struct ScreenForm<Content: View>: View {
                     .listRowBackground(CalmRowMaterial())
             }
             .calmScreen(isDimmed: dimsForms)
+            // The info column beside a chat on a Mac, where the column's own background is on top.
+            .modifier(CalmColumnWash(isOn: !dimsForms))
         }
     }
 }

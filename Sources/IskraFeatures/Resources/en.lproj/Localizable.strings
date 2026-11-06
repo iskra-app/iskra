@@ -920,6 +920,9 @@
 "roomList.invite.unattributed" = "You have been invited";
 "roomList.invite.accept" = "Join";
 "roomList.invite.decline" = "Decline";
+"roomList.invite.confirmTitle" = "Join this chat?";
+"roomList.invite.confirmFrom" = "Invitation from %@. People in the chat will see your Matrix ID.";
+"roomList.invite.confirmUnknown" = "It isn’t known who invited you. People in the chat will see your Matrix ID.";
 
 /* "Typing…" under the room's name. */
 "room.typing" = "typing…";
