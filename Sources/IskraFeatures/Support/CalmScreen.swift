@@ -4,8 +4,9 @@ import SwiftUI
 
 /// The calm look's pieces that know about screens: the backdrop, and the forms and lists on it. See `DesignLanguage`; in the classic look all of this is nothing.
 extension View {
-    /// The look's type and ink, for everything below. On the root, and on the shield, which lives
-    /// in a window of its own.
+    /// The look's type, for everything below. On the root, and on the shield, which lives in a window
+    /// of its own. No `foregroundStyle` here: set this high it overrides the grey of a form's footers
+    /// and the red of a destructive button.
     func calmType(_ design: DesignLanguage) -> some View {
         modifier(CalmType(design: design))
     }
@@ -48,7 +49,6 @@ private struct CalmType: ViewModifier {
         case .calm:
             content
                 .fontDesign(isRounded ? .rounded : nil)
-                .foregroundStyle(Theme.Calm.ink)
                 // For whatever has no screen of its own yet: the wait at launch.
                 .background { CalmBackdrop(seed: nil) }
         }
