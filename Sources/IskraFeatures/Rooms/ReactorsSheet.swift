@@ -27,6 +27,7 @@ struct ReactorsSheet: View {
     }
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.design) private var design
 
     @State private var reactors: [Reactor]?
     @State private var readers: [Reader] = []
@@ -106,6 +107,7 @@ struct ReactorsSheet: View {
                         }
                     }
                     .accessibilityElement(children: .combine)
+                    .listRowSeparator(design == .calm ? .hidden : .automatic)
                 }
             }
             .animation(.smooth(duration: Theme.Timing.chrome), value: filter)

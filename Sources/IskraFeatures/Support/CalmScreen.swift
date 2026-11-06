@@ -80,7 +80,8 @@ private extension View {
     @ViewBuilder
     func calmListBackground(onSheetGlass: Bool) -> some View {
         if onSheetGlass {
-            scrollContentBackground(.hidden).glassSheetBackground()
+            // Plain: the grouped style's margins are for a card, and there is none here.
+            listStyle(.plain).scrollContentBackground(.hidden).glassSheetBackground()
         } else {
             calmScreen()
         }
@@ -204,6 +205,10 @@ private struct CalmListRow: ViewModifier {
 }
 
 extension EnvironmentValues {
+    /// Whether a form's page is darker than the shade — not in the info column beside a chat on a
+    /// Mac, whose shade has to match the chat's across the seam.
+    @Entry var calmDimsForms: Bool = true
+
     /// Whether a list of chats stands in a sidebar — see `calmListRow`.
     @Entry var calmListIsSidebar: Bool = false
 }
@@ -216,6 +221,7 @@ struct ScreenForm<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     @Environment(\.design) private var design
+    @Environment(\.calmDimsForms) private var dimsForms
 
     var body: some View {
         switch design {
@@ -226,7 +232,7 @@ struct ScreenForm<Content: View>: View {
                 Group { content() }
                     .listRowBackground(CalmRowMaterial())
             }
-            .calmScreen(isDimmed: true)
+            .calmScreen(isDimmed: dimsForms)
         }
     }
 }

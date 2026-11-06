@@ -71,19 +71,6 @@ public struct IskraRootView: View {
     /// here because switching it swaps the whole session, and this is the view that owns one.
     @AppStorage(BetaFeatures.mockBackendKey) private var mockBackend = false
 
-    /// On a phone and an iPad the split view decides for itself.
-    @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
-
-    /// On a Mac the list of chats is always there. Its toggle is taken away (`RoomListView`), so a
-    /// divider dragged too far left a window with no list and no way to bring it back.
-    private var columns: Binding<NavigationSplitViewVisibility> {
-        #if os(macOS)
-        Binding(get: { .all }, set: { _ in })
-        #else
-        $columnVisibility
-        #endif
-    }
-
     /// Which look the app is drawn in — see `DesignLanguage`.
     @AppStorage(BetaFeatures.calmDesignKey) private var calmDesign = BetaFeatures.calmDesignByDefault
     private var design: DesignLanguage { calmDesign ? .calm : .classic }
@@ -952,7 +939,7 @@ public struct IskraRootView: View {
     #endif
 
     private func conversations(_ session: UserSession) -> some View {
-        NavigationSplitView(columnVisibility: columns) {
+        NavigationSplitView {
             // Settings is pushed onto this column's own navigation stack, so the push,
             // the back button and the swipe-back gesture all come from the system.
             // Sign-out, though, unwinds the whole app, so only this view can do it.
@@ -973,6 +960,7 @@ public struct IskraRootView: View {
                 #if os(macOS)
                 // On a Mac, one width and no dragging it — see `Theme.Size.sideColumn`.
                 .navigationSplitViewColumnWidth(Theme.Size.sideColumn)
+                .background { SidebarLock() }
                 // The window's least height, held by the list, which is always there — whatever the
                 // other column shows (a chat, settings, a thread). See `Theme.Size.columnMinimumHeight`.
                 .frame(minHeight: Theme.Size.columnMinimumHeight)
@@ -999,7 +987,14 @@ public struct IskraRootView: View {
             // warning was logged. The sidebar column gets a stack of its own from the
             // split view — which is why settings pushed and this did not.
             NavigationStack {
-                if let roomID = selectedRoomID, let timeline = session.timeline(forRoomID: roomID) {
+                // Not a chat until it is joined, however the selection got here: a notification and
+                // a link can name a room the list itself will not let anybody select.
+                if let invitation = session.roomList.rooms.first(where: { $0.id == selectedRoomID && $0.isInvitation }) {
+                    InvitationScreen(room: invitation, roomList: session.roomList) { selectedRoomID = nil }
+                        #if os(macOS)
+                        .frame(minWidth: infoColumn.conversationMinimumWidth)
+                        #endif
+                } else if let roomID = selectedRoomID, let timeline = session.timeline(forRoomID: roomID) {
                     // Leaving the room empties this column: the room list drops the room on
                     // its own, but the *selection* still points at it, and on iPhone that
                     // would leave the reader pushed onto a conversation that no longer

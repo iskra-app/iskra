@@ -152,7 +152,9 @@ minimum is on the chat and on the empty column's spark instead. And SwiftUI coun
 a split view *twice* in the window's least width; a window too narrow for that folds the info
 column away and back until the app is ended. Both side columns are a fixed `Theme.Size.sideColumn`,
 the window's least width is `Theme.Size.windowMinimum` with the column open or shut, and the chat's
-minimum frame pays for the second count (`InfoColumn.conversationMinimumWidth`). Everything else
+minimum frame pays for the second count (`InfoColumn.conversationMinimumWidth`). The list's column is held
+by `SidebarLock` (`NSSplitViewItem`: one thickness, no collapse), because a column that can collapse
+is not counted in the window's least width, and its toggle is gone, so a collapsed list stayed gone. Everything else
 the conversation's column shows — settings and its pages, a thread — is pushed past the chat's
 frame, so the same least width is also the column's own (`navigationSplitViewColumnWidth(min:)`).
 The height has the same trap three times over: the window's title band is counted by both split
