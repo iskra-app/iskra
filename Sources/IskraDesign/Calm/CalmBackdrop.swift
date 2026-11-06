@@ -50,6 +50,14 @@ public struct CalmBackdrop: View {
                      brightness: Theme.Calm.Shade.surfaceBrightnessDark)
     }
 
+    /// Somebody else's bubble: opaque, and a step lighter than the screen under it in either theme.
+    public static func incomingBubble(hue: Double?, in scheme: ColorScheme) -> Color {
+        guard let hue else { return scheme == .dark ? Theme.Calm.surfaceHigh : .white }
+        return scheme == .dark
+            ? Color(hue: hue, saturation: Theme.Calm.Shade.bubbleSaturationDark, brightness: Theme.Calm.Shade.bubbleBrightnessDark)
+            : Color(hue: hue, saturation: Theme.Calm.Shade.bubbleSaturationLight, brightness: Theme.Calm.Shade.bubbleBrightnessLight)
+    }
+
     /// The ink of words in a tinted conversation: nearly the plain ink, with a breath of the hue.
     public static func ink(hue: Double?, in scheme: ColorScheme) -> Color {
         guard let hue else { return Theme.Calm.ink }

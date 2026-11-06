@@ -336,14 +336,6 @@ struct CalmRowMaterial: View {
     @Environment(\.calmShadeHue) private var hue
 
     var body: some View {
-        #if os(macOS)
-        tinted
-        #else
-        if scheme == .light { Color.white } else { tinted }
-        #endif
-    }
-
-    private var tinted: some View {
         Rectangle()
             .fill(.thinMaterial)
             .overlay {

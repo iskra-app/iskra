@@ -154,11 +154,11 @@ private struct BubbleDress: ViewModifier {
         case (.calm, .own):
             content
                 .foregroundStyle(bubbleAccent.calmOnBubble)
-                .contentGlass(in: shape, tint: bubbleAccent.calmBubbleTint)
+                .background(bubbleAccent.calmBubbleFill, in: shape)
         case (.calm, .incoming):
             content
                 .foregroundStyle(CalmBackdrop.ink(hue: hue, in: scheme))
-                .contentGlass(in: shape)
+                .background(CalmBackdrop.incomingBubble(hue: hue, in: scheme), in: shape)
         case (.calm, .plain):
             content.foregroundStyle(CalmBackdrop.ink(hue: hue, in: scheme))
         case (.classic, _):
@@ -202,7 +202,7 @@ struct PictureBorder: ViewModifier {
             // replaced, and where there are no bubbles there is nothing for it to stand in
             // for — see `BubbleStyle`.
             //
-            // Nor does the calm look: its bubble is glass, and an outline of glass is not a thing.
+            // Nor does the calm look, whose words and pictures keep no outline.
             if design == .classic {
                 BubbleShape()
                     .strokeBorder(border, lineWidth: Theme.Border.hairline)

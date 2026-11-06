@@ -93,6 +93,11 @@ public extension Theme {
             public static let surfaceTint: Double = 0.35
             public static let surfaceSaturationDark: Double = 0.4
             public static let surfaceBrightnessDark: Double = 0.2
+            /// Somebody else's bubble: a step up from the shade, in its hue.
+            public static let bubbleSaturationDark: Double = 0.14
+            public static let bubbleBrightnessDark: Double = 0.26
+            public static let bubbleSaturationLight: Double = 0.05
+            public static let bubbleBrightnessLight: Double = 1
             /// A settings row on the light ground, where a pale tint under the lift comes out white.
             public static let rowTintLight: Double = 0.7
             /// How much of the shade marks the open chat in the list.
@@ -147,24 +152,22 @@ public extension Theme {
             public static let rowLiftLight: Double = 0.72
         }
 
-        /// Your own bubble on the colourless accent: the same glass, a tone heavier.
+        /// Your own reaction: the same glass as the others, a tone heavier.
         public static let monoBubbleTint: Double = 0.22
-        /// A colour on your own bubble: thinned a little, or it stops looking like glass.
-        public static let colourBubbleTint: Double = 0.75
     }
 }
 
 public extension AccentTheme {
-    /// The tint of your own bubble's glass. A colour is its own tint; mono is ink, thinned, since
-    /// a bubble of solid ink is the slab of dominoes `bubble` already refuses to draw.
-    var calmBubbleTint: Color {
+    /// The fill of your own bubble. A colour is its own fill; mono is a raised tone, since a bubble
+    /// of solid ink is the slab of dominoes `bubble` already refuses to draw.
+    var calmBubbleFill: Color {
         switch self {
-        case .mono: Theme.Calm.ink.opacity(Theme.Calm.monoBubbleTint)
-        default: color.opacity(Theme.Calm.colourBubbleTint)
+        case .mono: Theme.Calm.surfaceHigh
+        default: color
         }
     }
 
-    /// The words on that glass.
+    /// The words on that fill.
     var calmOnBubble: AnyShapeStyle {
         switch self {
         case .mono: AnyShapeStyle(Theme.Calm.ink)

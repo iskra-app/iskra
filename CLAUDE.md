@@ -565,8 +565,8 @@ are opaque fills. If `.navigationGlass()` feels like the wrong name where you ar
 that is the guideline talking.
 
 The one exception is «Штиль», the beta look behind `BetaFeatures.calmDesignKey`, off by default
-(`docs/DESIGN-CALM.md`): its bubbles are glass, through `.contentGlass()`, which may only be called
-from a `.calm` branch. Everything that draws differently branches on `\.design`, and the `.classic`
+(`docs/DESIGN-CALM.md`): its chips, reactions and fields are glass, through `.contentGlass()`, which
+may only be called from a `.calm` branch. Its bubbles are opaque fills, as everywhere. Everything that draws differently branches on `\.design`, and the `.classic`
 branch stays the old code. In that look `\.accent` is `.mono`, and the chosen colour is
 `\.bubbleAccent`, read only by your own bubbles and the chat list's unread marks.
 
