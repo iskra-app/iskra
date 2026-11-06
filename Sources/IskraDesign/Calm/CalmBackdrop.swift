@@ -58,6 +58,14 @@ public struct CalmBackdrop: View {
             : Color(hue: hue, saturation: Theme.Calm.Shade.inkSaturationLight, brightness: Theme.Calm.Shade.inkBrightnessLight)
     }
 
+    /// The secondary words on the light ground, in the same hue: a form's footers, a row's value.
+    public static func inkSoftLight(hue: Double?) -> Color {
+        guard let hue else { return Theme.Calm.inkSoft }
+        return Color(hue: hue,
+                     saturation: Theme.Calm.Shade.inkSoftSaturationLight,
+                     brightness: Theme.Calm.Shade.inkSoftBrightnessLight)
+    }
+
     /// The hue of a seed, 0 to 1.
     public static func hue(for seed: String) -> Double {
         Double(stableHash(seed) % 360) / 360

@@ -131,6 +131,7 @@ private struct PushRowStyle: ButtonStyle {
         HStack(spacing: Theme.Spacing.close) {
             configuration.label
                 .foregroundStyle(.primary)
+                .modifier(CalmRowInk())
             Spacer(minLength: 0)
             Image(systemName: "chevron.forward")
                 .font(.footnote.weight(.semibold))

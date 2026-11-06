@@ -1030,6 +1030,7 @@ public struct IskraRootView: View {
                         #else
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         #endif
+                        .calmScreen()
                         .accessibilityElement()
                         .accessibilityLabel(Text(Strings.Room.noRoomSelectedTitle))
                         .accessibilityHint(Text(Strings.Room.noRoomSelectedMessage))

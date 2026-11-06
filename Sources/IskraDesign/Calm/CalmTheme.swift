@@ -101,6 +101,8 @@ public extension Theme {
             public static let inkBrightnessDark: Double = 0.96
             public static let inkSaturationLight: Double = 0.6
             public static let inkBrightnessLight: Double = 0.18
+            public static let inkSoftSaturationLight: Double = 0.35
+            public static let inkSoftBrightnessLight: Double = 0.4
             /// The side of the small copy of an avatar its colour is read from. Big enough that a
             /// small object in the middle of the picture is still there.
             public static let sampleSide: Int = 32
@@ -142,7 +144,7 @@ public extension Theme {
             public static let pageDim: Double = 0.3
             public static let pageDimLight: Double = 0.05
             public static let rowLift: Double = 0.06
-            public static let rowLiftLight: Double = 0.5
+            public static let rowLiftLight: Double = 0.72
         }
 
         /// Your own bubble on the colourless accent: the same glass, a tone heavier.

@@ -1010,6 +1010,7 @@ struct RoomRow: View {
                     }
                 }
             }
+            .modifier(CalmRowInk())
         }
         // The row's own height, rather than the one `List` gives it.
         //

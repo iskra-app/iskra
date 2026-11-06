@@ -122,6 +122,23 @@ struct CalmHue: DynamicProperty {
     }
 }
 
+/// The words of a row in the light look, in the screen's hue. Only on a row's own words: set for a
+/// whole screen, this takes the red from a destructive button and the colours from an avatar's
+/// initials. Both levels are named, or the secondary words come out as the primary.
+struct CalmRowInk: ViewModifier {
+    @Environment(\.design) private var design
+    @Environment(\.calmShadeHue) private var hue
+    @Environment(\.colorScheme) private var scheme
+
+    func body(content: Content) -> some View {
+        if design == .calm, scheme == .light {
+            content.foregroundStyle(CalmBackdrop.ink(hue: hue, in: scheme), CalmBackdrop.inkSoftLight(hue: hue))
+        } else {
+            content
+        }
+    }
+}
+
 private struct CalmScreen: ViewModifier {
     let isDimmed: Bool
 
@@ -319,6 +336,14 @@ struct CalmRowMaterial: View {
     @Environment(\.calmShadeHue) private var hue
 
     var body: some View {
+        #if os(macOS)
+        tinted
+        #else
+        if scheme == .light { Color.white } else { tinted }
+        #endif
+    }
+
+    private var tinted: some View {
         Rectangle()
             .fill(.thinMaterial)
             .overlay {
