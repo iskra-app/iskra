@@ -93,6 +93,10 @@ public extension Theme {
             public static let surfaceTint: Double = 0.35
             public static let surfaceSaturationDark: Double = 0.4
             public static let surfaceBrightnessDark: Double = 0.2
+            /// A settings row on the light ground, where a pale tint under the lift comes out white.
+            public static let rowTintLight: Double = 0.7
+            /// How much of the shade marks the open chat in the list.
+            public static let selectedRow: Double = 0.35
             public static let inkSaturationDark: Double = 0.08
             public static let inkBrightnessDark: Double = 0.96
             public static let inkSaturationLight: Double = 0.6

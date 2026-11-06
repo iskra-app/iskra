@@ -516,7 +516,7 @@ public struct RoomListView: View {
                 .sidebarRowInsets(on: isSidebar)
                 .arrivingFromFolder(folderArrival)
                 .separatorsBetweenRowsOnly(isFirst: index == 0, isLast: index == rooms.count - 1)
-                .calmListRow()
+                .calmListRow(isSelected: room.id == selectedRoomID)
         }
     }
 
@@ -562,6 +562,7 @@ public struct RoomListView: View {
                                 isTyping: session.roomList.typingRoomIDs.contains(room.id),
                                 compact: isCompactRow)
                         .tag(room.id)
+                        .calmSelectsItself { selection.wrappedValue = room.id }
                         .roomListSwipeActions(room: room,
                                               roomList: session.roomList,
                                               onLeave: { roomToLeave = room })
@@ -687,7 +688,11 @@ public struct RoomListView: View {
         .buttonStyle(.plain)
         .listRowSeparator(.hidden, edges: .top)
 
-        ForEach(session.roomList.archivedRooms, id: \.id) { row(for: $0).sidebarRowInsets() }
+        ForEach(session.roomList.archivedRooms, id: \.id) { room in
+            row(for: room)
+                .sidebarRowInsets()
+                .calmListRow(isSelected: room.id == selectedRoomID)
+        }
     }
 
     @ViewBuilder

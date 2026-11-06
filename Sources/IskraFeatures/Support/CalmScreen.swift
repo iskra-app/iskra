@@ -25,15 +25,23 @@ extension View {
     }
 
     /// A row of a plain list, letting the backdrop show through: a plain `List` paints its rows
-    /// opaque otherwise. Not in a sidebar, whose selection is drawn there.
-    func calmListRow() -> some View {
-        modifier(CalmListRow())
+    /// opaque otherwise, and the mark on the open chat is drawn there (`calmSelectsItself`). Not in a
+    /// sidebar, whose selection is the system's.
+    func calmListRow(isSelected: Bool = false) -> some View {
+        modifier(CalmListRow(isSelected: isSelected))
     }
 
     /// Reads the colour of a conversation's avatar, for everything below that stands on its shade:
     /// the conversation and its info screen.
     func calmRoomHue(avatarURL: String?) -> some View {
         modifier(CalmRoomHue(avatarURL: avatarURL))
+    }
+
+    /// A row that chooses itself on a click, on a Mac in the calm look. A list's own selection there
+    /// is the system's bright blue whatever the tint says, and the only way out of it is not to be
+    /// selectable. The price is the arrow keys.
+    func calmSelectsItself(_ select: @escaping () -> Void) -> some View {
+        modifier(CalmSelectsItself(select: select))
     }
 
     /// The same for settings and everything pushed from them: the colour of your own avatar.
@@ -155,9 +163,17 @@ private struct CalmRoomHue: ViewModifier {
     @Environment(\.mediaLoader) private var loader
     @State private var hue: Double?
 
+    /// What is known about this avatar, and until it is known the colour already on screen: the
+    /// account's shade, in that moment, is a flash of some other colour between two chats.
+    private var shown: Double? {
+        guard let avatarURL else { return nil }
+        if let known = CalmAvatarHues.known[avatarURL] { return known }
+        return hue ?? CalmAvatarHues.last
+    }
+
     func body(content: Content) -> some View {
         content
-            .environment(\.calmRoomHue, hue)
+            .environment(\.calmRoomHue, shown)
             .task(id: "\(design)\u{0}\(avatarURL ?? "")") { await load() }
     }
 
@@ -168,6 +184,7 @@ private struct CalmRoomHue: ViewModifier {
         }
         if let known = CalmAvatarHues.known[avatarURL] {
             hue = known
+            if let known { CalmAvatarHues.last = known }
             return
         }
         // The smallest picture the server will give: all of it is about to be averaged away.
@@ -178,6 +195,7 @@ private struct CalmRoomHue: ViewModifier {
         let found = await Task.detached { CalmBackdrop.dominantHue(of: data) }.value
         CalmAvatarHues.known[avatarURL] = found
         hue = found
+        if let found { CalmAvatarHues.last = found }
     }
 }
 
@@ -186,6 +204,7 @@ private struct CalmRoomHue: ViewModifier {
 @MainActor
 private enum CalmAvatarHues {
     static var known: [String: Double?] = [:]
+    static var last: Double?
 }
 
 extension EnvironmentValues {
@@ -193,13 +212,46 @@ extension EnvironmentValues {
     @Entry var calmRoomHue: Double?
 }
 
+private struct CalmSelectsItself: ViewModifier {
+    let select: () -> Void
+
+    @Environment(\.design) private var design
+
+    func body(content: Content) -> some View {
+        #if os(macOS)
+        if design == .calm {
+            content
+                .selectionDisabled()
+                .contentShape(.rect)
+                .onTapGesture(perform: select)
+        } else {
+            content
+        }
+        #else
+        content
+        #endif
+    }
+}
+
 private struct CalmListRow: ViewModifier {
+    let isSelected: Bool
+
     @Environment(\.design) private var design
     @Environment(\.calmListIsSidebar) private var isSidebar
+    @Environment(\.calmShadeHue) private var hue
+    @Environment(\.colorScheme) private var scheme
+
+    private var selection: Color {
+        guard let hue else { return Theme.Calm.ink.opacity(Theme.Opacity.selectedTab) }
+        return CalmBackdrop.shade(hue: hue, in: scheme).opacity(Theme.Calm.Shade.selectedRow)
+    }
 
     func body(content: Content) -> some View {
         if design == .calm, !isSidebar {
-            content.listRowBackground(Color.clear)
+            content.listRowBackground(
+                RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
+                    .fill(isSelected ? selection : .clear)
+                    .padding(.horizontal, Theme.Spacing.tight))
         } else {
             content
         }
@@ -271,7 +323,8 @@ struct CalmRowMaterial: View {
             .fill(.thinMaterial)
             .overlay {
                 if let hue {
-                    CalmBackdrop.surfaceShade(hue: hue, in: scheme).opacity(Theme.Calm.Shade.surfaceTint)
+                    CalmBackdrop.surfaceShade(hue: hue, in: scheme)
+                        .opacity(scheme == .dark ? Theme.Calm.Shade.surfaceTint : Theme.Calm.Shade.rowTintLight)
                 }
             }
             .overlay(Color.white.opacity(scheme == .dark ? Theme.Calm.Form.rowLift : Theme.Calm.Form.rowLiftLight))
