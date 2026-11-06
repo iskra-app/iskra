@@ -174,6 +174,16 @@ fi
 say "Генерирую Iskra.xcodeproj"
 (cd "$src/Apps" && quietly xcodegen xcodegen)
 
+# Обновление SDK заменяет module map у MatrixSDKFFI, а xcodebuild продолжает брать модуль,
+# собранный из старого, и каждая сборка падает с «has been modified since the module file was
+# built». Поэтому такие модули удаляются, как только Package.resolved изменился.
+stamp="$DERIVED/package-resolved.built"
+if ! cmp -s "$src/Package.resolved" "$stamp"; then
+  rm -rf "$DERIVED/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules"
+  mkdir -p "$DERIVED"
+  cp "$src/Package.resolved" "$stamp"
+fi
+
 say "xcodebuild для устройства"
 # -allowProvisioningUpdates: подпись автоматическая, и профиль на новый App ID
 # (например, у share-расширения) Xcode обязан выписать сам — иначе сборка встанет

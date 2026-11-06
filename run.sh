@@ -71,6 +71,16 @@ quietly() {
 say "Regenerating $PROJECT"
 (cd Apps && quietly xcodegen xcodegen)
 
+# An SDK update replaces MatrixSDKFFI's module map, xcodebuild goes on using the module it
+# precompiled from the old one, and every build after that dies with "has been modified since the
+# module file was built". So those modules go whenever Package.resolved has changed since last time.
+stamp="$DERIVED/package-resolved.built"
+if ! cmp -s Package.resolved "$stamp"; then
+  rm -rf "$DERIVED/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules"
+  mkdir -p "$DERIVED"
+  cp Package.resolved "$stamp"
+fi
+
 build_mac() {
   say "Building for macOS"
   quietly build-macos xcodebuild -project "$PROJECT" -scheme 'Iskra (macOS)' \
