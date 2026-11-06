@@ -30,12 +30,6 @@ extension View {
         modifier(CalmListRow())
     }
 
-    /// The shade laid over a column instead of under it, for the Mac's side columns, whose system
-    /// backgrounds cover whatever is put behind them. Touches pass through it.
-    func calmWash() -> some View {
-        modifier(CalmWash())
-    }
-
     /// Reads the colour of a conversation's avatar, for everything below that stands on its shade:
     /// the conversation and its info screen.
     func calmRoomHue(avatarURL: String?) -> some View {
@@ -139,6 +133,8 @@ private struct CalmScreen: ViewModifier {
                 }
                 .environment(\.calmShadeHue, hue.value)
                 .scrollContentBackground(.hidden)
+                // A form on a Mac paints a page of its own, which would cover the backdrop.
+                .environment(\.formPage, .clear)
                 .background { CalmBackdrop(hue: hue.value, isDimmed: isDimmed) }
         }
     }
@@ -149,31 +145,6 @@ private struct CalmOwnHue: ViewModifier {
 
     func body(content: Content) -> some View {
         content.calmRoomHue(avatarURL: avatarURL)
-    }
-}
-
-private struct CalmColumnWash: ViewModifier {
-    let isOn: Bool
-
-    func body(content: Content) -> some View {
-        if isOn { content.calmWash() } else { content }
-    }
-}
-
-private struct CalmWash: ViewModifier {
-    @Environment(\.design) private var design
-    @Environment(\.colorScheme) private var scheme
-    private let hue = CalmHue()
-
-    func body(content: Content) -> some View {
-        content.overlay {
-            if design == .calm, let hue = hue.value {
-                CalmBackdrop.shade(hue: hue, in: scheme)
-                    .opacity(scheme == .dark ? Theme.Calm.Shade.opacityDark : Theme.Calm.Shade.opacityLight)
-                    .ignoresSafeArea()
-                    .allowsHitTesting(false)
-            }
-        }
     }
 }
 
@@ -236,11 +207,7 @@ private struct CalmListRow: ViewModifier {
 }
 
 extension EnvironmentValues {
-    /// Whether a form's page is darker than the shade — not in the info column beside a chat on a
-    /// Mac, whose shade has to match the chat's across the seam.
-    @Entry var calmDimsForms: Bool = true
-
-    /// Whether a list of chats stands in a sidebar — see `calmListRow`.
+    /// Whether a list of chats keeps a sidebar's own background — see `calmListRow`.
     @Entry var calmListIsSidebar: Bool = false
 }
 
@@ -252,7 +219,6 @@ struct ScreenForm<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     @Environment(\.design) private var design
-    @Environment(\.calmDimsForms) private var dimsForms
 
     var body: some View {
         switch design {
@@ -263,9 +229,7 @@ struct ScreenForm<Content: View>: View {
                 Group { content() }
                     .listRowBackground(CalmRowMaterial())
             }
-            .calmScreen(isDimmed: dimsForms)
-            // The info column beside a chat on a Mac, where the column's own background is on top.
-            .modifier(CalmColumnWash(isOn: !dimsForms))
+            .calmScreen(isDimmed: true)
         }
     }
 }

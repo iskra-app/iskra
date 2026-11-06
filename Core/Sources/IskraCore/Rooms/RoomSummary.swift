@@ -342,3 +342,33 @@ public enum UnreadEmphasis: String, Sendable, CaseIterable {
     /// did not want to hear about it".
     case muted
 }
+
+public extension RoomSummary {
+    /// Who invited you, for the question before joining: the Matrix ID first, then the name.
+    ///
+    /// A display name is whatever its owner typed, so here it could pose as somebody else: another
+    /// ID written into it, a line break to look like a second line, characters that reorder the text
+    /// around them. So those are taken out, the length is capped, and what is left is isolated from
+    /// the text around it. Nil when the inviter is not known.
+    var inviterLabel: String? {
+        guard let id = invitedByID.map(Self.printable), !id.isEmpty else { return nil }
+        guard let name = invitedBy.map(Self.safeName), !name.isEmpty, name != id else { return id }
+        return "\(id) (\u{2068}\(name)\u{2069})"
+    }
+
+    private static func printable(_ text: String) -> String {
+        String(String.UnicodeScalarView(text.unicodeScalars.filter {
+            switch $0.properties.generalCategory {
+            case .control, .format, .lineSeparator, .paragraphSeparator: false
+            default: true
+            }
+        }))
+    }
+
+    private static func safeName(_ name: String) -> String {
+        let withoutIDs = printable(name).replacing(/@[^\s:]+:\S+/, with: "")
+        return String(withoutIDs.trimmingCharacters(in: .whitespaces).prefix(maxInviterNameLength))
+    }
+
+    private static var maxInviterNameLength: Int { 64 }
+}

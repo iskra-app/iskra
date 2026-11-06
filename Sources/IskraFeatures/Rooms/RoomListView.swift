@@ -39,6 +39,7 @@ public struct RoomListView: View {
     /// Whether the user has asked, in settings, for the Mac's own sidebar rather than this app's
     /// list — see `BetaFeatures` and `BetaView`. Read rather than passed down, because it is a
     /// preference and not a fact about the layout: `isSidebar` above is the layout.
+    @Environment(\.design) private var design
     @AppStorage(BetaFeatures.nativeSidebarKey) private var prefersNativeSidebar = BetaFeatures.nativeSidebarByDefault
 
     /// The grey lines Settings → Chats leaves out — the last line of a row follows them, as the
@@ -151,6 +152,16 @@ public struct RoomListView: View {
         self.onClearedCache = onClearedCache
     }
 
+    /// Whether rows are left on the sidebar's own background: an iPad's sidebar, where the system
+    /// draws the selection there too. A Mac's column has no such background in the calm look.
+    private var calmRowsKeepSidebarBackground: Bool {
+        #if os(macOS)
+        false
+        #else
+        isSidebar
+        #endif
+    }
+
     /// The picture of the chat open beside this list — see `CalmListBackdrop`.
     private var chatAvatarURL: String? {
         session.roomList.rooms.first { $0.id == selectedRoomID }?.avatarURL
@@ -171,12 +182,11 @@ public struct RoomListView: View {
                 rooms
             }
         }
-        .roomListStyle(nativeSidebar: isNativeSidebar)
-        .environment(\.calmListIsSidebar, isSidebar)
-        // Not behind a sidebar, which has a material of its own. On a Mac, though, with a chat open
-        // the list beside it takes that chat's shade, so that the window is one room: over the
-        // list, since under it the sidebar's material hides it.
-        .modifier(CalmListBackdrop(isSidebar: isSidebar, chatAvatarURL: chatAvatarURL, isChatOpen: selectedRoomID != nil))
+        .roomListStyle(nativeSidebar: isNativeSidebar, page: design == .calm ? .clear : .groupedPage)
+        .environment(\.calmListIsSidebar, calmRowsKeepSidebarBackground)
+        // Not behind an iPad's sidebar, which has a material of its own. On a Mac this column stands
+        // on the shade of the chat open beside it, darker than the chat, as settings do.
+        .modifier(CalmListBackdrop(isSidebar: isSidebar, chatAvatarURL: chatAvatarURL))
         // The folders, right over the list — under the banners, which are about the account and
         // not about which chats are showing.
         .safeAreaInset(edge: .top) {
@@ -435,7 +445,12 @@ public struct RoomListView: View {
     }
 
     private var isNativeSidebar: Bool {
-        BetaFeatures.hasAnything && isSidebar && prefersNativeSidebar
+        // Not in the calm look on a Mac: the system's sidebar brings a material that covers whatever
+        // is put behind it, and that look's columns stand on a shade.
+        #if os(macOS)
+        if design == .calm { return false }
+        #endif
+        return BetaFeatures.hasAnything && isSidebar && prefersNativeSidebar
     }
 
     // MARK: - Chrome
@@ -726,14 +741,11 @@ public struct RoomListView: View {
 private struct CalmListBackdrop: ViewModifier {
     let isSidebar: Bool
     let chatAvatarURL: String?
-    let isChatOpen: Bool
 
     func body(content: Content) -> some View {
         #if os(macOS)
-        if isSidebar, isChatOpen {
-            content.calmWash().calmRoomHue(avatarURL: chatAvatarURL)
-        } else if isSidebar {
-            content
+        if isSidebar {
+            content.calmScreen(isDimmed: true).calmRoomHue(avatarURL: chatAvatarURL)
         } else {
             content.calmScreen()
         }
@@ -756,7 +768,7 @@ private extension View {
     /// That is the right trade here — the switch is thrown once, in settings, by somebody who is
     /// looking at the list precisely to see it change.
     @ViewBuilder
-    func roomListStyle(nativeSidebar: Bool) -> some View {
+    func roomListStyle(nativeSidebar: Bool, page: Color) -> some View {
         if nativeSidebar {
             listStyle(.sidebar)
         } else {
@@ -765,9 +777,9 @@ private extension View {
                 // The side columns stand on the grouped page and the conversation on the plain one
                 // (`Color.groupedPage`, `Color.page`), so the window reads as a chat between two
                 // columns rather than as one sheet. Not under the native sidebar, which is meant to
-                // stand on its own material.
+                // stand on its own material. In the calm look the page is its backdrop.
                 .scrollContentBackground(.hidden)
-                .background(Color.groupedPage)
+                .background(page)
                 // A step in from the column's edges, so a chat — and the capsule that marks the open
                 // one — does not run into the window's frame and the divider.
                 .contentMargins(.horizontal, Theme.Spacing.close, for: .scrollContent)
@@ -1281,13 +1293,9 @@ struct InviteRow: View {
         .accessibilityLabel(Text(invitation))
     }
 
-    /// Who invited you, with the ID beside the name, since a name can be anybody's.
+    /// Who invited you — see `RoomSummary.inviterLabel`.
     private var confirmation: LocalizedStringResource {
-        guard let id = room.invitedByID else { return Strings.RoomList.Invite.confirmUnknown }
-        if let name = room.invitedBy, name != id {
-            return Strings.RoomList.Invite.confirmFrom("\(name) (\(id))")
-        }
-        return Strings.RoomList.Invite.confirmFrom(id)
+        room.inviterLabel.map(Strings.RoomList.Invite.confirmFrom) ?? Strings.RoomList.Invite.confirmUnknown
     }
 
     private var invitation: String {

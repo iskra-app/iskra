@@ -1056,6 +1056,10 @@ public struct IskraRootView: View {
         #if os(macOS)
         // On the split view itself — see `InfoColumn`.
         .infoColumn(infoColumn)
+        // The window's least width, here and not by adding up the columns: the chat's own minimum
+        // has to stay low enough for an inspector to open beside it, and on its own it let the
+        // window go down until the chat was a hundred points wide.
+        .frame(minWidth: Theme.Size.windowMinimum)
         .paintsFullScreenBand()
         #endif
         // Said once, here, and read by both columns. The room list and the room are in different
