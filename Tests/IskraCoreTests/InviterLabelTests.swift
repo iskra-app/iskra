@@ -54,4 +54,11 @@ struct InviterLabelTests {
         #expect(label(name: "Мама ＠mama：matrix.org", id: id) == "\(id) (\(open)Мама\(close))")
         #expect(label(name: "Мама @mama∶matrix.org", id: id) == "\(id) (\(open)Мама\(close))")
     }
+
+    @Test("marks stuck to the @ or the colon do not hide an ID in a name")
+    func marksInIDInName() {
+        for mark in ["\u{FE00}", "\u{034F}", "\u{0301}"] {
+            #expect(label(name: "Мама @\(mark)mama:\(mark)matrix.org", id: id) == "\(id) (\(open)Мама\(close))")
+        }
+    }
 }

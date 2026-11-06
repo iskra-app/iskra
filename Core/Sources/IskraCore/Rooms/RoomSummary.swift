@@ -363,7 +363,9 @@ public extension RoomSummary {
 
     private static func printable(_ text: String) -> String {
         String(String.UnicodeScalarView(text.unicodeScalars.filter {
-            switch $0.properties.generalCategory {
+            // Invisible and not "format" by category: a variation selector, a grapheme joiner.
+            if $0.properties.isDefaultIgnorableCodePoint { return false }
+            return switch $0.properties.generalCategory {
             case .control, .format, .lineSeparator, .paragraphSeparator: false
             default: true
             }
@@ -374,7 +376,8 @@ public extension RoomSummary {
         // Folded first, or a fullwidth "＠" and "：" would write an ID the pattern does not see. The
         // class holds the colons that folding leaves alone and that look the same.
         let folded = printable(name).precomposedStringWithCompatibilityMapping
-        let withoutIDs = folded.replacing(/@[^\s:∶։׃ː꞉]+[:∶։׃ː꞉]\S+/, with: "")
+        // By scalar: by character, a combining mark on the "@" makes it some other character.
+        let withoutIDs = folded.replacing(/@[^\s:∶։׃ː꞉]+[:∶։׃ː꞉]\S+/.matchingSemantics(.unicodeScalar), with: "")
         return String(withoutIDs.trimmingCharacters(in: .whitespaces).prefix(maxInviterNameLength))
     }
 
