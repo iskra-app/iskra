@@ -164,10 +164,17 @@ public enum Theme {
         ///
         /// A quarter of a second is the number that is actually about the gesture rather than
         /// about a bug behind it. Half the system's wait, so it still reads as quick; long enough
-        /// that holding is a decision. Nothing is drawn during it: the bubble used to sink through
-        /// this quarter second as a countdown, and a message that changes shape under a finger is
-        /// exactly what the menu must not show.
+        /// that holding is a decision. The bubble sinks through this quarter second, so the wait
+        /// has something to show for it (`menuHoldSinks`).
         public static let menuLift: TimeInterval = 0.25
+
+        /// The bubble going down under a held finger, all the way through `menuLift`. Slow to start,
+        /// which is against the rule for things responding to a touch and on purpose: most fingers
+        /// that land on a message are setting off to scroll, and those must not nudge it.
+        public static let menuHoldSinks: Animation = .easeInOut(duration: menuLift)
+
+        /// And coming back up when the finger lets go or sets off scrolling.
+        public static let menuHoldReleases: Animation = .spring(duration: 0.2)
 
         /// How long a finger stays on a chat in the list before the peek lifts it — see `ChatPeek`.
         ///
@@ -489,7 +496,7 @@ public enum Theme {
         /// that had been lifted out of it. On a Mac, where the curtain is the *only* thing
         /// between the menu and the conversation (there is no blur there, see
         /// `MessageMenuOverlay.scrim`), it has to do all of that work by itself.
-        public static let menuScrim: Double = 0.4
+        public static let menuScrim: Double = 0.6
 
         /// How dark the conversation goes behind an open photograph, under its blur — Instagram's
         /// viewer, where the chat is still there but is no longer something to read. Dark enough
@@ -525,6 +532,11 @@ public enum Theme {
     }
 
     public enum Size {
+        /// How far a message sinks under a held finger: a bubble, and a compact row, which is the
+        /// whole width of the column and moves further at its edges for the same scale.
+        public static let menuHoldScale: CGFloat = 0.96
+        public static let menuHoldScaleWide: CGFloat = 0.98
+
         public static let avatar: CGFloat = 40
 
         /// A face in the favourites widget: four fit a small widget with their names under them,

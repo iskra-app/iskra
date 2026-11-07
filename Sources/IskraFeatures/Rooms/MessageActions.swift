@@ -35,6 +35,11 @@ struct MessageActions<Content: View>: View {
 
     let handlers: MessageHandlers
 
+    /// A finger is down on this message. Bound, because `MessageRow` sinks the emoji on the bubble's
+    /// corner along with it, and those are outside this view.
+    @Binding var isPressed: Bool
+    let holdScale: CGFloat
+
     @ViewBuilder let content: () -> Content
 
     /// Where the message is on screen, in the app-wide coordinate space the menu measures
@@ -147,6 +152,9 @@ struct MessageActions<Content: View>: View {
     /// So they are one gesture now — see `press`.
     var body: some View {
         content()
+            // Inside the anchor, so that the rectangle the menu puts its copy on stays the
+            // message's own size. The copy starts at full size, so the lift reads as a rebound.
+            .sinksUnderHold(isPressed, to: holdScale)
             // The anchor. Measured continuously as the conversation scrolls, so the menu can
             // put its copy of the message exactly where the original is standing.
             .onGeometryChange(for: CGRect.self) { proxy in
@@ -157,10 +165,6 @@ struct MessageActions<Content: View>: View {
             }
             // And the environment it is drawn in, for the same reason and in the same box.
             .background { EnvironmentTap { [anchor] in anchor.environment = $0 } }
-            // Nothing happens to the bubble under a held finger — no sinking, no squeeze. It used
-            // to give under the press as a countdown to the lift, and what that actually said was
-            // that the message changes shape when touched; the one thing a message being picked up
-            // must not do is stop looking like itself. The knock of the lift is the feedback.
             // Gone from its place while it is in the menu — picked up, not copied. See
             // `MessageMenuPresenter.liftedID`.
             .modifier(LeavesGapWhileLifted(id: message.id))
@@ -178,13 +182,12 @@ struct MessageActions<Content: View>: View {
             #if os(iOS)
             .overlay {
                 MessageHold(duration: Theme.Timing.menuLift,
-                            onPressingChanged: { _ in },
+                            onPressingChanged: { isPressed = $0 },
                             onHold: open)
             }
             #else
-            .onLongPressGesture(minimumDuration: Theme.Timing.menuLift) {
-                open()
-            }
+            .onLongPressGesture(minimumDuration: Theme.Timing.menuLift, perform: open,
+                                onPressingChanged: { isPressed = $0 })
             #endif
             .simultaneousGesture(doubleTap)
             // Everything the menu offers, for VoiceOver too — swipe up or down on a message and
@@ -851,8 +854,17 @@ extension View {
     /// use it should not have to care which of the two SwiftUI spellings is underneath.
     func messageActions(_ message: Message,
                         isPinned: Bool,
-                        handlers: MessageHandlers) -> some View {
-        MessageActions(message: message, isPinned: isPinned, handlers: handlers) { self }
+                        handlers: MessageHandlers,
+                        isPressed: Binding<Bool>,
+                        holdScale: CGFloat = Theme.Size.menuHoldScale) -> some View {
+        MessageActions(message: message, isPinned: isPinned, handlers: handlers,
+                       isPressed: isPressed, holdScale: holdScale) { self }
+    }
+
+    /// A message going down under a held finger. With Reduce Motion it stays still: there the knock
+    /// of the lift is the feedback.
+    func sinksUnderHold(_ isPressed: Bool, to scale: CGFloat = Theme.Size.menuHoldScale) -> some View {
+        modifier(SinksUnderHold(isPressed: isPressed, scale: scale))
     }
 
     /// Lets the row be dragged toward the middle of the screen to answer it — see `SwipeToReply`.
@@ -885,6 +897,19 @@ private struct EnvironmentTap: View {
 ///
 /// A modifier that reads the presenter, rather than the row reading it, so that opening a menu
 /// re-runs this small body on every message on screen and not every message's bubble.
+private struct SinksUnderHold: ViewModifier {
+    let isPressed: Bool
+    let scale: CGFloat
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(isPressed && !reduceMotion ? scale : 1)
+            .animation(isPressed ? Theme.Timing.menuHoldSinks : Theme.Timing.menuHoldReleases, value: isPressed)
+    }
+}
+
 private struct LeavesGapWhileLifted: ViewModifier {
     let id: String
 

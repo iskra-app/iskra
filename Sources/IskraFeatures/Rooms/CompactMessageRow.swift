@@ -35,6 +35,8 @@ struct CompactMessageRow: View {
 
     /// The "who reacted" list a held pill has opened — see `ReactionPill.onShowReactors`.
     @State private var reactorsRequest: ReactorsRequest?
+    /// A finger is down on the row — see `MessageActions.isPressed`.
+    @State private var isPressed = false
 
     /// Whether this message is currently pinned, which is the whole of what the menu item
     /// needs to know to say the right word.
@@ -208,7 +210,8 @@ struct CompactMessageRow: View {
     @ViewBuilder
     private var spokenContent: some View {
         let content = heading
-            .messageActions(message, isPinned: isPinned, handlers: handlers)
+            .messageActions(message, isPinned: isPinned, handlers: handlers, isPressed: $isPressed,
+                            holdScale: Theme.Size.menuHoldScaleWide)
 
         if message.hasPressableContent {
             content.accessibilityElement(children: .contain)

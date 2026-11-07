@@ -17,6 +17,8 @@ struct MessageRow: View {
 
     /// The "who reacted" list a held pill has opened — see `ReactionPill.onShowReactors`.
     @State private var reactorsRequest: ReactorsRequest?
+    /// A finger is down on the bubble — see `MessageActions.isPressed`.
+    @State private var isPressed = false
 
     /// Whether this message is currently pinned, which is the whole of what the menu item
     /// needs to know to say the right word.
@@ -244,11 +246,12 @@ struct MessageRow: View {
             // One of ours comes across from where it was typed — Telegram's send. See
             // `ComposerTravel`. On the bubble rather than the row, which spans the screen.
             .travelsFromComposer(arrivesAnimated && message.isOwn)
-            .messageActions(message, isPinned: isPinned, handlers: handlers)
+            .messageActions(message, isPinned: isPinned, handlers: handlers, isPressed: $isPressed)
             .environment(\.liftsReactions, true)
             // After the actions, so that a press on an emoji is the emoji's and a lifted message
             // goes up without them.
-            .overlay { reactions }
+            // Scaled about the same centre as the bubble, being exactly its size.
+            .overlay { reactions.sinksUnderHold(isPressed) }
     }
 
     // MARK: - Reactions
