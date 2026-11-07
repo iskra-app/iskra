@@ -534,8 +534,8 @@ public enum Theme {
     public enum Size {
         /// How far a message sinks under a held finger: a bubble, and a compact row, which is the
         /// whole width of the column and moves further at its edges for the same scale.
-        public static let menuHoldScale: CGFloat = 0.96
-        public static let menuHoldScaleWide: CGFloat = 0.98
+        public static let menuHoldScale: CGFloat = 0.92
+        public static let menuHoldScaleWide: CGFloat = 0.96
 
         public static let avatar: CGFloat = 40
 
