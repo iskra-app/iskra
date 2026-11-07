@@ -20,6 +20,7 @@ struct BetaView: View {
 
     @AppStorage(BetaFeatures.nativeSidebarKey) private var nativeSidebar = BetaFeatures.nativeSidebarByDefault
     @AppStorage(BetaFeatures.mockBackendKey) private var mockBackend = false
+    @AppStorage(BetaFeatures.roundedFontKey) private var roundedFont = BetaFeatures.roundedFontByDefault
     @AppStorage(BetaFeatures.showsEventSourceKey) private var showsEventSource = false
     @AppStorage(BetaFeatures.showsAllEventsKey) private var showsAllEvents = false
 
@@ -43,6 +44,13 @@ struct BetaView: View {
                     .padding(.vertical, Theme.Spacing.close)
             } header: {
                 Text(Strings.Appearance.avatars)
+            }
+
+            Section {
+                Toggle(isOn: $roundedFont.animation(.smooth(duration: Theme.Timing.reaction))) {
+                    Label(Strings.Beta.roundedFont, systemImage: "textformat")
+                }
+                .accentControl()
             }
 
             #if os(macOS)

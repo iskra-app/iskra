@@ -1448,6 +1448,7 @@
 "beta.homeserverHelp" = "L’adresse à laquelle l’app parle vraiment, trouvée à partir du nom du compte et pas forcément celle saisie à la connexion. Un pont ne la change pas : il ne fait que porter la connexion.";
 "beta.showsAllEvents" = "Tous les événements du chat";
 "beta.showsAllEventsHelp" = "Le chat affiche aussi les événements que l’app laisse d’habitude de côté (droits, règles d’accès, appels, changements de photo, tout ce qui n’a pas pu être lu), en ligne grise avec le type et l’expéditeur.";
+"beta.roundedFont" = "Police arrondie";
 "beta.viewSource" = "Voir le JSON";
 "beta.noSource" = "Ce message n’a pas encore d’événement sur le serveur.";
 "beta.demoSignIn" = "Connexion de démonstration";

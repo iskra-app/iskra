@@ -1732,6 +1732,8 @@ public enum Strings {
 
     /// The screen where the unfinished things are switched on — see `BetaView`.
     public enum Beta {
+        /// SF Rounded on all the text — see `RoundedFont`.
+        public static let roundedFont = LocalizedStringResource("beta.roundedFont", bundle: bundle)
         /// The developers' corner of the Beta screen.
         public static let developers = LocalizedStringResource("beta.developers", bundle: bundle)
         public static let showsSource = LocalizedStringResource("beta.showsSource", bundle: bundle)

@@ -64,7 +64,7 @@ private struct AboutWindowContent: View {
         }
         .frame(width: Theme.Size.aboutWindow.width, height: Theme.Size.aboutWindow.height)
         .environment(\.accent, accent)
-        .fontDesign(.rounded)
+        .roundedFontIfAsked()
         .tint(.primary)
         .interfaceWash()
         .environment(\.locale, AppLanguage.locale)

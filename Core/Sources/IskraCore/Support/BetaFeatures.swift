@@ -62,6 +62,11 @@ public enum BetaFeatures {
     /// photograph.
     public static let forceBlobatarByDefault = false
 
+    /// SF Rounded on all the text in the app — see `RoundedFont`. Off: the system's own font is what
+    /// the app ships with, and this one is for whoever goes looking.
+    public static let roundedFontKey = "beta.roundedFont"
+    public static let roundedFontByDefault = false
+
     /// "View JSON" in a message's menu — the event as the server sent it, for whoever is chasing a
     /// message that draws wrong. Off by default: it is a developer's tool, and to anybody else a
     /// screen of braces.
@@ -148,6 +153,6 @@ public enum BetaFeatures {
     /// sign-out silently, and the next person inherits somebody else's experiment.
     public static var stores: [(key: String, store: UserDefaults?)] {
         [(nativeSidebarKey, nil), (blobatarKey, faceStore), (forceBlobatarKey, faceStore),
-         (mockBackendKey, nil)]
+         (mockBackendKey, nil), (roundedFontKey, nil)]
     }
 }

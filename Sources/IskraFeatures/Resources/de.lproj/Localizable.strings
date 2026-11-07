@@ -1448,6 +1448,7 @@
 "beta.homeserverHelp" = "Die Adresse, mit der die App wirklich spricht, aus dem Namen des Kontos ermittelt. Das ist nicht unbedingt die bei der Anmeldung eingegebene. Eine Brücke ändert sie nicht, sie trägt nur die Verbindung.";
 "beta.showsAllEvents" = "Alle Ereignisse im Chat";
 "beta.showsAllEventsHelp" = "Im Chat erscheinen auch die Ereignisse, die die App sonst weglässt (Berechtigungen, Beitrittsregeln, Anrufe, neue Profilbilder, alles, was sich nicht lesen ließ), als graue Zeile mit Typ und Absender.";
+"beta.roundedFont" = "Abgerundete Schrift";
 "beta.viewSource" = "JSON ansehen";
 "beta.noSource" = "Diese Nachricht hat noch kein Ereignis auf dem Server.";
 "beta.demoSignIn" = "Demo-Anmeldung";

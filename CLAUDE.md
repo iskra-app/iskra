@@ -560,17 +560,18 @@ are opaque fills. If `.navigationGlass()` feels like the wrong name where you ar
 that is the guideline talking. The one exception is a reaction on a bubble's corner, through
 `.contentGlass()`, and the list of reactors, which is a sheet with its own glass showing.
 
-**The text is SF Rounded**, set once by `.fontDesign(.rounded)` at the root (`IskraRootView`). It
-reaches everything because nothing names a font of its own: a `UIFont`, an `NSFont` or an explicit
-`design:` is a piece of text that stays out of it. Extensions are out of it on purpose: they have no
-root of ours.
+**The text is the system's font, and SF Rounded is a switch in Beta features**
+(`BetaFeatures.roundedFontKey`, `.roundedFontIfAsked()` at the root of each window). It reaches
+everything because nothing names a font of its own: a `UIFont`, an `NSFont` or an explicit `design:`
+is a piece of text that stays out of it. Extensions are out of it on purpose: they have no root of
+ours.
 
 **Icons are the colour of the text, and the accent is for fills.** The root tint is `.primary`
 with the wash on or off, so a toolbar, a `Label` and a plain button take the text's colour, and an
 icon that sets its own says `.primary`. Words in the accent are `.foregroundStyle(.accentInk)`
-(`AccentTheme.textColor`), never `accent.color`: yellow, the default, is 1.5 to 1 on white.
+(`AccentTheme.textColor`), never `accent.color`: yellow, as words, is 1.5 to 1 on white.
 
-**The wash is `.interfaceWash()`, at the root and on every sheet** (`InterfaceWash`, on by default,
+**The wash is `.interfaceWash()`, at the root and on every sheet** (`InterfaceWash`, off by default,
 `pageSheet` and `reactorsSheet` carry it): an overlay at the root sits under a sheet. A picture that
 has to look as it will look (a home icon, a wallpaper being chosen) is cut out of it with
 `.outsideWash(cornerRadius:)`.

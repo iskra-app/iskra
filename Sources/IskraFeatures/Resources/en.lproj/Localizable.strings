@@ -1448,6 +1448,7 @@
 "beta.homeserverHelp" = "The address the app really talks to, found from the account’s name. It is not necessarily what was typed at sign-in. A bridge doesn’t change it; it only carries the connection.";
 "beta.showsAllEvents" = "All events in chats";
 "beta.showsAllEventsHelp" = "Chats also show the events the app normally leaves out (permissions, join rules, calls, picture changes, anything that failed to parse) as a grey line with the type and the sender.";
+"beta.roundedFont" = "Rounded font";
 "beta.viewSource" = "View JSON";
 "beta.noSource" = "This message has no event on the server yet.";
 "beta.demoSignIn" = "Demo sign-in";

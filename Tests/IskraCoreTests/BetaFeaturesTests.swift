@@ -31,6 +31,13 @@ struct BetaFeaturesTests {
         #expect(BetaFeatures.drawsGeneratedFace(hasPicture: true, in: defaults) == false)
     }
 
+    /// An experiment is the preference of whoever opted in, and the next person gets the plain font.
+    @Test("the rounded font is off, and goes on sign-out")
+    func roundedFont() {
+        #expect(BetaFeatures.roundedFontByDefault == false)
+        #expect(BetaFeatures.stores.contains { $0.key == BetaFeatures.roundedFontKey && $0.store == nil })
+    }
+
     /// And a switch turned off by hand stays off — which matters now that off is also the
     /// default: somebody who turned it off before it was the default must not be counted as
     /// "no opinion".
