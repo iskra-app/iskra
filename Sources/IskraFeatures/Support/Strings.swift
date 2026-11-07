@@ -705,6 +705,13 @@ public enum Strings {
         public static let attachPhoto = LocalizedStringResource("room.attachPhoto", bundle: bundle)
         public static let attachFile = LocalizedStringResource("room.attachFile", bundle: bundle)
 
+        /// The window a "+" item opens into.
+        public static let attachBack = LocalizedStringResource("room.attachBack", bundle: bundle)
+        public static let attachAllPhotos = LocalizedStringResource("room.attachAllPhotos", bundle: bundle)
+        public static func attachAddPhotos(_ count: Int) -> LocalizedStringResource {
+            LocalizedStringResource("room.attachAddPhotos", defaultValue: "Add (\(count))", bundle: bundle)
+        }
+
         /// Photos and videos waiting in the composer — see `PendingAttachment`.
         public static let pasteImage = LocalizedStringResource("room.pasteImage", bundle: bundle)
         public static let attachedPhoto = LocalizedStringResource("room.attachedPhoto", bundle: bundle)
@@ -1284,7 +1291,6 @@ public enum Strings {
     public enum Location {
         public static let title = LocalizedStringResource("location.title", bundle: bundle)
         public static let send = LocalizedStringResource("location.send", bundle: bundle)
-        public static let cancel = LocalizedStringResource("location.cancel", bundle: bundle)
         public static let myLocation = LocalizedStringResource("location.myLocation", bundle: bundle)
         /// The third thing the "+" can attach.
         public static let attach = LocalizedStringResource("location.attach", bundle: bundle)
@@ -1332,7 +1338,7 @@ public enum Strings {
         public static let endConfirmTitle = LocalizedStringResource("poll.endConfirmTitle", bundle: bundle)
         public static let endConfirmMessage = LocalizedStringResource("poll.endConfirmMessage", bundle: bundle)
 
-        /// The "+" item, and the sheet it opens.
+        /// The "+" item, and the window it opens.
         public static let attach = LocalizedStringResource("poll.attach", bundle: bundle)
         public static let newTitle = LocalizedStringResource("poll.newTitle", bundle: bundle)
         public static let question = LocalizedStringResource("poll.question", bundle: bundle)
@@ -1346,7 +1352,6 @@ public enum Strings {
         public static let anonymous = LocalizedStringResource("poll.anonymous", bundle: bundle)
         public static let anonymousFooter = LocalizedStringResource("poll.anonymousFooter", bundle: bundle)
         public static let send = LocalizedStringResource("poll.send", bundle: bundle)
-        public static let cancel = LocalizedStringResource("poll.cancel", bundle: bundle)
     }
 
     /// The sticker sheet, the button that opens it, and adding a sticker from a conversation.

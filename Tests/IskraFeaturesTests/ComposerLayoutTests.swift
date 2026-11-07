@@ -1,5 +1,6 @@
 import Testing
 import SwiftUI
+import IskraDesign
 @testable import IskraFeatures
 
 #if os(macOS)
@@ -44,6 +45,38 @@ struct ComposerLayoutTests {
         try render(draft: "", named: "composer-attaching", isAttaching: true)
     }
 
+    /// The window a "+" item grows into: about three by four, narrower than the composer on an
+    /// iPad, and shorter than that wherever the room above it is short — a phone on its side, or
+    /// the keyboard up under a poll.
+    @Test("the attach window is three by four until the screen says otherwise")
+    func attachWindowSize() {
+        let phone = AttachPanelLayout.size(composerWidth: 402, composerBottom: 840)
+        #expect(phone.width == 378)
+        #expect(phone.height == 504)
+
+        // The largest phone is held by its margins, not by the cap: the window has to fill the
+        // width evenly, or it sits off to one side of the composer.
+        let largestPhone = AttachPanelLayout.size(composerWidth: 440, composerBottom: 920)
+        #expect(largestPhone.width == 416)
+
+        let tablet = AttachPanelLayout.size(composerWidth: 800, composerBottom: 1100)
+        #expect(tablet.width == Theme.Size.attachPanelMaxWidth)
+        #expect(tablet.height == Theme.Size.attachPanelMaxWidth * 4 / 3)
+
+        let overKeyboard = AttachPanelLayout.size(composerWidth: 402, composerBottom: 500)
+        #expect(overKeyboard.width == 378)
+        #expect(overKeyboard.height == 500 - Theme.Size.attachPanelTopClearance)
+    }
+
+    /// The window open holds the composer at the height it had, because the composer is the room's
+    /// bottom inset and the conversation would drop if it shrank.
+    @Test("a window open does not change the composer's height")
+    func attachWindowKeepsComposerHeight() throws {
+        let list = try render(draft: "", named: "composer-attaching", isAttaching: true)
+        let window = try render(draft: "", named: "composer-panel", isAttaching: true, panel: .poll)
+        #expect(window == list)
+    }
+
     /// The lock pill, mid-climb and arrived.
     ///
     /// It hangs above the record button on exactly the arithmetic the attach menu hangs on — the
@@ -61,17 +94,22 @@ struct ComposerLayoutTests {
                    locking: LockGesture(reach: 1, isVisible: true, hasLocked: true))
     }
 
+    /// The size of what came out, so that two states of the composer can be held to each other.
+    @discardableResult
     private func render(draft: String,
                         named name: String,
                         isAttaching: Bool = false,
+                        panel: AttachPanelKind? = nil,
                         offersStickers: Bool = false,
-                        locking: LockGesture = LockGesture()) throws {
+                        locking: LockGesture = LockGesture()) throws -> CGSize {
         let view = MessageComposer(draft: .constant(draft),
                                    onSend: {},
                                    onChoosePhoto: {},
                                    onChooseFile: {},
+                                   onSendPoll: panel == .poll ? { _ in } : nil,
                                    onChooseSticker: offersStickers ? {} : nil,
                                    isAttaching: isAttaching,
+                                   panel: panel,
                                    locking: locking)
             .frame(width: 420)
             .padding(.top, isAttaching || locking.isVisible ? 140 : 16)
@@ -89,12 +127,15 @@ struct ComposerLayoutTests {
         #expect(image.size.width > 400)
         #expect(image.size.height > 40)
 
-        guard let directory = outputDirectory else { return }
+        guard let directory = outputDirectory else { return image.size }
 
         let tiff = try #require(image.tiffRepresentation)
         let bitmap = try #require(NSBitmapImageRep(data: tiff))
         let png = try #require(bitmap.representation(using: .png, properties: [:]))
         try png.write(to: directory.appending(component: "\(name).png"))
+        return image.size
+        #else
+        return .zero
         #endif
     }
 }

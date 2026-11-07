@@ -120,9 +120,16 @@ struct MessageComposer: View {
     /// the screen rather than to the bar floating over it.
     var onChoosePhoto: () -> Void
     var onChooseFile: () -> Void
-    var onChooseLocation: () -> Void = {}
-    /// Asking for the sheet that writes a poll. Nil leaves the item out.
-    var onCreatePoll: (() -> Void)?
+
+    /// Sending what the windows under the "+" produce. The windows themselves are the composer's —
+    /// they are not presentations, they are the "+" grown large — and what happens to the result is
+    /// the screen's, which is what knows the room and what is being answered.
+    var onAddPhotos: ([PhotosPickerItem]) -> Void = { _ in }
+    var onSendLocation: (Location) async -> Void = { _ in }
+    /// Sharing where you are as you move, for how long. Nil where the room cannot take it.
+    var onShareLive: ((TimeInterval) async -> Void)?
+    /// Sending a poll. Nil leaves the item out.
+    var onSendPoll: ((PollDraft) async -> Void)?
 
     /// Asking for the sticker sheet — presented by the screen, like the pickers above. Nil leaves
     /// the button out: a room this account cannot post to has no use for it, and neither has a
@@ -167,6 +174,18 @@ struct MessageComposer: View {
     /// honest way to know they no longer do is to draw it.
     @State private var isAttaching: Bool
 
+    /// The "+" item that has grown into a window, if one has. Going back returns to the list, so
+    /// this sits beside `isAttaching` and not in place of it. Settable at birth for the same reason.
+    @State private var panel: AttachPanelKind?
+
+    /// The composer's size and where its bottom edge is, which is what the window is sized from.
+    @State private var frame: CGRect = .zero
+
+    /// Where the window is on the screen, and where each choice that opens one sat in the list. What
+    /// is in the window is revealed from the second to the first — see `AttachPanelReveal`.
+    @State private var panelFrame: CGRect = .zero
+    @State private var optionFrames: [AttachPanelKind: CGRect] = [:]
+
     /// The composer's height, as measured. The choices hang exactly this far above the
     /// bottom edge — see the overlay below. It starts at the height of a one-line composer,
     /// which is what it is before anything has been typed and what it stays until the field
@@ -200,8 +219,10 @@ struct MessageComposer: View {
          voice: VoiceRecording? = nil,
          onChoosePhoto: @escaping () -> Void,
          onChooseFile: @escaping () -> Void,
-         onChooseLocation: @escaping () -> Void = {},
-         onCreatePoll: (() -> Void)? = nil,
+         onAddPhotos: @escaping ([PhotosPickerItem]) -> Void = { _ in },
+         onSendLocation: @escaping (Location) async -> Void = { _ in },
+         onShareLive: ((TimeInterval) async -> Void)? = nil,
+         onSendPoll: ((PollDraft) async -> Void)? = nil,
          onChooseSticker: (() -> Void)? = nil,
          attachments: [PendingAttachment] = [],
          onRemoveAttachment: @escaping (PendingAttachment) -> Void = { _ in },
@@ -210,6 +231,7 @@ struct MessageComposer: View {
          mentions: Binding<[ComposerMention]> = .constant([]),
          loadMentionCandidates: (() async -> [RoomMemberSummary])? = nil,
          isAttaching: Bool = false,
+         panel: AttachPanelKind? = nil,
          locking: LockGesture = LockGesture(),
          onEditLast: (() -> Bool)? = nil) {
         _draft = draft
@@ -231,8 +253,10 @@ struct MessageComposer: View {
         self.voice = voice
         self.onChoosePhoto = onChoosePhoto
         self.onChooseFile = onChooseFile
-        self.onChooseLocation = onChooseLocation
-        self.onCreatePoll = onCreatePoll
+        self.onAddPhotos = onAddPhotos
+        self.onSendLocation = onSendLocation
+        self.onShareLive = onShareLive
+        self.onSendPoll = onSendPoll
         self.onChooseSticker = onChooseSticker
         self.attachments = attachments
         self.onRemoveAttachment = onRemoveAttachment
@@ -241,6 +265,7 @@ struct MessageComposer: View {
         _mentions = mentions
         self.loadMentionCandidates = loadMentionCandidates
         _isAttaching = State(initialValue: isAttaching)
+        _panel = State(initialValue: panel)
         _locking = State(initialValue: locking)
     }
 
@@ -348,108 +373,118 @@ struct MessageComposer: View {
         // and merges the way the system's own controls do.
         NavigationGlassGroup(spacing: Theme.Spacing.close) {
             VStack(alignment: .leading, spacing: Theme.Spacing.close) {
-                if let context {
-                    contextStrip(context)
-                }
-
-                if !pendingAttachments.isEmpty {
-                    attachmentStrip
-                }
-
-                // Bottom-aligned, so the round buttons stay level with the last line of a
-                // message that has grown to several lines rather than riding its middle.
-                HStack(alignment: .bottom, spacing: Theme.Spacing.close) {
-                    // The "+" is not offered mid-recording: attaching a photograph to a voice
-                    // message you are in the middle of speaking is not a thing, and the choices
-                    // would open over the strip that is telling you how to send it.
-                    //
-                    // Offered offline, though — and it briefly was not. An attachment goes into the
-                    // same on-disk send queue as a typed message: the SDK caches its content the
-                    // moment it is queued and uploads it whenever there is a network to upload it
-                    // with, tomorrow if need be. The composer is the one part of this app that keeps
-                    // working with no network at all, and it keeps working for photographs too.
-                    if voice == nil {
-                        attachButton
+                // Gone rather than hidden while a window is open, and held open by something of the
+                // same height. Hidden would not do: the container draws glass whatever a child says
+                // about its own opacity, so the field would show through as a lump in the window's
+                // surface. And the height has to stay, or the safe-area inset shrinks and the whole
+                // conversation drops down behind the window.
+                if panel != nil {
+                    Color.clear
+                        .frame(height: max(height - 2 * Theme.Spacing.close, 0))
+                } else {
+                    if let context {
+                        contextStrip(context)
                     }
 
-                    if let voice {
-                        RecordingStrip(elapsed: voice.elapsed,
-                                       waveform: voice.waveform,
-                                       isLive: voice.isLive,
-                                       onCancel: onCancelVoice)
-                            // Out by shrinking as it fades, and that is not decoration: sending and
-                            // cancelling both simply *stop* the recorder, and the strip was
-                            // vanishing between one frame and the next — a minute of somebody's
-                            // voice disappearing with less ceremony than a keystroke, and no way
-                            // to tell the send from the cancel by looking. The animation that
-                            // drives this is on the stack below; the transition here is only what
-                            // it does with it.
-                            .transition(.scale(scale: 0.94).combined(with: .opacity))
-                    } else {
-                        // The sticker button sits *inside* the field, at its trailing end, as
-                        // Telegram's does — not as a fourth circle in the row, which would take its
-                        // width out of the line being typed on every message to offer something
-                        // sent on a few. Centred on the field, at any number of lines: it belongs
-                        // to the field, not to the last line of what is being typed.
-                        HStack(alignment: .center, spacing: 0) {
-                            TextField(String(app: isCaption ? Strings.Room.captionPlaceholder : Strings.Room.composerPlaceholder),
-                                      text: $draft,
-                                      selection: $selection, axis: .vertical)
-                                .textFieldStyle(.plain)
-                                // Where the words start on the screen — the point a sent message
-                                // travels from. Measured on the bare field, inside its padding, so
-                                // it is the first letter's edge and not the glass around it.
-                                .onGeometryChange(for: CGPoint.self) { $0.frame(in: .global).origin } action: {
-                                    onTextOrigin($0)
-                                }
-                                .lineLimit(1...5)
-                                .focused($isFocused)
-                                .padding(.leading, Theme.Spacing.roomy)
-                                .padding(.trailing, offersStickers ? 0 : Theme.Spacing.roomy)
-                                .padding(.vertical, Theme.Spacing.normal)
-                                .frame(minHeight: control)
-                                // Return or ⌘-Return, by Settings → Chats — see `ComposerReturnKey`.
-                                .composerReturnKey(text: $draft, selection: $selection, isFocused: isFocused,
-                                                   send: onSend,
-                                                   editLast: onEditLast)
+                    if !pendingAttachments.isEmpty {
+                        attachmentStrip
+                    }
 
-                            if offersStickers, let onChooseSticker {
-                                stickerButton(onChooseSticker)
-                            }
+                    // Bottom-aligned, so the round buttons stay level with the last line of a
+                    // message that has grown to several lines rather than riding its middle.
+                    HStack(alignment: .bottom, spacing: Theme.Spacing.close) {
+                        // The "+" is not offered mid-recording: attaching a photograph to a voice
+                        // message you are in the middle of speaking is not a thing, and the choices
+                        // would open over the strip that is telling you how to send it.
+                        //
+                        // Offered offline, though — and it briefly was not. An attachment goes into the
+                        // same on-disk send queue as a typed message: the SDK caches its content the
+                        // moment it is queued and uploads it whenever there is a network to upload it
+                        // with, tomorrow if need be. The composer is the one part of this app that keeps
+                        // working with no network at all, and it keeps working for photographs too.
+                        if voice == nil {
+                            attachButton
                         }
-                        .transition(.opacity)
-                        .navigationGlass(in: .rect(cornerRadius: Theme.Radius.bubble, style: .continuous))
-                    }
 
-                    // With nothing typed, there is one button where the send button sits, and it
-                    // is the thing you can say without typing: spoken, or a round video one. One
-                    // button and not two, because they are the same act — hold and speak — and a
-                    // second circle beside the first only asks the thumb to aim.
-                    //
-                    // Except while editing, where it is not offered: there is no such thing as
-                    // replacing a message you wrote with a voice message, so the button stays a
-                    // send button. It is disabled on an empty field rather than swapped out,
-                    // because an empty edit means "delete this", and deleting is a different act
-                    // with a different confirmation.
-                    if let context, context.isEditing {
-                        button(systemImage: "checkmark",
-                               label: Strings.Room.saveEdit,
-                               isPrimary: true,
-                               action: onSend)
-                            // A caption may be emptied — that takes it off the photo.
-                            .disabled(isEmpty && !context.message.hasCaption)
-                    } else if !hasSomethingToSend {
-                        recordButton
-                    } else {
-                        button(systemImage: "arrow.up",
-                               label: Strings.Room.send,
-                               isPrimary: true,
-                               action: onSend)
-                            #if os(iOS)
-                            // ⌘-Return on an iPad keyboard. On a Mac the field's own key handler
-                            // takes it, and a shortcut here as well would send twice.
-                            .keyboardShortcut(.return, modifiers: .command)
-                            #endif
+                        if let voice {
+                            RecordingStrip(elapsed: voice.elapsed,
+                                           waveform: voice.waveform,
+                                           isLive: voice.isLive,
+                                           onCancel: onCancelVoice)
+                                // Out by shrinking as it fades, and that is not decoration: sending and
+                                // cancelling both simply *stop* the recorder, and the strip was
+                                // vanishing between one frame and the next — a minute of somebody's
+                                // voice disappearing with less ceremony than a keystroke, and no way
+                                // to tell the send from the cancel by looking. The animation that
+                                // drives this is on the stack below; the transition here is only what
+                                // it does with it.
+                                .transition(.scale(scale: 0.94).combined(with: .opacity))
+                        } else {
+                            // The sticker button sits *inside* the field, at its trailing end, as
+                            // Telegram's does — not as a fourth circle in the row, which would take its
+                            // width out of the line being typed on every message to offer something
+                            // sent on a few. Centred on the field, at any number of lines: it belongs
+                            // to the field, not to the last line of what is being typed.
+                            HStack(alignment: .center, spacing: 0) {
+                                TextField(String(app: isCaption ? Strings.Room.captionPlaceholder : Strings.Room.composerPlaceholder),
+                                          text: $draft,
+                                          selection: $selection, axis: .vertical)
+                                    .textFieldStyle(.plain)
+                                    // Where the words start on the screen — the point a sent message
+                                    // travels from. Measured on the bare field, inside its padding, so
+                                    // it is the first letter's edge and not the glass around it.
+                                    .onGeometryChange(for: CGPoint.self) { $0.frame(in: .global).origin } action: {
+                                        onTextOrigin($0)
+                                    }
+                                    .lineLimit(1...5)
+                                    .focused($isFocused)
+                                    .padding(.leading, Theme.Spacing.roomy)
+                                    .padding(.trailing, offersStickers ? 0 : Theme.Spacing.roomy)
+                                    .padding(.vertical, Theme.Spacing.normal)
+                                    .frame(minHeight: control)
+                                    // Return or ⌘-Return, by Settings → Chats — see `ComposerReturnKey`.
+                                    .composerReturnKey(text: $draft, selection: $selection, isFocused: isFocused,
+                                                       send: onSend,
+                                                       editLast: onEditLast)
+
+                                if offersStickers, let onChooseSticker {
+                                    stickerButton(onChooseSticker)
+                                }
+                            }
+                            .transition(.opacity)
+                            .navigationGlass(in: .rect(cornerRadius: Theme.Radius.bubble, style: .continuous))
+                        }
+
+                        // With nothing typed, there is one button where the send button sits, and it
+                        // is the thing you can say without typing: spoken, or a round video one. One
+                        // button and not two, because they are the same act — hold and speak — and a
+                        // second circle beside the first only asks the thumb to aim.
+                        //
+                        // Except while editing, where it is not offered: there is no such thing as
+                        // replacing a message you wrote with a voice message, so the button stays a
+                        // send button. It is disabled on an empty field rather than swapped out,
+                        // because an empty edit means "delete this", and deleting is a different act
+                        // with a different confirmation.
+                        if let context, context.isEditing {
+                            button(systemImage: "checkmark",
+                                   label: Strings.Room.saveEdit,
+                                   isPrimary: true,
+                                   action: onSend)
+                                // A caption may be emptied — that takes it off the photo.
+                                .disabled(isEmpty && !context.message.hasCaption)
+                        } else if !hasSomethingToSend {
+                            recordButton
+                        } else {
+                            button(systemImage: "arrow.up",
+                                   label: Strings.Room.send,
+                                   isPrimary: true,
+                                   action: onSend)
+                                #if os(iOS)
+                                // ⌘-Return on an iPad keyboard. On a Mac the field's own key handler
+                                // takes it, and a shortcut here as well would send twice.
+                                .keyboardShortcut(.return, modifiers: .command)
+                                #endif
+                        }
                     }
                 }
             }
@@ -484,6 +519,7 @@ struct MessageComposer: View {
             // draft grows. The starting value is the height of a one-line composer, which is
             // what it is until told otherwise.
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame = $0 }
             // An overlay, not a row stacked above the composer. Stacked, the choices are
             // part of the composer's own height — and the composer is a bottom safe-area
             // inset, so growing it pushes the whole timeline up and drops it back down
@@ -508,11 +544,33 @@ struct MessageComposer: View {
             // A closed menu has to actually not be there.
             .overlay(alignment: .bottomLeading) {
                 if isAttaching {
+                    // Padding rather than an offset, and one view for both places: the list above
+                    // the composer, and the window at the foot of the screen that one of its choices
+                    // grows into. Layout animates, so the choice travels there.
                     attachOptions
-                        .padding(.horizontal, Theme.Spacing.normal)
-                        .offset(y: -(height + Theme.Spacing.close))
+                        .padding(.leading, panel == nil ? Theme.Spacing.normal : (frame.width - panelSize.width) / 2)
+                        .padding(.bottom, panel == nil ? height + Theme.Spacing.close : Theme.Spacing.close)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                        .ignoresSafeArea(.container, edges: panel == nil ? [] : .bottom)
                 }
             }
+        }
+        // What is in the window, drawn over its surface and outside the container. Its buttons are
+        // glass, and glass gathered into the container is drawn in the container's own pass, which
+        // would put them *under* the photographs they float over.
+        .overlay(alignment: .bottomLeading) {
+            // The frame is outside the condition, so that it stands still and can be measured, and
+            // so that the reveal, which has to work in the window's own coordinates, is what comes
+            // and goes inside it.
+            ZStack {
+                if let panel {
+                    panelContent(panel)
+                        .transition(panelReveal(panel))
+                }
+            }
+            .frame(width: panelSize.width, height: panelSize.height)
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { panelFrame = $0 }
+            .modifier(AttachPanelPlacement())
         }
         // Above the record button, outside the `GlassEffectContainer` and deliberately so: the
         // pill is glass, and glass placed *inside* that container is gathered into the container's
@@ -587,6 +645,11 @@ struct MessageComposer: View {
         // Starting to type is an answer to "what do you want to attach?" — it is "nothing".
         .onChange(of: isFocused) { _, focused in
             if focused { close() }
+        }
+        // The system's picker, opened from the photo window, has come back with something. It is
+        // presented by the screen and knows nothing about the window waiting under it.
+        .onChange(of: attachments.count) { before, after in
+            if after > before { close() }
         }
     }
 
@@ -1162,7 +1225,7 @@ struct MessageComposer: View {
     private var attachButton: some View {
         Button {
             if !isAttaching { canPasteImage = MediaPasteboard.hasMedia }
-            withAnimation(.smooth(duration: 0.3)) {
+            withAnimation(panelMorph) {
                 isAttaching.toggle()
             }
         } label: {
@@ -1180,53 +1243,75 @@ struct MessageComposer: View {
         .accessibilityAddTraits(isAttaching ? .isSelected : [])
     }
 
-    /// What the "+" becomes: photos from the system picker, everything else from the file
-    /// importer. Both are the standard components, which is what gets us the system's own
-    /// permission prompts, iCloud Drive and Files browsing for free.
+    /// What the "+" becomes. Three of the choices grow into a window of their own — see
+    /// `AttachPanelKind`; a file is the system's importer, which brings iCloud Drive and Files
+    /// browsing with it, and "paste" has nothing to ask.
     private var attachOptions: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.close) {
-            attachOption(systemImage: "photo",
-                         label: Strings.Room.attachPhoto,
-                         id: "photo",
-                         action: onChoosePhoto)
-
-            attachOption(systemImage: "doc",
-                         label: Strings.Room.attachFile,
-                         id: "file",
-                         action: onChooseFile)
-
-            attachOption(systemImage: "mappin.and.ellipse",
-                         label: Strings.Location.attach,
-                         id: "location",
-                         action: onChooseLocation)
-
-            if let onCreatePoll {
-                attachOption(systemImage: "chart.bar",
-                             label: Strings.Poll.attach,
-                             id: "poll",
-                             action: onCreatePoll)
+            if offers(.photos) {
+                attachOption(systemImage: "photo",
+                             label: Strings.Room.attachPhoto,
+                             id: AttachPanelKind.photos.rawValue,
+                             opens: .photos) { open(.photos) }
             }
 
-            if canPasteImage {
+            if panel == nil {
+                attachOption(systemImage: "doc",
+                             label: Strings.Room.attachFile,
+                             id: "file") {
+                    // Closed first: the importer is a full-screen sheet, and coming back from it to a
+                    // composer still holding its choices open would be the app asking a question it
+                    // has already been answered.
+                    close()
+                    onChooseFile()
+                }
+            }
+
+            if offers(.location) {
+                attachOption(systemImage: "mappin.and.ellipse",
+                             label: Strings.Location.attach,
+                             id: AttachPanelKind.location.rawValue,
+                             opens: .location) { open(.location) }
+            }
+
+            if onSendPoll != nil, offers(.poll) {
+                attachOption(systemImage: "chart.bar",
+                             label: Strings.Poll.attach,
+                             id: AttachPanelKind.poll.rawValue,
+                             opens: .poll) { open(.poll) }
+            }
+
+            if canPasteImage, panel == nil {
                 attachOption(systemImage: "doc.on.clipboard",
                              label: Strings.Room.pasteImage,
-                             id: "paste",
-                             action: onPasteImage)
+                             id: "paste") {
+                    close()
+                    onPasteImage()
+                }
             }
         }
     }
 
+    /// Whether a choice is still there: all of them in the list, and only the one that was chosen
+    /// once a window is open — because that one *is* the window.
+    private func offers(_ kind: AttachPanelKind) -> Bool {
+        panel == nil || panel == kind
+    }
+
+    /// One choice, and the window it can become.
+    ///
+    /// The same view in both shapes, and that is what the morph hangs on. A window drawn separately
+    /// and matched to its choice by `glassEffectID` came out of the first choice in the list whichever
+    /// had been pressed, on a real phone and with the identities right; why was never pinned down,
+    /// though the choices sitting within the container's spacing of each other is the likely part of
+    /// it. A view that merely changes size cannot start from anywhere but where it is.
     private func attachOption(systemImage: String,
                               label: LocalizedStringResource,
                               id: String,
+                              opens kind: AttachPanelKind? = nil,
                               action: @escaping () -> Void) -> some View {
-        Button {
-            // Closed first: the picker it opens is a full-screen sheet, and coming back
-            // from it to a composer still holding its choices open would be the app
-            // asking a question it has already been answered.
-            close()
-            action()
-        } label: {
+        let isOpen = kind != nil && panel == kind
+        return Button(action: action) {
             Label {
                 Text(label)
                     .font(.body)
@@ -1235,21 +1320,101 @@ struct MessageComposer: View {
                     .font(.body.weight(.semibold))
             }
             .foregroundStyle(.primary)
+            .opacity(isOpen ? 0 : 1)
             .padding(.horizontal, Theme.Spacing.roomy)
-            .frame(height: control)
-            .navigationGlass(in: .capsule)
+            .frame(width: isOpen ? panelSize.width : nil,
+                   height: isOpen ? panelSize.height : control,
+                   alignment: .leading)
+            // One kind of shape for both, because a shape only animates into another of its own
+            // type: half the height is what makes this the capsule it looks like in the list.
+            .navigationGlass(in: .rect(cornerRadius: isOpen ? Theme.Radius.attachPanel : control / 2,
+                                       style: .continuous))
+            .navigationGlassID(id, in: glass)
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { rect in
+                // Only while it is in the list. Open, this is the window.
+                if let kind, panel == nil { optionFrames[kind] = rect }
+            }
             .contentShape(.capsule)
         }
         .buttonStyle(.plain)
-        .navigationGlassID(id, in: glass)
+        .allowsHitTesting(!isOpen)
         // Each choice grows out of the button that produced it, rather than fading in
         // somewhere above it.
-        .transition(.scale(scale: 0.1, anchor: .bottomLeading).combined(with: .opacity))
+        .transition(.navigationGlassGrowth(from: .bottomLeading))
     }
 
+    /// With a window open, it goes back into its choice first and the list closes after, the way it
+    /// came. All at once, the window's glass has nowhere to go and is simply gone.
     private func close() {
         guard isAttaching else { return }
-        withAnimation(.smooth(duration: 0.3)) { isAttaching = false }
+        guard panel != nil else {
+            withAnimation(panelMorph) { isAttaching = false }
+            return
+        }
+        withAnimation(panelMorph) {
+            panel = nil
+        } completion: {
+            guard panel == nil else { return }
+            withAnimation(panelMorph) { isAttaching = false }
+        }
+    }
+
+    // MARK: - The window a choice grows into
+
+    /// With some bounce, as the system's own glass moves: the material overshoots a little and
+    /// settles, and that is most of what makes it read as liquid and not as a resized rectangle.
+    private var panelMorph: Animation {
+        .spring(duration: Theme.Timing.attachPanel, bounce: 0.3)
+    }
+
+    private var panelSize: CGSize {
+        AttachPanelLayout.size(composerWidth: frame.width, composerBottom: frame.maxY)
+    }
+
+    private func open(_ kind: AttachPanelKind) {
+        // The keyboard would otherwise stay up over a window that has no use for it.
+        isFocused = false
+        withAnimation(panelMorph) { panel = kind }
+    }
+
+    /// Back to the list, not out of it: going back undoes one step.
+    private func closePanel() {
+        withAnimation(panelMorph) { panel = nil }
+    }
+
+    /// What is in the window arriving with the glass: from where the choice was, on the same spring.
+    private func panelReveal(_ kind: AttachPanelKind) -> AnyTransition {
+        let option = optionFrames[kind].map { $0.offsetBy(dx: -panelFrame.minX, dy: -panelFrame.minY) }
+            ?? CGRect(x: 0, y: panelSize.height, width: 0, height: 0)
+        return .attachPanelReveal(from: option, startRadius: control / 2, size: panelSize)
+    }
+
+    @ViewBuilder
+    private func panelContent(_ kind: AttachPanelKind) -> some View {
+        switch kind {
+        case .photos:
+            PhotoAttachPanel(onBack: closePanel,
+                             onAllPhotos: onChoosePhoto,
+                             onAdd: { items in
+                                 onAddPhotos(items)
+                                 close()
+                             })
+        case .location:
+            LocationPicker(onPick: { location in
+                await onSendLocation(location)
+                close()
+            }, onShareLive: onShareLive.map { share in
+                { duration in
+                    await share(duration)
+                    close()
+                }
+            }, onBack: closePanel)
+        case .poll:
+            PollComposer(onSend: { draft in
+                await onSendPoll?(draft)
+                close()
+            }, onBack: closePanel)
+        }
     }
 
     // MARK: - Buttons

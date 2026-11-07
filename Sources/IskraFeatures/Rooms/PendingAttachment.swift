@@ -29,6 +29,10 @@ import UIKit
 /// only for the moment `AVAsset` needs a URL — once to draw its still here, once more at send in
 /// `RoomView` — and taken away again each time.
 struct PendingAttachment: Identifiable, Equatable {
+    /// How many the pickers let through at once. Ten is what Matrix clients generally treat as
+    /// an album, and what fits in the composer's row without it becoming a gallery of its own.
+    static let pickLimit = 10
+
     let id = UUID()
     let data: Data
     let filename: String

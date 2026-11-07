@@ -56,6 +56,9 @@ public enum Theme {
         /// The white card the QR screen turns in the hand — `QRCodeSheet`. Rounder than `card`,
         /// because it is held up as an object of its own and not set into a list.
         public static let qrCard: CGFloat = 28
+        /// The window a "+" item opens into. Close to the curve of the phone's own corner, which it
+        /// sits just inside of.
+        public static let attachPanel: CGFloat = 44
 
         /// The menu a long press opens, and the panel of emoji beside it — see `MessageMenu`.
         ///
@@ -252,6 +255,10 @@ public enum Theme {
         /// is one decision made once and copied, and the ninth copy is where somebody types `0.3`
         /// by accident and nobody ever notices that one control moves differently from the rest.
         public static let chrome: TimeInterval = 0.2
+
+        /// A "+" item growing into its window and shrinking back. Longer than `chrome`, because
+        /// this is most of the screen moving, and at `chrome` the eye loses where it came from.
+        public static let attachPanel: TimeInterval = 0.32
 
         /// A message arriving in the conversation — one you have just sent, or one that has
         /// just been said to you.
@@ -878,6 +885,13 @@ public enum Theme {
         /// A pasted or dropped picture waiting in the composer. Big enough to tell one screenshot
         /// from another at a glance, small enough that four of them are still one row.
         public static let attachmentTile: CGFloat = 64
+
+        /// The widest the window a "+" item opens into gets — on an iPad or a Mac, where the
+        /// composer's own width would make a window of it taller than the screen. Wide enough for
+        /// the largest phone (440pt, less the margins) to be held by its margins and not by this.
+        public static let attachPanelMaxWidth: CGFloat = 420
+        /// What the window leaves clear above it: the status bar and the room's header.
+        public static let attachPanelTopClearance: CGFloat = 120
 
         /// A colour to draw or write in, in the photo editor. Drawn smaller than the tap target it
         /// sits in, so that six of them fit a phone's width with room between.

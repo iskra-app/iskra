@@ -2,7 +2,7 @@ import SwiftUI
 import IskraCore
 import IskraDesign
 
-/// The sheet that writes a poll: a question, two answers to start with and more as they are
+/// The window that writes a poll: a question, two answers to start with and more as they are
 /// typed, and two switches.
 ///
 /// A new empty answer appears under the last one as soon as that one has words in it, the way
@@ -10,8 +10,8 @@ import IskraDesign
 /// remains is for the reader who wants to add one before typing.
 struct PollComposer: View {
     let onSend: (PollDraft) async -> Void
+    let onBack: () -> Void
 
-    @Environment(\.dismiss) private var dismiss
     @State private var draft = PollDraft()
     @State private var isSending = false
     @FocusState private var focus: Field?
@@ -22,73 +22,82 @@ struct PollComposer: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    TextField(String(app: Strings.Poll.questionPlaceholder), text: $draft.question, axis: .vertical)
-                        .focused($focus, equals: .question)
-                } header: {
-                    Text(Strings.Poll.question)
-                }
+        AttachPanelChrome(onBack: onBack) {
+            VStack(spacing: 0) {
+                Text(Strings.Poll.newTitle)
+                    .font(.headline)
+                    .padding(.top, Theme.Spacing.roomy)
+                    .padding(.bottom, Theme.Spacing.close)
 
-                Section {
-                    ForEach(draft.answers.indices, id: \.self) { index in
-                        HStack {
-                            TextField(String(app: Strings.Poll.answerPlaceholder),
-                                      text: answer(at: index))
-                                .focused($focus, equals: .answer(index))
-                                .submitLabel(.next)
-                                .onSubmit { focus = index + 1 < draft.answers.count ? .answer(index + 1) : nil }
-                            if draft.answers.count > 2 {
-                                Button {
-                                    remove(at: index)
-                                } label: {
-                                    Image(systemName: "minus.circle.fill")
-                                        .foregroundStyle(.secondary)
+                Form {
+                    Section {
+                        TextField(String(app: Strings.Poll.questionPlaceholder), text: $draft.question, axis: .vertical)
+                            .focused($focus, equals: .question)
+                    } header: {
+                        Text(Strings.Poll.question)
+                    }
+                    .sheetRowBackground()
+
+                    Section {
+                        ForEach(draft.answers.indices, id: \.self) { index in
+                            HStack {
+                                TextField(String(app: Strings.Poll.answerPlaceholder),
+                                          text: answer(at: index))
+                                    .focused($focus, equals: .answer(index))
+                                    .submitLabel(.next)
+                                    .onSubmit { focus = index + 1 < draft.answers.count ? .answer(index + 1) : nil }
+                                if draft.answers.count > 2 {
+                                    Button {
+                                        remove(at: index)
+                                    } label: {
+                                        Image(systemName: "minus.circle.fill")
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel(Text(Strings.Poll.removeAnswer))
                                 }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel(Text(Strings.Poll.removeAnswer))
                             }
                         }
-                    }
-                    if draft.answers.count < PollDraft.maxAnswers {
-                        Button {
-                            draft.answers.append("")
-                            focus = .answer(draft.answers.count - 1)
-                        } label: {
-                            Label { Text(Strings.Poll.addAnswer) } icon: { Image(systemName: "plus") }
+                        if draft.answers.count < PollDraft.maxAnswers {
+                            Button {
+                                draft.answers.append("")
+                                focus = .answer(draft.answers.count - 1)
+                            } label: {
+                                Label { Text(Strings.Poll.addAnswer) } icon: { Image(systemName: "plus") }
+                            }
                         }
+                    } header: {
+                        Text(Strings.Poll.answers)
                     }
-                } header: {
-                    Text(Strings.Poll.answers)
-                }
+                    .sheetRowBackground()
 
-                Section {
-                    Toggle(String(app: Strings.Poll.allowMultiple), isOn: $draft.isMultipleChoice)
-                    Toggle(String(app: Strings.Poll.anonymous), isOn: $draft.isAnonymous)
-                } header: {
-                    Text(Strings.Poll.settings)
-                } footer: {
-                    if draft.isAnonymous { Text(Strings.Poll.anonymousFooter) }
-                }
-            }
-            .formStyle(.groupedRows)
-            .navigationTitle(String(app: Strings.Poll.newTitle))
-            #if !os(macOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(String(app: Strings.Poll.cancel)) { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(String(app: Strings.Poll.send)) {
-                        Task { await send() }
+                    Section {
+                        Toggle(String(app: Strings.Poll.allowMultiple), isOn: $draft.isMultipleChoice)
+                        Toggle(String(app: Strings.Poll.anonymous), isOn: $draft.isAnonymous)
+                    } header: {
+                        Text(Strings.Poll.settings)
+                    } footer: {
+                        if draft.isAnonymous { Text(Strings.Poll.anonymousFooter) }
                     }
-                    .disabled(!draft.canSend || isSending)
+                    .sheetRowBackground()
                 }
+                .formStyle(.groupedRows)
+                .scrollContentBackground(.hidden)
+                .scrollDismissesKeyboard(.interactively)
+                // So that the last switch can be scrolled clear of the buttons floating over it.
+                .contentMargins(.bottom, AttachPanelChrome<EmptyView, EmptyView, EmptyView>.buttonClearance, for: .scrollContent)
+                .environment(\.formPage, Color.sheetPage)
             }
-            .onAppear { focus = .question }
+            // The ground of the "New chat" and QR sheets: this window is the same kind of thing as
+            // them, a form standing on its own over the room.
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.sheetPage)
+        } action: {
+            AttachPanelAction(label: Strings.Poll.send,
+                              isPrimary: true,
+                              isEnabled: draft.canSend && !isSending) {
+                Task { await send() }
+            }
         }
     }
 
@@ -116,6 +125,19 @@ struct PollComposer: View {
         guard draft.canSend, !isSending else { return }
         isSending = true
         await onSend(draft)
-        dismiss()
+    }
+}
+
+private extension View {
+    /// The rows a sheet's form draws. A form in the room draws the room's, which on the sheet's
+    /// ground are the same colour as the ground, and the rows disappear into it. A Mac form draws
+    /// its rows from `formPage`, and has no such thing to ask for.
+    @ViewBuilder
+    func sheetRowBackground() -> some View {
+        #if os(iOS)
+        listRowBackground(Color.sheetRow)
+        #else
+        self
+        #endif
     }
 }

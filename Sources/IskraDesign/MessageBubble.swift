@@ -278,6 +278,36 @@ public extension Color {
         #endif
     }
 
+    /// The ground of a sheet's form, for a window that is not a sheet but should look like one.
+    ///
+    /// The system makes a sheet's colours lighter in the dark by presenting it at the elevated level,
+    /// and that level comes with the presentation: asked for from inside the room, the same system
+    /// colour is the room's. So the level is written in here. On a Mac a sheet stands on the page.
+    static var sheetPage: Color {
+        #if canImport(UIKit)
+        elevated(.systemGroupedBackground)
+        #else
+        page
+        #endif
+    }
+
+    /// A row on `sheetPage`.
+    static var sheetRow: Color {
+        #if canImport(UIKit)
+        elevated(.secondarySystemGroupedBackground)
+        #else
+        groupedCard
+        #endif
+    }
+
+    #if canImport(UIKit)
+    private static func elevated(_ color: UIColor) -> Color {
+        Color(uiColor: UIColor { traits in
+            color.resolvedColor(with: traits.modifyingTraits { $0.userInterfaceLevel = .elevated })
+        })
+    }
+    #endif
+
     /// A card on that page — the phone's grouped cell: white, and in the dark a grey a step above
     /// the conversation (`page`) and well above the near-black of the side columns. On a Mac the form's own plates are a translucent darkening of whatever is under
     /// them, so on a grey page they came out greyer than the page: the phone's arrangement upside

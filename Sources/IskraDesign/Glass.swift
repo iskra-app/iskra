@@ -159,6 +159,23 @@ public extension View {
     }
 }
 
+public extension AnyTransition {
+    /// How a piece of glass named with `navigationGlassID` comes and goes when it is another piece
+    /// of glass that it flows out of. On OS 26 the morph is the whole of it, and a scale on top
+    /// would fight it. Before glass there is no morph, so it grows from where it came from.
+    ///
+    /// Opacity on OS 26 and not `.identity`, though the container pays opacity no attention. It is
+    /// there to keep the view alive: `.identity` takes it out of the tree at once, and glass that
+    /// is already gone has nothing to morph *from*, so the way back simply cut.
+    static func navigationGlassGrowth(from anchor: UnitPoint) -> AnyTransition {
+        if #available(iOS 26, macOS 26, *) {
+            .opacity
+        } else {
+            .scale(scale: 0.1, anchor: anchor).combined(with: .opacity)
+        }
+    }
+}
+
 /// Several pieces of glass that sit near each other, drawn as one surface instead of
 /// sheets stacked into soup — and, with `navigationGlassID`, interpolated into each
 /// other as they come and go. Before glass, just its content.

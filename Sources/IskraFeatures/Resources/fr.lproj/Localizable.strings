@@ -441,6 +441,9 @@
 "room.attachPhoto" = "Photo ou vidéo";
 
 "room.attachFile" = "Fichier";
+"room.attachBack" = "Retour";
+"room.attachAllPhotos" = "Toutes les photos";
+"room.attachAddPhotos" = "Ajouter (%lld)";
 
 /* The choice under the "+" that appears when a photo or video has been copied. */
 "room.pasteImage" = "Coller une photo ou une vidéo";
@@ -719,7 +722,6 @@
 
 "location.title" = "Position";
 "location.send" = "Envoyer";
-"location.cancel" = "Annuler";
 "location.myLocation" = "Ma position";
 "location.attach" = "Position";
 "message.spoken.sentLocation" = "une position";
@@ -745,7 +747,6 @@
 "poll.anonymous" = "Résultats seulement à la fin";
 "poll.anonymousFooter" = "Tant que le sondage est ouvert, personne ne voit ce que les autres ont voté. Vous seul pouvez le clore.";
 "poll.send" = "Envoyer";
-"poll.cancel" = "Annuler";
 "poll.chosen" = "votre réponse";
 "message.spoken.sentPoll" = "un sondage : %@";
 

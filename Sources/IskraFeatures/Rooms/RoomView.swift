@@ -113,8 +113,6 @@ public struct RoomView: View {
     /// the root of the screen both pickers open, which is what a picker has to do.
     @State private var isChoosingPhoto = false
     @State private var isChoosingFile = false
-    @State private var isChoosingLocation = false
-    @State private var isCreatingPoll = false
     @State private var isChoosingSticker = false
     @State private var pickedItems: [PhotosPickerItem] = []
 
@@ -1504,7 +1502,7 @@ public struct RoomView: View {
         }
         .photosPicker(isPresented: $isChoosingPhoto,
                       selection: $pickedItems,
-                      maxSelectionCount: Self.pickLimit,
+                      maxSelectionCount: PendingAttachment.pickLimit,
                       selectionBehavior: .ordered,
                       matching: .any(of: [.images, .videos]))
         .onChange(of: pickedItems) { _, items in
@@ -1529,20 +1527,7 @@ public struct RoomView: View {
         #if os(iOS)
         .pageSheet(isPresented: $isChoosingSticker) { stickerPicker }
         #endif
-        .pageSheet(isPresented: $isCreatingPoll) {
-            PollComposer { draft in
-                await timeline.send(poll: draft)
-            }
-        }
         .failureAlert(Binding(get: { liveLocation?.failure }, set: { liveLocation?.failure = $0 }))
-        .pageSheet(isPresented: $isChoosingLocation) {
-            LocationPicker(onPick: { location in
-                await timeline.send(location: location, replyingTo: replyID)
-                cancelContext()
-            }, onShareLive: liveLocation == nil || isThread ? nil : { duration in
-                await liveLocation?.start(in: timeline.roomID, for: duration)
-            })
-        }
         // Writing. `typed()` is cheap to call on every keystroke on purpose — it tells the server
         // once and then only pushes back the moment it takes it back — so this can be exactly what
         // it looks like: the user typed something.
@@ -1957,10 +1942,19 @@ public struct RoomView: View {
                         voice: recording,
                         onChoosePhoto: { isChoosingPhoto = true },
                         onChooseFile: { isChoosingFile = true },
-                        onChooseLocation: { isChoosingLocation = true },
+                        onAddPhotos: { items in Task { await stagePicked(items) } },
+                        onSendLocation: { location in
+                            await timeline.send(location: location, replyingTo: replyID)
+                            cancelContext()
+                        },
+                        onShareLive: liveLocation == nil || isThread ? nil : { duration in
+                            await liveLocation?.start(in: timeline.roomID, for: duration)
+                        },
                         // A poll is a question to a group; in a personal chat it is one person
                         // voting on the other's question.
-                        onCreatePoll: timeline.kind == .direct ? nil : { isCreatingPoll = true },
+                        onSendPoll: timeline.kind == .direct ? nil : { draft in
+                            await timeline.send(poll: draft)
+                        },
                         onChooseSticker: stickers == nil || !showsStickers ? nil : { isChoosingSticker = true },
                         attachments: attachments,
                         onRemoveAttachment: { image in attachments.removeAll { $0.id == image.id } },
@@ -1997,10 +1991,6 @@ public struct RoomView: View {
     }
 
     // MARK: - Photos and videos waiting to go
-
-    /// How many the picker lets through at once. Ten is what Matrix clients generally treat as
-    /// an album, and what fits in the composer's row without it becoming a gallery of its own.
-    private static let pickLimit = 10
 
     private func attach(from dropped: DroppedItems) async {
         let (items, unreadable) = await PendingAttachment.load(from: dropped.providers)

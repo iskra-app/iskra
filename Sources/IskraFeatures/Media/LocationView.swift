@@ -128,9 +128,12 @@ struct LocationPicker: View {
 
     /// Sharing where you are as you move, for how long — nil where the room cannot take it.
     var onShareLive: ((TimeInterval) async -> Void)?
-    @State private var isChoosingLiveDuration = false
+    let onBack: () -> Void
 
-    @Environment(\.dismiss) private var dismiss
+    /// Whether the "live" button has opened into its durations. In the window and not a dialog:
+    /// this view is in the composer's safe-area inset, where a presentation has gone missing before
+    /// (see `MessageComposer`).
+    @State private var isChoosingLiveDuration = false
 
     @State private var camera: MapCameraPosition = .automatic
     @State private var centre: CLLocationCoordinate2D?
@@ -142,7 +145,7 @@ struct LocationPicker: View {
     @State private var locations = LocationAuthority()
 
     var body: some View {
-        NavigationStack {
+        AttachPanelChrome(onBack: back) {
             Map(position: $camera) {
                 UserAnnotation()
             }
@@ -165,56 +168,51 @@ struct LocationPicker: View {
                     .offset(y: -Theme.Size.crosshair / 2)
                     .allowsHitTesting(false)
             }
-            .overlay(alignment: .bottomTrailing) {
-                Button {
-                    Task { await goToMe() }
-                } label: {
-                    Image(systemName: "location.fill")
-                        .font(.body.weight(.semibold))
-                        .frame(width: Theme.Size.minimumTapTarget, height: Theme.Size.minimumTapTarget)
-                        .navigationGlass(in: .circle)
-                        .contentShape(.circle)
-                }
-                .buttonStyle(.plain)
-                .padding(Theme.Spacing.roomy)
-                .accessibilityLabel(Text(Strings.Location.myLocation))
-            }
-            .overlay(alignment: .bottomLeading) {
-                if onShareLive != nil {
-                    Button {
-                        isChoosingLiveDuration = true
-                    } label: {
-                        Label(String(app: Strings.Location.shareLive), systemImage: "location.north.circle.fill")
+        } above: {
+            HStack(spacing: Theme.Spacing.close) {
+                if isChoosingLiveDuration {
+                    liveDurations
+                } else {
+                    if onShareLive != nil {
+                        AttachPanelAction(label: Strings.Location.shareLive,
+                                          systemImage: "location.north.circle.fill",
+                                          isEnabled: !isSending) {
+                            withAnimation(.smooth(duration: Theme.Timing.chrome)) {
+                                isChoosingLiveDuration = true
+                            }
+                        }
                     }
-                    .buttonStyle(.glassSecondary)
-                    .padding(Theme.Spacing.roomy)
-                    .disabled(isSending)
+                    Spacer(minLength: 0)
+                    AttachPanelCircle(systemImage: "location.fill", label: Strings.Location.myLocation) {
+                        Task { await goToMe() }
+                    }
                 }
             }
-            .confirmationDialog(Text(Strings.Location.shareLiveFor),
-                                isPresented: $isChoosingLiveDuration,
-                                titleVisibility: .visible) {
-                Button(String(app: Strings.Location.liveFor(minutes: 15))) { shareLive(15 * 60) }
-                Button(String(app: Strings.Location.liveFor(hours: 1))) { shareLive(60 * 60) }
-                Button(String(app: Strings.Location.liveFor(hours: 8))) { shareLive(8 * 60 * 60) }
+        } action: {
+            AttachPanelAction(label: Strings.Location.send,
+                              isPrimary: true,
+                              isEnabled: centre != nil && !isSending) {
+                Task { await send() }
             }
-            .ignoresSafeArea(edges: .bottom)
-            .navigationTitle(String(app: Strings.Location.title))
-            #if !os(macOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(String(app: Strings.Location.cancel)) { dismiss() }
-                }
+        }
+    }
 
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(String(app: Strings.Location.send)) {
-                        Task { await send() }
-                    }
-                    .disabled(centre == nil || isSending)
-                }
-            }
+    private var liveDurations: some View {
+        HStack(spacing: Theme.Spacing.close) {
+            AttachPanelAction(label: Strings.Location.liveFor(minutes: 15), isEnabled: !isSending) { shareLive(15 * 60) }
+            AttachPanelAction(label: Strings.Location.liveFor(hours: 1), isEnabled: !isSending) { shareLive(60 * 60) }
+            AttachPanelAction(label: Strings.Location.liveFor(hours: 8), isEnabled: !isSending) { shareLive(8 * 60 * 60) }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text(Strings.Location.shareLiveFor))
+    }
+
+    /// With the durations open, "back" means not those; only then does it mean not this window.
+    private func back() {
+        if isChoosingLiveDuration {
+            withAnimation(.smooth(duration: Theme.Timing.chrome)) { isChoosingLiveDuration = false }
+        } else {
+            onBack()
         }
     }
 
@@ -223,7 +221,6 @@ struct LocationPicker: View {
         isSending = true
         Task {
             await onShareLive(duration)
-            dismiss()
         }
     }
 
@@ -242,7 +239,6 @@ struct LocationPicker: View {
         isSending = true
 
         await onPick(Location(latitude: centre.latitude, longitude: centre.longitude))
-        dismiss()
     }
 }
 

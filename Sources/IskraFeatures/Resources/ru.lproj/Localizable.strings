@@ -439,6 +439,9 @@
 "room.attachPhoto" = "Фото или видео";
 
 "room.attachFile" = "Файл";
+"room.attachBack" = "Назад";
+"room.attachAllPhotos" = "Все фото";
+"room.attachAddPhotos" = "Добавить (%lld)";
 
 /* The choice under the "+" that appears when a photo or video has been copied. */
 "room.pasteImage" = "Вставить фото или видео";
@@ -716,7 +719,6 @@
 
 "location.title" = "Геопозиция";
 "location.send" = "Отправить";
-"location.cancel" = "Отмена";
 "location.myLocation" = "Я здесь";
 "location.attach" = "Геопозиция";
 "message.spoken.sentLocation" = "геопозиция";
@@ -742,7 +744,6 @@
 "poll.anonymous" = "Результаты после завершения";
 "poll.anonymousFooter" = "Пока опрос идёт, никто не видит, как голосуют другие. Завершить его можете только вы.";
 "poll.send" = "Отправить";
-"poll.cancel" = "Отмена";
 "poll.chosen" = "ваш ответ";
 "message.spoken.sentPoll" = "опрос «%@»";
 

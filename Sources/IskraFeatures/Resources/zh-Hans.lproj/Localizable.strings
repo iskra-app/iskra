@@ -441,6 +441,9 @@
 "room.attachPhoto" = "照片或视频";
 
 "room.attachFile" = "文件";
+"room.attachBack" = "返回";
+"room.attachAllPhotos" = "所有照片";
+"room.attachAddPhotos" = "添加(%lld)";
 
 /* The choice under the "+" that appears when a photo or video has been copied. */
 "room.pasteImage" = "粘贴照片或视频";
@@ -719,7 +722,6 @@
 
 "location.title" = "位置";
 "location.send" = "发送";
-"location.cancel" = "取消";
 "location.myLocation" = "我的位置";
 "location.attach" = "位置";
 "message.spoken.sentLocation" = "一个位置";
@@ -745,7 +747,6 @@
 "poll.anonymous" = "结束后才公布结果";
 "poll.anonymousFooter" = "投票进行期间，谁都看不到别人投了什么。只有您可以结束它。";
 "poll.send" = "发送";
-"poll.cancel" = "取消";
 "poll.chosen" = "您的选择";
 "message.spoken.sentPoll" = "投票“%@”";
 
