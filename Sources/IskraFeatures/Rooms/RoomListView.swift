@@ -1190,9 +1190,7 @@ struct InviteRow: View {
                 }
 
                 // The buttons stand where a chat's last message does: otherwise this is the same row.
-                // "Join" is the one filled answer; "Decline" is the quiet one beside it (`QuietAnswerStyle`).
-                // The row used to carry a green pill and a red pill, the loudest thing in the list.
-                // The old reasoning follows, for the equal size and the shape of the pair.
+                // Green and red, and neither one nudged ahead of the other — see `AnswerStyle`.
                 // The two used to be a filled "Join" beside a bordered "Decline", which is the
                 // shape of a screen with one action and a way out of it. This is not that: both
                 // are real answers, and the row was quietly nudging towards one of them while
@@ -1221,7 +1219,7 @@ struct InviteRow: View {
                         }
 
                     Button(String(app: Strings.RoomList.Invite.decline), action: onDecline)
-                        .buttonStyle(.quietAnswer)
+                        .buttonStyle(.answer(.declining))
 
                     Spacer(minLength: 0)
                 }
