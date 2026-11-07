@@ -1,6 +1,7 @@
 import Testing
 import SwiftUI
 import Foundation
+import MatrixRustSDK
 @testable import IskraCore
 @testable import IskraDesign
 @testable import IskraFeatures
@@ -232,6 +233,87 @@ struct MessageRowLayoutTests {
                 "the plain column came out \(compact.size.height)pt against the bubbles' \(bubbles.size.height)pt — it is not saving anything")
     }
     #endif
+
+    /// Words that fit under a picture stay on one line, in a row that offers a set of a fixed width
+    /// less than the set is wide. And words too long for the picture widen the two of them together.
+    @Test("a caption takes the picture's width, and a long one takes the picture with it",
+          arguments: [("Почему я не удивлена", CGFloat(280), CGFloat(280)),
+                      ("Мы запускаем новое медиа о нейросетях, вот так", CGFloat(280), .infinity)])
+    func captionAndPicture(caption: String, least: CGFloat, most: CGFloat) throws {
+        #if os(macOS)
+        let sizes = CaptionSizes()
+        let row = HStack(alignment: .bottom, spacing: Theme.Spacing.close) {
+            AlbumBubbleLayout {
+                Color.red
+                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { sizes.picture = $0 }
+                Text(caption)
+                    .font(.body)
+                    .onGeometryChange(for: CGSize.self) { $0.size } action: { sizes.caption = $0 }
+            }
+            Text(verbatim: "13:28").fixedSize()
+            Spacer(minLength: 0)
+        }
+        .frame(width: 390)
+
+        let host = NSHostingView(rootView: row)
+        host.frame = CGRect(x: 0, y: 0, width: 390, height: 500)
+        host.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+
+        #expect(sizes.picture >= least)
+        #expect(sizes.picture <= most)
+        #expect(sizes.caption.width <= sizes.picture)
+        // One line of body text, whatever size that is on this machine.
+        #expect(sizes.caption.height < 30, "\(caption) came out \(sizes.caption), under \(sizes.picture)")
+        #endif
+    }
+
+    /// A voice message on either side, with its time inside, and a sticker under a quote wider than
+    /// it, with its time beside the sticker and not beside the quote.
+    @Test("a voice message carries its time, and a sticker keeps its own beside it")
+    func voiceAndSticker() throws {
+        #if os(macOS)
+        let attachment = Attachment(source: try MediaSource.fromUrl(url: "mxc://x/y"),
+                                    thumbnailSource: nil,
+                                    filename: "voice.ogg",
+                                    caption: nil,
+                                    width: 100,
+                                    height: 100,
+                                    duration: 30,
+                                    mimeType: "audio/ogg",
+                                    blurhash: nil)
+        let shape = (0..<48).map { Float(abs(sin(Double($0) / 3))) }
+        var sticker = message("", isOwn: true, at: 2, delivery: .sent, kind: .sticker(attachment))
+        sticker.replyTo = ReplyPreview(eventID: "$1", senderName: "Мария Миличникова", text: "Устала очень правда, правда очень")
+
+        let image = try #require(rendered([
+            message("", isOwn: false, at: 0, kind: .voice(attachment, waveform: shape)),
+            message("", isOwn: true, at: 1, delivery: .read, kind: .voice(attachment, waveform: shape)),
+            sticker
+        ]) { message in
+            // Without the row's hold, whose AppKit view the renderer draws as a placeholder.
+            HStack {
+                if message.isOwn { Spacer() }
+                MessageContent(message: message, style: message.isOwn ? .own : .incoming,
+                               playingDiameter: 200, onOpenReply: { _ in }, onVote: { _ in })
+                if !message.isOwn { Spacer() }
+            }
+            .padding(.vertical, Theme.Spacing.close)
+        })
+        #expect(image.size.height > 100)
+
+        guard let directory = outputDirectory else { return }
+        let tiff = try #require(image.tiffRepresentation)
+        let bitmap = try #require(NSBitmapImageRep(data: tiff))
+        let png = try #require(bitmap.representation(using: .png, properties: [:]))
+        try png.write(to: directory.appending(component: "voice-and-sticker.png"))
+        #endif
+    }
+
+    private final class CaptionSizes {
+        var picture: CGFloat = 0
+        var caption: CGSize = .zero
+    }
 
     private func render(isOneToOne: Bool, named name: String) throws {
         try render(named: name) { message in

@@ -718,18 +718,23 @@ public enum Theme {
         /// quote read as one.
         public static let quoteBar: CGFloat = 4
 
-        /// The play button on a voice message, and the tallest a bar of its waveform may be.
-        ///
-        /// The button is smaller than `minimumTapTarget` and it is allowed to be: it sits
-        /// *inside* a bubble whose every part is already a tap target — the bubble takes the
-        /// long press, the double tap, the reaction — and growing this to 44pt would push the
-        /// waveform out of the bubble rather than making anything easier to hit.
+        /// A small round button inside a bubble: smaller than `minimumTapTarget`, because every
+        /// part of a bubble is already a tap target, and 44pt would push what is beside it out.
         public static let voiceButton: CGFloat = 28
+
+        /// A voice message's round play button, filled, as tall as the bars and the time under them.
+        public static let voicePlay: CGFloat = 48
+
+        /// The tile that asks for a voice message's words.
+        public static let voiceWordsWidth: CGFloat = 40
+        public static let voiceWordsHeight: CGFloat = 32
 
         /// A music file's bubble: how wide its name and bar are at least, and how tall the strip
         /// the bar is dragged along — taller than the bar, so a thumb can find it.
         public static let audioTrack: CGFloat = 160
         public static let audioScrubber: CGFloat = 20
+
+        /// The tallest a bar of a voice message's waveform may be.
         public static let waveform: CGFloat = 24
 
         /// One bar of that waveform: how wide it is drawn, and the shortest it may be so that a
@@ -760,6 +765,10 @@ public enum Theme {
 
         /// How wide a photo or a video still is drawn in the timeline.
         public static let picture: CGFloat = 280
+
+        /// How wide a long caption may draw its picture out. Only a wide window ever gets here:
+        /// on a phone the conversation runs out first.
+        public static let captionedPictureMaximum: CGFloat = 420
 
         /// How much of the conversation's width a message may take before the far side of
         /// the screen starts pushing back.

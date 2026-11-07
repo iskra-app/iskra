@@ -168,7 +168,7 @@ struct MessageRow: View {
                 // The clock sits on the outside of the bubble — away from the edge the
                 // conversation is anchored to — so a column of times lines up quietly
                 // beside the messages instead of cutting between them.
-                timestamp
+                if hasClockColumn { timestamp }
             }
 
             // Only the last message in a run carries an avatar, at the foot of it — Telegram's:
@@ -227,7 +227,7 @@ struct MessageRow: View {
             }
 
             if !message.isOwn {
-                timestamp
+                if hasClockColumn { timestamp }
                 Spacer(minLength: emptyColumn)
             }
         }
@@ -252,6 +252,33 @@ struct MessageRow: View {
             // goes up without them.
             // Scaled about the same centre as the bubble, being exactly its size.
             .overlay { reactions.sinksUnderHold(isPressed) }
+            .overlay(alignment: message.isOwn ? .bottomTrailing : .bottomLeading) {
+                if let stickerWidth {
+                    let distance = stickerWidth + Theme.Spacing.close
+                    timestamp
+                        .offset(x: message.isOwn ? -distance : distance)
+                        .allowsHitTesting(false)
+                }
+            }
+    }
+
+    /// How wide the sticker is, where the clock stands beside the sticker itself.
+    ///
+    /// A quote over a sticker is wider than the sticker, and the column they share is what the clock
+    /// stands beside — so with a quote it stood across a gap as wide as the difference, next to
+    /// nothing, with the transparency around the sticker adding to it. Laid over the message and
+    /// moved out by the sticker's own width, it is the same distance from a sticker with a quote as
+    /// from one without. Not while the failure badge is up: that takes the same place.
+    private var stickerWidth: CGFloat? {
+        guard case let .sticker(attachment) = message.kind, message.delivery?.hasFailed != true else { return nil }
+        return StickerView.size(of: attachment).width
+    }
+
+    /// Whether the time stands outside the message, in the column beside it. A sticker has it laid
+    /// over (`stickerWidth`), and a voice message carries it inside (`VoiceMessageView.marks`).
+    private var hasClockColumn: Bool {
+        if case .voice = message.kind { return false }
+        return stickerWidth == nil
     }
 
     // MARK: - Reactions
@@ -935,9 +962,23 @@ struct VoiceMessageView: View {
     let attachment: Attachment
     let waveform: [Float]
 
+    /// What it is dressed in, which decides its one colour: the accent on a grey bubble and on none,
+    /// the bubble's own ink on one that is the accent already.
+    var style: BubbleStyle = .incoming
+
+    /// The message whose time goes in the bubble's corner, under the button for its words. Nil in
+    /// the compact column, where the time has a place of its own at the end of the line.
+    var marks: Message?
+
     @Environment(\.mediaLoader) private var loader
+    @Environment(\.accent) private var accent
+    @Environment(\.colorScheme) private var colorScheme
 
     @State private var playback = AudioPlayback()
+
+    private var ink: Color {
+        style == .own ? accent.onBubbleColor : accent.textColor(in: colorScheme)
+    }
 
     /// The words, once asked for — see `VoiceTranscriber`, which keeps them in memory only.
     @State private var transcript: Transcript = .hidden
@@ -949,10 +990,15 @@ struct VoiceMessageView: View {
         case failed(VoiceTranscriber.Failure)
     }
 
-    /// Forty bars, whatever the sender sent. A voice message is a bubble in a conversation, and
-    /// a hundred-and-twenty two-point bars in one is a barcode.
+    /// Thirty bars, whatever the sender sent: a voice message is a bubble in a conversation, and a
+    /// hundred-and-twenty two-point bars in one is a barcode. Each is the loudest of the stretch it
+    /// stands for, so the end of a long message is drawn too and not just its first thirty samples.
     private var bars: [Float] {
-        Array(waveform.prefix(40))
+        let count = 30
+        guard waveform.count > count else { return waveform }
+        return (0..<count).map { bar in
+            waveform[bar * waveform.count / count..<(bar + 1) * waveform.count / count].max() ?? 0
+        }
     }
 
     var body: some View {
@@ -1022,10 +1068,13 @@ struct VoiceMessageView: View {
                     ProgressView().controlSize(.mini)
                 } else {
                     Image(systemName: isShowingWords ? "text.bubble.fill" : "text.bubble")
-                        .font(.footnote.weight(.semibold))
+                        .font(.body.weight(.medium))
                 }
             }
-            .frame(width: Theme.Size.voiceButton, height: Theme.Size.voiceButton)
+            .foregroundStyle(ink)
+            .frame(width: Theme.Size.voiceWordsWidth, height: Theme.Size.voiceWordsHeight)
+            .background(ink.opacity(Theme.Backdrop.wash),
+                        in: RoundedRectangle(cornerRadius: Theme.Spacing.normal, style: .continuous))
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
@@ -1037,56 +1086,70 @@ struct VoiceMessageView: View {
         return false
     }
 
-    private var player: some View {
-        HStack(spacing: Theme.Spacing.close) {
-            Button {
-                Task { await playback.toggle(attachment, using: loader) }
-            } label: {
+    private var playButton: some View {
+        Button {
+            Task { await playback.toggle(attachment, using: loader) }
+        } label: {
+            ZStack {
+                Circle().fill(style == .own ? accent.onBubbleColor : accent.color)
+
+                // On the bubble's own colour when the circle is its ink, so the two change places.
                 Group {
                     if playback.isLoading {
                         ProgressView()
                             .controlSize(.small)
                     } else {
                         Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill")
-                            .font(.body)
+                            .font(.title3)
                             // The glyph swaps under the thumb that pressed it, so it swaps in
                             // place rather than blinking.
                             .contentTransition(.symbolEffect(.replace))
                     }
                 }
-                .frame(width: Theme.Size.voiceButton, height: Theme.Size.voiceButton)
-                // Drawn at 28pt and *pressed* at 44. The glyph is small because a play button in a
-                // bubble should be small; the target is 44 because that is what Apple asks for and
-                // what a thumb actually is. `Theme.swift` defended the 28 by saying the whole
-                // bubble is already a tap target — but the bubble's tap is a context menu and a
-                // double-tap reaction, and this button is the only way to *hear the message*.
-                .contentShape(.circle)
-                .frame(width: Theme.Size.minimumTapTarget, height: Theme.Size.minimumTapTarget)
-                .contentShape(.circle)
+                .foregroundStyle(style == .own ? AnyShapeStyle(accent.color) : accent.foreground(in: colorScheme))
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text(playback.isPlaying ? Strings.Message.Media.pause
-                                                        : Strings.Message.Media.play))
+            .frame(width: Theme.Size.voicePlay, height: Theme.Size.voicePlay)
+            .contentShape(.circle)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(playback.isPlaying ? Strings.Message.Media.pause
+                                                    : Strings.Message.Media.play))
+    }
 
-            HStack(spacing: 2) {
-                ForEach(Array(bars.enumerated()), id: \.offset) { index, sample in
-                    Capsule()
-                        .frame(width: Theme.Size.waveformBar,
-                               height: max(Theme.Size.waveformBarMinimum, CGFloat(sample) * Theme.Size.waveform))
-                        // Played or not. Bars are drawn in the bubble's own ink either way —
-                        // faint ahead of the playhead, solid behind it — so this works on a
-                        // coloured bubble and a grey one without knowing which it is in.
-                        .opacity(hasPlayed(index) ? 1 : 0.35)
+    private var player: some View {
+        HStack(alignment: .center, spacing: Theme.Spacing.close) {
+            playButton
+
+            VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                HStack(spacing: 2) {
+                    ForEach(Array(bars.enumerated()), id: \.offset) { index, sample in
+                        Capsule()
+                            .fill(ink)
+                            .frame(width: Theme.Size.waveformBar,
+                                   height: max(Theme.Size.waveformBarMinimum, CGFloat(sample) * Theme.Size.waveform))
+                            // Played or not: faint ahead of the playhead, solid behind it.
+                            .opacity(hasPlayed(index) ? 1 : 0.35)
+                    }
+                }
+                .frame(height: Theme.Size.waveform)
+                .animation(.linear(duration: 0.05), value: playback.progress)
+
+                if let duration = attachment.duration {
+                    Text(Duration.seconds(duration), format: .time(pattern: .minuteSecond))
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(ink)
                 }
             }
-            .animation(.linear(duration: 0.05), value: playback.progress)
 
-            if let duration = attachment.duration {
-                Text(Duration.seconds(duration), format: .time(pattern: .minuteSecond))
-                    .font(.caption.monospacedDigit())
+            VStack(alignment: .trailing, spacing: Theme.Spacing.tight) {
+                transcribeButton
+
+                if let marks {
+                    // In the bubble's ink and not the one for standing on a wallpaper.
+                    MessageMarks(message: marks)
+                        .environment(\.hasWallpaper, false)
+                }
             }
-
-            transcribeButton
         }
     }
 
@@ -1125,7 +1188,7 @@ struct StickerView: View {
     /// out from the event rather than from the bytes, so the row is the right size before the
     /// picture lands and the conversation does not jump when it does. A sticker whose sender
     /// sent no dimensions is assumed square, which is what almost all of them are.
-    private var size: CGSize {
+    static func size(of attachment: Attachment, side: CGFloat = Theme.Size.sticker) -> CGSize {
         let ratio = CGFloat(attachment.aspectRatio ?? 1)
         guard ratio > 0 else { return CGSize(width: side, height: side) }
 
@@ -1150,7 +1213,8 @@ struct StickerView: View {
                 ProgressView()
             }
         }
-        .frame(width: size.width, height: size.height)
+        .frame(width: Self.size(of: attachment, side: side).width,
+               height: Self.size(of: attachment, side: side).height)
         .task(id: attachment.mediaID) {
             guard image == nil, let loader else { return }
             do {

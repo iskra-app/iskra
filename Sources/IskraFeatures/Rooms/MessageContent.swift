@@ -128,7 +128,10 @@ struct MessageContent: View {
             }
 
         case let .voice(attachment, waveform):
-            bubble { VoiceMessageView(attachment: attachment, waveform: waveform) }
+            bubble {
+                VoiceMessageView(attachment: attachment, waveform: waveform, style: style,
+                                 marks: style == .plain ? nil : message)
+            }
 
         // A photo or a video with words under it is drawn as an album of one: the bubble's own
         // fill, no outline, the caption where a text message's words would be — the same as an

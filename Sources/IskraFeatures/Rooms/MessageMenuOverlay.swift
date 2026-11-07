@@ -122,80 +122,76 @@ struct MessageMenuOverlay: View {
                         layout: MessageMenuLayout) -> some View {
         let alignment: HorizontalAlignment = presentation.isOwn ? .trailing : .leading
 
-        // One container for both sheets of glass, which is what keeps them from stacking into
-        // soup where they nearly touch — see `IskraDesign/Glass.swift`.
-        NavigationGlassGroup(spacing: MessageMenu.gap) {
-            VStack(alignment: alignment, spacing: MessageMenu.gap) {
-                if presentation.canReact {
-                    if isPickingEmoji {
-                        // Wider than the column it hangs off, and slid back onto the screen when
-                        // the message it belongs to is near an edge — see
-                        // `MessageMenuLayout.emojiWidth`. The `VStack`'s alignment puts the
-                        // panel's anchored edge where the menu's is, whatever its width, so the
-                        // offset is only ever the correction.
-                        EmojiPanel(width: layout.emojiWidth,
-                                   mine: presentation.mine,
-                                   recent: RecentEmoji.list(from: recent),
-                                   onPick: { react($0, in: presentation) })
-                            .offset(x: layout.emojiOffset)
-                            .transition(.scale(scale: 0.9, anchor: .bottom).combined(with: .opacity))
-                    } else {
-                        // As wide as its own seven cells: wider than the column of verbs, so
-                        // the targets are never squeezed, and no wider, so the emoji sit
-                        // together as one strip. Slid onto the screen like the panel.
-                        ReactionBar(width: layout.barWidth,
-                                    mine: presentation.mine,
-                                    growsFromTrailing: presentation.isOwn,
-                                    isFilled: presenter.isFilled,
-                                    onPick: { react($0, in: presentation) },
-                                    onMore: {
-                                        withAnimation(Theme.Timing.menuOpens) { isPickingEmoji = true }
-                                    })
-                            .offset(x: layout.barOffset)
-                            // Unrolled from the message's own corner, as Telegram's is: the capsule
-                            // opens sideways out of the edge the bubble hangs from, and the emoji
-                            // in it pop up one after another from that side (`ReactionBar`).
-                            .opacity(presenter.isOut ? 1 : 0)
-                            .animation(presenter.isOut ? Theme.Timing.menuBarFades : Theme.Timing.menuCloses,
-                                       value: presenter.isOut)
-                            .scaleEffect(presenter.isOut ? 1 : 0.2,
-                                         anchor: presentation.isOwn ? .bottomTrailing : .bottomLeading)
-                            .transition(.scale(scale: 0.9, anchor: .bottom).combined(with: .opacity))
-                    }
-                }
-
-                lifted(presentation, layout: layout)
-
-                // While the emoji panel is open the verbs stand aside. Both at once is a screen
-                // with no conversation left on it, and the panel is a detour that ends in a
-                // reaction rather than in a menu item.
-                if !isPickingEmoji {
-                    // Grown out of the message's corner, from almost nothing — Telegram scales its
-                    // actions from 0.01 at the edge nearest the bubble and shows them at once (a
-                    // 0.05 s fade), so what the eye follows is the list *unfolding* from the message
-                    // and not a list fading up somewhere near it. Going, it folds back the same way
-                    // and fades with the fold.
-                    actions(presentation, layout: layout)
+        VStack(alignment: alignment, spacing: MessageMenu.gap) {
+            if presentation.canReact {
+                if isPickingEmoji {
+                    // Wider than the column it hangs off, and slid back onto the screen when
+                    // the message it belongs to is near an edge — see
+                    // `MessageMenuLayout.emojiWidth`. The `VStack`'s alignment puts the
+                    // panel's anchored edge where the menu's is, whatever its width, so the
+                    // offset is only ever the correction.
+                    EmojiPanel(width: layout.emojiWidth,
+                               mine: presentation.mine,
+                               recent: RecentEmoji.list(from: recent),
+                               onPick: { react($0, in: presentation) })
+                        .offset(x: layout.emojiOffset)
+                        .transition(.scale(scale: 0.9, anchor: .bottom).combined(with: .opacity))
+                } else {
+                    // As wide as its own seven cells: wider than the column of verbs, so
+                    // the targets are never squeezed, and no wider, so the emoji sit
+                    // together as one strip. Slid onto the screen like the panel.
+                    ReactionBar(width: layout.barWidth,
+                                mine: presentation.mine,
+                                growsFromTrailing: presentation.isOwn,
+                                isFilled: presenter.isFilled,
+                                onPick: { react($0, in: presentation) },
+                                onMore: {
+                                    withAnimation(Theme.Timing.menuOpens) { isPickingEmoji = true }
+                                })
+                        .offset(x: layout.barOffset)
+                        // Unrolled from the message's own corner, as Telegram's is: the capsule
+                        // opens sideways out of the edge the bubble hangs from, and the emoji
+                        // in it pop up one after another from that side (`ReactionBar`).
                         .opacity(presenter.isOut ? 1 : 0)
-                        .animation(presenter.isOut ? Theme.Timing.menuListShows : Theme.Timing.menuCloses,
+                        .animation(presenter.isOut ? Theme.Timing.menuBarFades : Theme.Timing.menuCloses,
                                    value: presenter.isOut)
-                        .scaleEffect(presenter.isOut ? 1 : 0.01,
-                                     anchor: presentation.isOwn ? .topTrailing : .topLeading)
-                        // And standing aside for the emoji panel and back, while the menu is open.
-                        .transition(.asymmetric(
-                            insertion: .scale(scale: 0.01, anchor: presentation.isOwn ? .topTrailing : .topLeading)
-                                .combined(with: .opacity.animation(Theme.Timing.menuListShows)),
-                            removal: .scale(scale: 0.01, anchor: presentation.isOwn ? .topTrailing : .topLeading)
-                                .combined(with: .opacity)))
+                        .scaleEffect(presenter.isOut ? 1 : 0.2,
+                                     anchor: presentation.isOwn ? .bottomTrailing : .bottomLeading)
+                        .transition(.scale(scale: 0.9, anchor: .bottom).combined(with: .opacity))
                 }
             }
-            .frame(width: layout.width,
-                   alignment: presentation.isOwn ? .trailing : .leading)
-            // VoiceOver stays inside the menu while it is open, the way it does inside the
-            // system's. Without this the swipe after "Reply" is the conversation behind the
-            // dimming — a list of messages the user cannot see and cannot get out of.
-            .accessibilityAddTraits(.isModal)
+
+            lifted(presentation, layout: layout)
+
+            // While the emoji panel is open the verbs stand aside. Both at once is a screen
+            // with no conversation left on it, and the panel is a detour that ends in a
+            // reaction rather than in a menu item.
+            if !isPickingEmoji {
+                // Grown out of the message's corner, from almost nothing — Telegram scales its
+                // actions from 0.01 at the edge nearest the bubble and shows them at once (a
+                // 0.05 s fade), so what the eye follows is the list *unfolding* from the message
+                // and not a list fading up somewhere near it. Going, it folds back the same way
+                // and fades with the fold.
+                actions(presentation, layout: layout)
+                    .opacity(presenter.isOut ? 1 : 0)
+                    .animation(presenter.isOut ? Theme.Timing.menuListShows : Theme.Timing.menuCloses,
+                               value: presenter.isOut)
+                    .scaleEffect(presenter.isOut ? 1 : 0.01,
+                                 anchor: presentation.isOwn ? .topTrailing : .topLeading)
+                    // And standing aside for the emoji panel and back, while the menu is open.
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.01, anchor: presentation.isOwn ? .topTrailing : .topLeading)
+                            .combined(with: .opacity.animation(Theme.Timing.menuListShows)),
+                        removal: .scale(scale: 0.01, anchor: presentation.isOwn ? .topTrailing : .topLeading)
+                            .combined(with: .opacity)))
+            }
         }
+        .frame(width: layout.width,
+               alignment: presentation.isOwn ? .trailing : .leading)
+        // VoiceOver stays inside the menu while it is open, the way it does inside the
+        // system's. Without this the swipe after "Reply" is the conversation behind the
+        // dimming — a list of messages the user cannot see and cannot get out of.
+        .accessibilityAddTraits(.isModal)
     }
 
     /// The message, exactly where it was, and now the only sharp thing on screen.
@@ -249,7 +245,12 @@ struct MessageMenuOverlay: View {
                 // from, so it stays under the menu's own edge.
                 let scale = layout.contentHeight / (presentation.anchor.height + 1)
                 let corner: UnitPoint = presentation.isOwn ? .topTrailing : .topLeading
+                //
+                // As one layer, so that the bubble, the picture and the words cannot come apart: on
+                // a phone the fill and the clip went down to scale while the picture and the caption
+                // stayed at full size, and spilled over the bubble and onto the verbs below it.
                 message
+                    .compositingGroup()
                     .scaleEffect(scale, anchor: corner)
                     .frame(width: width * scale, height: layout.contentHeight,
                            alignment: presentation.isOwn ? .topTrailing : .topLeading)

@@ -52,7 +52,10 @@ struct RecoveryBanner: View {
                 // under 44pt, and this is a button. It is the one control in the app a person is
                 // meant to hit while their mind is on something else.
                 .frame(maxWidth: .infinity, minHeight: Theme.Size.minimumTapTarget)
+                // The wash alone is see-through, and the chats scroll under this strip: a material
+                // beneath it takes their words away, as under `OfflineBanner`.
                 .background(.orange.opacity(Theme.Backdrop.wash))
+                .background(.bar)
                 .contentShape(.rect)
             }
             .buttonStyle(.plain)
