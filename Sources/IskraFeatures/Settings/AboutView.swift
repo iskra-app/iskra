@@ -14,8 +14,6 @@ struct AboutView: View {
     /// The homeserver the session on screen talks to, for the developers' corner of `BetaView`.
     var homeserver: String?
 
-    @Environment(\.accent) private var accent
-
     /// Whether the beta features are pushed — by three taps on the spark, which is the only way
     /// to them. See `BetaView`.
     @State private var isShowingBeta = false
@@ -89,7 +87,7 @@ struct AboutView: View {
             }
         }
         .formStyle(.groupedRows)
-        .tint(accent.color)
+        .tint(AccentInk())
         .navigationTitle(Text(Strings.About.title))
         // Bound to a flag rather than a value, because nothing on this screen is a row that leads
         // there: the way in is a gesture on the icon. `BetaView` reads no `dismiss` — this stack

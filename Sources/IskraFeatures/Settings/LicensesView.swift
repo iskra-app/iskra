@@ -10,7 +10,6 @@ import IskraDesign
 /// opens the licence's *text*, bundled with the app, rather than a link to a page that may not
 /// be there tomorrow and cannot be read offline.
 struct LicensesView: View {
-    @Environment(\.accent) private var accent
 
     /// The licence whose text is pushed over this screen — a flag, so Escape can take it back
     /// (`escapeKey`).
@@ -32,7 +31,7 @@ struct LicensesView: View {
             }
         }
         .formStyle(.groupedRows)
-        .tint(accent.color)
+        .tint(AccentInk())
         .navigationTitle(Text(Strings.About.licences))
         // Neither screen reads `dismiss` — this stack can be the sidebar's, see CLAUDE.md.
         .navigationDestination(item: $opened) { licence in
@@ -135,7 +134,6 @@ struct Licence: Identifiable, Hashable {
 
 /// The text of one licence, with the way to the project it belongs to.
 struct LicenceTextView: View {
-    @Environment(\.accent) private var accent
 
     let licence: Licence
 
@@ -166,7 +164,7 @@ struct LicenceTextView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(Theme.Spacing.roomy)
         }
-        .tint(accent.color)
+        .tint(AccentInk())
         .navigationTitle(Text(verbatim: licence.name))
     }
 

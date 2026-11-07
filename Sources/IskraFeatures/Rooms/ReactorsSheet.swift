@@ -204,6 +204,7 @@ extension View {
         sheet(item: request) { request in
             if let load {
                 ReactorsSheet(reactions: reactions, filter: request.filter, load: load, loadReaders: loadReaders)
+                    .interfaceWash()
             }
         }
     }

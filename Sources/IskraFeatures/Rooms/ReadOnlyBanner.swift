@@ -35,8 +35,6 @@ struct ReadOnlyBanner: View {
 struct BlockedBanner: View {
     let unblock: () -> Void
 
-    @Environment(\.accent) private var accent
-
     var body: some View {
         HStack(spacing: Theme.Spacing.normal) {
             Image(systemName: "hand.raised.fill")
@@ -53,7 +51,7 @@ struct BlockedBanner: View {
             Button(String(app: Strings.Settings.unblock), action: unblock)
                 .font(.subheadline.weight(.semibold))
                 .buttonStyle(.plain)
-                .foregroundStyle(accent.color)
+                .foregroundStyle(.accentInk)
         }
         .padding(.horizontal, Theme.Spacing.roomy)
         .padding(.vertical, Theme.Spacing.normal)

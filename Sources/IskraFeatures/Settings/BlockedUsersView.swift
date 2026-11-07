@@ -34,7 +34,7 @@ struct BlockedUsersView: View {
                     } label: {
                         Text(Strings.Settings.unblock)
                     }
-                    .tint(.accentColor)
+                    .tint(.primary)
                 }
             }
         }

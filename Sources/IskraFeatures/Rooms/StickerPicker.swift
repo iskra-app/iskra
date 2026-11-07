@@ -147,7 +147,7 @@ struct StickerPicker: View {
                             .font(.caption.weight(.semibold))
                     }
                     .buttonStyle(.plain)
-                    .foregroundStyle(accent.color)
+                    .foregroundStyle(.accentInk)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -205,7 +205,7 @@ struct StickerPicker: View {
                     tab(id: Self.recentID, label: Text(Strings.Stickers.recent)) {
                         Image(systemName: "clock")
                             .font(.body)
-                            .foregroundStyle(selected == Self.recentID ? AnyShapeStyle(accent.color)
+                            .foregroundStyle(selected == Self.recentID ? AnyShapeStyle(.primary)
                                                                        : AnyShapeStyle(.secondary))
                     }
                 }

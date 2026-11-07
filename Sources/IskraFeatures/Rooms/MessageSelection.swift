@@ -63,13 +63,11 @@ struct MessageSelectionBar: View {
     let onForward: () -> Void
     let onCopy: () -> Void
 
-    @Environment(\.accent) private var accent
-
     var body: some View {
         HStack(spacing: Theme.Spacing.normal) {
             Button(String(app: Strings.Message.Selection.cancel), action: onCancel)
                 .buttonStyle(.plain)
-                .foregroundStyle(accent.color)
+                .foregroundStyle(.accentInk)
 
             Text(Strings.Message.Selection.count(count))
                 .font(.subheadline.weight(.semibold))
@@ -101,7 +99,7 @@ struct MessageSelectionBar: View {
                 .contentShape(.rect)
         }
         .buttonStyle(.plain)
-        .foregroundStyle(enabled ? (tint ?? accent.color) : Color.secondary)
+        .foregroundStyle(enabled ? (tint ?? Color.primary) : Color.secondary)
         .disabled(!enabled || count == 0)
         .accessibilityLabel(Text(title))
     }
@@ -111,12 +109,10 @@ struct MessageSelectionBar: View {
 struct SelectionMark: View {
     let isOn: Bool
 
-    @Environment(\.accent) private var accent
-
     var body: some View {
         Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
             .font(.title3)
-            .foregroundStyle(isOn ? AnyShapeStyle(accent.color) : AnyShapeStyle(.secondary))
+            .foregroundStyle(isOn ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
             .contentTransition(.symbolEffect(.replace))
             .accessibilityHidden(true)
     }

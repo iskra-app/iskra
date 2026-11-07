@@ -107,6 +107,7 @@ struct HomeIconPicker: View {
             }
         }
         .frame(width: side, height: side)
+            .outsideWash(cornerRadius: radius)
             .overlay {
                 // A ring on the chosen one, set off the tile so it reads as a ring rather than
                 // as an edge the artwork happens to have — the same device the colour swatches

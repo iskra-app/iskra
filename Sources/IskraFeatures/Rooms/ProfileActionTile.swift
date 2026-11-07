@@ -30,7 +30,6 @@ struct ProfileActionTileLabel: View {
     let systemImage: String
     var isBusy = false
 
-    @Environment(\.accent) private var accent
     @Environment(\.isEnabled) private var isEnabled
 
     /// The symbol, scaled with its circle — see `Theme.Size.profileAction`.
@@ -48,7 +47,7 @@ struct ProfileActionTileLabel: View {
                 } else {
                     Image(systemName: systemImage)
                         .font(Self.symbol.weight(.medium))
-                        .foregroundStyle(accent.color)
+                        .foregroundStyle(.primary)
                         .contentTransition(.symbolEffect(.replace))
                 }
             }

@@ -15,7 +15,7 @@ extension View {
                                   onDismiss: (() -> Void)? = nil,
                                   @ViewBuilder content: @escaping () -> Content) -> some View {
         sheet(isPresented: isPresented, onDismiss: onDismiss) {
-            content().onPage()
+            content().onPage().interfaceWash()
         }
     }
 
@@ -23,7 +23,7 @@ extension View {
                                                       onDismiss: (() -> Void)? = nil,
                                                       @ViewBuilder content: @escaping (Item) -> Content) -> some View {
         sheet(item: item, onDismiss: onDismiss) { value in
-            content(value).onPage()
+            content(value).onPage().interfaceWash()
         }
     }
 

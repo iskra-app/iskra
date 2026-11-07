@@ -62,11 +62,6 @@ public struct IskraRootView: View {
     /// not, which is why this is applied as an *optional* scheme and not as a flag.
     @AppStorage(AppearanceMode.storageKey) private var appearance: AppearanceMode = .default
 
-    /// Whether the accent is washed across the whole interface — every screen's background, the
-    /// words on it, the message bubbles — and not only spent on the content that is already the
-    /// user's. See the wash below, and `AccentTheme.tintsInterfaceKey` for why it is off by default.
-    @AppStorage(AccentTheme.tintsInterfaceKey) private var tintsInterface = false
-
     /// Whether the app is in the demo rather than the real account — see `SignInMockServer`. Watched
     /// here because switching it swaps the whole session, and this is the view that owns one.
     @AppStorage(BetaFeatures.mockBackendKey) private var mockBackend = false
@@ -520,41 +515,11 @@ public struct IskraRootView: View {
         } message: {
             Text(Strings.Session.endedMessage)
         }
-        // "Тонировать интерфейс": a single translucent sheet of the accent, laid over the whole
-        // app so that every screen's background, the words on it and the bubbles all take a breath
-        // of the colour at once — not the accent spent only on the content that is already yours,
-        // but the whole surface bathed in it.
-        //
-        // It is an *overlay* and not a background, and that is not a stylistic choice. The screens
-        // in this app sit on the system's own grouped-list and page backgrounds, which are drawn
-        // opaque and answer to no colour we hand down — a tint laid *under* them would never be
-        // seen. Laid *over* everything, ignoring the safe area and deaf to touches, the wash reaches
-        // the system's backgrounds, the content, and the text with the one lever that reaches them
-        // all. Faint enough (`Theme.Tint.interface`) that it colours rather than dims. The chrome is
-        // handed the accent in the same breath, so the tinted app is tinted through and through
-        // rather than washed content under monochrome controls.
-        //
-        // Off, the app is exactly what it was: `.primary` chrome and no wash — the accent spent only
-        // where it means something, the messages you sent, the reactions that are yours, the send
-        // button about to make one.
-        //
-        // `.mono` is allowed here, and used not to be: the switch was disabled on the colourless
-        // theme because its colour *is* `.primary`, so the wash dims the app rather than colouring
-        // it. True, and not a reason to refuse — that dimming is what a black-and-white theme
-        // spreading over the interface looks like, and somebody who picks the colourless theme and
-        // then asks for it everywhere has asked for something that makes sense. It is washed with a
-        // lighter hand instead, because darkness has no hue to spend and starts eating the words at
-        // the opacity a colour is fine at. See `AccentTheme.washOpacity`.
-        .tint(tintsInterface ? accent.color : .primary)
-        .overlay {
-            if tintsInterface {
-                accent.color
-                    .opacity(accent.washOpacity)
-                    .ignoresSafeArea()
-                    .allowsHitTesting(false)
-            }
-        }
-        .animation(.smooth(duration: Theme.Timing.reaction), value: tintsInterface)
+        // The chrome is ink, with the wash on or off: icons and plain buttons take the colour of the
+        // text, and the accent is spent on what is filled with it (your messages, the main button,
+        // the unread marks). Yellow icons on a light page were not there at all. See `AccentInk`.
+        .tint(.primary)
+        .interfaceWash()
         .environment(\.appLock, appLock)
         // The widget hides its faces behind the lock, so turning the lock on or off is something it
         // has to be told about at once — not with the next message.

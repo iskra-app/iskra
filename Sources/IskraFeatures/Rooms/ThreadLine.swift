@@ -10,8 +10,6 @@ struct ThreadLine: View {
     let thread: ThreadSummaryPreview
     let onOpen: () -> Void
 
-    @Environment(\.accent) private var accent
-
     var body: some View {
         Button(action: onOpen) {
             HStack(spacing: Theme.Spacing.tight) {
@@ -29,7 +27,7 @@ struct ThreadLine: View {
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.tertiary)
             }
-            .foregroundStyle(accent.color)
+            .foregroundStyle(.accentInk)
             .padding(.horizontal, Theme.Spacing.close)
             .padding(.vertical, Theme.Spacing.tight)
             .contentShape(.rect)

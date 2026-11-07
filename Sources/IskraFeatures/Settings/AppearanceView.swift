@@ -47,7 +47,7 @@ struct AppearanceView: View {
 
     /// Whether the colour is let out of the messages and onto the chrome as well. Written here and
     /// read at the root — see `AccentTheme.tintsInterfaceKey`.
-    @AppStorage(AccentTheme.tintsInterfaceKey) private var tintsInterface = false
+    @AppStorage(AccentTheme.tintsInterfaceKey) private var tintsInterface = AccentTheme.tintsInterfaceByDefault
 
     var body: some View {
         Form {
@@ -321,6 +321,7 @@ struct AppearanceView: View {
         RoundedRectangle(cornerRadius: Theme.Radius.picture, style: .continuous)
             .fill(.quaternary)
             .frame(width: Theme.Size.wallpaperTile.width, height: Theme.Size.wallpaperTile.height)
+            .outsideWash(cornerRadius: Theme.Radius.picture)
             .overlay {
                 // Clipped and framed here rather than trusted to fill the tile: the backdrop
                 // ignores the safe area, which is exactly what a wallpaper wants and exactly what a

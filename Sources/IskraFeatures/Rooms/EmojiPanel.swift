@@ -200,7 +200,7 @@ struct EmojiPanel: View {
                 } label: {
                     Image(systemName: category.symbol)
                         .font(.footnote)
-                        .foregroundStyle(selected == category.id ? AnyShapeStyle(accent.color) : AnyShapeStyle(.secondary))
+                        .foregroundStyle(selected == category.id ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
                         .frame(maxWidth: .infinity)
                         .frame(height: Theme.Size.menuRow)
                         .contentShape(.rect)

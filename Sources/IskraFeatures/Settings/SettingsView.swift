@@ -97,12 +97,6 @@ struct SettingsView: View {
     /// and a closure has no layout behaviour to go wrong. See `RoomListView`.
     var onClose: () -> Void
 
-    /// The one screen whose chrome is allowed the colour. A `Label` in a `Form` draws its
-    /// icon in the tint, and the app's tint is monochrome everywhere else (see
-    /// `IskraRootView`) — so the accent is put back here, on this screen only, where a row
-    /// of coloured symbols is the point rather than noise.
-    @Environment(\.accent) private var accent
-
     /// The other accounts on the device, and the way to add one. See `AccountSwitcher`.
     @Environment(\.accountSwitcher) private var switcher
 
@@ -314,7 +308,6 @@ struct SettingsView: View {
                         avatarURL: session.avatarURL, seed: session.userID,
                         link: .user(session.userID))
         }
-        .tint(accent.color)
         .profileScreen()
         // Built on the push, never on a pass of this body — see `pageView`. A `NavigationLink`
         // with a destination closure built `session.storage()` every time anything here changed,

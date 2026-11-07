@@ -148,17 +148,15 @@ struct MessageRow: View {
     /// One sentence for VoiceOver, unless there is a button inside the message that flattening
     /// would swallow — see `Message.hasPressableContent`. The emoji on the bubble's corner are
     /// such buttons: flattened, a blind user would be the only one who could not press them.
-    @ViewBuilder
+    ///
+    /// One view with two settings, never an `if`: two branches are two views, and the first emoji
+    /// arriving would rebuild the row and arrive without its scale.
     private var bubbleRow: some View {
-        let row = bubbleRowContent
+        let isOneSentence = !message.hasPressableContent && message.reactions.isEmpty
 
-        if message.hasPressableContent || !message.reactions.isEmpty {
-            row.accessibilityElement(children: .contain)
-        } else {
-            row
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(message.spokenLabel)
-        }
+        return bubbleRowContent
+            .accessibilityElement(children: isOneSentence ? .combine : .contain)
+            .accessibilityLabel(Text(verbatim: message.spokenLabel), isEnabled: isOneSentence)
     }
 
     private var bubbleRowContent: some View {
@@ -351,7 +349,11 @@ struct BubbleReactions: View {
                              onShowReactors: onShowReactors.map { show in { show(reaction.key) } }) {
                     onToggle(reaction.key)
                 }
-                .transition(.scale(scale: 0.01))
+                // From nothing, and back to it: a reaction is a small event, and the one place in a
+                // conversation that is allowed to pop. The fade hides the last speck of glass.
+                .transition(.asymmetric(insertion: .scale(scale: 0.01),
+                                        removal: .scale(scale: 0.01).combined(with: .opacity)
+                                            .animation(Theme.Timing.reactionLeaves)))
             }
         }
         .animation(Theme.Timing.reactionPops, value: message.reactions.map(\.key))
@@ -464,7 +466,7 @@ struct ReactionPill: View {
                 if reaction.count > 1 {
                     Text(reaction.count, format: .number)
                         .font(.caption2.weight(.medium).monospacedDigit())
-                        .foregroundStyle(reaction.isMine ? AnyShapeStyle(accent.color) : AnyShapeStyle(.secondary))
+                        .foregroundStyle(reaction.isMine ? AnyShapeStyle(.accentInk) : AnyShapeStyle(.secondary))
                 }
             }
             .padding(.horizontal, Theme.Spacing.close)

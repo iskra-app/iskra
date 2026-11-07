@@ -27,8 +27,6 @@ struct PinnedStrip: View {
     /// the way to the other five is the arrow at the end of it.
     let onOpenList: () -> Void
 
-    @Environment(\.accent) private var accent
-
     /// The most recently pinned message. The timeline hands them over oldest first, so it is
     /// the last one — and nil in the moment before the pinned timeline has answered, which is
     /// why the strip draws nothing rather than an empty row.
@@ -48,13 +46,13 @@ struct PinnedStrip: View {
                     HStack(spacing: Theme.Spacing.close) {
                         Image(systemName: "pin.fill")
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(accent.color)
+                            .foregroundStyle(.primary)
 
                         VStack(alignment: .leading, spacing: 0) {
                             HStack(spacing: Theme.Spacing.tight) {
                                 Text(Strings.Room.pinned)
                                     .font(.caption.weight(.semibold))
-                                    .foregroundStyle(accent.color)
+                                    .foregroundStyle(.accentInk)
 
                                 // Only where there is more than one. "Pinned 1" is a number nobody
                                 // asked for; "Pinned 4" is the reason to press it.

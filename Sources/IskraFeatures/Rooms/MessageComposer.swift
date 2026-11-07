@@ -629,12 +629,12 @@ struct MessageComposer: View {
         HStack(spacing: Theme.Spacing.close) {
             Image(systemName: context.isEditing ? "pencil" : "arrowshape.turn.up.left")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(accent.color)
+                .foregroundStyle(.primary)
 
             VStack(alignment: .leading, spacing: 0) {
                 Text(context.isEditing ? Strings.Room.editingMessage : Strings.Room.replyingTo)
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(accent.color)
+                    .foregroundStyle(.accentInk)
 
                 Text(MessageSummary.text(of: context.message))
                     .font(.caption)

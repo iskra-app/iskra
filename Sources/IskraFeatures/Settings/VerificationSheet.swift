@@ -40,8 +40,6 @@ struct VerificationSheet: View {
     /// that one is *this* device asking to be trusted, where refusal is not reachable at all.
     var devicesURL: URL?
 
-    @Environment(\.accent) private var accent
-
     /// The pictures grow with the reader's text size. They did not, and of everything in the app
     /// that could have been left un-scaled this was the worst candidate: the entire security of the
     /// screen is a person *looking* at seven small symbols and deciding whether they are the same
@@ -159,7 +157,7 @@ struct VerificationSheet: View {
             VStack(spacing: Theme.Spacing.generous) {
                 Image(systemName: "laptopcomputer.and.iphone")
                     .font(.largeTitle)
-                    .foregroundStyle(accent.color)
+                    .foregroundStyle(.primary)
 
                 VStack(spacing: Theme.Spacing.tight) {
                     Text(request.deviceName ?? String(app: Strings.Verification.unnamedDevice))

@@ -232,6 +232,9 @@ public enum Theme {
         /// say so as they arrive. Staggered by the bar — see `ReactionBar.popDelay`.
         public static let reactionPops: Animation = .spring(duration: 0.4, bounce: 0.3)
 
+        /// A reaction taken back: quicker than it came and with no bounce, since it is going away.
+        public static let reactionLeaves: Animation = .easeIn(duration: 0.16)
+
         /// Reactions arriving and leaving.
         public static let reaction: TimeInterval = 0.25
 

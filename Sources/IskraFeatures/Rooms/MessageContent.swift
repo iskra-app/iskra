@@ -31,6 +31,7 @@ struct MessageContent: View {
     var onVote: ([String]) -> Void = { _ in }
 
     @Environment(\.accent) private var accent
+    @Environment(\.colorScheme) private var colorScheme
 
     /// The real opener, captured before the message text overrides `openURL` to intercept taps.
     /// The confirmation's "Open" hands the URL back to this.
@@ -324,7 +325,7 @@ struct MessageContent: View {
 
     /// What a link is drawn in: the accent, except on a bubble that is the accent already.
     private var linkColor: Color {
-        style == .own ? accent.onBubbleColor : accent.color
+        style == .own ? accent.onBubbleColor : accent.textColor(in: colorScheme)
     }
 
     /// The quiet grey of a quote or a hidden spoiler. `Color.secondary` inside an attributed string

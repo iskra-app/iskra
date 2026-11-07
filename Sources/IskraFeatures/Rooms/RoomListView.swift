@@ -816,7 +816,7 @@ struct RoomRow: View {
 
     static let compactLeading: CGFloat = 0
 
-    /// For the pin, which is the one coloured thing on this row. See `body`.
+    /// For the unread marks, the coloured things on this row.
     @Environment(\.accent) private var accent
     @Environment(\.colorScheme) private var colorScheme
 
@@ -884,7 +884,7 @@ struct RoomRow: View {
                     // accent — the one moment the preview is news rather than history.
                     preview
                         .font(.subheadline)
-                        .foregroundStyle(isTyping ? AnyShapeStyle(accent.color) : AnyShapeStyle(.secondary))
+                        .foregroundStyle(isTyping ? AnyShapeStyle(.accentInk) : AnyShapeStyle(.secondary))
                         .contentTransition(.opacity)
                         .animation(.smooth(duration: Theme.Timing.chrome), value: isTyping)
                         // Two lines, and the space for both is kept even when only one is used.
@@ -982,7 +982,7 @@ struct RoomRow: View {
     private var pin: some View {
         Image(systemName: "pin.fill")
             .font(.caption)
-            .foregroundStyle(accent.color)
+            .foregroundStyle(.primary)
             .accessibilityLabel(Text(Strings.RoomList.pinned))
     }
 
@@ -1040,11 +1040,11 @@ struct RoomRow: View {
                     .accessibilityLabel(Text(Strings.Message.Delivery.sending))
             case .sent:
                 Image(systemName: "checkmark")
-                    .foregroundStyle(accent.color)
+                    .foregroundStyle(.primary)
                     .accessibilityLabel(Text(Strings.Message.Delivery.sent))
             case .read:
                 Image(systemName: "eye.fill")
-                    .foregroundStyle(accent.color)
+                    .foregroundStyle(.primary)
                     .accessibilityLabel(Text(Strings.Message.Delivery.read))
             case .failed:
                 Image(systemName: "exclamationmark.circle.fill")

@@ -30,8 +30,6 @@ struct ProfileField<Value: View>: View {
 struct MatrixIDField: View {
     let userID: String
 
-    @Environment(\.accent) private var accent
-
     /// The tick that replaces the icon for a moment, so a copy that changes nothing on screen is
     /// not a copy the reader has to take on trust.
     @State private var didCopy = false
@@ -40,7 +38,7 @@ struct MatrixIDField: View {
         HStack(spacing: Theme.Spacing.normal) {
             ProfileField(title: Strings.Profile.matrixID) {
                 Text(verbatim: userID)
-                    .foregroundStyle(accent.color)
+                    .foregroundStyle(.accentInk)
                     .textSelection(.enabled)
             }
 
@@ -54,7 +52,7 @@ struct MatrixIDField: View {
             } label: {
                 Image(systemName: didCopy ? "checkmark" : "doc.on.doc")
                     .font(.title3)
-                    .foregroundStyle(accent.color)
+                    .foregroundStyle(.primary)
                     .contentTransition(.symbolEffect(.replace))
             }
             .buttonStyle(.borderless)

@@ -565,6 +565,16 @@ reaches everything because nothing names a font of its own: a `UIFont`, an `NSFo
 `design:` is a piece of text that stays out of it. Extensions are out of it on purpose: they have no
 root of ours.
 
+**Icons are the colour of the text, and the accent is for fills.** The root tint is `.primary`
+with the wash on or off, so a toolbar, a `Label` and a plain button take the text's colour, and an
+icon that sets its own says `.primary`. Words in the accent are `.foregroundStyle(.accentInk)`
+(`AccentTheme.textColor`), never `accent.color`: yellow, the default, is 1.5 to 1 on white.
+
+**The wash is `.interfaceWash()`, at the root and on every sheet** (`InterfaceWash`, on by default,
+`pageSheet` and `reactorsSheet` carry it): an overlay at the root sits under a sheet. A picture that
+has to look as it will look (a home icon, a wallpaper being chosen) is cut out of it with
+`.outsideWash(cornerRadius:)`.
+
 **The main button on a screen is `.primaryAction` or `.glassAction`** (`IskraDesign/PrimaryAction.swift`),
 **never `.borderedProminent` or `.glassProminent`.** The system's prominent styles fill themselves with
 the *tint*, and the tint at the root of this app is `.primary` — so a prominent button that does not

@@ -18,8 +18,6 @@ import IskraDesign
 struct DevicesView: View {
     @State var store: DevicesStore
 
-    @Environment(\.accent) private var accent
-
     /// The session opened up in a sheet — a tap on its row. See `DeviceDetailSheet`.
     @State private var inspecting: AccountDevice?
     @State private var isConfirmingOthers = false
@@ -107,7 +105,6 @@ struct DevicesView: View {
             }
         }
         .formStyle(.groupedRows)
-        .tint(accent.color)
         .animation(.smooth(duration: Theme.Timing.chrome), value: store.devices.map(\.id))
         .navigationTitle(Text(Strings.Devices.title))
         .task { await store.load() }
@@ -135,8 +132,6 @@ struct DevicesView: View {
 struct DeviceRow: View {
     let device: AccountDevice
     let isEnding: Bool
-
-    @Environment(\.accent) private var accent
 
     var body: some View {
         HStack(spacing: Theme.Spacing.normal) {
@@ -177,7 +172,7 @@ struct DeviceRow: View {
     @ViewBuilder
     private var seen: some View {
         if device.isCurrent {
-            Text(Strings.Devices.online).foregroundStyle(accent.color)
+            Text(Strings.Devices.online).foregroundStyle(.accentInk)
         } else {
             let ip = device.lastSeenIP.map { Text(verbatim: $0) }
             let when = device.lastSeenAt.map { Text($0, format: .relative(presentation: .named)) }

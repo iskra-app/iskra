@@ -1987,7 +1987,7 @@ public struct RoomView: View {
                         Image(systemName: "photo.badge.plus")
                     }
                     .font(.headline)
-                    .foregroundStyle(accent.color)
+                    .foregroundStyle(.primary)
                 }
                 .padding(Theme.Spacing.normal)
                 .allowsHitTesting(false)

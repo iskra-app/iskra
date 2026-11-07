@@ -15,7 +15,6 @@ struct DeviceDetailSheet: View {
     var onEnded: () -> Void = {}
 
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.accent) private var accent
 
     @State private var isConfirming = false
 
@@ -35,7 +34,7 @@ struct DeviceDetailSheet: View {
                     }
                     LabeledContent {
                         if device.isCurrent {
-                            Text(Strings.Devices.online).foregroundStyle(accent.color)
+                            Text(Strings.Devices.online).foregroundStyle(.accentInk)
                         } else if let seen = device.lastSeenAt {
                             Text(seen, format: .dateTime.day().month().year().hour().minute())
                         } else {

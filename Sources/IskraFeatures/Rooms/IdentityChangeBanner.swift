@@ -47,7 +47,7 @@ struct IdentityChangeBanner: View {
                         .font(.footnote.weight(.semibold))
                 }
                 .buttonStyle(.bordered)
-                .tint(isSerious ? Self.warning : .accentColor)
+                .tint(isSerious ? Self.warning : .primary)
                 .padding(.top, Theme.Spacing.tight)
             }
             .frame(maxWidth: .infinity, alignment: .leading)

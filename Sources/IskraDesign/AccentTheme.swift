@@ -13,9 +13,9 @@ public enum AccentTheme: String, CaseIterable, Identifiable, Sendable {
     /// No colour at all: black on a white screen, white on a black one.
     case mono
 
-    /// Blue, because that is what the app has always been and a fresh install should not
-    /// look like someone has already been at the settings.
-    public static let `default` = AccentTheme.blue
+    /// Yellow, with the wash on (`tintsInterfaceByDefault`): the spark the app is named for. Somebody
+    /// who has chosen a colour keeps it; the key is only empty until they do.
+    public static let `default` = AccentTheme.yellow
 
     /// Where the choice is kept. One key, read by the root of the app and written by the
     /// appearance screen; `@AppStorage` on both ends keeps them in step.
@@ -30,12 +30,11 @@ public enum AccentTheme: String, CaseIterable, Identifiable, Sendable {
     /// independently — the same green can be a green send button on a plain page or a room bathed in
     /// green throughout, and neither is a different colour.
     ///
-    /// **Off by default, and that is an opinion, not an oversight.** A colour laid over everything is
-    /// a colour that emphasises nothing: once the page, the words and the bubbles are all the same
-    /// green, the message you just sent no longer stands out as yours. So the app stays plain unless
-    /// somebody asks for this, and spends the accent only where it means something. See the wash in
-    /// `IskraRootView`.
+    /// On by default, so that a fresh install is warm from the sign-in screen on. Your own messages
+    /// still stand out: they are the accent itself, and the wash is only a breath of it. See
+    /// `InterfaceWash`.
     public static let tintsInterfaceKey = "appearance.tintsInterface"
+    public static let tintsInterfaceByDefault = true
 
     public var id: String { rawValue }
 
@@ -191,8 +190,7 @@ public enum AccentTheme: String, CaseIterable, Identifiable, Sendable {
     /// yellow is invisible. In the light the colours are darkened to 5.2 to 6.0 to 1 on white (same
     /// hue, deeper); in the dark the system colours are already light enough (5 to 15 to 1 on the
     /// dark page) and are used as they are. Mono is `.primary`, which is its own answer. Blue is
-    /// `Color.blue` in both: it is the default and 4.0 to 1 on white, the one colour left under 4.5,
-    /// left alone so that the default look does not move.
+    /// `Color.blue` in both: 4.0 to 1 on white, the one colour left under 4.5.
     public func textColor(in scheme: ColorScheme) -> Color {
         guard scheme == .light else { return color }
         switch self {
@@ -205,6 +203,21 @@ public enum AccentTheme: String, CaseIterable, Identifiable, Sendable {
         case .blue, .mono: return color
         }
     }
+}
+
+/// `AccentTheme.textColor` as a style, for words on the page: `.foregroundStyle(.accentInk)` reads the
+/// accent and the colour scheme by itself. The bare `accent.color` is for fills. As words, yellow on
+/// white is 1.5 to 1, and an icon is neither: icons take the colour of the text, `.primary`.
+public struct AccentInk: ShapeStyle {
+    public init() {}
+
+    public func resolve(in environment: EnvironmentValues) -> Color.Resolved {
+        environment.accent.textColor(in: environment.colorScheme).resolve(in: environment)
+    }
+}
+
+public extension ShapeStyle where Self == AccentInk {
+    static var accentInk: AccentInk { AccentInk() }
 }
 
 public extension EnvironmentValues {
