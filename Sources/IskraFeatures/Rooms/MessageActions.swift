@@ -325,6 +325,7 @@ struct MessageActions<Content: View>: View {
             mine: Set(message.reactions.filter(\.isMine).map(\.key)),
             content: AnyView(lifted),
             isPicture: message.isPicture,
+            room: room,
             sections: sections,
             onReaction: handlers.onToggleReaction))
     }

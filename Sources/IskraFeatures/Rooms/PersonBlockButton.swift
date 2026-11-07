@@ -32,6 +32,7 @@ struct PersonBlockButton: View {
             } label: {
                 Label(String(app: isBlocked ? Strings.Profile.unblockUser : Strings.Profile.blockUser),
                       systemImage: isBlocked ? "hand.raised.slash" : "hand.raised")
+                    .destructiveLabel(!isBlocked)
             }
             .disabled(isOffline)
             .confirmationDialog(Text(Strings.Message.Menu.blockConfirm(name)),

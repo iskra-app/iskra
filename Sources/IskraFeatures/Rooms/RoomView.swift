@@ -715,7 +715,8 @@ public struct RoomView: View {
             .flippedForTimeline()
             // So a message held while the room is still sliding in lifts from where it is — see
             // `WindowProbe`. Outside the turn, so the probe is the right way up.
-            .messageMenuRoom()
+            .messageMenuRoom(scrollOffset: { metrics.offset },
+                             scroll: { scrollPosition.scrollTo(y: max(0, $0)) })
             // Under the title bar, and *only* under it. The bottom — the composer, the keyboard, the
             // home indicator — is left to the safe area, and the list simply ends above them. Measured
             // on a phone (counting what changed on every layout pass while the app hung): a list

@@ -127,6 +127,7 @@ struct MemberProfileView: View {
                             dismiss()
                         } label: {
                             Label(String(app: Strings.Room.Manage.remove), systemImage: "person.badge.minus")
+                                .destructiveLabel()
                         }
                         .disabled(isOffline)
                     }
@@ -141,6 +142,7 @@ struct MemberProfileView: View {
                             }
                         } label: {
                             Label(String(app: Strings.Room.Manage.block), systemImage: "hand.raised")
+                                .destructiveLabel()
                         }
                         .disabled(isOffline)
                     }

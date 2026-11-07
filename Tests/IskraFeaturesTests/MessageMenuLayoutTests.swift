@@ -52,6 +52,38 @@ struct MessageMenuLayoutTests {
         #expect(mine.lift == .zero)
     }
 
+    /// A message taller than the screen, pressed with its first line long gone: it opens scrolled
+    /// to the words that were on the screen, and they do not move.
+    @Test func aLongMessageOpensOnTheWordsThatWereShowing() {
+        let anchor = CGRect(x: 16, y: -600, width: 300, height: 1400)
+        let layout = resolve(anchor: anchor)
+
+        let liftedY = layout.origin.y + bar + MessageMenu.gap
+        #expect(layout.contentOffset == liftedY - local(anchor).minY)
+        #expect(layout.lift.height == 0)
+    }
+
+    /// With its first line on the screen it opens at the first line, and past the end of the
+    /// message there is nothing to open on: the rest of the distance is flown.
+    @Test func aLongMessageOpensNoFurtherThanItGoes() {
+        let top = resolve(anchor: CGRect(x: 16, y: 300, width: 300, height: 1400))
+        #expect(top.contentOffset == 0)
+
+        let anchor = CGRect(x: 16, y: -1300, width: 300, height: 1400)
+        let end = resolve(anchor: anchor)
+        #expect(end.contentOffset == 1400 - end.contentHeight)
+        #expect(end.lift.height == local(anchor).minY + end.contentOffset - (end.origin.y + bar + MessageMenu.gap))
+    }
+
+    /// A picture is scaled to fit, from its top, so it opens with nothing scrolled.
+    @Test func aPictureHasNoWayDown() {
+        let anchor = CGRect(x: 16, y: -600, width: 300, height: 1400)
+        let layout = MessageMenuLayout.resolve(anchor: anchor, region: region, isOwn: false,
+                                               aboveHeight: bar, listHeight: list, isPicture: true)
+        #expect(layout.contentOffset == 0)
+        #expect(layout.lift.height == local(anchor).minY - (layout.origin.y + bar + MessageMenu.gap))
+    }
+
     /// A message by the composer is lifted to make room for the verbs, and the arrangement starts
     /// exactly that far down — so it is seen to rise out of the conversation, not to appear above it.
     @Test func aMessageAtTheBottomTravelsUpByItsLift() {

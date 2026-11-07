@@ -38,7 +38,7 @@ struct DevicesView: View {
                             isConfirmingOthers = true
                         } label: {
                             Label(Strings.Devices.endOthers, systemImage: "hand.raised")
-                                .foregroundStyle(.red)
+                                .destructiveLabel()
                         }
                     }
                 } header: {

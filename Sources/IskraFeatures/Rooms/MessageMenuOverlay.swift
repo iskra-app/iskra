@@ -60,14 +60,17 @@ struct MessageMenuOverlay: View {
                         isOwn: presentation.isOwn,
                         aboveHeight: aboveHeight(for: presentation),
                         listHeight: listHeight(for: presentation),
-                        barWidth: ReactionBar.naturalWidth)
+                        barWidth: ReactionBar.naturalWidth,
+                        isPicture: presentation.isPicture)
 
                     // Picked up, not faded in — Telegram's. The arrangement is first drawn with the
                     // message exactly where it stood in the conversation, and springs from there to
                     // where the menu needs it; on closing it springs back into its gap. The bar and
                     // the verbs unfold out of the message on the same value, below. See
                     // `MessageMenuLayout.lift` and `MessageMenuPresenter.isOut`.
-                    let away = presenter.isOut ? CGSize.zero : layout.lift
+                    let away = presenter.isOut
+                        ? CGSize.zero
+                        : CGSize(width: layout.lift.width, height: layout.lift.height + presenter.landingDrift)
 
                     ZStack(alignment: .topLeading) {
                         column(presentation, layout: layout)
@@ -218,6 +221,7 @@ struct MessageMenuOverlay: View {
     /// given the height `MessageMenuLayout` allows and *scrolls* in it, at full size. It used to
     /// be scaled down to fit instead, and a scaled page of text is a page of text too small to
     /// read; the long message is often the very one somebody opened the menu to copy a piece of.
+    /// The conversation behind goes with it — see `MessageMenuPresenter.follow`.
     /// A picture is the exception, and is scaled after all — see `MessageMenuPresentation.isPicture`.
     @ViewBuilder
     private func lifted(_ presentation: MessageMenuPresentation,
@@ -255,8 +259,10 @@ struct MessageMenuOverlay: View {
                     .frame(width: width * scale, height: layout.contentHeight,
                            alignment: presentation.isOwn ? .topTrailing : .topLeading)
             } else if layout.contentHeight < presentation.anchor.height {
-                ScrollView(.vertical) { message }
-                    .scrollIndicators(.visible)
+                LongMessageScroll(start: layout.contentOffset,
+                                  furthest: presentation.anchor.height + 1 - layout.contentHeight,
+                                  onScroll: { presenter.follow($0) }) { message }
+                    .id(presentation.id)
                     .frame(width: width, height: layout.contentHeight, alignment: .top)
                     .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.bubble, style: .continuous))
             } else {
@@ -379,6 +385,44 @@ struct MessageMenuOverlay: View {
     /// either side of it. Named because it is drawn in one place and counted in another, and
     /// the two going out of step is a menu that scrolls by four points for no visible reason.
     static let sectionRule = Theme.Spacing.close * 2 + Theme.Border.hairline
+}
+
+// MARK: - A message too long for the menu
+
+/// The window onto a long message, opened where the words already stood and reporting how far it
+/// has been scrolled since.
+///
+/// The start is held once, because it is a fact about the opening: the emoji panel changes the
+/// layout while the menu is open, and the message must not be moved under the reader for that.
+private struct LongMessageScroll<Content: View>: View {
+    let furthest: CGFloat
+    let onScroll: (CGFloat) -> Void
+    @ViewBuilder let content: () -> Content
+
+    @State private var start: CGFloat
+    @State private var position: ScrollPosition
+
+    init(start: CGFloat,
+         furthest: CGFloat,
+         onScroll: @escaping (CGFloat) -> Void,
+         @ViewBuilder content: @escaping () -> Content) {
+        self.furthest = furthest
+        self.onScroll = onScroll
+        self.content = content
+        _start = State(initialValue: start)
+        _position = State(initialValue: ScrollPosition(y: start))
+    }
+
+    var body: some View {
+        ScrollView(.vertical, content: content)
+            .scrollIndicators(.visible)
+            .scrollPosition($position)
+            .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, offset in
+                // Only as far as there is message: the rubber band at either end is not a distance
+                // for the conversation to go.
+                onScroll(min(max(0, offset), furthest) - start)
+            }
+    }
 }
 
 // MARK: - One line of the menu

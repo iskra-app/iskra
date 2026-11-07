@@ -88,6 +88,11 @@ final class WindowProbe {
         return nil
         #endif
     }
+
+    /// How far the conversation is scrolled, and the way to scroll it, handed in by the room — so
+    /// that it can follow a long message being read in the menu. See `MessageMenuPresenter.follow`.
+    var scrollOffset: () -> CGFloat = { 0 }
+    var scroll: (CGFloat) -> Void = { _ in }
 }
 
 #if os(iOS)
@@ -176,6 +181,9 @@ struct MessageMenuPresentation: Identifiable {
     /// so the photo came up at half the window's height in a bubble still the size of the old one.
     var isPicture = false
 
+    /// The conversation the message is in, which follows it while it is scrolled in the menu.
+    var room: WindowProbe?
+
     let sections: [MessageMenuSection]
 
     let onReaction: (String) -> Void
@@ -234,10 +242,31 @@ final class MessageMenuPresenter {
     /// Whether the message is on its way home — the menu is still drawn, but it is going.
     private var isClosing = false
 
+    /// How much further the flight home has to go because the conversation could not follow the
+    /// message all the way: the newest message has nothing below it to scroll to. See `follow`.
+    private(set) var landingDrift: CGFloat = 0
+
+    /// Where the conversation stood when the menu opened, and how far the message has been
+    /// scrolled from where it opened, up being positive.
+    private var conversationStart: CGFloat = 0
+    private var followed: CGFloat = 0
+
+    /// A long message is being scrolled in the menu, and the conversation behind it goes the same
+    /// way by the same distance — so the menu closes on the place that was being read, and not on
+    /// the place where the menu was opened.
+    func follow(_ distance: CGFloat) {
+        guard !isClosing, let room = presentation?.room else { return }
+        followed = distance
+        room.scroll(conversationStart - distance)
+    }
+
     func present(_ presentation: MessageMenuPresentation) {
         guard self.presentation?.id != presentation.id || isClosing else { return }
         lifts += 1
         isClosing = false
+        landingDrift = 0
+        followed = 0
+        conversationStart = presentation.room?.scrollOffset() ?? 0
 
         // All of it without animation: the row empties in the same frame the copy appears over
         // it, standing exactly in its place, so there is never a frame with both and never one
@@ -270,6 +299,10 @@ final class MessageMenuPresenter {
         guard presentation != nil, !isClosing else { return }
         isClosing = true
         let id = presentation?.id
+
+        if followed != 0, let room = presentation?.room {
+            landingDrift = followed - (conversationStart - room.scrollOffset())
+        }
 
         withAnimation(Theme.Timing.menuCloses) {
             isOut = false
@@ -355,6 +388,11 @@ struct MessageMenuLayout: Equatable {
     /// text is a page nobody can read, and reading it is often why the menu was opened.
     var contentHeight: CGFloat
 
+    /// How far down a long message opens in that height: as far as keeps the words where they
+    /// stood in the conversation. Pressed in the middle of a message taller than the screen, it
+    /// opens on the part that was being read, and not at its first line, which is off the screen.
+    var contentOffset: CGFloat = 0
+
     /// The most the list of actions may take. Beyond that it scrolls — a menu with eleven items
     /// on an iPhone SE with a tall message above it is a real arrangement, not a hypothetical.
     var listMaxHeight: CGFloat
@@ -386,7 +424,8 @@ struct MessageMenuLayout: Equatable {
                         isOwn: Bool,
                         aboveHeight: CGFloat,
                         listHeight: CGFloat,
-                        barWidth: CGFloat = Theme.Size.emojiPanelWidth) -> MessageMenuLayout {
+                        barWidth: CGFloat = Theme.Size.emojiPanelWidth,
+                        isPicture: Bool = false) -> MessageMenuLayout {
         let gap = MessageMenu.gap
         let margin = MessageMenu.margin
 
@@ -441,6 +480,11 @@ struct MessageMenuLayout: Equatable {
         let liftedEdge = isOwn ? x + width : x
         let anchorEdge = isOwn ? anchor.maxX : anchor.minX
 
+        // A picture is scaled to fit rather than scrolled, so it has no such thing as a way down.
+        let contentOffset = contentHeight < anchor.height && !isPicture
+            ? min(max(0, liftedY - anchor.minY), anchor.height - contentHeight)
+            : 0
+
         return MessageMenuLayout(origin: CGPoint(x: x, y: y),
                                  width: width,
                                  emojiWidth: emoji.width,
@@ -448,9 +492,10 @@ struct MessageMenuLayout: Equatable {
                                  barWidth: bar.width,
                                  barOffset: bar.offset,
                                  contentHeight: contentHeight,
+                                 contentOffset: contentOffset,
                                  listMaxHeight: listMaxHeight,
                                  lift: CGSize(width: anchorEdge - liftedEdge,
-                                              height: anchor.minY - liftedY))
+                                              height: anchor.minY + contentOffset - liftedY))
     }
 }
 
@@ -470,13 +515,18 @@ extension View {
 
 extension View {
     /// Marks the conversation the messages are in, so that a message lifted while it is still
-    /// sliding into place is lifted from where it really is — see `WindowProbe`.
-    func messageMenuRoom() -> some View {
-        modifier(MessageMenuRoom())
+    /// sliding into place is lifted from where it really is — see `WindowProbe`. `scrollOffset`
+    /// and `scroll` are how the conversation follows a long message scrolled in the menu.
+    func messageMenuRoom(scrollOffset: @escaping () -> CGFloat,
+                         scroll: @escaping (CGFloat) -> Void) -> some View {
+        modifier(MessageMenuRoom(scrollOffset: scrollOffset, scroll: scroll))
     }
 }
 
 private struct MessageMenuRoom: ViewModifier {
+    let scrollOffset: () -> CGFloat
+    let scroll: (CGFloat) -> Void
+
     @State private var probe = WindowProbe()
 
     func body(content: Content) -> some View {
@@ -485,6 +535,10 @@ private struct MessageMenuRoom: ViewModifier {
             .background { WindowProbeView(probe: probe) }
             #endif
             .environment(\.messageMenuRoom, probe)
+            .onAppear {
+                probe.scrollOffset = scrollOffset
+                probe.scroll = scroll
+            }
     }
 }
 

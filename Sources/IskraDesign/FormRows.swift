@@ -188,6 +188,30 @@ extension View {
         self
         #endif
     }
+
+    /// Red for the icon too, on the `Label` of a `.destructive` button in a form.
+    ///
+    /// The role paints the words and leaves the icon to the tint, and the tint at the root of this
+    /// app is `.primary`: red words beside a white icon. On the label rather than on the button,
+    /// where a list's own button style would have the last word. Only while the button can be
+    /// pressed: an explicit colour outranks the grey of a disabled row.
+    public func destructiveLabel(_ isDestructive: Bool = true) -> some View {
+        modifier(DestructiveLabel(isDestructive: isDestructive))
+    }
+}
+
+private struct DestructiveLabel: ViewModifier {
+    let isDestructive: Bool
+
+    @Environment(\.isEnabled) private var isEnabled
+
+    func body(content: Content) -> some View {
+        if isDestructive && isEnabled {
+            content.foregroundStyle(.red)
+        } else {
+            content
+        }
+    }
 }
 
 extension FormStyle where Self == GroupedRowsFormStyle {
